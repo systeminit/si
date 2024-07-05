@@ -220,7 +220,7 @@ export const useFuncStore = () => {
         },
         async DELETE_UNLOCKED_FUNC(funcId: FuncId) {
           return new ApiRequest<DeleteFuncResponse>({
-            method: "post",
+            method: "delete",
             url: `${API_PREFIX}/${funcId}/delete`,
           });
         },

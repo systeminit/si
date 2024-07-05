@@ -106,6 +106,7 @@ watch(
 const updateFuncCode = (funcId: string, code: string) => {
   if (updatedHead.value) return;
   if (!funcId) return; // protecting empty string, should never happen
+  if (selectedFuncSummary.value?.isLocked) return;
 
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
