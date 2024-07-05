@@ -80,6 +80,9 @@ impl IntoResponse for SchemaVariantError {
             | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
             | SchemaVariantError::SchemaVariantAssetNotFound(_)
             | SchemaVariantError::VariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaVariantError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
+                (StatusCode::CONFLICT, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
