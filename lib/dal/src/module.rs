@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_events::ContentHash;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-use ulid::Ulid;
 
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 
-use crate::layer_db_types::{ModuleContent, ModuleContentV1};
+use crate::layer_db_types::{ModuleContent, ModuleContentV2};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -64,10 +64,11 @@ pub struct Module {
     description: String,
     created_by_email: String,
     created_at: DateTime<Utc>,
+    schema_id: Option<Ulid>,
 }
 
 impl Module {
-    pub fn assemble(id: ModuleId, inner: ModuleContentV1) -> Self {
+    pub fn assemble(id: ModuleId, inner: ModuleContentV2) -> Self {
         Self {
             id,
             timestamp: inner.timestamp,
@@ -77,6 +78,7 @@ impl Module {
             description: inner.description,
             created_by_email: inner.created_by_email,
             created_at: inner.created_at,
+            schema_id: inner.schema_id,
         }
     }
 
@@ -104,6 +106,16 @@ impl Module {
         self.created_at
     }
 
+    /// This is the "module" schema id. It's a unique id that all variants of a
+    /// single schema get in the module index database. If this is the first
+    /// time installing the asset, the schema will get this, but this is not
+    /// guaranteed to be the id of the schema in workspaces that have assets
+    /// installed before this feature was added!
+    pub fn schema_id(&self) -> Option<Ulid> {
+        self.schema_id
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -112,8 +124,9 @@ impl Module {
         description: impl Into<String>,
         created_by_email: impl Into<String>,
         created_at: impl Into<DateTime<Utc>>,
+        schema_id: Option<Ulid>,
     ) -> ModuleResult<Self> {
-        let content = ModuleContentV1 {
+        let content = ModuleContentV2 {
             timestamp: Timestamp::now(),
             name: name.into(),
             root_hash: root_hash.into(),
@@ -121,13 +134,14 @@ impl Module {
             description: description.into(),
             created_by_email: created_by_email.into(),
             created_at: created_at.into(),
+            schema_id,
         };
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(ModuleContent::V1(content.clone()).into()),
+                Arc::new(ModuleContent::V2(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -171,15 +185,19 @@ impl Module {
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // Add any extra migrations here!
-        let ModuleContent::V1(inner) = content;
+        let inner = match content {
+            ModuleContent::V1(v1_inner) => v1_inner.into(),
+            ModuleContent::V2(inner) => inner,
+        };
 
         Ok(Self::assemble(id, inner))
     }
 
-    pub async fn find_by_root_hash(
-        ctx: &DalContext,
-        root_hash: impl AsRef<str>,
-    ) -> ModuleResult<Option<Self>> {
+    pub async fn find<P>(ctx: &DalContext, predicate: P) -> ModuleResult<Option<Self>>
+    where
+        P: FnMut(&Module) -> bool,
+    {
+        let mut predicate = predicate;
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let module_node_indices = {
             let module_category_index_id = workspace_snapshot
@@ -200,12 +218,26 @@ impl Module {
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Module)?;
 
             let module: Module = Self::get_by_id(ctx, module_node_weight.id().into()).await?;
-            if module.root_hash == root_hash.as_ref() {
+            if predicate(&module) {
                 return Ok(Some(module));
             }
         }
 
         Ok(None)
+    }
+
+    pub async fn find_by_root_hash(
+        ctx: &DalContext,
+        root_hash: impl AsRef<str>,
+    ) -> ModuleResult<Option<Self>> {
+        Self::find(ctx, |module| module.root_hash() == root_hash.as_ref()).await
+    }
+
+    pub async fn find_for_module_schema_id(
+        ctx: &DalContext,
+        module_schema_id: Ulid,
+    ) -> ModuleResult<Option<Self>> {
+        Self::find(ctx, |module| module.schema_id() == Some(module_schema_id)).await
     }
 
     pub async fn find_for_schema_id(
@@ -284,6 +316,20 @@ impl Module {
         Ok(all_schemas)
     }
 
+    pub async fn find_matching_module(&self, ctx: &DalContext) -> ModuleResult<Option<Self>> {
+        let mut maybe_mod = None;
+
+        if let Some(module_schema_id) = self.schema_id() {
+            maybe_mod = Self::find_for_module_schema_id(ctx, module_schema_id).await?;
+        }
+
+        if maybe_mod.is_none() {
+            maybe_mod = Self::find_by_root_hash(ctx, self.root_hash()).await?;
+        }
+
+        Ok(maybe_mod)
+    }
+
     pub async fn list_associated_schema_variants(
         &self,
         ctx: &DalContext,
@@ -341,11 +387,10 @@ impl Module {
 
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
-                Some(module_content) => {
-                    let ModuleContent::V1(inner) = module_content;
-
-                    modules.push(Self::assemble(node_weight.id().into(), inner.to_owned()))
-                }
+                Some(module_content) => modules.push(Self::assemble(
+                    node_weight.id().into(),
+                    module_content.inner(),
+                )),
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
                 ))?,

@@ -6,7 +6,8 @@ use axum::{
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
 use module_index_client::{
-    FuncMetadata, ModuleDetailsResponse, MODULE_BASED_ON_HASH_NAME, MODULE_BUNDLE_FIELD_NAME,
+    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_BASED_ON_HASH_FIELD_NAME,
+    MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
 };
 use s3::error::S3Error;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, Set};
@@ -18,7 +19,7 @@ use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
-    models::si_module::{self, ModuleKind, SchemaId},
+    models::si_module::{self, make_module_details_response, ModuleId, ModuleKind, SchemaId},
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -36,12 +37,16 @@ pub enum UpsertModuleError {
     IoError(#[from] std::io::Error),
     #[error("multipart decode error: {0}")]
     Multipart(#[from] MultipartError),
+    #[error("module with {0} could not be found after insert!")]
+    NotFoundAfterInsert(ModuleId),
     #[error("s3 error: {0}")]
     S3Error(#[from] S3Error),
     #[error("JSON serialization/deserialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("module parsing error: {0}")]
     SiPkgError(#[from] SiPkgError),
+    #[error("Ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("upload is required")]
     UploadRequiredError,
 }
@@ -70,13 +75,17 @@ pub async fn upsert_module_route(
 ) -> Result<Json<ModuleDetailsResponse>, UpsertModuleError> {
     let mut module_data = None;
     let mut module_based_on_hash = None;
+    let mut module_schema_id = None;
     while let Some(field) = multipart.next_field().await? {
         match field.name() {
             Some(MODULE_BUNDLE_FIELD_NAME) => {
                 module_data = Some(field.bytes().await?);
             }
-            Some(MODULE_BASED_ON_HASH_NAME) => {
+            Some(MODULE_BASED_ON_HASH_FIELD_NAME) => {
                 module_based_on_hash = Some(field.text().await?);
+            }
+            Some(MODULE_SCHEMA_ID_FIELD_NAME) => {
+                module_schema_id = Some(field.text().await?);
             }
             _ => debug!("Unknown multipart form field on module upload, skipping..."),
         }
@@ -89,8 +98,8 @@ pub async fn upsert_module_route(
     let module_metadata = loaded_module.metadata()?;
 
     info!(
-        "upserting module: {:?} based on hash: {:?}",
-        &module_metadata, &module_based_on_hash
+        "upserting module: {:?} based on hash: {:?} with provided schema id of {:?}",
+        &module_metadata, &module_based_on_hash, &module_schema_id
     );
 
     let version = module_metadata.version().to_owned();
@@ -99,18 +108,37 @@ pub async fn upsert_module_route(
         SiPkgKind::Module => ModuleKind::Module,
     };
 
+    let new_schema_id = Some(SchemaId(Ulid::new()));
     let schema_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
-        ModuleKind::Module => match module_based_on_hash {
-            None => Some(SchemaId(Ulid::new())),
-            Some(based_on_hash) => si_module::Entity::find()
-                .filter(si_module::Column::Kind.eq(ModuleKind::Module))
-                .filter(si_module::Column::LatestHash.eq(based_on_hash))
-                .limit(1)
-                .all(&txn)
-                .await?
-                .first()
-                .and_then(|module| module.schema_id),
+        ModuleKind::Module => match module_schema_id {
+            Some(schema_id_string) => Some(SchemaId(Ulid::from_string(&schema_id_string)?)),
+            None => match module_based_on_hash {
+                None => new_schema_id,
+                Some(based_on_hash) => {
+                    match si_module::Entity::find()
+                        .filter(si_module::Column::Kind.eq(ModuleKind::Module))
+                        .filter(si_module::Column::LatestHash.eq(based_on_hash))
+                        .limit(1)
+                        .all(&txn)
+                        .await?
+                        .first()
+                    {
+                        None => new_schema_id,
+                        Some(module) => match module.schema_id {
+                            some @ Some(_) => some,
+                            None => {
+                                // If we found matching past hash but it has no schema id, backfill it to match the one we're generating
+                                let mut active: si_module::ActiveModel = module.to_owned().into();
+                                active.schema_id = Set(new_schema_id);
+                                active.update(&txn).await?;
+
+                                new_schema_id
+                            }
+                        },
+                    }
+                }
+            },
         },
     };
 
@@ -161,15 +189,15 @@ pub async fn upsert_module_route(
         .await?;
 
     let new_module: si_module::Model = new_module.insert(&txn).await?;
+    let (module, linked_modules) = si_module::Entity::find_by_id(new_module.id)
+        .find_with_linked(si_module::SchemaIdReferenceLink)
+        .all(&txn)
+        .await?
+        .first()
+        .cloned()
+        .ok_or(UpsertModuleError::NotFoundAfterInsert(new_module.id))?;
 
     txn.commit().await?;
 
-    Ok(Json(new_module.try_into()?))
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExtraMetadata {
-    pub version: String,
-    pub schemas: Vec<String>,
-    pub funcs: Vec<FuncMetadata>,
+    Ok(Json(make_module_details_response(module, linked_modules)))
 }

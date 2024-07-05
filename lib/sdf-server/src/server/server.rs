@@ -407,14 +407,14 @@ async fn install_builtins(
         join_set.spawn(async move {
             (
                 module.name.to_owned(),
-                fetch_builtin(&module, &client).await,
+                (module.to_owned(), fetch_builtin(&module, &client).await),
             )
         });
     }
 
     let mut count: usize = 0;
     while let Some(res) = join_set.join_next().await {
-        let (pkg_name, res) = res?;
+        let (pkg_name, (module, res)) = res?;
         match res {
             Ok(pkg) => {
                 let instant = Instant::now();
@@ -424,6 +424,8 @@ async fn install_builtins(
                     &pkg,
                     Some(dal::pkg::ImportOptions {
                         is_builtin: true,
+                        schema_id: module.schema_id().map(Into::into),
+                        past_module_hashes: module.past_hashes,
                         ..Default::default()
                     }),
                 )
@@ -461,7 +463,7 @@ async fn fetch_builtin(
     module_index_client: &IndexClient,
 ) -> Result<SiPkg> {
     let module = module_index_client
-        .get_builtin(Ulid::from_string(module.id.as_str()).unwrap_or_default())
+        .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())
         .await?;
 
     Ok(SiPkg::load_from_bytes(module)?)

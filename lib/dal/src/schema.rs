@@ -126,6 +126,15 @@ impl Schema {
     );
 
     pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
+        let id = ctx.change_set()?.generate_ulid()?;
+        Self::new_with_id(ctx, id.into(), name).await
+    }
+
+    pub async fn new_with_id(
+        ctx: &DalContext,
+        id: SchemaId,
+        name: impl Into<String>,
+    ) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
@@ -145,8 +154,8 @@ impl Schema {
             .await?;
 
         let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id.into(), ContentAddress::Schema(hash))?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight).await?;
@@ -162,7 +171,7 @@ impl Schema {
             )
             .await?;
 
-        Ok(Self::assemble(id.into(), content))
+        Ok(Self::assemble(id, content))
     }
 
     pub async fn get_default_schema_variant_id(

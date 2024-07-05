@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -47,6 +48,16 @@ pub struct ModuleDetailsResponse {
     pub latest_hash: String,
     pub latest_hash_created_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
+    pub schema_id: Option<String>,
+    pub past_hashes: Option<Vec<String>>,
+}
+
+impl ModuleDetailsResponse {
+    pub fn schema_id(&self) -> Option<Ulid> {
+        self.schema_id
+            .as_deref()
+            .and_then(|schema_id| Ulid::from_string(schema_id).ok())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,4 +66,12 @@ pub struct FuncMetadata {
     pub name: String,
     pub display_name: Option<String>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtraMetadata {
+    pub version: String,
+    pub schemas: Vec<String>,
+    pub funcs: Vec<FuncMetadata>,
 }

@@ -1,3 +1,4 @@
+use axum::extract::multipart::MultipartError;
 use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -5,11 +6,12 @@ use axum::{extract::Path, Json};
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use module_index_client::ModuleDetailsResponse;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
+use sea_orm::{ActiveModelTrait, DbErr, EntityTrait, QuerySelect};
 use telemetry::prelude::info;
 use thiserror::Error;
 
 use crate::app_state::AppState;
+use crate::models::si_module::make_module_details_response;
 use crate::routes::upsert_module_route::UpsertModuleError;
 use crate::whoami::{is_systeminit_auth_token, WhoamiError};
 use crate::{
@@ -22,6 +24,8 @@ use crate::{
 pub enum PromoteModuleError {
     #[error("db error: {0}")]
     DbErr(#[from] DbErr),
+    #[error("multipart decode error: {0}")]
+    Multipart(#[from] MultipartError),
     #[error(r#"Module "{0}" not found"#)]
     NotFound(ModuleId),
     #[error("error rejecting module: {0}")]
@@ -60,18 +64,22 @@ pub async fn promote_builtin_route(
     }
 
     info!("Promote to builtin");
-    let field = match multipart.next_field().await.unwrap() {
+    let field = match multipart.next_field().await? {
         Some(f) => f,
         None => return Err(PromoteModuleError::UserSupplied()),
     };
     info!("Found multipart field");
-    let data = dbg!(field.text().await.unwrap());
+    let data = field.text().await?;
     info!("Got part data");
 
-    let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
-        Some(module) => module,
-        _ => return Err(PromoteModuleError::NotFound(module_id)),
-    };
+    let (module, linked_modules) = si_module::Entity::find_by_id(module_id)
+        .limit(1)
+        .find_with_linked(si_module::SchemaIdReferenceLink)
+        .all(&txn)
+        .await?
+        .first()
+        .cloned()
+        .ok_or(PromoteModuleError::NotFound(module_id))?;
 
     let active_module = si_module::ActiveModel {
         id: Set(module.id),
@@ -98,5 +106,7 @@ pub async fn promote_builtin_route(
 
     txn.commit().await?;
 
-    Ok(Json(Some(updated_module.try_into()?)))
+    let response = make_module_details_response(updated_module, linked_modules);
+
+    Ok(Json(Some(response)))
 }

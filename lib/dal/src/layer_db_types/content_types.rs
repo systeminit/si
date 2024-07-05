@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
 use thiserror::Error;
@@ -317,6 +318,16 @@ pub struct InputSocketContentV1 {
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum ModuleContent {
     V1(ModuleContentV1),
+    V2(ModuleContentV2),
+}
+
+impl ModuleContent {
+    pub fn inner(&self) -> ModuleContentV2 {
+        match self {
+            ModuleContent::V1(inner) => inner.to_owned().into(),
+            ModuleContent::V2(inner) => inner.to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -328,6 +339,33 @@ pub struct ModuleContentV1 {
     pub description: String,
     pub created_by_email: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ModuleContentV2 {
+    pub timestamp: Timestamp,
+    pub name: String,
+    pub root_hash: String,
+    pub version: String,
+    pub description: String,
+    pub created_by_email: String,
+    pub created_at: DateTime<Utc>,
+    pub schema_id: Option<Ulid>,
+}
+
+impl From<ModuleContentV1> for ModuleContentV2 {
+    fn from(value: ModuleContentV1) -> Self {
+        Self {
+            timestamp: value.timestamp,
+            name: value.name,
+            root_hash: value.root_hash,
+            version: value.version,
+            description: value.description,
+            created_by_email: value.created_by_email,
+            created_at: value.created_at,
+            schema_id: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

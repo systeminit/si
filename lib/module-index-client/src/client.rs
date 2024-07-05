@@ -5,8 +5,8 @@ use url::Url;
 
 use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
 use crate::{
-    IndexClientError, IndexClientResult, ModuleDetailsResponse, MODULE_BASED_ON_HASH_NAME,
-    MODULE_BUNDLE_FIELD_NAME,
+    IndexClientError, IndexClientResult, ModuleDetailsResponse, MODULE_BASED_ON_HASH_FIELD_NAME,
+    MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
 };
 
 #[derive(Debug, Clone)]
@@ -84,6 +84,7 @@ impl IndexClient {
         module_name: &str,
         module_version: &str,
         module_based_on_hash: Option<String>,
+        module_schema_id: Option<String>,
         module_bytes: Vec<u8>,
     ) -> IndexClientResult<ModuleDetailsResponse> {
         let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
@@ -94,8 +95,15 @@ impl IndexClient {
 
         if let Some(module_based_on_hash) = module_based_on_hash {
             multipart_form = multipart_form.part(
-                MODULE_BASED_ON_HASH_NAME,
+                MODULE_BASED_ON_HASH_FIELD_NAME,
                 reqwest::multipart::Part::text(module_based_on_hash),
+            );
+        }
+
+        if let Some(schema_id) = module_schema_id {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_ID_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_id),
             );
         }
 
@@ -159,12 +167,32 @@ impl IndexClient {
         Ok(builtins)
     }
 
+    pub async fn module_details(
+        &self,
+        module_id: Ulid,
+    ) -> IndexClientResult<ModuleDetailsResponse> {
+        let details_url = self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}", module_id))?;
+
+        Ok(reqwest::Client::new()
+            .get(details_url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+
     pub async fn get_builtin(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
         let download_url = self
             .base_url
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
             .join("download_builtin")?;
+
         let mut response = reqwest::Client::new().get(download_url).send().await?;
 
         if response.status() == StatusCode::NOT_FOUND
@@ -176,10 +204,8 @@ impl IndexClient {
                 .join(&format!("{}/", module_id.to_string()))?
                 .join("download_builtin")?;
 
-            let prod_response = reqwest::Client::new().get(url).send().await?;
-
-            response = prod_response
-        }
+            response = reqwest::Client::new().get(url).send().await?;
+        };
 
         let bytes = response.error_for_status()?.bytes().await?;
 

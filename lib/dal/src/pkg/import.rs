@@ -1,4 +1,5 @@
 use chrono::NaiveDateTime;
+use si_events::ulid::Ulid;
 use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
     SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
@@ -65,6 +66,11 @@ pub struct ImportOptions {
     /// Locked schema variants can't be edited directly. Setting this to `true` will create
     /// editable components.
     pub create_unlocked: bool,
+    /// The "schema id" for this asset, provided by the module index API
+    pub schema_id: Option<Ulid>,
+    /// A list of "past hashes" for this module, used to find the existing
+    /// schema if a schema_id is not provided
+    pub past_module_hashes: Option<Vec<String>>,
 }
 
 const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
@@ -77,7 +83,7 @@ async fn import_change_set(
     schemas: &[SiPkgSchema<'_>],
     _components: &[SiPkgComponent<'_>],
     _edges: &[SiPkgEdge<'_>],
-    installed_pkg: Option<Module>,
+    installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
 ) -> PkgResult<(
@@ -100,7 +106,7 @@ async fn import_change_set(
             } else if let Some(func) = import_func(
                 ctx,
                 func_spec,
-                installed_pkg.clone(),
+                installed_module.clone(),
                 thing_map,
                 options.create_unlocked,
             )
@@ -118,10 +124,8 @@ async fn import_change_set(
                 .as_ref()
                 .map(|skip_funcs| skip_funcs.get(&unique_id))
             {
-                if let Some(installed_pkg) = installed_pkg.clone() {
-                    installed_pkg
-                        .create_association(ctx, func.id.into())
-                        .await?;
+                if let Some(module) = installed_module.clone() {
+                    module.create_association(ctx, func.id.into()).await?;
                 }
 
                 // We're not going to import this func but we need it in the map for lookups later
@@ -135,7 +139,7 @@ async fn import_change_set(
                 import_func(
                     ctx,
                     func_spec,
-                    installed_pkg.clone(),
+                    installed_module.clone(),
                     thing_map,
                     options.is_builtin,
                 )
@@ -145,7 +149,7 @@ async fn import_change_set(
             if let Some(func) = func {
                 thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
 
-                if let Some(module) = installed_pkg.clone() {
+                if let Some(module) = installed_module.clone() {
                     module.create_association(ctx, func.id.into()).await?;
                 }
 
@@ -190,7 +194,7 @@ async fn import_change_set(
         let (_, schema_variant_ids) = import_schema(
             ctx,
             schema_spec,
-            installed_pkg.clone(),
+            installed_module.clone(),
             thing_map,
             options.create_unlocked,
         )
@@ -245,6 +249,7 @@ pub async fn import_pkg_from_pkg(
                 metadata.description(),
                 metadata.created_by(),
                 metadata.created_at(),
+                options.schema_id,
             )
             .await?,
         )
@@ -423,14 +428,21 @@ async fn import_func_arguments(
     Ok(())
 }
 
-async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
-    let schema = Schema::new(ctx, schema_spec_data.name())
-        .await?
-        .modify(ctx, |schema| {
-            schema.ui_hidden = schema_spec_data.ui_hidden();
-            Ok(())
-        })
-        .await?;
+async fn create_schema(
+    ctx: &DalContext,
+    maybe_existing_schema_id: Option<Ulid>,
+    schema_spec_data: &SiPkgSchemaData,
+) -> PkgResult<Schema> {
+    let schema = match maybe_existing_schema_id {
+        Some(id) => Schema::new_with_id(ctx, id.into(), schema_spec_data.name()).await?,
+        None => Schema::new(ctx, schema_spec_data.name()).await?,
+    }
+    .modify(ctx, |schema| {
+        schema.ui_hidden = schema_spec_data.ui_hidden();
+        Ok(())
+    })
+    .await?;
+
     Ok(schema)
 }
 
@@ -443,16 +455,19 @@ async fn import_schema(
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let schema_and_category = {
         let mut existing_schema: Option<Schema> = None;
-        if installed_module.is_some() {
-            let associated_schemas = Schema::list(ctx).await?;
-            let mut maybe_matching_schema: Vec<Schema> = associated_schemas
-                .into_iter()
-                .filter(|s| s.name.clone() == schema_spec.name())
-                .collect();
-            if let Some(matching_schema) = maybe_matching_schema.pop() {
-                existing_schema = Some(matching_schema);
+        let mut existing_schema_id = None;
+
+        if let Some(installed_module) = installed_module.as_ref() {
+            existing_schema_id = installed_module.schema_id();
+            if let Some(matching_module) = installed_module.find_matching_module(ctx).await? {
+                existing_schema = matching_module
+                    .list_associated_schemas(ctx)
+                    .await?
+                    .into_iter()
+                    .next();
             }
         }
+
         let data = schema_spec
             .data()
             .ok_or(PkgError::DataNotFound("schema".into()))?;
@@ -462,7 +477,7 @@ async fn import_schema(
         let category = data.category.clone();
 
         let schema = match existing_schema {
-            None => create_schema(ctx, data).await?,
+            None => create_schema(ctx, existing_schema_id, data).await?,
             Some(installed_schema_record) => installed_schema_record,
         };
 

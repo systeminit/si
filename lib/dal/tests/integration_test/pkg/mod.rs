@@ -1,5 +1,5 @@
 use dal::pkg::export::PkgExporter;
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, FuncBackendKind, FuncBackendResponseType};
 use dal_test::test;
@@ -87,9 +87,16 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) {
     let pkg = SiPkg::load_from_spec(pkg_spec).expect("should load from spec");
 
     // import and get add variants
-    let (_, mut variants, _) = import_pkg_from_pkg(ctx, &pkg, None)
-        .await
-        .expect("should import");
+    let (_, mut variants, _) = import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema.id().into()),
+            ..Default::default()
+        }),
+    )
+    .await
+    .expect("should import");
     assert_eq!(variants.len(), 1);
 
     let default_schema_variant = schema
