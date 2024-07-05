@@ -101,12 +101,17 @@ pub async fn create_binding(
                     func_id,
                 } = binding
                 {
-                    AuthBinding::create_auth_binding(
-                        &ctx,
-                        func_id.into(),
-                        schema_variant_id.into(),
-                    )
-                    .await?;
+                    match func_id {
+                        Some(func_id) => {
+                            AuthBinding::create_auth_binding(
+                                &ctx,
+                                func_id.into(),
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                        }
+                        None => return Err(FuncAPIError::MissingFuncId),
+                    }
                 }
             }
         }
