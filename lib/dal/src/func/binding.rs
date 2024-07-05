@@ -205,7 +205,7 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
             },
             FuncBinding::Authentication(auth) => si_frontend_types::FuncBinding::Authentication {
                 schema_variant_id: auth.schema_variant_id.into(),
-                func_id: auth.func_id.into(),
+                func_id: Some(auth.func_id.into()),
             },
             FuncBinding::CodeGeneration(code_gen) => {
                 si_frontend_types::FuncBinding::CodeGeneration {

@@ -103,7 +103,7 @@ pub enum FuncBinding {
     Authentication {
         // unique ids
         schema_variant_id: SchemaVariantId,
-        func_id: FuncId,
+        func_id: Option<FuncId>,
     },
     #[serde(rename_all = "camelCase")]
     CodeGeneration {
