@@ -101,12 +101,12 @@ impl PkgExporter {
         let variant_category = default_variant.clone().category().to_owned();
 
         let variant_funcs = self
-            .export_funcs_for_variant(ctx, default_variant.id())
+            .export_funcs_for_variant(ctx, default_variant.id(), None)
             .await?;
         funcs.extend(variant_funcs);
 
         let variant_spec = self
-            .export_variant(ctx, &default_variant, variant_is_builtin)
+            .export_variant(ctx, &default_variant, variant_is_builtin, None)
             .await?;
         self.variant_map
             .insert(default_variant.id(), variant_spec.to_owned());
@@ -138,13 +138,20 @@ impl PkgExporter {
         ctx: &DalContext,
         variant: &SchemaVariant,
         schema_name: &str,
+        overridden_asset_func_id: Option<FuncId>,
     ) -> PkgResult<(SchemaVariantSpec, Vec<FuncSpec>)> {
         let mut exporter = Self::new_standalone_variant_exporter(schema_name);
         let email = ctx.history_actor().email(ctx).await?;
         exporter.created_by = email;
-        exporter.export_funcs_for_variant(ctx, variant.id()).await?;
+
+        exporter
+            .export_funcs_for_variant(ctx, variant.id(), overridden_asset_func_id)
+            .await?;
+
         exporter.export_intrinsics(ctx).await?;
-        let variant_spec = exporter.export_variant(ctx, variant, false).await?;
+        let variant_spec = exporter
+            .export_variant(ctx, variant, false, overridden_asset_func_id)
+            .await?;
 
         let funcs = exporter
             .func_map
@@ -161,6 +168,7 @@ impl PkgExporter {
         ctx: &DalContext,
         variant: &SchemaVariant,
         variant_is_builtin: bool,
+        overridden_asset_func_id: Option<FuncId>,
     ) -> PkgResult<SchemaVariantSpec> {
         let mut variant_spec_builder = SchemaVariantSpec::builder();
         variant_spec_builder.version(variant.version());
@@ -178,7 +186,9 @@ impl PkgExporter {
 
         data_builder.component_type(get_component_type(ctx, variant).await?);
 
-        if let Some(authoring_func_id) = variant.asset_func_id() {
+        if let Some(authoring_func_id) =
+            overridden_asset_func_id.or_else(|| variant.asset_func_id())
+        {
             let asset_func_unique_id = self
                 .func_map
                 .get(&authoring_func_id)
@@ -1006,6 +1016,7 @@ impl PkgExporter {
         &mut self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
+        overridden_asset_func_id: Option<FuncId>,
     ) -> PkgResult<Vec<FuncSpec>> {
         let related_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
         let mut funcs = vec![];
@@ -1019,10 +1030,11 @@ impl PkgExporter {
         }
 
         let variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
-        if let Some(authoring_func_id) = variant.asset_func_id() {
-            // Asset Funcs are not stored in the FuncMap
-            // So we need to look it up directly then store it!
-            let asset_func = Func::get_by_id_or_error(ctx, authoring_func_id).await?;
+
+        // Asset Funcs are not stored in the FuncMap
+        // So we need to look it up directly then store it!
+        if let Some(asset_func_id) = overridden_asset_func_id.or_else(|| variant.asset_func_id()) {
+            let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
             let (func_spec, include) = self.add_func_to_map(ctx, &asset_func).await?;
 
             if include {

@@ -577,19 +577,23 @@ impl VariantAuthoringClient {
                 schema.id, variant.id,
             ));
         }
-        // check if it's latest maybe or default -- yes do this
-
-        let (existing_variant_spec, variant_funcs) =
-            PkgExporter::export_variant_standalone(ctx, &locked_variant, schema.name()).await?;
 
         // Create copy of asset func
         let locked_variant_asset_func_id = locked_variant.get_asset_func(ctx).await?;
 
-        let unlocked_asset_func = locked_variant_asset_func_id
+        let unlocked_variant_asset_func = locked_variant_asset_func_id
             .clone_func_with_new_name(ctx, generate_scaffold_func_name(&schema.name))
             .await?;
 
-        let unlocked_asset_spec = build_asset_func_spec(&unlocked_asset_func)?;
+        let (existing_variant_spec, variant_funcs) = PkgExporter::export_variant_standalone(
+            ctx,
+            &locked_variant,
+            schema.name(),
+            Some(unlocked_variant_asset_func.id),
+        )
+        .await?;
+
+        let unlocked_asset_spec = build_asset_func_spec(&unlocked_variant_asset_func)?;
         let metadata = SchemaVariantMetadataJson {
             schema_name: schema.name.clone(),
             version: SchemaVariant::generate_version_string(),
@@ -778,7 +782,7 @@ async fn build_variant_spec_based_on_existing_variant(
     )?;
 
     let (existing_variant_spec, variant_funcs) =
-        PkgExporter::export_variant_standalone(ctx, &existing_variant, schema.name()).await?;
+        PkgExporter::export_variant_standalone(ctx, &existing_variant, schema.name(), None).await?;
 
     let identity_name = IntrinsicFunc::Identity.name();
     let identity_func = variant_funcs
