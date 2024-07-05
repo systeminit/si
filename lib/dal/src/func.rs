@@ -465,9 +465,7 @@ impl Func {
         L: FnOnce(&mut Self) -> FuncResult<()>,
     {
         let mut func = self;
-        if func.is_locked {
-            return Err(FuncError::FuncLocked(func.id));
-        }
+        func.error_if_locked()?;
         let before = FuncContent::from(func.clone());
         lambda(&mut func)?;
 

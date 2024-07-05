@@ -103,15 +103,16 @@ async fn import_change_set(
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
                 thing_map.insert(unique_id.to_owned(), Thing::Func(func.to_owned()));
-            } else if let Some(func) = import_func(
-                ctx,
-                func_spec,
-                installed_module.clone(),
-                thing_map,
-                options.create_unlocked,
-            )
-            .await?
-            {
+            } else {
+                let func = import_func(
+                    ctx,
+                    func_spec,
+                    installed_module.clone(),
+                    thing_map,
+                    options.create_unlocked,
+                )
+                .await?;
+
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
@@ -136,14 +137,16 @@ async fn import_change_set(
 
                 None
             } else {
-                import_func(
-                    ctx,
-                    func_spec,
-                    installed_module.clone(),
-                    thing_map,
-                    options.create_unlocked,
+                Some(
+                    import_func(
+                        ctx,
+                        func_spec,
+                        installed_module.clone(),
+                        thing_map,
+                        options.create_unlocked,
+                    )
+                    .await?,
                 )
-                .await?
             };
 
             if let Some(func) = func {
@@ -350,52 +353,46 @@ pub async fn import_func(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     create_unlocked: bool,
-) -> PkgResult<Option<Func>> {
-    let func = {
-        let mut existing_func: Option<Func> = None;
-        if let Some(installed_pkg) = installed_module.clone() {
-            let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
-            let mut maybe_matching_func: Vec<Func> = associated_funcs
-                .into_iter()
-                .filter(|f| f.name.clone() == func_spec.name())
-                .collect();
-            if let Some(matching_func) = maybe_matching_func.pop() {
-                existing_func = Some(matching_func);
-            }
+) -> PkgResult<Func> {
+    let mut existing_func: Option<Func> = None;
+    if let Some(installed_pkg) = installed_module.clone() {
+        let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
+        let mut maybe_matching_func: Vec<Func> = associated_funcs
+            .into_iter()
+            .filter(|f| f.name.clone() == func_spec.name())
+            .collect();
+        if let Some(matching_func) = maybe_matching_func.pop() {
+            existing_func = Some(matching_func);
         }
+    }
 
-        let (func, created) = match existing_func {
-            None => (create_func(ctx, func_spec, false).await?, true),
-            Some(installed_func_record) => (installed_func_record, true),
-        };
+    let func = if let Some(func) = existing_func {
+        func
+    } else {
+        let func = create_func(ctx, func_spec, false).await?;
 
-        if let Some(installed_pkg) = installed_module {
-            installed_pkg
-                .create_association(ctx, func.id.into())
-                .await?;
-        }
-
-        thing_map.insert(
-            func_spec.unique_id().to_owned(),
-            Thing::Func(func.to_owned()),
-        );
-
-        if created {
-            if !create_unlocked {
-                func.clone().lock(ctx).await?;
-            }
-            Some(func)
+        if !create_unlocked {
+            func.lock(ctx).await?
         } else {
-            None
+            func
         }
     };
 
-    if let Some(func) = func.as_ref() {
-        thing_map.insert(
-            func_spec.unique_id().to_owned(),
-            Thing::Func(func.to_owned()),
-        );
+    if let Some(installed_pkg) = installed_module {
+        installed_pkg
+            .create_association(ctx, func.id.into())
+            .await?;
     }
+
+    thing_map.insert(
+        func_spec.unique_id().to_owned(),
+        Thing::Func(func.to_owned()),
+    );
+
+    thing_map.insert(
+        func_spec.unique_id().to_owned(),
+        Thing::Func(func.to_owned()),
+    );
 
     Ok(func)
 }
