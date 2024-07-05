@@ -147,11 +147,13 @@ export const useAssetStore = () => {
           }
         },
         setSchemaVariantSelection(id: SchemaVariantId, forceCode?: boolean) {
+          this.setFuncSelection(undefined);
+
           if (
             this.selectedSchemaVariants.length === 1 &&
             this.selectedSchemaVariants[0] === id
           ) {
-            return; // no-op
+            return;
           }
           if (!this.selectedSchemaVariants.includes(id)) {
             this.selectedFuncs = [];
@@ -159,8 +161,6 @@ export const useAssetStore = () => {
           this.selectedSchemaVariants = [id];
           this.syncSelectionIntoUrl();
           this.LOAD_SCHEMA_VARIANT(id, forceCode);
-          // no last selected func
-          funcsStore.selectedFuncId = undefined;
         },
         async setFuncSelection(id?: FuncId) {
           // ignore the old func selections and replace with one func or no funcs
