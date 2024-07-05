@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use dal::{
@@ -122,7 +122,7 @@ pub fn v2_routes() -> Router<AppState> {
             "/:func_id/create_unlocked_copy",
             post(create_unlocked_copy::create_unlocked_copy),
         )
-        .route("/:func_id/delete", get(delete_func::delete_func))
+        .route("/:func_id/delete", delete(delete_func::delete_func))
         // Func Bindings
         .route(
             "/:func_id/bindings/create",
