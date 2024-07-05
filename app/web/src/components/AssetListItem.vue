@@ -1,12 +1,12 @@
 <template>
   <TreeNode
-    :color="a.color"
     :classes="
       clsx(
         'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
         'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
       )
     "
+    :color="a.color"
     :isSelected="selectedAssets.includes(a.schemaVariantId)"
     showSelection
     @mousedown.left.stop="onClick"
@@ -14,27 +14,27 @@
   >
     <template #label>
       <div class="text-xs w-full truncate flex flex-row items-center gap-1">
-        <div class="shrink-0">{{ schemaVariantDisplayName(a) }}</div>
+        <div class="truncate">{{ schemaVariantDisplayName(a) }}</div>
 
-        <div class="ml-auto flex flex-none gap-xs">
+        <div class="ml-auto flex flex-none gap-xs shrink-0">
           <EditingPill v-if="!a.isLocked" :color="a.color" />
           <Icon
             v-if="a.canContribute"
             name="cloud-upload"
-            variant="simple"
+            size="xs"
             tone="action"
             tooltip="Contribute"
             tooltipPlacement="top"
-            size="xs"
+            variant="simple"
           />
           <Icon
             v-if="a.canUpdate"
             name="code-deployed"
-            variant="simple"
+            size="xs"
             tone="action"
             tooltip="Update"
             tooltipPlacement="top"
-            size="xs"
+            variant="simple"
           />
         </div>
       </div>
@@ -42,7 +42,7 @@
   </TreeNode>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { PropType } from "vue";
 import { storeToRefs } from "pinia";
 import { TreeNode, Icon } from "@si/vue-lib/design-system";
