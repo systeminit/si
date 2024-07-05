@@ -95,6 +95,10 @@ impl IntoResponse for FuncAPIError {
             | Self::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
                 StatusCode::BAD_REQUEST
             }
+            // Return 409 when we see a conflict
+            Self::Transactions(dal::TransactionsError::ConflictsOccurred(_)) => {
+                StatusCode::CONFLICT
+            }
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
