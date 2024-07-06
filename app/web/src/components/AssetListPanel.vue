@@ -233,10 +233,7 @@ const categoryColor = (category: string) => {
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
-    assetStore.setSchemaVariantSelection(
-      result.result.data.schemaVariantId,
-      true,
-    );
+    assetStore.setSchemaVariantSelection(result.result.data.schemaVariantId);
     newAssetModalRef.value?.modal?.close();
   } else if (result.result.statusCode === 409) {
     newAssetModalRef.value?.setError("That name is already in use");

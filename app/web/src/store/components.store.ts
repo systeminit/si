@@ -1756,6 +1756,27 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
                 },
               },
+              {
+                eventType: "SchemaVariantUpdated",
+                callback: (variant, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+                  this.schemaVariantsById[variant.schemaVariantId] = variant;
+                },
+              },
+              {
+                eventType: "SchemaVariantCreated",
+                callback: (variant, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+                  this.schemaVariantsById[variant.schemaVariantId] = variant;
+                },
+              },
+              {
+                eventType: "SchemaVariantDeleted",
+                callback: (data, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+                  delete this.schemaVariantsById[data.schemaVariantId];
+                },
+              },
               /* { TODO PUT BACK
               eventType: "DeprecatedActionRunnerReturn",
               callback: (update) => {

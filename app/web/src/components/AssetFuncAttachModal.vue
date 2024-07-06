@@ -1,8 +1,8 @@
 <template>
   <Modal
     ref="modalRef"
-    :title="title"
     :size="attachExisting && selectedExistingFuncId ? '4xl' : 'md'"
+    :title="title"
     @close="onClose"
   >
     <div class="flex flex-row max-h-[75vh]">
@@ -16,24 +16,24 @@
       >
         <VormInput
           v-model="funcKind"
+          :options="funcKindOptions"
           label="Kind"
           type="dropdown"
-          :options="funcKindOptions"
         />
         <VormInput
           v-if="!attachExisting"
           v-model="name"
           label="Name"
-          required
           placeholder="The name of the function"
+          required
         />
         <VormInput
           v-if="attachExisting"
           v-model="selectedExistingFuncId"
-          label="Existing function"
-          type="dropdown"
-          required
           :options="existingFuncOptions"
+          label="Existing function"
+          required
+          type="dropdown"
         />
         <template v-if="funcKind === FuncKind.Action">
           <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -64,10 +64,10 @@
         <VormInput
           v-if="funcKind === FuncKind.Attribute"
           v-model="attributeOutputLocation"
-          label="Output Location"
-          type="dropdown"
-          required
           :options="attributeOutputLocationOptions"
+          label="Output Location"
+          required
+          type="dropdown"
         />
         <ErrorMessage
           v-if="createFuncReqStatus.isError && createFuncStarted"
@@ -98,14 +98,14 @@
           </ul>
         </template>
         <VButton
-          class="w-full"
-          :loading="showLoading"
           :disabled="!attachEnabled"
-          :loadingText="`Attaching ${existingOrNew} function...`"
           :label="`Attach ${existingOrNew} function`"
-          tone="action"
+          :loading="showLoading"
+          :loadingText="`Attaching ${existingOrNew} function...`"
+          class="w-full"
           icon="plus"
           size="sm"
+          tone="action"
           @click="onAttach"
         />
       </div>
@@ -121,9 +121,9 @@
           v-model="selectedFuncCode"
           :recordId="selectedExistingFuncId"
           disabled
-          typescript="yes"
           noLint
           noVim
+          typescript="yes"
         />
       </div>
     </div>
@@ -162,6 +162,7 @@ import {
 import {
   outputSocketsAndPropsFor,
   inputSocketsAndPropsFor,
+  SchemaVariantId,
 } from "@/api/sdf/dal/schema";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -170,7 +171,7 @@ import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
 const props = defineProps<{
-  assetId?: string;
+  schemaVariantId?: SchemaVariantId;
 }>();
 
 const funcStore = useFuncStore();
@@ -179,21 +180,14 @@ const assetStore = useAssetStore();
 const createFuncStarted = ref(false);
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
-const loadAssetsReqStatus = assetStore.getRequestStatus(
-  "LOAD_SCHEMA_VARIANT",
-  props.assetId,
-);
 
 const schemaVariantId = computed(() =>
-  props.assetId
-    ? assetStore.variantsById[props.assetId]?.schemaVariantId
+  props.schemaVariantId
+    ? assetStore.variantFromListById[props.schemaVariantId]?.schemaVariantId
     : undefined,
 );
 
-const showLoading = computed(
-  () =>
-    createFuncReqStatus.value.isPending || loadAssetsReqStatus.value.isPending,
-);
+const showLoading = computed(() => createFuncReqStatus.value.isPending);
 
 const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map((kind) => ({
   label: CUSTOMIZABLE_FUNC_TYPES[kind as CustomizableFuncKind]?.singularLabel,
@@ -307,8 +301,8 @@ const open = async (
   attrToValidate.value = undefined;
 
   attributeOutputLocationOptions.value = [];
-  if (props.assetId) {
-    const schemaVariant = assetStore.variantsById[props.assetId];
+  if (props.schemaVariantId) {
+    const schemaVariant = assetStore.variantFromListById[props.schemaVariantId];
     if (schemaVariant) {
       const { socketOptions, propOptions } =
         outputSocketsAndPropsFor(schemaVariant);
@@ -318,12 +312,6 @@ const open = async (
   }
 
   openModal();
-};
-
-// NOT SURE I NEED THIS
-const reloadAssetAndRoute = async (assetId: string) => {
-  await assetStore.LOAD_SCHEMA_VARIANT(assetId);
-  close();
 };
 
 interface EditingBinding {
@@ -336,7 +324,7 @@ const inputSourceOptions = computed<Option[]>(() => {
   let socketOptions: Option[] = [];
   let propOptions: Option[] = [];
   if (schemaVariantId.value) {
-    const variant = assetStore.variantsById[schemaVariantId.value];
+    const variant = assetStore.variantFromListById[schemaVariantId.value];
     if (variant) {
       ({ socketOptions, propOptions } = inputSocketsAndPropsFor(variant));
     }
@@ -428,8 +416,8 @@ const attachExistingFunc = async () => {
       selectedExistingFuncId.value,
       bindings,
     );
-    if (response.result.success && props.assetId) {
-      await reloadAssetAndRoute(props.assetId);
+    if (response.result.success && props.schemaVariantId) {
+      close();
     }
   }
 };
@@ -467,7 +455,7 @@ const attachNewFunc = async () => {
     if (result.result.success) {
       funcStore.selectedFuncId = result.result.data.summary.funcId;
       assetStore.addFuncSelection(result.result.data.summary.funcId);
-      if (props.assetId) await reloadAssetAndRoute(props.assetId);
+      if (props.schemaVariantId) close();
     }
   }
 };

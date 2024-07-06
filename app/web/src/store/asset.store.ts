@@ -102,12 +102,13 @@ export const useAssetStore = () => {
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,
         executeSchemaVariantTaskError: undefined as string | undefined,
+
+        editingFuncLatestCode: {} as Record<SchemaVariantId, string>,
         codeSaveIsDebouncing: false,
 
         // represents state of the left rail lists and all open editor tabs
         selectedSchemaVariants: [] as SchemaVariantId[],
         selectedFuncs: [] as FuncId[],
-        editingFuncLatestCode: {} as Record<SchemaVariantId, string>,
 
         detachmentWarnings: [] as {
           message: string;
@@ -118,7 +119,7 @@ export const useAssetStore = () => {
       getters: {
         variantFromListById: (state) =>
           _.keyBy(state.variantList, (a) => a.schemaVariantId),
-        schemaVariants: (state) => _.values(state.variantsById),
+        schemaVariants: (state) => state.variantList,
         selectedVariantId(state): SchemaVariantId | undefined {
           if (state.selectedSchemaVariants.length === 1)
             return state.selectedSchemaVariants[0];
@@ -126,7 +127,7 @@ export const useAssetStore = () => {
         },
         selectedSchemaVariant(): SchemaVariant | undefined {
           if (this.selectedVariantId)
-            return this.variantsById[this.selectedVariantId];
+            return this.variantFromListById[this.selectedVariantId];
         },
         selectedSchemaVariantRecords(): SchemaVariantListEntry[] {
           return this.selectedSchemaVariants
@@ -169,7 +170,7 @@ export const useAssetStore = () => {
             this.selectedFuncs = [];
           }
         },
-        setSchemaVariantSelection(id: SchemaVariantId, forceCode?: boolean) {
+        setSchemaVariantSelection(id: SchemaVariantId) {
           this.setFuncSelection(undefined);
 
           if (
@@ -183,7 +184,8 @@ export const useAssetStore = () => {
           }
           this.selectedSchemaVariants = [id];
           this.syncSelectionIntoUrl();
-          this.LOAD_SCHEMA_VARIANT(id, forceCode);
+          const variant = this.variantFromListById[id];
+          if (variant?.assetFuncId) funcsStore.FETCH_CODE(variant.assetFuncId);
         },
         async setFuncSelection(id?: FuncId) {
           // ignore the old func selections and replace with one func or no funcs
@@ -240,7 +242,9 @@ export const useAssetStore = () => {
               if (id.startsWith("a_")) {
                 id = id.substring(2);
                 this.selectedSchemaVariants.push(id);
-                promises.push(this.LOAD_SCHEMA_VARIANT(id));
+                const variant = this.variantFromListById[id];
+                if (variant?.assetFuncId)
+                  promises.push(funcsStore.FETCH_CODE(variant.assetFuncId));
               } else if (id.startsWith("f_")) {
                 id = id.substring(2);
                 this.selectedFuncs.push(id);
@@ -295,26 +299,6 @@ export const useAssetStore = () => {
             listVariant.funcIds.push(newFuncId);
           } else {
             listVariant.funcIds[funcIdxForListVariant] = newFuncId;
-          }
-
-          // Reflect binding on variantsById Variant
-          const variant = this.variantsById[schemaVariantId];
-          if (!variant) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              `could not find variant ${schemaVariantId}, for binding with ${newFuncId} (previously ${oldFuncId})`,
-            );
-            return;
-          }
-
-          const funcIdxForVariant = variant.funcIds.findIndex(
-            (f) => f === oldFuncId,
-          );
-
-          if (funcIdxForVariant === -1) {
-            variant.funcIds.push(newFuncId);
-          } else {
-            variant.funcIds[funcIdxForVariant] = newFuncId;
           }
         },
 
@@ -376,7 +360,7 @@ export const useAssetStore = () => {
 
           if (!assetSaveDebouncer) {
             assetSaveDebouncer = keyedDebouncer((id: SchemaVariantId) => {
-              const variant = this.variantsById[id];
+              const variant = this.variantFromListById[id];
               if (!variant) return;
               const code = this.editingFuncLatestCode[variant.schemaVariantId];
 
@@ -402,7 +386,11 @@ export const useAssetStore = () => {
             throw new Error("race, wait until the change set is created");
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
-          const isHead = changeSetsStore.headSelected;
+
+          if (schemaVariant.isLocked)
+            throw new Error(
+              `cant save locked schema variant (${schemaVariant.displayName},${schemaVariant.schemaVariantId})`,
+            );
 
           return new ApiRequest<
             { success: boolean; assetFuncId: FuncId },
@@ -411,19 +399,6 @@ export const useAssetStore = () => {
             method: "post",
             keyRequestStatusBy: schemaVariant.schemaVariantId,
             url: "/variant/save_variant",
-            optimistic: () => {
-              if (isHead) return () => {};
-
-              const current = this.variantsById[schemaVariant.schemaVariantId];
-              this.variantsById[schemaVariant.schemaVariantId] = schemaVariant;
-              return () => {
-                if (current) {
-                  this.variantsById[schemaVariant.schemaVariantId] = current;
-                } else {
-                  delete this.variantsById[schemaVariant.schemaVariantId];
-                }
-              };
-            },
             params: {
               ...visibility,
               code,
@@ -438,7 +413,7 @@ export const useAssetStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           this.detachmentWarnings = [];
-          const variant = this.variantsById[schemaVariantId];
+          const variant = this.variantFromListById[schemaVariantId];
           if (!variant)
             throw new Error(`${schemaVariantId} Variant does not exist`);
 
@@ -451,43 +426,6 @@ export const useAssetStore = () => {
             params: {
               ...visibility,
               variant,
-            },
-          });
-        },
-
-        async LOAD_SCHEMA_VARIANT(
-          schemaVariantId: SchemaVariantId,
-          forceCode?: boolean,
-        ) {
-          const variant = this.variantFromListById[schemaVariantId];
-          if (variant) {
-            // if we clicked on the item in the list, or we don't have the code yet, load it
-            // otherwise don't load it——we may be overwriting something
-            if (!funcsStore.funcCodeById[variant.assetFuncId] || forceCode)
-              await funcsStore.FETCH_CODE(variant.assetFuncId);
-
-            const code = funcsStore.funcCodeById[variant.assetFuncId]?.code;
-
-            if (code) {
-              this.editingFuncLatestCode[schemaVariantId] = code;
-            }
-          }
-
-          // its likely we no longer need this call, because this data is identical to the list data we already have
-          return new ApiRequest<
-            SchemaVariant,
-            Visibility & {
-              id: SchemaVariantId;
-            }
-          >({
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants/${schemaVariantId}`,
-            keyRequestStatusBy: schemaVariantId,
-            params: {
-              id: schemaVariantId,
-              ...visibility,
-            },
-            onSuccess: (response) => {
-              this.variantsById[response.schemaVariantId] = response;
             },
           });
         },
@@ -558,6 +496,16 @@ export const useAssetStore = () => {
             },
           },
           {
+            eventType: "SchemaVariantDeleted",
+            callback: (data, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === data.schemaVariantId,
+              );
+              this.variantList.splice(savedAssetIdx, 1);
+            },
+          },
+          {
             eventType: "SchemaVariantCloned",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
@@ -598,17 +546,8 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantUpdateFinished",
             callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
-              for (const variant of Object.values(this.variantsById)) {
-                if (variant.schemaVariantId === data.oldSchemaVariantId) {
-                  variant.schemaVariantId = data.newSchemaVariantId;
-                }
-              }
               this.LOAD_SCHEMA_VARIANT_LIST();
-
-              if (this.selectedVariantId) {
-                this.LOAD_SCHEMA_VARIANT(this.selectedVariantId);
-                await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
-              }
+              useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
             },
           },
           {

@@ -379,8 +379,6 @@ const isDetaching = ref(false);
 const detachFunc = async () => {
   if (detachRef.value && "detachFunc" in detachRef.value) {
     detachRef.value.detachFunc();
-    if (assetStore.selectedVariantId)
-      assetStore.LOAD_SCHEMA_VARIANT(assetStore.selectedVariantId);
     if (funcStore.selectedFuncId) assetStore.setFuncSelection(undefined);
   }
 };

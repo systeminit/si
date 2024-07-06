@@ -4,7 +4,12 @@
 import { FuncBinding, FuncId, FuncSummary } from "@/api/sdf/dal/func";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
-import { ComponentType, SchemaVariant } from "@/api/sdf/dal/schema";
+import {
+  ComponentType,
+  SchemaVariant,
+  SchemaId,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { ActionId } from "@/api/sdf/dal/action";
 import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
@@ -252,6 +257,10 @@ export type WsEventPayloadMap = {
   SecretCreated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;
+  };
+  SchemaVariantDeleted: {
+    schemaVariantId: SchemaVariantId;
+    schemaId: SchemaId;
   };
   SchemaVariantCreated: SchemaVariant;
   SchemaVariantUpdated: SchemaVariant;

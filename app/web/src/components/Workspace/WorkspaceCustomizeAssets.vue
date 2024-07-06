@@ -3,9 +3,9 @@
   <component
     :is="ResizablePanel"
     ref="leftResizablePanelRef"
+    :minSize="300"
     rememberSizeKey="func-picker"
     side="left"
-    :minSize="300"
   >
     <template #subpanel1>
       <div class="flex flex-col h-full">
@@ -17,7 +17,7 @@
       </div>
     </template>
     <template #subpanel2>
-      <AssetFuncListPanel :assetId="selectedVariantId" />
+      <AssetFuncListPanel :schemaVariantId="selectedVariantId" />
     </template>
   </component>
 
@@ -29,16 +29,19 @@
         v-if="selectedVariantId && selectedFuncId"
         :funcId="selectedFuncId"
       />
-      <AssetEditor v-else-if="selectedVariantId" :assetId="selectedVariantId" />
+      <AssetEditor
+        v-else-if="selectedVariantId"
+        :schemaVariantId="selectedVariantId"
+      />
       <WorkspaceCustomizeEmptyState
         v-else
-        :requestStatus="loadAssetsRequestStatus"
-        loadingMessage="Loading assets..."
         :instructions="
           assetStore.selectedSchemaVariants.length > 1
             ? 'You have selected multiple assets, use the right pane!'
             : undefined
         "
+        :requestStatus="loadAssetsRequestStatus"
+        loadingMessage="Loading assets..."
       />
     </div>
   </div>
@@ -46,15 +49,15 @@
   <component
     :is="ResizablePanel"
     ref="rightResizablePanelRef"
+    :minSize="300"
     rememberSizeKey="func-details"
     side="right"
-    :minSize="300"
   >
     <div class="absolute w-full flex flex-col h-full">
       <AssetCard
         v-if="selectedVariantId"
-        titleCard
         :assetId="selectedVariantId"
+        titleCard
       />
       <template v-if="selectedVariantId">
         <FuncDetails
@@ -63,8 +66,8 @@
           "
           :funcId="selectedFuncId"
           :schemaVariantId="assetStore.selectedSchemaVariant?.schemaVariantId"
-          singleModelScreen
           allowTestPanel
+          singleModelScreen
           @expand-panel="rightResizablePanelRef?.maximize()"
         />
         <!-- the key here is to force remounting so we get the proper asset
@@ -72,14 +75,14 @@
         <AssetDetailsPanel
           v-else
           :key="selectedVariantId"
-          :assetId="selectedVariantId"
+          :schemaVariantId="selectedVariantId"
         />
       </template>
       <template v-else-if="assetStore.selectedSchemaVariants.length > 1">
         <div class="flex flex-col h-full w-full overflow-hidden">
           <ScrollArea>
             <template #top>
-              <SidebarSubpanelTitle label="Multiple Assets" icon="multiselect">
+              <SidebarSubpanelTitle icon="multiselect" label="Multiple Assets">
                 <DetailsPanelMenuIcon @click="open" />
               </SidebarSubpanelTitle>
               <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
@@ -88,12 +91,12 @@
             <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
               {{ assetStore.selectedSchemaVariants.length }} assets selected:
             </div>
-            <Stack spacing="xs" class="p-xs">
+            <Stack class="p-xs" spacing="xs">
               <AssetCard
                 v-for="assetId in assetStore.selectedSchemaVariants"
                 :key="assetId"
-                :titleCard="false"
                 :assetId="assetId"
+                :titleCard="false"
               />
             </Stack>
           </ScrollArea>

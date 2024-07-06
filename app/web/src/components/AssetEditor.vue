@@ -3,8 +3,17 @@
     v-if="loadAssetReqStatus.isPending"
     :requestStatus="loadAssetReqStatus"
   />
+  <div
+    v-else-if="loadAssetReqStatus.isError"
+    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+  >
+    <template v-if="schemaVariantId">
+      Asset "{{ schemaVariantId }}" Function does not exist!
+    </template>
+    <template v-else>Select an asset to view it.</template>
+  </div>
   <ScrollArea
-    v-else-if="selectedAsset"
+    v-else-if="selectedAsset && editingAsset"
     class="flex flex-col h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
   >
     <template #top>
@@ -15,7 +24,7 @@
       :id="
         changeSetsStore.headChangeSetId === changeSetsStore.selectedChangeSetId
           ? undefined
-          : `asset-${assetId}`
+          : `asset-${schemaVariantId}`
       "
       v-model="editingAsset"
       :disabled="selectedAsset.isLocked"
@@ -24,13 +33,6 @@
       @change="onChange"
     />
   </ScrollArea>
-  <div
-    v-else-if="loadAssetReqStatus.isError"
-    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
-  >
-    <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>
-    <template v-else>Select an asset to view it.</template>
-  </div>
   <LoadingMessage v-else />
 </template>
 
@@ -46,6 +48,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { editor_ts, loadEditorTs } from "@/utils/load_editor_ts";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import CodeEditor from "./CodeEditor.vue";
 import AssetEditorHeader from "./AssetEditorHeader.vue";
 
@@ -53,13 +56,15 @@ const changeSetsStore = useChangeSetsStore();
 const editorTs = ref<string | null>(null);
 
 const props = defineProps<{
-  assetId?: string;
+  schemaVariantId?: SchemaVariantId;
 }>();
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const selectedAsset = computed(() =>
-  props.assetId ? assetStore.variantsById[props.assetId] : undefined,
+  props.schemaVariantId
+    ? assetStore.variantFromListById[props.schemaVariantId]
+    : undefined,
 );
 
 const selectedAssetFuncCode = computed(() => {
@@ -70,13 +75,13 @@ const selectedAssetFuncCode = computed(() => {
 
 const editingAsset = ref<string>(selectedAssetFuncCode.value ?? "");
 
-const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_SCHEMA_VARIANT",
-  props.assetId,
+const loadAssetReqStatus = funcStore.getRequestStatus(
+  "FETCH_CODE",
+  selectedAsset.value?.assetFuncId,
 );
 
 watch(
-  () => selectedAsset.value,
+  [() => editingAsset.value, () => selectedAssetFuncCode.value],
   async () => {
     if (editingAsset.value !== selectedAssetFuncCode.value) {
       editingAsset.value = selectedAssetFuncCode.value ?? "";
@@ -100,6 +105,7 @@ const onChange = (
 ) => {
   if (
     !selectedAsset.value ||
+    selectedAsset.value.isLocked ||
     selectedAssetFuncCode.value === editingAsset.value ||
     updatedHead.value
   ) {
