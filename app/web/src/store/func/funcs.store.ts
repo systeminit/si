@@ -213,6 +213,16 @@ export const useFuncStore = () => {
               schemaVariantId,
             },
             onSuccess: (response) => {
+              for (const binding of response.summary.bindings) {
+                if (!binding.schemaVariantId || !binding.funcId) continue;
+
+                useAssetStore().replaceFuncForVariant(
+                  binding.schemaVariantId,
+                  funcId,
+                  binding.funcId,
+                );
+              }
+
               this.funcsById[response.summary.funcId] = response.summary;
               this.funcCodeById[response.code.funcId] = response.code;
             },

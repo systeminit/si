@@ -42,11 +42,11 @@
         ],
       )
     "
-    @mouseover="onHover"
-    @mouseleave="onEndHover"
-    @click.stop="onClick"
     @mousedown="startActive"
+    @mouseleave="onEndHover"
+    @mouseover="onHover"
     @mouseup="endActive"
+    @click.stop="onClick"
   >
     <Icon :name="iconShowing" :rotate="rotate" :size="size" />
 
@@ -89,7 +89,7 @@ const props = defineProps({
   },
   disabled: { type: Boolean },
   loading: { type: Boolean },
-  loadingIcon: { type: String as PropType<IconNames> },
+  loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
   loadingTooltip: { type: String },
   variant: { type: String as PropType<IconButtonVariant>, default: "classic" },
   requestStatus: {
