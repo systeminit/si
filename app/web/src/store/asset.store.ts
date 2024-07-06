@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { FuncKind, FuncId } from "@/api/sdf/dal/func";
+import { FuncId, FuncKind } from "@/api/sdf/dal/func";
 import { SchemaId, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import keyedDebouncer from "@/utils/keyedDebouncer";
@@ -136,6 +136,28 @@ export const useAssetStore = () => {
           if (state.selectedFuncs.length === 1) return state.selectedFuncs[0];
           else return undefined;
         },
+        unlockedAssetIdForId: (state) => {
+          const record = {} as Record<
+            SchemaVariantId,
+            SchemaVariantId | undefined
+          >;
+
+          for (const variantListElement of state.variantList) {
+            let unlockedId;
+            if (variantListElement.isLocked) {
+              unlockedId = state.variantList.find(
+                (v) =>
+                  v.schemaId === variantListElement.schemaId && !v.isLocked,
+              )?.schemaVariantId;
+            } else {
+              unlockedId = variantListElement.schemaVariantId;
+            }
+
+            record[variantListElement.schemaVariantId] = unlockedId;
+          }
+
+          return record;
+        },
       },
       actions: {
         addSchemaVariantSelection(id: SchemaVariantId) {
@@ -242,6 +264,57 @@ export const useAssetStore = () => {
             "00FFAA",
             "00AAFF",
           ])}`;
+        },
+
+        replaceFuncForVariant(
+          schemaVariantId: SchemaVariantId,
+          oldFuncId: FuncId,
+          newFuncId: FuncId,
+        ) {
+          // TODO assets should be represented in a single state variable, we shouldn't be doing this operation twice here
+          // Copy bindings for list variant
+          const listVariantIdx = this.variantList.findIndex(
+            (v) => v.schemaVariantId === schemaVariantId,
+          );
+          const listVariant = this.variantList[listVariantIdx];
+
+          if (!listVariant) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `could not find variant ${schemaVariantId}, for binding with ${newFuncId} (previously ${oldFuncId})`,
+            );
+            return;
+          }
+
+          const funcIdxForListVariant = listVariant.funcIds.findIndex(
+            (f) => f === oldFuncId,
+          );
+
+          if (funcIdxForListVariant === -1) {
+            listVariant.funcIds.push(newFuncId);
+          } else {
+            listVariant.funcIds[funcIdxForListVariant] = newFuncId;
+          }
+
+          // Reflect binding on variantsById Variant
+          const variant = this.variantsById[schemaVariantId];
+          if (!variant) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `could not find variant ${schemaVariantId}, for binding with ${newFuncId} (previously ${oldFuncId})`,
+            );
+            return;
+          }
+
+          const funcIdxForVariant = variant.funcIds.findIndex(
+            (f) => f === oldFuncId,
+          );
+
+          if (funcIdxForVariant === -1) {
+            variant.funcIds.push(newFuncId);
+          } else {
+            variant.funcIds[funcIdxForVariant] = newFuncId;
+          }
         },
 
         async CREATE_VARIANT(name: string) {

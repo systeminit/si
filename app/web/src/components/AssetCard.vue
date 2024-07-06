@@ -11,8 +11,8 @@
       }"
     >
       <div class="flex gap-xs items-center">
-        <Icon :name="getAssetIcon(asset.category)" size="lg" class="shrink-0" />
-        <Stack spacing="xs" class="">
+        <Icon :name="getAssetIcon(asset.category)" class="shrink-0" size="lg" />
+        <Stack class="" spacing="xs">
           <div
             ref="componentNameRef"
             v-tooltip="componentNameTooltip"
@@ -33,31 +33,31 @@
           <IconButton
             v-if="asset.canContribute"
             class="hover:scale-125"
-            variant="simple"
             icon="cloud-upload"
             tooltip="Contribute"
             tooltipPlacement="top"
+            variant="simple"
           />
 
           <IconButton
             v-if="asset.canUpdate"
             class="hover:scale-125"
-            variant="simple"
             icon="code-deployed"
             tooltip="Update"
             tooltipPlacement="top"
+            variant="simple"
           />
 
           <IconButton
             v-if="asset.isLocked && editingVersionDoesNotExist"
             class="hover:scale-125"
-            variant="simple"
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
+            variant="simple"
             @click="unlock"
           />
-          <Icon v-if="!asset.isLocked" tone="action" name="sliders-vertical" />
+          <Icon v-if="!asset.isLocked" name="sliders-vertical" tone="action" />
         </div>
 
         <!-- Slot for additional icons/buttons -->
@@ -68,8 +68,8 @@
       <ErrorMessage
         v-if="asset && asset.isLocked"
         icon="lock"
-        variant="block"
         tone="warning"
+        variant="block"
       >
         <template v-if="editingVersionDoesNotExist">
           Click edit to create a new editable version of this asset.
@@ -100,12 +100,10 @@ const props = defineProps({
 
 const { theme } = useTheme();
 
-const editingVersionDoesNotExist = computed<boolean>(() => {
-  const unlockedExists = assetStore.variantList.some(
-    (v) => v.schemaId === asset.value?.schemaId && !v.isLocked,
-  );
-  return !unlockedExists;
-});
+const editingVersionDoesNotExist = computed<boolean>(
+  () =>
+    assetStore.unlockedAssetIdForId[asset.value?.schemaId ?? ""] === undefined,
+);
 
 const assetStore = useAssetStore();
 const asset = computed(

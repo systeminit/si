@@ -6,10 +6,10 @@
     >
       <VButton
         :disabled="disabled || variant?.isLocked"
-        tone="success"
         icon="plus"
         label="Add Binding"
         size="md"
+        tone="success"
         @click="openModal()"
       />
     </div>
@@ -70,18 +70,18 @@
           <div class="w-full flex p-xs gap-1 border-b dark:border-neutral-600">
             <VButton
               :disabled="disabled || bind.schemaVariant?.isLocked"
-              tone="neutral"
               label="Edit Binding"
               size="md"
+              tone="neutral"
               @click="openModal(bind)"
             />
             <VButton
               :disabled="disabled || bind.schemaVariant?.isLocked"
-              variant="transparent"
-              tone="destructive"
               icon="x"
               label="Remove Binding"
               size="md"
+              tone="destructive"
+              variant="transparent"
               @click="removeBinding(bind)"
             />
           </div>

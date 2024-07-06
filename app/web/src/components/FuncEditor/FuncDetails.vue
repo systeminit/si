@@ -18,9 +18,19 @@
         <div class="flex flex-row">
           <EditingPill v-if="!editingFunc.isLocked" color="#666"></EditingPill>
           <IconButton
-            v-if="!editingFunc.isLocked"
+            v-if="editingFunc.isLocked"
+            :class="clsx(!unlocking && 'hover:scale-125')"
+            :loading="unlocking"
+            icon="sliders-vertical"
+            tooltip="Edit"
+            tooltipPlacement="top"
+            variant="simple"
+            @click="unlock"
+          />
+          <IconButton
+            v-else
+            :class="clsx('mx-xs', !isDeleting && 'hover:scale-125')"
             :loading="isDeleting"
-            class="mx-xs hover:scale-125"
             icon="trash"
             iconTone="destructive"
             loadingTooltip="Deleting..."
@@ -28,15 +38,6 @@
             tooltip="Delete"
             tooltipPlacement="top"
             @click="deleteFunc"
-          />
-          <IconButton
-            v-else
-            class="hover:scale-125"
-            icon="sliders-vertical"
-            tooltip="Edit"
-            tooltipPlacement="top"
-            variant="simple"
-            @click="unlock"
           />
         </div>
       </SidebarSubpanelTitle>
@@ -250,6 +251,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { ca } from "date-fns/locale";
 import { FuncKind, FuncId, FuncBindingKind } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -320,16 +322,40 @@ const updateFunc = () => {
   if (editingFunc.value) funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
+const unlocking = ref(false);
 const unlock = async () => {
-  if (editingFunc.value?.funcId) {
-    const resp = await funcStore.CREATE_UNLOCKED_COPY(
-      editingFunc.value.funcId,
-      assetStore.selectedVariantId,
-    );
-    if (resp.result.success) {
+  if (editingFunc.value?.funcId === undefined) return;
+
+  unlocking.value = true;
+  const resp = await funcStore.CREATE_UNLOCKED_COPY(
+    editingFunc.value.funcId,
+    assetStore.selectedVariantId,
+  );
+  if (resp.result.success) {
+    try {
+      let unlockedAssetId =
+        assetStore.unlockedAssetIdForId[assetStore.selectedVariantId ?? ""];
+      if (!unlockedAssetId) {
+        await assetStore.LOAD_SCHEMA_VARIANT_LIST();
+      }
+      unlockedAssetId =
+        assetStore.unlockedAssetIdForId[assetStore.selectedVariantId ?? ""];
+
+      if (!unlockedAssetId) {
+        unlocking.value = false;
+        throw Error("Unlocked asset without unlocking variant?");
+      }
+
+      assetStore.setSchemaVariantSelection(unlockedAssetId);
+
       await assetStore.setFuncSelection(resp.result.data.summary.funcId);
+    } catch (err) {
+      unlocking.value = false;
+      throw err;
     }
   }
+
+  unlocking.value = false;
 };
 
 const isConnectedToOtherSchemas = computed<boolean>(() => {
