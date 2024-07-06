@@ -251,7 +251,6 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { ca } from "date-fns/locale";
 import { FuncKind, FuncId, FuncBindingKind } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
