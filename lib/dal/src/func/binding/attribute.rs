@@ -170,7 +170,7 @@ impl AttributeBinding {
     /// For a given [`AttributeFuncOutputLocation`], remove the existing [`AttributePrototype`]
     /// and arguments, then create a new one in it's place, with new arguments according to the
     /// [`AttributeArgumentBinding`]s
-    /// Collect impacted AttributeValues along the way and enqueue them for DependentValuesUpdate
+    /// Collect impacted AttributeValues and enqueue them for DependentValuesUpdate
     /// so the functions run upon being attached.
     /// Returns an error if we're trying to upsert an attribute binding for a locked [`SchemaVariant`]
     pub async fn upsert_attribute_binding(
@@ -195,7 +195,6 @@ impl AttributeBinding {
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
         let attribute_prototype_id = attribute_prototype.id;
-        let mut affected_attribute_value_ids = vec![];
 
         match output_location {
             AttributeFuncDestination::Prop(prop_id) => {
@@ -233,7 +232,6 @@ impl AttributeBinding {
                                     None,
                                 )
                                 .await?;
-                                affected_attribute_value_ids.push(attribute_value_id);
                             }
                         }
                     }
@@ -275,17 +273,13 @@ impl AttributeBinding {
                                     None,
                                 )
                                 .await?;
-                                affected_attribute_value_ids.push(attribute_value_id);
                             }
                         }
                     }
                 }
             }
         }
-        if !affected_attribute_value_ids.is_empty() {
-            ctx.add_dependent_values_and_enqueue(affected_attribute_value_ids)
-                .await?;
-        }
+
         for arg in &prototype_arguments {
             // Ensure a func argument exists for each input location, before creating new Attribute Prototype Arguments
             if let Err(err) = FuncArgument::get_by_id_or_error(ctx, arg.func_argument_id).await {
@@ -327,6 +321,8 @@ impl AttributeBinding {
                 }
             };
         }
+        // enqueue dvu for impacted attribute values
+        Self::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
         Ok(attribute_prototype)
     }
 
@@ -389,6 +385,8 @@ impl AttributeBinding {
                 }
             };
         }
+        // enqueue dvu for impacted attribute values
+        Self::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
         FuncBinding::for_func_id(ctx, func_id).await
     }
 
@@ -447,14 +445,14 @@ impl AttributeBinding {
         {
             AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
         } else {
-            // We're trying to reset the schema variant's prorotype,
-            // so set this prototype to be identity and remove all existing arguments.
-            // By setting to identity, this ensures that IF the user regenerates the schema variant def in the future,
-            // we'll correctly reset the value sources based on what's in that code
+            // let's set the prototype to identity so that when we regenerate,
+            // the socket or prop's prototype can get reset to the value from (if that is where it was coming from)
+            // or the default value as defined in the schema variant def
 
             let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
             AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id)
                 .await?;
+
             // loop through and delete all existing attribute prototype arguments
             let current_attribute_prototype_arguments =
                 AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id)
@@ -463,7 +461,26 @@ impl AttributeBinding {
                 AttributePrototypeArgument::remove(ctx, apa).await?;
             }
         }
+        // enqueue dvu for impacted attribute values
+        Self::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
         Ok(eventual_parent)
+    }
+
+    /// For a given [`AttributePrototypeId`], find all [`AttributeValue`]s that use it, and enqueue them for dependent
+    /// values update so they update on commit!
+    pub async fn enqueue_dvu_for_impacted_values(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> FuncBindingResult<()> {
+        // get the impacted attribute values
+        let impacted_avs =
+            AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id).await?;
+
+        // enqueue them for DVU
+        if !impacted_avs.is_empty() {
+            ctx.add_dependent_values_and_enqueue(impacted_avs).await?;
+        }
+        Ok(())
     }
 
     pub(crate) async fn compile_attribute_types(
@@ -562,10 +579,6 @@ impl AttributeBinding {
             args_to_update,
         )
         .await?;
-
-        // // then update the prototype arguments
-        // Self::update_attribute_binding_arguments(ctx, self.attribute_prototype_id, args_to_update)
-        //     .await?;
 
         FuncBinding::for_func_id(ctx, new_func_id).await
     }
