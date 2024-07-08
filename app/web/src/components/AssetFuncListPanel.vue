@@ -1,9 +1,5 @@
 <template>
   <div>
-    <RequestStatusMessage
-      v-if="loadAssetReqStatus.isPending"
-      :requestStatus="loadAssetReqStatus"
-    />
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle
@@ -20,7 +16,7 @@
       </template>
 
       <FuncList
-        v-if="assetStore.selectedVariantId && !loadAssetReqStatus.isPending"
+        v-if="assetStore.selectedVariantId"
         :funcsByKind="funcsByKind"
         context="workspace-lab-assets"
         defaultOpen
@@ -40,7 +36,10 @@
         />
       </template>
     </ScrollArea>
-    <AssetFuncAttachModal ref="attachModalRef" :assetId="assetId" />
+    <AssetFuncAttachModal
+      ref="attachModalRef"
+      :schemaVariantId="schemaVariantId"
+    />
   </div>
 </template>
 
@@ -48,17 +47,18 @@
 import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
-import { RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
+import { ScrollArea } from "@si/vue-lib/design-system";
 import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 import FuncList from "./FuncEditor/FuncList.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
 
-const props = defineProps<{ assetId?: string }>();
+const props = defineProps<{ schemaVariantId?: SchemaVariantId }>();
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
@@ -69,10 +69,10 @@ interface VariantsWithFunctionSummary extends SchemaVariantListEntry {
 }
 
 const variantSummaries = computed(() => {
-  if (!props.assetId) return null;
+  if (!props.schemaVariantId) return null;
 
   const variant = assetStore.variantFromListById[
-    props.assetId
+    props.schemaVariantId
   ] as VariantsWithFunctionSummary;
   if (!variant) return null;
   variant.funcSummaries = [];
@@ -90,11 +90,6 @@ const funcsByKind = computed(() =>
   variantSummaries.value
     ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind)
     : {},
-);
-
-const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_SCHEMA_VARIANT",
-  props.assetId,
 );
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();

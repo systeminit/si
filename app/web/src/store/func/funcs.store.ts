@@ -496,7 +496,6 @@ export const useFuncStore = () => {
       onActivated() {
         this.FETCH_FUNC_LIST();
 
-        const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
 
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
@@ -567,13 +566,6 @@ export const useFuncStore = () => {
               if (data.changeSetId !== selectedChangeSetId) return;
               // TODO: jobelenus, send data over the wire so i dont need this call
               this.FETCH_FUNC_LIST();
-
-              // Reload the last selected asset to ensure that its func list is up to date.
-              // TODO: jobelenus, move this to the asset store!
-              const assetId = assetStore.selectedVariantId;
-              if (assetId) {
-                assetStore.LOAD_SCHEMA_VARIANT(assetId);
-              }
 
               // TODO, i dont know how this would ever fire to someone sitting on head?
               // wouldn't we listen for an event "changeset applied"???

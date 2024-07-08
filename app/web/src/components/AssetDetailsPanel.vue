@@ -1,10 +1,6 @@
 <template>
   <div class="grow relative">
-    <RequestStatusMessage
-      v-if="loadAssetReqStatus.isPending"
-      :requestStatus="loadAssetReqStatus"
-    />
-    <ScrollArea v-else-if="editingAsset && props.assetId">
+    <ScrollArea v-if="editingAsset && props.schemaVariantId">
       <template #top>
         <div
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
@@ -59,7 +55,10 @@
           />
         </ErrorMessage>
 
-        <AssetFuncAttachModal ref="attachModalRef" :assetId="props.assetId" />
+        <AssetFuncAttachModal
+          ref="attachModalRef"
+          :schemaVariantId="props.schemaVariantId"
+        />
       </template>
 
       <Stack class="p-xs" spacing="none">
@@ -146,8 +145,8 @@
       v-else
       class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
     >
-      <template v-if="props.assetId && loadAssetReqStatus.isError"
-        >Asset "{{ props.assetId }}" does not exist!
+      <template v-if="props.schemaVariantId"
+        >Asset "{{ props.schemaVariantId }}" does not exist!
       </template>
       <template v-else>Select an asset to view its details.</template>
     </div>
@@ -175,7 +174,6 @@ import { ref, watch } from "vue";
 import {
   ErrorMessage,
   Modal,
-  RequestStatusMessage,
   ScrollArea,
   Stack,
   VButton,
@@ -184,20 +182,16 @@ import {
 import * as _ from "lodash-es";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { ComponentType } from "@/api/sdf/dal/schema";
+import { ComponentType, SchemaVariantId } from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
 
 const props = defineProps<{
-  assetId?: string;
+  schemaVariantId?: SchemaVariantId;
 }>();
 
 const assetStore = useAssetStore();
-const loadAssetReqStatus = assetStore.getRequestStatus(
-  "LOAD_SCHEMA_VARIANT",
-  props.assetId,
-);
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
 
@@ -235,17 +229,19 @@ watch(
 
 const updateAsset = async () => {
   if (
-    editingAsset.value &&
-    !_.isEqual(editingAsset.value, assetStore.selectedSchemaVariant)
-  ) {
-    // const code = funcStore.funcCodeById[editingAsset.value.assetFuncId]?.code;
-    // if (code)
-    await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
-    /* else
-      throw new Error(
-        `${editingAsset.value.assetFuncId} Func not found on Variant ${editingAsset.value.schemaVariantId}. This should not happen.`,
-      ); */
-  }
+    !editingAsset.value ||
+    editingAsset.value.isLocked ||
+    _.isEqual(editingAsset.value, assetStore.selectedSchemaVariant)
+  )
+    return;
+
+  // const code = funcStore.funcCodeById[editingAsset.value.assetFuncId]?.code;
+  // if (code)
+  await assetStore.SAVE_SCHEMA_VARIANT(editingAsset.value);
+  /* else
+    throw new Error(
+      `${editingAsset.value.assetFuncId} Func not found on Variant ${editingAsset.value.schemaVariantId}. This should not happen.`,
+    ); */
 };
 
 const updateAssetReqStatus = assetStore.getRequestStatus(
@@ -279,7 +275,7 @@ const cloneAsset = async (name: string) => {
     );
     if (result.result.success) {
       cloneAssetModalRef.value?.modal?.close();
-      assetStore.setSchemaVariantSelection(result.result.data.id, true);
+      assetStore.setSchemaVariantSelection(result.result.data.id);
     }
   }
 };
