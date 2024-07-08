@@ -129,9 +129,6 @@ export const useActionsStore = () => {
           actionHistory: [] as ActionHistoryView[],
         }),
         getters: {
-          actionBatches() {
-            return [] as Array<DeprecatedActionBatch>; // is this history?
-          },
           actionsAreInProgress(): boolean {
             return (this.countActionsByState?.[ActionState.Running] || 0) > 0;
           },
@@ -231,6 +228,23 @@ export const useActionsStore = () => {
             );
           },
 
+          listActionsByComponentId(
+            state,
+          ): DefaultMap<ComponentId, Array<ActionProposedView>> {
+            const d = new DefaultMap<ComponentId, Array<ActionProposedView>>(
+              () => [],
+            );
+            state.actions.forEach((a) => {
+              const componentId = a.componentId as ComponentId | null;
+              if (componentId) {
+                const arr = d.get(componentId);
+                arr.push(a);
+                d.set(componentId, arr);
+              }
+            });
+            return d;
+          },
+
           actionsById(state): Map<ActionId, ActionView> {
             const m = new Map();
             for (const a of state.actions) {
@@ -252,19 +266,6 @@ export const useActionsStore = () => {
                 prototypeId: actionPrototypeId,
                 componentId,
                 visibility_change_set_pk: changeSetId,
-              },
-            });
-          },
-          async FETCH_COMPONENT_ACTIONS(componentId: ComponentId) {
-            return new ApiRequest<{ actions: ActionPrototype[] }>({
-              url: "component/get_actions",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.rawActionsByComponentId[componentId] = response.actions;
               },
             });
           },

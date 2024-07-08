@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="action"
+    v-if="binding"
     class="cursor-pointer"
     :class="
       clsx(
@@ -10,9 +10,9 @@
     "
     @click="clickHandler"
   >
-    <Toggle :selected="isActive" :click="() => {}" />
-    <StatusIndicatorIcon type="action" :status="action?.name" tone="inherit" />
-    <div class="font-bold">{{ action?.displayName }}</div>
+    <Toggle :selected="!!action" :click="() => {}" />
+    <StatusIndicatorIcon type="action" :status="binding.kind" tone="inherit" />
+    <div class="font-bold">{{ binding.displayName }}</div>
 
     <Icon
       v-if="addRequestStatus.isPending || removeRequestStatus.isPending"
@@ -29,47 +29,48 @@ import clsx from "clsx";
 import { PropType, computed } from "vue";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useActionsStore } from "@/store/actions.store";
-import { ActionPrototypeId } from "@/api/sdf/dal/action";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { Action } from "@/api/sdf/dal/func";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import Toggle from "./Toggle.vue";
 
+interface BindingWithDisplayName extends Action {
+  displayName: string;
+}
+
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
-  actionPrototypeId: {
-    type: String as PropType<ActionPrototypeId>,
-    required: true,
-  },
+  binding: { type: Object as PropType<BindingWithDisplayName> },
 });
 
 const actionsStore = useActionsStore();
 
 const action = computed(() => {
-  return _.find(
-    actionsStore.actionsByComponentId[props.componentId],
-    (a) => a.actionPrototypeId === props.actionPrototypeId,
-  );
+  const a = actionsStore.listActionsByComponentId
+    .get(props.componentId)
+    .find((a) => a.prototypeId === props.binding?.actionPrototypeId);
+  return a;
 });
 
-const isActive = computed(() => !!action.value?.actionInstanceId);
-
 function clickHandler() {
-  if (!action.value) return;
-  if (action.value.actionInstanceId) {
-    actionsStore.CANCEL([action.value.actionInstanceId]);
-  } else {
-    actionsStore.ADD_ACTION(props.componentId, props.actionPrototypeId);
+  if (action.value?.id) {
+    actionsStore.CANCEL([action.value.id]);
+  } else if (props.binding?.actionPrototypeId) {
+    actionsStore.ADD_ACTION(
+      props.componentId,
+      props.binding?.actionPrototypeId,
+    );
   }
 }
 
 const addRequestStatus = actionsStore.getRequestStatus(
   "ADD_ACTION",
   props.componentId,
-  props.actionPrototypeId,
+  props.binding?.actionPrototypeId,
 );
 const removeRequestStatus = actionsStore.getRequestStatus(
   "CANCEL",
-  computed(() => action.value?.actionInstanceId),
+  computed(() => action.value?.id),
   // ^ this won't accept [] which doesnt bode well
 );
 </script>
