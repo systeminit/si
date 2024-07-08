@@ -27,8 +27,7 @@ use crate::{
     FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
 };
 use crate::{
-    ChangeSetId, ComponentId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError,
-    WsEvent, WsEventError, WsEventResult, WsPayload,
+    ComponentId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError, WsEventError,
 };
 pub use attribute_argument::AttributeArgumentBinding;
 pub use attribute_argument::AttributeFuncArgumentSource;
@@ -644,32 +643,5 @@ impl FuncBinding {
             }
         }
         Ok(auth_bindings)
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FuncBindingsWsEventPayload {
-    change_set_id: ChangeSetId,
-    #[serde(flatten)]
-    bindings: si_frontend_types::FuncBindings,
-    types: String,
-}
-
-impl WsEvent {
-    pub async fn func_bindings_updated(
-        ctx: &DalContext,
-        bindings: si_frontend_types::FuncBindings,
-        types: String,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::FuncBindingsUpdated(FuncBindingsWsEventPayload {
-                change_set_id: ctx.change_set_id(),
-                bindings,
-                types,
-            }),
-        )
-        .await
     }
 }

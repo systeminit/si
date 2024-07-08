@@ -9,7 +9,7 @@ use crate::{
     SchemaVariantId,
 };
 
-use super::{FuncBinding, FuncBindingResult};
+use super::{EventualParent, FuncBinding, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ActionBinding {
@@ -124,17 +124,15 @@ impl ActionBinding {
     pub async fn delete_action_binding(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<EventualParent> {
         // don't delete binding if parent is locked
         let schema_variant_id =
             ActionPrototype::schema_variant_id(ctx, action_prototype_id).await?;
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
 
-        let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
-
         ActionPrototype::remove(ctx, action_prototype_id).await?;
 
-        FuncBinding::for_func_id(ctx, func_id).await
+        Ok(EventualParent::SchemaVariant(schema_variant_id))
     }
 
     pub(crate) async fn compile_action_types(

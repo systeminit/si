@@ -12,7 +12,7 @@ use crate::{
         extract::{AccessBuilder, HandlerContext, PosthogClient},
         tracking::track,
     },
-    service::v2::func::{get_types, FuncAPIResult},
+    service::v2::func::FuncAPIResult,
 };
 
 pub async fn delete_func_argument(
@@ -32,13 +32,12 @@ pub async fn delete_func_argument(
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     FuncAuthoringClient::delete_func_argument(&ctx, func_argument_id).await?;
-    let types = get_types(&ctx, func_id).await?;
 
     let func_summary = Func::get_by_id_or_error(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;
-    WsEvent::func_updated(&ctx, func_summary.clone(), types)
+    WsEvent::func_updated(&ctx, func_summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

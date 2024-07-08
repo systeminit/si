@@ -291,6 +291,12 @@ pub struct SchemaVariantSavedPayload {
     description: Option<String>,
     display_name: String,
 }
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDeletedPayload {
+    schema_variant_id: SchemaVariantId,
+    schema_id: SchemaId,
+}
 
 impl WsEvent {
     pub async fn schema_variant_created(
@@ -308,7 +314,22 @@ impl WsEvent {
         schema_variant_id: SchemaVariant,
     ) -> WsEventResult<Self> {
         let payload = schema_variant_id.into_frontend_type(ctx, schema_id).await?;
+        dbg!(&payload);
         WsEvent::new(ctx, WsPayload::SchemaVariantUpdated(payload)).await
+    }
+    pub async fn schema_variant_deleted(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantDeleted(SchemaVariantDeletedPayload {
+                schema_variant_id,
+                schema_id,
+            }),
+        )
+        .await
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -5,11 +5,7 @@ use axum::{
     Router,
 };
 use dal::{
-    func::{
-        argument::FuncArgumentError,
-        authoring::{FuncAuthoringClient, FuncAuthoringError},
-        binding::FuncBindingError,
-    },
+    func::{argument::FuncArgumentError, authoring::FuncAuthoringError, binding::FuncBindingError},
     ChangeSetError, DalContext, Func, FuncError, FuncId, WsEventError,
 };
 use si_frontend_types::FuncCode;
@@ -163,20 +159,5 @@ pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResu
     Ok(FuncCode {
         func_id: func.id.into(),
         code: code.clone(),
-        types: get_types(ctx, func_id).await?,
     })
-}
-
-// helper to get updated types to fire WSEvents so SDF can decide when these events need to fire
-pub async fn get_types(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<String> {
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
-    let types = [
-        FuncAuthoringClient::compile_return_types(func.backend_response_type, func.backend_kind),
-        FuncAuthoringClient::compile_types_from_bindings(ctx, func_id)
-            .await?
-            .as_str(),
-        FuncAuthoringClient::compile_langjs_types(),
-    ]
-    .join("\n");
-    Ok(types)
 }

@@ -33,6 +33,7 @@ pub struct FuncSummary {
     pub arguments: Vec<FuncArgument>,
     #[serde(flatten)]
     pub bindings: FuncBindings,
+    pub types: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -50,7 +51,6 @@ pub struct FuncArgument {
 pub struct FuncCode {
     pub func_id: FuncId,
     pub code: String,
-    pub types: String,
 }
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

@@ -1,5 +1,5 @@
 use argument::{FuncArgument, FuncArgumentError};
-use authoring::FuncAuthoringError;
+use authoring::{FuncAuthoringClient, FuncAuthoringError};
 use base64::{engine::general_purpose, Engine};
 use binding::{FuncBinding, FuncBindingError};
 use itertools::Itertools;
@@ -740,6 +740,7 @@ impl Func {
             .into_iter()
             .map(Into::into)
             .collect_vec();
+        let types = Self::get_types(ctx, self.id).await?;
         Ok(FuncSummary {
             func_id: self.id.into(),
             kind: self.kind.into(),
@@ -749,7 +750,25 @@ impl Func {
             is_locked: self.is_locked,
             arguments,
             bindings: si_frontend_types::FuncBindings { bindings },
+            types: Some(types),
         })
+    }
+    // helper to get updated types to fire WSEvents so SDF can decide when these events need to fire
+    pub async fn get_types(ctx: &DalContext, func_id: FuncId) -> FuncResult<String> {
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        let types = [
+            FuncAuthoringClient::compile_return_types(
+                func.backend_response_type,
+                func.backend_kind,
+            ),
+            FuncAuthoringClient::compile_types_from_bindings(ctx, func_id)
+                .await
+                .map_err(Box::new)?
+                .as_str(),
+            FuncAuthoringClient::compile_langjs_types(),
+        ]
+        .join("\n");
+        Ok(types)
     }
 }
 
@@ -764,7 +783,6 @@ pub struct FuncWsEventPayload {
 pub struct FuncWsEventFuncSummary {
     change_set_id: ChangeSetId,
     func_summary: si_frontend_types::FuncSummary,
-    types: String,
 }
 #[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -810,14 +828,12 @@ impl WsEvent {
     pub async fn func_updated(
         ctx: &DalContext,
         func_summary: si_frontend_types::FuncSummary,
-        types: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FuncUpdated(FuncWsEventFuncSummary {
                 change_set_id: ctx.change_set_id(),
                 func_summary,
-                types,
             }),
         )
         .await
@@ -826,14 +842,12 @@ impl WsEvent {
     pub async fn func_created(
         ctx: &DalContext,
         func_summary: si_frontend_types::FuncSummary,
-        types: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::FuncUpdated(FuncWsEventFuncSummary {
+            WsPayload::FuncCreated(FuncWsEventFuncSummary {
                 change_set_id: ctx.change_set_id(),
                 func_summary,
-                types,
             }),
         )
         .await

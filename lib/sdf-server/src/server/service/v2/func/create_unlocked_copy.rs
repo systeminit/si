@@ -16,7 +16,7 @@ use crate::server::{
     tracking::track,
 };
 
-use super::{get_code_response, get_types, FuncAPIResult};
+use super::{get_code_response, FuncAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -47,11 +47,10 @@ pub async fn create_unlocked_copy(
     let new_func =
         FuncAuthoringClient::create_unlocked_func_copy(&ctx, func_id, request.schema_variant_id)
             .await?;
-    let types = get_types(&ctx, new_func.id).await?;
     let code = get_code_response(&ctx, new_func.id).await?;
     let summary = new_func.into_frontend_type(&ctx).await?;
 
-    WsEvent::func_created(&ctx, summary.clone(), types)
+    WsEvent::func_created(&ctx, summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

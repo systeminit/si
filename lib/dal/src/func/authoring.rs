@@ -619,8 +619,12 @@ impl FuncAuthoringClient {
                     binding.port_binding_to_new_func(ctx, new_func.id).await?;
                 }
             }
-            // ws event
 
+            let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+            WsEvent::schema_variant_updated(ctx, schema, variant)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
             new_func
         } else if current_schema_variant.is_default(ctx).await? {
             let new_schema_variant =
@@ -629,10 +633,6 @@ impl FuncAuthoringClient {
                     .map_err(Box::new)?;
             let new_schema_variant_id = new_schema_variant.id();
 
-            WsEvent::schema_variant_created(ctx, schema, new_schema_variant)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
             let unlocked_latest =
                 FuncBinding::get_bindings_for_unlocked_schema_variants(ctx, func_id).await?;
 
@@ -645,6 +645,11 @@ impl FuncAuthoringClient {
                     binding.port_binding_to_new_func(ctx, new_func.id).await?;
                 }
             }
+            let new_variant = SchemaVariant::get_by_id_or_error(ctx, new_schema_variant_id).await?;
+            WsEvent::schema_variant_created(ctx, schema, new_variant)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
 
             new_func
         } else {
@@ -652,37 +657,6 @@ impl FuncAuthoringClient {
                 schema_variant_id,
             ));
         };
-
-        let bindings: Vec<si_frontend_types::FuncBinding> = FuncBinding::for_func_id(ctx, func_id)
-            .await?
-            .into_iter()
-            .map(|binding| binding.into())
-            .collect();
-        let new_bindings: Vec<si_frontend_types::FuncBinding> =
-            FuncBinding::for_func_id(ctx, new_func.id)
-                .await?
-                .into_iter()
-                .map(|binding| binding.into())
-                .collect();
-        WsEvent::func_bindings_updated(
-            ctx,
-            si_frontend_types::FuncBindings { bindings },
-            Self::compile_types_from_bindings(ctx, func_id).await?,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-
-        WsEvent::func_bindings_updated(
-            ctx,
-            si_frontend_types::FuncBindings {
-                bindings: new_bindings,
-            },
-            Self::compile_types_from_bindings(ctx, new_func.id).await?,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
 
         Ok(new_func)
     }
@@ -697,7 +671,7 @@ impl FuncAuthoringClient {
         func_id: FuncId,
     ) -> FuncAuthoringResult<Func> {
         let old_func = Func::get_by_id_or_error(ctx, func_id).await?;
-
+        let mut new_schema_variants = vec![];
         // Create unlocked versions of all schema variants that are locked, default and have a bindings to old func
         for (schema_variant_id, _) in
             FuncBinding::get_bindings_for_default_and_unlocked_schema_variants(ctx, old_func.id)
@@ -706,9 +680,6 @@ impl FuncAuthoringClient {
             // todo figure out ws event here
             // See if the Schema Variant is locked
             if SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await? {
-                let schema_id =
-                    SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
-                dbg!("creating unlocked copy");
                 // if it's locked, create an unlocked copy of it
                 // creating the unlocked copy will keep the func in question bound at the same place (so we'll see another binding for the
                 // func after creating a copy)
@@ -716,10 +687,7 @@ impl FuncAuthoringClient {
                     VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
                         .await
                         .map_err(Box::new)?;
-                WsEvent::schema_variant_created(ctx, schema_id, new_schema_variant)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
+                new_schema_variants.push(new_schema_variant);
             }
         }
 
@@ -735,37 +703,18 @@ impl FuncAuthoringClient {
             // for the binding, remove it and create the equivalent for the new one
             binding.port_binding_to_new_func(ctx, new_func.id).await?;
         }
-        // get latest bindings and fire an event
-        let bindings: Vec<si_frontend_types::FuncBinding> = FuncBinding::for_func_id(ctx, func_id)
+        // now fire the event with all the new schema variants that have updated bindings with the new func
+        for schema_variant in new_schema_variants {
+            WsEvent::schema_variant_created(
+                ctx,
+                schema_variant.schema(ctx).await?.id(),
+                schema_variant,
+            )
             .await?
-            .into_iter()
-            .map(|binding| binding.into())
-            .collect();
-        let new_bindings: Vec<si_frontend_types::FuncBinding> =
-            FuncBinding::for_func_id(ctx, new_func.id)
-                .await?
-                .into_iter()
-                .map(|binding| binding.into())
-                .collect();
-        WsEvent::func_bindings_updated(
-            ctx,
-            si_frontend_types::FuncBindings { bindings },
-            Self::compile_types_from_bindings(ctx, func_id).await?,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+            .publish_on_commit(ctx)
+            .await?;
+        }
 
-        WsEvent::func_bindings_updated(
-            ctx,
-            si_frontend_types::FuncBindings {
-                bindings: new_bindings,
-            },
-            Self::compile_types_from_bindings(ctx, new_func.id).await?,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
         Ok(new_func)
     }
 
