@@ -762,6 +762,12 @@ impl FuncAuthoringClient {
             Ok(())
         })
         .await?;
+
+        // enqueue DVU when the func is saved if it's for an attribute/codegen/qualification
+        let attribute_prototypes = AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
+        for attribute_prototype_id in attribute_prototypes {
+            AttributeBinding::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
+        }
         Ok(())
     }
 
