@@ -35,14 +35,12 @@ mod swifty;
 
 const PKG_VERSION: &str = "2019-06-03";
 const PKG_CREATED_BY: &str = "System Initiative";
-const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
 const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
 const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 
 pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
     schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
-    schema::migrate_pkg(ctx, SI_AWS_EC2_PKG, None).await?;
     migrate_test_exclusive_schema_starfield(ctx).await?;
     migrate_test_exclusive_schema_etoiles(ctx).await?;
     migrate_test_exclusive_schema_morningstar(ctx).await?;

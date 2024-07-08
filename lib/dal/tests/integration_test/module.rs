@@ -28,7 +28,6 @@ async fn list_modules(ctx: &DalContext) {
         "morningstar".to_string(),
         "pet_shop".to_string(),
         "pirate".to_string(),
-        "si-aws-ec2-2023-09-26-2".to_string(),
         "si-coreos-2023-09-13".to_string(),
         "si-docker-image-2023-09-13".to_string(),
         "si-intrinsic-funcs".to_string(),
