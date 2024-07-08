@@ -19,9 +19,10 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
-    let destination_component = create_component_for_default_schema_name(ctx, "fallout", "destination")
-        .await
-        .expect("could not create component");
+    let destination_component =
+        create_component_for_default_schema_name(ctx, "fallout", "destination")
+            .await
+            .expect("could not create component");
     let destination_schema_variant_id =
         Component::schema_variant_id(ctx, destination_component.id())
             .await

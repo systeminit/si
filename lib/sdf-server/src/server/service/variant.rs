@@ -83,6 +83,12 @@ impl IntoResponse for SchemaVariantError {
             SchemaVariantError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
                 (StatusCode::CONFLICT, self.to_string())
             }
+            SchemaVariantError::VariantAuthoring(
+                VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _),
+            ) => (
+                StatusCode::NOT_MODIFIED,
+                "unexpected return type, expected 'Asset' return type".to_string(),
+            ),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

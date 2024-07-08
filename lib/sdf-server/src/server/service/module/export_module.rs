@@ -71,7 +71,7 @@ pub async fn export_module(
     // XXX:rework frontend to send schema ids
     let mut schema_ids = vec![];
     for variant_id in &request.schema_variants {
-        let schema = SchemaVariant::get_by_id(&ctx, *variant_id)
+        let schema = SchemaVariant::get_by_id_or_error(&ctx, *variant_id)
             .await?
             .schema(&ctx)
             .await?;

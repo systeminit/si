@@ -2,7 +2,8 @@ use dal::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{AttributeValue, Component, DalContext};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name, PropEditorTestView,
+    connect_components_with_socket_names, create_component_for_default_schema_name,
+    PropEditorTestView,
 };
 use dal_test::helpers::{extract_value_and_validation, ChangeSetTestHelpers};
 use dal_test::test;
@@ -140,9 +141,10 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
 
 #[test]
 async fn validation_on_dependent_value(ctx: &mut DalContext) {
-    let output_component = create_component_for_default_schema_name(ctx, "ValidatedOutput", "Output")
-        .await
-        .expect("could not create component");
+    let output_component =
+        create_component_for_default_schema_name(ctx, "ValidatedOutput", "Output")
+            .await
+            .expect("could not create component");
     let input_component = create_component_for_default_schema_name(ctx, "ValidatedInput", "Input")
         .await
         .expect("could not create component");

@@ -156,7 +156,9 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
         panic!("expect parent to be for schema variant");
     };
 
-    let sv = SchemaVariant::get_by_id(ctx, sv_id).await.expect("has sv");
+    let sv = SchemaVariant::get_by_id_or_error(ctx, sv_id)
+        .await
+        .expect("has sv");
     assert!(sv.is_locked());
 
     // let's try to edit the func, this will fail because it's currently locked

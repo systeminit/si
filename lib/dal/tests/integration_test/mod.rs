@@ -1,4 +1,5 @@
 mod action;
+mod asset;
 mod attribute;
 mod builtins;
 mod change_set;

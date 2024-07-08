@@ -559,7 +559,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
                 .build();
             return new AssetBuilder().addProp(input1).addProp(input2).addProp(calculate).build()
         }";
-    let schema_variant = SchemaVariant::get_by_id(ctx, first_update_variant_id)
+    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, first_update_variant_id)
         .await
         .expect("could not get schema variant");
 

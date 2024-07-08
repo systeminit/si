@@ -390,7 +390,7 @@ impl FuncBinding {
                     }
                     None => {
                         if !SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?
-                            || SchemaVariant::get_by_id(ctx, schema_variant_id)
+                            || SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
                                 .await?
                                 .is_default(ctx)
                                 .await?

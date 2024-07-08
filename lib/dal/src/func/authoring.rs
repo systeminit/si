@@ -602,7 +602,8 @@ impl FuncAuthoringClient {
 
         let schema = SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
         // is the current schema varaint already unlocked? if so, proceed
-        let current_schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+        let current_schema_variant =
+            SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
         let new_func = if !current_schema_variant.is_locked() {
             //already on an unlocked variant, just create unlocked copy of the func and reattach
             // bindings for that schema variant

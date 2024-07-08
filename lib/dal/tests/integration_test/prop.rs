@@ -45,7 +45,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
         .expect("should be able to get default")
         .expect("should have a default schema variant");
 
-    let _pirate = SchemaVariant::get_by_id(ctx, pirate_default_variant_id)
+    let _pirate = SchemaVariant::get_by_id_or_error(ctx, pirate_default_variant_id)
         .await
         .expect("should be able to get pirate sv");
 

@@ -6,7 +6,9 @@ use dal::{
     AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop, Secret,
     SecretAlgorithm, SecretVersion,
 };
-use dal_test::helpers::{create_component_for_default_schema_name, encrypt_message, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_default_schema_name, encrypt_message, ChangeSetTestHelpers,
+};
 use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
@@ -265,9 +267,10 @@ async fn update_encrypted_contents_with_dependent_values(
     nw: &WorkspaceSignup,
 ) {
     // Create a component and commit.
-    let component = create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
+            .await
+            .expect("could not create component");
     let schema_variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("could not get schema variant id for component");

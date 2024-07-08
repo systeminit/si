@@ -11,12 +11,14 @@ use serde::Deserialize;
 #[test]
 async fn make_multiple_trees(ctx: &mut DalContext) {
     // create 2 even legos
-    let even_lego_1 = create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
-        .await
-        .expect("could not create component");
-    let even_lego_2 = create_component_for_default_schema_name(ctx, "large even lego", "even lego 2")
-        .await
-        .expect("could not create component");
+    let even_lego_1 =
+        create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
+            .await
+            .expect("could not create component");
+    let even_lego_2 =
+        create_component_for_default_schema_name(ctx, "large even lego", "even lego 2")
+            .await
+            .expect("could not create component");
 
     let even_sv_id = even_lego_1
         .schema_variant(ctx)
@@ -92,15 +94,18 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
 #[test]
 async fn make_chain_remove_middle(ctx: &mut DalContext) {
     // make chain of odd lego 1 -> even lego 1 -> odd lego 2
-    let odd_component_1 = create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 1")
-        .await
-        .expect("could not create component");
-    let even_component_1 = create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
-        .await
-        .expect("could not create component");
-    let odd_component_2 = create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 2")
-        .await
-        .expect("could not create component");
+    let odd_component_1 =
+        create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 1")
+            .await
+            .expect("could not create component");
+    let even_component_1 =
+        create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
+            .await
+            .expect("could not create component");
+    let odd_component_2 =
+        create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 2")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

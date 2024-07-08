@@ -10,7 +10,9 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{connect_components_with_socket_names, create_component_for_default_schema_name};
+use dal_test::helpers::{
+    connect_components_with_socket_names, create_component_for_default_schema_name,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
@@ -22,9 +24,10 @@ mod set_type;
 mod upgrade;
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -705,9 +708,10 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
 
 #[test]
 async fn set_the_universe(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "starfield", "across the universe")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name(ctx, "starfield", "across the universe")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");

@@ -344,7 +344,7 @@ impl Module {
                     inner.content_address().into();
 
                 if inner_addr_discrim == ContentAddressDiscriminants::SchemaVariant {
-                    let variant = SchemaVariant::get_by_id(ctx, inner.id().into()).await?;
+                    let variant = SchemaVariant::get_by_id_or_error(ctx, inner.id().into()).await?;
                     all_schema_variants.push(variant);
                 }
             }
