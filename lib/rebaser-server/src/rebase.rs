@@ -1,7 +1,7 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
+use dal::{DalContext, TransactionsError, WorkspacePk, WorkspaceSnapshot, WsEventError};
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityRebaseRequest;
@@ -104,8 +104,14 @@ pub async fn perform_rebase(
         if !conflicts_and_updates.updates.is_empty() {
             // Once all updates have been performed, we can write out, mark everything as recently seen
             // and update the pointer.
+            let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+            let vector_clock_id = VectorClockId::new(
+                to_rebase_change_set.id.into_inner(),
+                workspace_pk.into_inner(),
+            );
+
             to_rebase_workspace_snapshot
-                .write(ctx, ctx.vector_clock_id()?)
+                .write(ctx, vector_clock_id)
                 .await?;
             info!("snapshot written: {:?}", start.elapsed());
             to_rebase_change_set

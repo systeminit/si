@@ -7,6 +7,7 @@ use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::ulid::Ulid;
 use si_events::VectorClockActorId;
 use si_events::VectorClockChangeSetId;
 use si_events::WorkspaceSnapshotAddress;
@@ -311,6 +312,8 @@ pub struct DalContext {
     change_set: Option<ChangeSet>,
     /// Whether we should attempt to automatically migrate snapshots to the latest version
     no_auto_migrate_snapshots: bool,
+    /// The vector clock's "actor id" if this context does not have a User
+    system_actor_id: Ulid,
 }
 
 impl DalContext {
@@ -383,24 +386,6 @@ impl DalContext {
                 }
             }
         };
-        Ok(())
-    }
-
-    pub async fn update_snapshot_to_visibility_no_editing_change_set(
-        &mut self,
-    ) -> Result<(), TransactionsError> {
-        let change_set = ChangeSet::find(self, self.change_set_id())
-            .await
-            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
-
-        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
-            .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
-
-        self.change_set = Some(change_set);
-        self.set_workspace_snapshot(workspace_snapshot);
-
         Ok(())
     }
 
@@ -528,12 +513,8 @@ impl DalContext {
     pub fn vector_clock_id(&self) -> Result<VectorClockId, TransactionsError> {
         let change_set_id = self.visibility.change_set_id.into_inner();
         let actor_id = match self.history_actor {
-            HistoryActor::SystemInit => self
-                .tenancy
-                .workspace_pk()
-                .unwrap_or(WorkspacePk::NONE)
-                .into_inner(),
-            HistoryActor::User(user_pk) => user_pk.into_inner(),
+            HistoryActor::SystemInit => self.system_actor_id,
+            HistoryActor::User(user_pk) => user_pk.into_inner().into(),
         };
 
         Ok(VectorClockId::new(
@@ -1016,6 +997,7 @@ impl DalContextBuilder {
             workspace_snapshot: None,
             change_set: None,
             no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         })
     }
 
@@ -1037,6 +1019,7 @@ impl DalContextBuilder {
             workspace_snapshot: None,
             change_set: None,
             no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1068,6 +1051,7 @@ impl DalContextBuilder {
             workspace_snapshot: None,
             change_set: None,
             no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {
