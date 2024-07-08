@@ -10,7 +10,11 @@
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
         >
           <VButton
-            :disabled="saveAssetReqStatus.isPending || editingAsset.isLocked"
+            :disabled="
+              saveAssetReqStatus.isPending ||
+              editingAsset.isLocked ||
+              assetStore.codeSaveIsDebouncing
+            "
             :loading="updateAssetReqStatus.isPending"
             :requestStatus="updateAssetReqStatus"
             icon="bolt"

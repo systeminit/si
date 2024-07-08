@@ -102,6 +102,7 @@ export const useAssetStore = () => {
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,
         executeSchemaVariantTaskError: undefined as string | undefined,
+        codeSaveIsDebouncing: false,
 
         // represents state of the left rail lists and all open editor tabs
         selectedSchemaVariants: [] as SchemaVariantId[],
@@ -357,7 +358,16 @@ export const useAssetStore = () => {
           });
         },
 
-        enqueueVariantSave(schemaVariant: SchemaVariant, code: string) {
+        enqueueVariantSave(
+          schemaVariant: SchemaVariant,
+          code: string,
+          debounce: boolean,
+        ) {
+          if (!debounce) {
+            return this.SAVE_SCHEMA_VARIANT(schemaVariant, code);
+          }
+
+          this.codeSaveIsDebouncing = true;
           this.editingFuncLatestCode[schemaVariant.schemaVariantId] = code;
 
           // don't see how this should ever happen
@@ -368,8 +378,7 @@ export const useAssetStore = () => {
             assetSaveDebouncer = keyedDebouncer((id: SchemaVariantId) => {
               const variant = this.variantsById[id];
               if (!variant) return;
-              const code =
-                this.editingFuncLatestCode[schemaVariant.schemaVariantId];
+              const code = this.editingFuncLatestCode[variant.schemaVariantId];
 
               if (!code)
                 throw Error(
@@ -377,6 +386,7 @@ export const useAssetStore = () => {
                 );
 
               this.SAVE_SCHEMA_VARIANT(variant, code);
+              this.codeSaveIsDebouncing = false;
             }, 1000);
           }
           const assetSaveFunc = assetSaveDebouncer(
@@ -432,10 +442,6 @@ export const useAssetStore = () => {
           if (!variant)
             throw new Error(`${schemaVariantId} Variant does not exist`);
 
-          const code = this.editingFuncLatestCode[schemaVariantId];
-
-          if (!code) throw new Error(`${schemaVariantId} Code does not exist`);
-
           return new ApiRequest<{
             schemaVariantId: SchemaVariantId;
           }>({
@@ -445,7 +451,6 @@ export const useAssetStore = () => {
             params: {
               ...visibility,
               variant,
-              code,
             },
           });
         },
