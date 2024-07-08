@@ -62,7 +62,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::{pk, Component, ComponentError, ComponentId, Workspace, WorkspaceError};
+use crate::{pk, ChangeSet, Component, ComponentError, ComponentId, Workspace, WorkspaceError};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
@@ -88,8 +88,8 @@ pub enum WorkspaceSnapshotError {
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
-    // #[error("change set error: {0}")]
-    // ChangeSet(#[from] ChangeSetError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} has no workspace snapshot address")]
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("Component error: {0}")]
@@ -2116,5 +2116,25 @@ impl WorkspaceSnapshot {
         }
 
         Ok(value_ids)
+    }
+
+    /// Prune and collapse vector clock entries for this snapshot, based on the
+    /// ancestry of its change set. This method assumes that the DalContext has
+    /// the correct change set id for this workspace snapshot.
+    pub async fn collapse_vector_clocks(&self, ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
+        let change_set_id = ctx.change_set_id();
+        let ancestors = ChangeSet::ancestors(ctx, change_set_id)
+            .await?
+            .into_iter()
+            .map(|cs_id| cs_id.into_inner().into())
+            .collect();
+
+        let collapse_id = VectorClockId::new(change_set_id.into_inner(), ulid::Ulid(0));
+
+        self.working_copy_mut()
+            .await
+            .collapse_vector_clock_entries(ancestors, collapse_id);
+
+        Ok(())
     }
 }

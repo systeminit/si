@@ -144,10 +144,29 @@ impl VectorClock {
             .collect()
     }
 
-    /// Remove all vector clock entries except those in `allow_list`
-    pub fn remove_entries(&mut self, allow_list: &[VectorClockId]) {
-        self.entries
-            .retain(|clock_id, _| allow_list.contains(clock_id));
+    /// Remove all vector clock entries except those in `allow_list` and
+    /// collapse them into the collapse_id by choosing the maximum removed entry
+    pub fn collapse_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
+        let mut max_removed = None;
+        self.entries.retain(|clock_id, &mut lamport_clock| {
+            if allow_list.contains(&clock_id.change_set_id()) {
+                true
+            } else {
+                if Some(lamport_clock) > max_removed {
+                    max_removed = Some(lamport_clock.to_owned());
+                }
+
+                false
+            }
+        });
+
+        if let Some(max_removed) = max_removed {
+            self.inc_to(collapse_id, max_removed.counter);
+        }
     }
 }
 

@@ -388,7 +388,7 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             .vector_clock_recently_seen()
             .entry_for(self.onto_vector_clock_id);
 
-        let onto_last_seen_by_to_rebase_vector_clock_id = onto_root_node
+        let onto_last_seen_by_to_rebase_vector_clock = onto_root_node
             .vector_clock_recently_seen()
             .entry_for(self.to_rebase_vector_clock_id);
 
@@ -416,27 +416,24 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                 .vector_clock_first_seen()
                 .entry_for(self.to_rebase_vector_clock_id)
             {
-                let maybe_seen_by_onto_at =
-                    if let Some(onto_last_seen_by_to_rebase_vector_clock_id) =
-                        onto_last_seen_by_to_rebase_vector_clock_id
-                    {
-                        if edge_first_seen_by_to_rebase
-                            <= onto_last_seen_by_to_rebase_vector_clock_id
-                        {
-                            Some(onto_last_seen_by_to_rebase_vector_clock_id)
-                        } else {
-                            None
-                        }
+                let maybe_seen_by_onto_at = if let Some(onto_last_seen_by_to_rebase_vector_clock) =
+                    onto_last_seen_by_to_rebase_vector_clock
+                {
+                    if edge_first_seen_by_to_rebase <= onto_last_seen_by_to_rebase_vector_clock {
+                        Some(onto_last_seen_by_to_rebase_vector_clock)
                     } else {
-                        to_rebase_edge_weight
-                            .vector_clock_recently_seen()
-                            .entry_for(self.onto_vector_clock_id)
-                            .or_else(|| {
-                                to_rebase_edge_weight
-                                    .vector_clock_first_seen()
-                                    .entry_for(self.onto_vector_clock_id)
-                            })
-                    };
+                        None
+                    }
+                } else {
+                    to_rebase_edge_weight
+                        .vector_clock_recently_seen()
+                        .entry_for(self.onto_vector_clock_id)
+                        .or_else(|| {
+                            to_rebase_edge_weight
+                                .vector_clock_first_seen()
+                                .entry_for(self.onto_vector_clock_id)
+                        })
+                };
 
                 if let Some(seen_by_onto_at) = maybe_seen_by_onto_at {
                     if to_rebase_item_weight
@@ -550,23 +547,6 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                                 container: container_node_information,
                                 removed_item: removed_item_node_information,
                             });
-                        // If the vector clock ids are identical, the seen
-                        // timestamps become a little less informative. To
-                        // determine whether this is a new edge or one that
-                        // should stay removed in to_rebase, we simply determine
-                        // whether to_rebase or onto was more recently "seen"
-                        // overall
-                        } else if self.to_rebase_vector_clock_id == self.onto_vector_clock_id
-                            && to_rebase_last_seen_by_onto_vector_clock_id
-                                < onto_last_seen_by_to_rebase_vector_clock_id
-                        {
-                            updates.push(Update::new_edge(
-                                self.to_rebase_graph,
-                                self.onto_graph,
-                                to_rebase_container_index,
-                                only_onto_edge_info,
-                                onto_edge_weight.to_owned(),
-                            )?);
                         }
                     }
                     None => {

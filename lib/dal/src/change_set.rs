@@ -1,5 +1,8 @@
 //! The sequel to [`ChangeSets`](crate::ChangeSet). Coming to an SI instance near you!
 
+use std::collections::HashSet;
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::VectorClockChangeSetId;
@@ -22,6 +25,8 @@ use crate::{
 pub mod event;
 pub mod status;
 pub mod view;
+
+const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancestors.sql");
 
 /// The primary error type for this module.
 #[remain::sorted]
@@ -57,6 +62,8 @@ pub enum ChangeSetError {
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
     #[error("user error: {0}")]
@@ -645,6 +652,28 @@ impl ChangeSet {
         } else {
             Ok(false)
         }
+    }
+
+    /// Walk the graph of change sets up to the change set that has no "base
+    /// change set id" and return the set.
+    pub async fn ancestors(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+    ) -> ChangeSetResult<HashSet<ChangeSetId>> {
+        let mut result = HashSet::new();
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(FIND_ANCESTORS_QUERY, &[&change_set_id])
+            .await?;
+
+        for row in rows {
+            let id: String = row.get("id");
+            result.insert(ChangeSetId::from_str(&id)?);
+        }
+
+        Ok(result)
     }
 }
 

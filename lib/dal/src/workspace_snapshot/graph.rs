@@ -13,6 +13,7 @@ pub use petgraph::Direction;
 use petgraph::{algo, prelude::*};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::VectorClockChangeSetId;
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
 use thiserror::Error;
@@ -605,12 +606,16 @@ impl WorkspaceSnapshotGraph {
         Ok(source)
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
         for edge in self.graph.edge_weights_mut() {
-            edge.remove_vector_clock_entries(allow_list);
+            edge.collapse_vector_clock_entries(&allow_list, collapse_id);
         }
         for node in self.graph.node_weights_mut() {
-            node.remove_vector_clock_entries(allow_list);
+            node.collapse_vector_clock_entries(&allow_list, collapse_id);
         }
     }
 

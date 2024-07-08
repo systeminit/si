@@ -1,7 +1,9 @@
+use std::collections::HashSet;
 use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockChangeSetId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
@@ -375,12 +377,19 @@ impl NodeWeight {
             .inc_to(vector_clock_id, new_clock_value);
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
         self.vector_clock_first_seen_mut()
-            .remove_entries(allow_list);
+            .collapse_entries(allow_list, collapse_id);
 
         self.vector_clock_recently_seen_mut()
-            .remove_entries(allow_list);
+            .collapse_entries(allow_list, collapse_id);
+
+        self.vector_clock_write_mut()
+            .collapse_entries(allow_list, collapse_id);
     }
 
     /// Many node kinds need to have complete control of their outgoing edges

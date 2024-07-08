@@ -1,6 +1,9 @@
 //! Edges
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockChangeSetId;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
@@ -102,10 +105,17 @@ impl EdgeWeight {
 
     /// Remove stale vector clock entries. `allow_list` should always include
     /// the current editing clock id...
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
-        self.vector_clock_first_seen.remove_entries(allow_list);
-        self.vector_clock_recently_seen.remove_entries(allow_list);
-        self.vector_clock_write.remove_entries(allow_list);
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
+        self.vector_clock_first_seen
+            .collapse_entries(allow_list, collapse_id);
+        self.vector_clock_recently_seen
+            .collapse_entries(allow_list, collapse_id);
+        self.vector_clock_write
+            .collapse_entries(allow_list, collapse_id);
     }
 
     pub fn new(vector_clock_id: VectorClockId, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {

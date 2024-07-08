@@ -111,6 +111,10 @@ pub async fn perform_rebase(
             );
 
             to_rebase_workspace_snapshot
+                .collapse_vector_clocks(ctx)
+                .await?;
+
+            to_rebase_workspace_snapshot
                 .write(ctx, vector_clock_id)
                 .await?;
             info!("snapshot written: {:?}", start.elapsed());
