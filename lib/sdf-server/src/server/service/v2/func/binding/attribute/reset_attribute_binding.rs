@@ -4,8 +4,8 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::attribute::AttributeBinding, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
-    WsEvent,
+    func::binding::{attribute::AttributeBinding, EventualParent},
+    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
 
@@ -14,7 +14,7 @@ use crate::{
         extract::{AccessBuilder, HandlerContext, PosthogClient},
         tracking::track,
     },
-    service::v2::func::{get_types, FuncAPIError, FuncAPIResult},
+    service::v2::func::{FuncAPIError, FuncAPIResult},
 };
 
 pub async fn reset_attribute_binding(
@@ -40,11 +40,28 @@ pub async fn reset_attribute_binding(
                 {
                     match attribute_prototype_id {
                         Some(attribute_prototype_id) => {
-                            AttributeBinding::reset_attribute_binding(
+                            let eventual_parent = AttributeBinding::reset_attribute_binding(
                                 &ctx,
                                 attribute_prototype_id.into_raw_id().into(),
                             )
                             .await?;
+                            if let EventualParent::SchemaVariant(schema_variant_id) =
+                                eventual_parent
+                            {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx,
+                                    schema_variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        .await?;
+
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
                         }
                         None => return Err(FuncAPIError::MissingPrototypeId),
                     }
@@ -72,12 +89,15 @@ pub async fn reset_attribute_binding(
         .into_frontend_type(&ctx)
         .await?
         .bindings;
-
-    let types = get_types(&ctx, func_id).await?;
-    WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
+    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?;
+    WsEvent::func_updated(&ctx, func_summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

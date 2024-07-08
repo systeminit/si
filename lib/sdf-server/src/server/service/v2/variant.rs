@@ -59,6 +59,17 @@ pub async fn list_schema_variants(
                 );
             }
         }
+        for schema_variant in SchemaVariant::list_for_schema(&ctx, schema_id).await? {
+            if !SchemaVariant::list_component_ids(&ctx, schema_variant.id())
+                .await?
+                .is_empty()
+            {
+                schema_variants.insert(
+                    schema_variant.id,
+                    schema_variant.into_frontend_type(&ctx, schema_id).await?,
+                );
+            }
+        }
     }
 
     track(

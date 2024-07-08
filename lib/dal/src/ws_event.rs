@@ -15,7 +15,6 @@ use crate::component::{
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionCreatedPayload,
     ConnectionDeletedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
-use crate::func::binding::FuncBindingsWsEventPayload;
 use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::{FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventPayload};
 use crate::pkg::{
@@ -23,7 +22,8 @@ use crate::pkg::{
 };
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{
-    SchemaVariantClonedPayload, SchemaVariantSavedPayload, SchemaVariantUpdatedPayload,
+    SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantSavedPayload,
+    SchemaVariantUpdatedPayload,
 };
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
@@ -88,7 +88,6 @@ pub enum WsPayload {
     ConnectionDeleted(ConnectionDeletedPayload),
     Cursor(CursorPayload),
     FuncArgumentsSaved(FuncWsEventPayload),
-    FuncBindingsUpdated(FuncBindingsWsEventPayload),
     FuncCodeSaved(FuncWsEventCodeSaved),
     FuncCreated(FuncWsEventFuncSummary),
     FuncDeleted(FuncWsEventPayload),
@@ -103,6 +102,7 @@ pub enum WsPayload {
     ResourceRefreshed(ComponentUpdatedPayload),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(frontend_types::SchemaVariant),
+    SchemaVariantDeleted(SchemaVariantDeletedPayload),
     SchemaVariantSaved(SchemaVariantSavedPayload),
     SchemaVariantUpdated(frontend_types::SchemaVariant),
     SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),

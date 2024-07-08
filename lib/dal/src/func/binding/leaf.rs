@@ -218,13 +218,11 @@ impl LeafBinding {
     pub async fn delete_leaf_func_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<EventualParent> {
         // don't delete binding if parent is locked
         let eventual_parent =
             AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
         eventual_parent.error_if_locked(ctx).await?;
-
-        let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
 
         // Delete all attribute prototype arguments for the given prototype.
         for attribute_prototype_argument_id in
@@ -242,8 +240,7 @@ impl LeafBinding {
         }
         AttributePrototype::remove(ctx, attribute_prototype_id).await?;
 
-        // Return the updated bindings.
-        FuncBinding::for_func_id(ctx, func_id).await
+        Ok(eventual_parent)
     }
 
     pub(crate) async fn compile_leaf_func_types(

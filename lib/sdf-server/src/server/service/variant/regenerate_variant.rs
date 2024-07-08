@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, WsEvent};
+use dal::{ChangeSet, SchemaVariant, WsEvent};
 use dal::{SchemaVariantId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -71,10 +71,35 @@ pub async fn regenerate_variant(
         }),
     );
 
-    WsEvent::schema_variant_update_finished(&ctx, schema_variant_id, updated_schema_variant_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    if schema_variant_id == updated_schema_variant_id {
+        // if old == new -> send updated for it
+
+        let schema =
+            SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+
+        WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    } else {
+        // send that the old one is deleted and new one is created
+        // (note: we auto upgrade components on regenerate now so this variant is actually eligible for GC)
+        // let's pretend it was
+        let schema =
+            SchemaVariant::schema_id_for_schema_variant_id(&ctx, updated_schema_variant_id).await?;
+        let schema_variant =
+            SchemaVariant::get_by_id_or_error(&ctx, updated_schema_variant_id).await?;
+
+        WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+        WsEvent::schema_variant_deleted(&ctx, schema, schema_variant_id)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     ctx.commit().await?;
 

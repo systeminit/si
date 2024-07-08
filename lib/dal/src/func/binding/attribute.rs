@@ -179,7 +179,7 @@ impl AttributeBinding {
         eventual_parent: Option<EventualParent>,
         output_location: AttributeFuncDestination,
         prototype_arguments: Vec<AttributeArgumentBinding>,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<AttributePrototype> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
         if func.kind != FuncKind::Attribute {
             return Err(FuncBindingError::UnexpectedFuncKind(func.kind));
@@ -327,7 +327,7 @@ impl AttributeBinding {
                 }
             };
         }
-        FuncBinding::for_func_id(ctx, func_id).await
+        Ok(attribute_prototype)
     }
 
     #[instrument(
@@ -437,12 +437,10 @@ impl AttributeBinding {
     pub async fn reset_attribute_binding(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<EventualParent> {
         // don't update binding args if the parent is locked
         let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
         eventual_parent.error_if_locked(ctx).await?;
-
-        let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
 
         if let Some(attribute_value_id) =
             AttributePrototype::attribute_value_id(ctx, attribute_prototype_id).await?
@@ -465,7 +463,7 @@ impl AttributeBinding {
                 AttributePrototypeArgument::remove(ctx, apa).await?;
             }
         }
-        FuncBinding::for_func_id(ctx, func_id).await
+        Ok(eventual_parent)
     }
 
     pub(crate) async fn compile_attribute_types(

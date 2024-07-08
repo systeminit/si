@@ -9,7 +9,7 @@ use dal::{
         leaf::LeafBinding, AttributeArgumentBinding, EventualParent,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
 
@@ -18,7 +18,7 @@ use crate::{
         extract::{AccessBuilder, HandlerContext, PosthogClient},
         tracking::track,
     },
-    service::v2::func::{get_types, FuncAPIError, FuncAPIResult},
+    service::v2::func::{FuncAPIError, FuncAPIResult},
 };
 
 pub async fn create_binding(
@@ -86,6 +86,23 @@ pub async fn create_binding(
                                 arguments,
                             )
                             .await?;
+                            if let Some(EventualParent::SchemaVariant(schema_variant_id)) =
+                                eventual_parent
+                            {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx,
+                                    schema_variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        .await?;
+
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
                         }
                         None => {
                             return Err(FuncAPIError::MissingFuncId);
@@ -109,6 +126,19 @@ pub async fn create_binding(
                                 schema_variant_id.into(),
                             )
                             .await?;
+                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                &ctx,
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema_variant =
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
+                                    .await?;
+
+                            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                .await?
+                                .publish_on_commit(&ctx)
+                                .await?;
                         }
                         None => return Err(FuncAPIError::MissingFuncId),
                     }
@@ -133,6 +163,19 @@ pub async fn create_binding(
                                 schema_variant_id.into(),
                             )
                             .await?;
+                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                &ctx,
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema_variant =
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
+                                    .await?;
+
+                            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                .await?
+                                .publish_on_commit(&ctx)
+                                .await?;
                         }
                         _ => {
                             return Err(FuncAPIError::MissingActionKindForActionFunc);
@@ -164,6 +207,19 @@ pub async fn create_binding(
                                 &inputs,
                             )
                             .await?;
+                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                &ctx,
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema_variant =
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
+                                    .await?;
+
+                            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                .await?
+                                .publish_on_commit(&ctx)
+                                .await?;
                         }
                         _ => {
                             return Err(FuncAPIError::MissingSchemaVariantAndFunc);
@@ -188,6 +244,19 @@ pub async fn create_binding(
                                 &inputs,
                             )
                             .await?;
+                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                &ctx,
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema_variant =
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
+                                    .await?;
+
+                            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                .await?
+                                .publish_on_commit(&ctx)
+                                .await?;
                         }
                         _ => {
                             return Err(FuncAPIError::MissingSchemaVariantAndFunc);
@@ -214,15 +283,17 @@ pub async fn create_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-
-    let types = get_types(&ctx, func_id).await?;
     let binding = Func::get_by_id_or_error(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?
         .bindings;
 
-    WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
+    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?;
+    WsEvent::func_updated(&ctx, func_summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

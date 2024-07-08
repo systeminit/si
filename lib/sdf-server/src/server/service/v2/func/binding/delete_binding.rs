@@ -4,8 +4,8 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{action::ActionBinding, leaf::LeafBinding},
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    func::binding::{action::ActionBinding, leaf::LeafBinding, EventualParent},
+    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
 
@@ -14,7 +14,7 @@ use crate::{
         extract::{AccessBuilder, HandlerContext, PosthogClient},
         tracking::track,
     },
-    service::v2::func::{get_types, FuncAPIError, FuncAPIResult},
+    service::v2::func::{FuncAPIError, FuncAPIResult},
 };
 
 pub async fn delete_binding(
@@ -38,11 +38,23 @@ pub async fn delete_binding(
                     ..
                 } = binding
                 {
-                    ActionBinding::delete_action_binding(
+                    let eventual_parent = ActionBinding::delete_action_binding(
                         &ctx,
                         action_prototype_id.into_raw_id().into(),
                     )
                     .await?;
+                    if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
+                        let schema =
+                            SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id)
+                                .await?;
+                        let schema_variant =
+                            SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+
+                        WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                            .await?
+                            .publish_on_commit(&ctx)
+                            .await?;
+                    }
                 } else {
                     return Err(FuncAPIError::MissingActionPrototype);
                 }
@@ -57,11 +69,28 @@ pub async fn delete_binding(
                 {
                     match attribute_prototype_id {
                         Some(attribute_prototype_id) => {
-                            LeafBinding::delete_leaf_func_binding(
+                            let eventual_parent = LeafBinding::delete_leaf_func_binding(
                                 &ctx,
                                 attribute_prototype_id.into_raw_id().into(),
                             )
                             .await?;
+                            if let EventualParent::SchemaVariant(schema_variant_id) =
+                                eventual_parent
+                            {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx,
+                                    schema_variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        .await?;
+
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
                         }
                         None => {
                             return Err(FuncAPIError::MissingPrototypeId);
@@ -74,11 +103,28 @@ pub async fn delete_binding(
                 {
                     match attribute_prototype_id {
                         Some(attribute_prototype_id) => {
-                            LeafBinding::delete_leaf_func_binding(
+                            let eventual_parent = LeafBinding::delete_leaf_func_binding(
                                 &ctx,
                                 attribute_prototype_id.into_raw_id().into(),
                             )
                             .await?;
+                            if let EventualParent::SchemaVariant(schema_variant_id) =
+                                eventual_parent
+                            {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx,
+                                    schema_variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        .await?;
+
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
                         }
                         None => {
                             return Err(FuncAPIError::MissingPrototypeId);
@@ -93,11 +139,6 @@ pub async fn delete_binding(
             return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
-        .await?
-        .into_frontend_type(&ctx)
-        .await?
-        .bindings;
 
     track(
         &posthog_client,
@@ -111,8 +152,16 @@ pub async fn delete_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let types = get_types(&ctx, func_id).await?;
-    WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
+    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?;
+    WsEvent::func_updated(&ctx, func_summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

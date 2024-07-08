@@ -3,7 +3,7 @@ use telemetry::prelude::*;
 
 use crate::{DalContext, FuncId, SchemaVariant, SchemaVariantId};
 
-use super::{FuncBinding, FuncBindingResult};
+use super::{EventualParent, FuncBinding, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AuthBinding {
@@ -56,11 +56,11 @@ impl AuthBinding {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<EventualParent> {
         // don't delete binding if parent is locked
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
         SchemaVariant::remove_authentication_prototype(ctx, func_id, schema_variant_id).await?;
-        FuncBinding::for_func_id(ctx, func_id).await
+        Ok(EventualParent::SchemaVariant(schema_variant_id))
     }
 
     pub(crate) async fn port_binding_to_new_func(

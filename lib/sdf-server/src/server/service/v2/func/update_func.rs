@@ -14,7 +14,7 @@ use crate::server::{
     tracking::track,
 };
 
-use super::{get_types, FuncAPIResult};
+use super::FuncAPIResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -41,9 +41,8 @@ pub async fn update_func(
             .await?
             .into_frontend_type(&ctx)
             .await?;
-    let types = get_types(&ctx, func_id).await?;
 
-    WsEvent::func_updated(&ctx, updated_func.clone(), types)
+    WsEvent::func_updated(&ctx, updated_func.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

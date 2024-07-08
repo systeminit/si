@@ -24,7 +24,7 @@ use crate::server::{
     tracking::track,
 };
 
-use super::{get_code_response, get_types, FuncAPIError, FuncAPIResult};
+use super::{get_code_response, FuncAPIError, FuncAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -198,10 +198,9 @@ pub async fn create_func(
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     };
 
-    let types = get_types(&ctx, func.id).await?;
     let code = get_code_response(&ctx, func.id).await?;
     let summary = func.into_frontend_type(&ctx).await?;
-    WsEvent::func_created(&ctx, summary.clone(), types)
+    WsEvent::func_created(&ctx, summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;

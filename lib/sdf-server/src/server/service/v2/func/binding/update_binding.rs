@@ -18,7 +18,7 @@ use crate::{
         extract::{AccessBuilder, HandlerContext, PosthogClient},
         tracking::track,
     },
-    service::v2::func::{get_types, FuncAPIError, FuncAPIResult},
+    service::v2::func::{FuncAPIError, FuncAPIResult},
 };
 
 pub async fn update_binding(
@@ -152,11 +152,6 @@ pub async fn update_binding(
         }
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     }
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
-        .await?
-        .into_frontend_type(&ctx)
-        .await?
-        .bindings;
 
     track(
         &posthog_client,
@@ -170,11 +165,20 @@ pub async fn update_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let types = get_types(&ctx, func_id).await?;
-    WsEvent::func_bindings_updated(&ctx, binding.clone(), types)
+    let binding = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?
+        .bindings;
+    let func_summary = Func::get_by_id_or_error(&ctx, func_id)
+        .await?
+        .into_frontend_type(&ctx)
+        .await?;
+    WsEvent::func_updated(&ctx, func_summary.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
