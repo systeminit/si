@@ -7,11 +7,11 @@ use dal_test::{
 #[test]
 async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut DalContext) {
     let component_to_remove =
-        create_component_for_default_schema_name(ctx, "Docker Image", "Removed in sub-change set")
+        create_component_for_default_schema_name(ctx, "starfield", "Removed in sub-change set")
             .await
             .expect("Unable to create component.");
     let _component_still_in_change_set =
-        create_component_for_default_schema_name(ctx, "Docker Image", "Still here")
+        create_component_for_default_schema_name(ctx, "starfield", "Still here")
             .await
             .expect("Unable to create component.");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
