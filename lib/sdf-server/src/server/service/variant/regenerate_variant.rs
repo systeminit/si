@@ -15,7 +15,7 @@ use crate::service::variant::SchemaVariantResult;
 pub struct RegenerateVariantRequest {
     // We need to get the updated data here, to ensure we create the prop the user is seeing
     pub variant: si_frontend_types::SchemaVariant,
-    pub code: String,
+    pub code: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -53,7 +53,7 @@ pub async fn regenerate_variant(
         variant.link,
         &variant.color,
         variant.component_type.into(),
-        Some(code),
+        code,
     )
     .await?;
 

@@ -36,6 +36,7 @@
 
 <script lang="ts" setup>
 import { ref, watch, computed, onMounted } from "vue";
+import * as _ from "lodash-es";
 import {
   RequestStatusMessage,
   ScrollArea,
@@ -92,7 +93,11 @@ watch(
   },
 );
 
-const onChange = (_: string, code: string) => {
+const onChange = (
+  _schemaVariantId: string,
+  code: string,
+  debounce: boolean,
+) => {
   if (
     !selectedAsset.value ||
     selectedAssetFuncCode.value === editingAsset.value ||
@@ -102,13 +107,16 @@ const onChange = (_: string, code: string) => {
   }
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
-  if (!updatedHead.value)
+  if (!updatedHead.value) {
+    const asset = _.cloneDeep(selectedAsset.value);
     assetStore.enqueueVariantSave(
       {
-        ...selectedAsset.value,
+        ...asset,
       },
       code,
+      debounce,
     );
+  }
 };
 
 onMounted(async () => {

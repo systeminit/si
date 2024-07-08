@@ -449,15 +449,18 @@ export const useFuncStore = () => {
           });
         },
 
-        updateFuncCode(funcId: FuncId, code: string) {
+        updateFuncCode(funcId: FuncId, code: string, debounce: boolean) {
           const func = _.cloneDeep(this.funcCodeById[funcId]);
           if (!func || func.code === code) return;
           func.code = code;
 
-          this.enqueueFuncSave(func);
+          this.enqueueFuncSave(func, debounce);
         },
 
-        enqueueFuncSave(func: FuncCode) {
+        enqueueFuncSave(func: FuncCode, debounce: boolean) {
+          if (!debounce) {
+            return this.SAVE_FUNC(func);
+          }
           this.editingFuncLatestCode[func.funcId] = func.code;
 
           // Lots of ways to handle this... we may want to handle this debouncing in the component itself

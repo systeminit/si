@@ -82,7 +82,7 @@ const props = defineProps({
 const emit = defineEmits<{
   "update:modelValue": [v: string];
   blur: [v: string];
-  change: [id: string, v: string];
+  change: [id: string, v: string, debounce: boolean];
   close: [];
 }>();
 
@@ -132,7 +132,7 @@ function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
 
   emit("update:modelValue", update.state.doc.toString());
-  emit("change", props.recordId, view.state.doc.toString());
+  emit("change", props.recordId, view.state.doc.toString(), true);
 
   const serializedState = update.view.state.toJSON({ history: historyField });
   if (props.id && serializedState.history) {
@@ -298,11 +298,11 @@ function getUserInfo(userId: { id: string }) {
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
-  if (view) {
-    emit("change", props.recordId, view.state.doc.toString());
+  if (view && view.state.doc.toString() !== props.modelValue) {
+    emit("change", props.recordId, view.state.doc.toString(), false);
     emit("blur", view.state.doc.toString());
-    wsProvider?.destroy();
   }
+  wsProvider?.destroy();
 });
 
 // Initialization /////////////////////////////////////////////////////////////////////////////////
@@ -363,9 +363,9 @@ const mountEditor = async () => {
     };
 
     let editorState;
-    const state = props.id
+    const state = null; /* props.id
       ? window.localStorage.getItem(localStorageHistoryBufferKey.value)
-      : null;
+      : null; */
     if (state) {
       editorState = EditorState.fromJSON(
         {
@@ -387,7 +387,7 @@ const mountEditor = async () => {
     });
 
     view.contentDOM.onblur = () => {
-      emit("change", props.recordId, view.state.doc.toString());
+      emit("change", props.recordId, view.state.doc.toString(), false);
       emit("blur", view.state.doc.toString());
     };
   };
@@ -410,24 +410,6 @@ const mountEditor = async () => {
       ydoc,
     );
 
-    wsProvider.on("sync", (synced: boolean) => {
-      if (yText && synced && yText.toString().length === 0) {
-        yText.insert(0, props.modelValue);
-      }
-
-      if (synced) {
-        finishEditor();
-      }
-    });
-    wsProvider.on(
-      "status",
-      (status: "disconnected" | "connecting" | "connected") => {
-        if (status === "disconnected") {
-          finishEditor();
-        }
-      },
-    );
-
     wsProvider.awareness.setLocalStateField("user", {
       id: authStore.user?.pk,
     });
@@ -438,10 +420,11 @@ const mountEditor = async () => {
     extensions.push(
       yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })), // , { undoManager })),
     );
-  } else {
-    yText.insert(0, props.modelValue);
-    finishEditor();
   }
+
+  yText.delete(0, yText.length);
+  yText.insert(0, props.modelValue);
+  finishEditor();
 
   for (const key in window.localStorage) {
     if (key.startsWith("code-mirror-state-")) {
@@ -468,6 +451,7 @@ watch(
     editorMount,
   ],
   mountEditor,
+  { once: true },
 );
 
 function onVimExit() {
