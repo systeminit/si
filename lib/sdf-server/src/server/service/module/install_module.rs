@@ -101,13 +101,22 @@ async fn install_module_inner(
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
+
+    let (schema_id, past_module_hashes) = if pkg.schemas()?.len() > 1 {
+        (None, None)
+    } else {
+        (
+            module_details.schema_id().map(Into::into),
+            module_details.past_hashes,
+        )
+    };
     let metadata = pkg.metadata()?;
     let (_, svs, _) = import_pkg_from_pkg(
         ctx,
         &pkg,
         Some(ImportOptions {
-            schema_id: module_details.schema_id().map(Into::into),
-            past_module_hashes: module_details.past_hashes,
+            schema_id,
+            past_module_hashes,
             ..Default::default()
         }),
     )
@@ -122,18 +131,6 @@ async fn install_module_inner(
             "pkg_name": metadata.name().to_owned(),
         }),
     );
-    //
-    // let user_pk = match ctx.history_actor() {
-    //     HistoryActor::User(user_pk) => {
-    //         let user = User::get_by_pk(ctx, *user_pk)
-    //             .await?
-    //             .ok_or(PkgError::InvalidUser(*user_pk))?;
-    //
-    //         Some(user.pk())
-    //     }
-    //
-    //     HistoryActor::SystemInit => None,
-    // };
 
     if metadata.kind() == SiPkgKind::Module {
         WsEvent::module_imported(ctx, svs)
@@ -141,27 +138,6 @@ async fn install_module_inner(
             .publish_on_commit(ctx)
             .await?;
     }
-
-    // match metadata.kind() {
-    //     SiPkgKind::Module => {
-    //         WsEvent::module_imported(ctx, svs)
-    //             .await?
-    //             .publish_on_commit(ctx)
-    //             .await?;
-    //     }
-    // SiPkgKind::WorkspaceBackup => {
-    //     let workspace_pk = match metadata.workspace_pk() {
-    //         Some(workspace_pk) => Some(WorkspacePk::from_str(workspace_pk)?),
-    //         None => None,
-    //     };
-    //
-    //     WsEvent::workspace_imported(ctx, workspace_pk, user_pk)
-    //         .await?
-    //         .publish_on_commit(ctx)
-    //         .await?
-    // }
-    // _ => {}
-    // }
 
     ctx.commit().await?;
 
