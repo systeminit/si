@@ -89,7 +89,7 @@
           @click="funcDetailsTabGroupRef.selectTab('test')"
         />
         <IconButton
-          :disabled="editingFunc.isLocked"
+          :disabled="schemaVariant?.isLocked"
           :loading="isDetaching"
           icon="unlink"
           iconTone="warning"
@@ -276,6 +276,10 @@ const funcDetailsTabGroupRef = ref();
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
+
+const schemaVariant = computed(() => {
+  return assetStore.variantFromListById[props.schemaVariantId];
+});
 
 const emit = defineEmits<{
   (e: "expandPanel"): void;
