@@ -118,6 +118,7 @@
         </div>
         <CodeEditor
           v-if="loadFuncDetailsReq && !loadFuncDetailsReq?.value.isPending"
+          :id="() => `display-${selectedExistingFuncId}`"
           v-model="selectedFuncCode"
           :recordId="selectedExistingFuncId"
           disabled

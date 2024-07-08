@@ -496,7 +496,6 @@ export const useFuncStore = () => {
       onActivated() {
         this.FETCH_FUNC_LIST();
 
-        const assetStore = useAssetStore();
         const realtimeStore = useRealtimeStore();
 
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
