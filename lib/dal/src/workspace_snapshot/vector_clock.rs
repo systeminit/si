@@ -86,6 +86,21 @@ impl VectorClock {
         }
     }
 
+    pub fn inc_to_max_of(
+        &mut self,
+        vector_clock_id: VectorClockId,
+        new_clock_value: DateTime<Utc>,
+    ) {
+        if let Some(lamport_clock) = self.entries.get_mut(&vector_clock_id) {
+            lamport_clock.inc_to_max_of(new_clock_value);
+        } else {
+            self.entries.insert(
+                vector_clock_id,
+                LamportClock::new_with_value(new_clock_value),
+            );
+        }
+    }
+
     /// Increment the entry for [`VectorClockId`], adding one if there wasn't one already.
     pub fn inc(&mut self, vector_clock_id: VectorClockId) {
         if let Some(lamport_clock) = self.entries.get_mut(&vector_clock_id) {

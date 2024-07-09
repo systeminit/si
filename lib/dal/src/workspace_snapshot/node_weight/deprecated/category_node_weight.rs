@@ -9,11 +9,11 @@ use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 pub struct DeprecatedCategoryNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    kind: CategoryNodeKind,
+    pub kind: CategoryNodeKind,
     // TODO This should not be a content hash, since it does not point to a value in cas
-    content_hash: ContentHash,
-    merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: DeprecatedVectorClock,
-    vector_clock_recently_seen: DeprecatedVectorClock,
-    vector_clock_write: DeprecatedVectorClock,
+    pub content_hash: ContentHash,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub vector_clock_first_seen: DeprecatedVectorClock,
+    pub vector_clock_recently_seen: DeprecatedVectorClock,
+    pub vector_clock_write: DeprecatedVectorClock,
 }

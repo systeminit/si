@@ -11,6 +11,8 @@ use crate::workspace_snapshot::{
 };
 use crate::EdgeWeightKindDiscriminants;
 
+use super::deprecated::DeprecatedContentNodeWeight;
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContentNodeWeight {
     /// The stable local ID of the object in question. Mainly used by external things like
@@ -190,5 +192,20 @@ impl std::fmt::Debug for ContentNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedContentNodeWeight> for ContentNodeWeight {
+    fn from(value: DeprecatedContentNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            to_delete: value.to_delete,
+        }
     }
 }

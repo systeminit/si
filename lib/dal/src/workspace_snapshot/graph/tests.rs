@@ -4,7 +4,7 @@ use si_events::{ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
     workspace_snapshot::node_weight::NodeWeight, EdgeWeight, EdgeWeightKind, PropKind,
-    WorkspaceSnapshotGraph,
+    WorkspaceSnapshotGraphV1,
 };
 
 mod attribute_value_build_view;
@@ -13,7 +13,7 @@ mod rebase;
 
 #[allow(dead_code)]
 fn add_prop_nodes_to_graph<'a, 'b>(
-    graph: &'a mut WorkspaceSnapshotGraph,
+    graph: &'a mut WorkspaceSnapshotGraphV1,
     vector_clock_id: VectorClockId,
     nodes: &'a [&'b str],
     ordered: bool,
@@ -50,7 +50,7 @@ fn add_prop_nodes_to_graph<'a, 'b>(
 
 #[allow(dead_code)]
 fn add_edges(
-    graph: &mut WorkspaceSnapshotGraph,
+    graph: &mut WorkspaceSnapshotGraphV1,
     node_id_map: &HashMap<&str, Ulid>,
     vector_clock_id: VectorClockId,
     edges: &[(Option<&str>, &str)],
@@ -108,7 +108,7 @@ mod test {
     use crate::workspace_snapshot::graph::ConflictsAndUpdates;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
-    use crate::WorkspaceSnapshotGraph;
+    use crate::WorkspaceSnapshotGraphV1;
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
 
     use super::add_edges;
@@ -117,7 +117,7 @@ mod test {
     #[test]
     fn new() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
     }
@@ -128,7 +128,7 @@ mod test {
     #[test]
     fn get_root_index_by_root_id_on_fresh_graph() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let root_id = graph
@@ -189,7 +189,7 @@ mod test {
 
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
 
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let node_id_map = add_prop_nodes_to_graph(&mut graph, vector_clock_id, &nodes, false);
@@ -247,7 +247,7 @@ mod test {
     fn add_nodes_and_edges() {
         let actor_a = Ulid::new();
         let vector_clock_id = VectorClockId::new(Ulid::new(), actor_a);
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -398,7 +398,7 @@ mod test {
     #[test]
     fn cyclic_failure() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -505,7 +505,7 @@ mod test {
     #[test]
     fn update_content() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -654,7 +654,7 @@ mod test {
     #[test]
     fn add_ordered_node() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -869,7 +869,7 @@ mod test {
     fn add_ordered_node_below_root() {
         let active_vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
 
-        let mut graph = WorkspaceSnapshotGraph::new(active_vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(active_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -913,7 +913,7 @@ mod test {
     fn reorder_ordered_node() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
 
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -1184,7 +1184,7 @@ mod test {
     fn remove_unordered_node_and_detect_edge_removal() {
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
 
-        let mut graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -1340,7 +1340,7 @@ mod test {
     #[test]
     fn remove_unordered_node() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
@@ -1465,7 +1465,7 @@ mod test {
     #[test]
     fn remove_ordered_node() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");

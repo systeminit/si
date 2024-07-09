@@ -7,10 +7,10 @@ use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 pub struct DeprecatedDependentValueRootNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,
-    value_id: Ulid,
+    pub value_id: Ulid,
     pub touch_count: u16, // unused
-    merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: DeprecatedVectorClock,
-    vector_clock_recently_seen: DeprecatedVectorClock,
-    vector_clock_write: DeprecatedVectorClock,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub vector_clock_first_seen: DeprecatedVectorClock,
+    pub vector_clock_recently_seen: DeprecatedVectorClock,
+    pub vector_clock_write: DeprecatedVectorClock,
 }

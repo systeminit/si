@@ -11,13 +11,13 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeprecatedActionNodeWeight {
     pub id: Ulid,
-    state: ActionState,
-    originating_changeset_id: ChangeSetId,
+    pub state: ActionState,
+    pub originating_changeset_id: ChangeSetId,
     // DEPRECATED
-    func_execution_pk: Option<FuncExecutionPk>,
+    pub func_execution_pk: Option<FuncExecutionPk>,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: DeprecatedVectorClock,
-    vector_clock_recently_seen: DeprecatedVectorClock,
-    vector_clock_write: DeprecatedVectorClock,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub vector_clock_first_seen: DeprecatedVectorClock,
+    pub vector_clock_recently_seen: DeprecatedVectorClock,
+    pub vector_clock_write: DeprecatedVectorClock,
 }

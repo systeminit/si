@@ -21,9 +21,10 @@ pub struct RebaseRequest {
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
     /// rebasing the "to rebase" workspace snapshot.
     pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    /// Derived from the ephemeral or persisted change set that's either the base change set, the
-    /// last change set before edits were made, or the change set that you are trying to rebase
-    /// onto base.
+    /// *DEPRECATED*: We no longer have "edit sessions", the correct vector
+    /// clock to choose for the onto workspace is always the most up to date
+    /// "recently seen" clock in the root node of the onto snapshot. This field
+    /// is ignored in the request.
     pub onto_vector_clock_id: VectorClockId,
     /// DEPRECATED: We have to hang on to this to ensure we can deserialize this message
     pub dvu_values: Option<Vec<Ulid>>,

@@ -27,11 +27,13 @@ pub mod edge_info;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
+pub mod migrator;
 pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
 use futures::executor;
+use graph::WorkspaceSnapshotGraph;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -64,7 +66,7 @@ use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{pk, ChangeSet, Component, ComponentError, ComponentId, Workspace, WorkspaceError};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraph,
+    DalContext, TransactionsError, WorkspaceSnapshotGraphV1,
 };
 
 use self::graph::ConflictsAndUpdates;
@@ -183,7 +185,7 @@ pub struct WorkspaceSnapshot {
     /// to read or write to the graph. See the SnapshotReadGuard and SnapshotWriteGuard
     /// implemenations of Deref and DerefMut, and their construction in
     /// working_copy()/working_copy_mut()
-    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraph>>>,
+    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraphV1>>>,
 
     /// Whether we should perform cycle checks on add edge operations
     cycle_check: Arc<AtomicBool>,
@@ -218,16 +220,16 @@ impl std::ops::Drop for CycleCheckGuard {
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
-    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraph>>,
+    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphV1>>,
 }
 
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotWriteGuard<'a> {
-    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraph>>,
+    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphV1>>,
 }
 
 impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
-    type Target = WorkspaceSnapshotGraph;
+    type Target = WorkspaceSnapshotGraphV1;
 
     fn deref(&self) -> &Self::Target {
         if self.working_copy_read_guard.is_some() {
@@ -240,7 +242,7 @@ impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
 }
 
 impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
-    type Target = WorkspaceSnapshotGraph;
+    type Target = WorkspaceSnapshotGraphV1;
 
     fn deref(&self) -> &Self::Target {
         let option = &*self.working_copy_write_guard;
@@ -276,7 +278,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<Self> {
-        let mut graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(vector_clock_id)?;
+        let mut graph: WorkspaceSnapshotGraphV1 = WorkspaceSnapshotGraphV1::new(vector_clock_id)?;
 
         // Create the category nodes under root.
         for category_node_kind in CategoryNodeKind::iter() {
@@ -295,7 +297,7 @@ impl WorkspaceSnapshot {
         // "write" will populate them using the assigned working copy.
         let initial = Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
-            read_only_graph: Arc::new(graph),
+            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V1(graph)),
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
@@ -379,7 +381,9 @@ impl WorkspaceSnapshot {
                 .layer_db()
                 .workspace_snapshot()
                 .write(
-                    Arc::new(self.working_copy().await.clone()),
+                    Arc::new(WorkspaceSnapshotGraph::V1(
+                        self.working_copy().await.clone(),
+                    )),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
@@ -423,7 +427,7 @@ impl WorkspaceSnapshot {
     async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
         if self.working_copy.read().await.is_none() {
             // Make a copy of the read only graph as our new working copy
-            *self.working_copy.write().await = Some(self.read_only_graph.as_ref().clone());
+            *self.working_copy.write().await = Some(self.read_only_graph.inner().clone());
         }
 
         SnapshotWriteGuard {
@@ -765,6 +769,7 @@ impl WorkspaceSnapshot {
         }
     }
 
+    /// Write the snapshot to disk. *WARNING* can panic! Use only for debugging
     pub async fn write_to_disk(&self, file_suffix: &str) {
         self.working_copy().await.write_to_disk(file_suffix);
     }

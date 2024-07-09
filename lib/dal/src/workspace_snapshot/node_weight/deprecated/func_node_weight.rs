@@ -9,11 +9,11 @@ use crate::workspace_snapshot::{content_address::ContentAddress, graph::LineageI
 pub struct DeprecatedFuncNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: DeprecatedVectorClock,
-    vector_clock_recently_seen: DeprecatedVectorClock,
-    vector_clock_write: DeprecatedVectorClock,
-    name: String,
-    func_kind: FuncKind,
+    pub content_address: ContentAddress,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub vector_clock_first_seen: DeprecatedVectorClock,
+    pub vector_clock_recently_seen: DeprecatedVectorClock,
+    pub vector_clock_write: DeprecatedVectorClock,
+    pub name: String,
+    pub func_kind: FuncKind,
 }

@@ -2,13 +2,15 @@ use std::{env, fs::File, io::prelude::*};
 
 use si_layer_cache::db::serialize;
 
-use dal::WorkspaceSnapshotGraph;
+use dal::{
+    workspace_snapshot::node_weight::NodeWeight, NodeWeightDiscriminants, WorkspaceSnapshotGraphV1,
+};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
 const USAGE: &str = "usage: cargo run --example rebase <TO_REBASE_FILE_PATH> <ONTO_FILE_PATH>";
 
-fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraph> {
+fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraphV1> {
     let mut file = File::open(path)?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
@@ -24,26 +26,62 @@ fn main() -> Result<()> {
     let mut to_rebase_graph = load_snapshot_graph(&to_rebase_path)?;
     let onto_graph = load_snapshot_graph(&onto_path)?;
 
-    let to_rebase_vector_clock_id = to_rebase_graph
+    let to_rebase_vector_clock_id = dbg!(to_rebase_graph
         .max_recently_seen_clock_id(None)
-        .expect("Unable to find a vector clock id in to_rebase");
-    let onto_vector_clock_id = onto_graph
+        .expect("Unable to find a vector clock id in to_rebase"));
+    let onto_vector_clock_id = dbg!(onto_graph
         .max_recently_seen_clock_id(None)
-        .expect("Unable to find a vector clock id in onto");
+        .expect("Unable to find a vector clock id in onto"));
 
     let conflicts_and_updates = to_rebase_graph.detect_conflicts_and_updates(
-        to_rebase_vector_clock_id,
+        dbg!(to_rebase_vector_clock_id),
         &onto_graph,
         onto_vector_clock_id,
     )?;
 
-    dbg!(&conflicts_and_updates);
+    let mut last_ordering_node = None;
+    for update in &conflicts_and_updates.updates {
+        match update {
+            dal::workspace_snapshot::update::Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            } => {
+                if matches!(source.node_weight_kind, NodeWeightDiscriminants::Ordering) {
+                    if let Some(ordering_node) = &last_ordering_node {
+                        if let NodeWeight::Ordering(ordering) = ordering_node {
+                            dbg!(destination, ordering.order());
+                        }
+                    }
+                }
+            }
+            dal::workspace_snapshot::update::Update::RemoveEdge {
+                source,
+                destination,
+                edge_kind,
+            } => {}
+            dal::workspace_snapshot::update::Update::ReplaceSubgraph { onto, to_rebase } => {
+                if matches!(onto.node_weight_kind, NodeWeightDiscriminants::Ordering) {
+                    last_ordering_node = onto_graph
+                        .get_node_weight_opt(onto.index)
+                        .expect("couldn't get node")
+                        .map(ToOwned::to_owned);
+                }
+            }
+            dal::workspace_snapshot::update::Update::MergeCategoryNodes {
+                to_rebase_category_id,
+                onto_category_id,
+            } => {}
+        }
+    }
 
-    to_rebase_graph.perform_updates(
+    dbg!(to_rebase_graph.perform_updates(
         to_rebase_vector_clock_id,
         &onto_graph,
         &conflicts_and_updates.updates,
-    )?;
+    ))?;
 
     Ok(())
 }
+
+// 01J2F7HKZFMTN6GVKXE73044AT

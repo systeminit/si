@@ -7,5 +7,5 @@ pk!(DeprecatedVectorClockId);
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct DeprecatedVectorClock {
-    entries: HashMap<DeprecatedVectorClockId, LamportClock>,
+    pub entries: HashMap<DeprecatedVectorClockId, LamportClock>,
 }

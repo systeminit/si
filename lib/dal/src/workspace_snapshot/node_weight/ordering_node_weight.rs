@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
+use super::deprecated::DeprecatedOrderingNodeWeight;
 use super::NodeWeightError;
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
@@ -184,5 +185,20 @@ impl std::fmt::Debug for OrderingNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedOrderingNodeWeight> for OrderingNodeWeight {
+    fn from(value: DeprecatedOrderingNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            order: value.order,
+            content_hash: value.content_hash,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

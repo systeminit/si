@@ -15,16 +15,16 @@ use crate::{
         vector_clock::HasVectorClocks,
         NodeInformation,
     },
-    EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph,
+    EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV1,
 };
 
 use super::{ConflictsAndUpdates, WorkspaceSnapshotGraphResult};
 
 pub struct DetectConflictsAndUpdates<'a, 'b> {
-    to_rebase_graph: &'a WorkspaceSnapshotGraph,
+    to_rebase_graph: &'a WorkspaceSnapshotGraphV1,
     to_rebase_vector_clock_id: VectorClockId,
 
-    onto_graph: &'b WorkspaceSnapshotGraph,
+    onto_graph: &'b WorkspaceSnapshotGraphV1,
     onto_vector_clock_id: VectorClockId,
 }
 
@@ -48,9 +48,9 @@ impl ConflictsAndUpdatesControl {
 
 impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
     pub fn new(
-        to_rebase_graph: &'a WorkspaceSnapshotGraph,
+        to_rebase_graph: &'a WorkspaceSnapshotGraphV1,
         to_rebase_vector_clock_id: VectorClockId,
-        onto_graph: &'b WorkspaceSnapshotGraph,
+        onto_graph: &'b WorkspaceSnapshotGraphV1,
         onto_vector_clock_id: VectorClockId,
     ) -> Self {
         Self {

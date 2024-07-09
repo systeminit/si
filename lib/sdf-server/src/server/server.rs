@@ -2,6 +2,7 @@ use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::jwt_key::JwtConfig;
 use dal::pkg::PkgError;
+use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
 use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
@@ -80,6 +81,8 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     SiPkg(#[from] SiPkgError),
+    #[error("snapshot migrator error: {0}")]
+    SnapshotGraphMigrator(#[from] SnapshotGraphMigratorError),
     #[error(transparent)]
     SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
@@ -260,10 +263,23 @@ impl Server<(), ()> {
         ))
     }
 
+    pub async fn migrate_snapshots(services_context: &ServicesContext) -> Result<()> {
+        let dal_context = services_context.clone().into_builder(true);
+        let ctx = dal_context.build_default().await?;
+
+        let mut migrator = SnapshotGraphMigrator::new();
+        migrator.migrate_all(&ctx).await?;
+        ctx.commit_no_rebase().await?;
+
+        Ok(())
+    }
+
     #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
         services_context.layer_db().pg_migrate().await?;
         dal::migrate_all_with_progress(services_context).await?;
+
+        Self::migrate_snapshots(services_context).await?;
 
         migrate_builtins_from_module_index(services_context).await?;
         Ok(())
@@ -334,11 +350,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     let instant = Instant::now();
 
     let mut dal_context = services_context.clone().into_builder(true);
-    info!("a");
     dal_context.set_no_dependent_values();
-    info!("b");
-    dal_context.set_no_auto_migrate_snapshots();
-    info!("c");
     let mut ctx = dal_context.build_default().await?;
     info!("setup builtin workspace");
     Workspace::setup_builtin(&mut ctx).await?;

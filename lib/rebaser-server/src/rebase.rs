@@ -21,6 +21,8 @@ pub enum RebaseError {
     MissingChangeSet(ChangeSetId),
     #[error("to_rebase snapshot has no recently seen vector clock for its change set {0}")]
     MissingVectorClockForChangeSet(ChangeSetId),
+    #[error("snapshot has no recently seen vector clock for any change set")]
+    MissingVectorClockForSnapshot,
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
     MissingWorkspaceSnapshotForChangeSet(ChangeSetId),
     #[error("serde json error: {0}")]
@@ -65,11 +67,18 @@ pub async fn perform_rebase(
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     // Perform the conflicts and updates detection.
-    let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id;
+    //let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id;
 
     // Choose the most recent vector clock for the to_rebase change set for conflict detection
     let to_rebase_vector_clock_id = to_rebase_workspace_snapshot
         .max_recently_seen_clock_id(Some(to_rebase_change_set.id))
+        .await?
+        .ok_or(RebaseError::MissingVectorClockForChangeSet(
+            to_rebase_change_set.id,
+        ))?;
+
+    let onto_vector_clock_id = onto_workspace_snapshot
+        .max_recently_seen_clock_id(None)
         .await?
         .ok_or(RebaseError::MissingVectorClockForChangeSet(
             to_rebase_change_set.id,
@@ -99,6 +108,7 @@ pub async fn perform_rebase(
                 conflicts_and_updates.updates.as_slice(),
             )
             .await?;
+
         info!("updates complete: {:?}", start.elapsed());
 
         if !conflicts_and_updates.updates.is_empty() {

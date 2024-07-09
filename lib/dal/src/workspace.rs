@@ -11,6 +11,7 @@ use si_pkg::{
     WorkspaceExportMetadataV0,
 };
 use std::collections::{HashMap, VecDeque};
+use std::str::FromStr;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -19,6 +20,7 @@ use ulid::Ulid;
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
@@ -64,6 +66,8 @@ pub enum WorkspaceError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("strum parse error: {0}")]
+    StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
@@ -95,6 +99,7 @@ pub struct Workspace {
     #[serde(flatten)]
     timestamp: Timestamp,
     token: Option<String>,
+    snapshot_version: WorkspaceSnapshotGraphDiscriminants,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -103,6 +108,7 @@ impl TryFrom<PgRow> for Workspace {
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        let snapshot_version: String = row.try_get("snapshot_version")?;
         Ok(Self {
             pk: row.try_get("pk")?,
             name: row.try_get("name")?,
@@ -110,6 +116,7 @@ impl TryFrom<PgRow> for Workspace {
             uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
             token: row.try_get("token")?,
+            snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
         })
     }
 }
@@ -129,6 +136,10 @@ impl Workspace {
 
     pub fn token(&self) -> Option<String> {
         self.token.clone()
+    }
+
+    pub fn snapshot_version(&self) -> WorkspaceSnapshotGraphDiscriminants {
+        self.snapshot_version
     }
 
     pub async fn set_token(&mut self, ctx: &DalContext, token: String) -> WorkspaceResult<()> {
@@ -223,9 +234,9 @@ impl Workspace {
         Ok(())
     }
 
-    /// This private method attempts to find the builtin [`Workspace`].
+    /// This method attempts to find the builtin [`Workspace`].
     #[instrument(skip_all)]
-    async fn find_builtin(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
+    pub async fn find_builtin(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
         let head_pk = WorkspaceId::NONE;
         let maybe_row = ctx
             .txns()
@@ -586,5 +597,26 @@ impl Workspace {
         let has_change_set: bool = row.try_get("has_change_set")?;
 
         Ok(has_change_set)
+    }
+
+    /// Mark all workspaces in the database with a given snapshot version. Use
+    /// only if you know you have migrated the snapshots for these workspaces to
+    /// this version!
+    pub async fn set_snapshot_version_for_all_workspaces(
+        ctx: &DalContext,
+        snapshot_version: WorkspaceSnapshotGraphDiscriminants,
+    ) -> WorkspaceResult<()> {
+        let version_string = snapshot_version.to_string();
+
+        ctx.txns()
+            .await?
+            .pg()
+            .query(
+                "UPDATE workspaces SET snapshot_version = $1",
+                &[&version_string],
+            )
+            .await?;
+
+        Ok(())
     }
 }

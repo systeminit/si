@@ -32,6 +32,8 @@ const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancesto
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
+    #[error("change set with id {0} not found")]
+    ChangeSetNotFound(ChangeSetId),
     #[error("could not find default change set: {0}")]
     DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
@@ -376,6 +378,30 @@ impl ChangeSet {
                 "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4)",
                 &[
                     &ctx.tenancy().workspace_pk(),
+                    &ChangeSetStatus::Open.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
+    /// Take care when working on these change sets to set the workspace id on the dal context!!!
+    pub async fn list_open_for_all_workspaces(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
+        let mut result = vec![];
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE status IN ($1, $2, $3)",
+                &[
                     &ChangeSetStatus::Open.to_string(),
                     &ChangeSetStatus::NeedsApproval.to_string(),
                     &ChangeSetStatus::NeedsAbandonApproval.to_string(),

@@ -16,6 +16,7 @@ use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::VectorClockChangeSetId;
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
+use strum::{EnumDiscriminants, EnumString};
 use thiserror::Error;
 
 use telemetry::prelude::*;
@@ -94,8 +95,33 @@ pub enum WorkspaceSnapshotGraphError {
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
 
+#[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString))]
+pub enum WorkspaceSnapshotGraph {
+    Legacy,
+    V1(WorkspaceSnapshotGraphV1),
+}
+
+impl std::ops::Deref for WorkspaceSnapshotGraph {
+    type Target = WorkspaceSnapshotGraphV1;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner()
+    }
+}
+
+impl WorkspaceSnapshotGraph {
+    /// Return a reference to the most up to date enum variant for the graph type
+    pub fn inner(&self) -> &WorkspaceSnapshotGraphV1 {
+        match self {
+            Self::Legacy => unimplemented!("Attempted to access an unmigrated snapshot!"),
+            Self::V1(inner) => inner,
+        }
+    }
+}
+
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraph {
+pub struct WorkspaceSnapshotGraphV1 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
@@ -111,84 +137,7 @@ pub struct ConflictsAndUpdates {
     pub updates: Vec<Update>,
 }
 
-// impl From<DeprecatedWorkspaceSnapshotGraph> for WorkspaceSnapshotGraph {
-//     fn from(deprecated_graph: DeprecatedWorkspaceSnapshotGraph) -> Self {
-//         let deprecated_graph_inner = &deprecated_graph.graph;
-//         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(
-//             deprecated_graph_inner.node_count(),
-//             deprecated_graph_inner.edge_count(),
-//         );
-//         let mut node_index_by_id: HashMap<Ulid, NodeIndex> = HashMap::new();
-//         let mut node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>> = HashMap::new();
-//         // This is just a place holder until we find the root when iterating the nodes
-//         let mut root_index = deprecated_graph.root_index;
-
-//         let mut old_graph_idx_to_id = HashMap::new();
-
-//         for node_weight in deprecated_graph_inner.node_weights() {
-//             let id = node_weight.id();
-//             let lineage_id = node_weight.lineage_id();
-
-//             if let Some(idx) = deprecated_graph.node_index_by_id.get(&id) {
-//                 old_graph_idx_to_id.insert(idx, id);
-//             }
-
-//             let idx = graph.add_node(node_weight.to_owned());
-
-//             if let NodeWeight::Content(content_node_weight) = node_weight {
-//                 if let ContentAddress::Root = content_node_weight.content_address() {
-//                     root_index = idx;
-//                 }
-//             }
-
-//             node_index_by_id.insert(id, idx);
-//             node_indices_by_lineage_id
-//                 .entry(lineage_id)
-//                 .and_modify(|index_set| {
-//                     index_set.insert(idx);
-//                 })
-//                 .or_insert(HashSet::from([idx]));
-//         }
-
-//         for edge_idx in deprecated_graph_inner.edge_indices() {
-//             let edge_endpoints = deprecated_graph_inner.edge_endpoints(edge_idx);
-//             let deprecated_edge_weight = deprecated_graph_inner.edge_weight(edge_idx);
-
-//             if let (Some((source_idx, target_idx)), Some(deprecated_edge_weight)) =
-//                 (edge_endpoints, deprecated_edge_weight)
-//             {
-//                 let source_id_in_new_graph = old_graph_idx_to_id.get(&source_idx).copied();
-//                 let target_id_in_new_graph = old_graph_idx_to_id.get(&target_idx).copied();
-//                 if let (Some(source_id), Some(target_id)) =
-//                     (source_id_in_new_graph, target_id_in_new_graph)
-//                 {
-//                     let source_idx_in_new_graph = node_index_by_id.get(&source_id).copied();
-//                     let target_idx_in_new_graph = node_index_by_id.get(&target_id).copied();
-
-//                     if let (Some(new_source_idx), Some(new_target_idx)) =
-//                         (source_idx_in_new_graph, target_idx_in_new_graph)
-//                     {
-//                         graph.add_edge(
-//                             new_source_idx,
-//                             new_target_idx,
-//                             deprecated_edge_weight.to_owned().into(),
-//                         );
-//                     }
-//                 }
-//             }
-//         }
-
-//         Self {
-//             graph,
-//             node_index_by_id,
-//             node_indices_by_lineage_id,
-//             root_index,
-//             ulid_generator: Arc::new(Mutex::new(Generator::new())),
-//         }
-//     }
-// }
-
-impl std::fmt::Debug for WorkspaceSnapshotGraph {
+impl std::fmt::Debug for WorkspaceSnapshotGraphV1 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
@@ -198,7 +147,7 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
     }
 }
 
-impl WorkspaceSnapshotGraph {
+impl WorkspaceSnapshotGraphV1 {
     pub fn new(vector_clock_id: VectorClockId) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
             StableDiGraph::with_capacity(1024, 1024);
@@ -224,6 +173,21 @@ impl WorkspaceSnapshotGraph {
         result.add_node_finalize(node_id, lineage_id, root_index)?;
 
         Ok(result)
+    }
+
+    pub fn new_from_parts(
+        graph: StableDiGraph<NodeWeight, EdgeWeight>,
+        node_index_by_id: HashMap<Ulid, NodeIndex>,
+        node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
+        root_index: NodeIndex,
+    ) -> Self {
+        Self {
+            graph,
+            node_index_by_id,
+            node_indices_by_lineage_id,
+            root_index,
+            ulid_generator: Arc::new(Mutex::new(Generator::new())),
+        }
     }
 
     pub fn root(&self) -> NodeIndex {
@@ -704,7 +668,7 @@ impl WorkspaceSnapshotGraph {
     pub fn detect_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshotGraph,
+        onto: &WorkspaceSnapshotGraphV1,
         onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotGraphResult<ConflictsAndUpdates> {
         DetectConflictsAndUpdates::new(self, to_rebase_vector_clock_id, onto, onto_vector_clock_id)
@@ -1094,7 +1058,7 @@ impl WorkspaceSnapshotGraph {
     /// not already exist in `self`.
     pub fn find_in_self_or_import_node_from_other(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         other_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let node_weight_to_import = other.get_node_weight(other_node_index)?.clone();
@@ -1122,7 +1086,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn import_subgraph(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
@@ -1168,7 +1132,7 @@ impl WorkspaceSnapshotGraph {
     pub fn import_component_subgraph(
         &mut self,
         vector_clock_id: VectorClockId,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         component_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         // * DFS event-based traversal.
@@ -1194,7 +1158,7 @@ impl WorkspaceSnapshotGraph {
     /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
     fn import_component_subgraph_process_dfs_event(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
         vector_clock_id: VectorClockId,
         event: DfsEvent<NodeIndex>,
@@ -1764,12 +1728,25 @@ impl WorkspaceSnapshotGraph {
         Ok(())
     }
 
+    /// Does a depth first post-order walk to recalculate the entire merkle tree
+    /// hash. This operation can be expensive, so should be done only when we
+    /// know it needs to be (like when migrating snapshots between versions)
+    pub fn recalculate_entire_merkle_tree_hash(&mut self) -> WorkspaceSnapshotGraphResult<()> {
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
+
+        while let Some(node_index) = dfs.next(&self.graph) {
+            self.update_merkle_tree_hash(node_index)?;
+        }
+
+        Ok(())
+    }
+
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
     /// and a provided graph as the "onto" graph.
     pub fn perform_updates(
         &mut self,
         to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshotGraph,
+        onto: &WorkspaceSnapshotGraphV1,
         updates: &[Update],
     ) -> WorkspaceSnapshotGraphResult<()> {
         for update in updates {
@@ -1880,7 +1857,7 @@ impl WorkspaceSnapshotGraph {
     /// id as the node found in other.
     fn find_latest_idx_in_self_from_other_idx(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         other_idx: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
         let other_id = other.get_node_weight(other_idx)?.id();
@@ -1892,7 +1869,7 @@ impl WorkspaceSnapshotGraph {
     fn reuse_from_self_or_import_subgraph_from_onto(
         &mut self,
         unchecked: NodeIndex,
-        onto: &WorkspaceSnapshotGraph,
+        onto: &WorkspaceSnapshotGraphV1,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let unchecked_node_weight = onto.get_node_weight(unchecked)?;
 
@@ -1922,7 +1899,7 @@ impl WorkspaceSnapshotGraph {
 }
 
 fn ordering_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraph,
+    snapshot: &WorkspaceSnapshotGraphV1,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -1944,7 +1921,7 @@ fn ordering_node_indexes_for_node_index(
 }
 
 fn prop_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraph,
+    snapshot: &WorkspaceSnapshotGraphV1,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot

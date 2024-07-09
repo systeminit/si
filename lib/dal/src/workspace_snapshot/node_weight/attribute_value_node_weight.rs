@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
-    func::FuncExecutionPk,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
@@ -11,6 +10,8 @@ use crate::{
     },
     EdgeWeightKindDiscriminants,
 };
+
+use super::deprecated::DeprecatedAttributeValueNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AttributeValueNodeWeight {
@@ -27,8 +28,6 @@ pub struct AttributeValueNodeWeight {
     /// The processed return value.
     /// Example: empty array.
     value: Option<ContentAddress>,
-    // DEPRECATED - this was the old function execution system
-    func_execution_pk: Option<FuncExecutionPk>,
 }
 
 impl AttributeValueNodeWeight {
@@ -48,7 +47,6 @@ impl AttributeValueNodeWeight {
             vector_clock_write: VectorClock::new(vector_clock_id),
             unprocessed_value,
             value,
-            func_execution_pk: None,
         })
     }
 
@@ -83,16 +81,6 @@ impl AttributeValueNodeWeight {
 
     pub fn set_value(&mut self, value: Option<ContentAddress>) {
         self.value = value
-    }
-
-    #[deprecated(note = "we no longer use func execution pks")]
-    pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
-        self.func_execution_pk = func_execution_pk
-    }
-
-    #[deprecated(note = "we no longer use func execution pks")]
-    pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
-        self.func_execution_pk
     }
 
     pub fn lineage_id(&self) -> Ulid {
@@ -169,5 +157,20 @@ impl std::fmt::Debug for AttributeValueNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedAttributeValueNodeWeight> for AttributeValueNodeWeight {
+    fn from(value: DeprecatedAttributeValueNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            unprocessed_value: value.unprocessed_value,
+            value: value.value,
+        }
     }
 }

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
+use deprecated::DeprecatedNodeWeight;
 use serde::{Deserialize, Serialize};
 use si_events::VectorClockChangeSetId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
@@ -83,6 +84,8 @@ pub enum NodeWeightError {
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
+/// **WARNING**: the order of this enum is important! Do not re-order elements.
+/// New variants must go at the end, even if it's not in lexical order!
 #[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize))]
 pub enum NodeWeight {
@@ -93,12 +96,12 @@ pub enum NodeWeight {
     Category(CategoryNodeWeight),
     Component(ComponentNodeWeight),
     Content(ContentNodeWeight),
+    DependentValueRoot(DependentValueRootNodeWeight),
     Func(FuncNodeWeight),
     FuncArgument(FuncArgumentNodeWeight),
     Ordering(OrderingNodeWeight),
     Prop(PropNodeWeight),
     Secret(SecretNodeWeight),
-    DependentValueRoot(DependentValueRootNodeWeight),
 }
 
 impl NodeWeight {
@@ -861,6 +864,30 @@ impl HasVectorClocks for NodeWeight {
             NodeWeight::Prop(weight) => weight.vector_clock_recently_seen_mut(),
             NodeWeight::Secret(weight) => weight.vector_clock_recently_seen_mut(),
             NodeWeight::DependentValueRoot(weight) => weight.vector_clock_recently_seen_mut(),
+        }
+    }
+}
+
+impl From<DeprecatedNodeWeight> for NodeWeight {
+    fn from(value: DeprecatedNodeWeight) -> Self {
+        match value {
+            DeprecatedNodeWeight::Action(weight) => Self::Action(weight.into()),
+            DeprecatedNodeWeight::ActionPrototype(weight) => Self::ActionPrototype(weight.into()),
+            DeprecatedNodeWeight::AttributePrototypeArgument(weight) => {
+                Self::AttributePrototypeArgument(weight.into())
+            }
+            DeprecatedNodeWeight::AttributeValue(weight) => Self::AttributeValue(weight.into()),
+            DeprecatedNodeWeight::Category(weight) => Self::Category(weight.into()),
+            DeprecatedNodeWeight::Component(weight) => Self::Component(weight.into()),
+            DeprecatedNodeWeight::Content(weight) => Self::Content(weight.into()),
+            DeprecatedNodeWeight::Func(weight) => Self::Func(weight.into()),
+            DeprecatedNodeWeight::FuncArgument(weight) => Self::FuncArgument(weight.into()),
+            DeprecatedNodeWeight::Ordering(weight) => Self::Ordering(weight.into()),
+            DeprecatedNodeWeight::Prop(weight) => Self::Prop(weight.into()),
+            DeprecatedNodeWeight::Secret(weight) => Self::Secret(weight.into()),
+            DeprecatedNodeWeight::DependentValueRoot(weight) => {
+                Self::DependentValueRoot(weight.into())
+            }
         }
     }
 }

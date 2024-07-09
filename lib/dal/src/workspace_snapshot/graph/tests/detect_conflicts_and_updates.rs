@@ -23,7 +23,7 @@ mod test {
         NodeInformation,
     };
     use crate::NodeWeightDiscriminants;
-    use crate::{PropKind, WorkspaceSnapshotGraph};
+    use crate::{PropKind, WorkspaceSnapshotGraphV1};
 
     #[derive(Debug, Eq, PartialEq)]
     enum UpdateWithEdgeWeightKind {
@@ -86,7 +86,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_no_conflicts_no_updates_in_base() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut initial_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut initial_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = initial_graph
@@ -203,7 +203,7 @@ mod test {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
 
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -324,7 +324,7 @@ mod test {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
 
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let component_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -415,7 +415,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_no_conflicts_with_updates_on_both_sides() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -573,7 +573,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_with_content_conflict() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -721,7 +721,7 @@ mod test {
     ) {
         let actor_id = Ulid::new();
         let vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -871,7 +871,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -1012,7 +1012,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_with_modify_removed_item_conflict_same_vector_clocks() {
         let actor_id = Ulid::new();
         let vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
@@ -1155,7 +1155,7 @@ mod test {
     fn detect_conflicts_and_updates_add_unordered_child_to_ordered_container() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
         let active_graph = &mut base_graph;
 
@@ -1330,7 +1330,7 @@ mod test {
     fn detect_conflicts_and_updates_complex() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Docker Image Schema
@@ -1728,7 +1728,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_ordering_no_conflicts_no_updates_in_base() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut initial_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut initial_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = initial_graph
@@ -1977,7 +1977,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_ordering_no_conflicts_with_updates_in_base() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut initial_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut initial_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = initial_graph
@@ -2322,7 +2322,7 @@ mod test {
     fn detect_conflicts_and_updates_simple_ordering_with_conflicting_ordering_updates() {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut initial_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut initial_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = initial_graph
@@ -2684,7 +2684,7 @@ mod test {
     #[test]
     fn simple_ordering_no_conflicts_same_vector_clocks() {
         let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(vector_clock_id)
+        let mut to_rebase_graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let ordered_node = "ordered_container";
@@ -2846,7 +2846,7 @@ mod test {
     ) {
         let actor_id = Ulid::new();
         let initial_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut initial_graph = WorkspaceSnapshotGraph::new(initial_vector_clock_id)
+        let mut initial_graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = initial_graph
@@ -3192,7 +3192,7 @@ mod test {
         let actor_id = Ulid::new();
 
         let base_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut base_graph = WorkspaceSnapshotGraph::new(base_vector_clock_id)
+        let mut base_graph = WorkspaceSnapshotGraphV1::new(base_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Add all nodes from the slice and store their references in a hash map.
@@ -3380,7 +3380,7 @@ mod test {
         let actor_id = Ulid::new();
         let base_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
         let mut base_graph =
-            WorkspaceSnapshotGraph::new(base_vector_clock_id).expect("Unable to make base graph");
+            WorkspaceSnapshotGraphV1::new(base_vector_clock_id).expect("Unable to make base graph");
 
         let av_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         base_graph
@@ -3588,7 +3588,7 @@ mod test {
         let actor_id = Ulid::new();
         let vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
         let mut base_graph =
-            WorkspaceSnapshotGraph::new(vector_clock_id).expect("Unable to make base graph");
+            WorkspaceSnapshotGraphV1::new(vector_clock_id).expect("Unable to make base graph");
 
         let av_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         base_graph
@@ -3776,7 +3776,7 @@ mod test {
         let actor_id = Ulid::new();
         let to_rebase_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
 
-        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(to_rebase_vector_clock_id)
+        let mut to_rebase_graph = WorkspaceSnapshotGraphV1::new(to_rebase_vector_clock_id)
             .expect("unable to make to_rebase_graph");
 
         let prototype_node_id = to_rebase_graph.generate_ulid().expect("gen ulid");
@@ -3851,7 +3851,7 @@ mod test {
     fn detect_conflicts_and_updates_remove_modified_item_conflict() {
         let actor_id = Ulid::new();
         let to_rebase_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(to_rebase_vector_clock_id)
+        let mut to_rebase_graph = WorkspaceSnapshotGraphV1::new(to_rebase_vector_clock_id)
             .expect("unable to make to_rebase_graph");
 
         let prototype_node_id = to_rebase_graph.generate_ulid().expect("gen ulid");
@@ -3978,7 +3978,7 @@ mod test {
         let actor_id = Ulid::new();
         let vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
         let mut to_rebase_graph =
-            WorkspaceSnapshotGraph::new(vector_clock_id).expect("unable to make to_rebase_graph");
+            WorkspaceSnapshotGraphV1::new(vector_clock_id).expect("unable to make to_rebase_graph");
 
         let prototype_node_id = to_rebase_graph.generate_ulid().expect("gen ulid");
         let prototype_node = NodeWeight::new_content(
@@ -4104,7 +4104,7 @@ mod test {
     fn test_merge_dependent_value_roots() {
         let actor_id = Ulid::new();
         let to_rebase_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut to_rebase_graph = WorkspaceSnapshotGraph::new(to_rebase_vector_clock_id)
+        let mut to_rebase_graph = WorkspaceSnapshotGraphV1::new(to_rebase_vector_clock_id)
             .expect("unable to make to_rebase_graph");
 
         to_rebase_graph

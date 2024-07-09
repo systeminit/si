@@ -9,7 +9,7 @@ use super::{
     edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants},
     graph::WorkspaceSnapshotGraphResult,
 };
-use crate::{workspace_snapshot::NodeInformation, WorkspaceSnapshotGraph};
+use crate::{workspace_snapshot::NodeInformation, WorkspaceSnapshotGraphV1};
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {
@@ -43,8 +43,8 @@ pub enum Update {
 impl Update {
     /// Produce a NewEdge update from an edge that exists only in the "onto" graph
     pub fn new_edge(
-        to_rebase_graph: &WorkspaceSnapshotGraph,
-        onto_graph: &WorkspaceSnapshotGraph,
+        to_rebase_graph: &WorkspaceSnapshotGraphV1,
+        onto_graph: &WorkspaceSnapshotGraphV1,
         to_rebase_source_index: NodeIndex,
         only_onto_edge_info: &EdgeInfo,
         only_onto_edge_weight: EdgeWeight,

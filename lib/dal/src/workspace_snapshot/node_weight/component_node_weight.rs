@@ -10,7 +10,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
-use super::{NodeWeightError, NodeWeightResult};
+use super::{deprecated::DeprecatedComponentNodeWeight, NodeWeightError, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentNodeWeight {
@@ -144,5 +144,20 @@ impl HasVectorClocks for ComponentNodeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
+    }
+}
+
+impl From<DeprecatedComponentNodeWeight> for ComponentNodeWeight {
+    fn from(value: DeprecatedComponentNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            to_delete: value.to_delete,
+        }
     }
 }

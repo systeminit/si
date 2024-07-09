@@ -145,7 +145,7 @@ impl From<ActionNodeWeight> for Action {
         Self {
             id: value.id().into(),
             state: value.state(),
-            originating_changeset_id: value.originating_changeset_id(),
+            originating_changeset_id: value.originating_change_set_id(),
             func_execution_pk: None,
         }
     }

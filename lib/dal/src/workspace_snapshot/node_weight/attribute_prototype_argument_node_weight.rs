@@ -10,6 +10,8 @@ use crate::{
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
+use super::deprecated::DeprecatedAttributePrototypeArgumentNodeWeight;
+
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -144,5 +146,20 @@ impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedAttributePrototypeArgumentNodeWeight> for AttributePrototypeArgumentNodeWeight {
+    fn from(value: DeprecatedAttributePrototypeArgumentNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            targets: value.targets,
+            timestamp: value.timestamp,
+        }
     }
 }

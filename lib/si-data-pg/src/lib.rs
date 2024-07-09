@@ -198,7 +198,7 @@ impl PgPool {
         cfg.dbname = Some(settings.dbname.clone());
         cfg.application_name = Some(settings.application_name.clone());
         cfg.manager = Some(ManagerConfig {
-            recycling_method: RecyclingMethod::Fast,
+            recycling_method: RecyclingMethod::Clean,
         });
         let mut pool_config = PoolConfig::new(settings.pool_max_size);
         if let Some(secs) = settings.pool_timeout_wait_secs {

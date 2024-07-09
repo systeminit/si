@@ -5,6 +5,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClock};
 use crate::EdgeWeightKindDiscriminants;
 
+use super::deprecated::DeprecatedDependentValueRootNodeWeight;
 use super::NodeWeightResult;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -12,7 +13,6 @@ pub struct DependentValueRootNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,
     value_id: Ulid,
-    pub touch_count: u16, // unused
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
@@ -63,7 +63,6 @@ impl DependentValueRootNodeWeight {
             id,
             lineage_id,
             value_id,
-            touch_count: 0,
             vector_clock_write: VectorClock::new(vector_clock_id),
             vector_clock_first_seen: VectorClock::new(vector_clock_id),
             merkle_tree_hash: Default::default(),
@@ -74,7 +73,6 @@ impl DependentValueRootNodeWeight {
     pub fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "value_id": self.value_id,
-            "touch_count": self.touch_count,
         }])
     }
 
@@ -127,5 +125,19 @@ impl std::fmt::Debug for DependentValueRootNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedDependentValueRootNodeWeight> for DependentValueRootNodeWeight {
+    fn from(value: DeprecatedDependentValueRootNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            value_id: value.value_id,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

@@ -12,13 +12,13 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
-    use crate::WorkspaceSnapshotGraph;
+    use crate::WorkspaceSnapshotGraphV1;
 
     #[test]
     fn simulate_rebase() {
         let actor_id = Ulid::new();
         let to_rebase_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
-        let mut to_rebase = WorkspaceSnapshotGraph::new(to_rebase_vector_clock_id)
+        let mut to_rebase = WorkspaceSnapshotGraphV1::new(to_rebase_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Set up the to rebase graph.

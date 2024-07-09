@@ -109,7 +109,6 @@ impl ServicesContext {
             services_context: self,
             blocking,
             no_dependent_values: false,
-            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -310,8 +309,6 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
-    /// Whether we should attempt to automatically migrate snapshots to the latest version
-    no_auto_migrate_snapshots: bool,
     /// The vector clock's "actor id" if this context does not have a User
     system_actor_id: Ulid,
 }
@@ -324,7 +321,6 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
-            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -445,7 +441,6 @@ impl DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             no_dependent_values: self.no_dependent_values,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         }
     }
 
@@ -545,10 +540,6 @@ impl DalContext {
 
     pub fn no_dependent_values(&self) -> bool {
         self.no_dependent_values
-    }
-
-    pub fn no_auto_migrate_snapshots(&self) -> bool {
-        self.no_auto_migrate_snapshots
     }
 
     pub fn services_context(&self) -> ServicesContext {
@@ -943,8 +934,6 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
-    /// Whether we should avoid automatically migrating snapshots to the latest version
-    no_auto_migrate_snapshots: bool,
 }
 
 impl fmt::Debug for DalContextBuilder {
@@ -971,7 +960,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
             system_actor_id: Ulid::new(),
         })
     }
@@ -993,7 +981,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
             system_actor_id: Ulid::new(),
         };
 
@@ -1025,7 +1012,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
             system_actor_id: Ulid::new(),
         };
 
@@ -1088,11 +1074,6 @@ impl DalContextBuilder {
 
     pub fn set_no_dependent_values(&mut self) {
         self.no_dependent_values = true;
-    }
-
-    /// Call this to prevent automatic migration of out of date snapshots
-    pub fn set_no_auto_migrate_snapshots(&mut self) {
-        self.no_auto_migrate_snapshots = true;
     }
 }
 

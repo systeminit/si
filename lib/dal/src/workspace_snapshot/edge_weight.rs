@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 
+use deprecated::DeprecatedEdgeWeight;
 use serde::{Deserialize, Serialize};
 use si_events::VectorClockChangeSetId;
 use strum::EnumDiscriminants;
@@ -155,5 +156,16 @@ impl HasVectorClocks for EdgeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
+    }
+}
+
+impl From<DeprecatedEdgeWeight> for EdgeWeight {
+    fn from(value: DeprecatedEdgeWeight) -> Self {
+        Self {
+            kind: value.kind,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

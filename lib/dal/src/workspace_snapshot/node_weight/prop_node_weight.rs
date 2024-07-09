@@ -15,6 +15,8 @@ use crate::{
     PropKind,
 };
 
+use super::deprecated::DeprecatedPropNodeWeight;
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PropNodeWeight {
     pub id: Ulid,
@@ -167,5 +169,22 @@ impl std::fmt::Debug for PropNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedPropNodeWeight> for PropNodeWeight {
+    fn from(value: DeprecatedPropNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            kind: value.kind,
+            name: value.name,
+            can_be_used_as_prototype_arg: value.can_be_used_as_prototype_arg,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }
