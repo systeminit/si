@@ -6,8 +6,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod deprecated;
+
 use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
-use crate::{pk, ChangeSetId};
+use crate::ChangeSetId;
 
 pub use si_events::{VectorClockActorId, VectorClockChangeSetId, VectorClockId};
 
@@ -18,8 +20,6 @@ pub enum VectorClockError {
 }
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
-
-pk!(DeprecatedVectorClockId);
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {

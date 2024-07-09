@@ -52,6 +52,8 @@ pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod secret_node_weight;
 
+pub mod deprecated;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum NodeWeightError {

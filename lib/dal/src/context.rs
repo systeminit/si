@@ -355,37 +355,12 @@ impl DalContext {
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
 
-        match WorkspaceSnapshot::find_for_change_set(self, change_set.id)
+        let workspace_snapshot = WorkspaceSnapshot::find_for_change_set(self, change_set.id)
             .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))
-        {
-            Ok(workspace_snapshot) => {
-                self.set_change_set(change_set)?;
-                self.set_workspace_snapshot(workspace_snapshot);
-            }
-            Err(err) => {
-                if err.is_unmigrated_snapshot_error() && !self.no_auto_migrate_snapshots {
-                    ChangeSet::migrate_change_set_snapshot(self, self.change_set_id())
-                        .await
-                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
-                    self.commit_no_rebase().await?;
+            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
 
-                    let change_set = ChangeSet::find(self, self.change_set_id())
-                        .await
-                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-                        .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
-                    let workspace_snapshot =
-                        WorkspaceSnapshot::find_for_change_set(self, change_set.id)
-                            .await
-                            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
-
-                    self.set_change_set(change_set)?;
-                    self.set_workspace_snapshot(workspace_snapshot);
-                } else {
-                    return Err(err);
-                }
-            }
-        };
+        self.set_change_set(change_set)?;
+        self.set_workspace_snapshot(workspace_snapshot);
         Ok(())
     }
 
@@ -519,7 +494,7 @@ impl DalContext {
 
         Ok(VectorClockId::new(
             VectorClockChangeSetId::new(change_set_id.into()),
-            VectorClockActorId::new(actor_id.into()),
+            VectorClockActorId::new(actor_id),
         ))
     }
 

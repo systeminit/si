@@ -11,6 +11,8 @@ use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, Vec
 
 use super::vector_clock::HasVectorClocks;
 
+pub mod deprecated;
+
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
     #[error("Vector Clock error: {0}")]
@@ -153,24 +155,5 @@ impl HasVectorClocks for EdgeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
-    }
-}
-
-/// This, the original edge weight, was missing the "recently seen" vector clock
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct DeprecatedEdgeWeight {
-    kind: EdgeWeightKind,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_write: VectorClock,
-}
-
-impl From<DeprecatedEdgeWeight> for EdgeWeight {
-    fn from(deprecated_edge_weight: DeprecatedEdgeWeight) -> Self {
-        Self {
-            kind: deprecated_edge_weight.kind,
-            vector_clock_first_seen: deprecated_edge_weight.vector_clock_first_seen,
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: deprecated_edge_weight.vector_clock_write,
-        }
     }
 }

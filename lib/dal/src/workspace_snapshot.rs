@@ -41,7 +41,6 @@ pub use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
@@ -57,7 +56,7 @@ use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::{DeprecatedWorkspaceSnapshotGraph, LineageId};
+use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
@@ -447,18 +446,7 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
-        let graph: Arc<WorkspaceSnapshotGraph> =
-            match si_layer_cache::db::serialize::from_bytes(bytes) {
-                Err(err) => match err {
-                    LayerDbError::Postcard(_) => {
-                        // We have to clone the bytes here to do this operation
-                        // on the blocking pool
-                        Self::try_migrate_snapshot_bytes(bytes.to_vec()).await?
-                    }
-                    err => Err(err)?,
-                },
-                Ok(snapshot) => Arc::new(snapshot),
-            };
+        let graph: Arc<WorkspaceSnapshotGraph> = si_layer_cache::db::serialize::from_bytes(bytes)?;
 
         Ok(Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
@@ -855,30 +843,6 @@ impl WorkspaceSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
         })
-    }
-
-    pub async fn try_migrate_snapshot_bytes(
-        snapshot_bytes: Vec<u8>,
-    ) -> WorkspaceSnapshotResult<Arc<WorkspaceSnapshotGraph>> {
-        // This operation is potentially quite expensive so we throw it on the
-        // blocking pool to ensure we don't tie up the tokio reactor
-        let migrated_snapshot: Arc<WorkspaceSnapshotGraph> =
-            tokio::task::spawn_blocking(move || {
-                let deprecated_graph: DeprecatedWorkspaceSnapshotGraph =
-                    match serialize::from_bytes(&snapshot_bytes) {
-                        Ok(graph) => graph,
-                        Err(err) => {
-                            return Err(WorkspaceSnapshotError::UnableToForwardMigrateSnapshot(
-                                err.to_string(),
-                            ));
-                        }
-                    };
-
-                Ok(Arc::new(deprecated_graph.into()))
-            })
-            .await??;
-
-        Ok(migrated_snapshot)
     }
 
     pub async fn find_for_change_set(
