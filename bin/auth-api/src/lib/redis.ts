@@ -8,6 +8,7 @@ export const REDIS_ENABLED = !!process.env.REDIS_URL;
 export const redis = new IORedis({
   ...redisConnectionObj[0],
   lazyConnect: true,
+  tls: {},
 }) as ExtendedIORedis;
 
 // add helper to get/set json objects without worrying about JSON serialization
