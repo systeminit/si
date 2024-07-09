@@ -241,7 +241,6 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, ref, watch } from "vue";
-import { storeToRefs } from "pinia";
 import {
   ErrorMessage,
   Stack,
@@ -294,19 +293,18 @@ type DetachType =
 const detachRef = ref<DetachType>();
 const funcId = computed(() => props.funcId);
 
-const updateFuncReqStatus = funcStore.getRequestStatus("UPDATE_FUNC", funcId);
-const { selectedFuncSummary } = storeToRefs(funcStore);
+watch(
+  () => funcStore.selectedFuncSummary,
+  () => {
+    resetEditingFunc();
+  },
+);
 
-const editingFunc = ref(_.cloneDeep(selectedFuncSummary.value));
+const editingFunc = ref(_.cloneDeep(funcStore.selectedFuncSummary));
 
 function resetEditingFunc() {
-  editingFunc.value = _.cloneDeep(selectedFuncSummary.value);
+  editingFunc.value = _.cloneDeep(funcStore.selectedFuncSummary);
 }
-
-// when the func details finish loading, we copy into our local draft
-watch([updateFuncReqStatus], () => {
-  resetEditingFunc();
-});
 
 watch(
   () => funcStore.selectedFuncId,
@@ -321,8 +319,11 @@ watch(
   { immediate: true },
 );
 
-const updateFunc = () => {
-  if (editingFunc.value) funcStore.UPDATE_FUNC(editingFunc.value);
+const updateFunc = async () => {
+  if (editingFunc.value) {
+    await funcStore.UPDATE_FUNC(editingFunc.value);
+    resetEditingFunc();
+  }
 };
 
 const unlocking = ref(false);

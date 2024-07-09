@@ -104,12 +104,12 @@ export interface FuncSummary {
   isLocked: boolean;
   arguments: FuncArgument[];
   bindings: FuncBinding[];
+  types?: string | null;
 }
 
 export interface FuncCode {
   funcId: FuncId;
   code: string;
-  types: string;
 }
 
 export interface AttributeArgumentBinding {

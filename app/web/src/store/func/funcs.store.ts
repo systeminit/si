@@ -273,8 +273,7 @@ export const useFuncStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
-          // TODO: jobelenus, handle this WsEvent (no funcId on it?!)
-          return new ApiRequest<null>({
+          return new ApiRequest<{ bindings: FuncBinding[] }>({
             method: "post",
             url: `${API_PREFIX}/${funcId}/bindings/create`,
             params: {

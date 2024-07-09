@@ -71,13 +71,14 @@ interface VariantsWithFunctionSummary extends SchemaVariantListEntry {
 const variantSummaries = computed(() => {
   if (!props.schemaVariantId) return null;
 
-  const variant = assetStore.variantFromListById[
-    props.schemaVariantId
-  ] as VariantsWithFunctionSummary;
+  const variant = _.cloneDeep(
+    assetStore.variantFromListById[props.schemaVariantId],
+  ) as VariantsWithFunctionSummary;
   if (!variant) return null;
   variant.funcSummaries = [];
 
-  variant.funcIds.forEach((fId) => {
+  // seeing duplicates, can prevent that from this end
+  [...new Set(variant.funcIds)].forEach((fId) => {
     const func = funcStore.funcsById[fId];
     if (func) variant.funcSummaries.push(func);
   });

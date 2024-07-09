@@ -69,7 +69,9 @@
     </template>
     <template v-if="assetStore.variantList.length > 0">
       <TreeNode
-        v-for="category in Object.keys(categorizedAssets)"
+        v-for="category in Object.keys(categorizedAssets).sort((a, b) =>
+          a.localeCompare(b),
+        )"
         :key="category"
         :color="categoryColor(category)"
         :label="category"
@@ -87,7 +89,11 @@
           />
         </template>
         <AssetListItem
-          v-for="asset in categorizedAssets[category]"
+          v-for="asset in categorizedAssets[category]?.sort((a, b) =>
+            (a.displayName || a.schemaName)?.localeCompare(
+              b.displayName || b.schemaName,
+            ),
+          )"
           :key="asset.schemaVariantId"
           :a="asset"
           :c="categorizedAssets[category]"

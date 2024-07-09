@@ -15,12 +15,6 @@ pub struct CloneVariantRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CloneVariantResponse {
-    pub id: SchemaVariantId,
-}
-
 pub async fn create_unlocked_copy(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -61,9 +55,7 @@ pub async fn create_unlocked_copy(
         }),
     );
 
-    let unlocked_variant_id = unlocked_variant.id();
-
-    WsEvent::schema_variant_created(&ctx, schema.id(), unlocked_variant)
+    WsEvent::schema_variant_created(&ctx, schema.id(), unlocked_variant.clone())
         .await?
         .publish_on_commit(&ctx)
         .await?;
@@ -76,7 +68,9 @@ pub async fn create_unlocked_copy(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(response.body(serde_json::to_string(&CloneVariantResponse {
-        id: unlocked_variant_id,
-    })?)?)
+    Ok(response.body(serde_json::to_string(
+        &unlocked_variant
+            .into_frontend_type(&ctx, schema.id())
+            .await?,
+    )?)?)
 }
