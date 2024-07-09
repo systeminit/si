@@ -314,7 +314,6 @@ impl WsEvent {
         schema_variant_id: SchemaVariant,
     ) -> WsEventResult<Self> {
         let payload = schema_variant_id.into_frontend_type(ctx, schema_id).await?;
-        dbg!(&payload);
         WsEvent::new(ctx, WsPayload::SchemaVariantUpdated(payload)).await
     }
     pub async fn schema_variant_deleted(

@@ -443,6 +443,7 @@ const mountEditor = async () => {
 
 watch(
   [
+    () => props.id,
     () => props.typescript,
     () => props.disabled,
     () => props.json,
@@ -451,7 +452,6 @@ watch(
     editorMount,
   ],
   mountEditor,
-  { once: true },
 );
 
 function onVimExit() {

@@ -86,10 +86,11 @@ impl ActionBinding {
         action_kind: ActionKind,
         schema_variant_id: SchemaVariantId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        if action_kind != ActionKind::Manual {
-            // don't add binding if parent is locked
-            SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
+        // don't add binding if parent is locked
+        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
 
+        // If not manual, don't create duplicate prototypes for variant AND actionKind
+        if action_kind != ActionKind::Manual {
             let existing_action_prototypes_for_variant =
                 ActionPrototype::for_variant(ctx, schema_variant_id).await?;
             if existing_action_prototypes_for_variant
@@ -101,17 +102,19 @@ impl ActionBinding {
                     schema_variant_id,
                 ));
             }
-            let func = Func::get_by_id_or_error(ctx, func_id).await?;
-            ActionPrototype::new(
-                ctx,
-                action_kind,
-                func.name.to_owned(),
-                func.description.to_owned(),
-                schema_variant_id,
-                func.id,
-            )
-            .await?;
         }
+
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+        ActionPrototype::new(
+            ctx,
+            action_kind,
+            func.name.to_owned(),
+            func.description.to_owned(),
+            schema_variant_id,
+            func.id,
+        )
+        .await?;
+
         FuncBinding::for_func_id(ctx, func_id).await
     }
 

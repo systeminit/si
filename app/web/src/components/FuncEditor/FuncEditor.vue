@@ -7,6 +7,7 @@
   <ScrollArea
     v-else-if="
       selectedAsset &&
+      selectedFuncCode &&
       loadFuncDetailsReq.isSuccess &&
       typeof editingFunc === 'string'
     "
@@ -20,16 +21,11 @@
     </template>
 
     <CodeEditor
-      :id="
-        changeSetsStore.headChangeSetId !==
-          changeSetsStore.selectedChangeSetId && selectedFuncCode
-          ? `func-${selectedFuncCode.funcId}`
-          : undefined
-      "
+      :id="`func-${selectedFuncCode.funcId}`"
       v-model="editingFunc"
       :disabled="selectedFuncSummary?.isLocked"
       :recordId="selectedFuncSummary?.funcId || ''"
-      :typescript="selectedFuncCode?.types"
+      :typescript="selectedFuncSummary?.types || ''"
       @change="updateFuncCode"
       @close="emit('close')"
     />
@@ -43,7 +39,6 @@
 
 <script lang="ts" setup>
 import { PropType, computed, ref, watch } from "vue";
-import { storeToRefs } from "pinia";
 import {
   LoadingMessage,
   ErrorMessage,
@@ -65,7 +60,8 @@ const props = defineProps({
 });
 
 const funcStore = useFuncStore();
-const { selectedFuncSummary, selectedFuncCode } = storeToRefs(funcStore);
+const selectedFuncSummary = computed(() => funcStore.selectedFuncSummary);
+const selectedFuncCode = computed(() => funcStore.selectedFuncCode);
 
 const editingFunc = ref<string>(selectedFuncCode.value?.code ?? "");
 

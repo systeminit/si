@@ -83,13 +83,15 @@ const bindings = computed(() => {
     const actions = funcStore.actionBindings[funcId];
     if (actions && actions.length > 0) {
       actions.forEach((b) => {
-        const a = b as BindingWithDisplayName;
+        const a = _.cloneDeep(b) as BindingWithDisplayName;
         a.displayName = summary?.displayName || "<Unknown>";
         _bindings.push(a);
       });
     }
   });
-  return _bindings;
+  return _bindings.sort((_a, _b) =>
+    _a.displayName.localeCompare(_b.displayName),
+  );
 });
 
 watch(

@@ -1,6 +1,8 @@
 <template>
   <div>
-    <div class="flex flex-row gap-sm items-center dark:bg-black bg-white">
+    <div
+      class="flex flex-row gap-sm items-center dark:bg-black bg-white max-h-[75vh] overflow-y-auto"
+    >
       <Icon
         name="alert-circle"
         class="text-warning-600 content-center ml-md"

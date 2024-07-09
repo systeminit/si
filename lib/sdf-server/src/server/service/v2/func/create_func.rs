@@ -15,7 +15,7 @@ use dal::{
         FuncKind,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
 
@@ -89,7 +89,7 @@ pub async fn create_func(
                 argument_bindings,
                 component_id,
                 ..
-            } = request.binding
+            } = request.binding.clone()
             {
                 let output_location = if let Some(prop_id) = prop_id {
                     AttributeFuncDestination::Prop(prop_id.into())
@@ -134,7 +134,7 @@ pub async fn create_func(
             if let FuncBinding::Authentication {
                 schema_variant_id,
                 func_id: _,
-            } = request.binding
+            } = request.binding.clone()
             {
                 FuncAuthoringClient::create_new_auth_func(
                     &ctx,
@@ -151,7 +151,7 @@ pub async fn create_func(
                 schema_variant_id: Some(schema_variant_id),
                 inputs,
                 ..
-            } = request.binding
+            } = request.binding.clone()
             {
                 let inputs = if inputs.is_empty() {
                     vec![LeafInputLocation::Domain]
@@ -175,7 +175,7 @@ pub async fn create_func(
                 schema_variant_id: Some(schema_variant_id),
                 inputs,
                 ..
-            } = request.binding
+            } = request.binding.clone()
             {
                 let inputs = if inputs.is_empty() {
                     vec![LeafInputLocation::Domain, LeafInputLocation::Code]
@@ -216,6 +216,39 @@ pub async fn create_func(
             "func_kind": summary.kind,
         }),
     );
+
+    match request.binding {
+        si_frontend_types::FuncBinding::Action {
+            schema_variant_id: Some(schema_variant_id),
+            ..
+        }
+        | si_frontend_types::FuncBinding::Attribute {
+            schema_variant_id: Some(schema_variant_id),
+            ..
+        }
+        | si_frontend_types::FuncBinding::Authentication {
+            schema_variant_id, ..
+        }
+        | si_frontend_types::FuncBinding::CodeGeneration {
+            schema_variant_id: Some(schema_variant_id),
+            ..
+        }
+        | si_frontend_types::FuncBinding::Qualification {
+            schema_variant_id: Some(schema_variant_id),
+            ..
+        } => {
+            let schema_id =
+                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id.into())
+                    .await?;
+            let schema_variant =
+                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into()).await?;
+            WsEvent::schema_variant_updated(&ctx, schema_id, schema_variant)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+        _ => {}
+    }
 
     ctx.commit().await?;
 

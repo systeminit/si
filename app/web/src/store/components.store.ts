@@ -540,12 +540,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (!variants) return null;
                 return {
                   displayName: category,
-                  schemaVariants: variants.filter(
-                    (v) => v.canCreateNewComponents,
-                  ),
+                  schemaVariants: variants
+                    .filter((v) => v.canCreateNewComponents)
+                    .sort((a, b) =>
+                      (a.displayName || a.schemaName)?.localeCompare(
+                        b.displayName || b.schemaName,
+                      ),
+                    ),
                 };
               })
-              .filter(nonNullable);
+              .filter(nonNullable)
+              .sort((a, b) => a.displayName.localeCompare(b.displayName));
           },
 
           changeStatsSummary(): Record<ChangeStatus | "total", number> {

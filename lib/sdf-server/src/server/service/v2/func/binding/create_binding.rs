@@ -283,17 +283,15 @@ pub async fn create_binding(
             "func_kind": func.kind.clone(),
         }),
     );
-    let binding = Func::get_by_id_or_error(&ctx, func_id)
-        .await?
-        .into_frontend_type(&ctx)
-        .await?
-        .bindings;
 
     let func_summary = Func::get_by_id_or_error(&ctx, func_id)
         .await?
         .into_frontend_type(&ctx)
         .await?;
-    WsEvent::func_updated(&ctx, func_summary.clone())
+
+    let bindings = func_summary.clone().bindings;
+
+    WsEvent::func_updated(&ctx, func_summary)
         .await?
         .publish_on_commit(&ctx)
         .await?;
@@ -306,5 +304,5 @@ pub async fn create_binding(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(response.body(serde_json::to_string(&binding)?)?)
+    Ok(response.body(serde_json::to_string(&bindings)?)?)
 }

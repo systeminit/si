@@ -117,8 +117,12 @@
           <RequestStatusMessage :requestStatus="loadFuncDetailsReq.value" />
         </div>
         <CodeEditor
-          v-if="loadFuncDetailsReq && !loadFuncDetailsReq?.value.isPending"
-          :id="() => `display-${selectedExistingFuncId}`"
+          v-if="
+            loadFuncDetailsReq &&
+            loadFuncDetailsReq?.value.isSuccess &&
+            selectedFuncCode
+          "
+          :id="codeEditorId"
           v-model="selectedFuncCode"
           :recordId="selectedExistingFuncId"
           disabled
@@ -201,6 +205,7 @@ const name = ref("");
 const funcKind = ref(FuncKind.Action);
 
 const selectedExistingFuncId = ref<FuncId | undefined>();
+const codeEditorId = computed(() => `func-${selectedExistingFuncId.value}`);
 const selectedExistingFuncSummary = computed(() => {
   if (selectedExistingFuncId.value)
     return funcStore.funcsById[selectedExistingFuncId.value];
@@ -418,6 +423,8 @@ const attachExistingFunc = async () => {
       bindings,
     );
     if (response.result.success && props.schemaVariantId) {
+      const funcId = response.result.data.bindings.pop()?.funcId;
+      if (funcId) assetStore.setFuncSelection(funcId);
       close();
     }
   }

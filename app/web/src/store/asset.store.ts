@@ -453,13 +453,23 @@ export const useAssetStore = () => {
 
           this.detachmentWarnings = [];
 
-          return new ApiRequest<{ id: string }>({
+          return new ApiRequest<SchemaVariant>({
             method: "post",
             url: "/variant/create_unlocked_copy",
             keyRequestStatusBy: id,
             params: {
               ...visibility,
               id,
+            },
+            onSuccess: (variant) => {
+              const v = variant as SchemaVariantListEntry;
+              v.canContribute = false;
+              v.canUpdate = false;
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              if (savedAssetIdx === -1) this.variantList.push(v);
+              else this.variantList.splice(savedAssetIdx, 1, v);
             },
           });
         },
@@ -492,7 +502,12 @@ export const useAssetStore = () => {
               const v = variant as SchemaVariantListEntry;
               v.canContribute = false;
               v.canUpdate = false;
-              this.variantList.push(v);
+
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              if (savedAssetIdx === -1) this.variantList.push(v);
+              else this.variantList.splice(savedAssetIdx, 1, v);
             },
           },
           {
