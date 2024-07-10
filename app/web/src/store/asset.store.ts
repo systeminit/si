@@ -299,16 +299,23 @@ export const useAssetStore = () => {
             throw new Error("race, wait until the change set is created");
           if (changeSetId === changeSetsStore.headChangeSetId)
             changeSetsStore.creatingChangeSet = true;
-          return new ApiRequest<
-            { schemaId: SchemaId; schemaVariantId: SchemaVariantId },
-            SchemaVariantCreateRequest
-          >({
+          return new ApiRequest<SchemaVariant, SchemaVariantCreateRequest>({
             method: "post",
             url: "/variant/create_variant",
             params: {
               ...visibility,
               name,
               color: this.generateMockColor(),
+            },
+            onSuccess: (variant) => {
+              const v = variant as SchemaVariantListEntry;
+              v.canContribute = false;
+              v.canUpdate = false;
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              if (savedAssetIdx === -1) this.variantList.push(v);
+              else this.variantList.splice(savedAssetIdx, 1, v);
             },
           });
         },
