@@ -102,7 +102,8 @@ const { theme } = useTheme();
 
 const editingVersionDoesNotExist = computed<boolean>(
   () =>
-    assetStore.unlockedAssetIdForId[asset.value?.schemaId ?? ""] === undefined,
+    assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] ===
+    undefined,
 );
 
 const assetStore = useAssetStore();

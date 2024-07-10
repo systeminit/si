@@ -138,27 +138,19 @@ export const useAssetStore = () => {
           if (state.selectedFuncs.length === 1) return state.selectedFuncs[0];
           else return undefined;
         },
-        unlockedAssetIdForId: (state) => {
-          const record = {} as Record<
-            SchemaVariantId,
-            SchemaVariantId | undefined
-          >;
+        unlockedVariantIdForId: (state) => {
+          type VariantsBySchemaId = Record<SchemaId, SchemaVariantId>;
+          const unlockedVariantsBySchema: VariantsBySchemaId = state.variantList
+            .filter((v) => !v.isLocked)
+            .reduce((obj, v) => {
+              obj[v.schemaId] = v.schemaVariantId;
+              return obj;
+            }, {} as VariantsBySchemaId);
 
-          for (const variantListElement of state.variantList) {
-            let unlockedId;
-            if (variantListElement.isLocked) {
-              unlockedId = state.variantList.find(
-                (v) =>
-                  v.schemaId === variantListElement.schemaId && !v.isLocked,
-              )?.schemaVariantId;
-            } else {
-              unlockedId = variantListElement.schemaVariantId;
-            }
-
-            record[variantListElement.schemaVariantId] = unlockedId;
-          }
-
-          return record;
+          return state.variantList.reduce((obj, v) => {
+            obj[v.schemaVariantId] = unlockedVariantsBySchema[v.schemaId];
+            return obj;
+          }, {} as Record<SchemaVariantId, SchemaVariantId | undefined>);
         },
       },
       actions: {
