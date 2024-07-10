@@ -7,9 +7,9 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use dal::{ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk};
 use thiserror::Error;
 
-use dal::{ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk};
 use si_frontend_types as frontend_types;
 
 use crate::{

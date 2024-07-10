@@ -81,7 +81,7 @@ pub async fn export_module(
     let (based_on_hash, module_schema_id) = if schema_ids.len() == 1 {
         match schema_ids.first().copied() {
             None => (None, None),
-            Some(schema_id) => match Module::find_for_schema_id(&ctx, schema_id).await? {
+            Some(schema_id) => match Module::find_for_member_id(&ctx, schema_id).await? {
                 Some(module) => (Some(module.root_hash().to_string()), module.schema_id()),
                 None => (None, None),
             },

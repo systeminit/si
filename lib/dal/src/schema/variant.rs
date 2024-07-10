@@ -58,6 +58,7 @@ mod value_from;
 pub mod authoring;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
+use crate::module::Module;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -116,6 +117,8 @@ pub enum SchemaVariantError {
     LeafMapPropNotFound(PropId),
     #[error("schema variant missing asset func id; schema_variant_id={0}")]
     MissingAssetFuncId(SchemaVariantId),
+    #[error("module error: {0}")]
+    Module(String),
     #[error("more than one schema found for schema variant: {0}")]
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
@@ -215,9 +218,8 @@ impl SchemaVariant {
             .ok_or(SchemaVariantError::MissingAssetFuncId(self.id()))?
             .into();
 
-        let (output_sockets, input_sockets) =
-            SchemaVariant::list_all_sockets(ctx, self.id()).await?;
-        let func_ids: Vec<_> = SchemaVariant::all_func_ids(ctx, self.id())
+        let (output_sockets, input_sockets) = Self::list_all_sockets(ctx, self.id()).await?;
+        let func_ids: Vec<_> = Self::all_func_ids(ctx, self.id())
             .await?
             .into_iter()
             .map(|func_id| func_id.into())
@@ -232,6 +234,8 @@ impl SchemaVariant {
             let new_prop = prop.into_frontend_type(ctx).await?;
             front_end_props.push(new_prop);
         }
+
+        let can_contribute = Self::can_be_contributed_by_id(ctx, self.id).await?;
 
         Ok(frontend_types::SchemaVariant {
             schema_id: schema_id.into(),
@@ -258,6 +262,7 @@ impl SchemaVariant {
             timestamp: self.timestamp.into(),
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
+            can_contribute,
         })
     }
 }
@@ -732,6 +737,20 @@ impl SchemaVariant {
         }
     }
 
+    /// A schema variant can be contributed if it is default, locked and does not belong to
+    /// a module, which means it has been updated locally
+    pub async fn can_be_contributed_by_id(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<bool> {
+        Ok(Self::is_default_by_id(ctx, id).await?
+            && Self::is_locked_by_id(ctx, id).await?
+            && Module::find_for_member_id(ctx, id)
+                .await
+                .map_err(|e| SchemaVariantError::Module(e.to_string()))?
+                .is_none())
+    }
+
     pub async fn get_latest_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -865,10 +884,17 @@ impl SchemaVariant {
         self.is_locked
     }
 
-    pub async fn is_default(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
-        let schema_id = Self::schema_id_for_schema_variant_id(ctx, self.id).await?;
+    pub async fn is_default_by_id(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<bool> {
+        let schema_id = Self::schema_id_for_schema_variant_id(ctx, id).await?;
 
-        Ok(Self::get_default_id_for_schema(ctx, schema_id).await? == self.id)
+        Ok(Self::get_default_id_for_schema(ctx, schema_id).await? == id)
+    }
+
+    pub async fn is_default(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
+        Self::is_default_by_id(ctx, self.id).await
     }
 
     pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {

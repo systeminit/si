@@ -309,7 +309,6 @@ export const useAssetStore = () => {
             },
             onSuccess: (variant) => {
               const v = variant as SchemaVariantListEntry;
-              v.canContribute = false;
               v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
@@ -436,7 +435,6 @@ export const useAssetStore = () => {
             onSuccess: (response) => {
               this.variantList = response.map((v) => {
                 const e = v as SchemaVariantListEntry;
-                e.canContribute = false;
                 e.canUpdate = false;
                 return e;
               });
@@ -462,7 +460,6 @@ export const useAssetStore = () => {
             },
             onSuccess: (variant) => {
               const v = variant as SchemaVariantListEntry;
-              v.canContribute = false;
               v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
@@ -499,7 +496,6 @@ export const useAssetStore = () => {
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
               const v = variant as SchemaVariantListEntry;
-              v.canContribute = false;
               v.canUpdate = false;
 
               const savedAssetIdx = this.variantList.findIndex(
@@ -569,7 +565,6 @@ export const useAssetStore = () => {
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
               const v = variant as SchemaVariantListEntry;
-              v.canContribute = false;
               v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,

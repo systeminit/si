@@ -26,6 +26,7 @@ pub struct SchemaVariant {
     #[serde(flatten)]
     pub timestamp: Timestamp,
     pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
+    pub can_contribute: bool,
 }
 
 #[remain::sorted]
