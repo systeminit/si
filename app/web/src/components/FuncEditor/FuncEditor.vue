@@ -38,7 +38,8 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, ref, watch } from "vue";
+import { PropType, computed, ref, watch, ComputedRef } from "vue";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import {
   LoadingMessage,
   ErrorMessage,
@@ -67,9 +68,21 @@ const editingFunc = ref<string>(selectedFuncCode.value?.code ?? "");
 
 const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
 
-const loadFuncDetailsReq = funcStore.getRequestStatus(
-  "FETCH_CODE",
-  props.funcId,
+let loadFuncDetailsReq: ComputedRef<ApiRequestStatus>;
+
+// changing props does not re-run this setup code
+// instantiating `loadFuncDetailsReq` with `props.funcId`
+// means that as props change, the request watcher *does not update*
+// instead, use a watcher to re-assign the value each time
+// this ensures that we get a new loading state when user selects another function
+// on slower connections we were seeing old code in the editor, after a new code
+// was selected, until it finally loaded and it all snapped into place
+watch(
+  () => props.funcId,
+  () => {
+    loadFuncDetailsReq = funcStore.getRequestStatus("FETCH_CODE", props.funcId);
+  },
+  { immediate: true },
 );
 
 watch(

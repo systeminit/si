@@ -1,6 +1,6 @@
 <template>
   <RequestStatusMessage
-    v-if="loadAssetReqStatus.isPending"
+    v-if="!loadAssetReqStatus || loadAssetReqStatus.isPending"
     :requestStatus="loadAssetReqStatus"
   />
   <div
@@ -37,7 +37,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, computed, onMounted } from "vue";
+import { ref, watch, computed, onMounted, ComputedRef } from "vue";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import * as _ from "lodash-es";
 import {
   RequestStatusMessage,
@@ -75,9 +76,17 @@ const selectedAssetFuncCode = computed(() => {
 
 const editingAsset = ref<string>(selectedAssetFuncCode.value ?? "");
 
-const loadAssetReqStatus = funcStore.getRequestStatus(
-  "FETCH_CODE",
-  selectedAsset.value?.assetFuncId,
+let loadAssetReqStatus: ComputedRef<ApiRequestStatus>;
+
+watch(
+  () => selectedAsset.value?.assetFuncId,
+  () => {
+    loadAssetReqStatus = funcStore.getRequestStatus(
+      "FETCH_CODE",
+      selectedAsset.value?.assetFuncId,
+    );
+  },
+  { immediate: true },
 );
 
 watch(
