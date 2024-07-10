@@ -1,7 +1,9 @@
 <template>
   <Modal
     ref="modalRef"
-    :size="attachExisting && selectedExistingFuncId ? '4xl' : 'md'"
+    :size="
+      attachExisting && selectedExistingFunc.value !== nilId() ? '4xl' : 'md'
+    "
     :title="title"
     @close="onClose"
   >
@@ -10,11 +12,13 @@
         :class="
           clsx(
             'flex flex-col gap-y-4 min-w-[250px]',
-            attachExisting && selectedExistingFuncId ? 'mr-sm' : 'flex-grow',
+            attachExisting && selectedExistingFunc.value !== nilId()
+              ? 'mr-sm'
+              : 'flex-grow',
           )
         "
       >
-        <VormInput
+        <SelectMenu
           v-model="funcKind"
           :options="funcKindOptions"
           label="Kind"
@@ -27,15 +31,16 @@
           placeholder="The name of the function"
           required
         />
-        <VormInput
+        <SelectMenu
           v-if="attachExisting"
-          v-model="selectedExistingFuncId"
+          v-model="selectedExistingFunc"
           :options="existingFuncOptions"
           label="Existing function"
           required
           type="dropdown"
+          canFilter
         />
-        <template v-if="funcKind === FuncKind.Action">
+        <template v-if="funcKind.value === FuncKind.Action">
           <div class="text-neutral-700 type-bold-sm dark:text-neutral-50">
             <SiCheckBox
               id="create"
@@ -61,8 +66,8 @@
             />
           </div>
         </template>
-        <VormInput
-          v-if="funcKind === FuncKind.Attribute"
+        <SelectMenu
+          v-if="funcKind.value === FuncKind.Attribute"
           v-model="attributeOutputLocation"
           :options="attributeOutputLocationOptions"
           label="Output Location"
@@ -73,7 +78,9 @@
           v-if="createFuncReqStatus.isError && createFuncStarted"
           :requestStatus="createFuncReqStatus"
         />
-        <template v-if="attachExisting && funcKind === FuncKind.Attribute">
+        <template
+          v-if="attachExisting && funcKind.value === FuncKind.Attribute"
+        >
           <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
             Expected Function Arguments:
           </h1>
@@ -110,7 +117,7 @@
         />
       </div>
       <div
-        v-if="attachExisting && selectedExistingFuncId"
+        v-if="attachExisting && selectedExistingFunc.value !== nilId()"
         class="overflow-y-scroll"
       >
         <div v-if="loadFuncDetailsReq?.value.isPending">
@@ -124,7 +131,7 @@
           "
           :id="codeEditorId"
           v-model="selectedFuncCode"
-          :recordId="selectedExistingFuncId"
+          :recordId="selectedExistingFunc.value as string"
           disabled
           noLint
           noVim
@@ -196,33 +203,35 @@ const showLoading = computed(() => createFuncReqStatus.value.isPending);
 
 const funcKindOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map((kind) => ({
   label: CUSTOMIZABLE_FUNC_TYPES[kind as CustomizableFuncKind]?.singularLabel,
-  value: kind as string,
+  value: kind as FuncKind,
 }));
 
 const attachExisting = ref(false);
 
 const name = ref("");
-const funcKind = ref(FuncKind.Action);
+const funcKind = ref({ label: "Actions", value: FuncKind.Action });
 
-const selectedExistingFuncId = ref<FuncId | undefined>();
-const codeEditorId = computed(() => `func-${selectedExistingFuncId.value}`);
-const selectedExistingFuncSummary = computed(() => {
-  if (selectedExistingFuncId.value)
-    return funcStore.funcsById[selectedExistingFuncId.value];
-
+const noneFunction = {
+  label: "select function",
+  value: nilId(),
+};
+const selectedExistingFunc = ref<Option>(noneFunction);
+const codeEditorId = computed(() => `func-${selectedExistingFunc.value.value}`);
+const selectedExistingFuncSummary = computed(
+  () => funcStore.funcsById[selectedExistingFunc.value.value as string],
+);
+const selectedFuncCode = ref<string>("");
+const loadFuncDetailsReq = computed(() => {
+  const id = selectedExistingFunc.value.value as string;
+  if (id !== nilId()) return funcStore.getRequestStatus("FETCH_CODE", id);
   return undefined;
 });
-const selectedFuncCode = ref<string>("");
-const loadFuncDetailsReq = computed(() =>
-  selectedExistingFuncId.value
-    ? funcStore.getRequestStatus("FETCH_CODE", selectedExistingFuncId.value)
-    : undefined,
-);
 
 watch(
-  selectedExistingFuncId,
-  async (funcId) => {
-    if (funcId) {
+  selectedExistingFunc,
+  async ({ value }) => {
+    const funcId = value as string;
+    if (funcId !== nilId()) {
       await funcStore.FETCH_CODE(funcId);
       selectedFuncCode.value = funcStore.funcCodeById[funcId]?.code || "";
 
@@ -241,14 +250,18 @@ watch(
 
 const existingFuncOptions = computed(() =>
   Object.values(funcStore.funcsById)
-    .filter((func) => func.kind === funcKind.value)
+    .filter((func) => func.kind === funcKind.value.value)
     .map((func) => ({
       label: func.name,
       value: func.funcId,
     })),
 );
 
-const attributeOutputLocation = ref<string | undefined>();
+const noneOutput = {
+  label: "select output location",
+  value: nilId(),
+};
+const attributeOutputLocation = ref<Option>(noneOutput);
 const attributeOutputLocationOptions = ref<Option[]>([]);
 
 const attrToValidate = ref<string | undefined>();
@@ -277,12 +290,13 @@ const attachEnabled = computed(() => {
   const nameIsSet =
     attachExisting.value || !!(name.value && name.value.length > 0);
   const hasOutput =
-    funcKind.value !== FuncKind.Attribute || !!attributeOutputLocation.value;
+    funcKind.value.value !== FuncKind.Attribute ||
+    !!attributeOutputLocation.value;
   const existingSelected =
-    !attachExisting.value || !!selectedExistingFuncId.value;
+    !attachExisting.value || selectedExistingFunc.value.value !== nilId();
   const argsConfigured =
     !attachExisting.value ||
-    funcKind.value !== FuncKind.Attribute ||
+    funcKind.value.value !== FuncKind.Attribute ||
     editableBindings.value.every((b) => b.binding.value !== nilId());
 
   return nameIsSet && hasOutput && existingSelected && argsConfigured;
@@ -295,15 +309,19 @@ const open = async (
 ) => {
   attachExisting.value = existing ?? false;
 
-  attributeOutputLocation.value = "";
+  attributeOutputLocation.value = noneOutput;
 
   name.value = "";
-  funcKind.value = variant ?? FuncKind.Action;
+  funcKind.value = funcKindOptions.find((o) => o.value === variant) ?? {
+    label: "Actions",
+    value: FuncKind.Action,
+  };
   isCreate.value = false;
   isDelete.value = false;
   isRefresh.value = false;
   selectedFuncCode.value = "";
-  selectedExistingFuncId.value = funcId;
+  selectedExistingFunc.value =
+    existingFuncOptions.value.find((o) => o.value === funcId) || noneFunction;
   attrToValidate.value = undefined;
 
   attributeOutputLocationOptions.value = [];
@@ -349,10 +367,10 @@ const noneSource = { label: "select source", value: nilId() };
 
 const commonBindingConstruction = () => {
   const binding = {
-    funcId: selectedExistingFuncId.value,
+    funcId: selectedExistingFunc.value.value as string,
     schemaVariantId: schemaVariantId.value,
   } as unknown;
-  switch (funcKind.value) {
+  switch (funcKind.value.value) {
     case FuncKind.Authentication:
       // eslint-disable-next-line no-case-declarations
       const auth = binding as Authentication;
@@ -391,9 +409,9 @@ const attachExistingFunc = async () => {
   const binding = commonBindingConstruction();
   if (binding) bindings.push(binding);
 
-  if (funcKind.value === FuncKind.Attribute) {
+  if (funcKind.value.value === FuncKind.Attribute) {
     const attr = {
-      funcId: selectedExistingFuncId.value,
+      funcId: selectedExistingFunc.value.value as string,
       schemaVariantId: schemaVariantId.value,
       bindingKind: FuncBindingKind.Attribute,
     } as Attribute;
@@ -410,16 +428,15 @@ const attachExistingFunc = async () => {
       argBindings.push(arg);
     });
     attr.argumentBindings = argBindings;
-    if (attributeOutputLocation.value?.startsWith("s_"))
-      attr.outputSocketId = attributeOutputLocation.value.replace("s_", "");
-    else if (attributeOutputLocation.value?.startsWith("p_"))
-      attr.propId = attributeOutputLocation.value.replace("p_", "");
+    const loc = attributeOutputLocation.value.value as string;
+    if (loc.startsWith("s_")) attr.outputSocketId = loc.replace("s_", "");
+    else if (loc.startsWith("p_")) attr.propId = loc.replace("p_", "");
 
     bindings.push(attr);
   }
-  if (bindings.length > 0 && selectedExistingFuncId.value) {
+  if (bindings.length > 0 && selectedExistingFunc.value.value !== nilId()) {
     const response = await funcStore.CREATE_BINDING(
-      selectedExistingFuncId.value,
+      selectedExistingFunc.value.value as string,
       bindings,
     );
     if (response.result.success && props.schemaVariantId) {
@@ -437,13 +454,12 @@ const attachNewFunc = async () => {
     if (!binding) {
       let outputSocketId;
       let propId;
-      if (attributeOutputLocation.value?.startsWith("s_"))
-        outputSocketId = attributeOutputLocation.value.replace("s_", "");
-      else if (attributeOutputLocation.value?.startsWith("p_"))
-        propId = attributeOutputLocation.value.replace("p_", "");
+      const loc = attributeOutputLocation.value.value as string;
+      if (loc.startsWith("s_")) outputSocketId = loc.replace("s_", "");
+      else if (loc.startsWith("p_")) propId = loc.replace("p_", "");
 
       binding = {
-        funcId: selectedExistingFuncId.value,
+        funcId: selectedExistingFunc.value.value as string,
         schemaVariantId: schemaVariantId.value,
         bindingKind: FuncBindingKind.Attribute,
         argumentBindings: [],
@@ -458,7 +474,7 @@ const attachNewFunc = async () => {
       displayName: name.value,
       description: "",
       binding,
-      kind: funcKind.value,
+      kind: funcKind.value.value,
     });
     if (result.result.success) {
       funcStore.selectedFuncId = result.result.data.summary.funcId;
