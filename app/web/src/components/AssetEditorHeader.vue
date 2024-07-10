@@ -30,8 +30,8 @@
     <div
       class="text-xs italic flex flex-row flex-wrap gap-x-lg text-neutral-600 dark:text-neutral-200"
     >
-      <div>
-        <span class="font-bold">Created At: </span>
+      <div v-if="!selectedFunc">
+        <span class="font-bold">Asset Created At: </span>
         <Timestamp :date="selectedAsset.created_at" size="long" />
       </div>
       <!-- TODO: Populate the created by from SDF actorHistory-->

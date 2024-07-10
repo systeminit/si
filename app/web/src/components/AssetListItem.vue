@@ -14,7 +14,12 @@
   >
     <template #label>
       <div class="text-xs w-full truncate flex flex-row items-center gap-1">
-        <div class="truncate">{{ schemaVariantDisplayName(a) }}</div>
+        <div class="truncate">
+          {{ schemaVariantDisplayName(a) }}
+          <template v-if="!a.canCreateNewComponents">
+            <i>version: {{ a.version }}</i>
+          </template>
+        </div>
 
         <div class="ml-auto flex flex-none gap-xs shrink-0">
           <EditingPill v-if="!a.isLocked" :color="a.color" />
