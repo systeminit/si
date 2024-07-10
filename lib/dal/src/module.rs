@@ -20,7 +20,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaId, SchemaVariant,
+    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaVariant,
     SchemaVariantError, Timestamp, TransactionsError,
 };
 
@@ -240,14 +240,16 @@ impl Module {
         Self::find(ctx, |module| module.schema_id() == Some(module_schema_id)).await
     }
 
-    pub async fn find_for_schema_id(
+    /// Find [Module](Self) based on the id of an entity that it contains. May return [None](None) if
+    /// entity is not linked to a [Module](Self)
+    pub async fn find_for_member_id(
         ctx: &DalContext,
-        schema_id: SchemaId,
+        id: impl Into<Ulid>,
     ) -> ModuleResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         for source_idx in workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(schema_id, EdgeWeightKindDiscriminants::Use)
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Use)
             .await?
         {
             let node_weight = workspace_snapshot.get_node_weight(source_idx).await?;
