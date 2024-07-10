@@ -66,6 +66,9 @@ export interface SchemaVariant {
   outputSockets: OutputSocket[];
   props: Prop[];
   canCreateNewComponents: boolean;
+
+  canContribute: boolean;
+  canUpdate: boolean;
 }
 
 export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {

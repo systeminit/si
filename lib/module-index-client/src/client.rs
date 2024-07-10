@@ -1,9 +1,12 @@
-use reqwest::StatusCode;
+use reqwest::{header, StatusCode};
 use si_pkg::WorkspaceExport;
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
+use crate::types::{
+    BuiltinsDetailsResponse, ListLatestModulesRequest, ListLatestModulesResponse,
+    ModulePromotedResponse, ModuleRejectionResponse,
+};
 use crate::{
     IndexClientError, IndexClientResult, ModuleDetailsResponse, MODULE_BASED_ON_HASH_FIELD_NAME,
     MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
@@ -256,5 +259,27 @@ impl IndexClient {
 
         // Deserialize back into export object
         Ok(export_data)
+    }
+
+    /// Lists the latest [`Modules`](Model) for a given set of hashesh (route: GET /modules/latest).
+    pub async fn list_latest_modules(
+        &self,
+        hashes: Vec<String>,
+    ) -> IndexClientResult<ListLatestModulesResponse> {
+        let url = self.base_url.join("modules/")?.join("latest")?;
+        let raw_body = serde_json::to_value(ListLatestModulesRequest { hashes })
+            .map_err(IndexClientError::Serialization)?
+            .to_string();
+
+        Ok(reqwest::Client::new()
+            .get(url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(reqwest::Body::from(raw_body))
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
     }
 }

@@ -133,7 +133,8 @@ import {
   PillCounter,
 } from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import { SchemaVariantListEntry, useAssetStore } from "@/store/asset.store";
+import { useAssetStore } from "@/store/asset.store";
+import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
@@ -224,7 +225,7 @@ const categorizedAssets = computed(() =>
       catList.push(asset);
       categorized[asset.category] = catList;
       return categorized;
-    }, {} as { [key: string]: SchemaVariantListEntry[] }),
+    }, {} as { [key: string]: SchemaVariant[] }),
 );
 
 const categoryColor = (category: string) => {

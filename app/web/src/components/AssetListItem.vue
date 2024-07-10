@@ -52,16 +52,13 @@ import { PropType } from "vue";
 import { storeToRefs } from "pinia";
 import { TreeNode, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import {
-  SchemaVariantListEntry,
-  useAssetStore,
-  schemaVariantDisplayName,
-} from "@/store/asset.store";
+import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
+import { SchemaVariant } from "@/api/sdf/dal/schema";
 import EditingPill from "./EditingPill.vue";
 
 const props = defineProps({
-  a: { type: Object as PropType<SchemaVariantListEntry>, required: true },
-  c: { type: Array<SchemaVariantListEntry> },
+  a: { type: Object as PropType<SchemaVariant>, required: true },
+  c: { type: Array<SchemaVariant> },
 });
 
 const assetStore = useAssetStore();

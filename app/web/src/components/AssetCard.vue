@@ -87,8 +87,8 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
-import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { useAssetStore } from "@/store/asset.store";
+import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
@@ -108,7 +108,7 @@ const editingVersionDoesNotExist = computed<boolean>(
 
 const assetStore = useAssetStore();
 const asset = computed(
-  (): SchemaVariantListEntry | undefined =>
+  (): SchemaVariant | undefined =>
     assetStore.variantFromListById[props.assetId],
 );
 

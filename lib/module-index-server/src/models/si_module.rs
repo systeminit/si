@@ -1,4 +1,4 @@
-use module_index_client::ModuleDetailsResponse;
+use module_index_client::{types::LatestModuleResponse, ModuleDetailsResponse};
 use sea_orm::{entity::prelude::*, sea_query, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -8,6 +8,31 @@ pub mod schema_id;
 
 pub use module_id::ModuleId;
 pub use schema_id::SchemaId;
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[sea_orm(table_name = "modules")]
+pub struct Model {
+    #[sea_orm(primary_key, column_type = r##"custom("ident")"##)]
+    pub id: ModuleId,
+    #[sea_orm(column_type = "Text")]
+    pub name: String,
+    #[sea_orm(column_type = "Text")]
+    pub description: Option<String>,
+    pub owner_user_id: String,
+    pub owner_display_name: Option<String>,
+    pub metadata: Json,
+    pub latest_hash: String,
+    pub latest_hash_created_at: DateTimeWithTimeZone,
+    pub created_at: DateTimeWithTimeZone,
+    pub rejected_at: Option<DateTimeWithTimeZone>,
+    pub rejected_by_display_name: Option<String>,
+    pub kind: ModuleKind,
+    pub is_builtin_at: Option<DateTimeWithTimeZone>,
+    pub is_builtin_at_by_display_name: Option<String>,
+    #[sea_orm(column_type = r##"custom("ident")"##, nullable)]
+    pub schema_id: Option<SchemaId>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,31 +103,6 @@ impl sea_orm::TryGetable for ModuleKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[sea_orm(table_name = "modules")]
-pub struct Model {
-    #[sea_orm(primary_key, column_type = r##"custom("ident")"##)]
-    pub id: ModuleId,
-    #[sea_orm(column_type = "Text")]
-    pub name: String,
-    #[sea_orm(column_type = "Text")]
-    pub description: Option<String>,
-    pub owner_user_id: String,
-    pub owner_display_name: Option<String>,
-    pub metadata: Json,
-    pub latest_hash: String,
-    pub latest_hash_created_at: DateTimeWithTimeZone,
-    pub created_at: DateTimeWithTimeZone,
-    pub rejected_at: Option<DateTimeWithTimeZone>,
-    pub rejected_by_display_name: Option<String>,
-    pub kind: ModuleKind,
-    pub is_builtin_at: Option<DateTimeWithTimeZone>,
-    pub is_builtin_at_by_display_name: Option<String>,
-    #[sea_orm(column_type = r##"custom("ident")"##, nullable)]
-    pub schema_id: Option<SchemaId>,
-}
-
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
@@ -148,5 +148,20 @@ pub fn make_module_details_response(
                 .map(|module| module.latest_hash)
                 .collect(),
         ),
+    }
+}
+
+pub fn make_latest_modules_response(module: Model) -> LatestModuleResponse {
+    LatestModuleResponse {
+        id: module.id.to_string(),
+        name: module.name,
+        description: module.description,
+        owner_user_id: module.owner_user_id.to_string(),
+        owner_display_name: module.owner_display_name,
+        metadata: module.metadata,
+        latest_hash: module.latest_hash,
+        latest_hash_created_at: module.latest_hash_created_at.into(),
+        created_at: module.created_at.into(),
+        schema_id: module.schema_id.map(|schema_id| schema_id.to_string()),
     }
 }
