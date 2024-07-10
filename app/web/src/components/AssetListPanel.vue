@@ -254,6 +254,7 @@ const onExport = () => exportSuccessModalRef.value?.open();
 const filters = computed(() => [
   assetList.value.filter((a) => a.canContribute),
   assetList.value.filter((a) => a.canUpdate),
+  assetList.value.filter((a) => !a.isLocked),
 ]);
 
 const searchFiltersWithCounts = computed(() => {
@@ -269,6 +270,12 @@ const searchFiltersWithCounts = computed(() => {
       iconTone: "action",
       iconName: "code-deployed",
       count: filters.value[1]?.length,
+    },
+    {
+      name: "Editing Assets",
+      iconTone: "action",
+      iconName: "sliders-vertical",
+      count: filters.value[2]?.length,
     },
   ];
   return searchFilters;
