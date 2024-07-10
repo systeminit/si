@@ -338,12 +338,12 @@ const unlock = async () => {
   if (resp.result.success) {
     try {
       let unlockedAssetId =
-        assetStore.unlockedAssetIdForId[assetStore.selectedVariantId ?? ""];
+        assetStore.unlockedVariantIdForId[assetStore.selectedVariantId ?? ""];
       if (!unlockedAssetId) {
         await assetStore.LOAD_SCHEMA_VARIANT_LIST();
       }
       unlockedAssetId =
-        assetStore.unlockedAssetIdForId[assetStore.selectedVariantId ?? ""];
+        assetStore.unlockedVariantIdForId[assetStore.selectedVariantId ?? ""];
 
       if (!unlockedAssetId) {
         unlocking.value = false;
