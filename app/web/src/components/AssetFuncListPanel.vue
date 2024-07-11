@@ -48,11 +48,11 @@ import * as _ from "lodash-es";
 import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
 import { ScrollArea } from "@si/vue-lib/design-system";
-import { useAssetStore, SchemaVariantListEntry } from "@/store/asset.store";
+import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 import FuncList from "./FuncEditor/FuncList.vue";
@@ -63,7 +63,7 @@ const props = defineProps<{ schemaVariantId?: SchemaVariantId }>();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 
-interface VariantsWithFunctionSummary extends SchemaVariantListEntry {
+interface VariantsWithFunctionSummary extends SchemaVariant {
   funcSummaries: FuncSummary[];
   assetFunc: FuncSummary;
 }

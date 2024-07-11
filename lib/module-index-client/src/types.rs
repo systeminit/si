@@ -14,8 +14,6 @@ pub enum IndexClientError {
     Request(#[from] reqwest::Error),
     #[error("Serialization error: {0}")]
     Serialization(serde_json::Error),
-    #[error("Upload error: {0}")]
-    Upload(String),
     #[error("Url parse error: {0}")]
     UrlParse(#[from] url::ParseError),
 }
@@ -74,4 +72,41 @@ pub struct ExtraMetadata {
     pub version: String,
     pub schemas: Vec<String>,
     pub funcs: Vec<FuncMetadata>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListLatestModulesRequest {
+    pub hashes: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListLatestModulesResponse {
+    pub modules: Vec<LatestModuleResponse>,
+}
+
+/// This struct is nearly the same as the [`ModuleDetailsResponse`], but it does not include `past_hashes` since the
+/// data is unneeded and requires additional query logic.
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LatestModuleResponse {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub owner_user_id: String,
+    pub owner_display_name: Option<String>,
+    pub metadata: serde_json::Value,
+    pub latest_hash: String,
+    pub latest_hash_created_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub schema_id: Option<String>,
+}
+
+impl LatestModuleResponse {
+    pub fn schema_id(&self) -> Option<Ulid> {
+        self.schema_id
+            .as_deref()
+            .and_then(|schema_id| Ulid::from_string(schema_id).ok())
+    }
 }

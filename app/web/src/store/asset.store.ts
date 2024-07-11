@@ -59,10 +59,6 @@ export interface DetachedValidationPrototype {
   propKind: PropKind;
 }
 
-export type SchemaVariantListEntry = SchemaVariant & {
-  canUpdate: boolean;
-  canContribute: boolean;
-};
 export type SchemaVariantSaveRequest = Visibility & { code?: string } & {
   variant: Omit<SchemaVariant, "created_at" | "updated_at">;
 };
@@ -96,7 +92,7 @@ export const useAssetStore = () => {
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
-        variantList: [] as SchemaVariantListEntry[],
+        variantList: [] as SchemaVariant[],
         variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
 
         executeSchemaVariantTaskId: undefined as string | undefined,
@@ -129,7 +125,7 @@ export const useAssetStore = () => {
           if (this.selectedVariantId)
             return this.variantFromListById[this.selectedVariantId];
         },
-        selectedSchemaVariantRecords(): SchemaVariantListEntry[] {
+        selectedSchemaVariantRecords(): SchemaVariant[] {
           return this.selectedSchemaVariants
             .map((id) => this.variantFromListById[id])
             .filter(nonNullable);
@@ -308,13 +304,11 @@ export const useAssetStore = () => {
               color: this.generateMockColor(),
             },
             onSuccess: (variant) => {
-              const v = variant as SchemaVariantListEntry;
-              v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              if (savedAssetIdx === -1) this.variantList.push(v);
-              else this.variantList.splice(savedAssetIdx, 1, v);
+              if (savedAssetIdx === -1) this.variantList.push(variant);
+              else this.variantList.splice(savedAssetIdx, 1, variant);
             },
           });
         },
@@ -433,11 +427,7 @@ export const useAssetStore = () => {
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
             params: { ...visibility },
             onSuccess: (response) => {
-              this.variantList = response.map((v) => {
-                const e = v as SchemaVariantListEntry;
-                e.canUpdate = false;
-                return e;
-              });
+              this.variantList = response;
             },
           });
         },
@@ -459,13 +449,11 @@ export const useAssetStore = () => {
               id,
             },
             onSuccess: (variant) => {
-              const v = variant as SchemaVariantListEntry;
-              v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              if (savedAssetIdx === -1) this.variantList.push(v);
-              else this.variantList.splice(savedAssetIdx, 1, v);
+              if (savedAssetIdx === -1) this.variantList.push(variant);
+              else this.variantList.splice(savedAssetIdx, 1, variant);
             },
           });
         },
@@ -495,14 +483,11 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantCreated",
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
-              const v = variant as SchemaVariantListEntry;
-              v.canUpdate = false;
-
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              if (savedAssetIdx === -1) this.variantList.push(v);
-              else this.variantList.splice(savedAssetIdx, 1, v);
+              if (savedAssetIdx === -1) this.variantList.push(variant);
+              else this.variantList.splice(savedAssetIdx, 1, variant);
             },
           },
           {
@@ -564,12 +549,10 @@ export const useAssetStore = () => {
             eventType: "SchemaVariantUpdated",
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
-              const v = variant as SchemaVariantListEntry;
-              v.canUpdate = false;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              this.variantList.splice(savedAssetIdx, 1, v);
+              this.variantList.splice(savedAssetIdx, 1, variant);
             },
           },
           {

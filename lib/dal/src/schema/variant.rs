@@ -263,6 +263,7 @@ impl SchemaVariant {
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
             can_contribute,
+            can_update: false,
         })
     }
 }
