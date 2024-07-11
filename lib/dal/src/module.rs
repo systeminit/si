@@ -148,12 +148,16 @@ impl Module {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Module(hash))?;
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_content(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            ContentAddress::Module(hash),
+        )?;
+
         workspace_snapshot.add_node(node_weight).await?;
 
         let schema_module_index_id = workspace_snapshot
@@ -162,7 +166,7 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 schema_module_index_id,
-                EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::new_use())?,
+                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
                 id,
             )
             .await?;
@@ -272,10 +276,7 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 self.id,
-                EdgeWeight::new(
-                    ctx.change_set()?.vector_clock_id(),
-                    EdgeWeightKind::new_use(),
-                )?,
+                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
                 target_id,
             )
             .await?;

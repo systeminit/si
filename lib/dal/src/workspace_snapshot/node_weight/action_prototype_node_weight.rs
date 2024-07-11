@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
     action::prototype::ActionKind,
@@ -7,10 +7,10 @@ use crate::{
         graph::LineageId,
         vector_clock::{HasVectorClocks, VectorClock},
     },
-    ChangeSet, EdgeWeightKindDiscriminants,
+    EdgeWeightKindDiscriminants,
 };
 
-use super::NodeWeightResult;
+use super::{deprecated::DeprecatedActionPrototypeNodeWeight, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionPrototypeNodeWeight {
@@ -29,13 +29,14 @@ pub struct ActionPrototypeNodeWeight {
 
 impl ActionPrototypeNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         kind: ActionKind,
         name: impl AsRef<str>,
         description: Option<impl AsRef<str>>,
     ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(change_set.vector_clock_id());
+        let new_vector_clock = VectorClock::new(vector_clock_id);
         let name = name.as_ref().to_string();
         let description = description.map(|d| d.as_ref().to_string());
 
@@ -44,7 +45,7 @@ impl ActionPrototypeNodeWeight {
             kind,
             name,
             description,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: new_vector_clock.clone(),
             vector_clock_recently_seen: new_vector_clock.clone(),
@@ -125,5 +126,21 @@ impl HasVectorClocks for ActionPrototypeNodeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
+    }
+}
+
+impl From<DeprecatedActionPrototypeNodeWeight> for ActionPrototypeNodeWeight {
+    fn from(value: DeprecatedActionPrototypeNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            kind: value.kind,
+            name: value.name,
+            description: value.description,
+            lineage_id: value.lineage_id,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

@@ -544,15 +544,16 @@ impl Prop {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let vector_clock_id = ctx.vector_clock_id()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight = NodeWeight::new_prop(vector_clock_id, id, lineage_id, kind, name, hash)?;
         let prop_node_weight = node_weight.get_prop_node_weight()?;
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
         if ordered {
             workspace_snapshot
-                .add_ordered_node(change_set, node_weight)
+                .add_ordered_node(vector_clock_id, node_weight)
                 .await?;
         } else {
             workspace_snapshot.add_node(node_weight).await?;
@@ -1083,7 +1084,7 @@ impl Prop {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, prop.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, prop.id.into(), hash)
                 .await?;
         }
         Ok(prop)

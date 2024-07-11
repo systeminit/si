@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::func::FuncKind;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
-use crate::EdgeWeightKindDiscriminants;
-use crate::{
-    change_set::ChangeSet,
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::LineageId,
-        node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::VectorClock,
-    },
+use crate::workspace_snapshot::{
+    content_address::ContentAddress,
+    graph::LineageId,
+    node_weight::{NodeWeightError, NodeWeightResult},
+    vector_clock::VectorClock,
 };
+use crate::EdgeWeightKindDiscriminants;
+
+use super::deprecated::DeprecatedFuncNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FuncNodeWeight {
@@ -30,22 +30,23 @@ pub struct FuncNodeWeight {
 
 impl FuncNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
         name: String,
         func_kind: FuncKind,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
             name,
             func_kind,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
+            vector_clock_write: VectorClock::new(vector_clock_id),
         })
     }
 
@@ -166,5 +167,21 @@ impl std::fmt::Debug for FuncNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedFuncNodeWeight> for FuncNodeWeight {
+    fn from(value: DeprecatedFuncNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            name: value.name,
+            func_kind: value.func_kind,
+        }
     }
 }

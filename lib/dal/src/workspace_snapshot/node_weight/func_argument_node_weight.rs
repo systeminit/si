@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
-    change_set::ChangeSet,
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::LineageId,
@@ -12,6 +11,8 @@ use crate::{
     },
     EdgeWeightKindDiscriminants,
 };
+
+use super::deprecated::DeprecatedFuncArgumentNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FuncArgumentNodeWeight {
@@ -27,20 +28,21 @@ pub struct FuncArgumentNodeWeight {
 
 impl FuncArgumentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
         name: String,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
             name,
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
+            vector_clock_write: VectorClock::new(vector_clock_id),
         })
     }
 
@@ -150,5 +152,20 @@ impl std::fmt::Debug for FuncArgumentNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedFuncArgumentNodeWeight> for FuncArgumentNodeWeight {
+    fn from(value: DeprecatedFuncArgumentNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            name: value.name,
+        }
     }
 }

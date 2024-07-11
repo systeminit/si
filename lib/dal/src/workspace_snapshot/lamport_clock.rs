@@ -44,6 +44,12 @@ impl LamportClock {
         self.counter = new_value;
     }
 
+    pub fn inc_to_max_of(&mut self, new_value: DateTime<Utc>) {
+        if new_value > self.counter {
+            self.counter = new_value;
+        }
+    }
+
     pub fn merge(&mut self, other: &LamportClock) {
         if self.counter < other.counter {
             self.counter = other.counter;

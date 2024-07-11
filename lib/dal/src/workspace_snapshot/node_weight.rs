@@ -1,7 +1,10 @@
+use std::collections::HashSet;
 use std::num::TryFromIntError;
 
 use chrono::{DateTime, Utc};
+use deprecated::DeprecatedNodeWeight;
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockChangeSetId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
@@ -10,7 +13,6 @@ use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::EdgeWeightKindDiscriminants;
 use crate::{
     action::prototype::ActionKind,
-    change_set::{ChangeSet, ChangeSetError},
     workspace_snapshot::{
         content_address::ContentAddress,
         vector_clock::{HasVectorClocks, VectorClock, VectorClockError},
@@ -51,6 +53,8 @@ pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod secret_node_weight;
 
+pub mod deprecated;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum NodeWeightError {
@@ -60,8 +64,8 @@ pub enum NodeWeightError {
     CannotSetOrderOnKind,
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
-    #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    // #[error("ChangeSet error: {0}")]
+    // ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
@@ -80,6 +84,8 @@ pub enum NodeWeightError {
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
+/// **WARNING**: the order of this enum is important! Do not re-order elements.
+/// New variants must go at the end, even if it's not in lexical order!
 #[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize))]
 pub enum NodeWeight {
@@ -90,12 +96,12 @@ pub enum NodeWeight {
     Category(CategoryNodeWeight),
     Component(ComponentNodeWeight),
     Content(ContentNodeWeight),
+    DependentValueRoot(DependentValueRootNodeWeight),
     Func(FuncNodeWeight),
     FuncArgument(FuncArgumentNodeWeight),
     Ordering(OrderingNodeWeight),
     Prop(PropNodeWeight),
     Secret(SecretNodeWeight),
-    DependentValueRoot(DependentValueRootNodeWeight),
 }
 
 impl NodeWeight {
@@ -369,19 +375,26 @@ impl NodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         new_clock_value: DateTime<Utc>,
     ) {
         self.vector_clock_recently_seen_mut()
-            .inc_to(change_set.vector_clock_id(), new_clock_value);
+            .inc_to(vector_clock_id, new_clock_value);
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
         self.vector_clock_first_seen_mut()
-            .remove_entries(allow_list);
+            .collapse_entries(allow_list, collapse_id);
 
         self.vector_clock_recently_seen_mut()
-            .remove_entries(allow_list);
+            .collapse_entries(allow_list, collapse_id);
+
+        self.vector_clock_write_mut()
+            .collapse_entries(allow_list, collapse_id);
     }
 
     /// Many node kinds need to have complete control of their outgoing edges
@@ -572,37 +585,45 @@ impl NodeWeight {
     }
 
     pub fn new_content(
-        change_set: &ChangeSet,
-        content_id: Ulid,
+        vector_clock_id: VectorClockId,
+        id: Ulid,
+        lineage_id: Ulid,
         kind: ContentAddress,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Content(ContentNodeWeight::new(
-            change_set, content_id, kind,
+            vector_clock_id,
+            id,
+            lineage_id,
+            kind,
         )?))
     }
 
     pub fn new_action(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         originating_change_set_id: ChangeSetId,
         action_id: Ulid,
+        lineage_id: Ulid,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Action(ActionNodeWeight::new(
-            change_set,
+            vector_clock_id,
             originating_change_set_id,
             action_id,
+            lineage_id,
         )?))
     }
 
     pub fn new_action_prototype(
-        change_set: &ChangeSet,
-        action_id: Ulid,
+        vector_clock_id: VectorClockId,
+        action_prototype_id: Ulid,
+        lineage_id: Ulid,
         kind: ActionKind,
         name: String,
         description: Option<String>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::ActionPrototype(ActionPrototypeNodeWeight::new(
-            change_set,
-            action_id,
+            vector_clock_id,
+            action_prototype_id,
+            lineage_id,
             kind,
             name,
             description,
@@ -610,50 +631,58 @@ impl NodeWeight {
     }
 
     pub fn new_attribute_value(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         attribute_value_id: Ulid,
+        lineage_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
-            change_set,
+            vector_clock_id,
             attribute_value_id,
+            lineage_id,
             unprocessed_value,
             value,
         )?))
     }
 
     pub fn new_dependent_value_root(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
+        id: Ulid,
+        lineage_id: Ulid,
         value_id: Ulid,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::DependentValueRoot(
-            DependentValueRootNodeWeight::new(change_set, value_id)?,
+            DependentValueRootNodeWeight::new(vector_clock_id, id, lineage_id, value_id)?,
         ))
     }
 
     pub fn new_component(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         component_id: Ulid,
+        lineage_id: Ulid,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Component(ComponentNodeWeight::new(
-            change_set,
+            vector_clock_id,
             component_id,
+            lineage_id,
             ContentAddress::Component(content_hash),
         )?))
     }
 
     pub fn new_prop(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         prop_id: Ulid,
+        lineage_id: Ulid,
         prop_kind: PropKind,
         name: impl AsRef<str>,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Prop(PropNodeWeight::new(
-            change_set,
+            vector_clock_id,
             prop_id,
+            lineage_id,
             ContentAddress::Prop(content_hash),
             prop_kind,
             name.as_ref().to_string(),
@@ -661,15 +690,17 @@ impl NodeWeight {
     }
 
     pub fn new_func(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         func_id: Ulid,
+        lineage_id: Ulid,
         name: impl AsRef<str>,
         func_kind: FuncKind,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Func(FuncNodeWeight::new(
-            change_set,
+            vector_clock_id,
             func_id,
+            lineage_id,
             ContentAddress::Func(content_hash),
             name.as_ref().to_string(),
             func_kind,
@@ -677,42 +708,48 @@ impl NodeWeight {
     }
 
     pub fn new_func_argument(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         func_arg_id: Ulid,
+        lineage_id: Ulid,
         name: impl AsRef<str>,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::FuncArgument(FuncArgumentNodeWeight::new(
-            change_set,
+            vector_clock_id,
             func_arg_id,
+            lineage_id,
             ContentAddress::FuncArg(content_hash),
             name.as_ref().to_string(),
         )?))
     }
 
     pub fn new_attribute_prototype_argument(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         attribute_prototype_argument_id: Ulid,
+        lineage_id: Ulid,
         targets: Option<ArgumentTargets>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributePrototypeArgument(
             AttributePrototypeArgumentNodeWeight::new(
-                change_set,
+                vector_clock_id,
                 attribute_prototype_argument_id,
+                lineage_id,
                 targets,
             )?,
         ))
     }
 
     pub fn new_secret(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         secret_id: Ulid,
+        lineage_id: Ulid,
         encrypted_secret_key: EncryptedSecretKey,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Secret(SecretNodeWeight::new(
-            change_set,
+            vector_clock_id,
             secret_id,
+            lineage_id,
             ContentAddress::Secret(content_hash),
             encrypted_secret_key,
         )?))
@@ -827,6 +864,30 @@ impl HasVectorClocks for NodeWeight {
             NodeWeight::Prop(weight) => weight.vector_clock_recently_seen_mut(),
             NodeWeight::Secret(weight) => weight.vector_clock_recently_seen_mut(),
             NodeWeight::DependentValueRoot(weight) => weight.vector_clock_recently_seen_mut(),
+        }
+    }
+}
+
+impl From<DeprecatedNodeWeight> for NodeWeight {
+    fn from(value: DeprecatedNodeWeight) -> Self {
+        match value {
+            DeprecatedNodeWeight::Action(weight) => Self::Action(weight.into()),
+            DeprecatedNodeWeight::ActionPrototype(weight) => Self::ActionPrototype(weight.into()),
+            DeprecatedNodeWeight::AttributePrototypeArgument(weight) => {
+                Self::AttributePrototypeArgument(weight.into())
+            }
+            DeprecatedNodeWeight::AttributeValue(weight) => Self::AttributeValue(weight.into()),
+            DeprecatedNodeWeight::Category(weight) => Self::Category(weight.into()),
+            DeprecatedNodeWeight::Component(weight) => Self::Component(weight.into()),
+            DeprecatedNodeWeight::Content(weight) => Self::Content(weight.into()),
+            DeprecatedNodeWeight::Func(weight) => Self::Func(weight.into()),
+            DeprecatedNodeWeight::FuncArgument(weight) => Self::FuncArgument(weight.into()),
+            DeprecatedNodeWeight::Ordering(weight) => Self::Ordering(weight.into()),
+            DeprecatedNodeWeight::Prop(weight) => Self::Prop(weight.into()),
+            DeprecatedNodeWeight::Secret(weight) => Self::Secret(weight.into()),
+            DeprecatedNodeWeight::DependentValueRoot(weight) => {
+                Self::DependentValueRoot(weight.into())
+            }
         }
     }
 }

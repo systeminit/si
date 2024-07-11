@@ -6,8 +6,12 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::pk;
+pub mod deprecated;
+
 use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
+use crate::ChangeSetId;
+
+pub use si_events::{VectorClockActorId, VectorClockChangeSetId, VectorClockId};
 
 #[derive(Debug, Error)]
 pub enum VectorClockError {
@@ -16,8 +20,6 @@ pub enum VectorClockError {
 }
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
-
-pk!(VectorClockId);
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
@@ -48,6 +50,23 @@ impl VectorClock {
         }
     }
 
+    pub fn max(
+        &self,
+        change_set_id_filter: Option<ChangeSetId>,
+    ) -> Option<(VectorClockId, LamportClock)> {
+        let maybe_change_set_id = change_set_id_filter
+            .map(|change_set_id| VectorClockChangeSetId::new(change_set_id.into_inner().into()));
+        self.entries
+            .iter()
+            .filter(|(clock_id, _)| {
+                maybe_change_set_id
+                    .map(|vc_cs_id| clock_id.change_set_id() == vc_cs_id)
+                    .unwrap_or(true)
+            })
+            .max_by(|(_, clock_a), (_, clock_b)| (**clock_a).cmp(*clock_b))
+            .map(|(clock_id, clock)| (*clock_id, *clock))
+    }
+
     pub fn entry_for(&self, vector_clock_id: VectorClockId) -> Option<LamportClock> {
         self.entries.get(&vector_clock_id).copied()
     }
@@ -59,6 +78,21 @@ impl VectorClock {
     pub fn inc_to(&mut self, vector_clock_id: VectorClockId, new_clock_value: DateTime<Utc>) {
         if let Some(lamport_clock) = self.entries.get_mut(&vector_clock_id) {
             lamport_clock.inc_to(new_clock_value);
+        } else {
+            self.entries.insert(
+                vector_clock_id,
+                LamportClock::new_with_value(new_clock_value),
+            );
+        }
+    }
+
+    pub fn inc_to_max_of(
+        &mut self,
+        vector_clock_id: VectorClockId,
+        new_clock_value: DateTime<Utc>,
+    ) {
+        if let Some(lamport_clock) = self.entries.get_mut(&vector_clock_id) {
+            lamport_clock.inc_to_max_of(new_clock_value);
         } else {
             self.entries.insert(
                 vector_clock_id,
@@ -125,10 +159,29 @@ impl VectorClock {
             .collect()
     }
 
-    /// Remove all vector clock entries except those in `allow_list`
-    pub fn remove_entries(&mut self, allow_list: &[VectorClockId]) {
-        self.entries
-            .retain(|clock_id, _| allow_list.contains(clock_id));
+    /// Remove all vector clock entries except those in `allow_list` and
+    /// collapse them into the collapse_id by choosing the maximum removed entry
+    pub fn collapse_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
+        let mut max_removed = None;
+        self.entries.retain(|clock_id, &mut lamport_clock| {
+            if allow_list.contains(&clock_id.change_set_id()) {
+                true
+            } else {
+                if Some(lamport_clock) > max_removed {
+                    max_removed = Some(lamport_clock.to_owned());
+                }
+
+                false
+            }
+        });
+
+        if let Some(max_removed) = max_removed {
+            self.inc_to(collapse_id, max_removed.counter);
+        }
     }
 }
 

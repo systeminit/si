@@ -1,25 +1,22 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
     action::ActionState,
-    func::FuncExecutionPk,
     workspace_snapshot::{
         graph::LineageId,
         vector_clock::{HasVectorClocks, VectorClock},
     },
-    ChangeSet, ChangeSetId, EdgeWeightKindDiscriminants,
+    ChangeSetId, EdgeWeightKindDiscriminants,
 };
 
-use super::NodeWeightResult;
+use super::{deprecated::DeprecatedActionNodeWeight, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionNodeWeight {
     pub id: Ulid,
     state: ActionState,
-    originating_changeset_id: ChangeSetId,
-    // DEPRECATED
-    func_execution_pk: Option<FuncExecutionPk>,
+    originating_change_set_id: ChangeSetId,
     pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
@@ -29,18 +26,18 @@ pub struct ActionNodeWeight {
 
 impl ActionNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         originating_change_set_id: ChangeSetId,
         id: Ulid,
+        lineage_id: Ulid,
     ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(change_set.vector_clock_id());
+        let new_vector_clock = VectorClock::new(vector_clock_id);
 
         Ok(Self {
             id,
             state: ActionState::Queued,
-            func_execution_pk: None,
-            originating_changeset_id: originating_change_set_id,
-            lineage_id: change_set.generate_ulid()?,
+            originating_change_set_id,
+            lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
             vector_clock_first_seen: new_vector_clock.clone(),
             vector_clock_recently_seen: new_vector_clock.clone(),
@@ -68,18 +65,8 @@ impl ActionNodeWeight {
         self.state
     }
 
-    pub fn originating_changeset_id(&self) -> ChangeSetId {
-        self.originating_changeset_id
-    }
-
-    #[deprecated(note = "use set_function_run_id instead")]
-    pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
-        self.func_execution_pk = func_execution_pk
-    }
-
-    #[deprecated(note = "use function_run_id instead")]
-    pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
-        self.func_execution_pk
+    pub fn originating_change_set_id(&self) -> ChangeSetId {
+        self.originating_change_set_id
     }
 
     pub fn lineage_id(&self) -> Ulid {
@@ -95,8 +82,7 @@ impl ActionNodeWeight {
             "id": self.id,
             "lineage_id": self.lineage_id,
             "state": self.state,
-            "originating_changeset_id": self.originating_changeset_id,
-            "func_execution_pk": self.func_execution_pk,
+            "originating_changeset_id": self.originating_change_set_id,
         }])
     }
 
@@ -132,5 +118,20 @@ impl HasVectorClocks for ActionNodeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
+    }
+}
+
+impl From<DeprecatedActionNodeWeight> for ActionNodeWeight {
+    fn from(value: DeprecatedActionNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            state: value.state,
+            originating_change_set_id: value.originating_changeset_id,
+            lineage_id: value.lineage_id,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

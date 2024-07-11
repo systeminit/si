@@ -46,6 +46,8 @@ pub enum SessionError {
     User(#[from] UserError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
+    #[error("workspace {0} not yet migrated to new snapshot graph version. Migration required")]
+    WorkspaceNotYetMigrated(WorkspacePk),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use strum::{Display, EnumIter};
 
-use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 use crate::EdgeWeightKindDiscriminants;
+
+use super::deprecated::DeprecatedCategoryNodeWeight;
 
 /// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
 /// assume the new categories already exists on the graph. In places where you need to access the
@@ -31,8 +33,6 @@ pub struct CategoryNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     kind: CategoryNodeKind,
-    // TODO This should not be a content hash, since it does not point to a value in cas
-    content_hash: ContentHash,
     merkle_tree_hash: MerkleTreeHash,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
@@ -41,7 +41,7 @@ pub struct CategoryNodeWeight {
 
 impl CategoryNodeWeight {
     pub fn content_hash(&self) -> ContentHash {
-        self.content_hash
+        self.node_hash()
     }
 
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
@@ -68,21 +68,25 @@ impl CategoryNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn new(change_set: &ChangeSet, kind: CategoryNodeKind) -> NodeWeightResult<Self> {
+    pub fn new(
+        id: Ulid,
+        lineage_id: Ulid,
+        vector_clock_id: VectorClockId,
+        kind: CategoryNodeKind,
+    ) -> NodeWeightResult<Self> {
         Ok(Self {
-            id: change_set.generate_ulid()?,
-            lineage_id: change_set.generate_ulid()?,
+            id,
+            lineage_id,
             kind,
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            content_hash: ContentHash::from(&serde_json::json![kind]),
+            vector_clock_write: VectorClock::new(vector_clock_id),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
             merkle_tree_hash: Default::default(),
-            vector_clock_recently_seen: Default::default(),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
         })
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
+        ContentHash::from(&serde_json::json![self.kind])
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
@@ -121,7 +125,6 @@ impl std::fmt::Debug for CategoryNodeWeight {
         f.debug_struct("CategoryNodeWeight")
             .field("id", &self.id.to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_hash", &self.content_hash)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(
@@ -130,5 +133,19 @@ impl std::fmt::Debug for CategoryNodeWeight {
             )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
+    }
+}
+
+impl From<DeprecatedCategoryNodeWeight> for CategoryNodeWeight {
+    fn from(value: DeprecatedCategoryNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            kind: value.kind,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+        }
     }
 }

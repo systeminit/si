@@ -1,12 +1,18 @@
 //! Edges
 
+use std::collections::HashSet;
+
+use deprecated::DeprecatedEdgeWeight;
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockChangeSetId;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 
 use super::vector_clock::HasVectorClocks;
+
+pub mod deprecated;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -102,10 +108,17 @@ impl EdgeWeight {
 
     /// Remove stale vector clock entries. `allow_list` should always include
     /// the current editing clock id...
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
-        self.vector_clock_first_seen.remove_entries(allow_list);
-        self.vector_clock_recently_seen.remove_entries(allow_list);
-        self.vector_clock_write.remove_entries(allow_list);
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: &HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
+        self.vector_clock_first_seen
+            .collapse_entries(allow_list, collapse_id);
+        self.vector_clock_recently_seen
+            .collapse_entries(allow_list, collapse_id);
+        self.vector_clock_write
+            .collapse_entries(allow_list, collapse_id);
     }
 
     pub fn new(vector_clock_id: VectorClockId, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
@@ -146,21 +159,13 @@ impl HasVectorClocks for EdgeWeight {
     }
 }
 
-/// This, the original edge weight, was missing the "recently seen" vector clock
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct DeprecatedEdgeWeight {
-    kind: EdgeWeightKind,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_write: VectorClock,
-}
-
 impl From<DeprecatedEdgeWeight> for EdgeWeight {
-    fn from(deprecated_edge_weight: DeprecatedEdgeWeight) -> Self {
+    fn from(value: DeprecatedEdgeWeight) -> Self {
         Self {
-            kind: deprecated_edge_weight.kind,
-            vector_clock_first_seen: deprecated_edge_weight.vector_clock_first_seen,
+            kind: value.kind,
+            vector_clock_first_seen: VectorClock::empty(),
             vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: deprecated_edge_weight.vector_clock_write,
+            vector_clock_write: VectorClock::empty(),
         }
     }
 }

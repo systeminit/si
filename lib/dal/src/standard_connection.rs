@@ -37,7 +37,7 @@ macro_rules! implement_add_edge_to {
                 ctx.workspace_snapshot()?
                     .add_edge(
                         source_id,
-                        $crate::EdgeWeight::new(ctx.change_set()?.vector_clock_id(), weight)?,
+                        $crate::EdgeWeight::new(ctx.vector_clock_id()?, weight)?,
                         destination_id,
                     )
                     .await?;
@@ -50,11 +50,13 @@ macro_rules! implement_add_edge_to {
                     return Err($crate::HelperError::InvalidEdgeWeight(weight, $discriminant))?;
                 }
 
+                let vector_clock_id = ctx.vector_clock_id()?;
+
                 ctx.workspace_snapshot()?
                     .add_ordered_edge(
-                        ctx.change_set()?.vector_clock_id(),
+                        vector_clock_id,
                         source_id,
-                        $crate::EdgeWeight::new(ctx.change_set()?.vector_clock_id(), weight)?,
+                        $crate::EdgeWeight::new(vector_clock_id, weight)?,
                         destination_id
                     )
                     .await?;

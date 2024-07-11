@@ -2,6 +2,7 @@ use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::jwt_key::JwtConfig;
 use dal::pkg::PkgError;
+use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
 use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
@@ -80,6 +81,8 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     SiPkg(#[from] SiPkgError),
+    #[error("snapshot migrator error: {0}")]
+    SnapshotGraphMigrator(#[from] SnapshotGraphMigratorError),
     #[error(transparent)]
     SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
@@ -260,32 +263,27 @@ impl Server<(), ()> {
         ))
     }
 
+    pub async fn migrate_snapshots(services_context: &ServicesContext) -> Result<()> {
+        let dal_context = services_context.clone().into_builder(true);
+        let ctx = dal_context.build_default().await?;
+
+        let mut migrator = SnapshotGraphMigrator::new();
+        migrator.migrate_all(&ctx).await?;
+        ctx.commit_no_rebase().await?;
+
+        Ok(())
+    }
+
     #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
         services_context.layer_db().pg_migrate().await?;
         dal::migrate_all_with_progress(services_context).await?;
 
+        Self::migrate_snapshots(services_context).await?;
+
         migrate_builtins_from_module_index(services_context).await?;
         Ok(())
     }
-
-    // /// Start the basic resource refresh scheduler
-    // pub async fn start_resource_refresh_scheduler(
-    //     services_context: ServicesContext,
-    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
-    // ) {
-    //     ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
-    // }
-
-    // pub async fn start_status_updater(
-    //     services_context: ServicesContext,
-    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
-    // ) -> Result<()> {
-    //     StatusReceiver::new(services_context)
-    //         .await?
-    //         .start(shutdown_broadcast_rx);
-    //     Ok(())
-    // }
 
     #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
@@ -353,9 +351,8 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 
     let mut dal_context = services_context.clone().into_builder(true);
     dal_context.set_no_dependent_values();
-    dal_context.set_no_auto_migrate_snapshots();
     let mut ctx = dal_context.build_default().await?;
-
+    info!("setup builtin workspace");
     Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");

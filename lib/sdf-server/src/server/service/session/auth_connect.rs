@@ -2,6 +2,7 @@ use super::{SessionError, SessionResult};
 use crate::server::extract::{HandlerContext, RawAccessToken};
 use crate::service::session::AuthApiErrBody;
 use axum::Json;
+use dal::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -96,9 +97,15 @@ async fn find_or_create_user_and_workspace(
     let workspace = match maybe_workspace {
         Some(mut workspace) => {
             ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+
             if workspace.token().is_none() {
                 workspace.set_token(&ctx, auth_api_workspace.token).await?;
             }
+
+            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V1 {
+                return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
+            }
+
             workspace
         }
         None => {

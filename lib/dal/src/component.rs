@@ -438,12 +438,14 @@ impl Component {
     ) -> ComponentResult<Self> {
         let name: String = name.into();
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_component(change_set, id, content_address)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+
+        let node_weight =
+            NodeWeight::new_component(ctx.vector_clock_id()?, id, lineage_id, content_address)?;
 
         // Attach component to category and add use edge to schema variant
-        let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight).await?;
 
         // Root --> Component Category --> Component (this)
@@ -1549,7 +1551,7 @@ impl Component {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, id.into(), hash)
                 .await?;
         }
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
@@ -1957,7 +1959,7 @@ impl Component {
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.change_set()?,
+                ctx.vector_clock_id()?,
                 parent_id,
                 child_id,
                 EdgeWeightKindDiscriminants::FrameContains,
@@ -2488,8 +2490,8 @@ impl Component {
                 .get_node_weight(component_idx)
                 .await?
                 .get_component_node_weight()?;
-            let mut new_component_node_weight = component_node_weight
-                .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
+            let mut new_component_node_weight =
+                component_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))
@@ -2512,7 +2514,7 @@ impl Component {
                 )
                 .await?;
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, component.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, component.id.into(), hash)
                 .await?;
         }
 
@@ -2527,7 +2529,7 @@ impl Component {
 
     #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
-        let change_set = ctx.change_set()?;
+        let vector_clock_id = ctx.vector_clock_id()?;
 
         let component = Self::get_by_id(ctx, id).await?;
 
@@ -2572,7 +2574,7 @@ impl Component {
             .await?;
 
         ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, id)
+            .remove_node_by_id(vector_clock_id, id)
             .await?;
 
         WsEvent::component_deleted(ctx, id)
@@ -3952,7 +3954,7 @@ impl Component {
 
         ctx.workspace_snapshot()?
             .import_component_subgraph(
-                ctx.change_set()?.vector_clock_id(),
+                ctx.vector_clock_id()?,
                 &*base_change_set_ctx.workspace_snapshot()?,
                 component_id,
             )

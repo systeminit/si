@@ -1,21 +1,27 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
+use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
+use detect_conflicts_and_updates::DetectConflictsAndUpdates;
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::Edges;
+use petgraph::visit::DfsEvent;
 pub use petgraph::Direction;
-use petgraph::{algo, prelude::*, visit::DfsEvent};
+use petgraph::{algo, prelude::*};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
+use si_events::VectorClockChangeSetId;
 use si_events::{ulid::Ulid, ContentHash};
+use si_layer_cache::db::serialize;
+use strum::{EnumDiscriminants, EnumString};
 use thiserror::Error;
 
 use telemetry::prelude::*;
+use ulid::Generator;
 
-use crate::change_set::{ChangeSet, ChangeSetError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
@@ -26,11 +32,11 @@ use crate::workspace_snapshot::{
     edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
-    NodeInformation,
 };
+use crate::ChangeSetId;
 
-use super::edge_weight::DeprecatedEdgeWeight;
-
+pub mod deprecated;
+pub mod detect_conflicts_and_updates;
 mod tests;
 
 pub type LineageId = Ulid;
@@ -43,8 +49,8 @@ pub enum WorkspaceSnapshotGraphError {
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
-    #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    // #[error("ChangeSet error: {0}")]
+    // ChangeSet(#[from] ChangeSetError),
     #[error("Unable to retrieve content for ContentHash")]
     ContentMissingForContentHash,
     #[error("Action would create a graph cycle")]
@@ -63,6 +69,10 @@ pub enum WorkspaceSnapshotGraphError {
     IncompatibleNodeTypes,
     #[error("Invalid value graph")]
     InvalidValueGraph,
+    #[error("monotonic error: {0}")]
+    Monotonic(#[from] ulid::MonotonicError),
+    #[error("mutex poisoning: {0}")]
+    MutexPoison(String),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
@@ -71,6 +81,8 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWithIdNotFound(Ulid),
     #[error("No Prop found for NodeIndex {0:?}")]
     NoPropFound(NodeIndex),
+    #[error("Ordering node {0} has id in its order for non-existent node {1}")]
+    OrderingNodeHasNonexistentNodeInOrder(Ulid, Ulid),
     #[error("NodeIndex has too many Ordering children: {0:?}")]
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
@@ -83,20 +95,40 @@ pub enum WorkspaceSnapshotGraphError {
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
 
+#[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString))]
+pub enum WorkspaceSnapshotGraph {
+    Legacy,
+    V1(WorkspaceSnapshotGraphV1),
+}
+
+impl std::ops::Deref for WorkspaceSnapshotGraph {
+    type Target = WorkspaceSnapshotGraphV1;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner()
+    }
+}
+
+impl WorkspaceSnapshotGraph {
+    /// Return a reference to the most up to date enum variant for the graph type
+    pub fn inner(&self) -> &WorkspaceSnapshotGraphV1 {
+        match self {
+            Self::Legacy => unimplemented!("Attempted to access an unmigrated snapshot!"),
+            Self::V1(inner) => inner,
+        }
+    }
+}
+
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraph {
+pub struct WorkspaceSnapshotGraphV1 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
     root_index: NodeIndex,
-}
 
-#[derive(Default, Deserialize, Serialize, Clone)]
-pub struct DeprecatedWorkspaceSnapshotGraph {
-    graph: StableDiGraph<NodeWeight, DeprecatedEdgeWeight>,
-    node_index_by_id: HashMap<Ulid, NodeIndex>,
-    node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
-    root_index: NodeIndex,
+    #[serde(skip)]
+    ulid_generator: Arc<Mutex<Generator>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -105,83 +137,7 @@ pub struct ConflictsAndUpdates {
     pub updates: Vec<Update>,
 }
 
-impl From<DeprecatedWorkspaceSnapshotGraph> for WorkspaceSnapshotGraph {
-    fn from(deprecated_graph: DeprecatedWorkspaceSnapshotGraph) -> Self {
-        let deprecated_graph_inner = &deprecated_graph.graph;
-        let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(
-            deprecated_graph_inner.node_count(),
-            deprecated_graph_inner.edge_count(),
-        );
-        let mut node_index_by_id: HashMap<Ulid, NodeIndex> = HashMap::new();
-        let mut node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>> = HashMap::new();
-        // This is just a place holder until we find the root when iterating the nodes
-        let mut root_index = deprecated_graph.root_index;
-
-        let mut old_graph_idx_to_id = HashMap::new();
-
-        for node_weight in deprecated_graph_inner.node_weights() {
-            let id = node_weight.id();
-            let lineage_id = node_weight.lineage_id();
-
-            if let Some(idx) = deprecated_graph.node_index_by_id.get(&id) {
-                old_graph_idx_to_id.insert(idx, id);
-            }
-
-            let idx = graph.add_node(node_weight.to_owned());
-
-            if let NodeWeight::Content(content_node_weight) = node_weight {
-                if let ContentAddress::Root = content_node_weight.content_address() {
-                    root_index = idx;
-                }
-            }
-
-            node_index_by_id.insert(id, idx);
-            node_indices_by_lineage_id
-                .entry(lineage_id)
-                .and_modify(|index_set| {
-                    index_set.insert(idx);
-                })
-                .or_insert(HashSet::from([idx]));
-        }
-
-        for edge_idx in deprecated_graph_inner.edge_indices() {
-            let edge_endpoints = deprecated_graph_inner.edge_endpoints(edge_idx);
-            let deprecated_edge_weight = deprecated_graph_inner.edge_weight(edge_idx);
-
-            if let (Some((source_idx, target_idx)), Some(deprecated_edge_weight)) =
-                (edge_endpoints, deprecated_edge_weight)
-            {
-                let source_id_in_new_graph = old_graph_idx_to_id.get(&source_idx).copied();
-                let target_id_in_new_graph = old_graph_idx_to_id.get(&target_idx).copied();
-                if let (Some(source_id), Some(target_id)) =
-                    (source_id_in_new_graph, target_id_in_new_graph)
-                {
-                    let source_idx_in_new_graph = node_index_by_id.get(&source_id).copied();
-                    let target_idx_in_new_graph = node_index_by_id.get(&target_id).copied();
-
-                    if let (Some(new_source_idx), Some(new_target_idx)) =
-                        (source_idx_in_new_graph, target_idx_in_new_graph)
-                    {
-                        graph.add_edge(
-                            new_source_idx,
-                            new_target_idx,
-                            deprecated_edge_weight.to_owned().into(),
-                        );
-                    }
-                }
-            }
-        }
-
-        Self {
-            graph,
-            node_index_by_id,
-            node_indices_by_lineage_id,
-            root_index,
-        }
-    }
-}
-
-impl std::fmt::Debug for WorkspaceSnapshotGraph {
+impl std::fmt::Debug for WorkspaceSnapshotGraphV1 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
@@ -191,13 +147,15 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
     }
 }
 
-impl WorkspaceSnapshotGraph {
-    pub fn new(change_set: &ChangeSet) -> WorkspaceSnapshotGraphResult<Self> {
+impl WorkspaceSnapshotGraphV1 {
+    pub fn new(vector_clock_id: VectorClockId) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
             StableDiGraph::with_capacity(1024, 1024);
+        let mut generator = Generator::new();
         let root_node = NodeWeight::new_content(
-            change_set,
-            change_set.generate_ulid()?,
+            vector_clock_id,
+            generator.generate()?.into(),
+            generator.generate()?.into(),
             ContentAddress::Root,
         )?;
 
@@ -208,12 +166,28 @@ impl WorkspaceSnapshotGraph {
         let mut result = Self {
             root_index,
             graph,
+            ulid_generator: Arc::new(Mutex::new(generator)),
             ..Default::default()
         };
 
         result.add_node_finalize(node_id, lineage_id, root_index)?;
 
         Ok(result)
+    }
+
+    pub fn new_from_parts(
+        graph: StableDiGraph<NodeWeight, EdgeWeight>,
+        node_index_by_id: HashMap<Ulid, NodeIndex>,
+        node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
+        root_index: NodeIndex,
+    ) -> Self {
+        Self {
+            graph,
+            node_index_by_id,
+            node_indices_by_lineage_id,
+            root_index,
+            ulid_generator: Arc::new(Mutex::new(Generator::new())),
+        }
     }
 
     pub fn root(&self) -> NodeIndex {
@@ -223,6 +197,29 @@ impl WorkspaceSnapshotGraph {
     /// Access the internal petgraph for this snapshot
     pub fn graph(&self) -> &StableGraph<NodeWeight, EdgeWeight> {
         &self.graph
+    }
+
+    pub fn generate_ulid(&self) -> WorkspaceSnapshotGraphResult<Ulid> {
+        Ok(self
+            .ulid_generator
+            .lock()
+            .map_err(|e| WorkspaceSnapshotGraphError::MutexPoison(e.to_string()))?
+            .generate()?
+            .into())
+    }
+
+    pub fn max_recently_seen_clock_id(
+        &self,
+        change_set_id_filter: Option<ChangeSetId>,
+    ) -> Option<VectorClockId> {
+        self.graph
+            .node_weight(self.root())
+            .and_then(|root_node| {
+                root_node
+                    .vector_clock_recently_seen()
+                    .max(change_set_id_filter)
+            })
+            .map(|(clock_id, _)| clock_id)
     }
 
     pub async fn update_node_id(
@@ -389,10 +386,12 @@ impl WorkspaceSnapshotGraph {
 
     pub fn add_category_node(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
+        id: Ulid,
+        lineage_id: Ulid,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let inner_weight = CategoryNodeWeight::new(change_set, kind)?;
+        let inner_weight = CategoryNodeWeight::new(id, lineage_id, vector_clock_id, kind)?;
         let new_node_index = self.add_node(NodeWeight::Category(inner_weight))?;
         Ok(new_node_index)
     }
@@ -540,27 +539,38 @@ impl WorkspaceSnapshotGraph {
 
     pub fn add_ordered_node(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         node: NodeWeight,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let new_node_index = self.add_node(node)?;
-        let ordering_node_index =
-            self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(change_set)?))?;
+
+        let ordering_node_id = self.generate_ulid()?;
+        let ordering_node_lineage_id = self.generate_ulid()?;
+        let ordering_node_index = self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(
+            ordering_node_id,
+            ordering_node_lineage_id,
+            vector_clock_id,
+        )?))?;
+
         let edge_index = self.add_edge(
             new_node_index,
-            EdgeWeight::new(change_set.vector_clock_id(), EdgeWeightKind::Ordering)?,
+            EdgeWeight::new(vector_clock_id, EdgeWeightKind::Ordering)?,
             ordering_node_index,
         )?;
         let (source, _) = self.edge_endpoints(edge_index)?;
         Ok(source)
     }
 
-    pub fn remove_vector_clock_entries(&mut self, allow_list: &[VectorClockId]) {
+    pub fn collapse_vector_clock_entries(
+        &mut self,
+        allow_list: HashSet<VectorClockChangeSetId>,
+        collapse_id: VectorClockId,
+    ) {
         for edge in self.graph.edge_weights_mut() {
-            edge.remove_vector_clock_entries(allow_list);
+            edge.collapse_vector_clock_entries(&allow_list, collapse_id);
         }
         for node in self.graph.node_weights_mut() {
-            node.remove_vector_clock_entries(allow_list);
+            node.collapse_vector_clock_entries(&allow_list, collapse_id);
         }
     }
 
@@ -658,349 +668,11 @@ impl WorkspaceSnapshotGraph {
     pub fn detect_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshotGraph,
+        onto: &WorkspaceSnapshotGraphV1,
         onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotGraphResult<ConflictsAndUpdates> {
-        let mut conflicts: Vec<Conflict> = Vec::new();
-        let mut updates: Vec<Update> = Vec::new();
-        if let Err(traversal_error) =
-            petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
-                self.detect_conflicts_and_updates_process_dfs_event(
-                    to_rebase_vector_clock_id,
-                    onto,
-                    onto_vector_clock_id,
-                    event,
-                    &mut conflicts,
-                    &mut updates,
-                )
-            })
-        {
-            return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
-        };
-
-        updates.extend(self.maybe_merge_category_nodes(onto)?);
-
-        // Now that we have the full set of updates to be performed, we can check to see if we'd be
-        // breaking any "exclusive edge" constraints. We need to wait until after we've detected
-        // all of the updates to be performed as adding a second "exclusive" edge is only a
-        // violation of the constraint if we are not also removing the first one. We need to ensure
-        // that the net result is that there is only one of that edge kind.
-        conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
-
-        Ok(ConflictsAndUpdates { conflicts, updates })
-    }
-
-    fn detect_exclusive_edge_conflicts_in_updates(
-        &self,
-        updates: &Vec<Update>,
-    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
-        let mut conflicts = Vec::new();
-
-        #[derive(Debug, Default, Clone)]
-        struct NodeEdgeWeightUpdates {
-            additions: Vec<(NodeInformation, NodeInformation)>,
-            removals: Vec<(NodeInformation, NodeInformation)>,
-        }
-
-        let mut edge_updates: HashMap<
-            NodeIndex,
-            HashMap<EdgeWeightKindDiscriminants, NodeEdgeWeightUpdates>,
-        > = HashMap::new();
-
-        for update in updates {
-            match update {
-                Update::NewEdge {
-                    source,
-                    destination,
-                    edge_weight,
-                } => {
-                    let source_entry = edge_updates.entry(source.index).or_default();
-                    let edge_weight_entry = source_entry
-                        .entry(edge_weight.kind().clone().into())
-                        .or_default();
-                    edge_weight_entry.additions.push((*source, *destination));
-                }
-                Update::RemoveEdge {
-                    source,
-                    destination,
-                    edge_kind,
-                } => {
-                    let source_entry = edge_updates.entry(source.index).or_default();
-                    let edge_weight_entry = source_entry.entry(*edge_kind).or_default();
-                    edge_weight_entry.removals.push((*source, *destination));
-                }
-                _ => { /* Other updates are unused for exclusive edge conflict detection */ }
-            }
-        }
-
-        for (source_node_index, source_node_updates) in &edge_updates {
-            for (edge_weight_kind, edge_kind_updates) in source_node_updates {
-                if edge_kind_updates.additions.is_empty() {
-                    // There haven't been any new edges added for this EdgeWeightKind, so we can't
-                    // have created any Conflict::ExclusiveEdge
-                    continue;
-                }
-
-                if !self
-                    .get_node_weight(*source_node_index)?
-                    .is_exclusive_outgoing_edge(*edge_weight_kind)
-                {
-                    // Nothing to check. This edge weight kind isn't considered exclusive.
-                    continue;
-                }
-
-                // We can only have (removals.len() + (1 - existing edge count)) additions
-                // _at most_, or we'll be creating a Conflict::ExclusiveEdge because there will be
-                // multiple of the same edge kind outgoing from the same node.
-                let existing_outgoing_edges_of_kind = self
-                    .graph
-                    .edges_directed(*source_node_index, Outgoing)
-                    .filter(|edge| *edge_weight_kind == edge.weight().kind().into())
-                    .count();
-                if edge_kind_updates.additions.len()
-                    > (edge_kind_updates.removals.len() + (1 - existing_outgoing_edges_of_kind))
-                {
-                    warn!(
-                        "ExclusiveEdgeMismatch: Found {} pre-existing edges. Requested {} removals, {} additions.",
-                        existing_outgoing_edges_of_kind,
-                        edge_kind_updates.removals.len(),
-                        edge_kind_updates.additions.len(),
-                    );
-                    // The net count of outgoing edges of this kind is >1. Consider *ALL* of the
-                    // additions to be in conflict.
-                    for (
-                        edge_addition_source_node_information,
-                        edge_addition_destination_node_information,
-                    ) in &edge_kind_updates.additions
-                    {
-                        conflicts.push(Conflict::ExclusiveEdgeMismatch {
-                            source: *edge_addition_source_node_information,
-                            destination: *edge_addition_destination_node_information,
-                            edge_kind: *edge_weight_kind,
-                        });
-                    }
-                }
-            }
-        }
-
-        Ok(conflicts)
-    }
-
-    fn detect_conflicts_and_updates_process_dfs_event(
-        &self,
-        to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshotGraph,
-        onto_vector_clock_id: VectorClockId,
-        event: DfsEvent<NodeIndex>,
-        conflicts: &mut Vec<Conflict>,
-        updates: &mut Vec<Update>,
-    ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
-        match event {
-            DfsEvent::Discover(onto_node_index, _) => {
-                let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|err| {
-                    error!(
-                        "Unable to get NodeWeight for onto NodeIndex {:?}: {}",
-                        onto_node_index, err,
-                    );
-                    event
-                })?;
-
-                let mut to_rebase_node_indexes = HashSet::new();
-                if onto_node_index == onto.root_index {
-                    // There can only be one (valid/current) `ContentAddress::Root` at any
-                    // given moment, and the `lineage_id` isn't really relevant as it's not
-                    // globally stable (even though it is locally stable). This matters as we
-                    // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
-                    // externally from a module that we're attempting to import. The external
-                    // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
-                    // `onto`.
-                    to_rebase_node_indexes.insert(self.root_index);
-                } else {
-                    // Only retain node indexes... or indices... if they are part of the current
-                    // graph. There may still be garbage from previous updates to the graph
-                    // laying around.
-                    let mut potential_to_rebase_node_indexes =
-                        self.get_node_index_by_lineage(onto_node_weight.lineage_id());
-                    potential_to_rebase_node_indexes
-                        .retain(|node_index| self.has_path_to_root(*node_index));
-                    to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
-                }
-
-                // If everything with the same `lineage_id` is identical, then we can prune the
-                // graph traversal, and avoid unnecessary lookups/comparisons.
-                let mut any_content_with_lineage_has_changed = false;
-
-                for to_rebase_node_index in to_rebase_node_indexes {
-                    let to_rebase_node_weight =
-                        self.get_node_weight(to_rebase_node_index).map_err(|err| {
-                            error!(
-                                "Unable to get to_rebase NodeWeight for NodeIndex {:?}: {}",
-                                to_rebase_node_index, err,
-                            );
-                            event
-                        })?;
-
-                    if onto_node_weight.merkle_tree_hash()
-                        == to_rebase_node_weight.merkle_tree_hash()
-                    {
-                        // If the merkle tree hashes are the same, then the entire sub-graph is
-                        // identical, and we don't need to check any further.
-                        debug!(
-                            "onto {} and to rebase {} merkle tree hashes are the same",
-                            onto_node_weight.merkle_tree_hash(),
-                            to_rebase_node_weight.merkle_tree_hash()
-                        );
-                        continue;
-                    }
-                    any_content_with_lineage_has_changed = true;
-
-                    // Check if there's a difference in the node itself (and whether it is a
-                    // conflict if there is a difference).
-                    if onto_node_weight.node_hash() != to_rebase_node_weight.node_hash() {
-                        if to_rebase_node_weight
-                            .vector_clock_write()
-                            .is_newer_than(onto_node_weight.vector_clock_write())
-                        {
-                            // The existing node (`to_rebase`) has changes, but has already seen
-                            // all of the changes in `onto`. There is no conflict, and there is
-                            // nothing to update.
-                        } else if onto_node_weight
-                            .vector_clock_write()
-                            .is_newer_than(to_rebase_node_weight.vector_clock_write())
-                        {
-                            let onto_node_information = NodeInformation {
-                                index: onto_node_index,
-                                id: onto_node_weight.id().into(),
-                                node_weight_kind: onto_node_weight.clone().into(),
-                            };
-                            let to_rebase_node_information = NodeInformation {
-                                index: to_rebase_node_index,
-                                id: to_rebase_node_weight.id().into(),
-                                node_weight_kind: to_rebase_node_weight.clone().into(),
-                            };
-                            // `onto` has changes, but has already seen all of the changes in
-                            // `to_rebase`. There is no conflict, and we should update to use the
-                            // `onto` node.
-                            updates.push(Update::ReplaceSubgraph {
-                                onto: onto_node_information,
-                                to_rebase: to_rebase_node_information,
-                            });
-                        } else {
-                            // There are changes on both sides that have not
-                            // been seen by the other side; this is a conflict.
-                            // There may also be other conflicts in the outgoing
-                            // relationships, the downstream nodes, or both.
-
-                            if let (
-                                NodeWeight::Ordering(onto_ordering),
-                                NodeWeight::Ordering(to_rebase_ordering),
-                            ) = (onto_node_weight, to_rebase_node_weight)
-                            {
-                                // TODO Checking if two ordering arrays are non conflicting
-                                // (if the common elements between two ordering have the same relative positions)
-                                // is logic that could be extracted into its own thing. The following code does that
-
-                                // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
-                                // need to find out what the changes are to see what needs to be updated, and what
-                                // conflicts.
-                                let onto_ordering_set: HashSet<Ulid> =
-                                    onto_ordering.order().iter().copied().collect();
-                                let to_rebase_ordering_set: HashSet<Ulid> =
-                                    to_rebase_ordering.order().iter().copied().collect();
-
-                                // Make sure that both `onto` and `to_rebase` have the same relative ordering for the
-                                // nodes they have in common. If they don't, then that means that the order changed on
-                                // at least one of them.
-                                let common_items: HashSet<Ulid> = onto_ordering_set
-                                    .intersection(&to_rebase_ordering_set)
-                                    .copied()
-                                    .collect();
-                                let common_onto_items = {
-                                    let mut items = onto_ordering.order().clone();
-                                    items.retain(|i| common_items.contains(i));
-                                    items
-                                };
-                                let common_to_rebase_items = {
-                                    let mut items = to_rebase_ordering.order().clone();
-                                    items.retain(|i| common_items.contains(i));
-                                    items
-                                };
-                                if common_onto_items != common_to_rebase_items {
-                                    let to_rebase_node_information = NodeInformation {
-                                        index: to_rebase_node_index,
-                                        id: to_rebase_node_weight.id().into(),
-                                        node_weight_kind: to_rebase_node_weight.into(),
-                                    };
-                                    let onto_node_information = NodeInformation {
-                                        index: onto_node_index,
-                                        id: onto_node_weight.id().into(),
-                                        node_weight_kind: onto_node_weight.into(),
-                                    };
-
-                                    conflicts.push(Conflict::ChildOrder {
-                                        to_rebase: to_rebase_node_information,
-                                        onto: onto_node_information,
-                                    });
-                                }
-                            } else {
-                                let to_rebase_node_information = NodeInformation {
-                                    index: to_rebase_node_index,
-                                    id: to_rebase_node_weight.id().into(),
-                                    node_weight_kind: to_rebase_node_weight.into(),
-                                };
-                                let onto_node_information = NodeInformation {
-                                    index: onto_node_index,
-                                    id: onto_node_weight.id().into(),
-                                    node_weight_kind: onto_node_weight.into(),
-                                };
-
-                                conflicts.push(Conflict::NodeContent {
-                                    to_rebase: to_rebase_node_information,
-                                    onto: onto_node_information,
-                                });
-                            }
-                        }
-                    }
-
-                    let (container_conflicts, container_updates) = self
-                        .find_container_membership_conflicts_and_updates(
-                            to_rebase_vector_clock_id,
-                            to_rebase_node_index,
-                            &[],
-                            onto,
-                            onto_vector_clock_id,
-                            onto_node_index,
-                            &[],
-                        )
-                        .map_err(|err| {
-                            error!("Unable to find container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
-                            event
-                        })?;
-
-                    updates.extend(container_updates);
-                    conflicts.extend(container_conflicts);
-                }
-
-                if any_content_with_lineage_has_changed {
-                    // There was at least one thing with a merkle tree hash difference, so we need
-                    // to examine further down the tree to see where the difference(s) are, and
-                    // where there are conflicts, if there are any.
-                    Ok(petgraph::visit::Control::Continue)
-                } else {
-                    // Everything to be rebased is identical, so there's no need to examine the
-                    // rest of the tree looking for differences & conflicts that won't be there.
-                    Ok(petgraph::visit::Control::Prune)
-                }
-            }
-            DfsEvent::TreeEdge(_, _)
-            | DfsEvent::BackEdge(_, _)
-            | DfsEvent::CrossForwardEdge(_, _)
-            | DfsEvent::Finish(_, _) => {
-                // These events are all ignored, since we handle looking at edges as we encounter
-                // the node(s) the edges are coming from (Outgoing edges).
-                Ok(petgraph::visit::Control::Continue)
-            }
-        }
+        DetectConflictsAndUpdates::new(self, to_rebase_vector_clock_id, onto, onto_vector_clock_id)
+            .detect_conflicts_and_updates()
     }
 
     #[allow(dead_code)]
@@ -1056,17 +728,34 @@ impl WorkspaceSnapshotGraph {
                 let source_node_weight = self.graph.node_weight(source_idx)?.to_owned();
                 let id = source_node_weight.id();
                 let lineage_id = source_node_weight.lineage_id();
-                let new_source_idx = subgraph.add_node(source_node_weight);
-                index_map.insert(source_idx, new_source_idx);
+                let new_source_idx = match index_map.get(&source_idx).copied() {
+                    Some(node_idx) => node_idx,
+                    None => {
+                        let new_source_idx = subgraph.add_node(source_node_weight);
+                        index_map.insert(source_idx, new_source_idx);
+                        node_index_by_id.insert(id, new_source_idx);
+                        node_indices_by_lineage_id
+                            .entry(lineage_id)
+                            .and_modify(|set: &mut HashSet<NodeIndex>| {
+                                set.insert(new_source_idx);
+                            })
+                            .or_insert_with(|| HashSet::from([new_source_idx]));
 
-                add_node_to_idx(id, lineage_id, new_source_idx);
+                        new_source_idx
+                    }
+                };
 
                 let edge_weight = edge_ref.weight().to_owned();
 
                 let current_node_idx_in_sub = index_map.get(&node_idx).copied()?;
-                subgraph.add_edge(new_source_idx, current_node_idx_in_sub, edge_weight);
+                if subgraph
+                    .find_edge(new_source_idx, current_node_idx_in_sub)
+                    .is_none()
+                {
+                    subgraph.add_edge(new_source_idx, current_node_idx_in_sub, edge_weight);
+                }
 
-                parent_q.push_back(edge_ref.source());
+                parent_q.push_back(source_idx);
             }
             if !has_parents {
                 new_root = Some(index_map.get(&node_idx).copied()?);
@@ -1074,23 +763,40 @@ impl WorkspaceSnapshotGraph {
         }
 
         // Walk to leaves from subgraph_root
-        let mut child_q = VecDeque::from([subgraph_root]);
+        let mut child_q: VecDeque<NodeIndex> = VecDeque::from([subgraph_root]);
         while let Some(node_idx) = child_q.pop_front() {
             for edge_ref in self.edges_directed(node_idx, Outgoing) {
                 let target_idx = edge_ref.target();
                 let target_node_weight = self.graph.node_weight(target_idx)?.to_owned();
                 let id = target_node_weight.id();
                 let lineage_id = target_node_weight.lineage_id();
-                let new_target_idx = subgraph.add_node(target_node_weight);
-                index_map.insert(target_idx, new_target_idx);
-                add_node_to_idx(id, lineage_id, new_target_idx);
+                let new_target_idx = match index_map.get(&target_idx).copied() {
+                    Some(node_idx) => node_idx,
+                    None => {
+                        let new_target_idx = subgraph.add_node(target_node_weight);
+                        index_map.insert(target_idx, new_target_idx);
+                        node_index_by_id.insert(id, new_target_idx);
+                        node_indices_by_lineage_id
+                            .entry(lineage_id)
+                            .and_modify(|set: &mut HashSet<NodeIndex>| {
+                                set.insert(new_target_idx);
+                            })
+                            .or_insert_with(|| HashSet::from([new_target_idx]));
+
+                        new_target_idx
+                    }
+                };
 
                 let edge_weight = edge_ref.weight().to_owned();
-
                 let current_node_idx_in_sub = index_map.get(&edge_ref.source()).copied()?;
-                subgraph.add_edge(current_node_idx_in_sub, new_target_idx, edge_weight);
+                if subgraph
+                    .find_edge(current_node_idx_in_sub, new_target_idx)
+                    .is_none()
+                {
+                    subgraph.add_edge(current_node_idx_in_sub, new_target_idx, edge_weight);
+                }
 
-                child_q.push_back(edge_ref.source());
+                child_q.push_back(target_idx);
             }
         }
 
@@ -1099,10 +805,25 @@ impl WorkspaceSnapshotGraph {
             node_index_by_id,
             node_indices_by_lineage_id,
             root_index: new_root?,
+            ..Default::default()
         })
     }
 
-    #[allow(dead_code, clippy::disallowed_methods)]
+    /// Write the graph to disk. This *MAY PANIC*. Use only for debugging.
+    #[allow(clippy::disallowed_methods)]
+    pub fn write_to_disk(&self, file_suffix: &str) {
+        let serialized = serialize::to_vec(self).expect("unable to serialize");
+        let filename = format!("{}-{}", Ulid::new(), file_suffix);
+
+        let home_env = std::env::var("HOME").expect("No HOME environment variable set");
+        let home = std::path::Path::new(&home_env);
+        let mut file = File::create(home.join(&filename)).expect("could not create file");
+        file.write_all(&serialized).expect("could not write file");
+
+        println!("Wrote graph to {}", home.join(&filename).display());
+    }
+
+    #[allow(clippy::disallowed_methods)]
     pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
         let suffix = suffix.unwrap_or("dot");
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
@@ -1246,7 +967,7 @@ impl WorkspaceSnapshotGraph {
                 let color = color.to_string();
                 let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash()
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash(), node_weight.node_hash(),
                 )
             },
         );
@@ -1260,304 +981,6 @@ impl WorkspaceSnapshotGraph {
         file.write_all(format!("{dot:?}").as_bytes())
             .expect("could not write file");
         println!("dot output stored in file (filename without extension: {filename_no_extension})");
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn find_container_membership_conflicts_and_updates(
-        &self,
-        to_rebase_vector_clock_id: VectorClockId,
-        to_rebase_container_index: NodeIndex,
-        to_rebase_container_order: &[Ulid],
-        onto: &WorkspaceSnapshotGraph,
-        onto_vector_clock_id: VectorClockId,
-        onto_container_index: NodeIndex,
-        onto_container_order: &[Ulid],
-    ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        struct UniqueEdgeInfo {
-            pub kind: EdgeWeightKind,
-            pub target_lineage: Ulid,
-        }
-
-        #[derive(Debug, Copy, Clone)]
-        struct EdgeInfo {
-            pub source_node_index: NodeIndex,
-            pub target_node_index: NodeIndex,
-            pub edge_kind: EdgeWeightKindDiscriminants,
-            pub edge_index: EdgeIndex,
-        }
-
-        let mut updates = Vec::new();
-        let mut conflicts = Vec::new();
-
-        let mut to_rebase_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
-        for edgeref in self
-            .graph
-            .edges_directed(to_rebase_container_index, Outgoing)
-        {
-            let target_node_weight = self.get_node_weight(edgeref.target())?;
-
-            if to_rebase_container_order.contains(&target_node_weight.id()) {
-                continue;
-            }
-
-            to_rebase_edges.insert(
-                UniqueEdgeInfo {
-                    kind: edgeref.weight().kind().clone(),
-                    target_lineage: target_node_weight.lineage_id(),
-                },
-                EdgeInfo {
-                    source_node_index: edgeref.source(),
-                    target_node_index: edgeref.target(),
-                    edge_kind: edgeref.weight().kind().into(),
-                    edge_index: edgeref.id(),
-                },
-            );
-        }
-
-        let mut onto_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
-        for edgeref in onto.graph.edges_directed(onto_container_index, Outgoing) {
-            let target_node_weight = onto.get_node_weight(edgeref.target())?;
-
-            if onto_container_order.contains(&target_node_weight.id()) {
-                continue;
-            }
-
-            onto_edges.insert(
-                UniqueEdgeInfo {
-                    kind: edgeref.weight().kind().clone(),
-                    target_lineage: target_node_weight.lineage_id(),
-                },
-                EdgeInfo {
-                    source_node_index: edgeref.source(),
-                    target_node_index: edgeref.target(),
-                    edge_kind: edgeref.weight().kind().into(),
-                    edge_index: edgeref.id(),
-                },
-            );
-        }
-
-        let only_to_rebase_edges = {
-            let mut unique_edges = to_rebase_edges.clone();
-            for key in onto_edges.keys() {
-                unique_edges.remove(key);
-            }
-            unique_edges
-        };
-        let only_onto_edges = {
-            let mut unique_edges = onto_edges.clone();
-            for key in to_rebase_edges.keys() {
-                unique_edges.remove(key);
-            }
-            unique_edges
-        };
-
-        debug!("only to rebase edges: {:?}", &only_to_rebase_edges);
-        debug!("only onto edges: {:?}", &only_onto_edges);
-
-        // This is the last time that to_rebase knows about onto having seen the snapshot
-        let to_rebase_last_saw_onto = self
-            .get_node_weight(self.root_index)?
-            .vector_clock_recently_seen()
-            .entry_for(onto_vector_clock_id);
-
-        let onto_last_saw_to_rebase = onto
-            .get_node_weight(onto.root_index)?
-            .vector_clock_recently_seen()
-            .entry_for(to_rebase_vector_clock_id);
-
-        for only_to_rebase_edge_info in only_to_rebase_edges.values() {
-            let to_rebase_edge_weight = self
-                .get_edge_weight_opt(only_to_rebase_edge_info.edge_index)?
-                .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
-            let to_rebase_item_weight =
-                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
-
-            // This is an edge that is only to_rebase. So either:
-            // -- Onto has seen this edge:
-            //     -- So, if to_rebase has modified the target of the edge since onto last saw the target,
-            //      we should produce a ModifyRemovedItem conflict,
-            //     -- OR, if to_rebase has *not* modified the target, we should produce a RemoveEdge update.
-            // -- Onto has never seen this edge, becuase it was added *after* onto was forked from to_rebase:
-            //     -- So, either we should just silently let the edge stay in to_rebase, OR, we should produce
-            //          an exclusive edge conflict if silently adding this edge would lead to an incorrect
-            //          graph.
-
-            // This will always be Some(_)
-            if let Some(edge_first_seen_by_to_rebase) = to_rebase_edge_weight
-                .vector_clock_first_seen()
-                .entry_for(to_rebase_vector_clock_id)
-            {
-                let maybe_seen_by_onto_at =
-                    if let Some(onto_last_saw_to_rebase) = onto_last_saw_to_rebase {
-                        if edge_first_seen_by_to_rebase <= onto_last_saw_to_rebase {
-                            Some(onto_last_saw_to_rebase)
-                        } else {
-                            None
-                        }
-                    } else {
-                        to_rebase_edge_weight
-                            .vector_clock_recently_seen()
-                            .entry_for(onto_vector_clock_id)
-                            .or_else(|| {
-                                to_rebase_edge_weight
-                                    .vector_clock_first_seen()
-                                    .entry_for(onto_vector_clock_id)
-                            })
-                    };
-
-                if let Some(seen_by_onto_at) = maybe_seen_by_onto_at {
-                    if to_rebase_item_weight
-                        .vector_clock_write()
-                        .has_entries_newer_than(seen_by_onto_at)
-                    {
-                        // Item has been modified in `to_rebase` since
-                        // `onto` last saw `to_rebase`
-                        let node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.target_node_index,
-                            id: to_rebase_item_weight.id().into(),
-                            node_weight_kind: to_rebase_item_weight.into(),
-                        };
-                        conflicts.push(Conflict::ModifyRemovedItem(node_information))
-                    } else {
-                        let source_node_weight =
-                            self.get_node_weight(only_to_rebase_edge_info.source_node_index)?;
-                        let target_node_weight =
-                            self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
-                        let source_node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.source_node_index,
-                            id: source_node_weight.id().into(),
-                            node_weight_kind: source_node_weight.into(),
-                        };
-                        let target_node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.target_node_index,
-                            id: target_node_weight.id().into(),
-                            node_weight_kind: target_node_weight.into(),
-                        };
-                        updates.push(Update::RemoveEdge {
-                            source: source_node_information,
-                            destination: target_node_information,
-                            edge_kind: only_to_rebase_edge_info.edge_kind,
-                        });
-                    }
-                }
-            }
-        }
-
-        // - Items unique to `onto`:
-        for only_onto_edge_info in only_onto_edges.values() {
-            let onto_edge_weight = onto
-                .get_edge_weight_opt(only_onto_edge_info.edge_index)?
-                .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
-            let onto_item_weight = onto.get_node_weight(only_onto_edge_info.target_node_index)?;
-
-            // This is an edge that is only in onto, so, either:
-            //  -- to_rebase has never seen this edge, so we should produce a New Edge update
-            //  -- OR, to_rebase has seen this edge, so:
-            //      -- if onto has modified the target of the edge since the last time onto saw to
-            //      rebase, we should produce a RemoveModifiedItem conflict
-            //      -- OR, onto has not modified the edge, so the edge should stay removed (no
-            //      update necessary since it's already gone in to_rebase)
-
-            // this will always be Some(_)
-            if let Some(edge_weight_first_seen_by_onto) = onto_edge_weight
-                .vector_clock_first_seen()
-                .entry_for(onto_vector_clock_id)
-            {
-                let maybe_seen_by_to_rebase_at =
-                    if let Some(to_rebase_last_saw_onto) = to_rebase_last_saw_onto {
-                        if edge_weight_first_seen_by_onto <= to_rebase_last_saw_onto {
-                            Some(to_rebase_last_saw_onto)
-                        } else {
-                            None
-                        }
-                    } else {
-                        onto_edge_weight
-                            .vector_clock_recently_seen()
-                            .entry_for(to_rebase_vector_clock_id)
-                            .or_else(|| {
-                                onto_edge_weight
-                                    .vector_clock_first_seen()
-                                    .entry_for(to_rebase_vector_clock_id)
-                            })
-                    };
-
-                match maybe_seen_by_to_rebase_at {
-                    Some(seen_by_to_rebase_at) => {
-                        if onto_item_weight
-                            .vector_clock_write()
-                            .has_entries_newer_than(seen_by_to_rebase_at)
-                        {
-                            let container_node_weight =
-                                self.get_node_weight(to_rebase_container_index)?;
-                            let onto_node_weight =
-                                onto.get_node_weight(only_onto_edge_info.target_node_index)?;
-                            let container_node_information = NodeInformation {
-                                index: to_rebase_container_index,
-                                id: container_node_weight.id().into(),
-                                node_weight_kind: container_node_weight.into(),
-                            };
-                            let removed_item_node_information = NodeInformation {
-                                index: only_onto_edge_info.target_node_index,
-                                id: onto_node_weight.id().into(),
-                                node_weight_kind: onto_node_weight.into(),
-                            };
-
-                            conflicts.push(Conflict::RemoveModifiedItem {
-                                container: container_node_information,
-                                removed_item: removed_item_node_information,
-                            });
-                        }
-                    }
-                    None => {
-                        let source_node_weight = self.get_node_weight(to_rebase_container_index)?;
-                        let destination_node_weight =
-                            onto.get_node_weight(only_onto_edge_info.target_node_index)?;
-                        let source_node_information = NodeInformation {
-                            index: to_rebase_container_index,
-                            id: source_node_weight.id().into(),
-                            node_weight_kind: source_node_weight.into(),
-                        };
-                        let destination_node_information = NodeInformation {
-                            index: only_onto_edge_info.target_node_index,
-                            id: destination_node_weight.id().into(),
-                            node_weight_kind: destination_node_weight.into(),
-                        };
-
-                        updates.push(Update::NewEdge {
-                            source: source_node_information,
-                            destination: destination_node_information,
-                            edge_weight: onto_edge_weight.clone(),
-                        })
-                    }
-                }
-            }
-        }
-
-        // - Sets same: No conflicts/updates
-        Ok((conflicts, updates))
-    }
-
-    fn maybe_merge_category_nodes(
-        &self,
-        onto: &WorkspaceSnapshotGraph,
-    ) -> WorkspaceSnapshotGraphResult<Vec<Update>> {
-        Ok(
-            match (
-                self.get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
-                onto.get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
-            ) {
-                (Some((to_rebase_category_id, _)), Some((onto_category_id, _)))
-                    if to_rebase_category_id != onto_category_id =>
-                {
-                    vec![Update::MergeCategoryNodes {
-                        to_rebase_category_id,
-                        onto_category_id,
-                    }]
-                }
-                _ => vec![],
-            },
-        )
     }
 
     #[inline(always)]
@@ -1635,7 +1058,7 @@ impl WorkspaceSnapshotGraph {
     /// not already exist in `self`.
     pub fn find_in_self_or_import_node_from_other(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         other_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let node_weight_to_import = other.get_node_weight(other_node_index)?.clone();
@@ -1663,7 +1086,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn import_subgraph(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
@@ -1709,7 +1132,7 @@ impl WorkspaceSnapshotGraph {
     pub fn import_component_subgraph(
         &mut self,
         vector_clock_id: VectorClockId,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         component_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         // * DFS event-based traversal.
@@ -1735,7 +1158,7 @@ impl WorkspaceSnapshotGraph {
     /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
     fn import_component_subgraph_process_dfs_event(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
         vector_clock_id: VectorClockId,
         event: DfsEvent<NodeIndex>,
@@ -1915,12 +1338,12 @@ impl WorkspaceSnapshotGraph {
                 self.get_node_weight(container_ordering_index)?
             {
                 for ordered_id in ordering_weight.order() {
-                    ordered_child_indexes.push(
-                        *self
-                            .node_index_by_id
-                            .get(ordered_id)
-                            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(*ordered_id))?,
-                    );
+                    ordered_child_indexes.push(*self.node_index_by_id.get(ordered_id).ok_or(
+                        WorkspaceSnapshotGraphError::OrderingNodeHasNonexistentNodeInOrder(
+                            ordering_weight.id(),
+                            *ordered_id,
+                        ),
+                    )?);
                 }
             }
         } else {
@@ -1985,13 +1408,13 @@ impl WorkspaceSnapshotGraph {
     /// [`Self::cleanup()`] has run should be considered invalid.
     pub fn remove_edge(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
         self.remove_edge_inner(
-            change_set,
+            vector_clock_id,
             source_node_index,
             target_node_index,
             edge_kind,
@@ -2004,7 +1427,7 @@ impl WorkspaceSnapshotGraph {
     /// the node at `source_node_index`.
     fn remove_edge_inner(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -2036,7 +1459,7 @@ impl WorkspaceSnapshotGraph {
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
                 if new_container_ordering_node_weight.remove_from_order(
-                    change_set.vector_clock_id(),
+                    vector_clock_id,
                     element_id,
                     increment_vector_clocks,
                 ) {
@@ -2170,14 +1593,14 @@ impl WorkspaceSnapshotGraph {
 
     pub fn update_content(
         &mut self,
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let original_node_index = self.get_node_index_by_id(id)?;
         let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.increment_vector_clocks(change_set.vector_clock_id());
+        node_weight.increment_vector_clocks(vector_clock_id);
         node_weight.new_content_hash(new_content_hash)?;
 
         self.replace_references(original_node_index)?;
@@ -2305,12 +1728,25 @@ impl WorkspaceSnapshotGraph {
         Ok(())
     }
 
+    /// Does a depth first post-order walk to recalculate the entire merkle tree
+    /// hash. This operation can be expensive, so should be done only when we
+    /// know it needs to be (like when migrating snapshots between versions)
+    pub fn recalculate_entire_merkle_tree_hash(&mut self) -> WorkspaceSnapshotGraphResult<()> {
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
+
+        while let Some(node_index) = dfs.next(&self.graph) {
+            self.update_merkle_tree_hash(node_index)?;
+        }
+
+        Ok(())
+    }
+
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
     /// and a provided graph as the "onto" graph.
     pub fn perform_updates(
         &mut self,
-        to_rebase_change_set: &ChangeSet,
-        onto: &WorkspaceSnapshotGraph,
+        to_rebase_vector_clock_id: VectorClockId,
+        onto: &WorkspaceSnapshotGraphV1,
         updates: &[Update],
     ) -> WorkspaceSnapshotGraphResult<()> {
         for update in updates {
@@ -2334,7 +1770,7 @@ impl WorkspaceSnapshotGraph {
                     let updated_source = self.get_latest_node_idx(source.index)?;
                     let destination = self.get_latest_node_idx(destination.index)?;
                     self.remove_edge_inner(
-                        to_rebase_change_set,
+                        to_rebase_vector_clock_id,
                         updated_source,
                         destination,
                         *edge_kind,
@@ -2421,7 +1857,7 @@ impl WorkspaceSnapshotGraph {
     /// id as the node found in other.
     fn find_latest_idx_in_self_from_other_idx(
         &mut self,
-        other: &WorkspaceSnapshotGraph,
+        other: &WorkspaceSnapshotGraphV1,
         other_idx: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
         let other_id = other.get_node_weight(other_idx)?.id();
@@ -2433,7 +1869,7 @@ impl WorkspaceSnapshotGraph {
     fn reuse_from_self_or_import_subgraph_from_onto(
         &mut self,
         unchecked: NodeIndex,
-        onto: &WorkspaceSnapshotGraph,
+        onto: &WorkspaceSnapshotGraphV1,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let unchecked_node_weight = onto.get_node_weight(unchecked)?;
 
@@ -2463,7 +1899,7 @@ impl WorkspaceSnapshotGraph {
 }
 
 fn ordering_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraph,
+    snapshot: &WorkspaceSnapshotGraphV1,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -2485,7 +1921,7 @@ fn ordering_node_indexes_for_node_index(
 }
 
 fn prop_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraph,
+    snapshot: &WorkspaceSnapshotGraphV1,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot

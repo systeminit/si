@@ -1,7 +1,7 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
+use dal::{DalContext, TransactionsError, WorkspacePk, WorkspaceSnapshot, WsEventError};
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityRebaseRequest;
@@ -19,6 +19,10 @@ pub enum RebaseError {
     LayerDb(#[from] LayerDbError),
     #[error("missing change set")]
     MissingChangeSet(ChangeSetId),
+    #[error("to_rebase snapshot has no recently seen vector clock for its change set {0}")]
+    MissingVectorClockForChangeSet(ChangeSetId),
+    #[error("snapshot has no recently seen vector clock for any change set")]
+    MissingVectorClockForSnapshot,
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
     MissingWorkspaceSnapshotForChangeSet(ChangeSetId),
     #[error("serde json error: {0}")]
@@ -63,10 +67,26 @@ pub async fn perform_rebase(
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     // Perform the conflicts and updates detection.
-    let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id.into();
+    //let onto_vector_clock_id: VectorClockId = message.payload.onto_vector_clock_id;
+
+    // Choose the most recent vector clock for the to_rebase change set for conflict detection
+    let to_rebase_vector_clock_id = to_rebase_workspace_snapshot
+        .max_recently_seen_clock_id(Some(to_rebase_change_set.id))
+        .await?
+        .ok_or(RebaseError::MissingVectorClockForChangeSet(
+            to_rebase_change_set.id,
+        ))?;
+
+    let onto_vector_clock_id = onto_workspace_snapshot
+        .max_recently_seen_clock_id(None)
+        .await?
+        .ok_or(RebaseError::MissingVectorClockForChangeSet(
+            to_rebase_change_set.id,
+        ))?;
+
     let conflicts_and_updates = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
-            to_rebase_change_set.vector_clock_id(),
+            to_rebase_vector_clock_id,
             &onto_workspace_snapshot,
             onto_vector_clock_id,
         )
@@ -83,18 +103,29 @@ pub async fn perform_rebase(
     let message: RebaseStatus = if conflicts_and_updates.conflicts.is_empty() {
         to_rebase_workspace_snapshot
             .perform_updates(
-                &to_rebase_change_set,
+                to_rebase_vector_clock_id,
                 &onto_workspace_snapshot,
                 conflicts_and_updates.updates.as_slice(),
             )
             .await?;
+
         info!("updates complete: {:?}", start.elapsed());
 
         if !conflicts_and_updates.updates.is_empty() {
             // Once all updates have been performed, we can write out, mark everything as recently seen
             // and update the pointer.
+            let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+            let vector_clock_id = VectorClockId::new(
+                to_rebase_change_set.id.into_inner(),
+                workspace_pk.into_inner(),
+            );
+
             to_rebase_workspace_snapshot
-                .write(ctx, to_rebase_change_set.vector_clock_id())
+                .collapse_vector_clocks(ctx)
+                .await?;
+
+            to_rebase_workspace_snapshot
+                .write(ctx, vector_clock_id)
                 .await?;
             info!("snapshot written: {:?}", start.elapsed());
             to_rebase_change_set

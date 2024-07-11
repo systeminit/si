@@ -65,11 +65,7 @@ impl DvuDebouncer {
     }
 
     async fn run_dvu_if_values_pending(&self) -> DvuDebouncerResult<()> {
-        let mut builder = self.ctx_builder.clone();
-        // We shouldn't need to migrate any snapshots in the dvu debouncer. SDF
-        // should do that when it reads the snapshot. Once rewritten, the
-        // snapshot will already be migrated when we get here.
-        builder.set_no_auto_migrate_snapshots();
+        let builder = self.ctx_builder.clone();
         let mut ctx = builder.build_default().await?;
 
         ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_raw_id().into()));

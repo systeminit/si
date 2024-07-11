@@ -145,7 +145,7 @@ impl From<ActionNodeWeight> for Action {
         Self {
             id: value.id().into(),
             state: value.state(),
-            originating_changeset_id: value.originating_changeset_id(),
+            originating_changeset_id: value.originating_change_set_id(),
             func_execution_pk: None,
         }
     }
@@ -317,7 +317,7 @@ impl Action {
             .await?
             .get_action_node_weight()?;
         let mut new_node_weight =
-            node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
+            node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
         new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
             .add_node(NodeWeight::Action(new_node_weight))
@@ -341,11 +341,17 @@ impl Action {
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
     ) -> ActionResult<Self> {
-        let change_set = ctx.change_set()?;
-        let new_id: ActionId = change_set.generate_ulid()?.into();
+        let vector_clock_id = ctx.vector_clock_id()?;
+        let new_id: ActionId = ctx.workspace_snapshot()?.generate_ulid().await?.into();
+        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+
         let originating_change_set_id = ctx.change_set_id();
-        let node_weight =
-            NodeWeight::new_action(change_set, originating_change_set_id, new_id.into())?;
+        let node_weight = NodeWeight::new_action(
+            vector_clock_id,
+            originating_change_set_id,
+            new_id.into(),
+            lineage_id,
+        )?;
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 
         let action_category_id = ctx
@@ -388,7 +394,7 @@ impl Action {
 
     pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.change_set()?, action_id)
+            .remove_node_by_id(ctx.vector_clock_id()?, action_id)
             .await?;
         Ok(())
     }
@@ -398,13 +404,13 @@ impl Action {
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
     ) -> ActionResult<()> {
-        let change_set = ctx.change_set()?;
         let snap = ctx.workspace_snapshot()?;
 
         if let Some(action_id) =
             Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
         {
-            snap.remove_node_by_id(change_set, action_id).await?;
+            snap.remove_node_by_id(ctx.vector_clock_id()?, action_id)
+                .await?;
         }
         Ok(())
     }

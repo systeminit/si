@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
 
 use crate::{
-    change_set::ChangeSet,
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::LineageId,
@@ -11,7 +10,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
-use super::{NodeWeightError, NodeWeightResult};
+use super::{deprecated::DeprecatedComponentNodeWeight, NodeWeightError, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentNodeWeight {
@@ -27,15 +26,16 @@ pub struct ComponentNodeWeight {
 
 impl ComponentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(change_set.vector_clock_id());
+        let new_vector_clock = VectorClock::new(vector_clock_id);
 
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
             to_delete: false,
@@ -144,5 +144,20 @@ impl HasVectorClocks for ComponentNodeWeight {
 
     fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
         &mut self.vector_clock_write
+    }
+}
+
+impl From<DeprecatedComponentNodeWeight> for ComponentNodeWeight {
+    fn from(value: DeprecatedComponentNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            to_delete: value.to_delete,
+        }
     }
 }

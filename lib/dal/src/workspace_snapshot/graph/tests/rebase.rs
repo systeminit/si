@@ -2,9 +2,9 @@
 #[cfg(test)]
 mod test {
     use pretty_assertions_sorted::assert_eq;
-    use si_events::ContentHash;
+    use si_events::ulid::Ulid;
+    use si_events::{ContentHash, VectorClockId};
 
-    use crate::change_set::ChangeSet;
     use crate::func::FuncKind;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
@@ -12,57 +12,59 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
-    use crate::WorkspaceSnapshotGraph;
+    use crate::WorkspaceSnapshotGraphV1;
 
     #[test]
     fn simulate_rebase() {
-        let to_rebase_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
-        let to_rebase_change_set = &to_rebase_change_set;
-        let mut to_rebase = WorkspaceSnapshotGraph::new(to_rebase_change_set)
+        let actor_id = Ulid::new();
+        let to_rebase_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
+        let mut to_rebase = WorkspaceSnapshotGraphV1::new(to_rebase_vector_clock_id)
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Set up the to rebase graph.
         let schema_category_node_index = to_rebase
-            .add_category_node(to_rebase_change_set, CategoryNodeKind::Schema)
+            .add_category_node(
+                to_rebase_vector_clock_id,
+                Ulid::new(),
+                Ulid::new(),
+                CategoryNodeKind::Schema,
+            )
             .expect("could not add category node");
         to_rebase
             .add_edge(
                 to_rebase.root_index,
-                EdgeWeight::new(
-                    to_rebase_change_set.vector_clock_id(),
-                    EdgeWeightKind::new_use(),
-                )
-                .expect("could not create edge weight"),
+                EdgeWeight::new(to_rebase_vector_clock_id, EdgeWeightKind::new_use())
+                    .expect("could not create edge weight"),
                 schema_category_node_index,
             )
             .expect("could not add edge");
         let func_category_node_index = to_rebase
-            .add_category_node(to_rebase_change_set, CategoryNodeKind::Func)
+            .add_category_node(
+                to_rebase_vector_clock_id,
+                Ulid::new(),
+                Ulid::new(),
+                CategoryNodeKind::Func,
+            )
             .expect("could not add category node");
         to_rebase
             .add_edge(
                 to_rebase.root_index,
-                EdgeWeight::new(
-                    to_rebase_change_set.vector_clock_id(),
-                    EdgeWeightKind::new_use(),
-                )
-                .expect("could not create edge weight"),
+                EdgeWeight::new(to_rebase_vector_clock_id, EdgeWeightKind::new_use())
+                    .expect("could not create edge weight"),
                 func_category_node_index,
             )
             .expect("could not add edge");
 
         // Create the onto graph from the to rebase graph.
-        let onto_change_set = ChangeSet::new_local().expect("Unable to create ChangeSet");
-        let onto_change_set = &onto_change_set;
+        let onto_vector_clock_id = VectorClockId::new(Ulid::new(), actor_id);
         let mut onto = to_rebase.clone();
 
         // FuncCategory --Use--> Func
-        let func_id = onto_change_set
-            .generate_ulid()
-            .expect("could not generate ulid");
+        let func_id = onto.generate_ulid().expect("could not generate ulid");
         let func_node_weight = FuncNodeWeight::new(
-            onto_change_set,
+            onto_vector_clock_id,
             func_id,
+            Ulid::new(),
             ContentAddress::Func(ContentHash::from("foo")),
             "foo".to_string(),
             FuncKind::Intrinsic,
@@ -73,7 +75,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             func_category_node_index,
-            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_vector_clock_id, EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             func_node_index,
         )
@@ -81,10 +83,9 @@ mod test {
 
         // SchemaCategory --Use--> Schema
         let schema_node_weight = ContentNodeWeight::new(
-            onto_change_set,
-            onto_change_set
-                .generate_ulid()
-                .expect("could not generate ulid"),
+            onto_vector_clock_id,
+            onto.generate_ulid().expect("could not generate ulid"),
+            Ulid::new(),
             ContentAddress::Schema(ContentHash::from("foo")),
         )
         .expect("could not create func node weight");
@@ -93,7 +94,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             schema_category_node_index,
-            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_vector_clock_id, EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             schema_node_index,
         )
@@ -101,10 +102,9 @@ mod test {
 
         // Schema --Use--> SchemaVariant
         let schema_variant_node_weight = ContentNodeWeight::new(
-            onto_change_set,
-            onto_change_set
-                .generate_ulid()
-                .expect("could not generate ulid"),
+            onto_vector_clock_id,
+            onto.generate_ulid().expect("could not generate ulid"),
+            Ulid::new(),
             ContentAddress::SchemaVariant(ContentHash::from("foo")),
         )
         .expect("could not create func node weight");
@@ -113,7 +113,7 @@ mod test {
             .expect("could not add node");
         onto.add_edge(
             schema_node_index,
-            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_vector_clock_id, EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             schema_variant_node_index,
         )
@@ -125,7 +125,7 @@ mod test {
             .expect("could not get node index by id");
         onto.add_edge(
             schema_variant_node_index,
-            EdgeWeight::new(onto_change_set.vector_clock_id(), EdgeWeightKind::new_use())
+            EdgeWeight::new(onto_vector_clock_id, EdgeWeightKind::new_use())
                 .expect("could not create edge weight"),
             func_node_index,
         )
@@ -136,11 +136,7 @@ mod test {
             conflicts: before_cleanup_conflicts,
             updates: before_cleanup_updates,
         } = to_rebase
-            .detect_conflicts_and_updates(
-                to_rebase_change_set.vector_clock_id(),
-                &onto,
-                onto_change_set.vector_clock_id(),
-            )
+            .detect_conflicts_and_updates(to_rebase_vector_clock_id, &onto, onto_vector_clock_id)
             .expect("could not detect conflicts and updates");
 
         // Cleanup and check node count.
@@ -153,11 +149,7 @@ mod test {
 
         // Detect conflicts and updates. Ensure cleanup did not affect the results.
         let ConflictsAndUpdates { conflicts, updates } = to_rebase
-            .detect_conflicts_and_updates(
-                to_rebase_change_set.vector_clock_id(),
-                &onto,
-                onto_change_set.vector_clock_id(),
-            )
+            .detect_conflicts_and_updates(to_rebase_vector_clock_id, &onto, onto_vector_clock_id)
             .expect("could not detect conflicts and updates");
         assert!(conflicts.is_empty());
         assert_eq!(
@@ -184,7 +176,7 @@ mod test {
         // Perform the updates. In the future, we may want to see if the onto and resulting to
         // rebase graphs are logically equivalent after updates are performed.
         to_rebase
-            .perform_updates(to_rebase_change_set, &onto, &updates)
+            .perform_updates(to_rebase_vector_clock_id, &onto, &updates)
             .expect("could not perform updates");
     }
 }

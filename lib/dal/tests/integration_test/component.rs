@@ -503,6 +503,8 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
 
     assert_eq!(possible_world_a, view);
 
+    dbg!("committing");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

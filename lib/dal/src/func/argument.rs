@@ -245,11 +245,11 @@ impl FuncArgument {
             )
             .await?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_func_argument(change_set, id, name, hash)?;
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let id = workspace_snapshot.generate_ulid().await?;
+        let lineage_id = workspace_snapshot.generate_ulid().await?;
+        let node_weight =
+            NodeWeight::new_func_argument(ctx.vector_clock_id()?, id, lineage_id, name, hash)?;
 
         workspace_snapshot.add_node(node_weight.clone()).await?;
         Func::add_edge_to_argument(ctx, func_id, id.into(), EdgeWeightKind::new_use()).await?;
@@ -453,8 +453,7 @@ impl FuncArgument {
 
             workspace_snapshot
                 .add_node(NodeWeight::FuncArgument(
-                    node_weight
-                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
+                    node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
                 ))
                 .await?;
 
@@ -476,7 +475,7 @@ impl FuncArgument {
                 )
                 .await?;
             workspace_snapshot
-                .update_content(ctx.change_set()?, func_argument.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, func_argument.id.into(), hash)
                 .await?;
         }
 
@@ -529,9 +528,8 @@ impl FuncArgument {
         }
 
         // Now, we can remove the argument.
-        let change_set = ctx.change_set()?;
         ctx.workspace_snapshot()?
-            .remove_node_by_id(change_set, id)
+            .remove_node_by_id(ctx.vector_clock_id()?, id)
             .await?;
 
         Ok(())

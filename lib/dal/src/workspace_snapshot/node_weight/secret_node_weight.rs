@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
+use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::HasVectorClocks;
-use crate::EdgeWeightKindDiscriminants;
-use crate::{
-    change_set::ChangeSet,
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::LineageId,
-        node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::VectorClock,
-    },
+use crate::workspace_snapshot::{
+    content_address::ContentAddress,
+    graph::LineageId,
+    node_weight::{NodeWeightError, NodeWeightResult},
+    vector_clock::VectorClock,
 };
+use crate::EdgeWeightKindDiscriminants;
+
+use super::deprecated::DeprecatedSecretNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecretNodeWeight {
@@ -28,19 +28,20 @@ pub struct SecretNodeWeight {
 
 impl SecretNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        vector_clock_id: VectorClockId,
         id: Ulid,
+        lineage_id: Ulid,
         content_address: ContentAddress,
         encrypted_secret_key: EncryptedSecretKey,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
-            lineage_id: change_set.generate_ulid()?,
+            lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
-            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id()),
-            vector_clock_write: VectorClock::new(change_set.vector_clock_id()),
+            vector_clock_first_seen: VectorClock::new(vector_clock_id),
+            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
+            vector_clock_write: VectorClock::new(vector_clock_id),
             encrypted_secret_key,
         })
     }
@@ -154,5 +155,20 @@ impl std::fmt::Debug for SecretNodeWeight {
             .field("vector_clock_write", &self.vector_clock_write)
             .field("encrypted_secret_key", &self.encrypted_secret_key)
             .finish()
+    }
+}
+
+impl From<DeprecatedSecretNodeWeight> for SecretNodeWeight {
+    fn from(value: DeprecatedSecretNodeWeight) -> Self {
+        Self {
+            id: value.id,
+            lineage_id: value.lineage_id,
+            content_address: value.content_address,
+            merkle_tree_hash: value.merkle_tree_hash,
+            vector_clock_first_seen: VectorClock::empty(),
+            vector_clock_recently_seen: VectorClock::empty(),
+            vector_clock_write: VectorClock::empty(),
+            encrypted_secret_key: value.encrypted_secret_key,
+        }
     }
 }

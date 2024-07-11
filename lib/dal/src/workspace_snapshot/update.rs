@@ -1,10 +1,15 @@
+use petgraph::prelude::NodeIndex;
 use si_events::ulid::Ulid;
 
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 
-use super::edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::NodeInformation;
+use super::{
+    edge_info::EdgeInfo,
+    edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants},
+    graph::WorkspaceSnapshotGraphResult,
+};
+use crate::{workspace_snapshot::NodeInformation, WorkspaceSnapshotGraphV1};
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {
@@ -33,4 +38,36 @@ pub enum Update {
         to_rebase_category_id: Ulid,
         onto_category_id: Ulid,
     },
+}
+
+impl Update {
+    /// Produce a NewEdge update from an edge that exists only in the "onto" graph
+    pub fn new_edge(
+        to_rebase_graph: &WorkspaceSnapshotGraphV1,
+        onto_graph: &WorkspaceSnapshotGraphV1,
+        to_rebase_source_index: NodeIndex,
+        only_onto_edge_info: &EdgeInfo,
+        only_onto_edge_weight: EdgeWeight,
+    ) -> WorkspaceSnapshotGraphResult<Self> {
+        let source_node_weight = to_rebase_graph.get_node_weight(to_rebase_source_index)?;
+        let target_node_weight =
+            onto_graph.get_node_weight(only_onto_edge_info.target_node_index)?;
+
+        let source = NodeInformation {
+            index: to_rebase_source_index,
+            id: source_node_weight.id().into(),
+            node_weight_kind: source_node_weight.into(),
+        };
+        let destination = NodeInformation {
+            index: only_onto_edge_info.target_node_index,
+            id: target_node_weight.id().into(),
+            node_weight_kind: target_node_weight.into(),
+        };
+
+        Ok(Update::NewEdge {
+            source,
+            destination,
+            edge_weight: only_onto_edge_weight,
+        })
+    }
 }

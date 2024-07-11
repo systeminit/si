@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 
-use si_events::WorkspaceSnapshotAddress;
+use si_events::{VectorClockId, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use telemetry::tracing::instrument;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -21,10 +21,11 @@ pub struct RebaseRequest {
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
     /// rebasing the "to rebase" workspace snapshot.
     pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    /// Derived from the ephemeral or persisted change set that's either the base change set, the
-    /// last change set before edits were made, or the change set that you are trying to rebase
-    /// onto base.
-    pub onto_vector_clock_id: Ulid,
+    /// *DEPRECATED*: We no longer have "edit sessions", the correct vector
+    /// clock to choose for the onto workspace is always the most up to date
+    /// "recently seen" clock in the root node of the onto snapshot. This field
+    /// is ignored in the request.
+    pub onto_vector_clock_id: VectorClockId,
     /// DEPRECATED: We have to hang on to this to ensure we can deserialize this message
     pub dvu_values: Option<Vec<Ulid>>,
 }
@@ -33,7 +34,7 @@ impl RebaseRequest {
     pub fn new(
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: Ulid,
+        onto_vector_clock_id: VectorClockId,
     ) -> RebaseRequest {
         RebaseRequest {
             to_rebase_change_set_id,
@@ -117,7 +118,7 @@ impl<'a> ActivityRebase<'a> {
         &self,
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: Ulid,
+        onto_vector_clock_id: VectorClockId,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(
@@ -135,7 +136,7 @@ impl<'a> ActivityRebase<'a> {
         &self,
         to_rebase_change_set_id: Ulid,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: Ulid,
+        onto_vector_clock_id: VectorClockId,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
         let payload = RebaseRequest::new(

@@ -160,7 +160,7 @@ impl ValidationOutputNode {
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::ValidationOutput)?;
 
             let mut new_node_weight =
-                node_weight.new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id());
+                node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
 
             new_node_weight.new_content_hash(hash)?;
 
@@ -171,19 +171,20 @@ impl ValidationOutputNode {
 
             id
         } else {
-            let change_set = ctx.change_set()?;
-            let id = change_set.generate_ulid()?;
-            let node_weight =
-                NodeWeight::new_content(change_set, id, ContentAddress::ValidationOutput(hash))?;
+            let id = workspace_snapshot.generate_ulid().await?;
+            let lineage_id = workspace_snapshot.generate_ulid().await?;
+            let node_weight = NodeWeight::new_content(
+                ctx.vector_clock_id()?,
+                id,
+                lineage_id,
+                ContentAddress::ValidationOutput(hash),
+            )?;
             workspace_snapshot.add_node(node_weight).await?;
 
             workspace_snapshot
                 .add_edge(
                     attribute_value_id,
-                    EdgeWeight::new(
-                        change_set.vector_clock_id(),
-                        EdgeWeightKind::ValidationOutput,
-                    )?,
+                    EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::ValidationOutput)?,
                     id,
                 )
                 .await?;
@@ -237,6 +238,7 @@ impl ValidationOutputNode {
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
+        let vector_clock_id = ctx.vector_clock_id()?;
 
         for validation_idx in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -250,7 +252,7 @@ impl ValidationOutputNode {
                 .await?
                 .id();
             workspace_snapshot
-                .remove_node_by_id(ctx.change_set()?, validation_id)
+                .remove_node_by_id(vector_clock_id, validation_id)
                 .await?;
         }
 

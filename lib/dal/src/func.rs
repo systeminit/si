@@ -278,10 +278,16 @@ impl Func {
 
         let func_kind = FuncKind::new(backend_kind, backend_response_type)?;
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight =
-            NodeWeight::new_func(change_set, id, name.clone().into(), func_kind, hash)?;
+        let id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let node_weight = NodeWeight::new_func(
+            ctx.vector_clock_id()?,
+            id,
+            lineage_id,
+            name.clone().into(),
+            func_kind,
+            hash,
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight.clone()).await?;
@@ -484,8 +490,7 @@ impl Func {
 
             workspace_snapshot
                 .add_node(NodeWeight::Func(
-                    node_weight
-                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
+                    node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
                 ))
                 .await?;
 
@@ -507,7 +512,7 @@ impl Func {
                 )
                 .await?;
             workspace_snapshot
-                .update_content(ctx.change_set()?, func.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, func.id.into(), hash)
                 .await?;
         }
 
@@ -551,8 +556,9 @@ impl Func {
 
         // Now, we can remove the func.
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let change_set = ctx.change_set()?;
-        workspace_snapshot.remove_node_by_id(change_set, id).await?;
+        workspace_snapshot
+            .remove_node_by_id(ctx.vector_clock_id()?, id)
+            .await?;
 
         Ok(func.name)
     }

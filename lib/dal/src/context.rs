@@ -7,6 +7,9 @@ use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::ulid::Ulid;
+use si_events::VectorClockActorId;
+use si_events::VectorClockChangeSetId;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityPayload;
@@ -106,7 +109,6 @@ impl ServicesContext {
             services_context: self,
             blocking,
             no_dependent_values: false,
-            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -307,8 +309,8 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
-    /// Whether we should attempt to automatically migrate snapshots to the latest version
-    no_auto_migrate_snapshots: bool,
+    /// The vector clock's "actor id" if this context does not have a User
+    system_actor_id: Ulid,
 }
 
 impl DalContext {
@@ -319,7 +321,6 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
-            no_auto_migrate_snapshots: false,
         }
     }
 
@@ -343,49 +344,8 @@ impl DalContext {
         Ok(workspace.token())
     }
 
+    /// Update the context to use the most recent snapshot pointed to by the current `ChangeSetId`.
     pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
-        let change_set = ChangeSet::find(self, self.change_set_id())
-            .await
-            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
-
-        match WorkspaceSnapshot::find_for_change_set(self, change_set.id)
-            .await
-            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))
-        {
-            Ok(workspace_snapshot) => {
-                self.set_change_set(change_set)?;
-                self.set_workspace_snapshot(workspace_snapshot);
-            }
-            Err(err) => {
-                if err.is_unmigrated_snapshot_error() && !self.no_auto_migrate_snapshots {
-                    ChangeSet::migrate_change_set_snapshot(self, self.change_set_id())
-                        .await
-                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
-                    self.commit_no_rebase().await?;
-
-                    let change_set = ChangeSet::find(self, self.change_set_id())
-                        .await
-                        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-                        .ok_or(TransactionsError::ChangeSetNotFound(self.change_set_id()))?;
-                    let workspace_snapshot =
-                        WorkspaceSnapshot::find_for_change_set(self, change_set.id)
-                            .await
-                            .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
-
-                    self.set_change_set(change_set)?;
-                    self.set_workspace_snapshot(workspace_snapshot);
-                } else {
-                    return Err(err);
-                }
-            }
-        };
-        Ok(())
-    }
-
-    pub async fn update_snapshot_to_visibility_no_editing_change_set(
-        &mut self,
-    ) -> Result<(), TransactionsError> {
         let change_set = ChangeSet::find(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
@@ -395,9 +355,8 @@ impl DalContext {
             .await
             .map_err(|err| TransactionsError::WorkspaceSnapshot(Box::new(err)))?;
 
-        self.change_set = Some(change_set);
+        self.set_change_set(change_set)?;
         self.set_workspace_snapshot(workspace_snapshot);
-
         Ok(())
     }
 
@@ -405,7 +364,7 @@ impl DalContext {
         &self,
     ) -> Result<Option<WorkspaceSnapshotAddress>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
-            let vector_clock_id = self.change_set()?.vector_clock_id();
+            let vector_clock_id = self.vector_clock_id()?;
 
             Ok(Some(snapshot.write(self, vector_clock_id).await.map_err(
                 |err| TransactionsError::WorkspaceSnapshot(Box::new(err)),
@@ -419,7 +378,7 @@ impl DalContext {
         &self,
         onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> Result<RebaseRequest, TransactionsError> {
-        let vector_clock_id = self.change_set()?.vector_clock_id();
+        let vector_clock_id = self.vector_clock_id()?;
         Ok(RebaseRequest {
             onto_workspace_snapshot_address,
             // the vector clock id of the current change set is just the id
@@ -482,7 +441,6 @@ impl DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             no_dependent_values: self.no_dependent_values,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
         }
     }
 
@@ -518,6 +476,23 @@ impl DalContext {
         Ok(())
     }
 
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.visibility.change_set_id
+    }
+
+    pub fn vector_clock_id(&self) -> Result<VectorClockId, TransactionsError> {
+        let change_set_id = self.visibility.change_set_id.into_inner();
+        let actor_id = match self.history_actor {
+            HistoryActor::SystemInit => self.system_actor_id,
+            HistoryActor::User(user_pk) => user_pk.into_inner().into(),
+        };
+
+        Ok(VectorClockId::new(
+            VectorClockChangeSetId::new(change_set_id.into()),
+            VectorClockActorId::new(actor_id),
+        ))
+    }
+
     pub fn change_set(&self) -> Result<&ChangeSet, TransactionsError> {
         match self.change_set.as_ref() {
             Some(csp_ref) => Ok(csp_ref),
@@ -540,17 +515,15 @@ impl DalContext {
         // Ulid generator and new vector clock id so that concurrent editing conflicts can be
         // resolved by the rebaser. This change set is not persisted to the database (the
         // rebaser will persist a new one if it can)
-        self.change_set = Some(
-            change_set
-                .editing_changeset()
-                .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?,
-        );
-
+        self.change_set = Some(change_set);
         self.change_set()
     }
 
-    pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
-        self.workspace_snapshot = Some(Arc::new(workspace_snapshot));
+    pub fn set_workspace_snapshot(
+        &mut self,
+        workspace_snapshot: impl Into<Arc<WorkspaceSnapshot>>,
+    ) {
+        self.workspace_snapshot = Some(workspace_snapshot.into())
     }
 
     /// Fetch the workspace snapshot for the current visibility
@@ -567,10 +540,6 @@ impl DalContext {
 
     pub fn no_dependent_values(&self) -> bool {
         self.no_dependent_values
-    }
-
-    pub fn no_auto_migrate_snapshots(&self) -> bool {
-        self.no_auto_migrate_snapshots
     }
 
     pub fn services_context(&self) -> ServicesContext {
@@ -656,16 +625,6 @@ impl DalContext {
         Ok(())
     }
 
-    pub async fn update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-        &mut self,
-        change_set_id: ChangeSetId,
-    ) -> Result<(), TransactionsError> {
-        self.update_visibility_deprecated(Visibility::new(change_set_id));
-        self.update_snapshot_to_visibility_no_editing_change_set()
-            .await?;
-        Ok(())
-    }
-
     /// Clones a new context from this one with a new [`Visibility`].
     pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
         let mut new = self.clone();
@@ -706,10 +665,8 @@ impl DalContext {
     pub async fn clone_with_head(&self) -> Result<Self, TransactionsError> {
         let mut new = self.clone();
         let default_change_set_id = new.get_workspace_default_change_set_id().await?;
-        new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(
-            default_change_set_id,
-        )
-        .await?;
+        new.update_visibility_and_snapshot_to_visibility(default_change_set_id)
+            .await?;
         Ok(new)
     }
 
@@ -723,7 +680,7 @@ impl DalContext {
             .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
 
         let mut new = self.clone();
-        new.update_visibility_and_snapshot_to_visibility_no_editing_change_set(base_change_set_id)
+        new.update_visibility_and_snapshot_to_visibility(base_change_set_id)
             .await?;
         Ok(new)
     }
@@ -743,7 +700,7 @@ impl DalContext {
     ) -> Result<(), WorkspaceSnapshotError> {
         for id in ids {
             self.workspace_snapshot()?
-                .add_dependent_value_root(self.change_set()?, id)
+                .add_dependent_value_root(self.vector_clock_id()?, id)
                 .await?;
         }
 
@@ -904,11 +861,6 @@ impl DalContext {
         Ok(is_in_our_tenancy)
     }
 
-    // NOTE(nick,zack,jacob): likely a temporary func to get the change set id from the visibility.
-    pub fn change_set_id(&self) -> ChangeSetId {
-        self.visibility.change_set_id
-    }
-
     pub fn access_builder(&self) -> AccessBuilder {
         AccessBuilder::new(self.tenancy, self.history_actor)
     }
@@ -982,8 +934,6 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
-    /// Whether we should avoid automatically migrating snapshots to the latest version
-    no_auto_migrate_snapshots: bool,
 }
 
 impl fmt::Debug for DalContextBuilder {
@@ -1010,7 +960,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         })
     }
 
@@ -1031,7 +981,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1062,7 +1012,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            no_auto_migrate_snapshots: self.no_auto_migrate_snapshots,
+            system_actor_id: Ulid::new(),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {
@@ -1125,11 +1075,6 @@ impl DalContextBuilder {
     pub fn set_no_dependent_values(&mut self) {
         self.no_dependent_values = true;
     }
-
-    /// Call this to prevent automatic migration of out of date snapshots
-    pub fn set_no_auto_migrate_snapshots(&mut self) {
-        self.no_auto_migrate_snapshots = true;
-    }
 }
 
 #[remain::sorted]
@@ -1180,6 +1125,8 @@ pub enum TransactionsError {
     Workspace(String),
     #[error("workspace not found by pk: {0}")]
     WorkspaceNotFound(WorkspacePk),
+    #[error("workspace not set on DalContext")]
+    WorkspaceNotSet,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(Box<WorkspaceSnapshotError>),
 }
@@ -1318,7 +1265,7 @@ async fn rebase(
         .rebase_and_wait(
             rebase_request.to_rebase_change_set_id.into(),
             rebase_request.onto_workspace_snapshot_address,
-            rebase_request.onto_vector_clock_id.into(),
+            rebase_request.onto_vector_clock_id,
             metadata,
         )
         .await?;

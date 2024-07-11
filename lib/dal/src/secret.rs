@@ -223,12 +223,12 @@ impl Secret {
             HistoryActor::User(user_pk) => Some(*user_pk),
         };
 
-        let change_set = ctx.change_set()?;
-        let id = change_set.generate_ulid()?;
+        let id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let secret_id = id.into();
 
         // Generate a key for the underlying encrypted secret.
-        let key = Self::generate_key(ctx, secret_id)?;
+        let key = Self::generate_key(ctx, secret_id).await?;
 
         let content = SecretContentV1 {
             timestamp: Timestamp::now(),
@@ -250,7 +250,8 @@ impl Secret {
             )
             .await?;
 
-        let node_weight = NodeWeight::new_secret(change_set, id, key, hash)?;
+        let node_weight =
+            NodeWeight::new_secret(ctx.vector_clock_id()?, id, lineage_id, key, hash)?;
         let secret_node_weight = node_weight.get_secret_node_weight()?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -283,8 +284,11 @@ impl Secret {
     /// A new key should be assembled anytime an [`EncryptedSecret`] is created or mutated. This
     /// method is purposefully owned by [`Secret`] to help ensure that we don't generate a key based
     /// on any encrypted contents or parameters to insert encrypted contents.
-    fn generate_key(ctx: &DalContext, secret_id: SecretId) -> SecretResult<EncryptedSecretKey> {
-        let new_ulid = ctx.change_set()?.generate_ulid()?;
+    async fn generate_key(
+        ctx: &DalContext,
+        secret_id: SecretId,
+    ) -> SecretResult<EncryptedSecretKey> {
+        let new_ulid = ctx.workspace_snapshot()?.generate_ulid().await?;
 
         let mut hasher = EncryptedSecretKey::hasher();
         hasher.update(&ctx.tenancy().to_bytes());
@@ -597,7 +601,7 @@ impl Secret {
         algorithm: SecretAlgorithm,
     ) -> SecretResult<Self> {
         // Generate a new key and insert a new encrypted secret.
-        let new_key = Self::generate_key(ctx, self.id)?;
+        let new_key = Self::generate_key(ctx, self.id).await?;
 
         // NOTE(nick): we do not clean up the existing encrypted secret yet.
         EncryptedSecret::insert(ctx, new_key, crypted, key_pair_pk, version, algorithm).await?;
@@ -649,8 +653,7 @@ impl Secret {
 
             workspace_snapshot
                 .add_node(NodeWeight::Secret(
-                    secret_node_weight
-                        .new_with_incremented_vector_clock(ctx.change_set()?.vector_clock_id()),
+                    secret_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
                 ))
                 .await?;
 
@@ -672,7 +675,7 @@ impl Secret {
                 )
                 .await?;
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set()?, secret.id.into(), hash)
+                .update_content(ctx.vector_clock_id()?, secret.id.into(), hash)
                 .await?;
         }
 

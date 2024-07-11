@@ -3,7 +3,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
-use si_events::ContentHash;
+use si_events::{ContentHash, VectorClockId};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -11,6 +11,7 @@ use si_pkg::{
     WorkspaceExportMetadataV0,
 };
 use std::collections::{HashMap, VecDeque};
+use std::str::FromStr;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -19,6 +20,7 @@ use ulid::Ulid;
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
@@ -64,6 +66,8 @@ pub enum WorkspaceError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("strum parse error: {0}")]
+    StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
@@ -95,6 +99,7 @@ pub struct Workspace {
     #[serde(flatten)]
     timestamp: Timestamp,
     token: Option<String>,
+    snapshot_version: WorkspaceSnapshotGraphDiscriminants,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -103,6 +108,7 @@ impl TryFrom<PgRow> for Workspace {
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        let snapshot_version: String = row.try_get("snapshot_version")?;
         Ok(Self {
             pk: row.try_get("pk")?,
             name: row.try_get("name")?,
@@ -110,6 +116,7 @@ impl TryFrom<PgRow> for Workspace {
             uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
             token: row.try_get("token")?,
+            snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
         })
     }
 }
@@ -129,6 +136,10 @@ impl Workspace {
 
     pub fn token(&self) -> Option<String> {
         self.token.clone()
+    }
+
+    pub fn snapshot_version(&self) -> WorkspaceSnapshotGraphDiscriminants {
+        self.snapshot_version
     }
 
     pub async fn set_token(&mut self, ctx: &DalContext, token: String) -> WorkspaceResult<()> {
@@ -170,30 +181,17 @@ impl Workspace {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
             ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
-            if let Err(err) = ctx
-                .update_visibility_and_snapshot_to_visibility(found_builtin.default_change_set_id)
-                .await
-            {
-                if err.is_unmigrated_snapshot_error() {
-                    ChangeSet::migrate_change_set_snapshot(
-                        ctx,
-                        found_builtin.default_change_set_id,
-                    )
-                    .await?;
-                    ctx.commit_no_rebase().await?;
-                    ctx.update_visibility_and_snapshot_to_visibility(
-                        found_builtin.default_change_set_id,
-                    )
-                    .await?;
-                } else {
-                    Err(err)?;
-                }
-            }
+            ctx.update_visibility_and_snapshot_to_visibility(found_builtin.default_change_set_id)
+                .await?;
+
             return Ok(());
         }
 
-        let initial_change_set = ChangeSet::new_local()?;
-        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &initial_change_set).await?;
+        let initial_vector_clock_id = VectorClockId::new(
+            WorkspaceId::NONE.into_inner(),
+            WorkspaceId::NONE.into_inner(),
+        );
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, initial_vector_clock_id).await?;
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
@@ -236,9 +234,9 @@ impl Workspace {
         Ok(())
     }
 
-    /// This private method attempts to find the builtin [`Workspace`].
+    /// This method attempts to find the builtin [`Workspace`].
     #[instrument(skip_all)]
-    async fn find_builtin(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
+    pub async fn find_builtin(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
         let head_pk = WorkspaceId::NONE;
         let maybe_row = ctx
             .txns()
@@ -541,10 +539,9 @@ impl Workspace {
                         )?)
                     };
 
-                let local_change_set = ChangeSet::new_local()?;
-                let new_snap_address = imported_snapshot
-                    .write(ctx, local_change_set.vector_clock_id())
-                    .await?;
+                // XXX: fake vector clock here. Figure out the right one
+                let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
+                let new_snap_address = imported_snapshot.write(ctx, vector_clock_id).await?;
 
                 let new_change_set = ChangeSet::new(
                     ctx,
@@ -600,5 +597,26 @@ impl Workspace {
         let has_change_set: bool = row.try_get("has_change_set")?;
 
         Ok(has_change_set)
+    }
+
+    /// Mark all workspaces in the database with a given snapshot version. Use
+    /// only if you know you have migrated the snapshots for these workspaces to
+    /// this version!
+    pub async fn set_snapshot_version_for_all_workspaces(
+        ctx: &DalContext,
+        snapshot_version: WorkspaceSnapshotGraphDiscriminants,
+    ) -> WorkspaceResult<()> {
+        let version_string = snapshot_version.to_string();
+
+        ctx.txns()
+            .await?
+            .pg()
+            .query(
+                "UPDATE workspaces SET snapshot_version = $1",
+                &[&version_string],
+            )
+            .await?;
+
+        Ok(())
     }
 }
