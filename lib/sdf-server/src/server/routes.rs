@@ -1,6 +1,6 @@
 use axum::{
-    response::Json,
-    response::{IntoResponse, Response},
+    http::HeaderValue,
+    response::{IntoResponse, Json, Response},
     routing::get,
     Router,
 };
@@ -9,51 +9,56 @@ use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
-use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
+use tower_http::{compression::CompressionLayer, cors::AllowOrigin};
 
 use super::{server::ServerError, state::AppState};
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
-    router = router
-        // root health route is currently pinged by auth portal to check if backend is up and running so we need permissive CORS headers
-        .nest(
-            "/api/",
-            Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
-        )
-        .nest("/api/action", crate::server::service::action::routes())
-        .nest(
-            "/api/node_debug",
-            crate::server::service::node_debug::routes(),
-        )
-        .nest(
-            "/api/attribute",
-            crate::server::service::attribute::routes(),
-        )
-        .nest(
-            "/api/change_set",
-            crate::server::service::change_set::routes(),
-        )
-        .nest(
-            "/api/component",
-            crate::server::service::component::routes(),
-        )
-        .nest("/api/diagram", crate::server::service::diagram::routes())
-        .nest("/api/func", crate::server::service::func::routes())
-        .nest("/api/graphviz", crate::server::service::graphviz::routes())
-        .nest(
-            "/api/qualification",
-            crate::server::service::qualification::routes(),
-        )
-        .nest("/api/secret", crate::server::service::secret::routes())
-        .nest("/api/session", crate::server::service::session::routes())
-        .nest("/api/ws", crate::server::service::ws::routes())
-        .nest("/api/module", crate::server::service::module::routes())
-        .nest("/api/variant", crate::server::service::variant::routes())
-        .nest("/api/v2", crate::server::service::v2::routes())
-        .layer(CompressionLayer::new());
+    router =
+        router
+            // root health route is currently pinged by auth portal to check if backend is up and running so we need permissive CORS headers
+            .nest(
+                "/api/",
+                Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
+            )
+            .nest("/api/action", crate::server::service::action::routes())
+            .nest(
+                "/api/node_debug",
+                crate::server::service::node_debug::routes(),
+            )
+            .nest(
+                "/api/attribute",
+                crate::server::service::attribute::routes(),
+            )
+            .nest(
+                "/api/change_set",
+                crate::server::service::change_set::routes(),
+            )
+            .nest(
+                "/api/component",
+                crate::server::service::component::routes(),
+            )
+            .nest("/api/diagram", crate::server::service::diagram::routes())
+            .nest("/api/func", crate::server::service::func::routes())
+            .nest("/api/graphviz", crate::server::service::graphviz::routes())
+            .nest(
+                "/api/qualification",
+                crate::server::service::qualification::routes(),
+            )
+            .nest("/api/secret", crate::server::service::secret::routes())
+            .nest("/api/session", crate::server::service::session::routes())
+            .nest("/api/ws", crate::server::service::ws::routes())
+            .nest("/api/module", crate::server::service::module::routes())
+            .nest("/api/variant", crate::server::service::variant::routes())
+            .nest("/api/v2", crate::server::service::v2::routes())
+            .layer(CompressionLayer::new())
+            // allows us to be permissive about cors from our owned subdomains
+            .layer(CorsLayer::new().allow_origin(AllowOrigin::predicate(
+                |origin: &HeaderValue, _| origin.as_bytes().ends_with(b".systeminit.com"),
+            )));
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);
