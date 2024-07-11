@@ -367,10 +367,7 @@ impl WorkspaceSnapshot {
                 let mut working_copy = executor::block_on(self_clone.working_copy_mut());
                 working_copy.cleanup();
 
-                // working_copy.remove_vector_clock_entries(&open_change_set_clock_ids);
-
                 // Mark everything left as seen.
-                info!("marking seen with: {:?}", vector_clock_id);
                 working_copy.mark_graph_seen(vector_clock_id)?;
 
                 Ok::<(), WorkspaceSnapshotGraphError>(())
