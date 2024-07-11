@@ -56,6 +56,23 @@ const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 const TEST_QUERY: &str = "SELECT 1";
 
+// If a table's structure changes, cached query plans against that table need to
+// be invalidated, or postgresql will return an error. This prevents that error
+// after migrating the database in a production system running pb_bouncer, which
+// holds on to connections and reuses them even if our services are restarted.
+// We could avoid needing to discard plans by selecting exactly the columns we
+// need instead of SELECT * (unless the column type changes!)
+const CONNECTION_RECYCLING_METHOD: &str = r#"
+    CLOSE ALL;
+    SET SESSION AUTHORIZATION DEFAULT;
+    RESET ALL;
+    UNLISTEN *;
+    SELECT pg_advisory_unlock_all();
+    DISCARD TEMP;
+    DISCARD SEQUENCES;
+    DISCARD PLANS;
+"#;
+
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
@@ -198,7 +215,7 @@ impl PgPool {
         cfg.dbname = Some(settings.dbname.clone());
         cfg.application_name = Some(settings.application_name.clone());
         cfg.manager = Some(ManagerConfig {
-            recycling_method: RecyclingMethod::Clean,
+            recycling_method: RecyclingMethod::Custom(CONNECTION_RECYCLING_METHOD.to_string()),
         });
         let mut pool_config = PoolConfig::new(settings.pool_max_size);
         if let Some(secs) = settings.pool_timeout_wait_secs {
