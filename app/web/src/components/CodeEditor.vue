@@ -86,24 +86,6 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-watch(
-  () => props.id,
-  () => {
-    // always up the code editor with the new text that comes from the prop
-    // Note: props are read only, and will change when the selected func/variant changes
-    // this does not change as a result of a user typing
-    view.update([
-      view.state.update({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: props.modelValue,
-        },
-      }),
-    ]);
-  },
-);
-
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
 
@@ -135,7 +117,7 @@ function onEditorValueUpdated(update: ViewUpdate) {
   emit("change", props.recordId, view.state.doc.toString(), true);
 
   const serializedState = update.view.state.toJSON({ history: historyField });
-  if (props.id && serializedState.history) {
+  if (serializedState.history) {
     serializedState.history.done.splice(
       0,
       Math.max(serializedState.history.done.length - 50, 0),
@@ -392,35 +374,33 @@ const mountEditor = async () => {
     };
   };
 
-  if (props.id) {
-    // TODO: investigate the following PRs to fix UX/UI bugs
-    // https://github.com/yjs/y-codemirror.next/pull/12
-    // https://github.com/codemirror/dev/issues/989
-    // https://github.com/yjs/y-codemirror.next/issues/8
-    // https://github.com/yjs/y-codemirror.next/pull/17
+  // TODO: investigate the following PRs to fix UX/UI bugs
+  // https://github.com/yjs/y-codemirror.next/pull/12
+  // https://github.com/codemirror/dev/issues/989
+  // https://github.com/yjs/y-codemirror.next/issues/8
+  // https://github.com/yjs/y-codemirror.next/pull/17
 
-    const id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
+  const id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
 
-    // const _storageProvider = new IndexeddbPersistence(id, ydoc);
+  // const _storageProvider = new IndexeddbPersistence(id, ydoc);
 
-    wsProvider?.destroy();
-    wsProvider = new WebsocketProvider(
-      `${API_WS_URL}/crdt?token=Bearer+${authStore.selectedWorkspaceToken}&id=${id}`,
-      id,
-      ydoc,
-    );
+  wsProvider?.destroy();
+  wsProvider = new WebsocketProvider(
+    `${API_WS_URL}/crdt?token=Bearer+${authStore.selectedWorkspaceToken}&id=${id}`,
+    id,
+    ydoc,
+  );
 
-    wsProvider.awareness.setLocalStateField("user", {
-      id: authStore.user?.pk,
-    });
+  wsProvider.awareness.setLocalStateField("user", {
+    id: authStore.user?.pk,
+  });
 
-    extensions.push(keymap.of([...yUndoManagerKeymap]));
+  extensions.push(keymap.of([...yUndoManagerKeymap]));
 
-    // const undoManager = new Y.UndoManager(yText);
-    extensions.push(
-      yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })), // , { undoManager })),
-    );
-  }
+  // const undoManager = new Y.UndoManager(yText);
+  extensions.push(
+    yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })), // , { undoManager })),
+  );
 
   yText.delete(0, yText.length);
   yText.insert(0, props.modelValue);
@@ -441,6 +421,9 @@ const mountEditor = async () => {
   }
 };
 
+// always up the code editor with the new text that comes from the prop
+// Note: props are read only, and will change when the selected func/variant changes
+// this does not change as a result of a user typing
 watch(
   [
     () => props.id,
