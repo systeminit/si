@@ -230,6 +230,7 @@ import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
 import { useRoute } from "vue-router";
+import { useToast } from "vue-toastification";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -299,6 +300,7 @@ import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 
 const route = useRoute();
+const toast = useToast();
 
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
@@ -667,7 +669,12 @@ async function onKeyDown(e: KeyboardEvent) {
       componentsStore.componentsById[
         componentsStore.selectedComponentIds[0] ?? -1
       ];
-    if (component) {
+    const containsUpgradeable = componentsStore.selectedComponentIds
+      .map((id) => componentsStore.componentsById[id])
+      .some((c) => c?.canBeUpgraded);
+    if (containsUpgradeable) {
+      toast("Components that can be upgraded cannot be copied");
+    } else if (component) {
       // TODO: how to get copyingFrom
       window.localStorage.setItem(
         CLIPBOARD_LOCALSTORAGE_KEY.value,

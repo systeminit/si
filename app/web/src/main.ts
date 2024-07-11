@@ -152,7 +152,7 @@ app.use(FloatingVue, {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const filterToasts = (toasts: any[]) => {
   for (const t of toasts) {
-    if (t.content.component.__name === "Conflict") {
+    if (t.content.component?.__name === "Conflict") {
       return [t];
     }
   }
