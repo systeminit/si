@@ -27,8 +27,20 @@
         <ListboxOptions
           class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-shade-0 py-1 shadow-lg ring-1 ring-black ring-opacity-5 type-regular-xs focus:outline-none dark:bg-neutral-900"
         >
+          <div
+            v-if="canFilter"
+            :class="clsx('filter-container', `--theme-${theme}`)"
+          >
+            <input
+              v-model="filterString"
+              class="filter-string"
+              name="filterString"
+              type="text"
+              placeholder="Filter options"
+            />
+          </div>
           <ListboxOption
-            v-for="option in options"
+            v-for="option in filteredOptions"
             :key="`${option.value}`"
             v-slot="{ active, selected }"
             :value="option"
@@ -71,14 +83,19 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, toRefs } from "vue";
+import { computed, toRefs, ref } from "vue";
 import {
   Listbox,
   ListboxButton,
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import { Icon, useDisabledBySelfOrParent } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  useDisabledBySelfOrParent,
+  useTheme,
+} from "@si/vue-lib/design-system";
+import clsx from "clsx";
 
 export interface Option {
   label: string;
@@ -96,9 +113,18 @@ const props = defineProps<{
   modelValue: Option | Option[]; // to make this a multiselect, just pass in an array of Option here
   noneSelectedLabel?: string; // this is only valid in the multiple select case
   disabled?: boolean;
+  canFilter?: boolean;
 }>();
 
 const { disabled } = toRefs(props);
+const { theme } = useTheme();
+
+const filterString = ref("");
+
+const filteredOptions = computed(() => {
+  if (!filterString.value) return props.options;
+  return props.options.filter((o) => o.label.includes(filterString.value));
+});
 
 const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);
 
@@ -152,3 +178,101 @@ const selectedLabel = computed<string>(() => {
   return selectedOptions.value.label;
 });
 </script>
+
+<style lang="less" scoped>
+@vertical-gap: 8px;
+
+.filter-container {
+  --text-color: @colors-black;
+  --text-color-error: @colors-destructive-600;
+  --text-color-muted: @colors-neutral-500;
+  --border-color: @colors-neutral-300;
+  --bg-color: @colors-white;
+
+  color: var(--text-color);
+
+  &.--theme-dark {
+    --text-color: @colors-white;
+    --border-color: @colors-neutral-600;
+    --bg-color: @colors-black;
+  }
+
+  &.--error {
+    --text-color: @colors-destructive-600;
+    --border-color: @colors-destructive-500;
+  }
+
+  &.--focused {
+    // --border-color: @colors-action-500;
+    input {
+      box-shadow: none;
+      outline: 2px solid @colors-action-500;
+      outline-offset: -2px;
+    }
+  }
+
+  &.--disabled {
+    --text-color: @colors-neutral-500;
+    --text-color-muted: @colors-neutral-400;
+    --bg-color: @colors-neutral-100;
+
+    &.--theme-dark {
+      --text-color: @colors-neutral-400;
+      --text-color-muted: @colors-neutral-500;
+      --bg-color: @colors-neutral-900;
+    }
+
+    input {
+      cursor: not-allowed;
+      color: currentColor;
+    }
+  }
+}
+
+// this class is on whatever the input is, whether its input, textarea, select, etc
+input.filter-string {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  transition: border-color 0.15s;
+  padding: 4px 12px;
+  color: var(--text-color);
+  font: inherit;
+  background-color: var(--bg-color);
+
+  padding: 2px 10px;
+  height: 32px;
+
+  &:hover {
+    --border-color: @colors-neutral-500;
+  }
+
+  // set font size for our inputs
+  // input[type='text']&,
+  // input[type='number']&,
+  // input[type='password']&,
+  input {
+    line-height: 1rem;
+    font-size: 14px;
+
+    // if font-size is at least 16 on mobile, ios will not automatically zoom in
+    @media @mq-mobile-only {
+      font-size: 16px;
+    }
+  }
+
+  &::placeholder {
+    color: var(--text-color-muted);
+    font-style: italic;
+  }
+
+  // &:focus {
+  //   border-color: @border-color--focus;
+  // }
+
+  // &:focus {
+  //   // we have a custom focus style instead
+  //    outline: none;
+  // }
+}
+</style>
