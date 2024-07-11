@@ -43,6 +43,11 @@ alias(
     actual = "//bin/auth-api:dev",
 )
 
+alias(
+    name = "docs",
+    actual = "//app/docs:dev",
+)
+
 export_file(
     name = ".editorconfig",
 )
