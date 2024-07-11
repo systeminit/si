@@ -444,8 +444,9 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
+        let graph = self.working_copy().await.clone();
         Ok(si_layer_cache::db::serialize::to_vec(
-            &self.working_copy().await.clone(),
+            &WorkspaceSnapshotGraph::V1(graph),
         )?)
     }
 
