@@ -73,6 +73,7 @@
           label="Output Location"
           required
           type="dropdown"
+          canFilter
         />
         <ErrorMessage
           v-if="createFuncReqStatus.isError && createFuncStarted"
@@ -100,6 +101,7 @@
               <SelectMenu
                 v-model="binding.binding"
                 :options="inputSourceOptions"
+                canFilter
               />
             </li>
           </ul>
