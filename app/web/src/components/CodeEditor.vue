@@ -280,10 +280,6 @@ function getUserInfo(userId: { id: string }) {
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
-  if (view && view.state.doc.toString() !== props.modelValue) {
-    emit("change", props.recordId, view.state.doc.toString(), false);
-    emit("blur", view.state.doc.toString());
-  }
   wsProvider?.destroy();
 });
 
