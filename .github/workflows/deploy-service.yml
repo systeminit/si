@@ -33,65 +33,12 @@ jobs:
 
       - name: Deploy web
         if: ${{ inputs.service == 'web' }}
-        run: |
-            ENVIRONMENT="${{ inputs.environment }}"
-            VERSION="${{ inputs.version }}"
-            if docker manifest inspect "systeminit/web:$VERSION" >/dev/null 2>&1; then
-                echo "Setting web to $VERSION."
-                # we get the current task def for the service, update the image, and clean up the json so we can register it as a new task def
-                task_definition_arn=$(aws ecs describe-services \
-                                        --cluster "${ENVIRONMENT}-cluster" \
-                                        --services "${ENVIRONMENT}-frontend" \
-                                        --query 'services[0].taskDefinition' \
-                                        --output text)
-                new_task_definition=$(aws ecs describe-task-definition --task-definition "$task_definition_arn" | \
-                  jq --arg IMAGE "systeminit/web:$VERSION" '.taskDefinition | .containerDefinitions[0].image = $IMAGE |
-                  del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
-                aws ecs register-task-definition --cli-input-json "$new_task_definition"
-                aws ecs update-service \
-                  --cluster "${ENVIRONMENT}-cluster" \
-                  --service "${ENVIRONMENT}-frontend" \
-                  --task-definition "$ENVIRONMENT-web" \
-                  --force-new-deployment
-
-                while true; do
-                  deployment_status=$(aws ecs describe-services \
-                    --cluster "${ENVIRONMENT}-cluster" \
-                    --service "${ENVIRONMENT}-frontend" \
-                    --query 'services[0].deployments[?status==`PRIMARY`].rolloutState' \
-                    --output text)
-
-                  echo "Current deployment status: $deployment_status"
-
-                  if [[ "$deployment_status" == "COMPLETED" ]]; then
-                    echo "Service update completed successfully."
-                    break
-                  elif [[ "$deployment_status" == "FAILED" ]]; then
-                    echo "Service update failed."
-                    exit 1
-                  else
-                    echo "Service update is still in progress. Waiting..."
-                    sleep 15
-                  fi
-                done
-            else
-                echo "Image systeminit/web:$VERSION not found on Docker Hub. Skipping!"
-                exit 1
-            fi
-
-      - name: Invalidate web cache
-        if: ${{ inputs.service == 'web' }}
-        run: |
-          ENV=${{ inputs.environment }}
-          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='$ENV-cdn'].Id | [0]" --output text)
-          # Create a CloudFront invalidation for all objects (/*)
-          invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
-          # Check the status of the invalidation until it's completed
-          while [[ "$(aws cloudfront get-invalidation --distribution-id $DIST_ID --id $invalidation_id --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
-              echo "Invalidation is still in progress. Waiting..."
-              sleep 5
-          done
-          echo "Invalidation is complete."
+        uses: netlify/actions/cli@master
+        with:
+          args: deploy --dir=app/web
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
       - name: Deploy service
         if: ${{ inputs.service != 'web' }}
