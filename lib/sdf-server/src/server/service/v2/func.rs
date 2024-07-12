@@ -20,6 +20,7 @@ pub mod create_unlocked_copy;
 pub mod delete_func;
 pub mod execute_func;
 pub mod get_code;
+pub mod list_all_funcs;
 pub mod list_funcs;
 pub mod save_code;
 pub mod test_execute;
@@ -108,6 +109,7 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         // Func Stuff
         .route("/", get(list_funcs::list_funcs))
+        .route("/including_pruned", get(list_all_funcs::list_all_funcs))
         .route("/code", get(get_code::get_code)) // accepts a list of func_ids
         .route("/create", post(create_func::create_func))
         .route("/:func_id/update", post(update_func::update_func)) // only save the func's metadata
