@@ -352,7 +352,7 @@ impl SchemaVariantSpec {
             if let Some(other_socket) = other_spec
                 .sockets
                 .iter()
-                .find(|sock| sock.name == socket.name)
+                .find(|sock| sock.name == socket.name && sock.kind() == socket.kind())
             {
                 let this_socket_maybe_func_unique_id = socket
                     .data
