@@ -606,11 +606,15 @@ impl Func {
         let mut pruned_funcs = vec![];
         for func in funcs {
             if func.is_locked {
-                let bindings = FuncBinding::get_bindings_for_default_schema_variants(ctx, func.id)
-                    .await
-                    .map_err(Box::new)?;
-                if !bindings.is_empty() {
-                    pruned_funcs.push(func);
+                match FuncBinding::get_bindings_for_default_schema_variants(ctx, func.id).await {
+                    Ok(b) => {
+                        if !b.is_empty() {
+                            pruned_funcs.push(func);
+                        }
+                    }
+                    Err(err) => {
+                        error!(?err, "could not get bindings for func id {}", func.id)
+                    }
                 }
             } else {
                 pruned_funcs.push(func);
