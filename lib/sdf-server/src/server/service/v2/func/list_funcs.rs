@@ -1,21 +1,13 @@
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use axum::{
     extract::{OriginalUri, Path},
     Json,
 };
-use dal::{ChangeSetId, Func, FuncId, WorkspacePk};
-
-use serde::{Deserialize, Serialize};
+use dal::{ChangeSetId, Func, WorkspacePk};
 use si_frontend_types as frontend_types;
-
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use telemetry::prelude::*;
 
 use super::FuncAPIResult;
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetRequest {
-    pub func_ids: Vec<FuncId>,
-}
 
 pub async fn list_funcs(
     HandlerContext(builder): HandlerContext,
@@ -30,7 +22,17 @@ pub async fn list_funcs(
     let mut funcs = Vec::new();
 
     for func in Func::list_for_default_and_editing(&ctx).await? {
-        funcs.push(func.into_frontend_type(&ctx).await?);
+        match func.into_frontend_type(&ctx).await {
+            Ok(f) => {
+                funcs.push(f);
+            }
+            Err(err) => {
+                error!(
+                    ?err,
+                    "could not make func with id {} into frontend type", func.id
+                )
+            }
+        }
     }
     Ok(Json(funcs))
 }
