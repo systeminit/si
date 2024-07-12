@@ -253,6 +253,7 @@ const props = defineProps({
     // type: [String, Number, Array, Boolean, null] as PropType<any>,
   },
   type: { type: String as PropType<InputTypes>, default: "text" },
+  id: { type: String, required: false },
 
   size: { type: String as PropType<"xs" | "sm" | "md">, default: "md" },
 
@@ -411,7 +412,7 @@ const computedClasses = computed(() => ({
 // shared counter to generate unique IDs used for label + input tag binding
 // TODO: probably need to deal with component reuse issues to reset this?
 
-const formInputId = _.uniqueId("vorm-input-");
+const formInputId = props.id || _.uniqueId("vorm-input-");
 
 const TYPES_WITH_OPTIONS = ["radio", "dropdown", "multi-checkbox"];
 const NUMERIC_TYPES = ["number", "integer", "decimal", "money", "percent"];
@@ -529,9 +530,9 @@ const optionsFromProps = computed((): OptionsAsArray => {
 });
 
 // event handlers
-function onFocus() {
+function onFocus(evt: Event) {
   isFocus.value = true;
-  emit("focus");
+  emit("focus", evt);
 }
 
 function onBlur() {

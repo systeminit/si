@@ -121,28 +121,34 @@
             >
               <Stack class="p-xs" spacing="none">
                 <VormInput
+                  id="name"
                   v-model="editingFunc.name"
                   :disabled="editingFunc.isLocked"
                   compact
                   label="Name"
                   required
                   @blur="updateFunc"
+                  @focus="focus"
                 />
                 <VormInput
+                  id="displayName"
                   v-model="editingFunc.displayName"
                   :disabled="editingFunc.isLocked"
                   compact
                   label="Display Name"
                   required
                   @blur="updateFunc"
+                  @focus="focus"
                 />
                 <VormInput
+                  id="description"
                   v-model="editingFunc.description"
                   :disabled="editingFunc.isLocked"
                   compact
                   label="Description"
                   type="textarea"
                   @blur="updateFunc"
+                  @focus="focus"
                 />
               </Stack>
             </TreeNode>
@@ -250,7 +256,12 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncKind, FuncId, FuncBindingKind } from "@/api/sdf/dal/func";
+import {
+  FuncKind,
+  FuncId,
+  FuncBindingKind,
+  FuncSummary,
+} from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
@@ -272,6 +283,11 @@ const props = defineProps<{
 }>();
 
 const funcDetailsTabGroupRef = ref();
+
+const focusedFormField = ref<string | undefined>();
+const focus = (evt: Event) => {
+  focusedFormField.value = (evt.target as HTMLInputElement).id;
+};
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
@@ -303,7 +319,11 @@ watch(
 const editingFunc = ref(_.cloneDeep(funcStore.selectedFuncSummary));
 
 function resetEditingFunc() {
-  editingFunc.value = _.cloneDeep(funcStore.selectedFuncSummary);
+  const data = _.cloneDeep(funcStore.selectedFuncSummary);
+  if (!data) return;
+  if (focusedFormField.value)
+    delete data[focusedFormField.value as keyof FuncSummary];
+  if (editingFunc.value) Object.assign(editingFunc.value, data);
 }
 
 watch(
@@ -320,6 +340,7 @@ watch(
 );
 
 const updateFunc = async () => {
+  focusedFormField.value = undefined;
   if (editingFunc.value) {
     await funcStore.UPDATE_FUNC(editingFunc.value);
     resetEditingFunc();

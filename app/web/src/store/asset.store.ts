@@ -396,6 +396,12 @@ export const useAssetStore = () => {
               code,
               variant: schemaVariant,
             },
+            onSuccess: () => {
+              if (code) {
+                const f = funcsStore.funcCodeById[schemaVariant.assetFuncId];
+                if (f) f.code = code;
+              }
+            },
           });
         },
         async REGENERATE_VARIANT(schemaVariantId: SchemaVariantId) {

@@ -74,6 +74,7 @@
           placeholder="(mandatory) Provide the asset a name"
           type="text"
           @blur="updateAsset"
+          @focus="focus"
         />
 
         <VormInput
@@ -85,6 +86,7 @@
           placeholder="(optional) Provide the asset version a display name"
           type="text"
           @blur="updateAsset"
+          @focus="focus"
         />
         <VormInput
           id="category"
@@ -95,6 +97,7 @@
           placeholder="(mandatory) Provide a category for the asset"
           type="text"
           @blur="updateAsset"
+          @focus="focus"
         />
         <VormInput
           id="componentType"
@@ -105,6 +108,7 @@
           label="Component Type"
           type="dropdown"
           @change="updateAsset"
+          @focus="focus"
         />
         <VormInput
           id="description"
@@ -115,6 +119,7 @@
           placeholder="(optional) Provide a brief description of the asset"
           type="textarea"
           @blur="updateAsset"
+          @focus="focus"
         />
         <VormInput
           :disabled="editingAsset.isLocked"
@@ -138,6 +143,7 @@
           placeholder="(optional) Provide a documentation link for the asset"
           type="url"
           @blur="updateAsset"
+          @focus="focus"
         />
       </Stack>
     </ScrollArea>
@@ -182,7 +188,11 @@ import {
 import * as _ from "lodash-es";
 import { FuncKind, FuncId } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { ComponentType, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  ComponentType,
+  SchemaVariant,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
@@ -194,6 +204,11 @@ const props = defineProps<{
 const assetStore = useAssetStore();
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
+
+const focusedFormField = ref<string | undefined>();
+const focus = (evt: Event) => {
+  focusedFormField.value = (evt.target as HTMLInputElement).id;
+};
 
 const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {
   if (!warning.kind) return;
@@ -222,12 +237,19 @@ const editingAsset = ref(_.cloneDeep(assetStore.selectedSchemaVariant));
 watch(
   () => assetStore.selectedSchemaVariant,
   () => {
-    editingAsset.value = _.cloneDeep(assetStore.selectedSchemaVariant);
+    // don't overwrite a form field that currently has focus
+    const data = _.cloneDeep(assetStore.selectedSchemaVariant);
+    if (!data) return;
+    if (focusedFormField.value)
+      delete data[focusedFormField.value as keyof SchemaVariant];
+    if (editingAsset.value) Object.assign(editingAsset.value, data);
   },
   { deep: true },
 );
 
 const updateAsset = async () => {
+  // this is just for blur
+  focusedFormField.value = undefined;
   if (
     !editingAsset.value ||
     editingAsset.value.isLocked ||
