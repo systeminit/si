@@ -31,53 +31,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-east-1
 
-      - name: Deploy web
+      - uses: actions/checkout@v4
         if: ${{ inputs.service == 'web' }}
-        run: |
-            ENVIRONMENT="${{ inputs.environment }}"
-            VERSION="${{ inputs.version }}"
-            if docker manifest inspect "systeminit/web:$VERSION" >/dev/null 2>&1; then
-                echo "Setting web to $VERSION."
-                # we get the current task def for the service, update the image, and clean up the json so we can register it as a new task def
-                task_definition_arn=$(aws ecs describe-services \
-                                        --cluster "${ENVIRONMENT}-cluster" \
-                                        --services "${ENVIRONMENT}-frontend" \
-                                        --query 'services[0].taskDefinition' \
-                                        --output text)
-                new_task_definition=$(aws ecs describe-task-definition --task-definition "$task_definition_arn" | \
-                  jq --arg IMAGE "systeminit/web:$VERSION" '.taskDefinition | .containerDefinitions[0].image = $IMAGE |
-                  del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
-                aws ecs register-task-definition --cli-input-json "$new_task_definition"
-                aws ecs update-service \
-                  --cluster "${ENVIRONMENT}-cluster" \
-                  --service "${ENVIRONMENT}-frontend" \
-                  --task-definition "$ENVIRONMENT-web" \
-                  --force-new-deployment
 
-                while true; do
-                  deployment_status=$(aws ecs describe-services \
-                    --cluster "${ENVIRONMENT}-cluster" \
-                    --service "${ENVIRONMENT}-frontend" \
-                    --query 'services[0].deployments[?status==`PRIMARY`].rolloutState' \
-                    --output text)
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.service == 'web' }}
+        with:
+          node-version: '18.18.2'
 
-                  echo "Current deployment status: $deployment_status"
+      - uses: pnpm/action-setup@v4
+        if: ${{ inputs.service == 'web' }}
 
-                  if [[ "$deployment_status" == "COMPLETED" ]]; then
-                    echo "Service update completed successfully."
-                    break
-                  elif [[ "$deployment_status" == "FAILED" ]]; then
-                    echo "Service update failed."
-                    exit 1
-                  else
-                    echo "Service update is still in progress. Waiting..."
-                    sleep 15
-                  fi
-                done
-            else
-                echo "Image systeminit/web:$VERSION not found on Docker Hub. Skipping!"
-                exit 1
-            fi
+      - name: Install dependencies
+        if: ${{ inputs.service == 'web' }}
+        working-directory: app/web
+        run: pnpm install
+
+      - name: Build
+        if: ${{ inputs.service == 'web' }}
+        working-directory: app/web
+        run: pnpm run build
+
+      - name: Deploy
+        if: ${{ inputs.service == 'web' }}
+        uses: islishude/spa-deploy-action@v1
+        with:
+          dir-path: app/web/dist
+          s3-bucket: ${{ vars.WEB_HOSTING_BUCKET }}
 
       - name: Invalidate web cache
         if: ${{ inputs.service == 'web' }}

@@ -1,3 +1,0 @@
-https://tools.systeminit.com/api/* https://api.tools.systeminit.com/:splat 200!
-https://app.systeminit.com/api/* https://api.app.systeminit.com/:splat 200!
-/* /index.html 200
