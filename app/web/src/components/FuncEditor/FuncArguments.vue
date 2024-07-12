@@ -17,6 +17,7 @@
         class="flex-none"
         noLabel
         type="dropdown"
+        :disabled="disabled"
         :options="kindOptions"
       />
       <VButton
@@ -38,7 +39,7 @@
           type="text"
           noLabel
           placeholder="Argument name"
-          :disabled="disabled"
+          disabled
           @blur="updateArgument(arg)"
         />
         <VormInput
@@ -47,13 +48,13 @@
           noLabel
           type="dropdown"
           :options="kindOptions"
+          disabled
           @change="updateArgument(arg)"
         />
         <VButton
           icon="trash"
           size="sm"
           tone="destructive"
-          :disabled="disabled"
           @click="deleteArgument(arg.id)"
         />
       </div>
