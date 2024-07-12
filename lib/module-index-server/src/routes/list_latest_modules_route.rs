@@ -3,7 +3,7 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
-use module_index_client::types::{ListLatestModulesRequest, ListLatestModulesResponse};
+use module_index_types::ListLatestModulesResponse;
 use sea_orm::{DbBackend, DbErr, EntityTrait, Statement};
 use thiserror::Error;
 
@@ -39,15 +39,12 @@ impl IntoResponse for ListModulesError {
 
 pub async fn list_latest_modules_route(
     DbConnection(txn): DbConnection,
-    Json(request): Json<ListLatestModulesRequest>,
 ) -> Result<Json<ListLatestModulesResponse>, ListModulesError> {
-    // NOTE(nick,paul): this only shows the latest, _promoted_ builtin module for each hash, where each hash eventually
-    // resolves to a schema id.
     let raw_modules = si_module::Entity::find()
         .from_raw_sql(Statement::from_sql_and_values(
             DbBackend::Postgres,
             LIST_LATEST_MODULES_QUERY,
-            [request.hashes.into()],
+            [],
         ))
         .all(&txn)
         .await?;

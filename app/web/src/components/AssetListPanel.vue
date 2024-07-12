@@ -15,6 +15,18 @@
         </template>
         <div class="flex flex-row gap-xs items-center">
           <IconButton
+            :requestStatus="loadModulesReqStatus"
+            class="hover:scale-125"
+            icon="refresh"
+            loadingIcon="loader"
+            loadingTooltip="Loading Modules..."
+            size="sm"
+            tooltip="Check for upgradeable or new modules"
+            tooltipPlacement="top"
+            variant="simple"
+            @click="loadModules"
+          />
+          <IconButton
             :requestStatus="createAssetReqStatus"
             class="hover:scale-125"
             icon="plus"
@@ -113,10 +125,12 @@
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
       <p>
         Thanks for contributing! We will review your contribution, and reach out
-        via email or on Discord if we have any questions.
+        via email or on our
+        <a class="text-action-500" href="https://discord.com/invite/system-init"
+          >Discord Server</a
+        >
+        if you have any questions.
       </p>
-      <p class="text-right">Best,</p>
-      <p class="text-right">The System Initiative Developers</p>
     </Modal>
   </ScrollArea>
 </template>
@@ -144,10 +158,13 @@ import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
 const { variantList: assetList } = storeToRefs(assetStore);
+
+const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
-const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
+const loadModulesReqStatus = assetStore.getRequestStatus("LOAD_MODULES");
+
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
@@ -185,7 +202,9 @@ const onSearch = (search: string) => {
 const canContribute = computed(() =>
   assetList.value.some((a) => a.canContribute),
 );
-const canUpdate = computed(() => assetList.value.some((a) => a.canUpdate));
+const canUpdate = computed(
+  () => Object.keys(assetStore.upgradeableModules).length > 0,
+);
 
 const categorizedAssets = computed(() =>
   assetList.value
@@ -238,6 +257,8 @@ const categoryColor = (category: string) => {
   return "#000";
 };
 
+const loadModules = async () => assetStore.LOAD_MODULES();
+
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
   if (result.result.success) {
@@ -254,7 +275,9 @@ const onExport = () => exportSuccessModalRef.value?.open();
 
 const filters = computed(() => [
   assetList.value.filter((a) => a.canContribute),
-  assetList.value.filter((a) => a.canUpdate),
+  assetList.value.filter(
+    (a) => !!assetStore.upgradeableModules[a.schemaVariantId],
+  ),
   assetList.value.filter((a) => !a.isLocked),
 ]);
 

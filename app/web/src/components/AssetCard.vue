@@ -40,7 +40,7 @@
           />
 
           <IconButton
-            v-if="asset.canUpdate"
+            v-if="canUpdate"
             class="hover:scale-125"
             icon="code-deployed"
             tooltip="Update"
@@ -88,7 +88,7 @@ import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
-import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
@@ -110,6 +110,10 @@ const assetStore = useAssetStore();
 const asset = computed(
   (): SchemaVariant | undefined =>
     assetStore.variantFromListById[props.assetId],
+);
+
+const canUpdate = computed(
+  () => !!assetStore.upgradeableModules[props.assetId],
 );
 
 const primaryColor = tinycolor(asset.value?.color ?? "000000");

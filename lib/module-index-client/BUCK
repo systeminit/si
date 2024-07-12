@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "module-index-client",
     deps = [
+        "//lib/module-index-types:module-index-types",
         "//lib/si-pkg:si-pkg",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:chrono",

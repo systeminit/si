@@ -5,9 +5,9 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
-use module_index_client::{
-    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_BASED_ON_HASH_FIELD_NAME,
-    MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
+use module_index_types::{ExtraMetadata, FuncMetadata, ModuleDetailsResponse};
+use module_index_types::{
+    MODULE_BASED_ON_HASH_FIELD_NAME, MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
 };
 use s3::error::S3Error;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, Set};

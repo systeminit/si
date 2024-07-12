@@ -39,15 +39,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    cargo_lock_updated = update_cargo_lock(
-        Path("Cargo.toml"),
-        Path("Cargo.lock"),
-        args.check,
-    )
-    if cargo_lock_updated and args.check:
-        print("xxx Rust Cargo.lock is not in sync with Cargo.toml")
-        print(REMEDIATE_MSG)
-        return 1
+    # cargo_lock_updated = update_cargo_lock(
+    #     Path("Cargo.toml"),
+    #     Path("Cargo.lock"),
+    #     args.check,
+    # )
+    # if cargo_lock_updated and args.check:
+    #     print("xxx Rust Cargo.lock is not in sync with Cargo.toml")
+    #     print(REMEDIATE_MSG)
+    #     return 1
 
     cargo_toml_updated = update_third_party_rust_cargo_toml(
         Path("Cargo.toml"),

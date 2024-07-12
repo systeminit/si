@@ -9,7 +9,7 @@ use dal::{
     WorkspaceError,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDetailsResponse};
+use module_index_client::{BuiltinsDetailsResponse, ModuleDetailsResponse, ModuleIndexClient};
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_crypto::{
@@ -64,7 +64,7 @@ pub enum ServerError {
     #[error(transparent)]
     Model(#[from] dal::ModelError),
     #[error("Module index: {0}")]
-    ModuleIndex(#[from] module_index_client::IndexClientError),
+    ModuleIndex(#[from] module_index_client::ModuleIndexClientError),
     #[error("Module index url not set")]
     ModuleIndexNotSet,
     #[error(transparent)]
@@ -364,7 +364,8 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
         .module_index_url()
         .ok_or(ServerError::ModuleIndexNotSet)?;
 
-    let module_index_client = IndexClient::unauthenticated_client(module_index_url.try_into()?);
+    let module_index_client =
+        ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
     let module_list = module_index_client.list_builtins().await?;
     let install_builtins = install_builtins(ctx, module_list, module_index_client);
     tokio::pin!(install_builtins);
@@ -389,7 +390,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 async fn install_builtins(
     ctx: DalContext,
     module_list: BuiltinsDetailsResponse,
-    module_index_client: IndexClient,
+    module_index_client: ModuleIndexClient,
 ) -> Result<()> {
     let dal = &ctx;
     let client = &module_index_client.clone();
@@ -457,7 +458,7 @@ async fn install_builtins(
 
 async fn fetch_builtin(
     module: &ModuleDetailsResponse,
-    module_index_client: &IndexClient,
+    module_index_client: &ModuleIndexClient,
 ) -> Result<SiPkg> {
     let module = module_index_client
         .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())

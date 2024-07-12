@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::Path, Json};
 use chrono::{DateTime, FixedOffset, Offset, Utc};
-use module_index_client::ModuleDetailsResponse;
+use module_index_types::ModuleDetailsResponse;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
 use telemetry::prelude::info;

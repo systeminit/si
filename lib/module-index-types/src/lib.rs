@@ -1,24 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use ulid::Ulid;
 
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum IndexClientError {
-    #[error("Deserialization error: {0}")]
-    Deserialization(serde_json::Error),
-    #[error("Request error: {0}")]
-    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
-    #[error("Request error: {0}")]
-    Request(#[from] reqwest::Error),
-    #[error("Serialization error: {0}")]
-    Serialization(serde_json::Error),
-    #[error("Url parse error: {0}")]
-    UrlParse(#[from] url::ParseError),
-}
-
-pub type IndexClientResult<T> = Result<T, IndexClientError>;
+pub const MODULE_BUNDLE_FIELD_NAME: &str = "module_bundle";
+pub const MODULE_BASED_ON_HASH_FIELD_NAME: &str = "based_on_hash";
+pub const MODULE_SCHEMA_ID_FIELD_NAME: &str = "schema_id";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,19 +62,13 @@ pub struct ExtraMetadata {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListLatestModulesRequest {
-    pub hashes: Vec<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct ListLatestModulesResponse {
     pub modules: Vec<LatestModuleResponse>,
 }
 
 /// This struct is nearly the same as the [`ModuleDetailsResponse`], but it does not include `past_hashes` since the
 /// data is unneeded and requires additional query logic.
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Eq, PartialEq, Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct LatestModuleResponse {
     pub id: String,

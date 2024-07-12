@@ -4,7 +4,7 @@ use crate::service::module::{ModuleError, ModuleResult};
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{HistoryActor, User, WsEvent};
-use module_index_client::IndexClient;
+use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -29,7 +29,8 @@ pub async fn begin_approval_process(
         None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
-    let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let module_index_client =
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let pkg_data = module_index_client.download_workspace(request.id).await?;
 
     let metadata = pkg_data.into_latest().metadata;

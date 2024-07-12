@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use dal::{DalContext, Workspace, WsEvent};
-use module_index_client::IndexClient;
+use module_index_client::ModuleIndexClient;
 use telemetry::prelude::info;
 
 use crate::server::extract::RawAccessToken;
@@ -93,7 +93,8 @@ async fn install_workspace_inner(
             Some(url) => url,
             None => return Err(ModuleError::ModuleIndexNotConfigured),
         };
-        let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        let module_index_client =
+            ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
         module_index_client.download_workspace(request.id).await?
     };
 

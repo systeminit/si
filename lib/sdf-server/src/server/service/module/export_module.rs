@@ -100,8 +100,10 @@ pub async fn export_module(
 
     let module_payload = exporter.export_as_bytes(&ctx).await?;
 
-    let index_client =
-        module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let index_client = module_index_client::ModuleIndexClient::new(
+        module_index_url.try_into()?,
+        &raw_access_token,
+    );
     let response = index_client
         .upload_module(
             request.name.trim(),

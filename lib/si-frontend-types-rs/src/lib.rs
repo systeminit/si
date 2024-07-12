@@ -1,5 +1,6 @@
 mod func;
 mod schema_variant;
+mod synced_modules;
 
 pub use crate::func::{
     AttributeArgumentBinding, FuncArgument, FuncArgumentKind, FuncBinding, FuncBindings, FuncCode,
@@ -8,3 +9,4 @@ pub use crate::func::{
 pub use crate::schema_variant::{
     ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant,
 };
+pub use crate::synced_modules::{LatestModule, SyncedModules};

@@ -159,7 +159,8 @@ const rightClickMenuItems = computed(() => {
   const canUpdate = [];
   assetStore.selectedSchemaVariantRecords.forEach((asset) => {
     if (asset.canContribute) canContribute.push(asset);
-    if (asset.canUpdate) canUpdate.push(asset);
+    if (assetStore.upgradeableModules[asset.schemaVariantId])
+      canUpdate.push(asset);
   });
 
   const items: DropdownMenuItemObjectDef[] = [

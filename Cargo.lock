@@ -1343,7 +1343,6 @@ dependencies = [
  "itertools 0.12.1",
  "jwt-simple",
  "lazy_static",
- "module-index-client",
  "names",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -2922,6 +2921,7 @@ name = "module-index-client"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "module-index-types",
  "remain",
  "reqwest",
  "serde",
@@ -2947,7 +2947,7 @@ dependencies = [
  "futures",
  "hyper 0.14.29",
  "jwt-simple",
- "module-index-client",
+ "module-index-types",
  "refinery",
  "regex",
  "remain",
@@ -2970,6 +2970,16 @@ dependencies = [
  "tower-http",
  "ulid",
  "url",
+]
+
+[[package]]
+name = "module-index-types"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "ulid",
 ]
 
 [[package]]
@@ -5102,8 +5112,11 @@ dependencies = [
 name = "si-frontend-types"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "module-index-types",
  "remain",
  "serde",
+ "serde_json",
  "si-events",
  "strum 0.26.2",
 ]

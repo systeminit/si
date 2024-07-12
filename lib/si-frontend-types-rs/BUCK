@@ -8,9 +8,12 @@ alias(
 rust_library(
     name = "si-frontend-types",
     deps = [
+        "//lib/module-index-types:module-index-types",
         "//lib/si-events-rs:si-events",
+        "//third-party/rust:chrono",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
         "//third-party/rust:strum",
     ],
     srcs = glob(["src/**/*.rs"]),

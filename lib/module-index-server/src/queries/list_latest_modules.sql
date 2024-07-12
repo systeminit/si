@@ -21,7 +21,6 @@ WITH RECURSIVE filtered_modules AS (
         rejected_at IS NULL
         AND kind = 'module'
         AND schema_id IS NOT NULL
-        AND latest_hash = ANY($1)
     UNION
     SELECT
         a.id,
@@ -65,7 +64,7 @@ SELECT DISTINCT ON (filtered_modules.schema_id)
 FROM
     filtered_modules
 WHERE
-    filtered_modules.is_builtin_at IS NOT NULL -- NOTE(nick,paul): only show the latest, _promoted_ builtin
+    filtered_modules.is_builtin_at IS NOT NULL
 ORDER BY
     filtered_modules.schema_id,
     filtered_modules.created_at DESC;

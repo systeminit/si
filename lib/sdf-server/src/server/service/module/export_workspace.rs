@@ -90,7 +90,7 @@ pub async fn export_workspace_inner(
             None => return Err(ModuleError::ModuleIndexNotConfigured),
         };
 
-        module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token)
+        module_index_client::ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)
     };
 
     let workspace_payload = workspace.generate_export_data(ctx, &version).await?;

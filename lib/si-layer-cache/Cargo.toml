@@ -36,7 +36,7 @@ tokio-util = { workspace = true }
 ulid = { workspace = true }
 serde_json = { workspace = true }
 
-[dev_dependencies]
+[dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 criterion = { workspace = true }
 moka = { workspace = true }

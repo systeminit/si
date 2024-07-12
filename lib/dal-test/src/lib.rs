@@ -76,6 +76,7 @@ pub use tracing_subscriber;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
+const DEFAULT_TEST_MODULE_INDEX_URL: &str = "http://localhost:5157";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
@@ -147,7 +148,7 @@ pub struct Config {
     pg: PgPoolConfig,
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
-    #[builder(default = "module_index_client::DEFAULT_URL.to_string()")]
+    #[builder(default = "DEFAULT_TEST_MODULE_INDEX_URL.to_string()")]
     module_index_url: String,
     veritech_encryption_key_path: String,
     jwt_signing_public_key_path: String,
