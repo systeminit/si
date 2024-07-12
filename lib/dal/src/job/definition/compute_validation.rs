@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
+use crate::context::SystemActor;
 use crate::job::consumer::JobCompletionState;
 use crate::validation::{ValidationOutput, ValidationOutputNode};
 use crate::{
@@ -120,6 +121,10 @@ impl JobConsumer for ComputeValidation {
         ctx.commit().await?;
 
         Ok(JobCompletionState::Done)
+    }
+
+    fn system_actor_id_override(&self) -> Option<SystemActor> {
+        Some(SystemActor::Validation)
     }
 }
 

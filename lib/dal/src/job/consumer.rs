@@ -11,6 +11,7 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::context::SystemActor;
 use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
@@ -132,6 +133,8 @@ pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
     /// Intended to be defined by implementations of this trait.
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState>;
 
+    fn system_actor_id_override(&self) -> Option<SystemActor>;
+
     /// Called on the trait object to set up the data necessary to run the job,
     /// and in-turn calls the `run` method. Can be overridden by an implementation
     /// of the trait if you need more control over how the `DalContext` is managed
@@ -140,6 +143,8 @@ pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
         let mut retries = 0;
         loop {
             let mut ctx = ctx_builder
+                .clone()
+                .set_system_actor_id_override(self.system_actor_id_override())
                 .build(self.access_builder().build(self.visibility()))
                 .await?;
 

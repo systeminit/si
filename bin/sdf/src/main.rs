@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
-use sdf_server::server::{LayerDb, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
+use sdf_server::server::{LayerDb, SystemActor, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
     Config, FeatureFlagService, IncomingStream, JobProcessorClientCloser, JobProcessorConnector,
     MigrationMode, Server, ServicesContext,
@@ -134,6 +134,7 @@ async fn async_main() -> Result<()> {
         symmetric_crypto_service,
         layer_db,
         feature_flags_service,
+        SystemActor::Sdf,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

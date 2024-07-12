@@ -46,6 +46,43 @@ use crate::{EncryptedSecret, Workspace};
 
 pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
 
+#[derive(Clone, Copy, Debug)]
+#[remain::sorted]
+pub enum SystemActor {
+    Action,
+    Dvu,
+    Pinga,
+    Rebaser,
+    Sdf,
+    Validation,
+}
+
+impl From<SystemActor> for Ulid {
+    fn from(value: SystemActor) -> Self {
+        match value {
+            SystemActor::Pinga => ulid::Ulid(1),
+            SystemActor::Rebaser => ulid::Ulid(2),
+            SystemActor::Sdf => ulid::Ulid(3),
+            SystemActor::Action => ulid::Ulid(4),
+            SystemActor::Dvu => ulid::Ulid(5),
+            SystemActor::Validation => ulid::Ulid(6),
+        }
+        .into()
+    }
+}
+
+impl SystemActor {
+    /// We need this to construct a services context in the test macros (easily,
+    /// anyway, there's probably a smarter workaround)
+    pub fn from_string(s: String) -> Self {
+        match s.as_str() {
+            "pinga" => Self::Pinga,
+            "rebaser" => Self::Rebaser,
+            _ => Self::Sdf,
+        }
+    }
+}
+
 /// A context type which contains handles to common core service dependencies.
 ///
 /// These services are typically used by most DAL objects, such as a database connection pool, a
@@ -72,6 +109,9 @@ pub struct ServicesContext {
     layer_db: DalLayerDb,
     /// The service that stores feature flags
     feature_flag_service: FeatureFlagService,
+    /// The actor when this service operates as part of the "system", without an
+    /// authenticated user
+    system_actor: SystemActor,
 }
 
 impl ServicesContext {
@@ -88,6 +128,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         layer_db: DalLayerDb,
         feature_flag_service: FeatureFlagService,
+        system_actor: SystemActor,
     ) -> Self {
         Self {
             pg_pool,
@@ -100,6 +141,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             layer_db,
             feature_flag_service,
+            system_actor,
         }
     }
 
@@ -109,6 +151,7 @@ impl ServicesContext {
             services_context: self,
             blocking,
             no_dependent_values: false,
+            system_actor_id_override: None,
         }
     }
 
@@ -321,6 +364,7 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
+            system_actor_id_override: None,
         }
     }
 
@@ -441,6 +485,7 @@ impl DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             no_dependent_values: self.no_dependent_values,
+            system_actor_id_override: None,
         }
     }
 
@@ -934,6 +979,10 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
+
+    /// SystemActor id override, used to give different pinga jobs different
+    /// system actor ids for their vector clock ids
+    system_actor_id_override: Option<SystemActor>,
 }
 
 impl fmt::Debug for DalContextBuilder {
@@ -960,7 +1009,10 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
+            system_actor_id: self
+                .system_actor_id_override
+                .unwrap_or(self.services_context.system_actor)
+                .into(),
         })
     }
 
@@ -981,7 +1033,10 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
+            system_actor_id: self
+                .system_actor_id_override
+                .unwrap_or(self.services_context.system_actor)
+                .into(),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1012,7 +1067,10 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
+            system_actor_id: self
+                .system_actor_id_override
+                .unwrap_or(self.services_context.system_actor)
+                .into(),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {
@@ -1074,6 +1132,11 @@ impl DalContextBuilder {
 
     pub fn set_no_dependent_values(&mut self) {
         self.no_dependent_values = true;
+    }
+
+    pub fn set_system_actor_id_override(mut self, system_actor_id: Option<SystemActor>) -> Self {
+        self.system_actor_id_override = system_actor_id;
+        self
     }
 }
 

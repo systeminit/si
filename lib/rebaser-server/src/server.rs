@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use dal::feature_flags::FeatureFlagService;
+use dal::{context::SystemActor, feature_flags::FeatureFlagService};
 use dal::{
     ChangeSetStatus, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, NatsProcessor,
     ServicesContext,
@@ -90,6 +90,7 @@ impl Server {
             symmetric_crypto_service,
             layer_db,
             FeatureFlagService::default(),
+            SystemActor::Rebaser,
         );
 
         Self::from_services(

@@ -33,12 +33,14 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+pub use dal::context::SystemActor;
 use dal::{
     builtins::func,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
 };
+
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
@@ -358,7 +360,9 @@ impl TestContext {
         &self,
         token: CancellationToken,
         tracker: TaskTracker,
+        system_actor: &str,
     ) -> ServicesContext {
+        let system_actor = SystemActor::from_string(system_actor.into());
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
@@ -383,6 +387,7 @@ impl TestContext {
             self.symmetric_crypto_service.clone(),
             layer_db,
             FeatureFlagService::default(),
+            system_actor,
         )
     }
 
@@ -664,7 +669,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Create a `ServicesContext`
     let services_ctx = test_context
-        .create_services_context(token.clone(), tracker.clone())
+        .create_services_context(token.clone(), tracker.clone(), "sdf")
         .await;
 
     info!("creating client with pg pool for global Content Store test database");
@@ -718,19 +723,19 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");
-    let srv_services_ctx = test_context
-        .create_services_context(token.clone(), tracker.clone())
+    let pinga_srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone(), "pinga")
         .await;
-    let pinga_server = pinga_server(srv_services_ctx)?;
+    let pinga_server = pinga_server(pinga_srv_services_ctx)?;
     let pinga_server_handle = pinga_server.shutdown_handle();
     tracker.spawn(pinga_server.run());
 
     // Start up a Rebaser server for migrations
     info!("starting Rebaser server for initial migrations");
-    let srv_services_ctx = test_context
-        .create_services_context(token.clone(), tracker.clone())
+    let rebaser_srv_services_ctx = test_context
+        .create_services_context(token.clone(), tracker.clone(), "rebaser")
         .await;
-    let rebaser_server = rebaser_server(srv_services_ctx, token.clone())?;
+    let rebaser_server = rebaser_server(rebaser_srv_services_ctx, token.clone())?;
     tracker.spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
@@ -810,6 +815,7 @@ async fn migrate_local_builtins(
         symmetric_crypto_service.clone(),
         layer_db.clone(),
         feature_flag_service,
+        SystemActor::Sdf,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

@@ -6,7 +6,8 @@ use std::{
 };
 
 use dal::{
-    feature_flags::FeatureFlagService, job::definition::compute_validation::ComputeValidation,
+    context::SystemActor, feature_flags::FeatureFlagService,
+    job::definition::compute_validation::ComputeValidation,
 };
 use dal::{
     job::{
@@ -143,6 +144,7 @@ impl Server {
             symmetric_crypto_service,
             layer_db,
             FeatureFlagService::default(),
+            SystemActor::Pinga,
         );
 
         Self::from_services(

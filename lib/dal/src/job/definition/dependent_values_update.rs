@@ -17,6 +17,7 @@ use ulid::Ulid;
 
 use crate::{
     attribute::value::{dependent_value_graph::DependentValueGraph, AttributeValueError},
+    context::SystemActor,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -126,6 +127,10 @@ impl JobConsumer for DependentValuesUpdate {
                 .to_string(),
         );
         Ok(self.inner_run(ctx).await?)
+    }
+
+    fn system_actor_id_override(&self) -> Option<SystemActor> {
+        Some(SystemActor::Dvu)
     }
 }
 

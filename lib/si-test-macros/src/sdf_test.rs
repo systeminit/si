@@ -377,6 +377,7 @@ impl SdfTestFnSetupExpander {
                     .create_services_context(
                         #cancellation_token.clone(),
                         #task_tracker.clone(),
+                        "sdf",
                     )
                     .await;
                 let (service, _, _) = ::sdf_server::build_service_for_tests(

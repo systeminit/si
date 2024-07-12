@@ -291,6 +291,7 @@ pub(crate) trait FnSetupExpander {
                     .create_services_context(
                         #cancellation_token.clone(),
                         #task_tracker.clone(),
+                        "pinga",
                     )
                     .await;
                 ::dal_test::pinga_server(s_ctx)?
@@ -353,6 +354,7 @@ pub(crate) trait FnSetupExpander {
                     .create_services_context(
                         #cancellation_token.clone(),
                         #task_tracker.clone(),
+                        "rebaser",
                     )
                     .await;
                 ::dal_test::rebaser_server(
@@ -447,7 +449,7 @@ pub(crate) trait FnSetupExpander {
         let var = Ident::new("services_context", Span::call_site());
         self.code_extend(quote! {
             let #var = #test_context
-                .create_services_context(#cancellation_token.clone(), #task_tracker.clone())
+                .create_services_context(#cancellation_token.clone(), #task_tracker.clone(), "sdf")
                 .await;
         });
         self.set_services_context(Some(Rc::new(var)));

@@ -11,6 +11,7 @@ use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 use crate::{
     action::{prototype::ActionPrototype, Action, ActionError, ActionId, ActionState},
     change_status::ChangeStatus,
+    context::SystemActor,
     diagram::SummaryDiagramComponent,
     job::{
         consumer::{
@@ -98,6 +99,10 @@ impl JobConsumer for ActionJob {
         }
 
         Ok(JobCompletionState::Done)
+    }
+
+    fn system_actor_id_override(&self) -> Option<SystemActor> {
+        Some(SystemActor::Action)
     }
 }
 
