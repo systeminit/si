@@ -60,9 +60,10 @@
                 v-if="arg.propId"
                 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50"
               >
-                {{ getPropPathFrom(bind.schemaVariantId, arg.propId) }}
+                Prop: {{ getPropPathFrom(bind.schemaVariantId, arg.propId) }}
               </h1>
               <h2 v-if="arg.inputSocketId" class="pb-xs text-sm">
+                Input Socket:
                 {{ getSocketNameFrom(bind.schemaVariantId, arg.inputSocketId) }}
               </h2>
             </li>
@@ -112,13 +113,14 @@
 import { computed, ref } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import {
-  FuncId,
   Attribute,
-  FuncBindingKind,
   AttributePrototypeId,
+  FuncBindingKind,
+  FuncId,
 } from "@/api/sdf/dal/func";
 import { PropId } from "@/api/sdf/dal/prop";
 import {
+  InputSocketId,
   OutputSocketId,
   SchemaVariant,
   SchemaVariantId,
@@ -143,10 +145,9 @@ const binding = computed(() => {
   if (!props.schemaVariantId) return null;
 
   const bindings = funcStore.attributeBindings[props.funcId];
-  const binding = bindings
+  return bindings
     ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
     .pop();
-  return binding;
 });
 
 const variant = computed(() => {
@@ -166,11 +167,20 @@ const getPropPathFrom = (
 
 const getSocketNameFrom = (
   schemaVariantId: SchemaVariantId | null,
-  outputSocketId: OutputSocketId,
+  outputSocketId: OutputSocketId | InputSocketId,
 ) => {
-  return componentStore.schemaVariantsById[
-    schemaVariantId || ""
-  ]?.outputSockets.find((o) => (o.id === outputSocketId ? o : null))?.name;
+  const sv = componentStore.schemaVariantsById[schemaVariantId || ""];
+
+  if (!sv) return;
+
+  const outputSocketName = sv.outputSockets.find((o) =>
+    o.id === outputSocketId ? o : null,
+  )?.name;
+
+  if (outputSocketName) return outputSocketName;
+
+  return sv.inputSockets.find((o) => (o.id === outputSocketId ? o : null))
+    ?.name;
 };
 
 interface ExtendedBinding extends Attribute {
