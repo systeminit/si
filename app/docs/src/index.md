@@ -4,51 +4,64 @@ keywords:
   - docs
 ---
 
-# Welcome to System Initiative Documentation
+# System Initiative
 
-## Empowering Your Infrastructure Management
+System Initiative is a cloud application platform that makes it easier, safer,
+and faster to deploy applications, build infrastructure, and manage them over
+time.
 
-Welcome to the official documentation for System Initiative. Our platform is
-designed to revolutionize the way you manage and optimize your infrastructure,
-making it easier, more efficient, and more collaborative than ever before.
+<div class="tip custom-block" style="padding-top: 8px">
 
-### What is System Initiative?
+Just want to try it out? Skip to the [Quickstart](./tutorials/orientation.md).
 
-System Initiative is a cutting-edge platform that combines infrastructure as
-code, collaboration tools, and intelligent automation to streamline your DevOps
-processes. Our solution empowers teams to work together seamlessly, manage
-complex systems with ease, and accelerate development cycles.
+</div>
 
-### Key Features
+## Key Features
 
-- **Infrastructure as Code**: Define and manage your infrastructure using
-  familiar coding practices.
-- **Collaborative Workspace**: Work together in real-time with your team,
-  regardless of location.
-- **Intelligent Automation**: Leverage AI-driven insights to optimize your
-  infrastructure decisions.
-- **Version Control**: Keep track of changes and roll back when needed with
-  built-in versioning.
-- **Compliance and Security**: Ensure your infrastructure meets industry
-  standards and best practices.
+### Short Feedback Loops
+
+Every change is validated and qualified immediately. Reconciliation can happen
+individually or in batches, making application changes orders of magnitude
+faster.
+
+### High Intelligence
+
+Configuration can be inferred through the relationships between models. Changing
+a value at the source cascades throughout all the dependent models, making
+complex configuration easy to express. Code is automatically generated from the
+model.
+
+### Easy Collaboration
+
+Fully multiplayer coding and interactive diagrams make working together more
+like Figma and Notion, and less like GitHub. Everything is open source, with
+integrated open source module sharing.
+
+### Natural Context Windows
+
+The entire life cycle is built in to a single power tool. Customization happens
+in the application. New experiences are built around the data.
 
 ### Getting Started
 
 New to System Initiative? Here are some resources to help you get up and
 running:
 
-1. [Quick Start Guide](./quick-start.md)
-2. [Core Concepts](./core-concepts.md)
-3. [Installation](./installation.md)
-4. [Your First Project](./first-project.md)
+1. [Quick Start Guide](./tutorials/orientation.md)
+2. [Core Concepts](./reference/core-concepts.md)
 
 ### Need Help?
 
 If you have any questions or need assistance, our support team is here to help:
 
-- [FAQs](./faqs.md)
+[![Discord Server](https://img.shields.io/badge/discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/system-init)
+
+- [FAQ](./reference/faq.md)
 - [Community Forum](https://community.systeminit.com)
-- [Contact Support](mailto:support@systeminit.com)
+
+### Developing System Initaitive
+
+1. [Development Environment](./reference/dev/development-environment.md)
 
 Thank you for choosing System Initiative. Let's build amazing infrastructure
 together!

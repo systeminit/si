@@ -6,7 +6,7 @@ dotenv.config();
 
 export default defineConfig({
   title: "System Initiative Docs",
-  description: "Description goes here",
+  description: "The documentation for System Initiative https://systeminit.com",
   markdown: {
     theme: {
       light: "github-light",
