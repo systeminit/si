@@ -9,7 +9,7 @@ use dal::{
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     DalContext, Func, InputSocket, Prop, SchemaVariant,
 };
-use dal_test::test;
+use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pretty_assertions_sorted::assert_eq;
 
 mod binding;
@@ -289,4 +289,48 @@ async fn create_unlocked_copy_auth_func(ctx: &mut DalContext) {
         1,                  // expected
         new_bindings.len()  // actual
     );
+}
+
+#[test]
+async fn create_unlocked_func_and_check_locked_on_apply(ctx: &mut DalContext) {
+    let fn_name = "test:setDummySecretString";
+    let func_id = Func::find_id_by_name(ctx, fn_name)
+        .await
+        .expect("found auth func")
+        .expect("has a func");
+
+    // create an unlocked copy
+    let new_func = FuncAuthoringClient::create_unlocked_func_copy(ctx, func_id, None)
+        .await
+        .expect("could create unlocked copy");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("unable to commit");
+
+    let func_id = new_func.id;
+    let new_code = "async function auth(secret: Input): Promise<Output> { requestStorage.setItem('dummySecretString', secret.value); requestStorage.setItem('workspaceTokens', secret.WorkspaceToken);}";
+    let res = FuncAuthoringClient::save_code(ctx, new_func.id, new_code.to_string()).await;
+    assert!(res.is_ok());
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("unable to commit");
+
+    new_func.lock(ctx).await.expect("unable to lock the func");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("unable to commit");
+
+    // Apply to HEAD
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let func = Func::get_by_id_or_error(ctx, func_id)
+        .await
+        .expect("can't find the new func");
+
+    assert!(func.is_locked);
 }
