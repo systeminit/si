@@ -13,6 +13,12 @@ load(
     "typescript_runnable_dist",
     "typescript_runnable_dist_bin",
 )
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_library",
+    "pnpm_task_binary",
+    "pnpm_task_test",
+)
 
 export_file(
     name = "package.json",
@@ -93,4 +99,15 @@ nix_omnibus_pkg(
     name = "omnibus",
     pkg_name = "lang-js",
     build_dep = "//bin/lang-js:bin",
+)
+
+pnpm_task_binary(
+    name = "docs",
+    command = "docs",
+    srcs = glob(["src/**/*"]),
+    path = "bin/lang-js",
+    deps = [
+        "//:node_modules",
+    ],
+    visibility = ["PUBLIC"],
 )

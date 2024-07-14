@@ -23,6 +23,8 @@ prelude
 app/docs/src/.vitepress/cache/
 app/docs/dist/
 
+bin/lang-js/docs/
+
 .turbo
 .netlify
 

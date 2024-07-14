@@ -651,6 +651,12 @@ importers:
       tsup:
         specifier: ^8.0.1
         version: 8.0.1(typescript@4.9.5)
+      typedoc:
+        specifier: ^0.26.0
+        version: 0.26.4(typescript@4.9.5)
+      typedoc-plugin-markdown:
+        specifier: ^4.2.0
+        version: 4.2.1(typedoc@0.26.4)
       vitest:
         specifier: ^1.0.4
         version: 1.0.4(@types/node@18.15.11)
@@ -13918,6 +13924,12 @@ packages:
       uc.micro: 1.0.6
     dev: true
 
+  /linkify-it@5.0.0:
+    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==}
+    dependencies:
+      uc.micro: 2.1.0
+    dev: true
+
   /listr-silent-renderer@1.1.1:
     resolution: {integrity: sha512-L26cIFm7/oZeSNVhWB6faeorXhMg4HNlb/dS/7jHhr708jxlXrtrBWo4YUxZQkc6dGoxEAe6J/D3juTRBUzjtA==}
     engines: {node: '>=4'}
@@ -14296,6 +14308,10 @@ packages:
     dev: false
     optional: true
 
+  /lunr@2.3.9:
+    resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
+    dev: true
+
   /luxon@3.3.0:
     resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
     engines: {node: '>=12'}
@@ -14413,6 +14429,18 @@ packages:
       uc.micro: 1.0.6
     dev: true
 
+  /markdown-it@14.1.0:
+    resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
+    hasBin: true
+    dependencies:
+      argparse: 2.0.1
+      entities: 4.5.0
+      linkify-it: 5.0.0
+      mdurl: 2.0.0
+      punycode.js: 2.3.1
+      uc.micro: 2.1.0
+    dev: true
+
   /maxstache-stream@1.0.4:
     resolution: {integrity: sha512-v8qlfPN0pSp7bdSoLo1NTjG43GXGqk5W2NWFnOCq2GlmFFqebGzPCjLKSbShuqIOVorOtZSAy7O/S1OCCRONUw==}
     dependencies:
@@ -14439,6 +14467,10 @@ packages:
 
   /mdurl@1.0.1:
     resolution: {integrity: sha512-/sKlQJCBYVY9Ers9hqzKou4H6V5UWc/M59TH2dvkt+84itfnq7uFOMLpOiOS4ujvHP4etln18fmIxA5R5fll0g==}
+    dev: true
+
+  /mdurl@2.0.0:
+    resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==}
     dev: true
 
   /media-typer@0.3.0:
@@ -14623,6 +14655,13 @@ packages:
 
   /minimatch@9.0.3:
     resolution: {integrity: sha512-RHiac9mvaRw0x3AYRgDC1CxAP7HTcNrrECeA8YYJeWnpo+2Q5CegtZjaotWTWxDG3UeGA1coE05iH1mPjT/2mg==}
+    engines: {node: '>=16 || 14 >=14.17'}
+    dependencies:
+      brace-expansion: 2.0.1
+    dev: true
+
+  /minimatch@9.0.5:
+    resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
     dependencies:
       brace-expansion: 2.0.1
@@ -16714,6 +16753,11 @@ packages:
     dependencies:
       end-of-stream: 1.4.4
       once: 1.4.0
+    dev: true
+
+  /punycode.js@2.3.1:
+    resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
+    engines: {node: '>=6'}
     dev: true
 
   /punycode@1.3.2:
@@ -19318,6 +19362,30 @@ packages:
       is-typedarray: 1.0.0
     dev: true
 
+  /typedoc-plugin-markdown@4.2.1(typedoc@0.26.4):
+    resolution: {integrity: sha512-7hQt/1WaW/VI4+x3sxwcCGsEylP1E1GvF6OTTELK5sfTEp6AeK+83jkCOgZGp1pI2DiOammMYQMnxxOny9TKsQ==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      typedoc: 0.26.x
+    dependencies:
+      typedoc: 0.26.4(typescript@4.9.5)
+    dev: true
+
+  /typedoc@0.26.4(typescript@4.9.5):
+    resolution: {integrity: sha512-FlW6HpvULDKgc3rK04V+nbFyXogPV88hurarDPOjuuB5HAwuAlrCMQ5NeH7Zt68a/ikOKu6Z/0hFXAeC9xPccQ==}
+    engines: {node: '>= 18'}
+    hasBin: true
+    peerDependencies:
+      typescript: 4.6.x || 4.7.x || 4.8.x || 4.9.x || 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x
+    dependencies:
+      lunr: 2.3.9
+      markdown-it: 14.1.0
+      minimatch: 9.0.5
+      shiki: 1.10.1
+      typescript: 4.9.5
+      yaml: 2.4.5
+    dev: true
+
   /typescript@4.9.5:
     resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
     engines: {node: '>=4.2.0'}
@@ -19335,6 +19403,10 @@ packages:
 
   /uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
+    dev: true
+
+  /uc.micro@2.1.0:
+    resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==}
     dev: true
 
   /ufo@1.3.1:
@@ -20839,6 +20911,12 @@ packages:
   /yaml@2.3.4:
     resolution: {integrity: sha512-8aAvwVUSHpfEqTQ4w/KMlf3HcRdt50E5ODIQJBw1fQ5RL34xabzxtUlzTXVqc4rkZsPbvrXKWnABCD7kWSmocA==}
     engines: {node: '>= 14'}
+    dev: true
+
+  /yaml@2.4.5:
+    resolution: {integrity: sha512-aBx2bnqDzVOyNKfsysjA2ms5ZlnjSAW2eG3/L5G/CSujfjLJTJsEw1bGw8kCf04KodQWk1pxlGnZ56CRxiawmg==}
+    engines: {node: '>= 14'}
+    hasBin: true
     dev: true
 
   /yargs-parser@13.1.2:

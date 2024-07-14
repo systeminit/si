@@ -1,0 +1,19 @@
+{
+  "entryPoints": ["./src/asset_builder.ts"],
+  "out": "docs",
+  "plugin": ["typedoc-plugin-markdown"],
+  "theme": "default",
+  "readme": "none",
+  "hideGenerator": true,
+  "gitRevision": "main",
+  "skipErrorChecking": true,
+  "sort": ["source-order"],
+  "categorizeByGroup": false,
+  "hideBreadcrumbs": true,
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "entryPointStrategy": "expand",
+  "excludeCategories": "Interfaces"
+}
