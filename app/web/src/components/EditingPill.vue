@@ -3,7 +3,7 @@
     class="p-2xs m-0 rounded text-xs font-bold"
     :style="{
       backgroundColor: $props.color,
-      color: `#${bodyBg.toHex()}`,
+      color: `#${text.toHex()}`,
     }"
   >
     EDITING
@@ -11,21 +11,25 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, watch, ref } from "vue";
 import tinycolor from "tinycolor2";
-import { useTheme } from "@si/vue-lib/design-system";
-
-const { theme } = useTheme();
 
 const props = defineProps({
   color: { type: String },
 });
 
-const primaryColor = tinycolor(props.color ?? "000000");
+const primaryColor = ref(tinycolor("000000"));
+watch(
+  () => props.color,
+  () => {
+    primaryColor.value = tinycolor(props.color ?? "000000");
+  },
+  { immediate: true },
+);
 
-const bodyBg = computed(() => {
-  const bodyBgHsl = primaryColor.toHsl();
-  bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
-  return tinycolor(bodyBgHsl);
+const text = computed(() => {
+  const textBgHsl = primaryColor.value.toHsl();
+  textBgHsl.l = textBgHsl.l > 0.5 ? 0.08 : 0.95;
+  return tinycolor(textBgHsl);
 });
 </script>
