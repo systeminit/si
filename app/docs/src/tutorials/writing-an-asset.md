@@ -17,8 +17,29 @@ In this tutorial you will learn
 3. Click on the `+` Create new Asset button, enter asset name `Doubler`
 4. In the editor, paste the following
 
-```
-schema
+```typescript
+function main() {
+  const ab = new AssetBuilder();
+
+  const input = new PropBuilder()
+        .setName("input")
+        .setKind("string")
+        .setWidget(new PropWidgetDefinitionBuilder().setKind("text")
+        .build())
+      .build();
+
+  ab.addProp(input)
+
+  const computed = new PropBuilder()
+        .setName("computed")
+        .setKind("string")
+        .setWidget(new PropWidgetDefinitionBuilder().setKind("text")
+        .build())
+      .build();
+
+  ab.addProp(computed)
+  return ab().build();
+}
 ```
 
 This will create a new component named Doubler which has 2 attributes, 1 input
