@@ -1,7 +1,9 @@
 use dal::component::frame::{Frame, FrameError};
 use dal::diagram::SummaryDiagramInferredEdge;
 use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
-use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
+use dal::{
+    AttributeValue, Component, ComponentError, DalContext, EdgeWeightKind, Schema, SchemaVariant,
+};
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name,
@@ -2237,6 +2239,78 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             mama_kelce_assembled.0.parent_id.expect("no parent node id")  // actual
         );
     }
+}
+
+/// A Component/Frame is not _supposed_ to have multiple parents, but if we somehow end up with
+/// multiple, we want to be able to remove them all to correct the situation.
+#[test]
+async fn orphan_frames_multiple_parents(ctx: &mut DalContext) {
+    // create a large up frame
+    let parent_a = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "parent A",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("created frame");
+    // put another medium frame inside
+    let child = create_component_for_schema_name_with_type(
+        ctx,
+        "medium even lego",
+        "child",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+    // Create another "parent" frame
+    let parent_b = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "parent B",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("created frame");
+
+    // Insert the child into "parent A"
+    Frame::upsert_parent(ctx, child.id(), parent_a.id())
+        .await
+        .expect("could not upsert parent");
+    // We have to manually add this connection from "parent B" to "child", as our "normal"
+    // interface for putting "child" inside of "parent B" would (correctly) remove the association
+    // between "parent A" and "child".
+    Component::add_edge_to_frame(
+        ctx,
+        parent_b.id(),
+        child.id(),
+        EdgeWeightKind::FrameContains,
+    )
+    .await
+    .expect("could not add second parent");
+
+    // Normally we'd commit here & run Dependent Values Update, but DVU will always blow up as
+    // we've created a Component with multiple parents.
+
+    assert!(matches!(
+        Component::get_parent_by_id(ctx, child.id()).await,
+        Err(ComponentError::MultipleParentsForComponent(x)) if x == child.id()
+    ));
+
+    Frame::orphan_child(ctx, child.id())
+        .await
+        .expect("could not orphan component");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    assert_eq!(
+        None,
+        Component::get_parent_by_id(ctx, child.id())
+            .await
+            .expect("Unable to get component's parent"),
+    );
 }
 
 struct DiagramByKey {
