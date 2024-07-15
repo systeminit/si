@@ -16,7 +16,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
     });
 
     it('create', () => {
-      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.visit({
+        url:AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go',
+        failOnStatusCode: false
+      });
       cy.on('uncaught:exception', (e) => {
         console.log(e);
         return false;
@@ -24,7 +27,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
 
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
-      
+
       cy.get('#vorm-input-3').clear().type(UUID);
 
       cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);

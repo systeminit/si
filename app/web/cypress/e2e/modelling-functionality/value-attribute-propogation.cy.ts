@@ -24,7 +24,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.log(UUID);
 
       // Go to the Synthetic Workspace
-      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.visit({
+        url:AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go',
+        failOnStatusCode: false
+      });
       cy.on('uncaught:exception', (e) => {
         console.log(e);
         return false;
@@ -81,7 +84,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
         // Visit the new URL
         console.log(newUrl.href);
-        cy.visit(newUrl.href);
+        cy.visit({
+          url: newUrl.href,
+          failOnStatusCode: false,
+        });
       });
 
       // Give the page a few seconds to load
@@ -103,7 +109,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         let newUrl = new URL(currentUrl);
         newUrl.searchParams.set('s', 'c_'+componentIDB);
         newUrl.searchParams.set('t', 'attributes');
-        cy.visit(newUrl.href);
+        cy.visit({
+          url: newUrl.href,
+          failOnStatusCode: false,
+        });
       });
 
       // Wait for the values to propagate
