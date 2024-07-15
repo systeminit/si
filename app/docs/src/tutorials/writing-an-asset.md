@@ -38,7 +38,7 @@ function main() {
       .build();
 
   ab.addProp(computed)
-  return ab().build();
+  return ab.build();
 }
 ```
 
