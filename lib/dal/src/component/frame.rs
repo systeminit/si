@@ -7,7 +7,9 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValueError;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, WsEvent,
@@ -54,9 +56,48 @@ impl Frame {
     /// Provides an ability to remove the existing ['Component']'s parent``
     #[instrument(level = "info", skip_all)]
     pub async fn orphan_child(ctx: &DalContext, child_id: ComponentId) -> FrameResult<()> {
-        if let Some(parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
+        // Normally, we'd call `Component::get_parent_by_id` to get the parent's ID, but that
+        // returns a hard error if there are multiple parents. Since we want to be able to use this
+        // as an escape hatch for if we get into the situation of a Component having multiple
+        // parents, we can't use that, and have to do the same thing it would have done to get
+        // _all_ of the parents to truly orphan the child.
+        let parent_idxs = ctx
+            .workspace_snapshot()?
+            .incoming_sources_for_edge_weight_kind(
+                child_id,
+                EdgeWeightKindDiscriminants::FrameContains,
+            )
+            .await?;
+        if parent_idxs.len() == 1 {
+            // We just determined that there is exactly one element in the vec, so if Vec::first()
+            // returns anything other than `Some` we can't trust anything.
+            let parent_idx = parent_idxs
+                .first()
+                .expect("Unable to get the first element of a Vec of len 1");
+            let parent_id = ctx
+                .workspace_snapshot()?
+                .get_node_weight(*parent_idx)
+                .await?
+                .id()
+                .into();
+
             Self::detach_child_from_parent_inner(ctx, parent_id, child_id).await?;
+        } else {
+            // When there are multiple parents, we're trying to recover from a broken state, and we
+            // can't reliably detect everything necessary to do a DependentValuesUpdate, or most of
+            // the other things we'd normally do. This means there won't be any WsEvents for
+            // removal of the inferred edges.
+            for parent_idx in parent_idxs {
+                let parent_id = ctx
+                    .workspace_snapshot()?
+                    .get_node_weight(parent_idx)
+                    .await?
+                    .id()
+                    .into();
+                Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
+            }
         }
+
         Ok(())
     }
 
