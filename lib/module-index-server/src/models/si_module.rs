@@ -1,4 +1,4 @@
-use module_index_client::{types::LatestModuleResponse, ModuleDetailsResponse};
+use module_index_types::{LatestModuleResponse, ModuleDetailsResponse};
 use sea_orm::{entity::prelude::*, sea_query, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

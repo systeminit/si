@@ -238,6 +238,13 @@ async fn all_funcs(ctx: &DalContext) {
     assert_eq!(expected, actual);
 }
 
+#[test]
+async fn list_user_facing_works(ctx: &DalContext) {
+    SchemaVariant::list_user_facing(ctx)
+        .await
+        .expect("could not list user facing schema variants");
+}
+
 fn prepare_for_assertion(expected: &[&str], all_funcs: &[Func]) -> (Vec<String>, Vec<String>) {
     let expected = expected.iter().map(|s| s.to_string()).collect();
 

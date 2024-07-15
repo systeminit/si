@@ -8,7 +8,7 @@ use crate::{
 use axum::extract::{OriginalUri, Query};
 use axum::Json;
 use dal::Visibility;
-use module_index_client::IndexClient;
+use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use si_pkg::SiPkg;
 use ulid::Ulid;
@@ -38,7 +38,8 @@ pub async fn remote_module_spec(
         None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
-    let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let module_index_client =
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;

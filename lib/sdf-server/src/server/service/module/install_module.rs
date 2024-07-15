@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use dal::{pkg::import_pkg_from_pkg, ChangeSet, DalContext, Visibility, WsEvent};
-use module_index_client::IndexClient;
+use module_index_client::ModuleIndexClient;
 use si_pkg::{SiPkg, SiPkgKind};
 
 use crate::server::extract::RawAccessToken;
@@ -96,7 +96,8 @@ async fn install_module_inner(
         None => return Err(ModuleError::ModuleIndexNotConfigured),
     };
 
-    let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let module_index_client =
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let module_details = module_index_client.module_details(request.id).await?;
     let pkg_data = module_index_client.download_module(request.id).await?;
 

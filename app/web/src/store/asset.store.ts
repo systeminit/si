@@ -4,7 +4,13 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncId, FuncKind } from "@/api/sdf/dal/func";
-import { SchemaId, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  Module,
+  ModuleId,
+  SchemaId,
+  SchemaVariant,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
@@ -94,6 +100,8 @@ export const useAssetStore = () => {
       state: () => ({
         variantList: [] as SchemaVariant[],
         variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
+        upgradeableModules: {} as Record<SchemaVariantId, Module>,
+        installableModulesById: {} as Record<ModuleId, Module>,
 
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,
@@ -428,6 +436,26 @@ export const useAssetStore = () => {
           });
         },
 
+        async LOAD_MODULES() {
+          return new ApiRequest<
+            {
+              upgradeable: Record<SchemaVariantId, Module>;
+              installable: Module[];
+            },
+            Visibility
+          >({
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/sync`,
+            params: { ...visibility },
+            onSuccess: (response) => {
+              this.upgradeableModules = response.upgradeable;
+              this.installableModulesById = _.keyBy(
+                response.installable,
+                (m) => m.id,
+              );
+            },
+          });
+        },
+
         async LOAD_SCHEMA_VARIANT_LIST() {
           return new ApiRequest<SchemaVariant[], Visibility>({
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
@@ -465,7 +493,10 @@ export const useAssetStore = () => {
         },
       },
       async onActivated() {
-        await this.LOAD_SCHEMA_VARIANT_LIST();
+        await Promise.all([
+          this.LOAD_SCHEMA_VARIANT_LIST(),
+          this.LOAD_MODULES(),
+        ]);
         const stopWatchingUrl = watch(
           () => {
             return router.currentRoute.value.name;
@@ -511,6 +542,7 @@ export const useAssetStore = () => {
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_SCHEMA_VARIANT_LIST();
+              this.LOAD_MODULES();
             },
           },
           {
@@ -548,6 +580,7 @@ export const useAssetStore = () => {
             callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_SCHEMA_VARIANT_LIST();
+              this.LOAD_MODULES();
               useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
             },
           },
@@ -565,6 +598,7 @@ export const useAssetStore = () => {
             eventType: "ChangeSetApplied",
             callback: () => {
               this.LOAD_SCHEMA_VARIANT_LIST();
+              this.LOAD_MODULES();
             },
           },
           // For the async api endpoints

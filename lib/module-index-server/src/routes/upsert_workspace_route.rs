@@ -18,7 +18,7 @@ use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
     models::si_module,
 };
-use module_index_client::ExtraMetadata;
+use module_index_types::ExtraMetadata;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

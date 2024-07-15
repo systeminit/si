@@ -33,7 +33,7 @@
             variant="simple"
           />
           <Icon
-            v-if="a.canUpdate"
+            v-if="canUpdate"
             name="code-deployed"
             size="xs"
             tone="action"
@@ -48,12 +48,12 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType } from "vue";
+import { PropType, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { TreeNode, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
+import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
 import EditingPill from "./EditingPill.vue";
 
 const props = defineProps({
@@ -63,6 +63,10 @@ const props = defineProps({
 
 const assetStore = useAssetStore();
 const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
+
+const canUpdate = computed(
+  () => !!assetStore.upgradeableModules[props.a.schemaVariantId],
+);
 
 const onClick = (e: MouseEvent) => {
   if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);

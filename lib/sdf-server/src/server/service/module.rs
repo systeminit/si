@@ -65,7 +65,7 @@ pub enum ModuleError {
     #[error("Module hash not be found: {0}")]
     ModuleHashNotFound(String),
     #[error("Module index: {0}")]
-    ModuleIndex(#[from] module_index_client::IndexClientError),
+    ModuleIndex(#[from] module_index_client::ModuleIndexClientError),
     #[error("Module index not configured")]
     ModuleIndexNotConfigured,
     #[error("No packages path provided")]

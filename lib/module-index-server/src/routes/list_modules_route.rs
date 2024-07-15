@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
-use module_index_client::ModuleDetailsResponse;
+use module_index_types::ModuleDetailsResponse;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

@@ -5,7 +5,7 @@ use crate::service::module::{ModuleError, ModuleResult};
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{HistoryActor, User, Visibility};
-use module_index_client::IndexClient;
+use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -52,7 +52,8 @@ pub async fn reject_module(
 
     let module_id = request.id;
 
-    let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let module_index_client =
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
 
     module_index_client
         .reject_module(module_id, created_by_email.clone())

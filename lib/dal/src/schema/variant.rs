@@ -263,6 +263,7 @@ impl SchemaVariant {
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
             can_contribute,
+            // FIXME(nick): this needs to be dropped once the v2 modules sync route is in use.
             can_update: false,
         })
     }
@@ -2027,5 +2028,47 @@ impl SchemaVariant {
                 .await?
                 .is_some(),
         )
+    }
+
+    /// This function lists all [`SchemaVariants`](frontend_types::SchemaVariant) for user-facing applications.
+    pub async fn list_user_facing(
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<frontend_types::SchemaVariant>> {
+        let mut schema_variants = HashMap::new();
+
+        for schema_id in Schema::list_ids(ctx).await? {
+            let default_schema_variant = Self::get_default_for_schema(ctx, schema_id).await?;
+            if !default_schema_variant.ui_hidden() {
+                schema_variants.insert(
+                    default_schema_variant.id,
+                    default_schema_variant
+                        .into_frontend_type(ctx, schema_id)
+                        .await?,
+                );
+            }
+
+            if let Some(unlocked) = Self::get_unlocked_for_schema(ctx, schema_id).await? {
+                if !unlocked.ui_hidden() {
+                    schema_variants.insert(
+                        unlocked.id,
+                        unlocked.into_frontend_type(ctx, schema_id).await?,
+                    );
+                }
+            }
+
+            for schema_variant in Self::list_for_schema(ctx, schema_id).await? {
+                if !Self::list_component_ids(ctx, schema_variant.id())
+                    .await?
+                    .is_empty()
+                {
+                    schema_variants.insert(
+                        schema_variant.id,
+                        schema_variant.into_frontend_type(ctx, schema_id).await?,
+                    );
+                }
+            }
+        }
+
+        Ok(schema_variants.into_values().collect())
     }
 }

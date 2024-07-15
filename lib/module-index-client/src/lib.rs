@@ -1,12 +1,292 @@
-pub mod client;
-pub mod types;
+use reqwest::StatusCode;
+use si_pkg::WorkspaceExport;
+use thiserror::Error;
+use ulid::Ulid;
+use url::Url;
 
-pub use client::IndexClient;
-pub use types::{
-    ExtraMetadata, FuncMetadata, IndexClientError, IndexClientResult, ModuleDetailsResponse,
-};
+// Re-export all module index types so that client users do not have to import two crates.
+pub use module_index_types::*;
 
-pub const DEFAULT_URL: &str = "http://localhost:5157";
-pub const MODULE_BUNDLE_FIELD_NAME: &str = "module_bundle";
-pub const MODULE_BASED_ON_HASH_FIELD_NAME: &str = "based_on_hash";
-pub const MODULE_SCHEMA_ID_FIELD_NAME: &str = "schema_id";
+#[remain::sorted]
+#[derive(Debug, Error)]
+pub enum ModuleIndexClientError {
+    #[error("Deserialization error: {0}")]
+    Deserialization(serde_json::Error),
+    #[error("Request error: {0}")]
+    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("Request error: {0}")]
+    Request(#[from] reqwest::Error),
+    #[error("Serialization error: {0}")]
+    Serialization(serde_json::Error),
+    #[error("Url parse error: {0}")]
+    UrlParse(#[from] url::ParseError),
+}
+
+pub type ModuleIndexClientResult<T> = Result<T, ModuleIndexClientError>;
+
+#[derive(Debug, Clone)]
+pub struct ModuleIndexClient {
+    base_url: Url,
+    auth_token: String,
+}
+
+impl ModuleIndexClient {
+    pub fn new(base_url: Url, auth_token: &str) -> Self {
+        Self {
+            base_url,
+            auth_token: auth_token.to_owned(),
+        }
+    }
+
+    pub fn unauthenticated_client(base_url: Url) -> Self {
+        Self {
+            base_url,
+            auth_token: "".to_string(),
+        }
+    }
+
+    pub async fn reject_module(
+        &self,
+        module_id: Ulid,
+        rejected_by_display_name: String,
+    ) -> ModuleIndexClientResult<ModuleRejectionResponse> {
+        let reject_url = self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("reject")?;
+
+        let upload_response = reqwest::Client::new()
+            .post(reject_url)
+            .multipart(
+                reqwest::multipart::Form::new().text("rejected by user", rejected_by_display_name),
+            )
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(upload_response.json::<ModuleRejectionResponse>().await?)
+    }
+
+    pub async fn promote_to_builtin(
+        &self,
+        module_id: Ulid,
+        promoted_to_builtin_by_display_name: String,
+    ) -> ModuleIndexClientResult<ModulePromotedResponse> {
+        let reject_url = self
+            .base_url
+            .join("builtins/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("promote")?;
+
+        let promote_response = reqwest::Client::new()
+            .post(reject_url)
+            .multipart(
+                reqwest::multipart::Form::new()
+                    .text("promoted by user", promoted_to_builtin_by_display_name),
+            )
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(promote_response.json::<ModulePromotedResponse>().await?)
+    }
+
+    pub async fn upload_module(
+        &self,
+        module_name: &str,
+        module_version: &str,
+        module_based_on_hash: Option<String>,
+        module_schema_id: Option<String>,
+        module_bytes: Vec<u8>,
+    ) -> ModuleIndexClientResult<ModuleDetailsResponse> {
+        let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
+            .file_name(format!("{module_name}_{module_version}.tar"));
+
+        let mut multipart_form =
+            reqwest::multipart::Form::new().part(MODULE_BUNDLE_FIELD_NAME, module_upload_part);
+
+        if let Some(module_based_on_hash) = module_based_on_hash {
+            multipart_form = multipart_form.part(
+                MODULE_BASED_ON_HASH_FIELD_NAME,
+                reqwest::multipart::Part::text(module_based_on_hash),
+            );
+        }
+
+        if let Some(schema_id) = module_schema_id {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_ID_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_id),
+            );
+        }
+
+        let upload_url = self.base_url.join("modules")?;
+        let upload_response = reqwest::Client::new()
+            .post(upload_url)
+            .multipart(multipart_form)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(upload_response.json::<ModuleDetailsResponse>().await?)
+    }
+
+    pub async fn download_module(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
+        let download_url = self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("download")?;
+        let response = reqwest::Client::new()
+            .get(download_url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let bytes = response.bytes().await?;
+
+        Ok(bytes.to_vec())
+    }
+
+    pub async fn list_builtins(&self) -> ModuleIndexClientResult<BuiltinsDetailsResponse> {
+        let url = self.base_url.join("builtins")?;
+        let resp = reqwest::Client::new()
+            .get(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let mut builtins = resp.json::<BuiltinsDetailsResponse>().await?;
+
+        if builtins.modules.is_empty()
+            && self.base_url.clone().as_str().contains("http://localhost")
+        {
+            // We want to fall back to the production module index to pull builtins from there instead
+            let url = Url::parse("https://module-index.systeminit.com")?.join("builtins")?;
+
+            let resp = reqwest::Client::new()
+                .get(url)
+                .bearer_auth(&self.auth_token)
+                .send()
+                .await?
+                .error_for_status()?;
+
+            builtins = resp.json::<BuiltinsDetailsResponse>().await?
+        };
+
+        Ok(builtins)
+    }
+
+    pub async fn module_details(
+        &self,
+        module_id: Ulid,
+    ) -> ModuleIndexClientResult<ModuleDetailsResponse> {
+        let details_url = self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}", module_id))?;
+
+        Ok(reqwest::Client::new()
+            .get(details_url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+
+    pub async fn get_builtin(&self, module_id: Ulid) -> ModuleIndexClientResult<Vec<u8>> {
+        let download_url = self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("download_builtin")?;
+
+        let mut response = reqwest::Client::new().get(download_url).send().await?;
+
+        if response.status() == StatusCode::NOT_FOUND
+            && self.base_url.clone().as_str().contains("http://localhost")
+        {
+            // We want to fall back to the production module index to pull builtins from there instead
+            let url = Url::parse("https://module-index.systeminit.com")?
+                .join("modules/")?
+                .join(&format!("{}/", module_id.to_string()))?
+                .join("download_builtin")?;
+
+            response = reqwest::Client::new().get(url).send().await?;
+        };
+
+        let bytes = response.error_for_status()?.bytes().await?;
+
+        Ok(bytes.to_vec())
+    }
+
+    pub async fn upload_workspace(
+        &self,
+        workspace_name: &str,
+        workspace_version: &str,
+        content: WorkspaceExport,
+    ) -> ModuleIndexClientResult<()> {
+        let bytes = serde_json::to_vec(&content).map_err(ModuleIndexClientError::Serialization)?;
+
+        let upload_part = reqwest::multipart::Part::bytes(bytes)
+            .file_name(format!("{workspace_name}_{workspace_version}.tar"));
+
+        let upload_url = self.base_url.join("workspace")?;
+
+        reqwest::Client::new()
+            .post(upload_url)
+            .multipart(reqwest::multipart::Form::new().part("workspace bundle", upload_part))
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub async fn download_workspace(
+        &self,
+        module_id: Ulid,
+    ) -> ModuleIndexClientResult<WorkspaceExport> {
+        let download_url = self
+            .base_url
+            .join("workspace/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("download")?;
+        let response = reqwest::Client::new()
+            .get(download_url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let bytes = response.bytes().await?;
+
+        let export_data: WorkspaceExport =
+            serde_json::from_slice(&bytes).map_err(ModuleIndexClientError::Deserialization)?;
+
+        // Deserialize back into export object
+        Ok(export_data)
+    }
+
+    /// Lists all of the latest, _promoted_ [`Modules`](Model) (route: GET /modules/latest).
+    pub async fn list_latest_modules(&self) -> ModuleIndexClientResult<ListLatestModulesResponse> {
+        let url = self.base_url.join("modules/")?.join("latest")?;
+
+        Ok(reqwest::Client::new()
+            .get(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+}

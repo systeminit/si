@@ -68,7 +68,19 @@ export interface SchemaVariant {
   canCreateNewComponents: boolean;
 
   canContribute: boolean;
-  canUpdate: boolean;
+}
+
+export type ModuleId = string;
+export interface Module {
+  id: ModuleId;
+  name: string;
+  description: string;
+  ownerUserId: string;
+  ownerDisplayName: string;
+  metadata: object;
+  latestHash: string;
+  latestHashCreatedAt: IsoDateString;
+  schemaId: SchemaId;
 }
 
 export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
