@@ -94,7 +94,10 @@ you can pass in options as props too */
           </select>
           <template v-if="compact">
             <div class="vorm-input__input-value">
-              {{ currentValue }}
+              {{
+                optionsFromProps.find((o) => o.value === valueForSelectField)
+                  ?.label ?? valueForSelectField
+              }}
             </div>
             <Icon
               class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
