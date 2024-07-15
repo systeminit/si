@@ -43,6 +43,8 @@ pub enum FuncAPIError {
     FuncBinding(#[from] FuncBindingError),
     #[error("The function name \"{0}\" is reserved")]
     FuncNameReserved(String),
+    #[error("The function does not exist")]
+    FuncNotFound(FuncId),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("missing action kind")]
@@ -96,6 +98,8 @@ impl IntoResponse for FuncAPIError {
             Self::Transactions(dal::TransactionsError::ConflictsOccurred(_)) => {
                 StatusCode::CONFLICT
             }
+            // Return 404 when the func is not found
+            Self::FuncNotFound(_) => StatusCode::NOT_FOUND,
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
@@ -156,7 +160,9 @@ pub fn v2_routes() -> Router<AppState> {
 
 // helper to assemble the front end struct to return the code and types so SDF can decide when these events need to fire
 pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<FuncCode> {
-    let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    let func = Func::get_by_id(ctx, func_id)
+        .await?
+        .ok_or(FuncAPIError::FuncNotFound(func_id))?;
     let code = func.code_plaintext()?.unwrap_or("".to_string());
     Ok(FuncCode {
         func_id: func.id.into(),
