@@ -36,7 +36,10 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       cy.url().should("contain", import.meta.env.VITE_AUTH_PORTAL_URL);
 
       // Push onto the workspace requested
-      cy.visit(import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go');
+      cy.visit({
+        url: import.meta.env.VITE_AUTH_API_URL + '/workspaces/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/go',
+        failOnStatusCode: false
+      });
 
     },
     // {

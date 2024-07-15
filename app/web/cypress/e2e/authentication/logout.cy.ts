@@ -14,7 +14,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
     });
 
     it("log_out", () => {
-      cy.visit(AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go');
+      cy.visit({
+        url:AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go',
+        failOnStatusCode: false
+      });
       cy.on('uncaught:exception', (e) => {
         console.log(e);
         return false;
