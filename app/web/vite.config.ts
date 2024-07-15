@@ -105,7 +105,6 @@ export default (opts: { mode: string }) => {
       ],
     },
     build: {
-      manifest: true,
       rollupOptions: {
            output: {
                format: 'es',
