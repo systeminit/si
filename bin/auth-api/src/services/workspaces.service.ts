@@ -1,9 +1,9 @@
 import _ from "lodash";
 import {
   InstanceEnvType, PrismaClient, User, RoleType,
-} from '@prisma/client';
-import { ulid } from 'ulidx';
-import { tracker } from '../lib/tracker';
+} from "@prisma/client";
+import { ulid } from "ulidx";
+import { tracker } from "../lib/tracker";
 import { createInvitedUser, getUserByEmail, UserId } from "./users.service";
 
 export type WorkspaceId = string;
@@ -27,7 +27,11 @@ export async function getWorkspaceById(id: WorkspaceId) {
   return await prisma.workspace.findUnique({ where: { id } });
 }
 
-export async function createWorkspace(creatorUser: User, instanceUrl = 'http://localhost:8080', displayName = `${creatorUser.nickname}'s dev workspace`) {
+export async function createWorkspace(
+  creatorUser: User,
+  instanceUrl = "http://localhost:8080",
+  displayName = `${creatorUser.nickname}'s dev workspace`,
+) {
   const newWorkspace = await prisma.workspace.create({
     data: {
       id: ulid(),
@@ -38,8 +42,10 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
       creatorUserId: creatorUser.id,
     },
   });
-  tracker.trackEvent(creatorUser, 'create_workspace', {
+  tracker.trackEvent(creatorUser, "create_workspace", {
     workspaceId: newWorkspace.id,
+    instanceUrl,
+    instanceEnvType: newWorkspace.instanceEnvType,
     // TODO: track env type and other data when it becomes useful
   });
 
@@ -61,8 +67,15 @@ export async function deleteWorkspace(id: WorkspaceId) {
   await prisma.workspace.update({ where: { id }, data: { deletedAt } });
 }
 
-export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displayName: string) {
-  return await prisma.workspace.update({ where: { id }, data: { instanceUrl, displayName } });
+export async function patchWorkspace(
+  id: WorkspaceId,
+  instanceUrl: string,
+  displayName: string,
+) {
+  return await prisma.workspace.update({
+    where: { id },
+    data: { instanceUrl, displayName },
+  });
 }
 
 export async function getUserWorkspaces(userId: UserId) {
@@ -101,7 +114,10 @@ export async function getUserWorkspaces(userId: UserId) {
   }));
 }
 
-export async function userRoleForWorkspace(userId: UserId, workspaceId: WorkspaceId) {
+export async function userRoleForWorkspace(
+  userId: UserId,
+  workspaceId: WorkspaceId,
+) {
   const member = await prisma.workspaceMembers.findFirst({
     where: {
       userId,
