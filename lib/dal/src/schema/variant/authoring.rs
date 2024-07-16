@@ -641,8 +641,7 @@ impl VariantAuthoringClient {
             .ok_or(VariantAuthoringError::PkgMissingSchemaVariant)?;
 
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
-
-        Ok(import_schema_variant(
+        let new_schema_variant = import_schema_variant(
             ctx,
             &schema,
             schema_spec.clone(),
@@ -651,7 +650,17 @@ impl VariantAuthoringClient {
             &mut thing_map,
             None,
         )
-        .await?)
+        .await?;
+
+        // need to manually modify the variant to get the new version
+        // as the pkg spec used to generate this new version only has the
+        // old one.
+        Ok(new_schema_variant
+            .modify(ctx, |sv| {
+                sv.version = metadata.version;
+                Ok(())
+            })
+            .await?)
     }
 
     #[allow(clippy::too_many_arguments)]

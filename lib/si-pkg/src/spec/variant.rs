@@ -118,6 +118,8 @@ pub struct SchemaVariantSpecData {
     pub component_type: SchemaVariantSpecComponentType,
     #[builder(setter(into))]
     pub func_unique_id: String,
+    #[builder(setter(into), default)]
+    pub description: Option<String>,
 }
 
 impl SchemaVariantSpecData {

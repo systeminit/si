@@ -40,7 +40,7 @@ async fn clone_variant(ctx: &mut DalContext) {
     assert_eq!(new_schema_variant.category(), existing_variant.category());
     assert_eq!(
         new_schema_variant.display_name(),
-        "dummy-secret".to_string()
+        existing_variant.display_name()
     );
     assert_eq!(
         new_schema_variant

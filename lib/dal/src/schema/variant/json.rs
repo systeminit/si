@@ -98,6 +98,7 @@ impl SchemaVariantJson {
         if let Some(link) = metadata.link {
             data_builder.try_link(link.as_str())?;
         }
+        data_builder.description(metadata.description);
 
         data_builder.func_unique_id(asset_func_spec_unique_id);
         builder.data(data_builder.build()?);
@@ -165,6 +166,7 @@ impl SchemaVariantJson {
                     link: None,
                     component_type: si_pkg::SchemaVariantSpecComponentType::Component,
                     func_unique_id: "0".into(),
+                    description: None,
                 });
 
         let metadata = SchemaVariantMetadataJson {
@@ -178,7 +180,7 @@ impl SchemaVariantJson {
                 .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
             component_type: variant_spec_data.component_type.into(),
             link: variant_spec_data.link.as_ref().map(|l| l.to_string()),
-            description: None, // XXX - does this exist?
+            description: variant_spec_data.description.to_owned(),
         };
 
         Ok(metadata)

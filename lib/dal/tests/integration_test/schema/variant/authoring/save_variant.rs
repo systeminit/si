@@ -1,6 +1,9 @@
 use dal::func::FuncKind;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, DalContext, Func, FuncBackendResponseType};
+use dal::{
+    ChangeSet, ComponentType, DalContext, Func, FuncBackendResponseType, Schema, SchemaVariant,
+};
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
@@ -112,4 +115,191 @@ async fn save_variant(ctx: &mut DalContext) {
         Some(updated_func_content),
         func.code_plaintext().expect("Unable to get code plaintext")
     );
+}
+
+#[test]
+async fn unlock_and_save_variant(ctx: &mut DalContext) {
+    let new_change_set = ChangeSet::fork_head(ctx, "new change set")
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility_and_snapshot_to_visibility(new_change_set.id)
+        .await
+        .expect("could not update visibility");
+
+    let schema = Schema::find_by_name(ctx, "dummy-secret")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let default_schema_variant = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("Unable to find the default schema variant id");
+    let existing_variant = SchemaVariant::get_by_id_or_error(
+        ctx,
+        default_schema_variant.expect("unable to unwrap schema variant id"),
+    )
+    .await
+    .expect("unable to lookup the default schema variant");
+
+    assert!(default_schema_variant.is_some());
+
+    let unlocked_schema_variant =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, existing_variant.id())
+            .await
+            .expect("could not create unlocked copy");
+    // new variant is unlocked
+    assert!(!unlocked_schema_variant.is_locked());
+    // data matches
+    assert_eq!(
+        unlocked_schema_variant.category(),
+        existing_variant.category()
+    );
+    assert_eq!(
+        unlocked_schema_variant.display_name(),
+        existing_variant.display_name()
+    );
+    assert_eq!(
+        unlocked_schema_variant.description(),
+        existing_variant.description()
+    );
+    assert_eq!(unlocked_schema_variant.color(), existing_variant.color());
+    assert_eq!(
+        unlocked_schema_variant.component_type(),
+        existing_variant.component_type()
+    );
+
+    assert_eq!(
+        unlocked_schema_variant
+            .get_asset_func(ctx)
+            .await
+            .expect("could not get asset func")
+            .code_base64,
+        existing_variant
+            .get_asset_func(ctx)
+            .await
+            .expect("could not get asset func")
+            .code_base64
+    );
+
+    // unlocked variant has a newer version
+    assert!(
+        *unlocked_schema_variant.version().to_string() > *existing_variant.version().to_string()
+    );
+
+    // now let's change some stuff
+
+    let new_description = Some("fancy new description".to_string());
+    let new_display_name = "fancy display name too".to_string();
+    let new_category = "Fancy";
+    let new_color = "#191919";
+    let new_link = Some("https://fancy.ai".to_string());
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        unlocked_schema_variant.id,
+        unlocked_schema_variant
+            .schema(ctx)
+            .await
+            .expect("could not get schema")
+            .name,
+        new_display_name.clone(),
+        new_category,
+        new_description.clone(),
+        new_link.clone(),
+        new_color,
+        ComponentType::ConfigurationFrameDown,
+        unlocked_schema_variant
+            .get_asset_func(ctx)
+            .await
+            .expect("could not get asset func")
+            .code_plaintext()
+            .expect("got the code"),
+    )
+    .await
+    .expect("could not save variant content");
+
+    // commit changes
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // apply change set and check head
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not apply to head");
+
+    // check head and make sure everything looks good
+    let schema = Schema::find_by_name(ctx, "dummy-secret")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let default_schema_variant = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("Unable to find the default schema variant id");
+    let new_merged_variant = SchemaVariant::get_by_id_or_error(
+        ctx,
+        default_schema_variant.expect("unable to unwrap schema variant id"),
+    )
+    .await
+    .expect("unable to lookup the default schema variant");
+
+    assert!(default_schema_variant.is_some());
+    // schema variant ids should match
+    assert_eq!(new_merged_variant.id(), unlocked_schema_variant.id());
+    // new variant is now locked
+    assert!(new_merged_variant.is_locked());
+
+    // data matches
+
+    assert_eq!(new_merged_variant.category(), new_category);
+    assert_eq!(new_merged_variant.display_name(), new_display_name);
+    assert_eq!(new_merged_variant.description(), new_description);
+    assert_eq!(new_merged_variant.color(), new_color);
+    assert_eq!(
+        unlocked_schema_variant
+            .get_asset_func(ctx)
+            .await
+            .expect("could not get asset func")
+            .code_base64,
+        new_merged_variant
+            .get_asset_func(ctx)
+            .await
+            .expect("could not get asset func")
+            .code_base64
+    );
+
+    assert_eq!(
+        new_merged_variant.component_type(),
+        ComponentType::ConfigurationFrameDown
+    );
+
+    // merged variant has a newer version
+    assert!(new_merged_variant.version() > unlocked_schema_variant.version());
+
+    // create a new changeset, and unlock another copy
+
+    ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "change set 2")
+        .await
+        .expect("could not fork head");
+
+    let second_editing_variant =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, new_merged_variant.id())
+            .await
+            .expect("could not unlock schema variant");
+
+    // unlocked variant is unlocked
+    assert!(!second_editing_variant.is_locked());
+
+    // data matches
+    assert_eq!(
+        second_editing_variant.component_type(),
+        ComponentType::ConfigurationFrameDown
+    );
+    assert_eq!(second_editing_variant.description(), new_description);
+    assert_eq!(second_editing_variant.category(), new_category);
+    assert_eq!(second_editing_variant.display_name(), new_display_name);
+    assert_eq!(second_editing_variant.color(), new_color);
+
+    // version of newly unlocked variant is newer
+    assert!(second_editing_variant.version() > new_merged_variant.version());
 }
