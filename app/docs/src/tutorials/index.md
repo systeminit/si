@@ -12,6 +12,7 @@ knowledge, we have tutorials to suit your needs.
 
 ## Intermediate Topics
 
+- [Create a new asset](./creating-new-assets.md)
 - [Writing your first asset](./writing-an-asset.md)
 
 ## Advanced Techniques
