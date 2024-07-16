@@ -185,6 +185,7 @@ impl PkgExporter {
         data_builder.display_name(variant.display_name());
 
         data_builder.component_type(get_component_type(ctx, variant).await?);
+        data_builder.description(variant.description());
 
         if let Some(authoring_func_id) =
             overridden_asset_func_id.or_else(|| variant.asset_func_id())

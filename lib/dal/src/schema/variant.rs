@@ -1976,7 +1976,7 @@ impl SchemaVariant {
     }
 
     pub fn generate_version_string() -> String {
-        format!("{}", Utc::now().format("%Y%m%d%H%M%S"))
+        format!("{}", Utc::now().format("%Y%m%d%H%M%S%f"))
     }
 
     /// Lists all default [`SchemaVariantIds`](SchemaVariant) that have a secret definition.

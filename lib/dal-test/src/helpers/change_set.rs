@@ -6,7 +6,7 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
-use dal::{ChangeSet, DalContext};
+use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
 
 use crate::helpers::generate_fake_name;
 
@@ -59,7 +59,30 @@ impl ChangeSetTestHelpers {
     /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
     /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
     /// snapshot is "HEAD" without an editing [`ChangeSet`].
+    /// Also locks existing editing funcs and schema variants to mimic SDF
     pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<()> {
+        // Lock all unlocked variants
+        for schema_id in Schema::list_ids(ctx).await? {
+            let schema = Schema::get_by_id(ctx, schema_id).await?;
+            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
+            else {
+                continue;
+            };
+
+            let variant_id = variant.id();
+
+            variant.lock(ctx).await?;
+            schema.set_default_schema_variant(ctx, variant_id).await?;
+        }
+        // Lock all unlocked functions too
+        for func in Func::list_for_default_and_editing(ctx).await? {
+            if !func.is_locked {
+                func.lock(ctx).await?;
+            }
+        }
+
+        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
+
         let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
 
         Self::blocking_commit(ctx).await?;

@@ -25,6 +25,7 @@ pub struct SiPkgSchemaVariantData {
     color: Option<String>,
     component_type: SchemaVariantSpecComponentType,
     func_unique_id: String,
+    description: Option<String>,
 }
 
 impl SiPkgSchemaVariantData {
@@ -46,6 +47,9 @@ impl SiPkgSchemaVariantData {
 
     pub fn func_unique_id(&self) -> &str {
         self.func_unique_id.as_str()
+    }
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
     }
 }
 
@@ -117,6 +121,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 color: data.color,
                 component_type: data.component_type,
                 func_unique_id: data.func_unique_id,
+                description: data.description,
             }),
             unique_id: schema_variant_node.unique_id,
             deleted: schema_variant_node.deleted,
@@ -418,6 +423,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
             if let Some(color) = data.color() {
                 data_builder.color(color);
             }
+
+            data_builder.description(data.description().map(ToOwned::to_owned));
             data_builder.func_unique_id(data.func_unique_id());
             builder.data(data_builder.build()?);
         }

@@ -4,8 +4,8 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 use url::Url;
 
@@ -19,6 +19,7 @@ const KEY_VERSION_STR: &str = "name"; // This got renamed to Version, but we kep
 const KEY_COMPONENT_TYPE_STR: &str = "component_type";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_IS_BUILTIN_STR: &str = "is_builtin";
+const KEY_DESCRIPTION_STR: &str = "description";
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantData {
@@ -27,6 +28,7 @@ pub struct SchemaVariantData {
     pub color: Option<String>,
     pub component_type: SchemaVariantSpecComponentType,
     pub func_unique_id: String,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +62,7 @@ impl WriteBytes for SchemaVariantNode {
                 KEY_FUNC_UNIQUE_ID_STR,
                 data.func_unique_id.to_string(),
             )?;
+            write_key_value_line_opt(writer, KEY_DESCRIPTION_STR, data.description.as_deref())?;
         }
 
         write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
@@ -94,6 +97,7 @@ impl ReadBytes for SchemaVariantNode {
                     .map_err(GraphError::parse)?;
 
                 let func_unique_id = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
+                let description = read_key_value_line_opt(reader, KEY_DESCRIPTION_STR)?;
 
                 Some(SchemaVariantData {
                     version: version.to_owned(),
@@ -101,6 +105,7 @@ impl ReadBytes for SchemaVariantNode {
                     color,
                     component_type,
                     func_unique_id,
+                    description,
                 })
             }
             None => None,
@@ -168,6 +173,7 @@ impl NodeChild for SchemaVariantSpec {
                     color: data.color.as_ref().cloned(),
                     component_type: data.component_type,
                     func_unique_id: data.func_unique_id.to_owned(),
+                    description: data.description.to_owned(),
                 }),
                 unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,
