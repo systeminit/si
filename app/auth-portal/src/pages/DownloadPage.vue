@@ -106,12 +106,6 @@
 
         <p>Use the si binary to get up and running quickly:</p>
         <pre><code class="language-shell">$ si start</code></pre>
-
-        <p>
-          Head over to the
-          <RouterLink :to="{ name: 'tutorial' }">tutorial</RouterLink> for more
-          info.
-        </p>
       </RichText>
 
       <template

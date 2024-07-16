@@ -89,6 +89,8 @@ router.post("/users/:userId/complete-profile", async (ctx) => {
     _.set(user, ['onboardingDetails', 'reviewedProfile'], new Date());
   }
 
+  _.set(user, ['onboardingDetails', 'firstTimeModal'], true);
+
   await saveUser(user);
 
   ctx.body = { user };
@@ -141,4 +143,20 @@ router.post("/tos-agreement", async (ctx) => {
   }
   const agreement = await saveTosAgreement(ctx.state.authUser, reqBody.tosVersionId, ctx.state.clientIp);
   ctx.body = agreement;
+});
+
+router.get("/users/:userId/firstTimeModal", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+
+  ctx.body = { firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal };
+});
+
+router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+
+  _.set(user, ['onboardingDetails', 'firstTimeModal'], false);
+
+  await saveUser(user);
+
+  ctx.body = { firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal };
 });

@@ -1,47 +1,56 @@
 <template>
-  <div class="p-xs">
-    <TruncateWithTooltip
-      class="text-2xl font-bold pb-2xs flex flex-row items-center gap-xs"
-    >
-      <div
-        :class="
-          clsx(
-            'flex flex-row items-center gap-xs',
-            selectedFunc && [
-              'cursor-pointer hover:underline',
-              themeClasses('text-action-500', 'text-action-300'),
-            ],
-          )
-        "
-        @click="onClick"
+  <div class="p-xs flex flex-row gap-xs items-center">
+    <div class="flex flex-col min-w-0 flex-grow">
+      <TruncateWithTooltip
+        :showTooltip="showTooltip"
+        class="text-2xl font-bold pb-2xs flex flex-row items-center gap-xs"
       >
-        <NodeSkeleton :color="selectedAsset.color" size="mini" />
-        {{ schemaVariantDisplayName(selectedAsset) }}
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs flex-none max-w-full',
+              selectedFunc && [
+                'cursor-pointer hover:underline',
+                themeClasses('text-action-500', 'text-action-300'),
+              ],
+            )
+          "
+          @click="onClick"
+        >
+          <NodeSkeleton :color="selectedAsset.color" size="mini" />
+          <TruncateWithTooltip ref="truncateRef1" hasParentTruncateWithTooltip>
+            {{ schemaVariantDisplayName(selectedAsset) }}
+          </TruncateWithTooltip>
+        </div>
+        <TruncateWithTooltip
+          v-if="selectedFunc"
+          ref="truncateRef2"
+          hasParentTruncateWithTooltip
+        >
+          / {{ selectedFunc.kind }} / {{ selectedFunc.name }}
+        </TruncateWithTooltip>
+      </TruncateWithTooltip>
+      <div
+        class="text-xs italic flex flex-row flex-wrap gap-x-lg text-neutral-600 dark:text-neutral-200 items-center"
+      >
+        <div>
+          <span class="font-bold">Asset Created At: </span>
+          <Timestamp :date="selectedAsset.created_at" size="long" />
+        </div>
+        <!-- TODO: Populate the created by from SDF actorHistory-->
+        <div><span class="font-bold">Created By: </span>System Initiative</div>
       </div>
-      <div v-if="selectedFunc">
-        / {{ selectedFunc.kind }} / {{ selectedFunc.name }}
-      </div>
-    </TruncateWithTooltip>
+    </div>
     <EditingPill
-      v-if="!selectedAsset.isLocked"
-      class="mt-2xs"
+      v-if="!selectedAsset.isLocked || true"
+      class="flex-none"
       :color="selectedAsset.color"
     />
-    <div
-      class="text-xs italic flex flex-row flex-wrap gap-x-lg text-neutral-600 dark:text-neutral-200"
-    >
-      <div v-if="!selectedFunc">
-        <span class="font-bold">Asset Created At: </span>
-        <Timestamp :date="selectedAsset.created_at" size="long" />
-      </div>
-      <!-- TODO: Populate the created by from SDF actorHistory-->
-      <div><span class="font-bold">Created By: </span>System Initiative</div>
-    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { PropType } from "vue";
+import { PropType, computed, ref } from "vue";
 import { Timestamp, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
@@ -53,6 +62,9 @@ import NodeSkeleton from "./NodeSkeleton.vue";
 
 const assetStore = useAssetStore();
 
+const truncateRef1 = ref<InstanceType<typeof TruncateWithTooltip>>();
+const truncateRef2 = ref<InstanceType<typeof TruncateWithTooltip>>();
+
 defineProps({
   selectedAsset: { type: Object as PropType<SchemaVariant>, required: true },
   selectedFunc: { type: Object as PropType<FuncSummary> },
@@ -61,4 +73,8 @@ defineProps({
 const onClick = () => {
   assetStore.setFuncSelection(undefined);
 };
+
+const showTooltip = computed(() => {
+  return truncateRef1.value?.tooltipActive || truncateRef2.value?.tooltipActive;
+});
 </script>

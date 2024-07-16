@@ -9,20 +9,26 @@
           v-tooltip="workspaceNameTooltip"
           class="text-lg font-bold line-clamp-3 break-words"
         >
-          {{ draftWorkspace.displayName || "Workspace Details" }}
+          {{
+            draftWorkspace.displayName ||
+            (createMode ? "Create New Workspace" : "Workspace Details")
+          }}
         </div>
         <RouterLink
           :to="{
-            name: 'dashboard',
+            name: 'workspaces',
           }"
         >
-          <VButton label="Return To Dashboard" tone="neutral" />
+          <VButton label="Return To Workspaces" tone="neutral" />
         </RouterLink>
       </div>
       <div class="mt-sm pb-md">
         <div>
-          From here you can manage this workspace and invite users to be part of
-          it.
+          {{
+            createMode
+              ? "Fill out this form to create a new workspace."
+              : "From here you can manage this workspace and invite users to be part of it."
+          }}
         </div>
       </div>
 
@@ -41,6 +47,17 @@
           :maxLength="500"
         />
         <VormInput
+          v-if="createMode"
+          v-model="createWorkspaceType"
+          :options="createWorkspaceTypeDropdownOptions"
+          required
+          label="Workspace Type"
+          placeholder="Choose what kind of workspace to create"
+          type="dropdown"
+        />
+
+        <VormInput
+          v-if="createWorkspaceType === 'url'"
           v-model="draftWorkspace.instanceUrl"
           label="URL"
           autocomplete="url"
@@ -50,6 +67,7 @@
         />
 
         <VButton
+          v-if="!createMode || createWorkspaceType"
           iconRight="chevron--right"
           :disabled="
             validationState.isError || (!isWorkspaceOwner && !createMode)
@@ -125,14 +143,21 @@
           </div>
         </template>
       </div>
-      <div class="pt-md">
+      <div
+        v-if="
+          inviteUserReqStatus.isPending ||
+          inviteUserReqStatus.isError ||
+          !createMode
+        "
+        class="pt-md"
+      >
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>
         <template v-else-if="inviteUserReqStatus.isError">
           <ErrorMessage :requestStatus="inviteUserReqStatus" />
         </template>
-        <template v-if="!createMode || true">
+        <template v-if="!createMode">
           <Stack spacing="lg">
             <Stack>
               <VormInput
@@ -154,7 +179,9 @@
         </template>
       </div>
       <div
-        v-if="featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner"
+        v-if="
+          featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner && !createMode
+        "
         class="pt-md"
       >
         <VButton
@@ -209,7 +236,7 @@ const blankWorkspace = {
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
-useHead({ title: "Dashboard" });
+useHead({ title: "Workspace Details" });
 
 const createWorkspaceReqStatus =
   workspacesStore.getRequestStatus("CREATE_WORKSPACE");
@@ -227,7 +254,9 @@ const deleteWorkspaceReqStatus =
 
 const createMode = computed(() => props.workspaceId === "new");
 const isWorkspaceOwner = computed(
-  () => workspacesStore.workspacesById[props.workspaceId].role === "OWNER",
+  () =>
+    props.workspaceId === "new" ||
+    workspacesStore.workspacesById[props.workspaceId]?.role === "OWNER",
 );
 
 const loadWorkspacesReqStatus =
@@ -262,6 +291,12 @@ watch(
   { immediate: true },
 );
 const createWorkspace = async () => {
+  if (createWorkspaceType.value === "saas") {
+    draftWorkspace.instanceUrl = "https://app.systeminit.com";
+  } else if (createWorkspaceType.value === "local") {
+    draftWorkspace.instanceUrl = "localhost:8080";
+  }
+
   if (validationMethods.hasError()) return;
 
   const res = await workspacesStore.CREATE_WORKSPACE(draftWorkspace);
@@ -280,10 +315,10 @@ const editWorkspace = async () => {
   const res = await workspacesStore.EDIT_WORKSPACE(draftWorkspace);
 
   if (res.result.success) {
-    // TODO(Wendy) - do we want to send users back to the dashboard when they save their edits?
+    // TODO(Wendy) - do we want to send users back to the workspaces when they save their edits?
     // setTimeout(async () => {
     //   await router.push({
-    //     name: "dashboard",
+    //     name: "workspaces",
     //   });
     // }, 500);
     return;
@@ -295,7 +330,7 @@ const deleteWorkspace = async () => {
   if (res.result.success) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     await router.push({
-      name: "dashboard",
+      name: "workspaces",
       params: {},
     });
   }
@@ -341,6 +376,15 @@ const workspaceNameTooltip = computed(() => {
     return {};
   }
 });
+
+type WorkspaceType = "saas" | "local" | "url";
+
+const createWorkspaceType = ref<WorkspaceType | undefined>("saas");
+const createWorkspaceTypeDropdownOptions = [
+  { label: "Managed By System Initiative", value: "saas" },
+  { label: "Local Dev Instance", value: "local" },
+  { label: "Remote URL", value: "url" },
+];
 </script>
 
 <style scoped>

@@ -29,7 +29,7 @@ instances.
 While working on the auth stack, we still need to run it locally and configure things to point to our local auth stack:
 
 - update auth-api env vars in `bin/auth-api/.env.local`
-    - fill in `AUTH0_CLIENT_SECRET` (get from 1pass?)
+    - fill in `AUTH0_CLIENT_SECRET` and `AUTH0_M2M_CLIENT_SECRET` (get from 1pass)
     - (OPTIONAL) set auth-api redis url to a locally running redis instance (ex: `REDIS_URL=127.0.0.1:6379`) only if
       needing to test redis. Falls back to in-memory storage...
 - update web app env vars (`app/web/.env.local`) to point to local auth stack

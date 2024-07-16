@@ -815,7 +815,7 @@ defineExpose({
     background-repeat: no-repeat;
 
     &.--placeholder-selected {
-      color: @colors-neutral-400;
+      color: var(--text-color-muted);
       font-style: italic;
 
       &.--theme-dark {
@@ -1128,7 +1128,7 @@ defineExpose({
     background-repeat: no-repeat;
 
     &.--placeholder-selected {
-      color: @colors-neutral-400;
+      color: var(--text-color-muted);
       font-style: italic;
 
       &.--theme-dark {

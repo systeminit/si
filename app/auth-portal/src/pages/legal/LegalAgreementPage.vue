@@ -44,15 +44,38 @@
               {{ doc.title }}
             </a>
           </div>
+          <div
+            v-if="!viewOnlyMode"
+            class="cursor-pointer"
+            @click="scrollToDoc('agree')"
+          >
+            <a
+              :class="
+                clsx(
+                  'underline-link w-auto',
+                  activeDocSlug === 'agree' && '--active',
+                )
+              "
+              href="#"
+              @click.prevent
+            >
+              Agree and Continue
+            </a>
+          </div>
         </div>
       </div>
       <div
         class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
       >
         <div
-          v-for="doc in LEGAL_DOCS_CONTENT"
-          :key="doc.fileName"
-          class="mb-xl"
+          v-for="(doc, key, index) in LEGAL_DOCS_CONTENT"
+          :key="key"
+          :class="
+            !viewOnlyMode ||
+            index !== Object.keys(LEGAL_DOCS_CONTENT).length - 1
+              ? 'mb-xl'
+              : ''
+          "
           :data-doc-slug="doc.slug"
         >
           <RichText class="text-sm">
@@ -74,7 +97,7 @@
           </div>
         </div>
 
-        <Stack v-if="!viewOnlyMode">
+        <Stack v-if="!viewOnlyMode" data-doc-slug="agree">
           <VormInput v-model="userAgreed" type="checkbox"
             >I have read and agree to the terms above
           </VormInput>
@@ -151,9 +174,12 @@ async function agreeButtonHandler() {
   }
 }
 
+const scrollingToSlug = ref<string | undefined>(undefined);
 function scrollToDoc(slug: string) {
   const el = document.querySelector(`[data-doc-slug="${slug}"]`);
   el?.scrollIntoView({ behavior: "smooth" });
+  activeDocSlug.value = slug;
+  scrollingToSlug.value = slug;
 }
 
 // track all intersecting secitons, and current one should be the last in the list
@@ -164,13 +190,14 @@ const observer = new IntersectionObserver(
     const entry = entries[0];
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const slug = entry.target.getAttribute("data-doc-slug")!;
-    if (entry.isIntersecting) {
+    if (entry.isIntersecting && slug !== "agree") {
       intersectingDocs[slug] = true;
     } else {
       intersectingDocs[slug] = false;
     }
 
-    activeDocSlug.value = _.last(_.keys(_.pickBy(intersectingDocs))) || "tos";
+    activeDocSlug.value =
+      _.last(_.keys(_.pickBy(intersectingDocs))) || activeDocSlug.value;
   },
   { threshold: [0] },
 );
@@ -179,10 +206,21 @@ watch(activeDocSlug, () => {
   router.replace({ ...route, params: { docSlug: activeDocSlug.value } });
 });
 
-onMounted(() => {
+const enableObserver = () => {
   const sectionEls = document.querySelectorAll("[data-doc-slug]");
   sectionEls.forEach((el) => {
     observer.observe(el);
+  });
+};
+
+onMounted(() => {
+  enableObserver();
+
+  window.addEventListener("scrollend", () => {
+    if (scrollingToSlug.value) {
+      activeDocSlug.value = scrollingToSlug.value;
+      scrollingToSlug.value = undefined;
+    }
   });
 
   // if url refers to a specific doc, we'll scroll to it right away

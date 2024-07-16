@@ -24,6 +24,12 @@
     <DropdownMenu v-if="slots.dropdownContent" ref="dropdownRef">
       <slot name="dropdownContent" />
     </DropdownMenu>
+    <DropdownMenu
+      v-if="slots.dropdownContentSecondary"
+      ref="dropdownSecondaryRef"
+    >
+      <slot name="dropdownContentSecondary" />
+    </DropdownMenu>
   </component>
 </template>
 
@@ -37,9 +43,11 @@ const props = defineProps({
   selected: { type: Boolean },
   tooltipText: { type: String },
   linkTo: { type: [String, Object] },
+  externalLinkTo: { type: String },
 });
 
 const dropdownRef = ref<InstanceType<typeof DropdownMenu>>();
+const dropdownSecondaryRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const slots = useSlots();
 const emit = defineEmits(["click"]);
@@ -52,11 +60,25 @@ const toggleHover = () => {
 const isSelectedOrMenuOpen = computed(() => {
   if (props.selected) return true;
   if (!dropdownRef.value) return false;
-  return dropdownRef.value.isOpen;
+  return dropdownRef.value.isOpen || dropdownSecondaryRef.value?.isOpen;
 });
 
 function onClick(e: MouseEvent) {
-  if (dropdownRef.value) dropdownRef.value.open(e);
+  if (dropdownRef.value) {
+    openEvent.value = e;
+    dropdownRef.value.open(e);
+  }
+  if (props.externalLinkTo) {
+    window.open(props.externalLinkTo, "_blank");
+  }
   emit("click", e);
 }
+
+const openEvent = ref<MouseEvent | undefined>();
+
+const openSecondary = () => {
+  dropdownSecondaryRef.value?.open(openEvent.value);
+};
+
+defineExpose({ openSecondary });
 </script>

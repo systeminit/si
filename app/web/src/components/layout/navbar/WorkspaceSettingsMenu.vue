@@ -5,6 +5,11 @@
 
     <template #dropdownContent>
       <DropdownMenuItem
+        icon="settings"
+        label="Manage Workspaces"
+        @click="openManageWorkspacesHandler"
+      />
+      <DropdownMenuItem
         icon="cloud-upload"
         label="Export Workspace"
         @click="exportModalRef?.open()"
@@ -60,6 +65,12 @@ const openWorkspaceDetailsHandler = () => {
   const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
   if (!currentWorkspace) return;
   window.open(`${AUTH_PORTAL_URL}/workspace/${currentWorkspace}`, "_blank");
+};
+
+const openManageWorkspacesHandler = () => {
+  const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
+  if (!currentWorkspace) return;
+  window.open(`${AUTH_PORTAL_URL}/workspaces/`, "_blank");
 };
 
 const showViz = computed(() => {

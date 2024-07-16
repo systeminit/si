@@ -1,10 +1,10 @@
 <template>
-  <div class="overflow-hidden">
+  <div v-if="user && user.emailVerified" class="overflow-hidden">
     <div
       class="pb-md flex flex-row gap-sm align-middle items-center justify-between"
     >
       <div>
-        <div class="text-lg font-bold pb-sm">Your dashboard</div>
+        <div class="text-lg font-bold pb-sm">Your Workspaces</div>
         <div v-if="featureFlagsStore.CREATE_WORKSPACES">
           From here you can log into any of your workspaces.
         </div>
@@ -21,6 +21,30 @@
         :linkTo="{ name: 'workspace-settings', params: { workspaceId: 'new' } }"
       />
     </div>
+    <div
+      class="mb-sm flex flex-col gap-sm p-sm border border-neutral-400 rounded-lg"
+    >
+      <div>Thank you for signing up!</div>
+      <div>
+        <span class="font-bold">System Initiative</span> is currently in Open
+        Beta. In order to experience it, you will need to
+        <a
+          class="text-action-500 dark:text-action-300 font-bold hover:underline"
+          href="https://github.com/systeminit/si/?tab=readme-ov-file#local-development-setup"
+          target="_blank"
+          >follow the instructions to get a local development environment set
+          up</a
+        >. Once the stack is up and running, you can click the button below to
+        access your local development workspace. If you have questions or need
+        help, join us on
+        <a
+          href="https://discord.gg/system-init"
+          target="_blank"
+          class="text-action-500 dark:text-action-300 font-bold hover:underline"
+          >Discord</a
+        >.
+      </div>
+    </div>
     <template v-if="loadWorkspacesReqStatus.isPending">
       <Icon name="loader" />
     </template>
@@ -36,6 +60,9 @@
         />
       </Stack>
     </template>
+  </div>
+  <div v-else>
+    You will not be able to use System Initiative until you verify your email.
   </div>
 </template>
 
@@ -54,7 +81,9 @@ const featureFlagsStore = useFeatureFlagsStore();
 
 const workspaces = computed(() => workspacesStore.workspaces);
 
-useHead({ title: "Dashboard" });
+const user = computed(() => authStore.user);
+
+useHead({ title: "Workspaces" });
 
 const loadWorkspacesReqStatus =
   workspacesStore.getRequestStatus("LOAD_WORKSPACES");

@@ -1,5 +1,9 @@
 <template>
-  <NavbarButton tooltipText="Profile" class="flex-none py-xs">
+  <NavbarButton
+    ref="navbarButtonRef"
+    tooltipText="Profile"
+    class="flex-none py-xs"
+  >
     <template #default="{ open, hovered }">
       <div class="flex-row flex text-white items-center">
         <UserIcon
@@ -14,9 +18,14 @@
 
     <template #dropdownContent>
       <DropdownMenuItem
-        linkToNamedRoute="logout"
-        icon="logout"
-        label="Logout"
+        icon="user-circle"
+        label="Profile"
+        @click="openWorkspaceDetailsHandler"
+      />
+      <DropdownMenuItem
+        :icon="themeIcon"
+        label="Change Theme"
+        @click="changeTheme"
       />
       <DropdownMenuItem
         v-if="isDevMode"
@@ -24,17 +33,66 @@
         icon="cat"
         label="Dev Dashboard"
       />
+      <DropdownMenuItem
+        linkToNamedRoute="logout"
+        icon="logout"
+        label="Logout"
+      />
+    </template>
+    <template #dropdownContentSecondary>
+      <DropdownMenuItem
+        :checked="!userOverrideTheme"
+        icon="bolt"
+        @select="userOverrideTheme = null"
+      >
+        System theme
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        :checked="userOverrideTheme === 'light'"
+        icon="sun"
+        @select="userOverrideTheme = 'light'"
+      >
+        Light theme
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        :checked="userOverrideTheme === 'dark'"
+        icon="moon"
+        @select="userOverrideTheme = 'dark'"
+      >
+        Dark theme
+      </DropdownMenuItem>
     </template>
   </NavbarButton>
 </template>
 
 <script lang="ts" setup>
-import { DropdownMenuItem } from "@si/vue-lib/design-system";
+import { DropdownMenuItem, userOverrideTheme } from "@si/vue-lib/design-system";
+import { computed, ref } from "vue";
 import SiArrow from "@/components/SiArrow.vue";
 import { useAuthStore } from "@/store/auth.store";
 import { isDevMode } from "@/utils/debug";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import NavbarButton from "./NavbarButton.vue";
 import UserIcon from "./UserIcon.vue";
 
+const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
+const workspacesStore = useWorkspacesStore();
 const authStore = useAuthStore();
+const navbarButtonRef = ref<InstanceType<typeof NavbarButton>>();
+
+const openWorkspaceDetailsHandler = () => {
+  const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
+  if (!currentWorkspace) return;
+  window.open(`${AUTH_PORTAL_URL}/profile`, "_blank");
+};
+
+const themeIcon = computed(() => {
+  if (userOverrideTheme.value === "light") return "sun";
+  else if (userOverrideTheme.value === "dark") return "moon";
+  else return "bolt";
+});
+
+const changeTheme = () => {
+  navbarButtonRef.value?.openSecondary();
+};
 </script>
