@@ -41,7 +41,6 @@ export const useWorkspacesStore = defineStore("workspaces", {
     selectedWorkspaceMembers: (state) =>
       _.values(state.selectedWorkspaceMembersById),
     // grabbing the oldest workspace you created and assuming that it's your "default"
-    // which is going to be shown on the connect widget in the tutorial
     defaultWorkspace: (state) => {
       const authStore = useAuthStore();
       return _.sortBy(

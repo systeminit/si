@@ -12,7 +12,7 @@
         <span class="vbutton__text"> {{ loadingText }}</span>
       </template>
       <template v-else-if="showSuccess">
-        <Icon class="vbutton__icon" name="check" />
+        <Icon class="vbutton__icon" :name="successIcon" />
         <span class="vbutton__text">
           <slot name="success">{{ successText }}</slot>
         </span>
@@ -93,6 +93,7 @@ const props = defineProps({
 
   clickSuccess: { type: Boolean },
   successText: { type: String, default: "Success!" },
+  iconSuccess: { type: String as PropType<IconNames> },
 
   confirmClick: { type: [Boolean, String] },
 
@@ -105,6 +106,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["click"]);
+
+const successIcon = computed(() => {
+  if (props.iconSuccess) return props.iconSuccess;
+  return "check";
+});
 
 const htmlTagOrComponentType = computed(() => {
   if (props.href) return "a";

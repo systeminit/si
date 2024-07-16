@@ -9,7 +9,7 @@ import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
-import DashboardPage from "./pages/DashboardPage.vue";
+import WorkspacesPage from "./pages/WorkspacesPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
@@ -44,11 +44,13 @@ export const routerOptions: RouterOptions = {
     },
     { path: "/profile", name: "profile", component: ProfilePage },
     {
-      path: "/tutorial/:stepSlug?",
-      name: "tutorial",
-      component: () => import("./pages/tutorial/TutorialPage.vue"),
+      path: "/dashboard",
+      name: "dashboard",
+      redirect() {
+        return { name: "workspaces" };
+      },
     },
-    { path: "/dashboard", name: "dashboard", component: DashboardPage },
+    { path: "/workspaces", name: "workspaces", component: WorkspacesPage },
     {
       path: "/workspace/:workspaceId",
       name: "workspace-settings",
@@ -59,17 +61,16 @@ export const routerOptions: RouterOptions = {
     // auth api redirects to this route - gives us some flexibility with what to do with user
     // also used as a sort catch-all for "go to whatever is next"
     // App.vue has logic to kick user back to TOS/profile if necessary
-    // this will let us toggle it back to the dashboard when the velvet-rope tutorial goes away
     {
       path: "/login-success",
       name: "login-success",
       redirect() {
-        if (import.meta.env.SSR) return { name: "tutorial" };
+        if (import.meta.env.SSR) return { name: "workspaces" };
 
         // see App.vue for logic saving this redirect location
         const savedPath = storage.getItem("SI-LOGIN-REDIRECT");
         storage.removeItem("SI-LOGIN-REDIRECT");
-        return savedPath || { name: "tutorial" };
+        return savedPath || { name: "workspaces" };
       },
     },
     { path: "/:catchAll(.*)", name: "404", component: NotFoundPage },

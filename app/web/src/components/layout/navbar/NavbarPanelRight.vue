@@ -2,11 +2,19 @@
   <div class="flex items-center justify-end h-full flex-1 min-w-0">
     <Collaborators />
 
-    <NavbarButton tooltipText="Copy link" @click="copyURL">
-      <Icon name="link" />
+    <NavbarButton
+      tooltipText="SI Documentation"
+      externalLinkTo="https://docs.systeminit.com/"
+    >
+      <Icon name="question-circle" />
     </NavbarButton>
 
-    <SiThemeSwitcher />
+    <NavbarButton
+      tooltipText="SI Discord Community"
+      externalLinkTo="https://discord.gg/system-init"
+    >
+      <Icon name="logo-discord" />
+    </NavbarButton>
 
     <WorkspaceSettingsMenu />
 
@@ -16,13 +24,8 @@
 
 <script lang="ts" setup>
 import { Icon } from "@si/vue-lib/design-system";
-import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
 import ProfileButton from "./ProfileButton.vue";
-
-const copyURL = () => {
-  navigator.clipboard.writeText(window.location.href);
-};
 </script>

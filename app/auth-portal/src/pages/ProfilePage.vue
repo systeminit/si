@@ -11,39 +11,11 @@
       <div class="flex gap-xl">
         <div class="w-[35%] flex items-center pl-md">
           <Stack>
-            <!-- this text only shows when filling out the step two questions -->
-            <template
-              v-if="isOnboarding && stepTwo && featureFlagsStore.OSS_RELEASE"
-            >
-              <RichText>
-                <h2>Please Tell Us More About You</h2>
-                <p>
-                  These optional questions will help us understand how to
-                  prioritize development of new features for System Initiative.
-                </p>
-              </RichText>
-            </template>
             <!-- this text only shows the first time / user is in onboarding -->
-            <template v-else-if="isOnboarding && featureFlagsStore.OSS_RELEASE">
+            <template v-if="isOnboarding">
               <RichText>
                 <h2>Welcome To System Initiative!</h2>
                 <p>Please enter your profile information.</p>
-              </RichText>
-            </template>
-            <!-- OLD TEXT this text only shows the first time a user is onboarding PRIOR TO OSS RELEASE -->
-            <template
-              v-else-if="isOnboarding && !featureFlagsStore.OSS_RELEASE"
-            >
-              <RichText>
-                <h2>Welcome to the preview of System Initiative!</h2>
-                <p>
-                  In order to get you access to the software, we need to know a
-                  little more about you: specifically, we need your GitHub
-                  Username and your Discord ID. We will use your GitHub Username
-                  to add you to our private repository, and your Discord ID to
-                  ensure you have access to private channels to discuss System
-                  Initiative with other folks in the preview.
-                </p>
               </RichText>
             </template>
             <!-- this is the default text -->
@@ -56,73 +28,7 @@
           </Stack>
         </div>
 
-        <form
-          v-if="stepTwo && featureFlagsStore.OSS_RELEASE"
-          class="grow my-md px-md"
-        >
-          <Stack spacing="lg">
-            <Stack>
-              <VormInput
-                v-model="stepTwoData.company"
-                label="Company"
-                name="company"
-                placeholder="Enter the name of your company here"
-              />
-              <VormInput
-                v-model="stepTwoData.cloudProviders"
-                label="Cloud Providers"
-                prompt="Which of these cloud providers does your company use? Please select all that apply."
-                name="cloud_providers"
-                type="multi-checkbox"
-                :options="cloudProviders"
-              />
-              <VormInput
-                v-model="stepTwoData.devOpsTools"
-                label="DevOps Tools"
-                prompt="Which of these DevOps tools are you currently using? Please select all that apply."
-                name="devops_tools"
-                type="multi-checkbox"
-                :options="devOpsTools"
-              />
-              <VormInput
-                v-model="stepTwoData.openSource"
-                label="Open Source Experience"
-                prompt="Have you contributed to an open source project before?"
-                name="open_source"
-                type="radio"
-                :options="[
-                  { value: true, label: 'Yes' },
-                  { value: false, label: 'No' },
-                ]"
-              />
-              <div class="flex flex-row gap-sm">
-                <VButton
-                  class="flex-grow"
-                  iconRight="chevron--right"
-                  :disabled="validationState.isError"
-                  :requestStatus="updateUserReqStatus"
-                  tone="action"
-                  variant="solid"
-                  @click="tellUsMoreHandler(false)"
-                >
-                  Submit
-                </VButton>
-                <VButton
-                  class="flex-none"
-                  iconRight="x"
-                  :disabled="validationState.isError"
-                  :requestStatus="updateUserReqStatus"
-                  tone="destructive"
-                  variant="ghost"
-                  @click="tellUsMoreHandler(true)"
-                >
-                  Skip
-                </VButton>
-              </div>
-            </Stack>
-          </Stack>
-        </form>
-        <form v-else class="grow my-md px-md">
+        <form class="grow my-md px-md">
           <Stack>
             <ErrorMessage :requestStatus="updateUserReqStatus" />
             <VormInput
@@ -242,7 +148,7 @@
 
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
-import { computed, onBeforeMount, reactive, ref, watch } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   ErrorMessage,
   Icon,
@@ -257,6 +163,8 @@ import { useHead } from "@vueuse/head";
 import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { API_HTTP_URL } from "@/store/api";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -266,6 +174,7 @@ const DISCORD_TAG_REGEX =
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
+const workspacesStore = useWorkspacesStore();
 const router = useRouter();
 
 const loadUserReqStatus = authStore.getRequestStatus("LOAD_USER");
@@ -275,28 +184,6 @@ const updateUserReqStatus = authStore.getRequestStatus("UPDATE_USER");
 const storeUser = computed(() => authStore.user);
 const draftUser = ref<User>();
 const isOnboarding = ref<boolean>();
-const stepTwo = ref(false);
-const stepTwoData = reactive({
-  company: "",
-  cloudProviders: [] as string[],
-  devOpsTools: [] as string[],
-  openSource: "",
-});
-
-const cloudProviders = [
-  { value: "aws", label: "AWS" },
-  { value: "azure", label: "Azure" },
-  { value: "digital_ocean", label: "Digital Ocean" },
-  { value: "gcp", label: "GCP" },
-];
-
-const devOpsTools = [
-  { value: "cdk", label: "CDK" },
-  { value: "docker", label: "Docker" },
-  { value: "kubernetes", label: "Kubernetes" },
-  { value: "pulumi", label: "Pulumi" },
-  { value: "terraform", label: "Terraform" },
-];
 
 useHead({ title: "Profile" });
 
@@ -326,7 +213,7 @@ onBeforeMount(() => {
   authStore.LOAD_USER();
 });
 
-async function saveHandler() {
+const saveHandler = async () => {
   if (validationMethods.hasError()) return;
 
   // if this is first time, we will take them off profile page after save
@@ -339,30 +226,21 @@ async function saveHandler() {
       firstName: draftUser.value?.firstName,
       lastName: draftUser.value?.lastName,
     });
-    if (featureFlagsStore.OSS_RELEASE) {
-      stepTwo.value = true;
-    } else {
-      await tellUsMoreHandler(true);
+
+    const completeProfileReq = await authStore.COMPLETE_PROFILE({});
+    if (completeProfileReq.result.success) {
+      if (authStore.user?.emailVerified) {
+        window.location.href = `${API_HTTP_URL}/workspaces/${workspacesStore.defaultWorkspace.id}/go`;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        router.push({ name: "login-success" });
+      }
     }
-  }
-}
-
-async function tellUsMoreHandler(skip: boolean) {
-  if (validationMethods.hasError()) return;
-
-  if (!skip) {
-    tracker.trackEvent("tell_us_more_answers", stepTwoData);
-  }
-
-  const completeProfileReq = await authStore.COMPLETE_PROFILE(
-    skip ? {} : stepTwoData,
-  );
-  if (completeProfileReq.result.success) {
+  } else {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    router.push({ name: "login-success" });
+    router.push({ name: "workspaces" });
   }
-}
-
+};
 const clearPicture = () => {
   if (draftUser.value) {
     draftUser.value.pictureUrl = null;

@@ -58,6 +58,8 @@
           </RouterLink>
 
           <template v-if="userIsLoggedIn">
+            <!-- REMOVED THE NAV FOR NOW SINCE THERE IS ONLY ONE PAGE -->
+            <!-- 
             <nav class="flex gap-md font-bold items-center">
               <template
                 v-if="
@@ -68,14 +70,12 @@
                   )
                 "
               >
-                <RouterLink :to="{ name: 'tutorial' }" class="underline-link">
-                  Tutorial
-                </RouterLink>
-                <RouterLink :to="{ name: 'dashboard' }" class="underline-link">
-                  Dashboard
+                <RouterLink :to="{ name: 'workspaces' }" class="underline-link">
+                  Workspaces
                 </RouterLink>
               </template>
             </nav>
+            -->
 
             <nav class="flex gap-sm mr-xs items-center ml-auto">
               <a
@@ -154,9 +154,12 @@
                     variant="transparent"
                     size="sm"
                     :requestStatus="refreshAuth0Req"
+                    iconSuccess="x"
+                    successText="Not Verified, Try Again"
                     @click="authStore.REFRESH_AUTH0_PROFILE"
-                    >Already verified?</VButton
                   >
+                    Already verified?
+                  </VButton>
                   <!-- normally we'd use the ErrorMessage component, but we're already using it as the wrapper here for a sort of alert -->
                   <p v-if="refreshAuth0Req.isError">
                     ERROR: {{ refreshAuth0Req.errorMessage }}
@@ -323,16 +326,7 @@ watch([checkAuthReq, route], () => {
 
   // if user is not logged in, kick back to login screen
   if (!userIsLoggedIn.value || !user.value) {
-    if (
-      ![
-        "login",
-        "signup",
-        "404",
-        "legal",
-        // allow viewing tutorial without login if VITE_PREVIEW_TUTORIAL set in env
-        ...(import.meta.env.VITE_PREVIEW_TUTORIAL ? ["tutorial"] : []),
-      ].includes(currentRouteName)
-    ) {
+    if (!["login", "signup", "404", "legal"].includes(currentRouteName)) {
       saveLoginSuccessRedirect();
       return router.push({ name: "login" });
     }
