@@ -10,13 +10,18 @@
     <template #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
-          <CustomizeTabs tabContentSlug="assets">
-            <AssetListPanel />
+          <CustomizeTabs ref="tabs" tabContentSlug="assets">
+            <template #assets>
+              <AssetListPanel />
+            </template>
+            <template #newassets>
+              <InstallAssetsPanel ref="install" />
+            </template>
           </CustomizeTabs>
         </div>
       </div>
     </template>
-    <template #subpanel2>
+    <template v-if="tabs?.group?.selectedTabSlug !== 'newassets'" #subpanel2>
       <AssetFuncListPanel :schemaVariantId="selectedVariantId" />
     </template>
   </component>
@@ -32,6 +37,11 @@
       <AssetEditor
         v-else-if="selectedVariantId"
         :schemaVariantId="selectedVariantId"
+      />
+      <InstallAsset
+        v-else-if="!!install?.selectedModule"
+        :moduleId="install?.selectedModule.id"
+        :moduleName="install?.selectedModule.name"
       />
       <WorkspaceCustomizeEmptyState
         v-else
@@ -125,6 +135,8 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
+import InstallAssetsPanel from "../InstallAssetsPanel.vue";
+import InstallAsset from "../InstallAsset.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
@@ -144,9 +156,12 @@ const selectedFuncId = computed(() => funcStore.selectedFuncId);
 const loadAssetsRequestStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
+const install = ref<InstanceType<typeof InstallAssetsPanel>>();
 
 const leftResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
 const rightResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
+
+const tabs = ref<InstanceType<typeof CustomizeTabs>>();
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 

@@ -10,7 +10,9 @@
     <div class="flex flex-col h-full">
       <div class="relative flex-grow">
         <CustomizeTabs tabContentSlug="packages">
-          <ModuleListPanel />
+          <template #packages>
+            <ModuleListPanel />
+          </template>
         </CustomizeTabs>
       </div>
     </div>
