@@ -198,6 +198,8 @@
     in
       with pkgs; rec {
         packages = {
+          auth-api = binDerivation {pkgName = "auth-api";};
+
           cyclone = binDerivation {pkgName = "cyclone";};
 
           # This one's awful: we don't have a stanalone binary here, we have a

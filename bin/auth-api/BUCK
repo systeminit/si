@@ -4,7 +4,13 @@ load(
     "export_file",
     "package_node_modules",
     "typescript_check",
+    "docker_image",
+    "npm_bin",
+    "typescript_dist",
+    "typescript_runnable_dist",
+    "typescript_runnable_dist_bin",
 )
+
 load(
     "@prelude-si//:pnpm.bzl",
     "pnpm_task_library",
@@ -18,6 +24,13 @@ export_file(
 package_node_modules(
     name = "node_modules",
     package_name = "@si/auth-api",
+)
+
+filegroup(
+    name = "prisma",
+    srcs = glob([
+        "prisma/**/*",
+    ]),
 )
 
 filegroup(
@@ -46,6 +59,10 @@ dev_deps_srcs = {
     "lib/tsconfig": "//lib/tsconfig:src",
 }
 
+npm_bin(
+    name = "tsup",
+)
+
 eslint(
     name = "check-lint",
     directories = ["src", "test"],
@@ -71,17 +88,34 @@ eslint(
 #
 #
 
-pnpm_task_library(
-    name = "build",
-    command = "build",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = [
-        "//:node_modules",
-    ],
-    path = "bin/auth-api",
-    outs = ["dist"],
-    visibility = ["PUBLIC"],
+typescript_dist(
+    name = "dist",
+    srcs = [":src"],
+    tsup = ":tsup",
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
+
+typescript_runnable_dist(
+    name = "auth-api",
+)
+
+typescript_runnable_dist_bin(
+    name = "bin",
+    typescript_runnable_dist = ":auth-api",
+)
+
+# pnpm_task_library(
+#     name = "build",
+#     command = "build",
+#     srcs = glob(["src/**/*", "tsconfig.json"]),
+#     deps = [
+#         "//:node_modules",
+#     ],
+#     path = "bin/auth-api",
+#     outs = ["dist"],
+#     visibility = ["PUBLIC"],
+# )
 
 pnpm_task_binary(
     name = "lint-fix",
@@ -114,4 +148,13 @@ pnpm_task_binary(
         "//:node_modules",
     ],
     visibility = ["PUBLIC"],
+)
+
+docker_image(
+    name = "image",
+    image_name = "auth-api",
+    flake_lock = "//:flake.lock",
+    build_deps = [
+        "//bin/auth-api:auth-api",
+    ]
 )
