@@ -41,8 +41,6 @@ pub enum ModuleError {
     MissingSchemaId(String, String),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("module not found for schema: {0}")]
-    NotFoundForSchema(SchemaId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -416,15 +414,16 @@ impl Module {
     /// [`Modules`](Module) can be upgraded and installed.
     #[instrument(
         name = "module.sync"
+        level = "info",
         skip_all,
-        level = "debug",
+        fields(
+            latest_modules_count = latest_modules.len()
+        )
     )]
     pub async fn sync(
         ctx: &DalContext,
         latest_modules: Vec<frontend_types::LatestModule>,
     ) -> ModuleResult<frontend_types::SyncedModules> {
-        debug!("working with {} latest modules", latest_modules.len());
-
         let start = Instant::now();
 
         // Collect all user facing schema variants. We need to see what can be upgraded.
@@ -438,10 +437,14 @@ impl Module {
             seen_schema_ids.insert(schema_id);
 
             if let Entry::Vacant(entry) = local_hashes.entry(schema_id) {
-                let local_module = Self::find_for_member_id(ctx, schema_id)
-                    .await?
-                    .ok_or(ModuleError::NotFoundForSchema(schema_id))?;
-                entry.insert(local_module.root_hash().to_owned());
+                match Self::find_for_member_id(ctx, schema_id).await? {
+                    Some(found_local_module) => {
+                        entry.insert(found_local_module.root_hash().to_owned());
+                    }
+                    None => {
+                        error!(%schema_id, %schema_variant.schema_variant_id, "found orphaned schema (has no corresponding module)");
+                    }
+                }
             }
         }
 
@@ -477,7 +480,7 @@ impl Module {
                 synced_modules.installable.push(latest_module.to_owned());
             }
         }
-        trace!(?synced_modules.installable, "collected installable modules");
+        debug!(?synced_modules.installable, "collected installable modules");
 
         // Populate upgradeable modules.
         for schema_variant in schema_variants {
@@ -506,9 +509,9 @@ impl Module {
                 }
             }
         }
-        trace!(?synced_modules.upgradeable, "collected upgradeable modules");
+        debug!(?synced_modules.upgradeable, "collected upgradeable modules");
 
-        debug!("syncing modules took: {:?}", start.elapsed());
+        info!("syncing modules took: {:?}", start.elapsed());
 
         Ok(synced_modules)
     }
