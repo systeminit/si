@@ -37,8 +37,10 @@ impl IntoResponse for ModulesAPIError {
             Self::Transactions(dal::TransactionsError::ConflictsOccurred(_)) => {
                 StatusCode::CONFLICT
             }
-            Self::Module(dal::module::ModuleError::NotFoundForSchema(_))
-            | Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
+            Self::SchemaVariant(dal::SchemaVariantError::NotFound(schema_variant_id)) => {
+                error!(%schema_variant_id, "schema variant not found");
+                StatusCode::NOT_FOUND
+            }
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 
