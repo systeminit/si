@@ -1,15 +1,17 @@
-use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
-use thiserror::Error;
-use tokio::sync::TryLockError;
-
+use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::sync::TryLockError;
+use tokio::time::Instant;
 
 use crate::layer_db_types::{ModuleContent, ModuleContentV2};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -20,7 +22,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaVariant,
+    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaId, SchemaVariant,
     SchemaVariantError, Timestamp, TransactionsError,
 };
 
@@ -31,16 +33,22 @@ pub enum ModuleError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error(transparent)]
+    #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("module missing schema id (module id: {0}) (module hash: {1})")]
+    MissingSchemaId(String, String),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error(transparent)]
+    #[error("module not found for schema: {0}")]
+    NotFoundForSchema(SchemaId),
+    #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error(transparent)]
+    #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("too many latest modules for schema: {0} (at least two hashes found: {1} and {2})")]
+    TooManyLatestModulesForSchema(SchemaId, String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -401,5 +409,107 @@ impl Module {
         }
 
         Ok(modules)
+    }
+
+    /// Takes in a list of [`LatestModules`](si_frontend_types::LatestModule) and creates a
+    /// [`SyncedModules`](si_frontend_types::SyncedModules) object with them. The object enables callers to know what
+    /// [`Modules`](Module) can be upgraded and installed.
+    #[instrument(
+        name = "module.sync"
+        skip_all,
+        level = "debug",
+    )]
+    pub async fn sync(
+        ctx: &DalContext,
+        latest_modules: Vec<frontend_types::LatestModule>,
+    ) -> ModuleResult<frontend_types::SyncedModules> {
+        debug!("working with {} latest modules", latest_modules.len());
+
+        let start = Instant::now();
+
+        // Collect all user facing schema variants. We need to see what can be upgraded.
+        let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
+
+        // Find all local hashes and mark all seen schemas.
+        let mut local_hashes = HashMap::new();
+        let mut seen_schema_ids = HashSet::new();
+        for schema_variant in &schema_variants {
+            let schema_id: SchemaId = schema_variant.schema_id.into();
+            seen_schema_ids.insert(schema_id);
+
+            if let Entry::Vacant(entry) = local_hashes.entry(schema_id) {
+                let local_module = Self::find_for_member_id(ctx, schema_id)
+                    .await?
+                    .ok_or(ModuleError::NotFoundForSchema(schema_id))?;
+                entry.insert(local_module.root_hash().to_owned());
+            }
+        }
+
+        // Begin populating synced modules.
+        let mut synced_modules = frontend_types::SyncedModules::new();
+
+        // Group the latest hashes by schema. Populate installable modules along the way.
+        let mut latest_modules_by_schema: HashMap<SchemaId, frontend_types::LatestModule> =
+            HashMap::new();
+        for latest_module in latest_modules {
+            let schema_id: SchemaId = latest_module
+                .schema_id()
+                .ok_or(ModuleError::MissingSchemaId(
+                    latest_module.id.to_owned(),
+                    latest_module.latest_hash.to_owned(),
+                ))?
+                .into();
+            match latest_modules_by_schema.entry(schema_id) {
+                Entry::Occupied(entry) => {
+                    let existing: frontend_types::LatestModule = entry.get().to_owned();
+                    return Err(ModuleError::TooManyLatestModulesForSchema(
+                        schema_id,
+                        existing.latest_hash,
+                        latest_module.latest_hash,
+                    ));
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(latest_module.to_owned());
+                }
+            }
+
+            if !seen_schema_ids.contains(&schema_id) {
+                synced_modules.installable.push(latest_module.to_owned());
+            }
+        }
+        trace!(?synced_modules.installable, "collected installable modules");
+
+        // Populate upgradeable modules.
+        for schema_variant in schema_variants {
+            let schema_id: SchemaId = schema_variant.schema_id.into();
+            match (
+                latest_modules_by_schema.get(&schema_id),
+                local_hashes.get(&schema_id),
+            ) {
+                (Some(latest_module), Some(local_hash)) => {
+                    trace!(?latest_module, %local_hash, "comparing hashes");
+                    if &latest_module.latest_hash != local_hash {
+                        synced_modules
+                            .upgradeable
+                            .insert(schema_variant.schema_variant_id, latest_module.to_owned());
+                    }
+                }
+                (maybe_latest, maybe_local) => {
+                    trace!(
+                        %schema_id,
+                        %schema_variant.schema_variant_id,
+                        %schema_variant.schema_name,
+                        ?maybe_latest,
+                        ?maybe_local,
+                        "skipping since there's incomplete data for determining if schema variant can be updated (perhaps module was not prompted to builtin?)"
+                    );
+                }
+            }
+        }
+        trace!(?synced_modules.upgradeable, "collected upgradeable modules");
+
+        debug!("syncing modules took: {:?}", start.elapsed());
+
+        Ok(synced_modules)
     }
 }
