@@ -177,8 +177,8 @@
             >
               <b>{{ func.name }}</b>
               <CodeViewer
-                v-if="func.codeBase64"
-                :code="decodeb64(func.codeBase64)"
+                v-if="func.data.codeBase64"
+                :code="decodeb64(func.data.codeBase64)"
                 codeLanguage="javascript"
               />
               <p v-else>(builtin, or no code)</p>

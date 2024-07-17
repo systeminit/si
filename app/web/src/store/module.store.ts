@@ -46,21 +46,28 @@ export interface LocalModuleDetails {
 }
 
 export interface ModuleSpec {
+  name: string;
+  createdAt: IsoDateString;
+  createdBy: string;
+  version: string;
   funcs: {
     arguments: {
       name: string;
       kind: string;
       elementKind: string | null;
     }[];
-    backendKind: string;
-    codeBase64: string | null;
-    description: string | null;
-    displayName: string | null;
-    handler: string | null;
-    hidden: boolean;
-    link: string | null;
+    data: {
+      backendKind: string;
+      codeBase64: string | null;
+      description: string | null;
+      displayName: string | null;
+      handler: string | null;
+      hidden: boolean;
+      link: string | null;
+      name: string;
+      responseType: string;
+    };
     name: string;
-    responseType: string;
     uniqueId: string;
   }[];
 }
@@ -301,9 +308,10 @@ export const useModuleStore = () => {
           },
 
           async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
-            return new ApiRequest({
+            return new ApiRequest<ModuleSpec>({
               method: "get",
               url: "/module/remote_module_spec",
+              keyRequestStatusBy: id,
               params: { id, ...getVisibilityParams() },
               onSuccess: (response) => {
                 this.remoteModuleSpecsById[id] = response;
@@ -324,6 +332,7 @@ export const useModuleStore = () => {
             return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/module/install_module",
+              keyRequestStatusBy: moduleId,
               params: {
                 id: moduleId,
                 ...getVisibilityParams(),

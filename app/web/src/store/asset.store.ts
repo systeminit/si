@@ -129,6 +129,8 @@ export const useAssetStore = () => {
             return state.selectedSchemaVariants[0];
           else return undefined;
         },
+        installableModules: (state) =>
+          Object.values(state.installableModulesById),
         selectedSchemaVariant(): SchemaVariant | undefined {
           if (this.selectedVariantId)
             return this.variantFromListById[this.selectedVariantId];
