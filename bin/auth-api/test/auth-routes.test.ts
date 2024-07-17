@@ -2,6 +2,7 @@ import t from 'tap';
 import { expect } from 'chai';
 import _ from 'lodash';
 
+import { InstanceEnvType } from '@prisma/client';
 import { request } from './helpers/supertest-agents';
 import { testSuiteAfter, testSuiteBefore } from './helpers/test-suite-hooks';
 import { mockAuth0TokenExchange } from './helpers/auth0-mocks';
@@ -94,7 +95,7 @@ t.test('Auth routes', async () => {
       if (!user) {
         t.bailout("User Fetch has failed");
       }
-      const workspace = await createWorkspace(user!);
+      const workspace = await createWorkspace(user!, InstanceEnvType.SI, "https://app.systeminit.com", `${user!.nickname}'s Testing Workspace`);
       const sdfToken = createSdfAuthToken(authData.userId, workspace.id);
       await request.get('/whoami')
         .set('cookie', `si-auth=${sdfToken}`)

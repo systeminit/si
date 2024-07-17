@@ -58,6 +58,7 @@
 
         <VormInput
           v-if="createWorkspaceType === 'url'"
+          ref="urlInputRef"
           v-model="draftWorkspace.instanceUrl"
           label="URL"
           autocomplete="url"
@@ -227,6 +228,8 @@ const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },
 });
 
+const urlInputRef = ref<InstanceType<typeof VormInput>>();
+
 const { validationState, validationMethods } = useValidatedInputGroup();
 
 const members = computed(() => workspacesStore.selectedWorkspaceMembers);
@@ -295,6 +298,23 @@ const createWorkspace = async () => {
     draftWorkspace.instanceUrl = "https://app.systeminit.com";
   } else if (createWorkspaceType.value === "local") {
     draftWorkspace.instanceUrl = "localhost:8080";
+  } else {
+    if (draftWorkspace.instanceUrl.includes("app.systeminit")) {
+      // Can't create a Remote URL workspace with our URL!
+      urlInputRef.value?.setError(
+        'You cannot use an "app.systeminit" URL for a Remote URL Workspace. Use "Managed By System Initiative" instead.',
+      );
+      return;
+    } else if (
+      draftWorkspace.instanceUrl.includes("localhost") ||
+      draftWorkspace.instanceUrl.includes("127.0.0.1")
+    ) {
+      // Can't create a Remote URL workspace with localhost!
+      urlInputRef.value?.setError(
+        'You cannot use a "localhost" URL for a Remote URL Workspace. Use "Local Dev Instance" instead.',
+      );
+      return;
+    }
   }
 
   if (validationMethods.hasError()) return;

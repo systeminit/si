@@ -1,4 +1,6 @@
-import { Prisma, PrismaClient, User } from '@prisma/client';
+import {
+  InstanceEnvType, Prisma, PrismaClient, User,
+} from '@prisma/client';
 import { ulid } from 'ulidx';
 import _ from 'lodash';
 import { saveTosAgreement, LATEST_TOS_VERSION_ID } from '../../src/services/tos.service';
@@ -50,7 +52,7 @@ export async function createDummyUser(options?: {
     await saveTosAgreement(user, LATEST_TOS_VERSION_ID, '1.2.3.4');
   }
 
-  const workspace = await createWorkspace(user);
+  const workspace = await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s Testing Workspace`);
 
   return { user, workspace };
 }
