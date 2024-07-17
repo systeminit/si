@@ -490,8 +490,8 @@ impl Module {
                 local_hashes.get(&schema_id),
             ) {
                 (Some(latest_module), Some(local_hash)) => {
-                    trace!(?latest_module, %local_hash, "comparing hashes");
-                    if &latest_module.latest_hash != local_hash {
+                    debug!(?latest_module, %local_hash, schema_variant.is_locked, "comparing hashes");
+                    if &latest_module.latest_hash != local_hash && schema_variant.is_locked {
                         synced_modules
                             .upgradeable
                             .insert(schema_variant.schema_variant_id, latest_module.to_owned());

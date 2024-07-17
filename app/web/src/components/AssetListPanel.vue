@@ -57,6 +57,7 @@
             tooltip="Update All"
             tooltipPlacement="top"
             variant="simple"
+            @click="updateAllAssets"
           />
         </div>
         <AssetNameModal
@@ -146,10 +147,12 @@ import {
   TreeNode,
   PillCounter,
 } from "@si/vue-lib/design-system";
+import { useRouter } from "vue-router";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
+import { useModuleStore } from "@/store/module.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
@@ -157,6 +160,9 @@ import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
+const moduleStore = useModuleStore();
+const router = useRouter();
+
 const { variantList: assetList } = storeToRefs(assetStore);
 
 const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
@@ -268,6 +274,15 @@ const newAsset = async (newAssetName: string) => {
     newAssetModalRef.value?.setError("That name is already in use");
   }
   newAssetModalRef.value?.reset();
+};
+
+const updateAllAssets = () => {
+  Object.values(assetStore.upgradeableModules).forEach((module) => {
+    moduleStore.INSTALL_REMOTE_MODULE(module.id);
+  });
+  router.replace({
+    name: "workspace-lab-assets",
+  });
 };
 
 const contributeAsset = () => contributeAssetModalRef.value?.open();
