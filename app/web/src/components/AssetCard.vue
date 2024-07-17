@@ -46,6 +46,7 @@
             tooltip="Update"
             tooltipPlacement="top"
             variant="simple"
+            @click="updateAsset"
           />
 
           <IconButton
@@ -87,9 +88,11 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
+import { useRouter } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
+import { useModuleStore } from "@/store/module.store";
 import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
 
@@ -98,6 +101,9 @@ const props = defineProps({
   assetId: { type: String as PropType<SchemaVariantId>, required: true },
 });
 
+const assetStore = useAssetStore();
+const moduleStore = useModuleStore();
+const router = useRouter();
 const { theme } = useTheme();
 
 const editingVersionDoesNotExist = computed<boolean>(
@@ -106,7 +112,6 @@ const editingVersionDoesNotExist = computed<boolean>(
     undefined,
 );
 
-const assetStore = useAssetStore();
 const asset = computed(
   (): SchemaVariant | undefined =>
     assetStore.variantFromListById[props.assetId],
@@ -115,6 +120,25 @@ const asset = computed(
 const canUpdate = computed(
   () => !!assetStore.upgradeableModules[props.assetId],
 );
+
+const updateAsset = () => {
+  const schemaVariantId = asset.value?.schemaVariantId;
+  if (!schemaVariantId) {
+    throw new Error("cannot update asset: no asset selected");
+  }
+
+  const module = assetStore.upgradeableModules[schemaVariantId];
+  if (!module) {
+    throw new Error("cannot update asset: no upgradeable module for asset");
+  }
+
+  moduleStore.INSTALL_REMOTE_MODULE(module.id);
+  router.replace({
+    name: "workspace-lab-assets",
+  });
+
+  return;
+};
 
 const primaryColor = tinycolor(asset.value?.color ?? "000000");
 
