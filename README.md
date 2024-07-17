@@ -32,7 +32,8 @@ Let's start by choosing an officially supported platform.
 
 **Platform Notes:**
 * On Apple Silicon systems (i.e. macOS aarch64 (arm64)), Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
-* [NixOS](https://nixos.org/) and Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) will not likely work at this time
+* [NixOS](https://nixos.org/) requires [`docker`](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled (see the [development environment section of the docs](DOCS.md) for more information)
+* Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) is untested
 * Systemd may need to be enabled on WSL2
 
 ### (2) Install Dependencies

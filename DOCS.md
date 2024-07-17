@@ -61,11 +61,15 @@ We have a section further down that describes how to intervene.
 ### Linux
 
 Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) architectures.
-[NixOS](https://nixos.org/) is not supported at this time, but may be desired in the future.
-Linux with MUSL instead of GNU is also not currently supported.
+Linux with MUSL instead of GNU is untested.
 
-In general, GNU-based distros that are roughly [FHS-compliant](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) will work.
+In general, GNU-based distros will work.
 Those include, but are not limited to the following: Ubuntu, Fedora, Debian, Arch Linux, and openSUSE.
+
+#### What about NixOS?
+
+If using NixOS, you need [Docker](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled.
+If not using `direnv`, you can use `nix develop` or [Nix command](https://nixos.wiki/wiki/Nix_command).
 
 ### Windows
 
