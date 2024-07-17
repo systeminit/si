@@ -1,41 +1,135 @@
 # Getting Started
 
-Welcome to System Initiative (SI). It's a powerful new way to manage your infrastructure and applications. This tutorial will get you up to speed on all the basics.
+Welcome to System Initiative! This tutorial will teach you how to use System Initiative to model your infrastructure. We will be deploying a single free-tier EC2 instance in AWS, and cleaning it up. There should be no cost to you.
 
-To follow along, you'll need two things:
+To follow along, you'll need three things:
 
-1. Sign up for System Initiative.
+1. [Sign up for System Initiative](https://auth.systeminit.com/signup).
 
-2. An AWS account that allows you to create free-tier resources, such as EC2 instances.
+2. An [AWS account that allows you to create free-tier resources](https://aws.amazon.com/free/), such as EC2 instances.
 
-## Workspaces
+3. Your System Initiative workspace open in another window or tab.
 
-When you first sign in to SI, you'll be in a new, blank workspace. Workspaces are where everything happens in SI. They are where you model and customize your infrastructure. You can have as many workspaces as you want. You can switch workspaces at any time using the workspace dropdown.
+## Creating a change set
 
-## Change Sets
+Click the create [change set](../reference/vocabulary#change-set) button.
 
-Everything in System Initiative happens inside a Change Set. If you've used version control systems like Git before, think of a Change Set like a branch. You should currently be on the \`HEAD\` Change Set. HEAD represents the current desired state of your infrastructure. To make any changes, you must be in a new Change Set.
+Name your new change set `Getting started`, and click the `Create change set` button.
 
-To switch between change sets, use the change set dropdown. To create or abandon them, use the buttons to the right of the drop-down.
+## Add an AWS Credential component
 
-Create your first Change Set by clicking the new Change Set button, and name it "Tutorial".
+Click `AWS Credential` from the AWS category of the asset pallete, and drop it on the diagram canvas. This creates a new [credential](../reference/vocabulary#credential) [component](../reference/vocabulary#component).
 
-## Components and Resources
+Resize the component until it fills most of the visible canvas by dragging the lower right corner of the frame.
 
-In System Initiative, we model infrastructure through components and resources. A component is a theoretical representation of a resource that you want to manage. (Think of the component as a digital twin of the real-world resource it represents.)
+## Name your component
 
-## Configuration Diagram
+Click on the `AWS Credential` you just added to the canvas. The panel on the right side of your screen will show the properties of It will have a default name like 'si-1234'.
 
-The canvas in the center of your screen is a configuration diagram. You will place the components you need on it, and then connect them together to help configure them. Think of it like building an architecture diagram that also configures its components.
+Change the name to be `tutorial`. Pressing enter or clicking outside the textbox will update the diagram with your new name.
 
-## Creating your first component
+## Add a secret
 
-We want to create some resources in AWS, so the first component we need is our AWS Credential. In the lower left panel you will see a section titled 'Assets'. Each entry in this panel is a different component you can use. Click in the search box in the assets panel, type 'cred', and you will see AWS Credential. Click that, and then drop it on the diagram canvas to the right.
+Click the 'select/add secret' button next to the AWS Credential property. Then click 'Add Secret'.
 
-AWS Credentials appear on the diagram as a frame. Components that are frames configure the components within their boundaries. Frames are resizable. Make your new AWS Credential frame large enough to fill most of the visible diagram.
+Name your secret 'Tutorial Secret'.
 
-## Configuring the AWS Credential
+Fill in your AWS accounts `Access Key Id` and `Secret Access Key`. [Refer to the AWS documentation if you do not know how what they are](https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/).
 
-Click on the AWS Credential component. You'll see that the right panel changes, displaying information about the component's attributes. Start by giving your component the name 'development'. Giving your components meaningful names makes them easier to find later. It also makes the context contained in the diagram easier to see at a glance.
+Click `Store Secret` to securely encrypt and save your [secret](../reference/vocabulary#secret).
 
-AWS Credentials are sensitive and secret information. System Initiative encrypts and stores this secret data for you. Click the 'select/add secret' box in the attributes panel, then click 'add secret'.
+## Add an AWS Region component and set its properties
+
+Click on the `Region` from the AWS category of the asset pallete, and drop it inside your `tutorial credential` frame.
+
+Resize the region to fill the space inside the `tutorial credential` frame.
+
+Name your region 'ohio'.
+
+Set the region property to `us-east-2`.
+
+## Add an AWS EC2 Key Pair and set its properties
+
+Click on the `Key Pair` from the AWS EC2 category of the asset pallete, and drop it inside your `ohio region` frame.
+
+Name your key pair 'si-tutorial'.
+
+Set the KeyName property to 'si-tutorial'.
+
+## Add an AWS EC2 Instance and set its properties
+
+Click on the `EC2 Instance` from the AWS EC2 category of the asset pallete, and drop it inside your `ohio region` frame.
+
+Click the `Key Name` output socket of your `si-tutorial Key Pair` and connect it to the `Key Name` input socket of your new EC2 Instance component by dragging the line between them.
+
+Ensure your `EC2 Instance` component is selected.
+
+Name your EC2 Instance 'si-tutorial'.
+
+Set the InstanceType property to `t2.micro`.
+
+## Add an AWS EC2 AMI component and set its properties
+
+Click on the `AMI` from the AWS EC2 category of the asset pallete, and drop it inside your `ohio region` frame.
+
+Name your AMI 'Fedora CoreOS'.
+
+Set the ImageId property to 'ami-04000bc04ccee958e'.
+
+Connect the `Image ID` output socket of your AMI component to the `Image Id` input socket of your EC2 Instance component.
+
+## Apply the change set
+
+Press the 'escape' key, or click on the background of the canvas, to ensure the workspace itself is selected.
+
+You will see two actions enqueued in the right hand panel - one to create the Key Pair, and the other to create your EC2 Instance.
+
+Press the 'Apply Change Set' button.
+
+You'll be prompted with a dialog to confirm you want to take these two actions. Press the 'Apply Changes' button in the dialog to confirm.
+
+## Create the Key Pair and EC2 Instance resources
+
+Applying the change set redirects you to the `HEAD` change set, and enqueues your actions. The proposed changes panel on the right side of the screen shows your two pending actions. As the actions are run on AWS, their resulting [resources](../reference/vocabulary#resource) are added to each model. As this happens, the actions will disappear from the proposed changes list.
+
+Once both actions have been run, the changes panel will be empty.
+
+## Review the si-tutorial EC2 Instances resource data
+
+Select the `si-tutorial EC2 Instance`. Then select the 'Resource' sub-panel on the right side panel. You will see all the information about the EC2 Instance we created in AWS.
+
+Congratulations! You have created your first resources with System Initiative.
+
+## Clean up
+
+Create a new change set called 'Cleanup'.
+
+Select the 'tutorial AWS Credential' component. Press the delete key.
+
+You'll be presented with a dialog confirming you want to delete the components we created previously. Click 'Confirm'.
+
+Press the escape key or click on the canvas background to select the workspace.
+
+Click the Apply Change Set button to delete your EC2 Instance and Key Pair. Confirm you want to apply the change set.
+
+After the two delete actions are run, you will have a blank workspace, and no more resources running in AWS.
+
+## Congratulations!
+
+Congratulations - you've created your first resources with System Initiative. You learned how to:
+
+- Create new change sets
+- Add a credential component to the diagram canvas
+- Add components to the diagram canvas
+- Configure components by setting their properties
+- Connect components input and output sockets to dynamically configure them
+- Execute actions and create resources by applying a change set
+
+## Next Steps
+
+You can:
+
+- Follow the [create assets] tutorial to learn about how to program and extend System Initiative
+- Use your knowledge of AWS and System Initiative to learn how to create [AWS VPCs]
+- Join us on [discord] to ask any questions you may have
+
