@@ -543,6 +543,29 @@ impl SchemaVariant {
         Ok(schema_variant)
     }
 
+    pub async fn cleanup_unlocked_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let variant = Self::get_by_id_or_error(ctx, schema_variant_id).await?;
+
+        if variant.is_locked() {
+            return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
+        }
+
+        // Firstly we want to delete the asset func
+        let asset_func = variant.get_asset_func(ctx).await?;
+        Func::delete_by_id(ctx, asset_func.id).await?;
+
+        // now we want to delete the schema variant
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        workspace_snapshot
+            .remove_node_by_id(ctx.vector_clock_id()?, variant.id)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn lock(self, ctx: &DalContext) -> SchemaVariantResult<SchemaVariant> {
         self.modify(ctx, |sv| {
             sv.version = Self::generate_version_string();
