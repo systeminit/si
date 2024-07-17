@@ -19,12 +19,14 @@ type WorkspaceExportSummary = {
   createdAt: IsoDateString;
 };
 
+type InstanceEnvType = "LOCAL" | "PRIVATE" | "SI";
+
 type AuthApiWorkspace = {
   creatorUserId: string;
   displayName: string;
   id: WorkspacePk;
   pk: WorkspacePk; // not actually in the response, but we backfill
-  // instanceEnvType: "LOCAL" // not used yet...
+  instanceEnvType: InstanceEnvType;
   instanceUrl: string;
   role: "OWNER" | "EDITOR";
   token: string;

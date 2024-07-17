@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { ulid } from "ulidx";
 import * as Auth0 from 'auth0';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { InstanceEnvType, Prisma, PrismaClient } from '@prisma/client';
 
 import { createWorkspace } from "./workspaces.service";
 import { LATEST_TOS_VERSION_ID } from './tos.service';
@@ -115,8 +115,8 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
       lastName: user.lastName,
     });
 
-    // create a default dev workspace
-    await createWorkspace(user);
+    // create a default saas workspace
+    await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
   }
 
   return user;

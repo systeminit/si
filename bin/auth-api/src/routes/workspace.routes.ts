@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { z } from 'zod';
+import { InstanceEnvType } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import { getUserById, refreshUserAuth0Profile } from "../services/users.service";
@@ -81,7 +82,17 @@ router.post("/workspaces/new", async (ctx) => {
     displayName: z.string(),
   }));
 
-  const workspaceDetails = await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
+  let workspaceEnvType;
+  if (reqBody.instanceUrl === "https://app.systeminit.com") {
+    workspaceEnvType = InstanceEnvType.SI;
+  } else if (reqBody.instanceUrl === "localhost:8080") {
+    workspaceEnvType = InstanceEnvType.LOCAL;
+  } else {
+    workspaceEnvType = InstanceEnvType.PRIVATE;
+  }
+
+  const workspaceDetails = await
+  createWorkspace(ctx.state.authUser, workspaceEnvType, reqBody.instanceUrl, reqBody.displayName);
 
   ctx.body = {
     workspaces: await getUserWorkspaces(ctx.state.authUser.id),
