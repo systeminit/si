@@ -12,10 +12,12 @@ import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
+import RebaseOnBase from "@/components/toasts/RebaseOnBase.vue";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
@@ -142,6 +144,23 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
+            },
+          });
+        },
+        async REBASE_ON_BASE(changeSetId: ChangeSetId) {
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/rebase_on_base",
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            optimistic: () => {
+              toast({
+                component: IncomingChangesMerging,
+                props: {
+                  username: "HEAD",
+                },
+              });
             },
           });
         },
@@ -329,11 +348,9 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApplied",
             callback: (data) => {
+              const ffStore = useFeatureFlagsStore();
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { changeSetId, userPk } = data as any as {
-                changeSetId: string;
-                userPk: UserId;
-              };
+              const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
@@ -343,6 +360,36 @@ export function useChangeSetsStore() {
                 this.changeSetsById[changeSetId] = changeSet;
                 // whenever the change set is applied move us to head
               }
+
+              // did head get an update and I'm not on head?
+              // and make sure I'm not moving to head
+              if (
+                ffStore.DEV_SLICE_REBASING &&
+                this.headChangeSetId === toRebaseChangeSetId &&
+                this.selectedChangeSetId !== this.headChangeSetId &&
+                this.selectedChangeSetId !== changeSetId
+              ) {
+                toast({
+                  component: RebaseOnBase,
+                  props: {
+                    action: "prompt",
+                  },
+                });
+              }
+
+              // did I get an update from head?
+              if (
+                ffStore.DEV_SLICE_REBASING &&
+                this.selectedChangeSetId === toRebaseChangeSetId
+              ) {
+                toast({
+                  component: RebaseOnBase,
+                  props: {
+                    action: "done",
+                  },
+                });
+              }
+
               // `list_open_change_sets` gets called prior on voters
               // which means the change set is gone, so always move
               if (
