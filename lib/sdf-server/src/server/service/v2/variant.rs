@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dal::{ChangeSetError, SchemaVariantId};
+use dal::{ChangeSetError, SchemaVariantId, WsEventError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -19,6 +19,8 @@ mod list_variants;
 pub enum SchemaVariantsAPIError {
     #[error("cannot delete locked schema variant: {0}")]
     CannotDeleteLockedSchemaVariant(SchemaVariantId),
+    #[error("cannot delete a schema variant that has attached components")]
+    CannotDeleteVariantWithComponents,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("hyper error: {0}")]
@@ -29,6 +31,8 @@ pub enum SchemaVariantsAPIError {
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaVariantsAPIResult<T> = std::result::Result<T, SchemaVariantsAPIError>;
@@ -57,7 +61,7 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/", get(list_variants::list_variants))
         .route("/:schema_variant_id", get(get_variant::get_variant))
         .route(
-            "/:schema_variant_id/delete_unlocked_copy",
+            "/:schema_variant_id/delete_unlocked_variant",
             post(delete_unlocked_variant::delete_unlocked_variant),
         )
 }

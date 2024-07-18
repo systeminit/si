@@ -303,6 +303,7 @@ pub struct SchemaVariantSavedPayload {
 pub struct SchemaVariantDeletedPayload {
     schema_variant_id: SchemaVariantId,
     schema_id: SchemaId,
+    change_set_id: ChangeSetId,
 }
 
 impl WsEvent {
@@ -333,6 +334,7 @@ impl WsEvent {
             WsPayload::SchemaVariantDeleted(SchemaVariantDeletedPayload {
                 schema_variant_id,
                 schema_id,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await
@@ -553,12 +555,27 @@ impl SchemaVariant {
             return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
         }
 
+        let schema = variant.schema(ctx).await?;
+        dbg!(&schema);
+
         // Firstly we want to delete the asset func
         let asset_func = variant.get_asset_func(ctx).await?;
         Func::delete_by_id(ctx, asset_func.id).await?;
 
-        // now we want to delete the schema variant
         let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
+            dbg!(&default_schema_variant_id);
+            if variant.id == default_schema_variant_id {
+                dbg!("Deletion of the schema");
+                dbg!(&schema);
+                workspace_snapshot
+                    .remove_node_by_id(ctx.vector_clock_id()?, schema.id())
+                    .await?;
+            }
+        }
+
+        // now we want to delete the schema variant
         workspace_snapshot
             .remove_node_by_id(ctx.vector_clock_id()?, variant.id)
             .await?;

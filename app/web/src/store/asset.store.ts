@@ -488,8 +488,31 @@ export const useAssetStore = () => {
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
+
               if (savedAssetIdx === -1) this.variantList.push(variant);
               else this.variantList.splice(savedAssetIdx, 1, variant);
+            },
+          });
+        },
+        async DELETE_UNLOCKED_VARIANT(id: SchemaVariantId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest<SchemaVariant>({
+            method: "post",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants/${id}/delete_unlocked_variant`,
+            keyRequestStatusBy: id,
+            params: {
+              // ...visibility,
+            },
+            onSuccess: (variant) => {
+              const deletedVariantIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              if (deletedVariantIdx !== -1)
+                this.variantList.splice(deletedVariantIdx, 1, variant);
             },
           });
         },
@@ -531,8 +554,8 @@ export const useAssetStore = () => {
           },
           {
             eventType: "SchemaVariantDeleted",
-            callback: (data, metadata) => {
-              if (metadata.change_set_id !== changeSetId) return;
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === data.schemaVariantId,
               );

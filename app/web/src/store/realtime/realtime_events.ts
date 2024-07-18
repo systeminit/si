@@ -261,6 +261,7 @@ export type WsEventPayloadMap = {
   SchemaVariantDeleted: {
     schemaVariantId: SchemaVariantId;
     schemaId: SchemaId;
+    changeSetId: ChangeSetId;
   };
   SchemaVariantCreated: SchemaVariant;
   SchemaVariantUpdated: SchemaVariant;
