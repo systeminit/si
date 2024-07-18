@@ -13,6 +13,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use url::ParseError;
 
+use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
@@ -49,16 +50,13 @@ use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, 
 
 use self::root_prop::RootPropChild;
 
+pub mod authoring;
 mod json;
 pub mod leaves;
 mod metadata_view;
 pub mod root_prop;
 mod value_from;
 
-pub mod authoring;
-
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::module::Module;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -117,8 +115,6 @@ pub enum SchemaVariantError {
     LeafMapPropNotFound(PropId),
     #[error("schema variant missing asset func id; schema_variant_id={0}")]
     MissingAssetFuncId(SchemaVariantId),
-    #[error("module error: {0}")]
-    Module(String),
     #[error("more than one schema found for schema variant: {0}")]
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
@@ -263,8 +259,6 @@ impl SchemaVariant {
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
             can_contribute,
-            // FIXME(nick): this needs to be dropped once the v2 modules sync route is in use.
-            can_update: false,
         })
     }
 }
@@ -783,18 +777,14 @@ impl SchemaVariant {
         }
     }
 
-    /// A schema variant can be contributed if it is default, locked and does not belong to
-    /// a module, which means it has been updated locally
+    // NOTE(nick): we've determined that a module can be contributed if it is the default. For now, we are allowing
+    // unlocked variants to be contributed. Ask Paul for more information. I hate leaving Linear issues here since
+    // the community cannot see them, but ENG-2607 for context.
     pub async fn can_be_contributed_by_id(
         ctx: &DalContext,
         id: SchemaVariantId,
     ) -> SchemaVariantResult<bool> {
-        Ok(Self::is_default_by_id(ctx, id).await?
-            && Self::is_locked_by_id(ctx, id).await?
-            && Module::find_for_member_id(ctx, id)
-                .await
-                .map_err(|e| SchemaVariantError::Module(e.to_string()))?
-                .is_none())
+        Ok(Self::is_default_by_id(ctx, id).await?)
     }
 
     pub async fn get_latest_for_schema(

@@ -1,19 +1,37 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
+use si_frontend_types as frontend_types;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{server::state::AppState, service::ApiError};
 
+mod contribute;
 mod sync;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ModulesAPIError {
+    #[error("axum http error: {0}")]
+    AxumHttp(#[from] axum::http::Error),
+    #[error("one or many module(s) were not contributed: {0:?}")]
+    ContributionPartialFailure(
+        Vec<(
+            frontend_types::ModuleContributeRequestItem,
+            module_index_client::ModuleIndexClientError,
+        )>,
+    ),
+    #[error("all module(s) were not contributed: {0:?}")]
+    ContributionTotalFailure(
+        Vec<(
+            frontend_types::ModuleContributeRequestItem,
+            module_index_client::ModuleIndexClientError,
+        )>,
+    ),
     #[error("module error: {0}")]
     Module(#[from] dal::module::ModuleError),
     #[error("module index client error: {0}")]
@@ -41,6 +59,9 @@ impl IntoResponse for ModulesAPIError {
                 error!(%schema_variant_id, "schema variant not found");
                 StatusCode::NOT_FOUND
             }
+            Self::Module(dal::module::ModuleError::EmptyMetadata(_, _)) => StatusCode::BAD_REQUEST,
+            Self::ContributionPartialFailure(_) => StatusCode::MULTI_STATUS,
+            Self::ContributionTotalFailure(_) => StatusCode::BAD_GATEWAY,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 
@@ -49,5 +70,7 @@ impl IntoResponse for ModulesAPIError {
 }
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route("/sync", get(sync::sync))
+    Router::new()
+        .route("/contribute", post(contribute::contribute))
+        .route("/sync", get(sync::sync))
 }

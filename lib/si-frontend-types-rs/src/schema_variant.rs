@@ -27,8 +27,6 @@ pub struct SchemaVariant {
     pub timestamp: Timestamp,
     pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
     pub can_contribute: bool,
-    // FIXME(nick): this needs to be dropped once the v2 modules sync route is in use.
-    pub can_update: bool,
 }
 
 #[remain::sorted]

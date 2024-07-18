@@ -54,6 +54,7 @@ import { TreeNode, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { useAssetStore, schemaVariantDisplayName } from "@/store/asset.store";
+import { useModuleStore } from "@/store/module.store";
 import EditingPill from "./EditingPill.vue";
 
 const props = defineProps({
@@ -62,10 +63,12 @@ const props = defineProps({
 });
 
 const assetStore = useAssetStore();
+const moduleStore = useModuleStore();
+
 const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
 const canUpdate = computed(
-  () => !!assetStore.upgradeableModules[props.a.schemaVariantId],
+  () => !!moduleStore.upgradeableModules[props.a.schemaVariantId],
 );
 
 const onClick = (e: MouseEvent) => {

@@ -19,12 +19,12 @@ use si_std::CanonicalFileError;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
+
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod approval_process;
 pub mod builtin_module_spec;
-pub mod export_module;
 mod export_workspace;
 pub mod get_module;
 pub mod import_workspace_vote;
@@ -43,7 +43,6 @@ pub enum ModuleError {
     ChangeSet(#[from] ChangeSetError),
     #[error("Changeset not found: {0}")]
     ChangeSetNotFound(ChangeSetId),
-
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
@@ -232,7 +231,6 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/export_module", post(export_module::export_module))
         .route(
             "/export_workspace",
             post(export_workspace::export_workspace),

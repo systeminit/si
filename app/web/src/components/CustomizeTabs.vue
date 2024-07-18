@@ -11,7 +11,8 @@
     </TabGroupItem>
     <TabGroupItem slug="newassets">
       <template #label>
-        NEW ASSETS <PillCounter :count="assetStore.installableModules.length" />
+        NEW ASSETS
+        <PillCounter :count="moduleStore.installableModules.length" />
       </template>
       <slot name="newassets" />
     </TabGroupItem>
@@ -31,11 +32,13 @@ import { PropType, ref } from "vue";
 import { TabGroup, TabGroupItem, PillCounter } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAssetStore } from "@/store/asset.store";
+import { useModuleStore } from "@/store/module.store";
 
 const router = useRouter();
 const route = useRoute();
 const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
+const moduleStore = useModuleStore();
 
 const group = ref<InstanceType<typeof TabGroup>>();
 
