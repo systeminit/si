@@ -50,6 +50,16 @@
           />
 
           <IconButton
+            v-if="!asset.isLocked && hasEditingVersion"
+            class="hover:scale-125"
+            icon="trash"
+            tooltip="Delete Unlocked Variant"
+            tooltipPlacement="top"
+            variant="simple"
+            @click="deleteUnlockedVariant"
+          />
+
+          <IconButton
             v-if="asset.isLocked && editingVersionDoesNotExist"
             class="hover:scale-125"
             icon="sliders-vertical"
@@ -66,6 +76,11 @@
       </div>
     </div>
     <div class="flex flex-col">
+      <ErrorMessage
+        v-if="deleteUnlockedVariantReqStatus.isError"
+        :requestStatus="deleteUnlockedVariantReqStatus"
+        variant="block"
+      />
       <ErrorMessage
         v-if="asset && asset.isLocked"
         icon="lock"
@@ -109,6 +124,12 @@ const { theme } = useTheme();
 const editingVersionDoesNotExist = computed<boolean>(
   () =>
     assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] ===
+    undefined,
+);
+
+const hasEditingVersion = computed<boolean>(
+  () =>
+    assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] !==
     undefined,
 );
 
@@ -171,6 +192,24 @@ const unlock = async () => {
     );
     if (resp.result.success) {
       assetStore.setSchemaVariantSelection(resp.result.data?.schemaVariantId);
+    }
+  }
+};
+
+const deleteUnlockedVariantReqStatus = assetStore.getRequestStatus(
+  "DELETE_UNLOCKED_VARIANT",
+  asset.value?.schemaVariantId,
+);
+const deleteUnlockedVariant = async () => {
+  if (asset.value) {
+    const resp = await assetStore.DELETE_UNLOCKED_VARIANT(
+      asset.value.schemaVariantId,
+    );
+    if (resp.result.success) {
+      assetStore.setSchemaVariantSelection("");
+      router.replace({
+        name: "workspace-lab-assets",
+      });
     }
   }
 };
