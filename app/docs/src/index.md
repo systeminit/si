@@ -4,11 +4,9 @@ keywords:
   - docs
 ---
 
-# System Initiative
+# System Initiative Documentation
 
-System Initiative is a cloud application platform that makes it easier, safer,
-and faster to deploy applications, build infrastructure, and manage them over
-time.
+Everything you need to know about System Initiative
 
 <div class="tip custom-block" style="padding-top: 8px">
 
@@ -16,52 +14,45 @@ Just want to try it out? Skip to the [Quickstart](./tutorials/orientation.md).
 
 </div>
 
-## Key Features
+## First steps
 
-### Short Feedback Loops
-
-Every change is validated and qualified immediately. Reconciliation can happen
-individually or in batches, making application changes orders of magnitude
-faster.
-
-### High Intelligence
-
-Configuration can be inferred through the relationships between models. Changing
-a value at the source cascades throughout all the dependent models, making
-complex configuration easy to express. Code is automatically generated from the
-model.
-
-### Easy Collaboration
-
-Fully multiplayer coding and interactive diagrams make working together more
-like Figma and Notion, and less like GitHub. Everything is open source, with
-integrated open source module sharing.
-
-### Natural Context Windows
-
-The entire life cycle is built in to a single power tool. Customization happens
-in the application. New experiences are built around the data.
-
-### Getting Started
+Are you new to System Initiative or DevOps? This is the place to start.
 
 New to System Initiative? Here are some resources to help you get up and
 running:
 
-1. [Quick Start Guide](./tutorials/orientation.md)
-2. [Core Concepts](./reference/core-concepts.md)
+- **The basics**: [Creating an account]() |
+  [Orientation](./tutorials/orientation.md)
+- **Tutorial**: [Part 1: Deploy to AWS]() |
+  [Part 2: Create an Asset](./reference/core-concepts.md) | [Part 3: Secrets]()
+- Advanced Tutorials: [Setting up a development environment]() |
+  [Your first contribution]()
 
-### Need Help?
+## Getting help
 
-If you have any questions or need assistance, our support team is here to help:
+We're here to help.
 
 [![Discord Server](https://img.shields.io/badge/discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/system-init)
 
-- [FAQ](./reference/faq.md)
-- [Community Forum](https://community.systeminit.com)
+- The [Discord Server]() is the best way to get help. The community is eager to
+  answer your questions and to help.
+- Check the [FAQ](./reference/faq.md) - you'll find answers to a lot of common
+  questions
 
-### Developing System Initaitive
+## How the documentation is organized
 
-1. [Development Environment](./reference/dev/development-environment.md)
+There's a lot to learn. Here's a high level overview of how this documentation
+is laid out.
+
+- [Tutorials](/tutorials/)
+- [Topic guides](/topics/)
+- [Reference guides](/reference/)
+- [How-to guides](/how-to/)
+- [What's new](./changelog/index.md)
+
+## Developing System Initiative
+
+- [Development Environment](./reference/dev/development-environment.md)
 
 Thank you for choosing System Initiative. Let's build amazing infrastructure
 together!
