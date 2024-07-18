@@ -1,13 +1,13 @@
-import _ from 'lodash';
+import _ from "lodash";
 import { ulid } from "ulidx";
-import * as Auth0 from 'auth0';
-import { InstanceEnvType, Prisma, PrismaClient } from '@prisma/client';
+import * as Auth0 from "auth0";
+import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
 import { createWorkspace } from "./workspaces.service";
-import { LATEST_TOS_VERSION_ID } from './tos.service';
-import { tracker } from '../lib/tracker';
-import { fetchAuth0Profile } from './auth0.service';
-import { ApiError } from '../lib/api-error';
+import { LATEST_TOS_VERSION_ID } from "./tos.service";
+import { tracker } from "../lib/tracker";
+import { fetchAuth0Profile } from "./auth0.service";
+import { ApiError } from "../lib/api-error";
 
 const prisma = new PrismaClient();
 
@@ -19,7 +19,7 @@ export async function getUserById(id: UserId) {
     include: {
       TosAgreement: {
         orderBy: {
-          id: 'desc',
+          id: "desc",
         },
         select: {
           tosVersionId: true,
@@ -34,7 +34,7 @@ export async function getUserById(id: UserId) {
   const needsTosUpdate = !agreedTosVersion || agreedTosVersion < LATEST_TOS_VERSION_ID;
 
   return {
-    ..._.omit(userWithTosAgreement, 'TosAgreement'),
+    ..._.omit(userWithTosAgreement, "TosAgreement"),
     agreedTosVersion,
     needsTosUpdate,
   };
@@ -59,10 +59,12 @@ export async function createInvitedUser(email: string) {
   });
 }
 
-export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.User) {
+export async function createOrUpdateUserFromAuth0Details(
+  auth0UserData: Auth0.User,
+) {
   // not sure why this type says the id could be empty? probably will not happen but we'll watch for this error
-  if (!auth0UserData.user_id) throw new Error('Missing auth0 user_id');
-  if (!auth0UserData.email) throw new Error('Missing auth0 email');
+  if (!auth0UserData.user_id) throw new Error("Missing auth0 user_id");
+  if (!auth0UserData.email) throw new Error("Missing auth0 email");
 
   const auth0Id = auth0UserData.user_id;
 
@@ -88,7 +90,7 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        ..._.omit(user, 'id', 'onboardingDetails'),
+        ..._.omit(user, "id", "onboardingDetails"),
         auth0Details: auth0UserData as Prisma.JsonObject,
       },
     });
@@ -108,7 +110,7 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
   }
 
   if (isSignup) {
-    tracker.trackEvent(user, 'auth_connected', {
+    tracker.trackEvent(user, "auth_connected", {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
@@ -116,7 +118,13 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     });
 
     // create a default saas workspace
-    await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
+    // await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
+    await createWorkspace(
+      user,
+      InstanceEnvType.LOCAL,
+      "http://localhost:8080",
+      `${user.nickname}'s  Dev Workspace`,
+    );
   }
 
   return user;
@@ -124,35 +132,43 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
 
 export async function refreshUserAuth0Profile(user: User) {
   if (!user.auth0Id) {
-    throw new ApiError('Conflict', 'User has no auth0 id');
+    throw new ApiError("Conflict", "User has no auth0 id");
   }
   const auth0Details = await fetchAuth0Profile(user.auth0Id);
   setUserDataFromAuth0Details(user, auth0Details);
   await saveUser(user);
 }
-function setUserDataFromAuth0Details(user: any, auth0Details: Auth0.User, isSignup = false) {
+function setUserDataFromAuth0Details(
+  user: any,
+  auth0Details: Auth0.User,
+  isSignup = false,
+) {
   // save most up to date copy of auth0 details
   user.auth0Details = auth0Details as Prisma.JsonObject;
 
   // fill in any empty data we can infer from auth0 data
   // pickBy just removed empty values
-  _.each({
-    nickname: auth0Details.nickname || auth0Details.given_name || auth0Details.email,
-    firstName: auth0Details.given_name,
-    lastName: auth0Details.family_name,
-    email: auth0Details.email,
-    emailVerified: auth0Details.email_verified,
-    pictureUrl: auth0Details.picture,
-    // fairly certain nickname is github username when auth provider is github
-    ...auth0Details.user_id?.startsWith('github|') && {
-      githubUsername: auth0Details.nickname,
+  _.each(
+    {
+      nickname:
+        auth0Details.nickname || auth0Details.given_name || auth0Details.email,
+      firstName: auth0Details.given_name,
+      lastName: auth0Details.family_name,
+      email: auth0Details.email,
+      emailVerified: auth0Details.email_verified,
+      pictureUrl: auth0Details.picture,
+      // fairly certain nickname is github username when auth provider is github
+      ...(auth0Details.user_id?.startsWith("github|") && {
+        githubUsername: auth0Details.nickname,
+      }),
     },
-  }, (val, key) => {
-    // special handling to leave a photo that the user explicitly cleared as empty
-    // TODO: ideally we'd have some other way of knowing the user explicitly cleared it, but this should work
-    if (key === 'pictureUrl' && !isSignup && !user.pictureUrl) return;
-    if (!user[key]) user[key] = val;
-  });
+    (val, key) => {
+      // special handling to leave a photo that the user explicitly cleared as empty
+      // TODO: ideally we'd have some other way of knowing the user explicitly cleared it, but this should work
+      if (key === "pictureUrl" && !isSignup && !user.pictureUrl) return;
+      if (!user[key]) user[key] = val;
+    },
+  );
   return user;
 }
 
@@ -162,16 +178,17 @@ export async function saveUser(user: User) {
     data: {
       ..._.omit(
         user,
-        'id',
-        'auth0Id',
-        'auth0Details',
-        'needsTosUpdate',
-        'agreedTosVersion',
-        'onboardingDetails',
+        "id",
+        "auth0Id",
+        "auth0Details",
+        "needsTosUpdate",
+        "agreedTosVersion",
+        "onboardingDetails",
       ),
       // this is dumb... prisma is annoying
-      onboardingDetails: user.onboardingDetails as Prisma.JsonObject || undefined,
-      auth0Details: user.auth0Details as Prisma.JsonObject || undefined,
+      onboardingDetails:
+        (user.onboardingDetails as Prisma.JsonObject) || undefined,
+      auth0Details: (user.auth0Details as Prisma.JsonObject) || undefined,
     },
   });
   tracker.identifyUser(user);
