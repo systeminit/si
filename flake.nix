@@ -54,6 +54,8 @@
           ripgrep
           rust-toolchain
           minica
+          lvm2
+          llvmPackages.libclang.lib
 
           # breakpointHook
         ]
@@ -141,6 +143,17 @@
                   --replace /bin/bash "${bash}/bin/bash"
               done
           '';
+          configurePhase =
+            ''
+            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
+              $NIX_CFLAGS_COMPILE"
+            export OUT=${placeholder "out"}
+            echo $OUT
+            '';
           buildPhase =
             ''
               export HOME="$(dirname $(pwd))/home"
@@ -272,6 +285,18 @@
         };
 
         devShells.default = mkShell {
+          # Env Vars so bindgen can find libclang
+          shellHook =
+            ''
+            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
+              $NIX_CFLAGS_COMPILE"
+            export OUT=${placeholder "out"}
+            echo $OUT
+            '';
           packages =
             [
               alejandra
@@ -298,6 +323,7 @@
             ++ buck2BuildInputs
             ++ langJsExtraPkgs;
         };
+
 
         formatter = alejandra;
       });

@@ -46,7 +46,6 @@ rust_binary(
         "lang-js": "//bin/lang-js:bin",
         "firecracker-setup.sh": "//lib/si-firecracker:firecracker-setup.sh",
         "prepare_jailer.sh": "//lib/si-firecracker:prepare_jailer.sh",
-        "stop.sh": "//lib/si-firecracker:stop.sh",
     },
     visibility = ["PUBLIC"],
 )

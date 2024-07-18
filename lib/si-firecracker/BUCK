@@ -4,9 +4,13 @@ rust_library(
     name = "si-firecracker",
     deps = [
         "//lib/cyclone-core:cyclone-core",
+        "//third-party/rust:devicemapper",
+        "//third-party/rust:krata-loopdev",
         "//third-party/rust:remain",
+        "//third-party/rust:nix",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs","src/scripts/*"]),
 )
@@ -20,11 +24,5 @@ export_file(
 export_file(
     name = "prepare_jailer.sh",
     src = "src/scripts/prepare_jailer.sh",
-    visibility = ["PUBLIC"],
-)
-
-export_file(
-    name = "stop.sh",
-    src = "src/scripts/stop.sh",
     visibility = ["PUBLIC"],
 )
