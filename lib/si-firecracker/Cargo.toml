@@ -10,9 +10,13 @@ publish.workspace = true
 
 [dependencies]
 cyclone-core = { path = "../cyclone-core" }
+devicemapper =  { workspace = true }
 futures = { workspace = true }
+krata-loopdev = { workspace = true }
+nix = { workspace = true }
 remain = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]

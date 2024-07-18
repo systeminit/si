@@ -1,3 +1,4 @@
+use crate::disk::FirecrackerDisk;
 use crate::errors::FirecrackerJailError;
 use cyclone_core::process;
 use std::fs::Permissions;
@@ -13,15 +14,12 @@ type Result<T> = result::Result<T, FirecrackerJailError>;
 
 const FIRECRACKER_PREPARE_PATH: &str = "/firecracker-data/prepare_jailer.sh";
 const FIRECRACKER_SETUP_PATH: &str = "/firecracker-data/firecracker-setup.sh";
-const FIRECRACKER_STOP_PATH: &str = "/firecracker-data/stop.sh";
 const FIRECRACKER_PREPARE_BYTES: &[u8] = include_bytes!("scripts/prepare_jailer.sh");
 const FIRECRACKER_SETUP_BYTES: &[u8] = include_bytes!("scripts/firecracker-setup.sh");
-const FIRECRACKER_STOP_BYTES: &[u8] = include_bytes!("scripts/stop.sh");
 
 const FIRECRACKER_SCRIPTS: &[(&str, &[u8])] = &[
     (FIRECRACKER_PREPARE_PATH, FIRECRACKER_PREPARE_BYTES),
     (FIRECRACKER_SETUP_PATH, FIRECRACKER_SETUP_BYTES),
-    (FIRECRACKER_STOP_PATH, FIRECRACKER_STOP_BYTES),
 ];
 
 #[derive(Debug)]
@@ -63,18 +61,7 @@ impl FirecrackerJail {
     }
 
     pub async fn clean(id: u32) -> Result<()> {
-        let output = Command::new(FIRECRACKER_STOP_PATH)
-            .arg(id.to_string())
-            .output()
-            .await
-            .map_err(FirecrackerJailError::Clean)?;
-
-        if !output.status.success() {
-            return Err(FirecrackerJailError::Output(
-                String::from_utf8(output.stderr)
-                    .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
-            ));
-        }
+        FirecrackerDisk::clean(id)?;
         Ok(())
     }
 

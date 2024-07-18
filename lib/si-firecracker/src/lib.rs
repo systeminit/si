@@ -1,3 +1,4 @@
+mod disk;
 /// [`FirecrackerJailError`] implementations.
 pub mod errors;
 /// [`FirecrackerJail`] implementations.
