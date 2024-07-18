@@ -26,11 +26,10 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
       cy.get('[aria-label="Profile"]').should('exist').click();
-      cy.get('#dropdown-menu-item-1').should('exist').should('be.visible').click({ force: true });
+      cy.get('#dropdown-menu-item-4').should('exist').should('be.visible').click({ force: true });
 
-      // There is a bug currently where you log out of the product & it just logs you out to the dashboard page
-      // of the UI in auth portal
-      cy.url().should("contain", AUTH_PORTAL_URL + '/dashboard');
+      // There is a bug currently where you log out of the product & it just logs you out to the workspaces page of the UI in auth portal
+      cy.url().should("contain", AUTH_PORTAL_URL + '/workspaces');
     });
   });
 });
