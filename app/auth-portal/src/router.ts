@@ -50,6 +50,13 @@ export const routerOptions: RouterOptions = {
         return { name: "workspaces" };
       },
     },
+    {
+      path: "/tutorial",
+      name: "tutorial",
+      redirect() {
+        return { name: "workspaces" };
+      },
+    },
     { path: "/workspaces", name: "workspaces", component: WorkspacesPage },
     {
       path: "/workspace/:workspaceId",
