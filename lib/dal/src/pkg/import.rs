@@ -8,6 +8,7 @@ use si_pkg::{
 };
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
@@ -952,8 +953,10 @@ pub async fn import_only_new_funcs(
             Func::get_by_id_or_error(ctx, func_id).await?
         } else {
             // Find or create the func for the provided spec.
-            let func = if let Some(func_id) = Func::find_id_by_name(ctx, &func_spec.name()).await? {
-                Func::get_by_id_or_error(ctx, func_id).await?
+            let func = if let Some(func) =
+                Func::get_by_id(ctx, FuncId::from_str(func_spec.unique_id())?).await?
+            {
+                func
             } else {
                 create_func(ctx, &func_spec, false).await?
             };

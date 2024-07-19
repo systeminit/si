@@ -112,6 +112,8 @@ pub enum PkgError {
     TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("url parse error: {0}")]
     Url(#[from] ParseError),
     #[error("workspace error: {0}")]
