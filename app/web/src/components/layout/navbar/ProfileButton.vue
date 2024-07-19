@@ -34,6 +34,7 @@
         label="Dev Dashboard"
       />
       <DropdownMenuItem
+        class="profile-dropdown-menu-logout"
         linkToNamedRoute="logout"
         icon="logout"
         label="Logout"
