@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 use crate::disk::FirecrackerDisk;
 use crate::errors::FirecrackerJailError;
 use cyclone_core::process;
@@ -61,6 +62,8 @@ impl FirecrackerJail {
     }
 
     pub async fn clean(id: u32) -> Result<()> {
+        let _ = id;
+        #[cfg(target_os = "linux")]
         FirecrackerDisk::clean(id)?;
         Ok(())
     }

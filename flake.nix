@@ -54,8 +54,6 @@
           ripgrep
           rust-toolchain
           minica
-          lvm2
-          llvmPackages.libclang.lib
 
           # breakpointHook
         ]
@@ -68,6 +66,8 @@
         ++ lib.optionals pkgs.stdenv.isLinux [
           glibc
           glibc.libgcc
+          lvm2
+          llvmPackages.libclang.lib
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           libiconv

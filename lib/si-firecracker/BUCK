@@ -4,14 +4,18 @@ rust_library(
     name = "si-firecracker",
     deps = [
         "//lib/cyclone-core:cyclone-core",
-        "//third-party/rust:devicemapper",
-        "//third-party/rust:krata-loopdev",
         "//third-party/rust:remain",
         "//third-party/rust:nix",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "config//os:linux": [
+            "//third-party/rust:krata-loopdev",
+            "//third-party/rust:devicemapper",
+        ],
+    }),
     srcs = glob(["src/**/*.rs","src/scripts/*"]),
 )
 
