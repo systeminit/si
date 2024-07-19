@@ -29,6 +29,8 @@ pub mod update_func;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncAPIError {
+    #[error("cannot delete binding for func kind")]
+    CannotDeleteBindingForFunc,
     #[error("cannot delete locked func: {0}")]
     CannotDeleteLockedFunc(FuncId),
     #[error("change set error: {0}")]
