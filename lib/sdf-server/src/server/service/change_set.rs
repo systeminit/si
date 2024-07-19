@@ -26,6 +26,7 @@ mod begin_approval_process;
 pub mod create_change_set;
 pub mod list_open_change_sets;
 mod merge_vote;
+mod rebase_on_base;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -124,4 +125,5 @@ pub fn routes() -> Router<AppState> {
             post(begin_abandon_approval_process::cancel_abandon_approval_process),
         )
         .route("/abandon_vote", post(abandon_vote::abandon_vote))
+        .route("/rebase_on_base", post(rebase_on_base::rebase_on_base))
 }
