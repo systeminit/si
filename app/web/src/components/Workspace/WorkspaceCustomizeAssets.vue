@@ -31,15 +31,25 @@
   >
     <div class="absolute left-0 right-0 top-0 bottom-0">
       <FuncEditor
-        v-if="selectedVariantId && selectedFuncId"
+        v-if="
+          router.currentRoute.value.name === 'workspace-lab-assets' &&
+          selectedVariantId &&
+          selectedFuncId
+        "
         :funcId="selectedFuncId"
       />
       <AssetEditor
-        v-else-if="selectedVariantId"
+        v-else-if="
+          router.currentRoute.value.name === 'workspace-lab-assets' &&
+          selectedVariantId
+        "
         :schemaVariantId="selectedVariantId"
       />
       <InstallAsset
-        v-else-if="!!install?.selectedModule"
+        v-else-if="
+          router.currentRoute.value.name === 'workspace-lab-newassets' &&
+          !!install?.selectedModule
+        "
         :moduleId="install?.selectedModule.id"
         :moduleName="install?.selectedModule.name"
       />
@@ -133,6 +143,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
+import router from "@/router";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import InstallAssetsPanel from "../InstallAssetsPanel.vue";
