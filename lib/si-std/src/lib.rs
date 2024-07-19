@@ -10,6 +10,7 @@ pub mod canonical_file;
 pub mod option;
 pub mod result;
 pub mod string;
+pub mod time;
 
 pub use canonical_file::{CanonicalFile, CanonicalFileError};
 pub use option::OptionExt;

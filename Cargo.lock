@@ -5485,6 +5485,7 @@ dependencies = [
 name = "si-std"
 version = "0.1.0"
 dependencies = [
+ "rand 0.8.5",
  "remain",
  "serde",
  "serde_json",

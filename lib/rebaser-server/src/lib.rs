@@ -27,11 +27,13 @@
     while_true
 )]
 
+use dvu_debouncer_task::DvuDebouncerTaskError;
 use thiserror::Error;
 
 pub mod change_set_requests;
 mod config;
-pub mod dvu_debouncer;
+pub mod dvu_debouncer_task;
+pub(crate) mod nats;
 mod rebase;
 mod server;
 
@@ -61,6 +63,12 @@ pub enum ServerError {
     /// When a DAL context fails to be created
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
+    /// When a "dvu" debouncer task fails to be created
+    #[error("dvu debouncer error: {0}")]
+    DvuDebouncerTask(#[from] DvuDebouncerTaskError),
+    /// When a "dvu" debouncer task fails to shutdown cleanly
+    #[error("dvu debouncer task join error")]
+    DvuDebouncerTaskJoin,
     /// When attempting to launch a change set task but one is already running
     #[error("existing change set task already running for id: {0}")]
     ExistingChangeSetTask(si_events::ChangeSetId),
@@ -70,6 +78,9 @@ pub enum ServerError {
     /// When failing to create a Jetstream consumer `impl Stream` of messages
     #[error("consumer stream error: {0}")]
     JsConsumerStream(#[from] si_data_nats::async_nats::jetstream::consumer::StreamError),
+    /// When failing to get or create a NATS KV store
+    #[error("nats kv bucket get or create error: {0}")]
+    KvGetOrCreate(#[from] crate::nats::GetOrCreateKeyValueError),
     /// When a LayerDb error occurs
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),

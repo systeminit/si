@@ -20,7 +20,9 @@ use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
 
-use crate::{dvu_debouncer::DvuDebouncer, ServerError as Error, ServerMetadata, ServerResult};
+use crate::{
+    dvu_debouncer_task::DvuDebouncerTask, ServerError as Error, ServerMetadata, ServerResult,
+};
 
 use self::app_state::AppState;
 
@@ -31,7 +33,10 @@ pub mod handlers;
 /// workspace.
 pub struct ChangeSetRequestsTask {
     metadata: Arc<ServerMetadata>,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+    debouncer_task: DvuDebouncerTask,
     shutdown_token: CancellationToken,
 }
 
@@ -45,26 +50,30 @@ impl fmt::Debug for ChangeSetRequestsTask {
 }
 
 impl ChangeSetRequestsTask {
-    const NAME: &'static str = "Rebaser::ChangeSetRequestsTask";
+    const NAME: &'static str = "rebaser_server::change_set_requests_task";
 
     /// Creates and returns a runnable [`ChangeSetRequestsTask`].
+    #[allow(clippy::too_many_arguments)]
     pub fn create(
         metadata: Arc<ServerMetadata>,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         incoming: jetstream::consumer::pull::Stream,
+        kv: jetstream::kv::Store,
         ctx_builder: DalContextBuilder,
         shutdown_token: CancellationToken,
         dvu_interval: Duration,
-    ) -> Self {
-        let dvu_debouncer = DvuDebouncer::new(
+    ) -> ServerResult<Self> {
+        let debouncer_task = DvuDebouncerTask::create(
+            metadata.instance_id().to_owned(),
+            kv,
             workspace_id,
             change_set_id,
-            shutdown_token.clone(),
             ctx_builder.clone(),
             dvu_interval,
-        );
-        let state = AppState::new(workspace_id, change_set_id, ctx_builder, dvu_debouncer);
+        )?;
+
+        let state = AppState::new(workspace_id, change_set_id, ctx_builder);
 
         let app = ServiceBuilder::new()
             .concurrency_limit(1)
@@ -80,26 +89,55 @@ impl ChangeSetRequestsTask {
         let inner = naxum::serve(incoming, app.into_make_service())
             .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()));
 
-        Self {
+        Ok(Self {
             metadata,
+            workspace_id,
+            change_set_id,
             inner: Box::new(inner.into_future()),
+            debouncer_task,
             shutdown_token,
-        }
+        })
     }
 
     /// Runs the service to completion or until the first internal error is encountered.
     #[inline]
     pub async fn run(self) {
+        let workspace_id = self.workspace_id;
+        let change_set_id = self.change_set_id;
+
         if let Err(err) = self.try_run().await {
-            error!(task = Self::NAME, error = ?err, "error while running main loop");
+            error!(
+                task = Self::NAME,
+                si.workspace.id = %workspace_id,
+                si.change_set.id = %change_set_id,
+                error = ?err,
+                "error while running loop",
+            );
         }
     }
 
     /// Runs the service to completion, returning its result (i.e. whether it successful or an
     /// internal error was encountered).
     pub async fn try_run(self) -> ServerResult<()> {
+        // Spawn the task to run alongside the app and setup a drop guard for the task so that it
+        // shuts down if the app errors or crashes
+        let debouncer_task_drop_guard = self.debouncer_task.cancellation_token().drop_guard();
+        let debouncer_task_handle = tokio::spawn(self.debouncer_task.run());
+
         self.inner.await.map_err(Error::Naxum)?;
-        debug!(task = Self::NAME, "main loop shutdown complete");
+
+        // Perform clean shutdown of task by cancelling it and awaiting its shutdown
+        debouncer_task_drop_guard.disarm().cancel();
+        debouncer_task_handle
+            .await
+            .map_err(|_err| Error::DvuDebouncerTaskJoin)?;
+
+        debug!(
+            task = Self::NAME,
+            si.workspace.id = %self.workspace_id,
+            si.change_set.id = %self.change_set_id,
+            "shutdown complete",
+        );
         Ok(())
     }
 }
