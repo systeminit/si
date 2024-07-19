@@ -4,14 +4,15 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
-use sea_orm::{DbErr, EntityTrait};
+use module_index_types::ModuleDetailsResponse;
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
 
 use crate::{
     extract::{Authorization, DbConnection},
-    models::si_module::{self, ModuleId},
+    models::si_module::{self, make_module_details_response, ModuleId, SchemaIdReferenceLink},
 };
 
 #[remain::sorted]
@@ -19,6 +20,8 @@ use crate::{
 pub enum GetModuleDetailsError {
     #[error("db error: {0}")]
     DbErr(#[from] DbErr),
+    #[error(r#"More than one matching module found for id: "{0}""#)]
+    MoreThanOneMatchingModuleFor(ModuleId),
     #[error(r#"Module "{0}" not found"#)]
     NotFound(ModuleId),
 }
@@ -51,10 +54,33 @@ pub async fn get_module_details_route(
     DbConnection(txn): DbConnection,
     Query(_request): Query<GetModuleDetailsRequest>,
 ) -> Result<Json<Value>, GetModuleDetailsError> {
-    let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
-        Some(module) => module,
-        _ => return Err(GetModuleDetailsError::NotFound(module_id)),
-    };
+    let query = si_module::Entity::find();
+
+    // filters
+    let query = query
+        .find_with_linked(SchemaIdReferenceLink)
+        .filter(si_module::Column::Id.eq(module_id));
+
+    let modules: Vec<ModuleDetailsResponse> = query
+        .all(&txn)
+        .await?
+        .into_iter()
+        .map(|(module, linked_modules)| make_module_details_response(module, linked_modules))
+        .collect();
+
+    if modules.len() > 1 {
+        return Err(GetModuleDetailsError::MoreThanOneMatchingModuleFor(
+            module_id,
+        ));
+    }
+
+    if modules.is_empty() {
+        return Err(GetModuleDetailsError::NotFound(module_id));
+    }
+
+    let module = modules
+        .first()
+        .expect("We have already checked a module exists here");
 
     Ok(Json(json!(module)))
 }
