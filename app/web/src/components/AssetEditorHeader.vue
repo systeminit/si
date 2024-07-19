@@ -42,7 +42,7 @@
       </div>
     </div>
     <EditingPill
-      v-if="!selectedAsset.isLocked || true"
+      v-if="!selectedAsset.isLocked"
       class="flex-none"
       :color="selectedAsset.color"
     />
