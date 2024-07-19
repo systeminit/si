@@ -200,6 +200,7 @@ async fn import_change_set(
             installed_module.clone(),
             thing_map,
             options.create_unlocked,
+            options.past_module_hashes.clone(),
         )
         .await?;
 
@@ -449,6 +450,7 @@ async fn import_schema(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     create_unlocked: bool,
+    past_hashes: Option<Vec<String>>,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let schema_and_category = {
         let mut existing_schema: Option<Schema> = None;
@@ -456,12 +458,16 @@ async fn import_schema(
 
         if let Some(installed_module) = installed_module.as_ref() {
             existing_schema_id = installed_module.schema_id();
-            if let Some(matching_module) = installed_module.find_matching_module(ctx).await? {
-                existing_schema = matching_module
-                    .list_associated_schemas(ctx)
-                    .await?
-                    .into_iter()
-                    .next();
+            // loop through past hashes to find matching schema
+            if let Some(maybe_past_hashes) = past_hashes {
+                for past_hash in maybe_past_hashes {
+                    // find if there's an existing module
+                    // if there is, find the asssociated schemas
+                    if let Some(found) = Module::find_by_root_hash(ctx, past_hash).await? {
+                        existing_schema =
+                            found.list_associated_schemas(ctx).await?.into_iter().next();
+                    }
+                }
             }
         }
 
