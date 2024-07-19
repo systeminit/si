@@ -1039,6 +1039,17 @@ export interface IAssetBuilder {
   build(): Asset;
 }
 
+/**
+ * Represents a builder for creating System Initiative Asset Schemas.
+ *
+ * @example
+ * const asset = new AssetBuilder();
+ *
+ * const myProp = new PropBuilder().setName("myProp").setKind("string").build();
+ * asset.addProp(myProp);
+ *
+ * return asset.build();
+ */
 export class AssetBuilder implements IAssetBuilder {
   asset = <Asset>{};
 
@@ -1046,6 +1057,12 @@ export class AssetBuilder implements IAssetBuilder {
     this.asset = <Asset>{};
   }
 
+  /**
+   * Adds a prop to the asset.
+   *
+   * @param prop - The prop definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   addProp(prop: PropDefinition) {
     if (!this.asset.props) {
       this.asset.props = [];
@@ -1054,6 +1071,12 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds a secret prop to the asset.
+   *
+   * @param prop - The secret prop definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   addSecretProp(prop: SecretPropDefinition) {
     if (!this.asset.secretProps) {
       this.asset.secretProps = [];
@@ -1086,6 +1109,12 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds a secret to the asset.
+   *
+   * @param definition - The secret definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   defineSecret(definition: SecretDefinition): this {
     this.asset.secretDefinition = definition.props;
     this.addSecretProp(
@@ -1120,6 +1149,12 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds a resource prop to the asset.
+   *
+   * @param prop - The prop definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   addResourceProp(prop: PropDefinition) {
     if (!this.asset.resourceProps) {
       this.asset.resourceProps = [];
@@ -1128,6 +1163,12 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds an input socket to the asset.
+   *
+   * @param socket - The socket definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   addInputSocket(socket: SocketDefinition) {
     if (!this.asset.inputSockets) {
       this.asset.inputSockets = [];
@@ -1136,6 +1177,12 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds an output socket to the asset.
+   *
+   * @param socket - The socket definition to add
+   * @returns This AssetBuilder instance for method chaining
+   */
   addOutputSocket(socket: SocketDefinition) {
     if (!this.asset.outputSockets) {
       this.asset.outputSockets = [];
@@ -1152,6 +1199,13 @@ export class AssetBuilder implements IAssetBuilder {
     return this;
   }
 
+  /**
+   * Adds a doc link to the asset.
+   *
+   * @param key - the name of the doc link
+   * @param value - the value for the doc link
+   * @returns This AssetBuilder instance for method chaining
+   */
   addDocLink(key: string, value: string) {
     if (!this.asset.docLinks) {
       this.asset.docLinks = {};
@@ -1162,7 +1216,9 @@ export class AssetBuilder implements IAssetBuilder {
 
   build() {
     if (this.asset.secretDefinition && this.asset.outputSockets?.length > 1) {
-      throw new Error("secret defining assets cannot have more than one output socket since it can only output the secret corresponding to the definition");
+      throw new Error(
+        "secret defining assets cannot have more than one output socket since it can only output the secret corresponding to the definition",
+      );
     }
     return this.asset;
   }

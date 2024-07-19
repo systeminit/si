@@ -18,7 +18,7 @@ Understand the fundamental concepts and architecture of System Initiative:
 
 Detailed documentation for all our APIs:
 
-- [Asset Builder](/asset-builder.md)
+- [Asset Builder](./asset-builder/)
 - [Function Types](./function-types.md)
 
 ## Troubleshooting

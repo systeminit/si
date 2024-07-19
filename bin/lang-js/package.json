@@ -36,7 +36,8 @@
     "start:nobuild": "node ./dist/src/index.js",
     "test": "vitest",
     "test:watch": "vitest --watch --forceExit",
-    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "docs": "typedoc && mv docs/README.md docs/index.md"
   },
   "author": "System Initiative, Inc.",
   "license": "Proprietary",
@@ -51,7 +52,9 @@
     "@types/node-fetch": "^2.6.1",
     "eslint": "^8.14.0",
     "tsup": "^8.0.1",
-    "vitest": "^1.0.4"
+    "vitest": "^1.0.4",
+    "typedoc": "^0.26.0",
+    "typedoc-plugin-markdown": "^4.2.0"
   },
   "dependencies": {
     "@si/ts-lib": "workspace:*",
