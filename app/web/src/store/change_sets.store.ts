@@ -21,6 +21,12 @@ import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
+export interface StatusWithBase {
+  baseHasUpdates: boolean;
+  changeSetHasUpdates: boolean;
+  conflictsWithBase: boolean;
+}
+
 export interface OpenChangeSetsView {
   headChangeSetId: ChangeSetId;
   changeSets: ChangeSet[];
@@ -40,6 +46,7 @@ export function useChangeSetsStore() {
         postApplyActor: null as string | null,
         postAbandonActor: null as string | null,
         changeSetApprovals: {} as Record<UserId, string>,
+        statusWithBase: {} as Record<ChangeSetId, StatusWithBase>,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
@@ -144,6 +151,18 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
+            },
+          });
+        },
+        async FETCH_STATUS_WITH_BASE(changeSetId: ChangeSetId) {
+          return new ApiRequest<StatusWithBase>({
+            method: "post",
+            url: "change_set/status_with_base",
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (data) => {
+              this.statusWithBase[changeSetId] = data;
             },
           });
         },
@@ -360,6 +379,10 @@ export function useChangeSetsStore() {
                 this.changeSetsById[changeSetId] = changeSet;
                 // whenever the change set is applied move us to head
               }
+
+              // TODO: jobelenus, I'm worried the WsEvent fires before commit happens
+              if (this.selectedChangeSetId)
+                this.FETCH_STATUS_WITH_BASE(this.selectedChangeSetId);
 
               // did head get an update and I'm not on head?
               // and make sure I'm not moving to head

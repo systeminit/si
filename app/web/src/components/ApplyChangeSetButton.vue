@@ -1,6 +1,25 @@
 <template>
   <VButton
-    v-if="!changeSetsStore.headSelected"
+    v-if="ffStore.DEV_SLICE_REBASING && statusWithBase?.conflictsWithBase"
+    size="md"
+    tone="destructive"
+    disabled
+    square
+    label="Cannot Merge or Rebase, Resolve Conflicts First"
+  >
+  </VButton>
+  <VButton
+    v-else-if="ffStore.DEV_SLICE_REBASING && statusWithBase?.baseHasUpdates"
+    size="md"
+    tone="warning"
+    square
+    label="Rebase from Head"
+    @click="rebase"
+  >
+  </VButton>
+  <!-- TODO: we can change this v-else-if to look at `statusWithBase.changeSetHasUpdates` -->
+  <VButton
+    v-else-if="!changeSetsStore.headSelected"
     ref="applyButtonRef"
     size="md"
     tone="success"
@@ -56,6 +75,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 
 const statusStore = useStatusStore();
@@ -100,4 +120,15 @@ const statusStoreUpdating = computed(() => {
     return statusStore.globalStatus.isUpdating;
   } else return false;
 });
+
+const ffStore = useFeatureFlagsStore();
+const statusWithBase = computed(
+  () =>
+    changeSetsStore.statusWithBase[changeSetsStore.selectedChangeSetId || ""],
+);
+
+const rebase = () => {
+  if (changeSetsStore.selectedChangeSetId)
+    changeSetsStore.REBASE_ON_BASE(changeSetsStore.selectedChangeSetId);
+};
 </script>
