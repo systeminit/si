@@ -78,7 +78,7 @@ setup_traps cleanup
 
 # create disk and mount to a known location
 mkdir -pv "$ROOTFSMOUNT"
-dd if=/dev/zero of="$ROOTFS" bs=1M count=2048
+dd if=/dev/zero of="$ROOTFS" bs=1M count=3072
 mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
