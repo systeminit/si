@@ -11,6 +11,7 @@ import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
+import Cloud from "~icons/mdi/cloud";
 import CursorArrayRays from "~icons/heroicons/cursor-arrow-rays";
 
 import EmptySquare from "./custom-icons/empty-square.svg?raw";
@@ -208,6 +209,7 @@ export const ICONS = Object.freeze({
   "circle-stop": MaterialSymbolsStopCircleOutlineRounded,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
+  cloud: Cloud,
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   "code-circle": StreamlineBracesCircleSolid,

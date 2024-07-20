@@ -54,7 +54,7 @@
     <template v-else-if="loadWorkspacesReqStatus.isSuccess">
       <Stack>
         <WorkspaceLinkWidget
-          v-for="workspace in workspaces"
+          v-for="workspace in sortedWorkspaces(workspaces)"
           :key="workspace.id"
           :workspaceId="workspace.id"
         />
@@ -71,7 +71,7 @@ import { computed, watch } from "vue";
 import { Icon, Stack, ErrorMessage, VButton } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useAuthStore } from "@/store/auth.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useWorkspacesStore, Workspace } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 
@@ -80,6 +80,20 @@ const workspacesStore = useWorkspacesStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const workspaces = computed(() => workspacesStore.workspaces);
+function sortedWorkspaces(workspaces: Workspace[]): Workspace[] {
+  return workspaces.sort((a, b) => {
+    // First, prioritize "SI" instanceEnvType
+    if (a.instanceEnvType === "SI" && b.instanceEnvType !== "SI") {
+      return -1;
+    }
+    if (a.instanceEnvType !== "SI" && b.instanceEnvType === "SI") {
+      return 1;
+    }
+
+    // If both are "SI" or both are not "SI", sort by displayName
+    return a.displayName.localeCompare(b.displayName);
+  });
+}
 
 const user = computed(() => authStore.user);
 
