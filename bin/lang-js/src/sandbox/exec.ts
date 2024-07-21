@@ -2,7 +2,6 @@ import { setTimeout } from "timers/promises";
 import execa, { ExecaReturnValue, Options } from "execa";
 import { Debug } from "../debug";
 
-
 export interface WatchArgs {
   cmd: string;
   args?: readonly string[];
@@ -28,15 +27,15 @@ export type SiExecResult = ExecaReturnValue<string>;
 // We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
 //
 export const makeExec = (executionId: string) => {
-/**
- * Runs a command and waits until it finishes executing.
- *
- * @example
- * const child = siExec.waitUntilEnd("aws", [
- *   "ec2",
- *   "describe-hosts"
- * ]);
-  */
+  /**
+   * Runs a command and waits until it finishes executing.
+   *
+   * @example
+   * const child = siExec.waitUntilEnd("aws", [
+   *   "ec2",
+   *   "describe-hosts"
+   * ]);
+    */
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
