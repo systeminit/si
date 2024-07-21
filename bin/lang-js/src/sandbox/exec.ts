@@ -25,7 +25,17 @@ export type SiExecResult = ExecaReturnValue<string>;
 
 // Note(paulo): This is highly dangerous as it bypasses the sandbox
 // We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
+//
 export const makeExec = (executionId: string) => {
+  /**
+   * Runs a command and waits until it finishes executing.
+   *
+   * @example
+   * const child = siExec.waitUntilEnd("aws", [
+   *   "ec2",
+   *   "describe-hosts"
+   * ]);
+    */
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],

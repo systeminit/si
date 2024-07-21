@@ -37,7 +37,7 @@
     "test": "vitest",
     "test:watch": "vitest --watch --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
-    "docs": "typedoc && mv docs/README.md docs/index.md"
+    "docs": "typedoc"
   },
   "author": "System Initiative, Inc.",
   "license": "Proprietary",
