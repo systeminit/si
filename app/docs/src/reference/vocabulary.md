@@ -30,13 +30,13 @@ updated to reflect the proposed changes to the model on HEAD.
 
 Creating a change set makes a new copy of the hypergraph based on the current
 data in HEAD. Learn how to create a change set in the
-[getting started tutorial](/tutorial/getting-started).
+[getting started tutorial](/tutorials/getting-started).
 
 ### Applying a Change Set
 
 When you _apply_ a change set, all of the properties and code are merged to
 HEAD, and any actions enqueued. Learn how to apply a change set in the
-[getting started tutorial](/tutorial/getting-started).
+[getting started tutorial](/tutorials/getting-started).
 
 ### Abandoning a Change Set
 
