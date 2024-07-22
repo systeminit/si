@@ -107,6 +107,9 @@ importers:
       dotenv:
         specifier: ^16.0.3
         version: 16.0.3
+      posthog-js:
+        specifier: ^1.148.2
+        version: 1.148.2
     devDependencies:
       '@si/eslint-config':
         specifier: workspace:*
@@ -16462,6 +16465,14 @@ packages:
       source-map-js: 1.2.0
     dev: true
 
+  /posthog-js@1.148.2:
+    resolution: {integrity: sha512-YQt8D+RS1a56ykLPLsqSq73vLYLIFQwlvY40ncgOM/uhxAV4FmbnYv85ZtwnB2SAZD/gChWXI/fprYQA9lhc1w==}
+    dependencies:
+      fflate: 0.4.8
+      preact: 10.22.1
+      web-vitals: 4.0.1
+    dev: false
+
   /posthog-js@1.51.4:
     resolution: {integrity: sha512-YaozVcVdnsoj7yuwXo8mBHrQCagmZSR799QvaRfwL9EhDWMqCnV1Kh0Dj1GjX9/fLYIHYU4Tl8iKtqGkdt/Nxg==}
     dependencies:
@@ -16486,7 +16497,6 @@ packages:
 
   /preact@10.22.1:
     resolution: {integrity: sha512-jRYbDDgMpIb5LHq3hkI0bbl+l/TQ9UnkdQ0ww+lp+4MMOdqaUYdFc5qeyP+IV8FAd/2Em7drVPeKdQxsiWCf/A==}
-    dev: true
 
   /precinct@9.2.1:
     resolution: {integrity: sha512-uzKHaTyiVejWW7VJtHInb9KBUq9yl9ojxXGujhjhDmPon2wgZPBKQIKR+6csGqSlUeGXAA4MEFnU6DesxZib+A==}

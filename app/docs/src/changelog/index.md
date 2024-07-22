@@ -11,11 +11,25 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
---- 
+## 2024-07-22
+
+New demo's this week:
+
+- Workspace Updates
+- Rebaser Service Demo
+- New User Signup Process
+- Documentation and Future Plans
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/weCe6kVAHnw?si=qsyicN0NFyIEW4qp" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## 2024-07-15
 
-### Demo
+New demo's this week:
+
+- Introduction and Overview
+- Asset Versioning and Editing
+- Asset Updates and Contributions
+- Chainsaw Work and System Improvements
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/nWkDj8J2tfw?si=8E4OhKUEsBzzGbBA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
