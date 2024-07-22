@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::info;
+use tracing::instrument;
 
 use tokio::time::Duration;
 
@@ -200,7 +201,6 @@ where
 
         loop {
             if let Some(instance) = me.dropped.pop() {
-                debug!("{}", me.stats().await.to_string());
                 let id = instance.id();
                 debug!("PoolNoodle: dropping: {}", id);
                 match PoolNoodleInner::terminate(instance, &me.spec).await {
@@ -227,14 +227,12 @@ where
             );
             warn!("{:?}", e);
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
     async fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
         if let Err(i) = me.ready.push(instance) {
             warn!("PoolNoodle: failed to push instance to ready: {}", i.id());
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
     async fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
@@ -242,12 +240,23 @@ where
             warn!("PoolNoodle: failed to push instance to unprepared: {}", id);
             warn!("{:?}", e);
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
     /// This will attempt to get a ready, healthy instance from the pool.
     /// If there are no instances, it will give the main loop a chance to fill the pool and try
     /// again. It will throw an error if there are no available instances after enough retries.
+    #[instrument(
+        name = "pool_noodle.get",
+        level = "info",
+        skip(self),
+        fields(
+            pool.size,
+            pool.active,
+            pool.dropped,
+            pool.ready,
+            pool.to_be_cleaned,
+            pool.unprepared
+    ))]
     pub async fn get(&mut self) -> Result<LifeGuard<I, S>> {
         let me = Arc::clone(&self.0);
 
@@ -267,7 +276,7 @@ where
                             &instance.id()
                         );
                         me.active.fetch_add(1, Ordering::Relaxed);
-                        debug!("{}", me.stats().await.to_string());
+                        Self::pool_metrics(me.clone()).await;
                         return Ok(LifeGuard {
                             pool: me.clone(),
                             item: Some(instance),
@@ -308,6 +317,16 @@ where
         PoolNoodleInner::clean(id, &me.spec).await?;
         info!("instance lifecycle is good!");
         Ok(())
+    }
+
+    async fn pool_metrics(me: Arc<PoolNoodleInner<I, S>>) {
+        let stats = me.stats().await;
+        tracing::Span::current().record("pool.size", stats.pool_size);
+        tracing::Span::current().record("pool.active", stats.active);
+        tracing::Span::current().record("pool.dropped", stats.dropped);
+        tracing::Span::current().record("pool.ready", stats.ready);
+        tracing::Span::current().record("pool.to_be_cleaned", stats.to_be_cleaned);
+        tracing::Span::current().record("pool.unprepared", stats.unprepared);
     }
 }
 
