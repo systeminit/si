@@ -9,7 +9,7 @@ export type WorkspaceId = string;
 // TODO: do we want to share this type with the backend?
 export type Workspace = {
   id: WorkspaceId;
-  instanceType: "local" | "private" | "si_sass"; // only local used for now...
+  instanceEnvType: "LOCAL" | "REMOTE" | "SI";
   instanceUrl: string;
   displayName: string;
   slug: string;

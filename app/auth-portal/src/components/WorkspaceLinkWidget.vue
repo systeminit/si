@@ -36,7 +36,11 @@
       @click="clickHandler"
       @mousedown="tracker.trackEvent('workspace_launcher_widget_click')"
     >
-      <Icon v-if="!compact" name="laptop" size="lg" />
+      <Icon
+        v-if="!compact"
+        :name="workspace.instanceEnvType === 'SI' ? 'cloud' : 'laptop'"
+        size="lg"
+      />
       <Stack spacing="xs" class="overflow-hidden">
         <div
           ref="workspaceNameRef"
@@ -46,7 +50,9 @@
           {{ workspace.displayName }}
         </div>
         <div class="text-sm opacity-70 capsize">
-          <div class="truncate w-full">{{ workspace.instanceUrl }}</div>
+          <div class="truncate w-full">
+            {{ workspace.instanceUrl }}
+          </div>
         </div>
         <div
           v-if="workspace.role !== 'OWNER'"

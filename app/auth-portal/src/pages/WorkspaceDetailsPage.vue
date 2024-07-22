@@ -297,7 +297,7 @@ const createWorkspace = async () => {
   if (createWorkspaceType.value === "saas") {
     draftWorkspace.instanceUrl = "https://app.systeminit.com";
   } else if (createWorkspaceType.value === "local") {
-    draftWorkspace.instanceUrl = "localhost:8080";
+    draftWorkspace.instanceUrl = "http://localhost:8080";
   } else {
     if (draftWorkspace.instanceUrl.includes("app.systeminit")) {
       // Can't create a Remote URL workspace with our URL!
