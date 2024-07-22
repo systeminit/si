@@ -9,7 +9,10 @@ use tryhard::RetryPolicy;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
-    action::{prototype::ActionPrototype, Action, ActionError, ActionId, ActionState},
+    action::{
+        prototype::{ActionKind, ActionPrototype},
+        Action, ActionError, ActionId, ActionState,
+    },
     change_status::ChangeStatus,
     diagram::SummaryDiagramComponent,
     job::{
@@ -146,6 +149,37 @@ async fn inner_run(
     )
     .await?;
 
+    // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
+    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+    if prototype.kind == ActionKind::Destroy {
+        // after we commit check for removable components if we just successfully deleted a component
+        ctx.update_snapshot_to_visibility().await?;
+        let to_delete_components = Component::list_to_be_deleted(ctx).await?;
+        let mut did_remove = false;
+        for component_to_delete in to_delete_components {
+            let component = Component::try_get_by_id(ctx, component_to_delete).await?;
+            if let Some(component) = component {
+                if component.allowed_to_be_removed(ctx).await? {
+                    Component::remove(ctx, component.id()).await?;
+                    did_remove = true;
+                }
+            }
+        }
+        if did_remove {
+            if let Err(err) = ctx.commit().await {
+                match err {
+                    // if this fails due to conflicts, it's recoverable.
+                    // the next time a destroy action runs we'll try again
+                    TransactionsError::ConflictsOccurred(ref conflicts) => warn!(
+                        ?err,
+                        ?conflicts,
+                        "Conflicts occurred while deleting components"
+                    ),
+                    _ => return Err(JobConsumerError::Transactions(err)),
+                }
+            }
+        }
+    }
     Ok(maybe_resource)
 }
 
@@ -190,7 +224,6 @@ async fn process_and_record_execution(
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
     let component = Component::get_by_id(&ctx, component_id).await?;
-
     if let Some(resource) = maybe_resource {
         // Set the resource if we have a payload, regardless of status *and* assemble a
         // summary
@@ -208,13 +241,6 @@ async fn process_and_record_execution(
                 component.clear_resource(&ctx).await?;
 
                 if component.to_delete() {
-                    // Before we remove a component, we delete any other components that exist
-                    // solely because this component exists.
-                    for component_to_be_removed_id in
-                        component.find_components_to_be_removed(&ctx).await?
-                    {
-                        Component::remove(&ctx, component_to_be_removed_id).await?;
-                    }
                     Component::remove(&ctx, component.id()).await?;
                 } else {
                     let summary = SummaryDiagramComponent::assemble(
