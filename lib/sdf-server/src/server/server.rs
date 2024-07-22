@@ -1,15 +1,10 @@
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::jwt_key::JwtConfig;
-use dal::pkg::PkgError;
 use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
 use dal::ServicesContext;
-use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
-    WorkspaceError,
-};
+use dal::{BuiltinsError, JwtPublicSigningKey, TransactionsError, WorkspaceError};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use module_index_client::{BuiltinsDetailsResponse, ModuleDetailsResponse, ModuleIndexClient};
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_crypto::{
@@ -18,24 +13,20 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_pkg::{SiPkg, SiPkgError};
+use si_pkg::SiPkgError;
 use si_posthog::{PosthogClient, PosthogConfig};
 use std::sync::Arc;
-use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 use telemetry::prelude::*;
 use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
-use tokio::time::Instant;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal,
     sync::{broadcast, mpsc, oneshot},
-    task::{JoinError, JoinSet},
-    time,
+    task::JoinError,
 };
 use tower_http::trace::TraceLayer;
-use ulid::Ulid;
 use veritech_client::Client as VeritechClient;
 
 use super::state::AppState;
@@ -281,7 +272,6 @@ impl Server<(), ()> {
 
         Self::migrate_snapshots(services_context).await?;
 
-        migrate_builtins_from_module_index(services_context).await?;
         Ok(())
     }
 
@@ -343,128 +333,6 @@ where
     pub fn local_socket(&self) -> &S {
         &self.socket
     }
-}
-
-pub async fn migrate_builtins_from_module_index(services_context: &ServicesContext) -> Result<()> {
-    let mut interval = time::interval(Duration::from_secs(5));
-    let instant = Instant::now();
-
-    let mut dal_context = services_context.clone().into_builder(true);
-    dal_context.set_no_dependent_values();
-    let mut ctx = dal_context.build_default().await?;
-    info!("setup builtin workspace");
-    Workspace::setup_builtin(&mut ctx).await?;
-
-    info!("migrating intrinsic functions");
-    builtins::func::migrate_intrinsics(&ctx).await?;
-    // info!("migrating builtin functions");
-    // builtins::func::migrate(&ctx).await?;
-
-    let module_index_url = services_context
-        .module_index_url()
-        .ok_or(ServerError::ModuleIndexNotSet)?;
-
-    let module_index_client =
-        ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
-    let module_list = module_index_client.list_builtins().await?;
-    let install_builtins = install_builtins(ctx, module_list, module_index_client);
-    tokio::pin!(install_builtins);
-    loop {
-        tokio::select! {
-            _ = interval.tick() => {
-                info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
-            }
-            result = &mut install_builtins  => match result {
-                Ok(_) => {
-                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
-                    break;
-                }
-                Err(err) => return Err(err),
-            }
-        }
-    }
-
-    Ok(())
-}
-
-async fn install_builtins(
-    ctx: DalContext,
-    module_list: BuiltinsDetailsResponse,
-    module_index_client: ModuleIndexClient,
-) -> Result<()> {
-    let dal = &ctx;
-    let client = &module_index_client.clone();
-    let modules: Vec<ModuleDetailsResponse> = module_list.modules;
-
-    let total = modules.len();
-
-    let mut join_set = JoinSet::new();
-    for module in modules {
-        let module = module.clone();
-        let client = client.clone();
-        join_set.spawn(async move {
-            (
-                module.name.to_owned(),
-                (module.to_owned(), fetch_builtin(&module, &client).await),
-            )
-        });
-    }
-
-    let mut count: usize = 0;
-    while let Some(res) = join_set.join_next().await {
-        let (pkg_name, (module, res)) = res?;
-        match res {
-            Ok(pkg) => {
-                let instant = Instant::now();
-
-                match dal::pkg::import_pkg_from_pkg(
-                    &ctx,
-                    &pkg,
-                    Some(dal::pkg::ImportOptions {
-                        is_builtin: true,
-                        schema_id: module.schema_id().map(Into::into),
-                        past_module_hashes: module.past_hashes,
-                        ..Default::default()
-                    }),
-                )
-                .await
-                {
-                    Ok(_) => {
-                        count += 1;
-                        let elapsed = instant.elapsed().as_secs_f32();
-                        info!(
-                                "pkg {pkg_name} install finished successfully and took {elapsed:.2} seconds ({count} of {total} installed)",
-                            );
-                    }
-                    Err(PkgError::PackageAlreadyInstalled(hash)) => {
-                        count += 1;
-                        warn!(%hash, "pkg {pkg_name} already installed ({count} of {total} installed)");
-                    }
-                    Err(err) => error!(?err, "pkg {pkg_name} install failed"),
-                }
-            }
-            Err(err) => {
-                error!(?err, "pkg {pkg_name} install failed with server error");
-            }
-        }
-    }
-    dal.commit().await?;
-
-    let mut ctx = ctx.clone();
-    ctx.update_snapshot_to_visibility().await?;
-
-    Ok(())
-}
-
-async fn fetch_builtin(
-    module: &ModuleDetailsResponse,
-    module_index_client: &ModuleIndexClient,
-) -> Result<SiPkg> {
-    let module = module_index_client
-        .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())
-        .await?;
-
-    Ok(SiPkg::load_from_bytes(module)?)
 }
 
 pub fn build_service_for_tests(

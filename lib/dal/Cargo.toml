@@ -27,6 +27,7 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }

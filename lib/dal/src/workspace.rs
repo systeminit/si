@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
@@ -7,25 +8,29 @@ use si_events::{ContentHash, VectorClockId};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
-    WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
+    SiPkg, SiPkgError, WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
     WorkspaceExportMetadataV0,
 };
 use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::task::{JoinError, JoinSet};
+use tokio::time::{self, Instant};
 use ulid::Ulid;
 
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
+use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
-    HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    User, UserError, UserPk, WorkspaceSnapshot,
+    builtins, pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, User, UserError, UserPk, WorkspaceSnapshot,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -38,6 +43,8 @@ const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
+    #[error("migrating builtin functions failed")]
+    BuiltinMigrationsFailed,
     #[error("builtin workspace not found")]
     BuiltinWorkspaceNotFound,
     #[error("change set error: {0}")]
@@ -53,9 +60,15 @@ pub enum WorkspaceError {
     #[error("invalid user {0}")]
     InvalidUser(UserPk),
     #[error(transparent)]
+    Join(#[from] JoinError),
+    #[error(transparent)]
     KeyPair(#[from] KeyPairError),
     #[error("LayerDb error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Module index: {0}")]
+    ModuleIndex(#[from] module_index_client::ModuleIndexClientError),
+    #[error("Module index url not set")]
+    ModuleIndexNotSet,
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("no user in context")]
@@ -65,11 +78,15 @@ pub enum WorkspaceError {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("strum parse error: {0}")]
     StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("Unable to parse URL: {0}")]
+    Url(#[from] url::ParseError),
     #[error(transparent)]
     User(#[from] UserError),
     #[error("workspace not found: {0}")]
@@ -78,7 +95,7 @@ pub enum WorkspaceError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
+pub type WorkspaceResult<T, E = WorkspaceError> = std::result::Result<T, E>;
 
 pk!(WorkspacePk);
 pk!(WorkspaceId);
@@ -175,7 +192,7 @@ impl Workspace {
         Ok(())
     }
 
-    /// Find or create the builtin [`Workspace`].
+    // Find or create the builtin [`Workspace`].
     #[instrument(skip_all)]
     pub async fn setup_builtin(ctx: &mut DalContext) -> WorkspaceResult<()> {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
@@ -282,20 +299,13 @@ impl Workspace {
         pk: WorkspacePk,
         name: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
-        // Get the default change set from the builtin workspace.
-        let builtin = match Self::find_builtin(ctx).await? {
-            Some(found_builtin) => found_builtin,
-            None => return Err(WorkspaceError::BuiltinWorkspaceNotFound),
-        };
+        let initial_vector_clock_id = VectorClockId::new(pk.into_inner(), pk.into_inner());
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, initial_vector_clock_id).await?;
 
-        // Create a new change set whose base is the default change set of the workspace.
-        // Point to the snapshot that the builtin's default change set is pointing to.
-        let workspace_snapshot =
-            WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         let mut change_set = ChangeSet::new(
             ctx,
-            "HEAD",
-            Some(builtin.default_change_set_id),
+            DEFAULT_CHANGE_SET_NAME,
+            None,
             workspace_snapshot.id().await,
         )
         .await?;
@@ -336,7 +346,128 @@ impl Workspace {
             &serde_json::json![{ "visibility": ctx.visibility() }],
         )
         .await?;
+
+        Self::migrate_workspace(ctx).await?;
+
         Ok(new_workspace)
+    }
+
+    async fn migrate_workspace(ctx: &DalContext) -> WorkspaceResult<()> {
+        info!("migrating intrinsic functions");
+        let _ = match builtins::func::migrate_intrinsics(ctx).await {
+            Err(_) => Err(WorkspaceError::BuiltinMigrationsFailed),
+            _ => Ok(()),
+        };
+
+        info!("migrating builtins");
+        let module_index_url = ctx
+            .module_index_url()
+            .ok_or(WorkspaceError::ModuleIndexNotSet)?;
+
+        let mut interval = time::interval(Duration::from_secs(5));
+        let instant = Instant::now();
+
+        let module_index_client =
+            ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
+        let install_builtins = Self::install_latest_builtins(ctx, module_index_client);
+        tokio::pin!(install_builtins);
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
+                }
+                result = &mut install_builtins  => match result {
+                    Ok(_) => {
+                        info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
+                        break;
+                    }
+                    Err(err) => return Err(err),
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn install_latest_builtins(
+        ctx: &DalContext,
+        module_index_client: ModuleIndexClient,
+    ) -> WorkspaceResult<()> {
+        let module_list = module_index_client.list_builtins().await?;
+        let modules = module_list.modules;
+
+        let total = modules.len();
+
+        let mut join_set = JoinSet::new();
+        for module in modules {
+            let module = module.clone();
+            let client = module_index_client.clone();
+            join_set.spawn(async move {
+                (
+                    module.name.to_owned(),
+                    (
+                        module.to_owned(),
+                        Self::fetch_builtin(&module, &client).await,
+                    ),
+                )
+            });
+        }
+
+        let mut count: usize = 0;
+        while let Some(res) = join_set.join_next().await {
+            let (pkg_name, (module, res)) = res?;
+            match res {
+                Ok(pkg) => {
+                    let instant = Instant::now();
+
+                    match import_pkg_from_pkg(
+                        ctx,
+                        &pkg,
+                        Some(ImportOptions {
+                            is_builtin: true,
+                            schema_id: module.schema_id().map(Into::into),
+                            past_module_hashes: module.past_hashes,
+                            ..Default::default()
+                        }),
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            count += 1;
+                            let elapsed = instant.elapsed().as_secs_f32();
+                            info!(
+                                    "pkg {pkg_name} install finished successfully and took {elapsed:.2} seconds ({count} of {total} installed)",
+                                );
+                        }
+                        Err(PkgError::PackageAlreadyInstalled(hash)) => {
+                            count += 1;
+                            warn!(%hash, "pkg {pkg_name} already installed ({count} of {total} installed)");
+                        }
+                        Err(err) => error!(?err, "pkg {pkg_name} install failed"),
+                    }
+                }
+                Err(err) => {
+                    error!(?err, "pkg {pkg_name} install failed with server error");
+                }
+            }
+        }
+
+        let mut ctx = ctx.clone();
+        ctx.commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
+
+        Ok(())
+    }
+
+    async fn fetch_builtin(
+        module: &ModuleDetailsResponse,
+        module_index_client: &ModuleIndexClient,
+    ) -> WorkspaceResult<SiPkg> {
+        let module = module_index_client
+            .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())
+            .await?;
+
+        Ok(SiPkg::load_from_bytes(module)?)
     }
 
     pub async fn clear(&self, ctx: &DalContext) -> WorkspaceResult<()> {
