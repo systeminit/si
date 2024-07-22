@@ -124,6 +124,7 @@ export async function createOrUpdateUserFromAuth0Details(
       InstanceEnvType.LOCAL,
       "http://localhost:8080",
       `${user.nickname}'s  Dev Workspace`,
+      false,
     );
   }
 

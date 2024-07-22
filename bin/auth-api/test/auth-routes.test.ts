@@ -95,7 +95,7 @@ t.test('Auth routes', async () => {
       if (!user) {
         t.bailout("User Fetch has failed");
       }
-      const workspace = await createWorkspace(user!, InstanceEnvType.SI, "https://app.systeminit.com", `${user!.nickname}'s Testing Workspace`);
+      const workspace = await createWorkspace(user!, InstanceEnvType.SI, "https://app.systeminit.com", `${user!.nickname}'s Testing Workspace`, false);
       const sdfToken = createSdfAuthToken(authData.userId, workspace.id);
       await request.get('/whoami')
         .set('cookie', `si-auth=${sdfToken}`)
