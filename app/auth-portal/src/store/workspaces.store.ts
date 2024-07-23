@@ -21,6 +21,7 @@ export type Workspace = {
   createdAt: ISODateString;
   role: string;
   invitedAt: Date;
+  isDefault: boolean;
 };
 
 export type WorkspaceMember = {
