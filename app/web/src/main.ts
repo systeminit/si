@@ -47,6 +47,7 @@ const sdk = new HoneycombWebSDK({
       },
       "@opentelemetry/instrumentation-fetch": {
         propagateTraceHeaderCorsUrls: backendHosts,
+        ignoreNetworkEvents: true,
       },
     }), // add automatic instrumentation
     new DocumentLoadInstrumentation(),
