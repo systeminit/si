@@ -80,9 +80,9 @@ router.post("/workspaces/new", async (ctx) => {
   const reqBody = validate(ctx.request.body, z.object({
     instanceUrl: z.string().url(),
     displayName: z.string(),
+    isDefault: z.boolean(),
   }));
 
-  // isDefaultWorkspace: z.boolean(),
   let workspaceEnvType;
   if (reqBody.instanceUrl === "https://app.systeminit.com") {
     workspaceEnvType = InstanceEnvType.SI;
@@ -98,7 +98,7 @@ router.post("/workspaces/new", async (ctx) => {
     workspaceEnvType,
     reqBody.instanceUrl,
     reqBody.displayName,
-    false,
+    reqBody.isDefault,
   );
 
   ctx.body = {

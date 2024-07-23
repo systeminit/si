@@ -119,6 +119,8 @@ export async function createOrUpdateUserFromAuth0Details(
 
     // create a default saas workspace
     // await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
+    // we want to check if this is the first production workspace that a user has and if so, we are going to set it as the default
+    // when we launch this feature!
     await createWorkspace(
       user,
       InstanceEnvType.LOCAL,
