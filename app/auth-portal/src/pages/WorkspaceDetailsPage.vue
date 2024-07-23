@@ -236,6 +236,7 @@ const members = computed(() => workspacesStore.selectedWorkspaceMembers);
 const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
+  isDefault: false,
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
