@@ -6,18 +6,18 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl      = env("DIRECT_DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
   /// SI's id for the user (ULID)
   id            String  @id @db.Char(26)
   /// Auth0's id
-  auth0Id       String?  @unique @map("auth0_id")
+  auth0Id       String? @unique @map("auth0_id")
   /// raw json blob of Auth0 data
-  auth0Details  Json?    @map("auth0_details")
+  auth0Details  Json?   @map("auth0_details")
   /// single name string we can use as label for the user
   nickname      String?
   /// user's email
@@ -45,7 +45,7 @@ model User {
   /// array of workspaces the user created
   CreatedWorkspaces Workspace[]
   /// array of the workspaces that the user has access to
-  WorkspaceMembers WorkspaceMembers[]
+  WorkspaceMembers  WorkspaceMembers[]
   TosAgreement      TosAgreement[]
 
   @@index(fields: [email])
@@ -76,28 +76,31 @@ model Workspace {
   /// secret token for the workspace (ULID)
   token String? @db.Char(26)
 
+  /// Whether the workspace is the default or not
+  isDefault Boolean @default(false) @map("is_default")
+
   @@index(fields: [creatorUserId])
   @@map("workspaces")
 }
 
 model WorkspaceMembers {
-    id String   @id @db.Char(26)
+  id String @id @db.Char(26)
 
-    // id of the User
-    userId String @map("user_id")
-    user User @relation(fields: [userId], references: [id])
+  // id of the User
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
 
-    // id of the Workspace
-    workspaceId String @map("workspace_id")
-    workspace Workspace @relation(fields: [workspaceId], references: [id])
+  // id of the Workspace
+  workspaceId String    @map("workspace_id")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
-    // Role of the user
-    roleType RoleType @map("role_type")
+  // Role of the user
+  roleType RoleType @map("role_type")
 
-    // Invitation to workspace date
-    invitedAt DateTime? @map("invited_at")
+  // Invitation to workspace date
+  invitedAt DateTime? @map("invited_at")
 
-    @@unique([userId, workspaceId])
+  @@unique([userId, workspaceId])
 }
 
 model TosAgreement {

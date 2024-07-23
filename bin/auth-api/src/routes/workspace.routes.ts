@@ -82,6 +82,7 @@ router.post("/workspaces/new", async (ctx) => {
     displayName: z.string(),
   }));
 
+  // isDefaultWorkspace: z.boolean(),
   let workspaceEnvType;
   if (reqBody.instanceUrl === "https://app.systeminit.com") {
     workspaceEnvType = InstanceEnvType.SI;
@@ -92,7 +93,13 @@ router.post("/workspaces/new", async (ctx) => {
   }
 
   const workspaceDetails = await
-  createWorkspace(ctx.state.authUser, workspaceEnvType, reqBody.instanceUrl, reqBody.displayName);
+  createWorkspace(
+    ctx.state.authUser,
+    workspaceEnvType,
+    reqBody.instanceUrl,
+    reqBody.displayName,
+    false,
+  );
 
   ctx.body = {
     workspaces: await getUserWorkspaces(ctx.state.authUser.id),

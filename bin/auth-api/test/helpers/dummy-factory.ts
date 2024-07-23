@@ -52,7 +52,7 @@ export async function createDummyUser(options?: {
     await saveTosAgreement(user, LATEST_TOS_VERSION_ID, '1.2.3.4');
   }
 
-  const workspace = await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s Testing Workspace`);
+  const workspace = await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s Testing Workspace`, false);
 
   return { user, workspace };
 }

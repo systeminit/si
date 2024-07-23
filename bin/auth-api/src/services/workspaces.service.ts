@@ -32,6 +32,7 @@ export async function createWorkspace(
   workspaceEnvType: InstanceEnvType,
   instanceUrl: string,
   displayName: string,
+  isDefault: boolean,
 ) {
   const newWorkspace = await prisma.workspace.create({
     data: {
@@ -41,12 +42,14 @@ export async function createWorkspace(
       instanceUrl,
       displayName,
       creatorUserId: creatorUser.id,
+      isDefault,
     },
   });
   tracker.trackEvent(creatorUser, "create_workspace", {
     workspaceId: newWorkspace.id,
     instanceUrl,
     instanceEnvType: newWorkspace.instanceEnvType,
+    isDefaultWorkspace: newWorkspace.isDefault,
     // TODO: track env type and other data when it becomes useful
   });
 
