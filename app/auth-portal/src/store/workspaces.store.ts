@@ -44,13 +44,30 @@ export const useWorkspacesStore = defineStore("workspaces", {
     // grabbing the oldest workspace you created and assuming that it's your "default"
     defaultWorkspace: (state) => {
       const authStore = useAuthStore();
-      return _.sortBy(
-        _.filter(
-          _.values(state.workspacesById),
-          (w) => w.creatorUserId === authStore.user?.id,
+
+      // Let's first check for a defaultWorkspace
+      const defaultWorkspace = _.head(
+        _.filter(_.values(state.workspacesById), (w) => w.isDefault),
+      );
+      if (defaultWorkspace) return defaultWorkspace;
+
+      // There's no direct defaultWorkspace so get the first created production workspace for that user
+      const firstProductionWorkspace = _.head(
+        _.sortBy(
+          _.filter(
+            _.values(state.workspacesById),
+            (w) =>
+              w.creatorUserId === authStore.user?.id &&
+              w.instanceEnvType === "SI",
+          ),
+          (w) => w.createdAt,
         ),
-        (w) => w.createdAt,
-      )[0];
+      );
+      if (firstProductionWorkspace) return firstProductionWorkspace;
+
+      // This user has no production workspaces so we should not
+      // redirect them anywhere but the workspaces page... for now!
+      return null;
     },
   },
   actions: {
