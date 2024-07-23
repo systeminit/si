@@ -189,7 +189,7 @@
 
     <!-- selection box outline -->
     <v-rect
-      v-if="isHovered || isSelected"
+      v-if="isHovered"
       :config="{
         width: nodeWidth + 8,
         height: nodeHeight + 8,
@@ -197,7 +197,7 @@
         y: -4,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 3 : 1,
+        strokeWidth: 1,
         listening: false,
       }"
     />
