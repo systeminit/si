@@ -80,7 +80,11 @@ const bindings = computed(() => {
     ];
   variant?.funcIds.forEach((funcId) => {
     const summary = funcStore.funcsById[funcId];
-    const actions = funcStore.actionBindings[funcId];
+    const actions = funcStore.actionBindings[funcId]?.filter(
+      (b) =>
+        b.schemaVariantId ===
+        componentsStore.selectedComponent?.schemaVariantId,
+    );
     if (actions && actions.length > 0) {
       actions.forEach((b) => {
         const a = _.cloneDeep(b) as BindingWithDisplayName;
