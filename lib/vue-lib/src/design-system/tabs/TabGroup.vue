@@ -1,7 +1,9 @@
 <template>
   <div class="absolute inset-0 flex flex-col">
     <!-- TabGroupItems go in this slot but are not rendered here. -->
-    <div class="hidden"><slot /></div>
+    <div class="hidden">
+      <slot />
+    </div>
 
     <!-- special slot for when no tabs exist - mostly useful for dynamic tab situations -->
     <slot v-if="isNoTabs" name="noTabs">No tabs.</slot>
@@ -49,7 +51,6 @@
                 tabRefs[tab.props.slug] = el as HTMLElement;
               }
             "
-            href="#"
             :class="
               clsx(
                 'focus:outline-none whitespace-nowrap',
@@ -62,6 +63,7 @@
                 variantStyles(tab.props.slug),
               )
             "
+            href="#"
             @click="clickedTab($event, tab.props.slug)"
             @auxclick.prevent.stop="closeTab(tab)"
           >
@@ -73,7 +75,6 @@
             </div>
             <button
               v-if="closeable && !tab.props.uncloseable"
-              class="inline-block rounded-full text-neutral-400 ml-1"
               :class="
                 clsx(
                   themeClasses(
@@ -82,6 +83,7 @@
                   ),
                 )
               "
+              class="inline-block rounded-full text-neutral-400 ml-1"
               @click.prevent.stop="closeTab(tab)"
             >
               <Icon name="x" size="xs" />
@@ -310,6 +312,7 @@ function registerTab(slug: string, component: TabGroupItemDefinition) {
     selectTab(slug);
   }
 }
+
 function unregisterTab(slug: string) {
   if (unmounting.value) return;
   orderedTabSlugs.value = _.without(orderedTabSlugs.value, slug);
@@ -345,6 +348,7 @@ function clickedTab(event: MouseEvent, slug?: string | null) {
 
 const pendingTabSlug = ref<string | undefined>();
 const lastSelectedTabIndex = ref(0);
+
 function selectTab(slug?: string | null) {
   if (unmounting.value) return;
   if (selectedTabSlug.value === slug) return;
@@ -478,6 +482,7 @@ function fixOverflowDropdown() {
   if (!tabListEl) return;
   showOverflowDropdown.value = tabListEl.scrollWidth > tabListEl.clientWidth;
 }
+
 onMounted(fixOverflowDropdown);
 onMounted(() => {
   selectTab(selectedTabSlug.value);
