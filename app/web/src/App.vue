@@ -24,52 +24,16 @@
           class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
         ></canvas>
       </Teleport>
-      <Modal
-        ref="firstTimeModalRef"
-        noExit
-        size="2xl"
-        title="Welcome To System Initiative!"
-      >
-        <!-- TODO(Wendy) - PLACEHOLDER VIDEO, please replace with our video before pushing to prod! -->
-        <iframe
-          class="aspect-video"
-          src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=vdaJeJEq66s6wYTO"
-          title="YouTube video player"
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen
-        ></iframe>
-        <div class="flex flex-row gap-sm mt-xs">
-          <VormInput
-            v-model="firstTimeModalCheckbox"
-            class="flex flex-row-reverse gap-0 italic"
-            type="checkbox"
-            label="Don't show me this video again."
-            inlineLabel
-          />
-          <VButton
-            class="flex-grow"
-            label="Let's Get Started!"
-            @click="closeFirstTimeModal"
-          />
-        </div>
-      </Modal>
     </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
-import {
-  Modal,
-  VButton,
-  VormInput,
-  useThemeContainer,
-} from "@si/vue-lib/design-system";
+import { useThemeContainer } from "@si/vue-lib/design-system";
 import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
 import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
 import { useHead } from "@vueuse/head";
@@ -80,9 +44,6 @@ import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import RealtimeConnectionStatus from "./components/RealtimeConnectionStatus.vue";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
-import { useFeatureFlagsStore } from "./store/feature_flags.store";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 useCustomFontsLoadedProvider();
 
@@ -127,44 +88,6 @@ const reconnectAuthReqStatus = authStore.getRequestStatus("AUTH_RECONNECT");
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
-
-const firstTimeModalFired = ref(false);
-const firstTimeModalRef = ref<InstanceType<typeof Modal>>();
-
-watch(restoreAuthReqStatus, async () => {
-  if (!featureFlagsStore.FIRST_TIME_TUTORIAL_MODAL) return;
-
-  if (restoreAuthReqStatus.value.isSuccess) {
-    if (authStore.user) {
-      const res = await fetch(
-        `${import.meta.env.VITE_AUTH_API_URL}/users/${
-          authStore.user.pk
-        }/firstTimeModal`,
-      );
-
-      const data = await res.json();
-
-      if (!firstTimeModalFired.value && data.firstTimeModal) {
-        firstTimeModalRef.value?.open();
-        firstTimeModalFired.value = true;
-      }
-    }
-  }
-});
-
-const firstTimeModalCheckbox = ref(false);
-
-const closeFirstTimeModal = () => {
-  if (authStore.user && firstTimeModalCheckbox.value) {
-    fetch(
-      `${import.meta.env.VITE_AUTH_API_URL}/users/${
-        authStore.user.pk
-      }/dismissFirstTimeModal`,
-      { method: "POST" },
-    );
-  }
-  firstTimeModalRef.value?.close();
-};
 
 // initialize the realtime store - which will watch for auth and open/close websocket
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
