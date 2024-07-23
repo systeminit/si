@@ -12,7 +12,7 @@
   >
     <!-- selection box outline -->
     <v-rect
-      v-if="isHovered || isSelected || highlightParent || highlightAsNewParent"
+      v-if="isHovered || highlightParent || highlightAsNewParent"
       :config="{
         width: nodeWidth + 8,
         height: nodeHeight + 8,
@@ -20,7 +20,7 @@
         y: -4 - nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 3 : 1,
+        strokeWidth: 1,
         listening: false,
       }"
     />

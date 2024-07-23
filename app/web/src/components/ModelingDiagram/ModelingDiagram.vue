@@ -177,9 +177,29 @@ overflow hidden */
             "
           />
         </v-layer>
+
+        <!-- selection outline -->
+        <v-layer>
+          <v-rect
+            v-for="rect in selectionRects"
+            :key="`${rect.x}_${rect.y}`"
+            :config="{
+              x: rect.x - 9,
+              y: rect.y - 9,
+              width: rect.width + 18,
+              height: rect.height + 18,
+              cornerRadius: CORNER_RADIUS + 5,
+              stroke: SELECTION_COLOR,
+              strokeWidth: 3,
+              listening: false,
+            }"
+          >
+          </v-rect>
+        </v-layer>
       </v-stage>
 
       <DiagramHelpModal ref="helpModalRef" />
+      RECTS: {{ selectionRects }}
     </div>
   </div>
 </template>
@@ -278,6 +298,7 @@ import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INNER_Y_BOUNDARY_OFFSET,
   MIN_NODE_DIMENSION,
+  GROUP_HEADER_BOTTOM_MARGIN,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -2693,6 +2714,29 @@ const allElementsByKey = computed(() =>
 function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
+
+// Selection rects
+const selectionRects = computed(() => {
+  const rects = [] as (Size2D & Vector2d)[];
+  currentSelectionKeys.value.forEach((uniqueKey) => {
+    const isGroup = uniqueKey.startsWith("g-");
+    const id = uniqueKey.slice(2); // remove the prefix
+    const rect = componentsStore.renderedGeometriesByComponentId[id];
+    if (rect) {
+      const r = structuredClone(rect);
+      r.x -= r.width / 2;
+      if (isGroup) {
+        // deal with top bar height outside the component's
+        // designated height
+        const adjust = 28 + GROUP_HEADER_BOTTOM_MARGIN * 2;
+        r.height += adjust;
+        r.y -= adjust;
+      }
+      rects.push(r);
+    }
+  });
+  return rects;
+});
 
 function getDiagramElementKeyForComponentId(
   componentId?: ComponentId | null,
