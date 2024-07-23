@@ -34,7 +34,7 @@ pub async fn sync(
             ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
         (
             module_index_client.list_latest_modules().await?,
-            module_index_client.list_module_details().await?,
+            module_index_client.list_builtins().await?,
         )
     };
 
