@@ -3669,6 +3669,17 @@ impl Component {
                 incoming.to_input_socket_id,
             )
             .await?;
+
+            WsEvent::connection_deleted(
+                ctx,
+                incoming.from_component_id,
+                incoming.to_component_id,
+                incoming.from_output_socket_id,
+                incoming.to_input_socket_id,
+            )
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         }
 
         for outgoing in &original_outgoing_connections {
@@ -3679,6 +3690,17 @@ impl Component {
                 outgoing.to_component_id,
                 outgoing.to_input_socket_id,
             )
+            .await?;
+
+            WsEvent::connection_deleted(
+                ctx,
+                outgoing.from_component_id,
+                outgoing.to_component_id,
+                outgoing.from_output_socket_id,
+                outgoing.to_input_socket_id,
+            )
+            .await?
+            .publish_on_commit(ctx)
             .await?;
         }
 
