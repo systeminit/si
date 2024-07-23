@@ -1443,6 +1443,17 @@ impl Component {
         Ok(components)
     }
 
+    pub async fn list_to_be_deleted(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        let mut to_be_deleted = vec![];
+        let components = Self::list(ctx).await?;
+        for component in components {
+            if component.to_delete {
+                to_be_deleted.push(component.id());
+            }
+        }
+        Ok(to_be_deleted)
+    }
+
     pub async fn schema_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -2590,9 +2601,13 @@ impl Component {
     ///
     /// 1. It doesn't have a populated resource.
     /// 2. It is not feeding data to a [`Component`] that has a populated resource.
-    #[instrument(level = "info", skip_all)]
-    async fn allowed_to_be_removed(&self, ctx: &DalContext) -> ComponentResult<bool> {
+    #[instrument(level = "debug", skip_all)]
+    pub async fn allowed_to_be_removed(&self, ctx: &DalContext) -> ComponentResult<bool> {
         if self.resource(ctx).await?.is_some() {
+            debug!(
+                "component {:?} cannot be removed because it has a resource",
+                self.id
+            );
             return Ok(false);
         }
 
@@ -2627,118 +2642,8 @@ impl Component {
             }
         }
 
+        debug!("component {:?} can be removed", self.id,);
         Ok(true)
-    }
-
-    /// Find all [`Components`](Component) have an outgoing connection from [`self`](Component),
-    /// including inferred connections from frames, that have a populated resource.
-    ///
-    /// This is used to determine if [`self`](Component) can be removed.
-    #[instrument(level = "info", skip_all)]
-    async fn find_outgoing_connections_with_resources(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let mut blocking_component_ids = Vec::new();
-
-        // Check all outgoing connections.
-        let outgoing_connections = self.outgoing_connections(ctx).await?;
-        for outgoing_connection in outgoing_connections {
-            let connected_to_component =
-                Self::get_by_id(ctx, outgoing_connection.to_component_id).await?;
-            if connected_to_component.resource(ctx).await?.is_some() {
-                blocking_component_ids.push(connected_to_component.id());
-            }
-        }
-
-        // Check all inferred outgoing connections, which accounts for up and down configuration
-        // frames alike due to the direction of the connection.
-        let inferred_outgoing_connections = self.inferred_outgoing_connections(ctx).await?;
-        for inferred_outgoing in inferred_outgoing_connections {
-            let connected_to_component =
-                Self::get_by_id(ctx, inferred_outgoing.to_component_id).await?;
-            if connected_to_component.resource(ctx).await?.is_some() {
-                blocking_component_ids.push(connected_to_component.id());
-            }
-        }
-
-        debug!(
-            "component {:?} cannot be removed because of blocking components: {:?}",
-            self.id(),
-            &blocking_component_ids
-        );
-        Ok(blocking_component_ids)
-    }
-
-    /// Find all components that are set to be deleted (i.e. have the `to_delete` flag set to true)
-    /// that are incoming connections, including inferred incoming connections, to
-    /// [`self`](Component).
-    #[instrument(level = "info", skip_all)]
-    async fn find_incoming_connections_waiting_to_be_removed(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let mut needy_components = vec![];
-
-        // Check all incoming connections.
-        let incoming_connections = self.incoming_connections(ctx).await?;
-        for incoming in incoming_connections {
-            let connected = Self::get_by_id(ctx, incoming.from_component_id).await?;
-            if connected.to_delete() {
-                needy_components.push(connected.id());
-            }
-        }
-
-        // Check all inferred incoming connections, which includes frames.
-        let inferred_incoming = self.inferred_incoming_connections(ctx).await?;
-        for inferred in inferred_incoming {
-            let connected = Self::get_by_id(ctx, inferred.from_component_id).await?;
-            if connected.to_delete() {
-                needy_components.push(connected.id());
-            }
-        }
-
-        debug!(
-            "Incoming connections waiting ot be removed {:?}",
-            &needy_components
-        );
-        Ok(needy_components)
-    }
-
-    /// Find all [`Components`](Component) that have not been allowed to be removed because of
-    /// [`self`](Component) and [`self`](Component) alone (i.e. [`self`](Component) must be the sole
-    /// [`Component`] disallowing their removal).
-    #[instrument(level = "info", skip_all)]
-    pub async fn find_components_to_be_removed(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let maybe_can_be_removed_component_ids = self
-            .find_incoming_connections_waiting_to_be_removed(ctx)
-            .await?;
-
-        // For each component waiting on self, see if anything else is blocking that component from
-        // being removed. If nothing else is blocking that component from removal, we can safely add
-        // it to the list.
-        let mut can_be_removed_component_ids = Vec::new();
-        for maybe_can_be_removed_component_id in maybe_can_be_removed_component_ids {
-            let maybe_can_be_removed_component =
-                Self::get_by_id(ctx, maybe_can_be_removed_component_id).await?;
-            let blocking_component_ids = maybe_can_be_removed_component
-                .find_outgoing_connections_with_resources(ctx)
-                .await?;
-            if blocking_component_ids.is_empty()
-                || (blocking_component_ids.len() == 1 && blocking_component_ids.contains(&self.id))
-            {
-                can_be_removed_component_ids.push(maybe_can_be_removed_component_id);
-            }
-        }
-
-        debug!(
-            ?can_be_removed_component_ids,
-            "finished collecting components that can be removed"
-        );
-        Ok(can_be_removed_component_ids)
     }
 
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
