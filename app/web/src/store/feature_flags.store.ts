@@ -8,6 +8,7 @@ const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   FIRST_TIME_TUTORIAL_MODAL: "first_time_tutorial_modal",
+  DEV_SLICE_REBASING: "dev-slice-rebasing",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
