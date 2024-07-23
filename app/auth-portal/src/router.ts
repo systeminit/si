@@ -11,6 +11,7 @@ import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import WorkspacesPage from "./pages/WorkspacesPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
+import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -59,6 +60,11 @@ export const routerOptions: RouterOptions = {
     },
     { path: "/workspaces", name: "workspaces", component: WorkspacesPage },
     {
+      path: "/default_workspace",
+      name: "default-workspace",
+      component: DefaultWorkspacePage,
+    },
+    {
       path: "/workspace/:workspaceId",
       name: "workspace-settings",
       component: WorkspaceDetailsPage,
@@ -77,7 +83,7 @@ export const routerOptions: RouterOptions = {
         // see App.vue for logic saving this redirect location
         const savedPath = storage.getItem("SI-LOGIN-REDIRECT");
         storage.removeItem("SI-LOGIN-REDIRECT");
-        return savedPath || { name: "workspaces" };
+        return savedPath || { name: "default-workspace" };
       },
     },
     { path: "/:catchAll(.*)", name: "404", component: NotFoundPage },
