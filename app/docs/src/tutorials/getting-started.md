@@ -1,5 +1,7 @@
 # Getting Started
 
+<div style="position: relative; padding-bottom: calc(59.44589439871512% + 41px); height: 0; width: 100%;"><iframe src="https://demo.arcade.software/ANY7bzGXVx5cTLcqJbL4?embed&show_copy_link=true" title="Getting Started 2024-07-22" frameborder="0" loading="lazy" webkitallowfullscreen mozallowfullscreen allowfullscreen allow="clipboard-write" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;color-scheme: light;"></iframe></div>
+
 Welcome to System Initiative! This tutorial will teach you how to use System Initiative to model your infrastructure. We will be deploying a single free-tier EC2 instance in AWS, and cleaning it up. There should be no cost to you.
 
 To follow along, you'll need three things:
@@ -8,7 +10,7 @@ To follow along, you'll need three things:
 
 2. An [AWS account that allows you to create free-tier resources](https://aws.amazon.com/free/), such as EC2 instances.
 
-3. Your System Initiative workspace open in another window or tab.
+3. Your System Initiative workspace open in another window.
 
 ## Creating a change set
 
@@ -97,11 +99,11 @@ You'll be prompted with a dialog to confirm you want to take these two actions. 
 
 Applying the change set redirects you to the `HEAD` change set, and enqueues your actions. The proposed changes panel on the right side of the screen shows your two pending actions. As the actions are run on AWS, their resulting [resources](../reference/vocabulary#resource) are added to each model. As this happens, the actions will disappear from the proposed changes list.
 
-Once both actions have been run, the changes panel will be empty.
+Once both actions have been run, you'll see some confetti, and the changes panel will be empty.
 
 ## Review the si-tutorial EC2 Instances resource data
 
-Select the `si-tutorial EC2 Instance`. Then select the Resource sub-panel on the right side panel. You will see all the information about the EC2 Instance we created in AWS.
+Select the `si-tutorial EC2 Instance`. Then select the `Resource` sub-panel on the right side panel. You will see all the information about the EC2 Instance we created in AWS.
 
 Congratulations! You have created your first resources with System Initiative.
 
@@ -124,7 +126,7 @@ After the two delete actions are run, you will have a blank workspace, and no mo
 Congratulations - you've created your first resources with System Initiative. You learned how to:
 
 - Create new change sets
-- Add a credential component to the diagram canvas
+- Add a credentials and secrets
 - Add components to the diagram canvas
 - Configure components by setting their properties
 - Connect components input and output sockets to dynamically configure them
