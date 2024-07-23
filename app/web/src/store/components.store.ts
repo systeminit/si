@@ -522,11 +522,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           diagramEdges(): DiagramEdgeDef[] {
-            return _.filter(this.allEdges, (edge) => {
-              return (
-                !!this.componentsById[edge.toComponentId] &&
-                !!this.componentsById[edge.fromComponentId]
-              );
+            // filter out edge data if neither component exists
+            // or the toComponent Socket doesn't exist
+            return this.allEdges.filter((edge) => {
+              const toComponent = this.componentsById[edge.toComponentId];
+              if (!this.componentsById[edge.fromComponentId]) return false;
+              if (!toComponent) return false;
+              else if (
+                !toComponent.sockets.find((s) => s.id === edge.toSocketId)
+              )
+                return false;
+              return true;
             });
           },
 
