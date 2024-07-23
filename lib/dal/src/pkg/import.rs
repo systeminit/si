@@ -465,13 +465,17 @@ async fn import_schema(
                     // find if there's an existing module
                     // if there is, find the asssociated schemas
                     if let Some(found) = Module::find_by_root_hash(ctx, past_hash).await? {
-                        existing_schema =
-                            found.list_associated_schemas(ctx).await?.into_iter().next();
+                        match found.list_associated_schemas(ctx).await?.into_iter().next() {
+                            Some(existing) => {
+                                existing_schema = Some(existing);
+                                break;
+                            }
+                            None => continue,
+                        }
                     }
                 }
             }
         }
-
         let data = schema_spec
             .data()
             .ok_or(PkgError::DataNotFound("schema".into()))?;
