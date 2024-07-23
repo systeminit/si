@@ -23,7 +23,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaId, SchemaVariant,
-    SchemaVariantError, Timestamp, TransactionsError,
+    SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -423,37 +423,23 @@ impl Module {
     pub async fn sync(
         ctx: &DalContext,
         latest_modules: Vec<frontend_types::LatestModule>,
+        past_hashes_by_module_id: HashMap<String, HashSet<String>>,
     ) -> ModuleResult<frontend_types::SyncedModules> {
         let start = Instant::now();
 
         // Collect all user facing schema variants. We need to see what can be upgraded.
         let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
 
-        // Find all local hashes and mark all seen schemas.
-        let mut local_hashes = HashMap::new();
-        let mut seen_schema_ids = HashSet::new();
-        for schema_variant in &schema_variants {
-            let schema_id: SchemaId = schema_variant.schema_id.into();
-            seen_schema_ids.insert(schema_id);
-
-            if let Entry::Vacant(entry) = local_hashes.entry(schema_id) {
-                match Self::find_for_member_id(ctx, schema_id).await? {
-                    Some(found_local_module) => {
-                        entry.insert(found_local_module.root_hash().to_owned());
-                    }
-                    None => {
-                        error!(%schema_id, %schema_variant.schema_variant_id, "found orphaned schema (has no corresponding module)");
-                    }
-                }
-            }
-        }
-
-        // Begin populating synced modules.
+        // Initialize result struct
         let mut synced_modules = frontend_types::SyncedModules::new();
 
-        // Group the latest hashes by schema. Populate installable modules along the way.
+        // For each latest module
+        // if not for existing schema, is installable
+        // if for existing locked schema variant, and hash != hash for module of variant, mark variant as upgradeable
+        // if for existing schema variants, but they are not upgradeable, do nothing
         let mut latest_modules_by_schema: HashMap<SchemaId, frontend_types::LatestModule> =
             HashMap::new();
+
         for latest_module in latest_modules {
             let schema_id: SchemaId = latest_module
                 .schema_id()
@@ -476,39 +462,49 @@ impl Module {
                 }
             }
 
-            if !seen_schema_ids.contains(&schema_id) {
-                synced_modules.installable.push(latest_module.to_owned());
-            }
-        }
-        debug!(?synced_modules.installable, "collected installable modules");
+            // Compute upgradeable variants
 
-        // Populate upgradeable modules.
-        for schema_variant in schema_variants {
-            let schema_id: SchemaId = schema_variant.schema_id.into();
-            match (
-                latest_modules_by_schema.get(&schema_id),
-                local_hashes.get(&schema_id),
-            ) {
-                (Some(latest_module), Some(local_hash)) => {
-                    debug!(?latest_module, %local_hash, schema_variant.is_locked, "comparing hashes");
-                    if &latest_module.latest_hash != local_hash && schema_variant.is_locked {
-                        synced_modules
-                            .upgradeable
-                            .insert(schema_variant.schema_variant_id, latest_module.to_owned());
-                    }
+            // Due to rust lifetimes, we need to actually create a set here to reference in unwrap.
+            // The Alternative would be to clone the existing hashset every loop, which is way worse.
+            let empty_set = HashSet::new();
+            let past_hashes = past_hashes_by_module_id
+                .get(&latest_module.id)
+                .unwrap_or(&empty_set);
+
+            // A module is for a schema if its schema id matches the other schema
+            // or if the hash of the package of that schema is contained in the latest hashes list
+            let mut possible_upgrade_targets = vec![];
+            for schema_variant in &schema_variants {
+                let this_schema_id: SchemaId = schema_variant.schema_id.into();
+                let variant_id: SchemaVariantId = schema_variant.schema_variant_id.into();
+
+                let Some(variant_module) = Self::find_for_member_id(ctx, variant_id).await? else {
+                    continue;
+                };
+
+                if this_schema_id == schema_id || past_hashes.contains(&variant_module.root_hash) {
+                    possible_upgrade_targets.push((schema_variant, variant_module));
                 }
-                (maybe_latest, maybe_local) => {
-                    trace!(
-                        %schema_id,
-                        %schema_variant.schema_variant_id,
-                        %schema_variant.schema_name,
-                        ?maybe_latest,
-                        ?maybe_local,
-                        "skipping since there's incomplete data for determining if schema variant can be updated (perhaps module was not prompted to builtin?)"
+            }
+
+            if possible_upgrade_targets.is_empty() {
+                synced_modules.installable.push(latest_module.to_owned());
+                continue;
+            }
+
+            for (upgradeable_variant, variant_module) in possible_upgrade_targets {
+                if latest_module.latest_hash != variant_module.root_hash
+                    && upgradeable_variant.is_locked
+                {
+                    synced_modules.upgradeable.insert(
+                        upgradeable_variant.schema_variant_id,
+                        latest_module.to_owned(),
                     );
                 }
             }
         }
+
+        debug!(?synced_modules.installable, "collected installable modules");
         debug!(?synced_modules.upgradeable, "collected upgradeable modules");
 
         info!("syncing modules took: {:?}", start.elapsed());
