@@ -7,11 +7,7 @@
     />
     <template #top>
       <SidebarSubpanelTitle icon="component">
-        <template #label>
-          <div class="flex flex-row gap-xs">
-            <div>Install New Assets</div>
-          </div>
-        </template>
+        <template #label> Install New Assets</template>
       </SidebarSubpanelTitle>
       <SiSearch
         ref="searchRef"

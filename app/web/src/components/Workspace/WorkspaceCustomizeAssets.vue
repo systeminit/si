@@ -10,7 +10,7 @@
     <template #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
-          <CustomizeTabs ref="tabs" tabContentSlug="assets">
+          <CustomizeTabs ref="tabs" :tabContentSlug="tabContentSlug">
             <template #assets>
               <AssetListPanel />
             </template>
@@ -141,6 +141,7 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
+import { useRoute } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import router from "@/router";
@@ -249,4 +250,20 @@ watch(
     }
   },
 );
+
+const route = useRoute();
+// Compute the initial tab content based on the route. This is necessary because the "packages" tab is mounted on a
+// different parent, so moving to other tabs from it causes a remount
+const tabContentSlug = computed<"assets" | "newassets">(() => {
+  const lab_type =
+    route.name?.toString().match(/workspace-lab-(.*)/)?.[1] ?? "";
+
+  // This looks awkward because of the strict return type. We can't return a generic string from this func.
+  switch (lab_type) {
+    case "newassets":
+      return "newassets";
+    default:
+      return "assets";
+  }
+});
 </script>
