@@ -157,6 +157,23 @@ impl User {
         Ok(())
     }
 
+    pub async fn is_first_user(&self, ctx: &DalContext) -> UserResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt("SELECT pk FROM users ORDER BY created_at ASC LIMIT 1", &[])
+            .await?;
+
+        match row {
+            Some(row) => {
+                let oldest_user_pk: UserPk = row.get("pk");
+                Ok(oldest_user_pk == self.pk)
+            }
+            None => Ok(false),
+        }
+    }
+
     pub async fn delete_user_from_workspace(
         ctx: &DalContext,
         user_pk: UserPk,

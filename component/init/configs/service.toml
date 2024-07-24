@@ -1,4 +1,6 @@
 pkgs_path = "/tmp"
+create_workspace_permissions = "$SI_WORKSPACE_PERMISSIONS"
+create_workspace_allowlist = [ "$SI_WORKSPACE_ALLOW_LIST" ]
 
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"

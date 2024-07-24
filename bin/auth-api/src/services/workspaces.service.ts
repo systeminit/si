@@ -50,7 +50,6 @@ export async function createWorkspace(
     instanceUrl,
     instanceEnvType: newWorkspace.instanceEnvType,
     isDefaultWorkspace: newWorkspace.isDefault,
-    // TODO: track env type and other data when it becomes useful
   });
 
   await prisma.workspaceMembers.create({
