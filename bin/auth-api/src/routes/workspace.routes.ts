@@ -1,9 +1,14 @@
+import _ from "lodash";
 import { nanoid } from "nanoid";
-import { z } from 'zod';
+import { z } from "zod";
 import { InstanceEnvType } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
-import { getUserById, refreshUserAuth0Profile } from "../services/users.service";
+import {
+  getUserByEmail,
+  getUserById,
+  refreshUserAuth0Profile,
+} from "../services/users.service";
 import {
   createWorkspace,
   getUserWorkspaces,
@@ -24,7 +29,7 @@ import { router } from ".";
 router.get("/workspaces", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
   ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
 });
@@ -32,23 +37,28 @@ router.get("/workspaces", async (ctx) => {
 // :workspaceId named param handler - little easier for TS this way than using router.param
 async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
   if (!ctx.params.workspaceId) {
-    throw new Error('Only use this fn with routes containing :workspaceId param');
+    throw new Error(
+      "Only use this fn with routes containing :workspaceId param",
+    );
   }
 
   // ensure user is logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   // find workspace by id
   const workspace = await getWorkspaceById(ctx.params.workspaceId);
   if (!workspace) {
-    throw new ApiError('NotFound', 'Workspace not found');
+    throw new ApiError("NotFound", "Workspace not found");
   }
 
-  const memberRole = await userRoleForWorkspace(ctx.state.authUser.id, workspace.id);
+  const memberRole = await userRoleForWorkspace(
+    ctx.state.authUser.id,
+    workspace.id,
+  );
   if (!memberRole) {
-    throw new ApiError('Forbidden', 'You do not have access to that workspace');
+    throw new ApiError("Forbidden", "You do not have access to that workspace");
   }
 
   return workspace;
@@ -61,7 +71,7 @@ router.get("/workspaces/:workspaceId", async (ctx) => {
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   const workspace = await handleWorkspaceIdParam(ctx);
@@ -71,17 +81,63 @@ router.delete("/workspaces/:workspaceId", async (ctx) => {
   ctx.body = "";
 });
 
+router.post("/workspaces/setup-production-workspace", async (ctx) => {
+  if (!ctx.state.authUser) {
+    throw new ApiError("Unauthorized", "You are not logged in");
+  }
+
+  if (!ctx.state.authUser.email.includes("@systeminit.com")) {
+    throw new ApiError(
+      "Forbidden",
+      "You are not allowed to perform this operation",
+    );
+  }
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      userEmail: z.string(),
+    }),
+  );
+
+  const user = await getUserByEmail(reqBody.userEmail);
+  if (user) {
+    const userWorkspaces = await getUserWorkspaces(user.id);
+    const hasDefaultWorkspace = _.head(
+      _.filter(
+        userWorkspaces,
+        (w) => w.isDefault && w.creatorUserId === user.id,
+      ),
+    );
+
+    const workspaceDetails = await createWorkspace(
+      user,
+      InstanceEnvType.SI,
+      "https://app.systeminit.com",
+      `${user.nickname}'s Production Workspace Derp`,
+      hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
+    );
+
+    ctx.body = {
+      newWorkspace: workspaceDetails,
+    };
+  }
+});
+
 router.post("/workspaces/new", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
-  const reqBody = validate(ctx.request.body, z.object({
-    instanceUrl: z.string().url(),
-    displayName: z.string(),
-    isDefault: z.boolean(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      instanceUrl: z.string().url(),
+      displayName: z.string(),
+      isDefault: z.boolean(),
+    }),
+  );
 
   let workspaceEnvType;
   if (reqBody.instanceUrl === "https://app.systeminit.com") {
@@ -92,8 +148,7 @@ router.post("/workspaces/new", async (ctx) => {
     workspaceEnvType = InstanceEnvType.PRIVATE;
   }
 
-  const workspaceDetails = await
-  createWorkspace(
+  const workspaceDetails = await createWorkspace(
     ctx.state.authUser,
     workspaceEnvType,
     reqBody.instanceUrl,
@@ -110,15 +165,18 @@ router.post("/workspaces/new", async (ctx) => {
 router.patch("/workspaces/:workspaceId", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   const workspace = await handleWorkspaceIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    instanceUrl: z.string().url(),
-    displayName: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      instanceUrl: z.string().url(),
+      displayName: z.string(),
+    }),
+  );
 
   await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName);
 
@@ -126,16 +184,16 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
 });
 
 export type Member = {
-  userId: string,
-  email: string,
-  nickname: string,
-  role: string,
-  signupAt: Date | null,
+  userId: string;
+  email: string;
+  nickname: string;
+  role: string;
+  signupAt: Date | null;
 };
 router.get("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   const workspace = await handleWorkspaceIdParam(ctx);
@@ -159,14 +217,17 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 router.post("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   const workspace = await handleWorkspaceIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    email: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      email: z.string(),
+    }),
+  );
 
   await inviteMember(reqBody.email, workspace.id);
 
@@ -189,14 +250,17 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', "You are not logged in");
+    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   const workspace = await handleWorkspaceIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    email: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      email: z.string(),
+    }),
+  );
 
   await removeUser(reqBody.email, workspace.id);
 
@@ -226,34 +290,45 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
     await refreshUserAuth0Profile(authUser);
     // then throw an error
     if (!authUser.emailVerified) {
-      throw new ApiError('Unauthorized', 'EmailNotVerified', "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.");
+      throw new ApiError(
+        "Unauthorized",
+        "EmailNotVerified",
+        "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.",
+      );
     }
   }
 
   // generate a new single use authentication code that we will send to the instance
   const connectCode = nanoid(24);
-  await setCache(`auth:connect:${connectCode}`, {
-    workspaceId: workspace.id,
-    userId: authUser.id,
-  }, { expiresIn: 60 });
+  await setCache(
+    `auth:connect:${connectCode}`,
+    {
+      workspaceId: workspace.id,
+      userId: authUser.id,
+    },
+    { expiresIn: 60 },
+  );
 
   // redirect to instance (frontend) with single use auth code
   ctx.redirect(`${workspace.instanceUrl}/auth-connect?code=${connectCode}`);
 });
 
 router.post("/complete-auth-connect", async (ctx) => {
-  const reqBody = validate(ctx.request.body, z.object({
-    code: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      code: z.string(),
+    }),
+  );
 
   const connectPayload = await getCache(`auth:connect:${reqBody.code}`, true);
-  if (!connectPayload) throw new ApiError('Conflict', 'Invalid authentication code');
+  if (!connectPayload) throw new ApiError("Conflict", "Invalid authentication code");
 
   const workspace = await getWorkspaceById(connectPayload.workspaceId);
-  if (!workspace) throw new ApiError('Conflict', 'Workspace no longer exists');
+  if (!workspace) throw new ApiError("Conflict", "Workspace no longer exists");
 
   const user = await getUserById(connectPayload.userId);
-  if (!user) throw new ApiError('Conflict', 'User no longer exists');
+  if (!user) throw new ApiError("Conflict", "User no longer exists");
 
   const token = await createSdfAuthToken(user.id, workspace.id);
 
@@ -266,10 +341,13 @@ router.post("/complete-auth-connect", async (ctx) => {
 
 router.get("/auth-reconnect", async (ctx) => {
   if (!ctx.state.authUser) {
-    throw new ApiError('Unauthorized', 'You must be logged in');
+    throw new ApiError("Unauthorized", "You must be logged in");
   }
   if (!ctx.state.authWorkspace) {
-    throw new ApiError('Unauthorized', 'You must pass a workspace-scoped auth token to use this endpoint');
+    throw new ApiError(
+      "Unauthorized",
+      "You must pass a workspace-scoped auth token to use this endpoint",
+    );
   }
 
   ctx.body = {
