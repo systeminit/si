@@ -78,7 +78,6 @@
         size="2xl"
         title="Welcome To System Initiative!"
       >
-        <!-- TODO(Wendy) - PLACEHOLDER VIDEO, please replace with our video before pushing to prod! -->
         <iframe
           class="aspect-video"
           src="https://www.youtube.com/embed/7vrIJmP49IE?si=Kknr-Qm5DDBDXjTu"
