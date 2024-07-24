@@ -1,32 +1,24 @@
 name: Try Build
 
-on: issue_comment
+on:
+  issue_comment:
+  workflow_call:
 
-permissions:
-  issues: write
+permissions: write-all
 
 env:
-  branch: ${{ github.head_ref || github.ref_name }}
+  branch: ${{ github.ref_name }}
 
 jobs:
   try:
     runs-on: ubuntu-latest
     if: startsWith(github.event.comment.body, '/try')
-    steps:
-      - name: Check for try
-        id: command
-        uses: xt0rted/slash-command-action@v2
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          command: try
-          reaction-type: "eyes"
-      - name: Run build
-        uses: "buildkite/trigger-pipeline-action@v2.1.0"
-        with:
-          buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
-          pipeline: "si/merge-queue"
-          branch: $branch
-          commit: "HEAD"
-          message:  ":github: Try for branch $branch"
-          ignore_pipeline_branch_filter: true
-          send_pull_request: true
+    uses: "buildkite/trigger-pipeline-action@v2.1.0"
+    with:
+      buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
+      pipeline: "si/merge-queue"
+      branch: $branch
+      commit: "HEAD"
+      message:  ":github: Try for branch $branch"
+      ignore_pipeline_branch_filter: true
+      send_pull_request: true
