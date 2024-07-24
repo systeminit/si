@@ -23,6 +23,7 @@ pub mod add_action;
 pub mod apply_change_set;
 mod begin_abandon_approval_process;
 mod begin_approval_process;
+mod conflicts_summary;
 pub mod create_change_set;
 pub mod list_open_change_sets;
 mod merge_vote;
@@ -131,5 +132,9 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/status_with_base",
             post(status_with_base::status_with_base),
+        )
+        .route(
+            "/conflicts_summary",
+            post(conflicts_summary::conflicts_summary),
         )
 }

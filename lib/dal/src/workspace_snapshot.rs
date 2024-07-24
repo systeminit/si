@@ -50,11 +50,12 @@ use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use self::graph::ConflictsAndUpdates;
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+use self::node_weight::{ContentNodeWeight, NodeWeightDiscriminants, OrderingNodeWeight};
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
+use crate::attribute::value::AttributeValueError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
@@ -67,8 +68,8 @@ use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    pk, AttributeValueId, ChangeSet, Component, ComponentError, ComponentId, Workspace,
-    WorkspaceError,
+    pk, AttributeValue, AttributeValueId, ChangeSet, Component, ComponentError, ComponentId,
+    Workspace, WorkspaceError,
 };
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
@@ -90,6 +91,8 @@ pub enum WorkspaceSnapshotError {
     Action(#[from] Box<ActionError>),
     #[error("Attribute Prototype Argument: {0}")]
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
     #[error("change set error: {0}")]
@@ -2197,5 +2200,78 @@ impl WorkspaceSnapshot {
         }
 
         Ok(None)
+    }
+
+    /// Return the location of the conflict.
+    pub async fn associated_component_id(
+        &self,
+        ctx: &DalContext,
+        node: NodeIndex,
+    ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        let node_weight = self.get_node_weight(node).await?;
+        match node_weight {
+            NodeWeight::AttributePrototypeArgument(_) => todo!(),
+            NodeWeight::AttributeValue(value) => Ok(Some(
+                AttributeValue::component_id(ctx, value.id.into())
+                    .await
+                    .map_err(Box::new)?,
+            )),
+            NodeWeight::Content(content) => self.content_node_component_id(ctx, node, content),
+            NodeWeight::Component(component) => Ok(Some(component.id().into())),
+            NodeWeight::Ordering(_) => todo!(),
+
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::Func(_)
+            | NodeWeight::FuncArgument(_)
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_) => Ok(None),
+        }
+    }
+
+    async fn content_node_component_id(
+        &self,
+        ctx: &DalContext,
+        node: NodeIndex,
+        content: ContentNodeWeight,
+    ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        match ContentAddressDiscriminants::from(content.content_address()) {
+            // Component
+            ContentAddressDiscriminants::ValidationOutput => todo!(),
+
+            // Schema variant or component
+            ContentAddressDiscriminants::AttributePrototype => todo!(),
+            ContentAddressDiscriminants::StaticArgumentValue => todo!(),
+            ContentAddressDiscriminants::ValidationPrototype => todo!(),
+
+            // Modules / schema / schema variants / functions
+            ContentAddressDiscriminants::Module
+            | ContentAddressDiscriminants::Schema
+            | ContentAddressDiscriminants::SchemaVariant
+            | ContentAddressDiscriminants::ActionPrototype
+            | ContentAddressDiscriminants::Prop
+            | ContentAddressDiscriminants::InputSocket
+            | ContentAddressDiscriminants::OutputSocket
+            | ContentAddressDiscriminants::Func
+            | ContentAddressDiscriminants::FuncArg
+            | ContentAddressDiscriminants::Root
+            | ContentAddressDiscriminants::Secret => Ok(None),
+
+            // These cases don't exist anymore and will be removed
+            ContentAddressDiscriminants::DeprecatedAction
+            | ContentAddressDiscriminants::DeprecatedActionBatch
+            | ContentAddressDiscriminants::DeprecatedActionRunner => Ok(None),
+
+            discriminant @ (ContentAddressDiscriminants::JsonValue
+            | ContentAddressDiscriminants::Component) => {
+                Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    discriminant.to_string(),
+                    NodeWeightDiscriminants::Content.to_string(),
+                )
+                .into())
+            }
+        }
     }
 }

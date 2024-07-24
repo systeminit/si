@@ -68,6 +68,7 @@ pub enum NodeWeightError {
     // ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
+    /// (ContentAddress, NodeWeightDiscriminants)
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
     #[error("Missing Key for Child Entry {0}")]
