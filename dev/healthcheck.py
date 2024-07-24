@@ -62,8 +62,7 @@ def detect_docker_engine() -> int:
 def detect_docker_compose() -> int:
     result = subprocess.run(
         [
-            "docker",
-            "compose",
+            "docker-compose",
             "version",
         ],
         capture_output=True,
