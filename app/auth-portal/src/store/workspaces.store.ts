@@ -106,6 +106,17 @@ export const useWorkspacesStore = defineStore("workspaces", {
         },
       });
     },
+    async SETUP_PRODUCTION_WORKSPACE(userEmail: string) {
+      return new ApiRequest<{
+        newWorkspace: Workspace;
+      }>({
+        method: "post",
+        url: "/workspaces/setup-production-workspace",
+        params: {
+          userEmail,
+        },
+      });
+    },
 
     async DELETE_WORKSPACE(workspaceId: WorkspaceId) {
       return new ApiRequest({

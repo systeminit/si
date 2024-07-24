@@ -12,6 +12,7 @@ import NotFoundPage from "./pages/NotFoundPage.vue";
 import WorkspacesPage from "./pages/WorkspacesPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
 import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
+import SetupProductionUser from "./pages/SetupProductionUser.vue";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -69,6 +70,11 @@ export const routerOptions: RouterOptions = {
       name: "workspace-settings",
       component: WorkspaceDetailsPage,
       props: true,
+    },
+    {
+      path: "/workspace-admin",
+      name: "workspace-admin",
+      component: SetupProductionUser,
     },
 
     // auth api redirects to this route - gives us some flexibility with what to do with user
