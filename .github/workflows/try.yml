@@ -13,7 +13,7 @@ jobs:
         with:
           buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
           pipeline: "system-initiative/si-merge-queue"
-          branch: ${{ github.ref_name }}
-          message:  ":github: Try for branch ${{ github.ref_name }}"
+          branch: ${{ github.head_ref }}
+          message:  ":github: Try for branch ${{ github.head_ref }}"
           ignore_pipeline_branch_filter: true
           send_pull_request: true
