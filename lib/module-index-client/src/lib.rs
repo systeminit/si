@@ -289,4 +289,17 @@ impl ModuleIndexClient {
             .json()
             .await?)
     }
+
+    pub async fn list_module_details(&self) -> ModuleIndexClientResult<ListModulesResponse> {
+        let url = self.base_url.join("modules")?;
+
+        Ok(reqwest::Client::new()
+            .get(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
 }

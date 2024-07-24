@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
-use module_index_types::ModuleDetailsResponse;
+use module_index_types::ListModulesResponse;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -44,12 +44,6 @@ pub struct ListModulesRequest {
     pub name: Option<String>,
     pub kind: Option<si_module::ModuleKind>,
     pub su: Option<bool>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListModulesResponse {
-    modules: Vec<ModuleDetailsResponse>,
 }
 
 pub async fn list_module_route(
