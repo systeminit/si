@@ -4,16 +4,23 @@ on:
   issue_comment:
     types: [created, edited, deleted]
 
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
 jobs:
   try:
     if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
     runs-on: ubuntu-latest
     steps:
+      - uses: xt0rted/pull-request-comment-branch@v2
+        id: comment-branch
       - uses: "buildkite/trigger-pipeline-action@v2.1.0"
         with:
           buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
           pipeline: "system-initiative/si-merge-queue"
-          branch: ${{ github.head_ref }}
-          message:  ":github: Try for branch ${{ github.head_ref }}"
+          branch: ${{ steps.comment-branch.outputs.head_ref }}
+          message:  ":github: Try for branch ${{ steps.comment-branch.outputs.head_ref }}"
           ignore_pipeline_branch_filter: true
           send_pull_request: true
