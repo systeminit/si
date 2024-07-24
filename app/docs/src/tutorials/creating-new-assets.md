@@ -1,5 +1,10 @@
 # Creating a new asset
 
+::: warning
+This tutorial is correct, but incomplete! We'll be updating it soon.
+:::
+
+
 <div style="position: relative; padding-bottom: calc(52.18540712019739% + 41px); height: 0; width: 100%;"><iframe src="https://demo.arcade.software/etd5PHI79RHSeveMR6R3?embed&show_copy_link=true" title="" frameborder="0" loading="lazy" webkitallowfullscreen mozallowfullscreen allowfullscreen allow="clipboard-write" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;color-scheme: light;"></iframe></div>
 
 This tutorial will teach you how to create a new asset. The asset models an
