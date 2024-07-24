@@ -9,6 +9,7 @@ import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useWorkspacesStore } from "./workspaces.store";
 import handleStoreError from "./errors";
+import { AuthApiRequest } from ".";
 
 export type UserId = string;
 
@@ -95,6 +96,19 @@ export const useAuthStore = defineStore("auth", {
             );
           }
         },
+      });
+    },
+
+    async CHECK_FIRST_MODAL(userPk: string) {
+      return new AuthApiRequest<boolean>({
+        url: `/users/${userPk}/firstTimeModal`,
+      });
+    },
+
+    async DISMISS_FIRST_TIME_MODAL(userPk: string) {
+      return new AuthApiRequest<boolean>({
+        method: "post",
+        url: `/users/${userPk}/dismissFirstTimeModal`,
       });
     },
 
