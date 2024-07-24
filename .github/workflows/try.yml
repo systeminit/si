@@ -3,20 +3,16 @@ name: Try Build
 on:
   issue_comment:
     types: [created, edited, deleted]
-  workflow_dispatch:
-
-permissions: write-all
 
 jobs:
-
   try:
-    # if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
+    if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
     runs-on: ubuntu-latest
     steps:
       - uses: "buildkite/trigger-pipeline-action@v2.1.0"
         with:
           buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
-          pipeline: "system-initiative/si/merge-queue"
+          pipeline: "system-initiative/si-merge-queue"
           branch: ${{ github.ref_name }}
           message:  ":github: Try for branch ${{ github.ref_name }}"
           ignore_pipeline_branch_filter: true
