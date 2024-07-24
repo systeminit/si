@@ -155,6 +155,8 @@ export function useChangeSetsStore() {
           });
         },
         async FETCH_STATUS_WITH_BASE(changeSetId: ChangeSetId) {
+          // do not call this with `head`
+          if (changeSetId === "head") return Promise.resolve();
           return new ApiRequest<StatusWithBase>({
             method: "post",
             url: "change_set/status_with_base",
@@ -381,7 +383,7 @@ export function useChangeSetsStore() {
               }
 
               // TODO: jobelenus, I'm worried the WsEvent fires before commit happens
-              if (this.selectedChangeSetId)
+              if (this.selectedChangeSetId && !this.headSelected)
                 this.FETCH_STATUS_WITH_BASE(this.selectedChangeSetId);
 
               // did head get an update and I'm not on head?
