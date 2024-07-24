@@ -87,12 +87,21 @@
           referrerpolicy="strict-origin-when-cross-origin"
           allowfullscreen
         ></iframe>
+        <div class="flex flex-row justify-center pt-5 pb-5">
+          <a
+            href="https://docs.systeminit.com/tutorials/getting-started"
+            target="_blank"
+            class="underline hover:text-blue-50"
+          >
+            Follow along with the tutorial on the documentation site
+          </a>
+        </div>
         <div class="flex flex-row gap-sm mt-xs">
           <VormInput
             v-model="firstTimeModalCheckbox"
             class="flex flex-row-reverse gap-0 italic"
             type="checkbox"
-            label="Don't show me this video again."
+            label="Don't show me this again."
             inlineLabel
           />
           <VButton
@@ -159,7 +168,6 @@ onMounted(async () => {
     if (!firstTimeModalFired.value && showModal && !hasServedModal) {
       firstTimeModalRef.value?.open();
       firstTimeModalFired.value = true;
-      storage.setItem("SI_FIRST_TIME_MODAL_SHOWN", "1");
     }
   }
 });
@@ -168,6 +176,7 @@ const firstTimeModalCheckbox = ref(false);
 const closeFirstTimeModal = () => {
   if (authStore.user && firstTimeModalCheckbox.value) {
     authStore.DISMISS_FIRST_TIME_MODAL(authStore.user.pk);
+    storage.setItem("SI_FIRST_TIME_MODAL_SHOWN", "1");
   }
   firstTimeModalRef.value?.close();
 };
