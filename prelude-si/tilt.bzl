@@ -51,8 +51,7 @@ def tilt_docker_compose_pull_impl(ctx: AnalysisContext) -> list[[DefaultInfo, Ru
     )
 
     run_cmd_args = cmd_args([
-        "docker",
-        "compose",
+        "docker-compose",
         "--file",
         docker_compose_file,
         "pull",
@@ -88,8 +87,7 @@ def tilt_docker_compose_stop_impl(ctx: AnalysisContext) -> list[[DefaultInfo, Ru
     )
 
     run_cmd_args = cmd_args([
-        "docker",
-        "compose",
+        "docker-compose",
         "--file",
         docker_compose_file,
         "stop",
