@@ -47,7 +47,10 @@ export const useWorkspacesStore = defineStore("workspaces", {
 
       // Let's first check for a defaultWorkspace
       const defaultWorkspace = _.head(
-        _.filter(_.values(state.workspacesById), (w) => w.isDefault),
+        _.filter(
+          _.values(state.workspacesById),
+          (w) => w.isDefault && w.creatorUserId === authStore.user?.id,
+        ),
       );
       if (defaultWorkspace) return defaultWorkspace;
 
