@@ -6,6 +6,7 @@ use std::{ops::Deref, sync::Arc};
 use tokio::sync::{broadcast, mpsc, Mutex};
 
 use super::server::ShutdownSource;
+use super::{WorkspacePermissions, WorkspacePermissionsMode};
 use crate::server::nats_multiplexer::NatsMultiplexerClients;
 use crate::server::service::ws::crdt::BroadcastGroups;
 
@@ -18,6 +19,8 @@ pub struct AppState {
     shutdown_broadcast: ShutdownBroadcast,
     for_tests: bool,
     nats_multiplexer_clients: NatsMultiplexerClients,
+    create_workspace_permissions: WorkspacePermissionsMode,
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
     // that will trigger the read side and... shutdown. Cool, no?
@@ -36,6 +39,8 @@ impl AppState {
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
+        create_workspace_permissions: WorkspacePermissionsMode,
+        create_workspace_allowlist: Vec<WorkspacePermissions>,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
@@ -50,6 +55,8 @@ impl AppState {
             for_tests,
             nats_multiplexer_clients,
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
+            create_workspace_permissions,
+            create_workspace_allowlist,
         }
     }
 
@@ -67,6 +74,14 @@ impl AppState {
 
     pub fn for_tests(&self) -> bool {
         self.for_tests
+    }
+
+    pub fn create_workspace_permissions(&self) -> WorkspacePermissionsMode {
+        self.create_workspace_permissions
+    }
+
+    pub fn create_workspace_allowlist(&self) -> &[String] {
+        &self.create_workspace_allowlist
     }
 }
 

@@ -1,4 +1,5 @@
 use dal::jwt_key::JwtConfig;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
@@ -7,6 +8,7 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
+use strum::{Display, EnumString, VariantNames};
 
 use buck2_resources::Buck2Resources;
 use dal::feature_flags::FeatureFlag;
@@ -25,6 +27,36 @@ pub use si_crypto::VeritechKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
+
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    SerializeDisplay,
+    Display,
+    DeserializeFromStr,
+    EnumString,
+    VariantNames,
+    PartialEq,
+    Eq,
+)]
+#[strum(serialize_all = "camelCase")]
+pub enum WorkspacePermissionsMode {
+    #[default]
+    Closed,
+    Allowlist,
+    Open,
+}
+
+impl WorkspacePermissionsMode {
+    #[must_use]
+    pub const fn variants() -> &'static [&'static str] {
+        <WorkspacePermissionsMode as strum::VariantNames>::VARIANTS
+    }
+}
+
+pub type WorkspacePermissions = String;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -88,6 +120,10 @@ pub struct Config {
     pkgs_path: CanonicalFile,
 
     boot_feature_flags: HashSet<FeatureFlag>,
+
+    create_workspace_permissions: WorkspacePermissionsMode,
+
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 }
 
 impl StandardConfig for Config {
@@ -163,6 +199,16 @@ impl Config {
     pub fn layer_db_config(&self) -> &LayerDbConfig {
         &self.layer_db_config
     }
+
+    // The Create Workspace Permissions Mode should be set via an env variable or it will default to Closed
+    pub fn create_workspace_permissions(&self) -> &WorkspacePermissionsMode {
+        &self.create_workspace_permissions
+    }
+
+    // This Allowlist is a list of email addresses only used in WorkspacePermissionsMode::Allowlist
+    pub fn create_workspace_allowlist(&self) -> &Vec<WorkspacePermissions> {
+        &self.create_workspace_allowlist
+    }
 }
 
 impl ConfigBuilder {
@@ -199,6 +245,10 @@ pub struct ConfigFile {
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
     boot_feature_flags: Vec<FeatureFlag>,
+    #[serde(default)]
+    create_workspace_permissions: WorkspacePermissionsMode,
+    #[serde(default)]
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 }
 
 impl Default for ConfigFile {
@@ -215,6 +265,8 @@ impl Default for ConfigFile {
             module_index_url: default_module_index_url(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             boot_feature_flags: Default::default(),
+            create_workspace_permissions: Default::default(),
+            create_workspace_allowlist: Default::default(),
         }
     }
 }
@@ -241,6 +293,8 @@ impl TryFrom<ConfigFile> for Config {
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
         config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
+        config.create_workspace_permissions(value.create_workspace_permissions);
+        config.create_workspace_allowlist(value.create_workspace_allowlist);
         config.build().map_err(Into::into)
     }
 }

@@ -385,6 +385,8 @@ impl SdfTestFnSetupExpander {
                     #posthog_client,
                     #ws_multiplexer_client,
                     #crdt_multiplexer_client,
+                    ::sdf_server::server::WorkspacePermissionsMode::Open,
+                    vec![],
                 ).wrap_err("failed to build sdf router")?;
                 service
             };

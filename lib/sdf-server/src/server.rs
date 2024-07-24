@@ -1,6 +1,7 @@
 pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
-    IncomingStream, StandardConfig, StandardConfigFile,
+    IncomingStream, StandardConfig, StandardConfigFile, WorkspacePermissions,
+    WorkspacePermissionsMode,
 };
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor, ServicesContext};
 pub use nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;

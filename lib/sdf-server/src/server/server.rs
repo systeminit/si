@@ -39,7 +39,10 @@ use ulid::Ulid;
 use veritech_client::Client as VeritechClient;
 
 use super::state::AppState;
-use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
+use super::{
+    routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError,
+    WorkspacePermissions, WorkspacePermissionsMode,
+};
 use crate::server::config::VeritechKeyPair;
 
 #[remain::sorted]
@@ -136,6 +139,8 @@ impl Server<(), ()> {
                     posthog_client,
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
+                    *config.create_workspace_permissions(),
+                    config.create_workspace_allowlist().to_vec(),
                 )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -180,6 +185,8 @@ impl Server<(), ()> {
                     posthog_client,
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
+                    *config.create_workspace_permissions(),
+                    config.create_workspace_allowlist().to_vec(),
                 )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -473,6 +480,8 @@ pub fn build_service_for_tests(
     posthog_client: PosthogClient,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
+    create_workspace_permissions: WorkspacePermissionsMode,
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
@@ -481,6 +490,8 @@ pub fn build_service_for_tests(
         true,
         ws_multiplexer_client,
         crdt_multiplexer_client,
+        create_workspace_permissions,
+        create_workspace_allowlist,
     )
 }
 
@@ -490,6 +501,8 @@ pub fn build_service(
     posthog_client: PosthogClient,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
+    create_workspace_permissions: WorkspacePermissionsMode,
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
@@ -498,6 +511,8 @@ pub fn build_service(
         false,
         ws_multiplexer_client,
         crdt_multiplexer_client,
+        create_workspace_permissions,
+        create_workspace_allowlist,
     )
 }
 
@@ -508,6 +523,8 @@ fn build_service_inner(
     for_tests: bool,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
+    create_workspace_permissions: WorkspacePermissionsMode,
+    create_workspace_allowlist: Vec<WorkspacePermissions>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -521,6 +538,8 @@ fn build_service_inner(
         for_tests,
         ws_multiplexer_client,
         crdt_multiplexer_client,
+        create_workspace_permissions,
+        create_workspace_allowlist,
     );
 
     let path_filter = Box::new(|path: &str| match path {

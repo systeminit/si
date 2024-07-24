@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use clap::{builder::EnumValueParser, builder::PossibleValuesParser, ArgAction, Parser};
 
-use sdf_server::{Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile};
+use sdf_server::{
+    server::{WorkspacePermissions, WorkspacePermissionsMode},
+    Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile,
+};
 use si_std::SensitiveString;
 
 const NAME: &str = "sdf";
@@ -172,7 +175,7 @@ pub(crate) struct Args {
     #[arg(long, env = "SI_MODULE_INDEX_URL")]
     pub(crate) module_index_url: Option<String>,
 
-    /// The base URL for the module-index API server
+    /// Allow for Posthog feature flags in SDF
     #[arg(
         long,
         env = "SI_FEATURES",
@@ -181,6 +184,19 @@ pub(crate) struct Args {
         rename_all = "snake_case",
     )]
     pub(crate) features: Vec<FeatureFlag>,
+
+    /// Create Workspace Permissions Mode [default: closed]
+    #[arg(long, env = "SI_CREATE_WORKSPACE_PERMISSIONS", value_parser = PossibleValuesParser::new(WorkspacePermissionsMode::variants()))]
+    pub(crate) create_workspace_permissions: Option<String>,
+
+    /// Create Workspace Permissions Allowlist
+    #[arg(
+        long,
+        env = "SI_CREATE_WORKSPACE_ALLOWLIST",
+        value_delimiter = ',',
+        rename_all = "snake_case"
+    )]
+    pub(crate) create_workspace_allowlist: Vec<WorkspacePermissions>,
 }
 
 impl TryFrom<Args> for Config {
@@ -281,6 +297,15 @@ impl TryFrom<Args> for Config {
             }
 
             config_map.set("boot_feature_flags", args.features);
+
+            if let Some(create_workspace_permissions) = args.create_workspace_permissions {
+                config_map.set("create_workspace_permissions", create_workspace_permissions);
+            }
+
+            config_map.set(
+                "create_workspace_allowlist",
+                args.create_workspace_allowlist,
+            );
 
             config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);

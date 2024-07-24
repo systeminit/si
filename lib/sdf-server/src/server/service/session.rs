@@ -48,6 +48,8 @@ pub enum SessionError {
     Workspace(#[from] WorkspaceError),
     #[error("workspace {0} not yet migrated to new snapshot graph version. Migration required")]
     WorkspaceNotYetMigrated(WorkspacePk),
+    #[error("you do not have permission to create a workspace on this instance")]
+    WorkspacePermissions,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,6 +69,9 @@ impl IntoResponse for SessionError {
                 Some("WORKSPACE_NOT_INITIALIZED"),
                 None,
             ),
+            SessionError::WorkspacePermissions => {
+                (StatusCode::UNAUTHORIZED, None, Some(self.to_string()))
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, None, None),
         };
 

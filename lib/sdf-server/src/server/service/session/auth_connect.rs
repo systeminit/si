@@ -1,6 +1,9 @@
 use super::{SessionError, SessionResult};
 use crate::server::extract::{HandlerContext, RawAccessToken};
+use crate::server::state::AppState;
+use crate::server::{WorkspacePermissions, WorkspacePermissionsMode};
 use crate::service::session::AuthApiErrBody;
+use axum::extract::State;
 use axum::Json;
 use dal::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
@@ -74,6 +77,8 @@ async fn find_or_create_user_and_workspace(
     mut ctx: DalContext,
     auth_api_user: AuthApiUser,
     auth_api_workspace: AuthApiWorkspace,
+    create_workspace_permissions: WorkspacePermissionsMode,
+    create_workspace_allowlist: &[String],
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
@@ -109,14 +114,26 @@ async fn find_or_create_user_and_workspace(
             workspace
         }
         None => {
-            let workspace = Workspace::new(
-                &mut ctx,
-                auth_api_workspace.id,
-                auth_api_workspace.display_name,
+            let create_permission = user_has_permission_to_create_workspace(
+                &ctx,
+                &user,
+                create_workspace_permissions,
+                create_workspace_allowlist,
             )
             .await?;
-            let _key_pair = KeyPair::new(&ctx, "default").await?;
-            workspace
+
+            if create_permission {
+                let workspace = Workspace::new(
+                    &mut ctx,
+                    auth_api_workspace.id,
+                    auth_api_workspace.display_name,
+                )
+                .await?;
+                let _key_pair = KeyPair::new(&ctx, "default").await?;
+                workspace
+            } else {
+                return Err(SessionError::WorkspacePermissions);
+            }
         }
     };
 
@@ -130,6 +147,7 @@ async fn find_or_create_user_and_workspace(
 
 pub async fn auth_connect(
     HandlerContext(builder): HandlerContext,
+    State(state): State<AppState>,
     Json(request): Json<AuthConnectRequest>,
 ) -> SessionResult<Json<AuthConnectResponse>> {
     let client = reqwest::Client::new();
@@ -157,8 +175,14 @@ pub async fn auth_connect(
 
     let ctx = builder.build_default().await?;
 
-    let (user, workspace) =
-        find_or_create_user_and_workspace(ctx, res_body.user, res_body.workspace).await?;
+    let (user, workspace) = find_or_create_user_and_workspace(
+        ctx,
+        res_body.user,
+        res_body.workspace,
+        state.create_workspace_permissions(),
+        state.create_workspace_allowlist(),
+    )
+    .await?;
 
     Ok(Json(AuthConnectResponse {
         user,
@@ -170,6 +194,7 @@ pub async fn auth_connect(
 pub async fn auth_reconnect(
     HandlerContext(builder): HandlerContext,
     RawAccessToken(raw_access_token): RawAccessToken,
+    State(state): State<AppState>,
 ) -> SessionResult<Json<AuthReconnectResponse>> {
     let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
         Some(_) => "http://localhost:9001",
@@ -196,8 +221,45 @@ pub async fn auth_reconnect(
 
     let ctx = builder.build_default().await?;
 
-    let (user, workspace) =
-        find_or_create_user_and_workspace(ctx, res_body.user, res_body.workspace).await?;
+    let (user, workspace) = find_or_create_user_and_workspace(
+        ctx,
+        res_body.user,
+        res_body.workspace,
+        state.create_workspace_permissions(),
+        state.create_workspace_allowlist(),
+    )
+    .await?;
 
     Ok(Json(AuthReconnectResponse { user, workspace }))
+}
+
+pub async fn user_has_permission_to_create_workspace(
+    ctx: &DalContext,
+    user: &User,
+    mode: WorkspacePermissionsMode,
+    allowlist: &[WorkspacePermissions],
+) -> SessionResult<bool> {
+    match mode {
+        WorkspacePermissionsMode::Open => Ok(true),
+        WorkspacePermissionsMode::Closed => Ok(user.is_first_user(ctx).await?),
+        WorkspacePermissionsMode::Allowlist => {
+            if user.is_first_user(ctx).await? {
+                Ok(true)
+            } else {
+                let allowed = allowlist.iter().any(|entry| {
+                    if entry.starts_with("*@") {
+                        let mut chars = entry.chars();
+                        chars.next();
+                        user.email().ends_with(chars.as_str())
+                    } else if entry.starts_with('@') {
+                        user.email().ends_with(entry)
+                    } else {
+                        user.email() == entry
+                    }
+                });
+
+                Ok(allowed)
+            }
+        }
+    }
 }
