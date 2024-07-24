@@ -516,6 +516,7 @@ pub fn build_service(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_service_inner(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
