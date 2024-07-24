@@ -114,7 +114,7 @@ router.post("/workspaces/setup-production-workspace", async (ctx) => {
       user,
       InstanceEnvType.SI,
       "https://app.systeminit.com",
-      `${user.nickname}'s Production Workspace Derp`,
+      `${user.nickname}'s Production Workspace`,
       hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
     );
 
