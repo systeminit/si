@@ -12,6 +12,7 @@ export const useFeatureFlagsStore = () => {
         EDIT_WORKSPACES: false,
         DELETE_WORKSPACE: false,
         SIMPLIFIED_SIGNUP: false,
+        ADMIN_PAGE: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
@@ -22,6 +23,7 @@ export const useFeatureFlagsStore = () => {
           this.SIMPLIFIED_SIGNUP = flags.includes("simplified_signup_flow");
           this.EDIT_WORKSPACES =
             flags.includes("edit_workspaces") || this.CREATE_WORKSPACES;
+          this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
         });
       },
     }),
