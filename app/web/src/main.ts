@@ -44,10 +44,13 @@ const sdk = new HoneycombWebSDK({
       // load custom configuration for xml-http-request instrumentation
       "@opentelemetry/instrumentation-xml-http-request": {
         propagateTraceHeaderCorsUrls: backendHosts,
+        ignoreNetworkEvents: true,
+        ignoreUrls: [/^https:\/\/e\.systeminit\.com/],
       },
       "@opentelemetry/instrumentation-fetch": {
         propagateTraceHeaderCorsUrls: backendHosts,
         ignoreNetworkEvents: true,
+        ignoreUrls: [/^https:\/\/e\.systeminit\.com/],
       },
     }), // add automatic instrumentation
     new DocumentLoadInstrumentation(),

@@ -25,6 +25,9 @@ import {
   DeferredPromise,
 } from "@si/ts-lib";
 import { ulid } from "ulid";
+import opentelemetry, { Span } from "@opentelemetry/api";
+
+const tracer = opentelemetry.trace.getTracer("si-vue");
 
 export type RequestUlid = string;
 
@@ -421,6 +424,14 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
 
       if (triggerResult.error) {
+        tracer.startActiveSpan("pinia-http-error", (span: Span) => {
+          span.setAttributes({
+            "http.body": JSON.stringify(actionResult.requestSpec.params),
+            "http.url": actionResult.requestSpec.url,
+            "http.status_code": triggerResult.error.response?.status,
+          });
+          span.end();
+        });
         request.setFailedResult(triggerResult.error);
         if (
           actionName !== "SET_COMPONENT_GEOMETRY" &&
