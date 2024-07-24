@@ -32,3 +32,4 @@ We contributors to System Initiative:
 * Ryan Benasutti (@Octogonapus)
 * John Obelenus (@jobelenus)
 * Meg Watson (@MegaWatt01)
+* John Keiser (@jkeiser)
