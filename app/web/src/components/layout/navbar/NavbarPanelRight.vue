@@ -3,14 +3,14 @@
     <Collaborators />
 
     <NavbarButton
-      tooltipText="SI Documentation"
+      tooltipText="Documentation"
       externalLinkTo="https://docs.systeminit.com/"
     >
       <Icon name="question-circle" />
     </NavbarButton>
 
     <NavbarButton
-      tooltipText="SI Discord Community"
+      tooltipText="Discord Community"
       externalLinkTo="https://discord.gg/system-init"
     >
       <Icon name="logo-discord" />
