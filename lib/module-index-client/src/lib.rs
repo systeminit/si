@@ -290,6 +290,7 @@ impl ModuleIndexClient {
             .await?)
     }
 
+    // Will skip builtins
     pub async fn list_module_details(&self) -> ModuleIndexClientResult<ListModulesResponse> {
         let url = self.base_url.join("modules")?;
 
