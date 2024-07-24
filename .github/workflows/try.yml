@@ -2,23 +2,22 @@ name: Try Build
 
 on:
   issue_comment:
-  workflow_call:
+    types: [created, edited, deleted]
+  workflow_dispatch:
 
 permissions: write-all
 
-env:
-  branch: ${{ github.ref_name }}
-
 jobs:
+
   try:
+    # if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
     runs-on: ubuntu-latest
-    if: startsWith(github.event.comment.body, '/try')
-    uses: "buildkite/trigger-pipeline-action@v2.1.0"
-    with:
-      buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
-      pipeline: "si/merge-queue"
-      branch: $branch
-      commit: "HEAD"
-      message:  ":github: Try for branch $branch"
-      ignore_pipeline_branch_filter: true
-      send_pull_request: true
+    steps:
+      - uses: "buildkite/trigger-pipeline-action@v2.1.0"
+        with:
+          buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }}
+          pipeline: "system-initiative/si/merge-queue"
+          branch: ${{ github.ref_name }}
+          message:  ":github: Try for branch ${{ github.ref_name }}"
+          ignore_pipeline_branch_filter: true
+          send_pull_request: true
