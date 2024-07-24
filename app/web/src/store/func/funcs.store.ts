@@ -505,6 +505,12 @@ export const useFuncStore = () => {
             },
           },
           {
+            eventType: "ChangeSetApplied",
+            callback: () => {
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
             eventType: "FuncBindingsUpdated",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
