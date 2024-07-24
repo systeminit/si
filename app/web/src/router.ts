@@ -192,7 +192,12 @@ router.beforeResolve((to) => {
   if ("changeSetId" in to.params) {
     const changeSetStore = useChangeSetsStore();
     const changeSetId = to.params.changeSetId;
-    if (changeSetId && changeSetId !== "auto" && !Array.isArray(changeSetId))
+    if (
+      changeSetId &&
+      changeSetId !== "head" &&
+      changeSetId !== "auto" &&
+      !Array.isArray(changeSetId)
+    )
       changeSetStore.FETCH_STATUS_WITH_BASE(changeSetId);
   }
 });
