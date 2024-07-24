@@ -753,6 +753,9 @@ importers:
       '@headlessui/vue':
         specifier: ^1.7.10
         version: 1.7.12(vue@3.4.15)
+      '@opentelemetry/api':
+        specifier: ^1.8.0
+        version: 1.8.0
       '@si/ts-lib':
         specifier: workspace:*
         version: link:../ts-lib

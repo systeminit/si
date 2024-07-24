@@ -42,6 +42,7 @@
   "dependencies": {
     "@headlessui/tailwindcss": "^0.1.2",
     "@headlessui/vue": "^1.7.10",
+    "@opentelemetry/api": "^1.8.0",
     "@si/ts-lib": "workspace:*",
     "@tailwindcss/forms": "^0.5.3",
     "@tailwindcss/line-clamp": "^0.4.2",
