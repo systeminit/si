@@ -63,6 +63,7 @@ const TEST_QUERY: &str = "SELECT 1";
 // We could avoid needing to discard plans by selecting exactly the columns we
 // need instead of SELECT * (unless the column type changes!)
 const CONNECTION_RECYCLING_METHOD: &str = r#"
+    ROLLBACK;
     CLOSE ALL;
     SET SESSION AUTHORIZATION DEFAULT;
     RESET ALL;
