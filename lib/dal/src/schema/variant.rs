@@ -13,6 +13,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use url::ParseError;
 
+use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
@@ -26,6 +27,7 @@ use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV2,
 };
+use crate::module::Module;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
@@ -49,16 +51,13 @@ use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, 
 
 use self::root_prop::RootPropChild;
 
+pub mod authoring;
 mod json;
 pub mod leaves;
 mod metadata_view;
 pub mod root_prop;
 mod value_from;
 
-pub mod authoring;
-
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::module::Module;
 pub use json::SchemaVariantJson;
 pub use json::SchemaVariantMetadataJson;
 pub use metadata_view::SchemaVariantMetadataView;
@@ -263,8 +262,6 @@ impl SchemaVariant {
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
             can_contribute,
-            // FIXME(nick): this needs to be dropped once the v2 modules sync route is in use.
-            can_update: false,
         })
     }
 }
@@ -783,8 +780,6 @@ impl SchemaVariant {
         }
     }
 
-    /// A schema variant can be contributed if it is default, locked and does not belong to
-    /// a module, which means it has been updated locally
     pub async fn can_be_contributed_by_id(
         ctx: &DalContext,
         id: SchemaVariantId,

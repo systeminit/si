@@ -4,12 +4,18 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import router from "@/router";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import {
+  LatestModule,
+  ModuleContributeRequest,
+  ModuleId,
+} from "@/api/sdf/dal/module";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ModuleIndexApiRequest } from ".";
 
-export type ModuleId = string;
 export type ModuleName = string;
 export type ModuleHash = string;
 export type ModuleSlug = ModuleHash;
@@ -18,13 +24,6 @@ export interface ModuleFuncView {
   name: string;
   displayName?: string;
   description?: string;
-}
-
-export interface ModuleExportRequest {
-  name: string;
-  version: string;
-  description?: string;
-  schemaVariants: string[];
 }
 
 export interface LocalModuleSummary {
@@ -118,6 +117,11 @@ function getVisibilityParams(forceChangeSetId?: ChangeSetId) {
 export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const visibility = {
+    // changeSetId should not be empty if we are actually using this store
+    // so we can give it a bad value and let it throw an error
+    visibility_change_set_pk: changeSetId || "XXX",
+  };
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -127,6 +131,8 @@ export const useModuleStore = () => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
       {
         state: () => ({
+          upgradeableModules: {} as Record<SchemaVariantId, LatestModule>,
+          installableModulesById: {} as Record<ModuleId, LatestModule>,
           localModulesByName: {} as Record<ModuleName, LocalModuleSummary>,
           localModuleDetailsByName: {} as Record<
             ModuleName,
@@ -146,6 +152,8 @@ export const useModuleStore = () => {
           exportingWorkspaceOperationRunning: false as boolean,
         }),
         getters: {
+          installableModules: (state) =>
+            Object.values(state.installableModulesById),
           urlSelectedModuleSlug: () => {
             const route = useRouterStore().currentRoute;
             return route?.params?.moduleSlug as ModuleSlug | undefined;
@@ -200,6 +208,38 @@ export const useModuleStore = () => {
           },
         },
         actions: {
+          async SYNC() {
+            return new ApiRequest<
+              {
+                upgradeable: Record<SchemaVariantId, LatestModule>;
+                installable: LatestModule[];
+              },
+              Visibility
+            >({
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/sync`,
+              params: { ...visibility },
+              onSuccess: (response) => {
+                this.upgradeableModules = response.upgradeable;
+                this.installableModulesById = _.keyBy(
+                  response.installable,
+                  (m) => m.id,
+                );
+              },
+            });
+          },
+
+          async CONTRIBUTE(request: ModuleContributeRequest) {
+            return new ApiRequest({
+              method: "post",
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/contribute`,
+              params: {
+                name: request.name,
+                version: request.version,
+                schemaVariantId: request.schemaVariantId,
+              },
+            });
+          },
+
           async LOAD_LOCAL_MODULES() {
             return new ApiRequest<{ modules: LocalModuleSummary[] }>({
               url: "/module/list_modules",
@@ -408,14 +448,6 @@ export const useModuleStore = () => {
             this.exportingWorkspaceOperationRunning = false;
             this.exportingWorkspaceOperationId = null;
             this.exportingWorkspaceOperationError = undefined;
-          },
-
-          async EXPORT_MODULE(exportRequest: ModuleExportRequest) {
-            return new ApiRequest({
-              method: "post",
-              url: "/module/export_module",
-              params: { ...exportRequest, ...getVisibilityParams() },
-            });
           },
         },
         onActivated() {

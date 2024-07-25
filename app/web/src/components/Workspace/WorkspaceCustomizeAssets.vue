@@ -144,6 +144,7 @@ import {
 import { useRoute } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { useModuleStore } from "@/store/module.store";
 import router from "@/router";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
@@ -162,6 +163,7 @@ import WorkspaceCustomizeEmptyState from "../WorkspaceCustomizeEmptyState.vue";
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
+const moduleStore = useModuleStore();
 
 const selectedVariantId = computed(() => assetStore.selectedVariantId);
 const selectedFuncId = computed(() => funcStore.selectedFuncId);
@@ -186,7 +188,7 @@ const rightClickMenuItems = computed(() => {
   const canUpdate = [];
   assetStore.selectedSchemaVariantRecords.forEach((asset) => {
     if (asset.canContribute) canContribute.push(asset);
-    if (assetStore.upgradeableModules[asset.schemaVariantId])
+    if (moduleStore.upgradeableModules[asset.schemaVariantId])
       canUpdate.push(asset);
   });
 

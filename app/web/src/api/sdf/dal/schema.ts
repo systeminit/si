@@ -70,19 +70,6 @@ export interface SchemaVariant {
   canContribute: boolean;
 }
 
-export type ModuleId = string;
-export interface Module {
-  id: ModuleId;
-  name: string;
-  description: string;
-  ownerUserId: string;
-  ownerDisplayName: string;
-  metadata: object;
-  latestHash: string;
-  latestHashCreatedAt: IsoDateString;
-  schemaId: SchemaId;
-}
-
 export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
   const socketOptions = schemaVariant.outputSockets.map((socket) => ({
     label: `Output Socket: ${socket.name}`,

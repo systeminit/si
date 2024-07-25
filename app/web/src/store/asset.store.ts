@@ -4,13 +4,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncId, FuncKind } from "@/api/sdf/dal/func";
-import {
-  Module,
-  ModuleId,
-  SchemaId,
-  SchemaVariant,
-  SchemaVariantId,
-} from "@/api/sdf/dal/schema";
+import { SchemaId, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
@@ -18,6 +12,7 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { useFuncStore } from "./func/funcs.store";
 import { useChangeSetsStore } from "./change_sets.store";
+import { useModuleStore } from "./module.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
 import { useComponentsStore } from "./components.store";
@@ -80,18 +75,19 @@ export const schemaVariantDisplayName = (schemaVariant: SchemaVariant) =>
     : schemaVariant.displayName;
 
 export const useAssetStore = () => {
-  const changeSetsStore = useChangeSetsStore();
-  const changeSetId = changeSetsStore.selectedChangeSetId;
+  const changeSetStore = useChangeSetsStore();
+  const changeSetId = changeSetStore.selectedChangeSetId;
   const visibility = {
     // changeSetId should not be empty if we are actually using this store
     // so we can give it a bad value and let it throw an error
     visibility_change_set_pk: changeSetId || "XXX",
   };
 
-  const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspacePk;
+  const workspaceStore = useWorkspacesStore();
+  const workspaceId = workspaceStore.selectedWorkspacePk;
 
-  const funcsStore = useFuncStore();
+  const funcStore = useFuncStore();
+  const moduleStore = useModuleStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -100,8 +96,6 @@ export const useAssetStore = () => {
       state: () => ({
         variantList: [] as SchemaVariant[],
         variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
-        upgradeableModules: {} as Record<SchemaVariantId, Module>,
-        installableModulesById: {} as Record<ModuleId, Module>,
 
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,
@@ -129,8 +123,6 @@ export const useAssetStore = () => {
             return state.selectedSchemaVariants[0];
           else return undefined;
         },
-        installableModules: (state) =>
-          Object.values(state.installableModulesById),
         selectedSchemaVariant(): SchemaVariant | undefined {
           if (this.selectedVariantId)
             return this.variantFromListById[this.selectedVariantId];
@@ -183,13 +175,13 @@ export const useAssetStore = () => {
           this.selectedSchemaVariants = [id];
           this.syncSelectionIntoUrl();
           const variant = this.variantFromListById[id];
-          if (variant?.assetFuncId) funcsStore.FETCH_CODE(variant.assetFuncId);
+          if (variant?.assetFuncId) funcStore.FETCH_CODE(variant.assetFuncId);
         },
         async setFuncSelection(id?: FuncId) {
           // ignore the old func selections and replace with one func or no funcs
-          funcsStore.selectedFuncId = id;
+          funcStore.selectedFuncId = id;
           if (id) {
-            await funcsStore.FETCH_CODE(id);
+            await funcStore.FETCH_CODE(id);
             this.selectedFuncs = [id];
           } else {
             this.selectedFuncs = [];
@@ -198,8 +190,8 @@ export const useAssetStore = () => {
         },
         async addFuncSelection(id: FuncId) {
           if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
-          await funcsStore.FETCH_CODE(id);
-          funcsStore.selectedFuncId = id;
+          await funcStore.FETCH_CODE(id);
+          funcStore.selectedFuncId = id;
           this.syncSelectionIntoUrl();
         },
         removeFuncSelection(id: FuncId) {
@@ -228,7 +220,7 @@ export const useAssetStore = () => {
         async syncUrlIntoSelection() {
           this.selectedSchemaVariants = [];
           this.selectedFuncs = [];
-          funcsStore.selectedFuncId = undefined;
+          funcStore.selectedFuncId = undefined;
           const ids = ((router.currentRoute.value.query?.s as string) || "")
             .split("|")
             .filter(Boolean);
@@ -242,16 +234,16 @@ export const useAssetStore = () => {
                 this.selectedSchemaVariants.push(id);
                 const variant = this.variantFromListById[id];
                 if (variant?.assetFuncId)
-                  promises.push(funcsStore.FETCH_CODE(variant.assetFuncId));
+                  promises.push(funcStore.FETCH_CODE(variant.assetFuncId));
               } else if (id.startsWith("f_")) {
                 id = id.substring(2);
                 this.selectedFuncs.push(id);
-                promises.push(funcsStore.FETCH_CODE(id));
+                promises.push(funcStore.FETCH_CODE(id));
                 fnIds.push(id);
               }
             });
             await Promise.all(promises);
-            funcsStore.selectedFuncId = fnIds[fnIds.length - 1];
+            funcStore.selectedFuncId = fnIds[fnIds.length - 1];
           }
         },
 
@@ -301,10 +293,10 @@ export const useAssetStore = () => {
         },
 
         async CREATE_VARIANT(name: string) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetsStore.headChangeSetId)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetId === changeSetStore.headChangeSetId)
+            changeSetStore.creatingChangeSet = true;
           return new ApiRequest<SchemaVariant, SchemaVariantCreateRequest>({
             method: "post",
             url: "/variant/create_variant",
@@ -324,10 +316,10 @@ export const useAssetStore = () => {
         },
 
         async CLONE_VARIANT(schemaVariantId: SchemaVariantId, name: string) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
 
           return new ApiRequest<
             { id: SchemaVariantId; success: boolean },
@@ -384,10 +376,10 @@ export const useAssetStore = () => {
         },
 
         async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code?: string) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
 
           if (schemaVariant.isLocked)
             throw new Error(
@@ -408,17 +400,17 @@ export const useAssetStore = () => {
             },
             onSuccess: () => {
               if (code) {
-                const f = funcsStore.funcCodeById[schemaVariant.assetFuncId];
+                const f = funcStore.funcCodeById[schemaVariant.assetFuncId];
                 if (f) f.code = code;
               }
             },
           });
         },
         async REGENERATE_VARIANT(schemaVariantId: SchemaVariantId) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
 
           this.detachmentWarnings = [];
           const variant = this.variantFromListById[schemaVariantId];
@@ -438,26 +430,6 @@ export const useAssetStore = () => {
           });
         },
 
-        async LOAD_MODULES() {
-          return new ApiRequest<
-            {
-              upgradeable: Record<SchemaVariantId, Module>;
-              installable: Module[];
-            },
-            Visibility
-          >({
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/sync`,
-            params: { ...visibility },
-            onSuccess: (response) => {
-              this.upgradeableModules = response.upgradeable;
-              this.installableModulesById = _.keyBy(
-                response.installable,
-                (m) => m.id,
-              );
-            },
-          });
-        },
-
         async LOAD_SCHEMA_VARIANT_LIST() {
           return new ApiRequest<SchemaVariant[], Visibility>({
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
@@ -469,10 +441,10 @@ export const useAssetStore = () => {
         },
 
         async CREATE_UNLOCKED_COPY(id: SchemaVariantId) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
 
           this.detachmentWarnings = [];
 
@@ -495,10 +467,10 @@ export const useAssetStore = () => {
           });
         },
         async DELETE_UNLOCKED_VARIANT(id: SchemaVariantId) {
-          if (changeSetsStore.creatingChangeSet)
+          if (changeSetStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
 
           return new ApiRequest<SchemaVariant>({
             method: "post",
@@ -520,7 +492,7 @@ export const useAssetStore = () => {
       async onActivated() {
         await Promise.all([
           this.LOAD_SCHEMA_VARIANT_LIST(),
-          this.LOAD_MODULES(),
+          moduleStore.SYNC(),
         ]);
         const stopWatchingUrl = watch(
           () => {
@@ -567,7 +539,7 @@ export const useAssetStore = () => {
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_SCHEMA_VARIANT_LIST();
-              this.LOAD_MODULES();
+              moduleStore.SYNC();
             },
           },
           {
@@ -605,7 +577,7 @@ export const useAssetStore = () => {
             callback: async (data) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_SCHEMA_VARIANT_LIST();
-              this.LOAD_MODULES();
+              moduleStore.SYNC();
               useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
             },
           },
@@ -623,7 +595,7 @@ export const useAssetStore = () => {
             eventType: "ChangeSetApplied",
             callback: () => {
               this.LOAD_SCHEMA_VARIANT_LIST();
-              this.LOAD_MODULES();
+              moduleStore.SYNC();
             },
           },
           // For the async api endpoints

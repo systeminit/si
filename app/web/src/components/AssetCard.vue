@@ -32,11 +32,13 @@
           <EditingPill v-if="!asset.isLocked" :color="asset.color" />
           <IconButton
             v-if="asset.canContribute"
+            :selected="contributeAssetModalRef?.isOpen || false"
             class="hover:scale-125"
             icon="cloud-upload"
             tooltip="Contribute"
             tooltipPlacement="top"
             variant="simple"
+            @click="contributeAsset"
           />
 
           <IconButton
@@ -95,6 +97,26 @@
         </template>
       </ErrorMessage>
     </div>
+    <!-- FIXME(nick): this probably needs to be moved and de-duped with logic in AssetListPanel -->
+    <AssetContributeModal
+      ref="contributeAssetModalRef"
+      :contributeRequest="contributeRequest"
+      @contribute-success="onContributeAsset"
+    />
+    <Modal
+      ref="contributeAssetSuccessModalRef"
+      size="sm"
+      title="Contribution sent"
+    >
+      <p>
+        Thanks for contributing! We will review your contribution, and reach out
+        via email or on our
+        <a class="text-action-500" href="https://discord.com/invite/system-init"
+          >Discord Server</a
+        >
+        if you have any questions.
+      </p>
+    </Modal>
   </div>
 </template>
 
@@ -102,14 +124,23 @@
 import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
-import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
+import {
+  useTheme,
+  Modal,
+  Stack,
+  Icon,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
+import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
+import { ModuleContributeRequest } from "@/api/sdf/dal/module";
 import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
+import AssetContributeModal from "./AssetContributeModal.vue";
 
 const props = defineProps({
   titleCard: { type: Boolean },
@@ -120,6 +151,24 @@ const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
 const router = useRouter();
 const { theme } = useTheme();
+
+const contributeAssetModalRef =
+  ref<InstanceType<typeof AssetContributeModal>>();
+const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
+
+const contributeAsset = () => contributeAssetModalRef.value?.open();
+const onContributeAsset = () => contributeAssetSuccessModalRef.value?.open();
+
+const contributeRequest = computed((): ModuleContributeRequest => {
+  if (asset.value) {
+    const version = dateFormat(Date.now(), "yyyyMMddkkmmss");
+    return {
+      name: `${asset.value.schemaName} ${version}`,
+      version,
+      schemaVariantId: asset.value.schemaVariantId,
+    };
+  } else throw new Error("cannot contribute: no asset selected");
+});
 
 const editingVersionDoesNotExist = computed<boolean>(
   () =>
@@ -139,7 +188,7 @@ const asset = computed(
 );
 
 const canUpdate = computed(
-  () => !!assetStore.upgradeableModules[props.assetId],
+  () => !!moduleStore.upgradeableModules[props.assetId],
 );
 
 const updateAsset = () => {
@@ -148,7 +197,7 @@ const updateAsset = () => {
     throw new Error("cannot update asset: no asset selected");
   }
 
-  const module = assetStore.upgradeableModules[schemaVariantId];
+  const module = moduleStore.upgradeableModules[schemaVariantId];
   if (!module) {
     throw new Error("cannot update asset: no upgradeable module for asset");
   }

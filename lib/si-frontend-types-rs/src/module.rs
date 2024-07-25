@@ -17,3 +17,11 @@ impl SyncedModules {
         Self::default()
     }
 }
+
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ModuleContributeRequest {
+    pub name: String,
+    pub version: String,
+    pub schema_variant_id: SchemaVariantId,
+}

@@ -45,7 +45,11 @@ pub struct PkgExporter {
 }
 
 impl PkgExporter {
-    pub fn new_module_exporter(
+    /// Creates an unopinionated [`PkgExporter`].
+    ///
+    /// _Note:_ if you are unsure which constructor method to use, you likely want
+    /// [`Self::new_for_module_contribution`].
+    pub fn new(
         name: impl Into<String>,
         version: impl Into<String>,
         description: Option<impl Into<String>>,
@@ -64,8 +68,18 @@ impl PkgExporter {
         }
     }
 
+    /// Creates a new [`PkgExporter`] for contributing an individual module.
+    pub fn new_for_module_contribution(
+        name: impl Into<String>,
+        version: impl Into<String>,
+        created_by: impl Into<String>,
+        schema_id: SchemaId,
+    ) -> Self {
+        Self::new(name, version, None::<String>, created_by, vec![schema_id])
+    }
+
     fn new_standalone_variant_exporter(schema_name: &str) -> Self {
-        Self::new_module_exporter(schema_name, "", None::<String>, "", vec![])
+        Self::new(schema_name, "", None::<String>, "", vec![])
     }
 
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
@@ -184,7 +198,7 @@ impl PkgExporter {
         }
         data_builder.display_name(variant.display_name());
 
-        data_builder.component_type(get_component_type(ctx, variant).await?);
+        data_builder.component_type(Self::get_component_type(ctx, variant).await?);
         data_builder.description(variant.description());
 
         if let Some(authoring_func_id) =
@@ -1045,24 +1059,25 @@ impl PkgExporter {
 
         Ok(funcs)
     }
-}
 
-pub async fn get_component_type(
-    ctx: &DalContext,
-    variant: &SchemaVariant,
-) -> Result<SchemaVariantSpecComponentType, PkgError> {
-    let type_prop =
-        Prop::find_prop_by_path(ctx, variant.id(), &PropPath::new(["root", "si", "type"])).await?;
+    async fn get_component_type(
+        ctx: &DalContext,
+        variant: &SchemaVariant,
+    ) -> Result<SchemaVariantSpecComponentType, PkgError> {
+        let type_prop =
+            Prop::find_prop_by_path(ctx, variant.id(), &PropPath::new(["root", "si", "type"]))
+                .await?;
 
-    if let Some(av_id) = Prop::attribute_values_for_prop_id(ctx, type_prop.id())
-        .await?
-        .pop()
-    {
-        let av = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
-        if let Some(type_value) = av.view(ctx).await? {
-            let component_type: ComponentType = serde_json::from_value(type_value)?;
-            return Ok(component_type.into());
+        if let Some(av_id) = Prop::attribute_values_for_prop_id(ctx, type_prop.id())
+            .await?
+            .pop()
+        {
+            let av = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
+            if let Some(type_value) = av.view(ctx).await? {
+                let component_type: ComponentType = serde_json::from_value(type_value)?;
+                return Ok(component_type.into());
+            }
         }
+        Ok(variant.component_type().into())
     }
-    Ok(variant.component_type().into())
 }

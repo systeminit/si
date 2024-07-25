@@ -14,6 +14,8 @@ use tokio::sync::TryLockError;
 use tokio::time::Instant;
 
 use crate::layer_db_types::{ModuleContent, ModuleContentV2};
+use crate::pkg::export::PkgExporter;
+use crate::pkg::PkgError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -22,8 +24,9 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, ChangeSetError, DalContext, Func, FuncError, Schema, SchemaError, SchemaId, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
+    pk, ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, User,
+    UserError,
 };
 
 #[remain::sorted]
@@ -33,6 +36,8 @@ pub enum ModuleError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("found empty metadata (name: '{0}') (version: '{1}')")]
+    EmptyMetadata(String, String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("layer db error: {0}")]
@@ -41,6 +46,8 @@ pub enum ModuleError {
     MissingSchemaId(String, String),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("pkg error: {0}")]
+    Pkg(#[from] Box<PkgError>),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -51,6 +58,8 @@ pub enum ModuleError {
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -510,5 +519,79 @@ impl Module {
         info!("syncing modules took: {:?}", start.elapsed());
 
         Ok(synced_modules)
+    }
+
+    /// Prepares a given [`SchemaId`] and its corresponding [`Module`] for contribution.
+    #[allow(clippy::type_complexity)]
+    #[instrument(
+        name = "module.prepare_contribution"
+        level = "info",
+        skip_all,
+        fields(
+            name = name.as_ref(),
+            version = version.as_ref(),
+            %schema_variant_id
+        )
+    )]
+    pub async fn prepare_contribution(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        version: impl AsRef<str>,
+        schema_variant_id: SchemaVariantId,
+    ) -> ModuleResult<(String, String, Option<String>, Option<SchemaId>, Vec<u8>)> {
+        let user = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
+            _ => None,
+        };
+        let (created_by_name, created_by_email) = user
+            .map(|user| (user.name().to_owned(), user.email().to_owned()))
+            .unwrap_or((
+                "unauthenticated user name".into(),
+                "unauthenticated user email".into(),
+            ));
+        debug!(%created_by_name, %created_by_email, "preparing module contribution");
+
+        // Sanitize and validate metadata.
+        let name = name.as_ref().trim();
+        let version = version.as_ref().trim();
+        if name.is_empty() || version.is_empty() {
+            return Err(ModuleError::EmptyMetadata(
+                name.to_string(),
+                version.to_string(),
+            ));
+        }
+
+        // The frontend will send us the schema variant as this is what we care about from
+        // there. We can then use that schema variant to be able to understand the associated
+        // schema for it.
+        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let associated_schema = variant.schema(ctx).await?;
+
+        // Create module payload.
+        let mut exporter = PkgExporter::new_for_module_contribution(
+            name,
+            version,
+            &created_by_email,
+            associated_schema.id(),
+        );
+        let module_payload = exporter.export_as_bytes(ctx).await.map_err(Box::new)?;
+
+        // Check if local information exists for contribution metadata.
+        let (local_module_based_on_hash, local_module_schema_id) =
+            match Module::find_for_member_id(ctx, associated_schema.id()).await? {
+                Some(module) => (
+                    Some(module.root_hash().to_string()),
+                    module.schema_id().map(|id| id.into()),
+                ),
+                None => (None, None),
+            };
+
+        Ok((
+            name.to_string(),
+            version.to_string(),
+            local_module_based_on_hash,
+            local_module_schema_id,
+            module_payload,
+        ))
     }
 }

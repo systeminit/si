@@ -39,15 +39,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    # cargo_lock_updated = update_cargo_lock(
-    #     Path("Cargo.toml"),
-    #     Path("Cargo.lock"),
-    #     args.check,
-    # )
-    # if cargo_lock_updated and args.check:
-    #     print("xxx Rust Cargo.lock is not in sync with Cargo.toml")
-    #     print(REMEDIATE_MSG)
-    #     return 1
+    # TODO(nick): make it so that lockfile generation does not update deps. We probably need to use "--locked" or
+    # something analogous. If you are reading this and do not know what I am talking about, reach out to Fletcher. If
+    # you are Fletcher... hi Fletcher!
+    cargo_lock_updated = update_cargo_lock(
+        Path("Cargo.toml"),
+        Path("Cargo.lock"),
+        args.check,
+    )
+    if cargo_lock_updated and args.check:
+        print("xxx Rust Cargo.lock is not in sync with Cargo.toml")
+        print(REMEDIATE_MSG)
+        return 1
 
     cargo_toml_updated = update_third_party_rust_cargo_toml(
         Path("Cargo.toml"),

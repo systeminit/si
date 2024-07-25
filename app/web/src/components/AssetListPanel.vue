@@ -3,7 +3,7 @@
     <RequestStatusMessage
       v-if="loadAssetsReqStatus.isPending && assetStore.variantList.length < 1"
       :requestStatus="loadAssetsReqStatus"
-      loadingMessage="Loading assets..."
+      loadingMessage="Loading Assets..."
     />
     <template #top>
       <SidebarSubpanelTitle icon="component">
@@ -15,16 +15,16 @@
         </template>
         <div class="flex flex-row gap-xs items-center">
           <IconButton
-            :requestStatus="loadModulesReqStatus"
+            :requestStatus="syncModulesReqStatus"
             class="hover:scale-125"
             icon="refresh"
             loadingIcon="loader"
-            loadingTooltip="Loading Modules..."
+            loadingTooltip="Checking For Asset Updates And For New Assets..."
             size="sm"
-            tooltip="Check for upgradeable or new modules"
+            tooltip="Check For Asset Updates Or Install New Assets"
             tooltipPlacement="top"
             variant="simple"
-            @click="loadModules"
+            @click="syncModules"
           />
           <IconButton
             :requestStatus="createAssetReqStatus"
@@ -37,17 +37,6 @@
             tooltipPlacement="top"
             variant="simple"
             @click="() => newAssetModalRef?.modal?.open()"
-          />
-          <IconButton
-            v-if="canContribute || true"
-            :selected="contributeAssetModalRef?.isOpen || false"
-            class="hover:scale-125"
-            icon="cloud-upload"
-            size="sm"
-            tooltip="Contribute All"
-            tooltipPlacement="top"
-            variant="simple"
-            @click="contributeAsset"
           />
           <IconButton
             v-if="canUpdate"
@@ -113,17 +102,11 @@
         />
       </TreeNode>
     </template>
-    <ModuleExportModal
-      ref="contributeAssetModalRef"
-      :loadingText="_.sample(contributeLoadingTexts)"
-      :preSelectedSchemaVariantId="
-        assetStore.selectedSchemaVariant?.schemaVariantId
-      "
-      label="Contribute to System Initiative"
-      title="Contribute Assets"
-      @export-success="onExport"
-    />
-    <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
+    <Modal
+      ref="contributeAssetSuccessModalRef"
+      size="sm"
+      title="Contribution sent"
+    >
       <p>
         Thanks for contributing! We will review your contribution, and reach out
         via email or on our
@@ -155,7 +138,6 @@ import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
-import ModuleExportModal from "./modules/ModuleExportModal.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import IconButton from "./IconButton.vue";
 
@@ -169,34 +151,10 @@ const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
 const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
-const loadModulesReqStatus = assetStore.getRequestStatus("LOAD_MODULES");
+const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
 
-const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
-const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
+const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
-
-const contributeLoadingTexts = [
-  "Engaging Photon Torpedos...",
-  "Reticulating Splines...",
-  "Revolutionizing DevOps...",
-  "Calibrating Hyperspace Matrix...",
-  "Syncing Neural Circuitry...",
-  "Optimizing Tachyon Weave...",
-  "Tuning Fractal Harmonics...",
-  "Reshuffling Multiverse Threads...",
-  "Harmonizing Subspace Arrays...",
-  "Modulating Cybernetic Matrices...",
-  "Configuring Exo-Geometric Arrays...",
-  "Initializing Flux Capacitors...",
-  "Balancing Subatomic Resonance...",
-  "Fine-tuning Quantum Entanglement...",
-  "Matrixing Hyperdimensional Grids...",
-  "Coalescing Esoteric Code...",
-  "Syncopating Quantum Flux...",
-  "Reformatting Reality Lattice...",
-  "Fine-tuning Temporal Flux...",
-  "Syncing Cosmic Harmonics...",
-];
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
@@ -205,11 +163,8 @@ const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
 
-const canContribute = computed(() =>
-  assetList.value.some((a) => a.canContribute),
-);
 const canUpdate = computed(
-  () => Object.keys(assetStore.upgradeableModules).length > 0,
+  () => Object.keys(moduleStore.upgradeableModules).length !== 0,
 );
 
 const categorizedAssets = computed(() =>
@@ -263,7 +218,7 @@ const categoryColor = (category: string) => {
   return "#000";
 };
 
-const loadModules = async () => assetStore.LOAD_MODULES();
+const syncModules = async () => moduleStore.SYNC();
 
 const newAsset = async (newAssetName: string) => {
   const result = await assetStore.CREATE_VARIANT(newAssetName);
@@ -277,7 +232,7 @@ const newAsset = async (newAssetName: string) => {
 };
 
 const updateAllAssets = () => {
-  Object.values(assetStore.upgradeableModules).forEach((module) => {
+  Object.values(moduleStore.upgradeableModules).forEach((module) => {
     moduleStore.INSTALL_REMOTE_MODULE(module.id);
   });
   router.replace({
@@ -285,13 +240,10 @@ const updateAllAssets = () => {
   });
 };
 
-const contributeAsset = () => contributeAssetModalRef.value?.open();
-const onExport = () => exportSuccessModalRef.value?.open();
-
 const filters = computed(() => [
   assetList.value.filter((a) => a.canContribute),
   assetList.value.filter(
-    (a) => !!assetStore.upgradeableModules[a.schemaVariantId],
+    (a) => !!moduleStore.upgradeableModules[a.schemaVariantId],
   ),
   assetList.value.filter((a) => !a.isLocked),
 ]);

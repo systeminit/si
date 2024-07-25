@@ -3,6 +3,7 @@ use dal::module::Module;
 use dal::pkg::export::PkgExporter;
 use dal::{DalContext, Schema};
 use dal_test::test;
+use pretty_assertions_sorted::assert_eq;
 use si_pkg::{SocketSpecArity, SocketSpecKind};
 use std::collections::HashMap;
 use ulid::Ulid;
@@ -89,16 +90,10 @@ async fn module_export_simple(ctx: &mut DalContext) {
     assert!(default_schema_variant.is_some());
 
     let name = "Paul's Test Pkg".to_string();
-    let description = "The Bison".to_string();
     let version = "2019-06-03".to_string();
     let user = "System Initiative".to_string();
-    let mut exporter = PkgExporter::new_module_exporter(
-        name.clone(),
-        version.clone(),
-        Some(description.clone()),
-        &user,
-        vec![schema.id()],
-    );
+    let mut exporter =
+        PkgExporter::new_for_module_contribution(name.clone(), version.clone(), &user, schema.id());
 
     let exported_pkg = exporter
         .export_as_spec(ctx)
@@ -106,7 +101,6 @@ async fn module_export_simple(ctx: &mut DalContext) {
         .expect("unable to get the pkg spec");
 
     assert_eq!(exported_pkg.name, name.clone());
-    assert_eq!(exported_pkg.description, description.clone());
     assert_eq!(exported_pkg.version, version.clone());
     assert_eq!(exported_pkg.created_by, user.clone());
     assert_eq!(exported_pkg.funcs.len(), 14);
@@ -240,5 +234,35 @@ async fn dummy_sync(ctx: &DalContext) {
     assert_eq!(
         expected, // expected
         actual    // actual
+    );
+}
+
+#[test]
+async fn prepare_contribution_works(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "swifty")
+        .await
+        .expect("could not find by name")
+        .expect("schema not found");
+    let name = "Paul's Test Pkg With Extra Spaces At The End    ";
+    let version = "    Version With Spaces At The Beginning 2019-06-03";
+
+    let default_variant_id = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get a default variant")
+        .expect("error getting the default variant id");
+
+    let (actual_name, actual_version, _, _, _) =
+        Module::prepare_contribution(ctx, name, version, default_variant_id)
+            .await
+            .expect("could not prepare contribution");
+
+    assert_eq!(
+        name.trim().to_string(), // expected
+        actual_name              // actual
+    );
+    assert_eq!(
+        version.trim().to_string(), // expected
+        actual_version              // actual
     );
 }

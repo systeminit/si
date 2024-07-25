@@ -1,8 +1,8 @@
 <template>
   <ScrollArea>
     <RequestStatusMessage
-      v-if="loadModulesReqStatus.isPending"
-      :requestStatus="loadModulesReqStatus"
+      v-if="syncModulesReqStatus.isPending"
+      :requestStatus="syncModulesReqStatus"
       loadingMessage="Loading modules..."
     />
     <template #top>
@@ -16,7 +16,7 @@
       />
     </template>
     <ul
-      v-if="assetStore.installableModules.length > 0"
+      v-if="moduleStore.installableModules.length > 0"
       :class="
         clsx(
           'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
@@ -61,13 +61,13 @@ import {
   themeClasses,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-import { useAssetStore } from "@/store/asset.store";
-import { Module } from "@/api/sdf/dal/schema";
 import router from "@/router";
+import { useModuleStore } from "@/store/module.store";
+import { LatestModule } from "@/api/sdf/dal/module";
 import EmptyStateCard from "./EmptyStateCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
-const assetStore = useAssetStore();
+const moduleStore = useModuleStore();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
@@ -77,16 +77,16 @@ const onSearch = (search: string) => {
 };
 
 const filteredModules = computed(() =>
-  assetStore.installableModules.filter((m) =>
+  moduleStore.installableModules.filter((m) =>
     m.name.toLocaleLowerCase().includes(searchString.value),
   ),
 );
 
-const loadModulesReqStatus = assetStore.getRequestStatus("LOAD_MODULES");
+const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
 
-const selectedModule = ref<Module | undefined>();
+const selectedModule = ref<LatestModule | undefined>();
 
-const selectModule = (module: Module) => {
+const selectModule = (module: LatestModule) => {
   selectedModule.value = module;
   const newQueryObj = {
     ...{ m: module.id },
