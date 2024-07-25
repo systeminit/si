@@ -60,13 +60,20 @@ pub async fn conflicts_summary(
         ))?;
 
     let conflicts_and_updates_change_set_into_base = base_snapshot
-        .detect_conflicts_and_updates(base_vector_clock_id, &cs_workspace_snapshot, cs_vector_clock_id)
+        .detect_conflicts_and_updates(
+            base_vector_clock_id,
+            &cs_workspace_snapshot,
+            cs_vector_clock_id,
+        )
         .await?;
 
     let mut components = HashSet::new();
     for conflict in conflicts_and_updates_change_set_into_base.conflicts {
         if let Some(node_index) = change_set_node_index(conflict) {
-            if let Some(component_id) = cs_workspace_snapshot.associated_component_id(node_index).await? {
+            if let Some(component_id) = cs_workspace_snapshot
+                .associated_component_id(node_index)
+                .await?
+            {
                 components.insert(component_id);
             }
         }

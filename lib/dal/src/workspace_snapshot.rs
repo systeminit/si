@@ -2216,7 +2216,9 @@ impl WorkspaceSnapshot {
                     .await
                     .map_err(Box::new)?,
             )),
-            NodeWeight::Content(content) => self.content_node_component_id(ctx, node, content),
+            NodeWeight::Content(content) => {
+                Ok(self.content_node_component_id(ctx, node, content).await?)
+            }
             NodeWeight::Component(component) => Ok(Some(component.id().into())),
             NodeWeight::Ordering(_) => todo!(),
 
@@ -2239,30 +2241,36 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
         match ContentAddressDiscriminants::from(content.content_address()) {
             // Component
-            ContentAddressDiscriminants::ValidationOutput => todo!(),
+            ContentAddressDiscriminants::ValidationOutput => {
+                self.validation_output_component_id(ctx, node).await
+            }
 
             // Schema variant or component
-            ContentAddressDiscriminants::AttributePrototype => todo!(),
-            ContentAddressDiscriminants::StaticArgumentValue => todo!(),
-            ContentAddressDiscriminants::ValidationPrototype => todo!(),
+            ContentAddressDiscriminants::AttributePrototype => {
+                self.attribute_prototype_component_id(ctx, node).await
+            }
+            ContentAddressDiscriminants::StaticArgumentValue => {
+                self.static_argument_value_component_id(ctx, node).await
+            }
 
             // Modules / schema / schema variants / functions
-            ContentAddressDiscriminants::Module
-            | ContentAddressDiscriminants::Schema
-            | ContentAddressDiscriminants::SchemaVariant
-            | ContentAddressDiscriminants::ActionPrototype
-            | ContentAddressDiscriminants::Prop
-            | ContentAddressDiscriminants::InputSocket
-            | ContentAddressDiscriminants::OutputSocket
+            ContentAddressDiscriminants::ActionPrototype
             | ContentAddressDiscriminants::Func
             | ContentAddressDiscriminants::FuncArg
+            | ContentAddressDiscriminants::InputSocket
+            | ContentAddressDiscriminants::Module
+            | ContentAddressDiscriminants::OutputSocket
+            | ContentAddressDiscriminants::Prop
             | ContentAddressDiscriminants::Root
+            | ContentAddressDiscriminants::Schema
+            | ContentAddressDiscriminants::SchemaVariant
             | ContentAddressDiscriminants::Secret => Ok(None),
 
             // These cases don't exist anymore and will be removed
             ContentAddressDiscriminants::DeprecatedAction
             | ContentAddressDiscriminants::DeprecatedActionBatch
-            | ContentAddressDiscriminants::DeprecatedActionRunner => Ok(None),
+            | ContentAddressDiscriminants::DeprecatedActionRunner
+            | ContentAddressDiscriminants::ValidationPrototype => Ok(None),
 
             discriminant @ (ContentAddressDiscriminants::JsonValue
             | ContentAddressDiscriminants::Component) => {
@@ -2273,5 +2281,43 @@ impl WorkspaceSnapshot {
                 .into())
             }
         }
+    }
+
+    async fn attribute_prototype_component_id(
+        &self,
+        _ctx: &DalContext,
+        _node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        // If the AttributePrototype is Component-specific, then the incoming Prototype edge will
+        // be from an AttributeValue. If the incoming Prototype edge is from a
+        // Prop/InputSocket/OutputSocket, then it's for a SchemaVariant.
+
+        Ok(None)
+    }
+
+    async fn static_argument_value_component_id(
+        &self,
+        _ctx: &DalContext,
+        _node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        // If the StaticArgumentValue is Component-specific, then it will have an incoming
+        // PrototypeArgumentValue edge from an AttributePrototypeArgument node that has an incoming
+        // PrototypeArgument edge from a Component-specific AttributePrototype. Otherwise, it's for
+        // a SchemaVariant.
+
+        Ok(None)
+    }
+
+    async fn validation_output_component_id(
+        &self,
+        _ctx: &DalContext,
+        _node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        // ValidationOutput should always be for a Component, since SchemaVariants do not have
+        // AttributeValues to validate (malformed graph if the ValidationOutput isn't for a
+        // Component). The ValidationOutput will have an incoming ValidationOutput edge from an
+        // AttributeValue.
+
+        Ok(None)
     }
 }
