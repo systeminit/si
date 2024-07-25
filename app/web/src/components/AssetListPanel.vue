@@ -39,17 +39,6 @@
             @click="() => newAssetModalRef?.modal?.open()"
           />
           <IconButton
-            v-if="canContribute || true"
-            :selected="contributeAssetModalRef?.isOpen || false"
-            class="hover:scale-125"
-            icon="cloud-upload"
-            size="sm"
-            tooltip="Contribute All"
-            tooltipPlacement="top"
-            variant="simple"
-            @click="contributeAsset"
-          />
-          <IconButton
             v-if="canUpdate"
             class="hover:scale-125"
             icon="code-deployed"
@@ -113,11 +102,6 @@
         />
       </TreeNode>
     </template>
-    <AssetContributeModal
-      ref="contributeAssetModalRef"
-      :contributeRequest="contributeRequest"
-      @contribute-success="onContributeAsset"
-    />
     <Modal
       ref="contributeAssetSuccessModalRef"
       size="sm"
@@ -147,19 +131,13 @@ import {
   PillCounter,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
-import { format as dateFormat, parseISO } from "date-fns";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import {
-  ModuleContributeRequest,
-  ModuleContributeRequestItem,
-} from "@/api/sdf/dal/module";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
-import AssetContributeModal from "./AssetContributeModal.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import IconButton from "./IconButton.vue";
 
@@ -175,8 +153,6 @@ const loadAssetsReqStatus = assetStore.getRequestStatus(
 );
 const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
 
-const contributeAssetModalRef =
-  ref<InstanceType<typeof AssetContributeModal>>();
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
 
@@ -187,24 +163,6 @@ const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
 
-const contributeRequest = computed((): ModuleContributeRequest => {
-  let modules = [] as ModuleContributeRequestItem[];
-  const filteredSchemaVariants = _.filter(
-    assetStore.schemaVariants,
-    (schemaVariant) => schemaVariant.canContribute,
-  );
-  const version = dateFormat(Date.now(), "yyyyMMddkkmmss");
-  modules = _.map(filteredSchemaVariants, (filteredSchemaVariant) => ({
-    name: `${filteredSchemaVariant.schemaName} ${version}`,
-    version,
-    schemaId: filteredSchemaVariant.schemaId,
-  }));
-  return { modules };
-});
-
-const canContribute = computed(() =>
-  assetList.value.some((a) => a.canContribute),
-);
 const canUpdate = computed(
   () => Object.keys(moduleStore.upgradeableModules).length !== 0,
 );
@@ -281,9 +239,6 @@ const updateAllAssets = () => {
     name: "workspace-lab-assets",
   });
 };
-
-const contributeAsset = () => contributeAssetModalRef.value?.open();
-const onContributeAsset = () => contributeAssetSuccessModalRef.value?.open();
 
 const filters = computed(() => [
   assetList.value.filter((a) => a.canContribute),

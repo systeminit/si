@@ -1,19 +1,12 @@
 <template>
   <Modal ref="modalRef" title="Contribute Assets">
     <Stack>
-      <ul
+      <div
         v-if="enableContributeButton"
         class="flex flex-col gap-2xs max-h-72 overflow-auto"
       >
-        <li
-          v-for="module in props.contributeRequest.modules"
-          :key="module.schemaId"
-          class="flex px-1 items-center"
-        >
-          <span class="pr-2 select-none">•</span>
-          {{ module.name }}
-        </li>
-      </ul>
+        {{ props.contributeRequest.name }}
+      </div>
       <ErrorMessage
         v-if="contributeModuleReqStatus.isError"
         :requestStatus="contributeModuleReqStatus"
@@ -51,12 +44,10 @@ import { ref, computed } from "vue";
 import {
   Modal,
   VButton,
-  VormInput,
   useModal,
   Stack,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { format as dateFormat, parseISO } from "date-fns";
 import * as _ from "lodash-es";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";
@@ -100,7 +91,7 @@ const isOpen = computed(() => modalRef.value?.isOpen);
 defineExpose({ open, close, isOpen });
 
 const enableContributeButton = computed(() => {
-  return props.contributeRequest.modules.length > 0;
+  return props.contributeRequest;
 });
 
 const contributeAssets = async () => {

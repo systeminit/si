@@ -246,8 +246,14 @@ async fn prepare_contribution_works(ctx: &DalContext) {
     let name = "Paul's Test Pkg With Extra Spaces At The End    ";
     let version = "    Version With Spaces At The Beginning 2019-06-03";
 
+    let default_variant_id = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get a default variant")
+        .expect("error getting the default variant id");
+
     let (actual_name, actual_version, _, _, _) =
-        Module::prepare_contribution(ctx, name, version, schema.id())
+        Module::prepare_contribution(ctx, name, version, default_variant_id)
             .await
             .expect("could not prepare contribution");
 

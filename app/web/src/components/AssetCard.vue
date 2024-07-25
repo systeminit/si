@@ -124,18 +124,23 @@
 import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
-import { useTheme, Stack, Icon, ErrorMessage } from "@si/vue-lib/design-system";
+import {
+  useTheme,
+  Modal,
+  Stack,
+  Icon,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
+import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
+import { ModuleContributeRequest } from "@/api/sdf/dal/module";
 import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
 import AssetContributeModal from "./AssetContributeModal.vue";
-import { Modal } from "@si/vue-lib/design-system";
-import { ModuleContributeRequest } from "@/api/sdf/dal/module";
-import { format as dateFormat, parseISO } from "date-fns";
 
 const props = defineProps({
   titleCard: { type: Boolean },
@@ -155,16 +160,14 @@ const contributeAsset = () => contributeAssetModalRef.value?.open();
 const onContributeAsset = () => contributeAssetSuccessModalRef.value?.open();
 
 const contributeRequest = computed((): ModuleContributeRequest => {
-  const modules = [];
   if (asset.value) {
     const version = dateFormat(Date.now(), "yyyyMMddkkmmss");
-    modules.push({
+    return {
       name: `${asset.value.schemaName} ${version}`,
       version,
-      schemaId: asset.value.schemaId,
-    });
-  }
-  return { modules };
+      schemaVariantId: asset.value.schemaVariantId,
+    };
+  } else throw new Error("cannot contribute: no asset selected");
 });
 
 const editingVersionDoesNotExist = computed<boolean>(

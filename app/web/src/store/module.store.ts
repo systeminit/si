@@ -232,7 +232,11 @@ export const useModuleStore = () => {
             return new ApiRequest({
               method: "post",
               url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/contribute`,
-              params: { ...visibility, ...request },
+              params: {
+                name: request.name,
+                version: request.version,
+                schemaVariantId: request.schemaVariantId,
+              },
             });
           },
 

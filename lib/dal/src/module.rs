@@ -530,14 +530,14 @@ impl Module {
         fields(
             name = name.as_ref(),
             version = version.as_ref(),
-            %schema_id
+            %schema_variant_id
         )
     )]
     pub async fn prepare_contribution(
         ctx: &DalContext,
         name: impl AsRef<str>,
         version: impl AsRef<str>,
-        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
     ) -> ModuleResult<(String, String, Option<String>, Option<SchemaId>, Vec<u8>)> {
         let user = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
@@ -561,14 +561,24 @@ impl Module {
             ));
         }
 
+        // The frontend will send us the schema variant as this is what we care about from
+        // there. We can then use that schema variant to be able to understand the associated
+        // schema for it.
+        let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+        let associated_schema = variant.schema(ctx).await?;
+
         // Create module payload.
-        let mut exporter =
-            PkgExporter::new_for_module_contribution(name, version, &created_by_email, schema_id);
+        let mut exporter = PkgExporter::new_for_module_contribution(
+            name,
+            version,
+            &created_by_email,
+            associated_schema.id(),
+        );
         let module_payload = exporter.export_as_bytes(ctx).await.map_err(Box::new)?;
 
         // Check if local information exists for contribution metadata.
         let (local_module_based_on_hash, local_module_schema_id) =
-            match Module::find_for_member_id(ctx, schema_id).await? {
+            match Module::find_for_member_id(ctx, associated_schema.id()).await? {
                 Some(module) => (
                     Some(module.root_hash().to_string()),
                     module.schema_id().map(|id| id.into()),

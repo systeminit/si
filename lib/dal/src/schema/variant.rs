@@ -27,6 +27,7 @@ use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV2,
 };
+use crate::module::Module;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
@@ -115,6 +116,8 @@ pub enum SchemaVariantError {
     LeafMapPropNotFound(PropId),
     #[error("schema variant missing asset func id; schema_variant_id={0}")]
     MissingAssetFuncId(SchemaVariantId),
+    #[error("module error: {0}")]
+    Module(String),
     #[error("more than one schema found for schema variant: {0}")]
     MoreThanOneSchemaFound(SchemaVariantId),
     #[error("node weight error: {0}")]
@@ -777,14 +780,16 @@ impl SchemaVariant {
         }
     }
 
-    // NOTE(nick): we've determined that a module can be contributed if it is the default. For now, we are allowing
-    // unlocked variants to be contributed. Ask Paul for more information. I hate leaving Linear issues here since
-    // the community cannot see them, but ENG-2607 for context.
     pub async fn can_be_contributed_by_id(
         ctx: &DalContext,
         id: SchemaVariantId,
     ) -> SchemaVariantResult<bool> {
-        Ok(Self::is_default_by_id(ctx, id).await?)
+        Ok(Self::is_default_by_id(ctx, id).await?
+            && Self::is_locked_by_id(ctx, id).await?
+            && Module::find_for_member_id(ctx, id)
+                .await
+                .map_err(|e| SchemaVariantError::Module(e.to_string()))?
+                .is_none())
     }
 
     pub async fn get_latest_for_schema(

@@ -18,20 +18,8 @@ mod sync;
 pub enum ModulesAPIError {
     #[error("axum http error: {0}")]
     AxumHttp(#[from] axum::http::Error),
-    #[error("one or many module(s) were not contributed: {0:?}")]
-    ContributionPartialFailure(
-        Vec<(
-            frontend_types::ModuleContributeRequestItem,
-            module_index_client::ModuleIndexClientError,
-        )>,
-    ),
-    #[error("all module(s) were not contributed: {0:?}")]
-    ContributionTotalFailure(
-        Vec<(
-            frontend_types::ModuleContributeRequestItem,
-            module_index_client::ModuleIndexClientError,
-        )>,
-    ),
+    #[error("module not contributed: {0:?}")]
+    ContributionFailure(frontend_types::ModuleContributeRequest),
     #[error("module error: {0}")]
     Module(#[from] dal::module::ModuleError),
     #[error("module index client error: {0}")]
@@ -60,8 +48,7 @@ impl IntoResponse for ModulesAPIError {
                 StatusCode::NOT_FOUND
             }
             Self::Module(dal::module::ModuleError::EmptyMetadata(_, _)) => StatusCode::BAD_REQUEST,
-            Self::ContributionPartialFailure(_) => StatusCode::MULTI_STATUS,
-            Self::ContributionTotalFailure(_) => StatusCode::BAD_GATEWAY,
+            Self::ContributionFailure(_) => StatusCode::BAD_REQUEST,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 

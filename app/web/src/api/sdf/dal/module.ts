@@ -1,4 +1,4 @@
-import { SchemaId } from "./schema";
+import { SchemaId, SchemaVariantId } from "./schema";
 
 export type ModuleId = string;
 
@@ -15,11 +15,7 @@ export interface LatestModule {
 }
 
 export interface ModuleContributeRequest {
-  modules: ModuleContributeRequestItem[];
-}
-
-export interface ModuleContributeRequestItem {
   name: string;
   version: string;
-  schemaId: SchemaId;
+  schemaVariantId: SchemaVariantId;
 }
