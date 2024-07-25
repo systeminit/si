@@ -354,11 +354,11 @@ impl VariantAuthoringClient {
         component_type: ComponentType,
     ) -> VariantAuthoringResult<()> {
         // Ok we need to delete the first level of outgoing children for the schema variant
-        let schema_variant =
+        let current_schema_variant =
             SchemaVariant::get_by_id_or_error(ctx, current_schema_variant_id).await?;
 
         // then we can build the package and reimport ALL but the schema variant itself
-        let asset_func = schema_variant.get_asset_func(ctx).await?;
+        let asset_func = current_schema_variant.get_asset_func(ctx).await?;
 
         let display_name = display_name.into();
         let category = category.into();
@@ -427,8 +427,12 @@ impl VariantAuthoringClient {
             .await?;
 
         // We need to clean up the old graph before we re-import the new parts!
-        schema_variant.remove_direct_connected_edges(ctx).await?;
-        schema_variant.rebuild_variant_root_prop(ctx).await?;
+        current_schema_variant
+            .remove_external_connections(ctx)
+            .await?;
+        current_schema_variant
+            .rebuild_variant_root_prop(ctx)
+            .await?;
 
         // Now we can reimport all parts of the schema variant in place!
         let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?).await?;
@@ -439,7 +443,7 @@ impl VariantAuthoringClient {
             variant_pkg_spec,
             None,
             &mut thing_map,
-            Some(schema_variant),
+            Some(current_schema_variant),
         )
         .await?;
 

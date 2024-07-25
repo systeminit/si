@@ -1993,18 +1993,48 @@ impl SchemaVariant {
         Ok(pairs)
     }
 
-    pub async fn remove_direct_connected_edges(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+    /// Remove all direct nodes connected to the schema variant, while being careful to not
+    /// change anything outside the variant
+    /// TODO: Implement and actual "delete schema variant function"
+    pub async fn remove_external_connections(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let maybe_schema_indices = workspace_snapshot.edges_directed(self.id, Outgoing).await?;
 
-        for (_edge_weight, _source_index, target_index) in maybe_schema_indices {
-            workspace_snapshot
-                .remove_node_by_id(
-                    ctx.vector_clock_id()?,
-                    workspace_snapshot.get_node_weight(target_index).await?.id(),
-                )
-                .await?;
+        for (edge_weight, source_index, target_index) in maybe_schema_indices {
+            let kind = EdgeWeightKindDiscriminants::from(edge_weight.kind());
+            match kind {
+                EdgeWeightKindDiscriminants::Use
+                | EdgeWeightKindDiscriminants::Socket
+                | EdgeWeightKindDiscriminants::ActionPrototype => {
+                    workspace_snapshot
+                        .remove_all_edges(
+                            ctx.vector_clock_id()?,
+                            workspace_snapshot.get_node_weight(target_index).await?.id(),
+                        )
+                        .await?;
+                }
+
+                EdgeWeightKindDiscriminants::AuthenticationPrototype => {
+                    workspace_snapshot
+                        .remove_edge(ctx.vector_clock_id()?, source_index, target_index, kind)
+                        .await?;
+                }
+
+                EdgeWeightKindDiscriminants::Action
+                | EdgeWeightKindDiscriminants::Contain
+                | EdgeWeightKindDiscriminants::FrameContains
+                | EdgeWeightKindDiscriminants::Ordering
+                | EdgeWeightKindDiscriminants::Ordinal
+                | EdgeWeightKindDiscriminants::Prop
+                | EdgeWeightKindDiscriminants::Prototype
+                | EdgeWeightKindDiscriminants::PrototypeArgument
+                | EdgeWeightKindDiscriminants::PrototypeArgumentValue
+                | EdgeWeightKindDiscriminants::Proxy
+                | EdgeWeightKindDiscriminants::Root
+                | EdgeWeightKindDiscriminants::SocketValue
+                | EdgeWeightKindDiscriminants::ValidationOutput => {}
+            }
         }
 
         Ok(())
