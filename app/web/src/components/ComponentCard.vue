@@ -60,6 +60,20 @@
           :status="component.changeStatus"
           @click="componentsStore.setComponentDetailsTab('diff')"
         />
+
+        <div
+          v-if="changeSetStore.componentConflicts.includes(component.id)"
+          class="ml-auto cursor-pointer rounded hover:scale-125"
+        >
+          <StatusIndicatorIcon
+            v-tooltip="{
+              content: 'Conflict',
+              theme: 'instant-show',
+            }"
+            size="sm"
+            type="conflict"
+          />
+        </div>
       </div>
 
       <!-- Slot for additional icons/buttons -->
@@ -74,6 +88,7 @@ import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
 import { FullComponent, useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
@@ -85,6 +100,7 @@ const props = defineProps({
 const { theme } = useTheme();
 
 const componentsStore = useComponentsStore();
+const changeSetStore = useChangeSetsStore();
 const component = computed(
   (): FullComponent | undefined =>
     componentsStore.componentsById[props.componentId],

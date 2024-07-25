@@ -13,6 +13,9 @@ import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import RebaseOnBase from "@/components/toasts/RebaseOnBase.vue";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { FuncId } from "@/api/sdf/dal/func";
+import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -47,6 +50,8 @@ export function useChangeSetsStore() {
         postAbandonActor: null as string | null,
         changeSetApprovals: {} as Record<UserId, string>,
         statusWithBase: {} as Record<ChangeSetId, StatusWithBase>,
+        componentConflicts: [] as ComponentId[],
+        functionConflicts: [] as FuncId[],
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
@@ -107,6 +112,7 @@ export function useChangeSetsStore() {
               changeSetId,
             },
           });
+          this.CLEAR_CONFLICTS();
         },
 
         async FETCH_CHANGE_SETS() {
@@ -115,6 +121,27 @@ export function useChangeSetsStore() {
             onSuccess: (response) => {
               this.headChangeSetId = response.headChangeSetId;
               this.changeSetsById = _.keyBy(response.changeSets, "id");
+            },
+          });
+        },
+        CLEAR_CONFLICTS() {
+          this.componentConflicts = [];
+          this.functionConflicts = [];
+        },
+        async FETCH_CONFLICTS(changeSetId: ChangeSetId) {
+          return new ApiRequest<{
+            components: ComponentId[];
+            functions: FuncId[];
+            variants: SchemaVariantId[];
+          }>({
+            url: "change_set/conflicts_summary",
+            method: "post",
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (response) => {
+              this.componentConflicts = response.components;
+              this.functionConflicts = response.functions;
             },
           });
         },
@@ -165,6 +192,11 @@ export function useChangeSetsStore() {
             },
             onSuccess: (data) => {
               this.statusWithBase[changeSetId] = data;
+              if (data.conflictsWithBase) {
+                this.FETCH_CONFLICTS(changeSetId);
+              } else {
+                this.CLEAR_CONFLICTS();
+              }
             },
           });
         },
@@ -182,6 +214,7 @@ export function useChangeSetsStore() {
                   username: "HEAD",
                 },
               });
+              this.CLEAR_CONFLICTS();
             },
           });
         },
@@ -200,6 +233,7 @@ export function useChangeSetsStore() {
                   username,
                 },
               });
+              this.CLEAR_CONFLICTS();
             },
             _delay: 2000,
             onSuccess: (response) => {
@@ -312,6 +346,7 @@ export function useChangeSetsStore() {
           () => {
             // store last used change set (per workspace) in localstorage
             if (this.selectedChangeSet && workspacePk) {
+              this.FETCH_STATUS_WITH_BASE(this.selectedChangeSet.id);
               sessionStorage.setItem(
                 `SI:LAST_CHANGE_SET/${workspacePk}`,
                 this.selectedChangeSet.id,

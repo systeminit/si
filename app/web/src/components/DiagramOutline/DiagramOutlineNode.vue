@@ -97,6 +97,20 @@
 
           <!-- other status icons -->
           <div :class="clsx('flex items-center mr-xs')">
+            <div
+              v-if="changeSetStore.componentConflicts.includes(component.id)"
+            >
+              <StatusIndicatorIcon
+                v-tooltip="{
+                  content: 'Conflict',
+                  theme: 'instant-show',
+                }"
+                size="sm"
+                type="conflict"
+                class="hover:scale-110"
+              />
+            </div>
+
             <div v-if="component.canBeUpgraded">
               <StatusIndicatorIcon
                 v-tooltip="{
@@ -184,6 +198,7 @@ import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useQualificationsStore } from "@/store/qualifications.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
@@ -205,6 +220,7 @@ const isOpen = ref(true);
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
+const changeSetStore = useChangeSetsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],

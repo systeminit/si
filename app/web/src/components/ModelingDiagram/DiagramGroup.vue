@@ -339,6 +339,26 @@
       />
     </v-group>
 
+    <DiagramIcon
+      v-if="hasConflicts"
+      :color="getToneColorHex('destructive')"
+      :size="24 + (diffIconHover ? 4 : 0)"
+      :x="iconPositions.conflict.x"
+      :y="iconPositions.conflict.y"
+      icon="read-only"
+      origin="center"
+    />
+
+    <DiagramIcon
+      v-if="group.def.canBeUpgraded"
+      :color="getToneColorHex('action')"
+      :size="24 + (diffIconHover ? 4 : 0)"
+      :x="iconPositions.upgrade.x"
+      :y="iconPositions.upgrade.y"
+      icon="bolt"
+      origin="center"
+    />
+
     <!-- added/modified indicator -->
     <DiagramIcon
       v-if="isAdded || isModified || isDeleted"
@@ -346,13 +366,8 @@
       :color="topRightIconColor"
       shadeBg
       :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
-      :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
-      :y="
-        -nodeHeaderHeight +
-        GROUP_HEADER_ICON_SIZE / 2 -
-        GROUP_HEADER_BOTTOM_MARGIN +
-        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
-      "
+      :x="iconPositions.changeStatus.x"
+      :y="iconPositions.changeStatus.y"
       origin="center"
       @click="onClick('diff')"
       @mouseover="diffIconHover = true"
@@ -367,8 +382,10 @@ import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
+import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
 import {
   CORNER_RADIUS,
@@ -411,6 +428,7 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
+const changeSetStore = useChangeSetsStore();
 const diagramContext = useDiagramContext();
 
 const componentId = computed(() => props.group.def.componentId);
@@ -471,15 +489,82 @@ const childCount = computed(() => {
   return undeletedChildren.length;
 });
 
+const hasConflicts = computed(() =>
+  changeSetStore.componentConflicts.includes(props.group.def.componentId),
+);
+
 const nodeWidth = computed(() =>
   Math.max(size.value.width, MIN_NODE_DIMENSION),
 );
 const halfWidth = computed(() => nodeWidth.value / 2);
-const headerWidth = computed(() =>
-  !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
-    ? nodeWidth.value
-    : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
-);
+const numIcons = computed(() => {
+  let numIcons = 0;
+  if (
+    props.group.def.changeStatus &&
+    props.group.def.changeStatus !== "unmodified"
+  )
+    numIcons++;
+  if (props.group.def.canBeUpgraded) numIcons++;
+  if (hasConflicts.value) numIcons++;
+  return numIcons;
+});
+const iconPositions = computed<{
+  upgrade: Vector2d;
+  conflict: Vector2d;
+  changeStatus: Vector2d;
+}>(() => {
+  const pos = {
+    upgrade: { x: 0, y: 0 },
+    conflict: { x: 0, y: 0 },
+    changeStatus: { x: 0, y: 0 },
+  };
+  const y =
+    -nodeHeaderHeight.value +
+    GROUP_HEADER_ICON_SIZE / 2 -
+    GROUP_HEADER_BOTTOM_MARGIN +
+    (nodeHeaderHeight.value - GROUP_HEADER_ICON_SIZE) / 2;
+
+  const rightPosition = {
+    x: halfWidth.value - GROUP_HEADER_ICON_SIZE / 2,
+    y,
+  };
+  const middlePosition = {
+    x: halfWidth.value - (GROUP_HEADER_ICON_SIZE * 3) / 2,
+    y,
+  };
+  const leftPosition = {
+    x: halfWidth.value - (GROUP_HEADER_ICON_SIZE * 6) / 2,
+    y,
+  };
+  switch (numIcons.value) {
+    case 3:
+      pos.conflict = leftPosition;
+      pos.upgrade = middlePosition;
+      pos.changeStatus = rightPosition;
+      break;
+    case 2:
+      pos.conflict = middlePosition;
+      pos.upgrade = middlePosition;
+      pos.changeStatus = rightPosition;
+      if (props.group.def.canBeUpgraded && hasConflicts.value) {
+        pos.conflict = middlePosition;
+        pos.upgrade = rightPosition;
+      }
+      break;
+    case 1:
+      pos.conflict = rightPosition;
+      pos.upgrade = rightPosition;
+      pos.changeStatus = rightPosition;
+      break;
+    default:
+      break;
+  }
+  return pos;
+});
+const headerWidth = computed(() => {
+  const iconSize = GROUP_HEADER_ICON_SIZE + 4;
+  return nodeWidth.value - numIcons.value * iconSize;
+});
 
 const actualSockets = computed(() =>
   _.filter(props.group.sockets, (s) => {

@@ -99,6 +99,13 @@ export function useDiagramOutlineContext() {
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import {
+  ErrorMessage,
+  Icon,
+  PillCounter,
+  ScrollArea,
+} from "@si/vue-lib/design-system";
+import * as _ from "lodash-es";
+import {
   computed,
   ComputedRef,
   inject,
@@ -109,21 +116,15 @@ import {
   ref,
   watch,
 } from "vue";
-import * as _ from "lodash-es";
-import {
-  ErrorMessage,
-  Icon,
-  PillCounter,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
-import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import { useComponentsStore, FullComponent } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import SiSearch, { Filter } from "@/components/SiSearch.vue";
+import { FullComponent, useComponentsStore } from "@/store/components.store";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
-import DiagramOutlineNode from "./DiagramOutlineNode.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 
 defineProps<{ actionsAreRunning: boolean }>();
 
@@ -243,6 +244,13 @@ const upgradableComponents = computed(() =>
   componentsTreeFlattened.value.filter((component) => component.canBeUpgraded),
 );
 
+const changeSetStore = useChangeSetsStore();
+const conflictComponents = computed(() =>
+  componentsTreeFlattened.value.filter((component) =>
+    changeSetStore.componentConflicts.includes(component.id),
+  ),
+);
+
 const searchFiltersWithCounts = computed(() => {
   const searchFilters: Array<Filter> = [
     {
@@ -275,6 +283,14 @@ const searchFiltersWithCounts = computed(() => {
         upgradableComponents.value,
       ).length,
     },
+    {
+      name: "Conflicts",
+      iconTone: "destructive",
+      iconName: "read-only",
+      count: filterComponentArrayBySearchStringAndFilters(
+        conflictComponents.value,
+      ).length,
+    },
     // TODO - Add filter for resource status
     // { name: "Resources", iconTone: "destructive", iconName: "x-hex", count: 0 },
   ];
@@ -287,6 +303,7 @@ const filterArrays = [
   diffComponents,
   failedQualificationComponents,
   upgradableComponents,
+  conflictComponents,
 ];
 
 watch(

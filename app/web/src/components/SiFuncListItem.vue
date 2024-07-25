@@ -19,6 +19,16 @@
         <div class="truncate">
           {{ func.name }}
         </div>
+        <StatusIndicatorIcon
+          v-if="changeSetStore.functionConflicts.includes(func.funcId)"
+          v-tooltip="{
+            content: 'Conflict',
+            theme: 'instant-show',
+          }"
+          size="sm"
+          type="conflict"
+          class="hover:scale-110"
+        />
         <EditingPill v-if="!func.isLocked" color="#666"></EditingPill>
       </div>
       <!-- <div
@@ -36,8 +46,10 @@ import clsx from "clsx";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { trackEvent } from "@/utils/tracking";
 import EditingPill from "@/components/EditingPill.vue";
+import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
   color?: string;
@@ -47,6 +59,7 @@ const props = defineProps<{
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
+const changeSetStore = useChangeSetsStore();
 
 const trackFunctionSelected = () => {
   trackEvent("function_selected_for_edit", {

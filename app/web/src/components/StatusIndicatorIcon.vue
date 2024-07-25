@@ -56,6 +56,9 @@ const CONFIG = {
   upgradable: {
     _default: { iconName: "bolt", tone: "action" },
   },
+  conflict: {
+    _default: { iconName: "read-only", tone: "destructive" },
+  },
   funcTest: {
     success: { iconName: "check-circle", tone: "success" },
     running: { iconName: "loader", tone: "action" },

@@ -151,9 +151,18 @@
         v-if="node.def.canBeUpgraded"
         :color="getToneColorHex('action')"
         :size="24 + (diffIconHover ? 4 : 0)"
-        :x="halfWidth - 2 - 36"
-        :y="nodeHeaderHeight / 2"
+        :x="iconPositions.upgrade.x"
+        :y="iconPositions.upgrade.y"
         icon="bolt"
+        origin="center"
+      />
+      <DiagramIcon
+        v-if="changeSetStore.componentConflicts.includes(node.def.componentId)"
+        :color="getToneColorHex('destructive')"
+        :size="24 + (diffIconHover ? 4 : 0)"
+        :x="iconPositions.conflict.x"
+        :y="iconPositions.conflict.y"
+        icon="read-only"
         origin="center"
       />
 
@@ -163,8 +172,8 @@
         :color="topRightIconColor"
         :icon="topRightIcon"
         :size="24 + (diffIconHover ? 4 : 0)"
-        :x="halfWidth - 2 - 12"
-        :y="nodeHeaderHeight / 2"
+        :x="iconPositions.changeStatus.x"
+        :y="iconPositions.changeStatus.y"
         origin="center"
         @click="onClick('diff')"
         @mouseout="diffIconHover = false"
@@ -264,9 +273,11 @@ import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
+import { Vector2d } from "konva/lib/types";
 import { Tween } from "konva/lib/Tween";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -307,6 +318,7 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const changeSetStore = useChangeSetsStore();
 const componentId = computed(() => props.node.def.componentId);
 
 const diffIconHover = ref(false);
@@ -449,6 +461,71 @@ watch([nodeWidth, nodeHeight, position], () => {
 
     emit("resize");
   });
+});
+
+const hasConflicts = computed(() =>
+  changeSetStore.componentConflicts.includes(props.node.def.componentId),
+);
+
+const numIcons = computed(() => {
+  let numIcons = 0;
+  if (
+    props.node.def.changeStatus &&
+    props.node.def.changeStatus !== "unmodified"
+  )
+    numIcons++;
+  if (props.node.def.canBeUpgraded) numIcons++;
+  if (hasConflicts.value) numIcons++;
+  return numIcons;
+});
+const iconPositions = computed<{
+  upgrade: Vector2d;
+  conflict: Vector2d;
+  changeStatus: Vector2d;
+}>(() => {
+  const pos = {
+    upgrade: { x: 0, y: 0 },
+    conflict: { x: 0, y: 0 },
+    changeStatus: { x: 0, y: 0 },
+  };
+  const y = nodeHeaderHeight.value / 2;
+
+  const rightPosition = {
+    x: halfWidth.value - 14,
+    y,
+  };
+  const middlePosition = {
+    x: halfWidth.value - (14 * 3) / 2,
+    y,
+  };
+  const leftPosition = {
+    x: halfWidth.value - (14 * 6) / 2,
+    y,
+  };
+  switch (numIcons.value) {
+    case 3:
+      pos.conflict = leftPosition;
+      pos.upgrade = middlePosition;
+      pos.changeStatus = rightPosition;
+      break;
+    case 2:
+      pos.conflict = middlePosition;
+      pos.upgrade = middlePosition;
+      pos.changeStatus = rightPosition;
+      if (props.node.def.canBeUpgraded && hasConflicts.value) {
+        pos.conflict = middlePosition;
+        pos.upgrade = rightPosition;
+      }
+      break;
+    case 1:
+      pos.conflict = rightPosition;
+      pos.upgrade = rightPosition;
+      pos.changeStatus = rightPosition;
+      break;
+    default:
+      break;
+  }
+  return pos;
 });
 
 const colors = computed(() => {
