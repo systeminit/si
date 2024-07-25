@@ -4,7 +4,9 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{action::ActionBinding, leaf::LeafBinding, EventualParent},
+    func::binding::{
+        action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
+    },
     ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
@@ -135,9 +137,50 @@ pub async fn delete_binding(
                 }
             }
         }
-        _ => {
-            return Err(FuncAPIError::WrongFunctionKindForBinding);
+        dal::func::FuncKind::Authentication => {
+            for binding in request.bindings {
+                if let frontend_types::FuncBinding::Authentication {
+                    schema_variant_id,
+                    func_id,
+                } = binding
+                {
+                    match func_id {
+                        Some(func_id) => {
+                            let eventual_parent = AuthBinding::delete_auth_binding(
+                                &ctx,
+                                func_id.into(),
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            if let EventualParent::SchemaVariant(schema_variant_id) =
+                                eventual_parent
+                            {
+                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                    &ctx,
+                                    schema_variant_id,
+                                )
+                                .await?;
+                                let schema_variant =
+                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                        .await?;
+
+                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                    .await?
+                                    .publish_on_commit(&ctx)
+                                    .await?;
+                            }
+                        }
+                        None => return Err(FuncAPIError::MissingFuncId),
+                    }
+                } else {
+                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                }
+            }
         }
+        dal::func::FuncKind::Attribute
+        | dal::func::FuncKind::Intrinsic
+        | dal::func::FuncKind::SchemaVariantDefinition
+        | dal::func::FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
     };
 
     track(

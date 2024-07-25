@@ -49,7 +49,7 @@ impl AuthBinding {
     #[instrument(
         level = "info",
         skip(ctx),
-        name = "func.binding.authentication.create_auth_binding"
+        name = "func.binding.authentication.delete_auth_binding"
     )]
     /// Deletes an Auth Binding for a Schema Variant
     pub async fn delete_auth_binding(
@@ -63,6 +63,11 @@ impl AuthBinding {
         Ok(EventualParent::SchemaVariant(schema_variant_id))
     }
 
+    #[instrument(
+        level = "info",
+        skip(ctx),
+        name = "func.binding.authentication.port_binding_to_new_func"
+    )]
     pub(crate) async fn port_binding_to_new_func(
         &self,
         ctx: &DalContext,
