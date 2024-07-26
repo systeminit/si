@@ -62,8 +62,14 @@ const TEST_QUERY: &str = "SELECT 1";
 // holds on to connections and reuses them even if our services are restarted.
 // We could avoid needing to discard plans by selecting exactly the columns we
 // need instead of SELECT * (unless the column type changes!)
+//
+// We set `CLIENT_MIN_MESSAGES` to `ERROR` to silence the possible warning from `ROLLBACK` about
+// there not being any open transaction. We immediately set it back to the default value
+// (`WARNING`) after so we're not hiding any "real" warnings that might happen.
 const CONNECTION_RECYCLING_METHOD: &str = r#"
+    SET CLIENT_MIN_MESSAGES TO ERROR;
     ROLLBACK;
+    SET CLIENT_MIN_MESSAGES TO WARNING;
     CLOSE ALL;
     SET SESSION AUTHORIZATION DEFAULT;
     RESET ALL;
