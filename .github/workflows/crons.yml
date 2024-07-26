@@ -13,5 +13,5 @@ jobs:
   e2e-validation:
     uses: ./.github/workflows/e2e-validation.yml
     with:
-      environment: tools
+      environment: production
     secrets: inherit

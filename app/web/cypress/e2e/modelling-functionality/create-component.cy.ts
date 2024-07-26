@@ -26,16 +26,13 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
 
-      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
-
-      cy.get('#vorm-input-3').clear().type(UUID);
-
-      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', UUID);
+      cy.get('[class=vorm-input__input]').get('[type=text]').clear().type(UUID);
 
       cy.contains('Create change set', { timeout: 30000 }).click();
 
       // Give time to redirect onto the new change set
       cy.url().should('not.include', 'head', { timeout: 10000 });
+      cy.get('.vbutton').contains("Let's Get Started!").parent().parent().click();
 
       // Create a region component
       cy.createComponent("region");
