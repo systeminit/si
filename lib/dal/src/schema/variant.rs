@@ -1,17 +1,23 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
+
 use chrono::Utc;
 use petgraph::{Direction, Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use url::ParseError;
+
+pub use json::SchemaVariantJson;
+pub use json::SchemaVariantMetadataJson;
+pub use metadata_view::SchemaVariantMetadataView;
 use si_events::{ulid::Ulid, ContentHash};
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
 use telemetry::prelude::*;
-use thiserror::Error;
-use url::ParseError;
+pub use value_from::ValueFrom;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::{
@@ -57,11 +63,6 @@ pub mod leaves;
 mod metadata_view;
 pub mod root_prop;
 mod value_from;
-
-pub use json::SchemaVariantJson;
-pub use json::SchemaVariantMetadataJson;
-pub use metadata_view::SchemaVariantMetadataView;
-pub use value_from::ValueFrom;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
@@ -553,7 +554,6 @@ impl SchemaVariant {
         }
 
         let schema = variant.schema(ctx).await?;
-        dbg!(&schema);
 
         // Firstly we want to delete the asset func
         let asset_func = variant.get_asset_func(ctx).await?;
@@ -562,10 +562,7 @@ impl SchemaVariant {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
-            dbg!(&default_schema_variant_id);
             if variant.id == default_schema_variant_id {
-                dbg!("Deletion of the schema");
-                dbg!(&schema);
                 workspace_snapshot
                     .remove_node_by_id(ctx.vector_clock_id()?, schema.id())
                     .await?;

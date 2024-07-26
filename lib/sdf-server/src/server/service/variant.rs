@@ -1,7 +1,9 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
-use axum::{routing::get, Json, Router};
+use axum::{Json, Router};
+use thiserror::Error;
+
 use dal::func::summary::FuncSummaryError;
 use dal::pkg::PkgError;
 use dal::schema::variant::authoring::VariantAuthoringError;
@@ -10,15 +12,11 @@ use dal::{
     WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
-use thiserror::Error;
 
 use crate::server::state::AppState;
 
 pub mod clone_variant;
-mod create_unlocked_copy;
 pub mod create_variant;
-pub mod get_variant;
-pub mod list_variants;
 pub mod regenerate_variant;
 pub mod save_variant;
 
@@ -43,6 +41,7 @@ pub enum SchemaVariantError {
     FuncNotFound(FuncId),
     #[error("func summary error: {0}")]
     FuncSummary(#[from] FuncSummaryError),
+
     #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]
@@ -80,7 +79,10 @@ impl IntoResponse for SchemaVariantError {
             | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
             | SchemaVariantError::SchemaVariantAssetNotFound(_)
             | SchemaVariantError::VariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            SchemaVariantError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
+            SchemaVariantError::VariantAuthoring(VariantAuthoringError::DuplicatedSchemaName(
+                _,
+            ))
+            | SchemaVariantError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
                 (StatusCode::CONFLICT, self.to_string())
             }
             SchemaVariantError::VariantAuthoring(
@@ -102,8 +104,6 @@ impl IntoResponse for SchemaVariantError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/list_variants", get(list_variants::list_variants))
-        .route("/get_variant", get(get_variant::get_variant))
         .route("/create_variant", post(create_variant::create_variant))
         .route(
             "/regenerate_variant",
@@ -111,8 +111,4 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/clone_variant", post(clone_variant::clone_variant))
         .route("/save_variant", post(save_variant::save_variant))
-        .route(
-            "/create_unlocked_copy",
-            post(create_unlocked_copy::create_unlocked_copy),
-        )
 }
