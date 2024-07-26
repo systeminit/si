@@ -1,10 +1,5 @@
 <template>
   <ScrollArea>
-    <RequestStatusMessage
-      v-if="syncModulesReqStatus.isPending"
-      :requestStatus="syncModulesReqStatus"
-      loadingMessage="Loading modules..."
-    />
     <template #top>
       <SidebarSubpanelTitle icon="component">
         <template #label> Install New Assets</template>
@@ -15,21 +10,22 @@
         @search="onSearch"
       />
     </template>
-    <ul
-      v-if="moduleStore.installableModules.length > 0"
-      :class="
-        clsx(
-          'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
-          'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-        )
-      "
+    <RequestStatusMessage
+      v-if="syncModulesReqStatus.isPending"
+      :requestStatus="syncModulesReqStatus"
+      loadingMessage="Loading modules..."
+    />
+    <div
+      v-else-if="moduleStore.installableModules.length > 0"
+      class="flex flex-col dark:text-white text-black dark:bg-neutral-800 py-[1px]"
     >
-      <li
+      <div
         v-for="module in filteredModules"
         :key="module.id"
         :class="
           clsx(
             'text-xs w-full p-2xs truncate flex flex-row items-center gap-1 hover:text-action-500 dark:hover:text-action-300 cursor-pointer',
+            'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
             selectedModule &&
               module.id === selectedModule.id &&
               themeClasses('bg-action-100', 'bg-action-900'),
@@ -37,11 +33,12 @@
         "
         @click="() => selectModule(module)"
       >
+        <Icon name="component" size="sm" />
         <div class="truncate">
           {{ module.name }}
         </div>
-      </li>
-    </ul>
+      </div>
+    </div>
     <EmptyStateCard
       v-else
       iconName="no-assets"
@@ -59,6 +56,7 @@ import {
   ScrollArea,
   RequestStatusMessage,
   themeClasses,
+  Icon,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import router from "@/router";

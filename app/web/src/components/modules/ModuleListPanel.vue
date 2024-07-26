@@ -1,5 +1,9 @@
 <template>
   <div class="flex flex-col overflow-hidden h-full relative">
+    <SidebarSubpanelTitle icon="component">
+      <template #label>Modules</template>
+    </SidebarSubpanelTitle>
+
     <SiSearch
       v-model="textSearch"
       class="flex-none"
@@ -31,6 +35,7 @@ import { computed, onMounted, ref } from "vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { useModuleStore } from "@/store/module.store";
 import ModuleList from "./ModuleList.vue";
+import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
