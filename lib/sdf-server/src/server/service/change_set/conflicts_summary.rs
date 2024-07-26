@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{ChangeSet, ComponentId, FuncId, Visibility, WorkspaceSnapshot, WorkspaceSnapshotError};
+use dal::{
+    workspace_snapshot::{conflict::Conflict, graph::NodeIndex},
+    ChangeSet, ComponentId, FuncId, Visibility, WorkspaceSnapshot, WorkspaceSnapshotError,
+};
 
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -71,7 +74,7 @@ pub async fn conflicts_summary(
     for conflict in conflicts_and_updates_change_set_into_base.conflicts {
         if let Some(node_index) = change_set_node_index(conflict) {
             if let Some(component_id) = cs_workspace_snapshot
-                .associated_component_id(node_index)
+                .associated_component_id(&ctx, node_index)
                 .await?
             {
                 components.insert(component_id);
@@ -86,11 +89,11 @@ pub async fn conflicts_summary(
 }
 
 fn change_set_node_index(conflict: Conflict) -> Option<NodeIndex> {
-    match self {
-        Conflict::ChildOrder { onto, .. } => Some(onto.node_index),
-        Conflict::ExclusiveEdgeMismatch { destination, .. } => Some(destination.node_index),
-        Conflict::ModifyRemovedItem(node) => Some(node.node_index),
-        Conflict::NodeContent { onto, .. } => Some(onto.node_index),
+    match conflict {
+        Conflict::ChildOrder { onto, .. } => Some(onto.index),
+        Conflict::ExclusiveEdgeMismatch { destination, .. } => Some(destination.index),
+        Conflict::ModifyRemovedItem(node) => Some(node.index),
+        Conflict::NodeContent { onto, .. } => Some(onto.index),
         Conflict::RemoveModifiedItem { .. } => None,
     }
 }

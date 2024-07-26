@@ -2210,7 +2210,8 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
         let node_weight = self.get_node_weight(node).await?;
         match node_weight {
-            NodeWeight::AttributePrototypeArgument(_) => todo!(),
+            // TODO: Find whether the APA is from a Component-specific AP (and which Component)
+            NodeWeight::AttributePrototypeArgument(_) => Ok(None),
             NodeWeight::AttributeValue(value) => Ok(Some(
                 AttributeValue::component_id(ctx, value.id.into())
                     .await
@@ -2220,7 +2221,8 @@ impl WorkspaceSnapshot {
                 Ok(self.content_node_component_id(ctx, node, content).await?)
             }
             NodeWeight::Component(component) => Ok(Some(component.id().into())),
-            NodeWeight::Ordering(_) => todo!(),
+            // TODO: Find whether the Ordering is for something Component-specific.
+            NodeWeight::Ordering(_) => Ok(None),
 
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
