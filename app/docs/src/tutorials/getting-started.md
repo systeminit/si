@@ -55,6 +55,16 @@ Fill in your AWS accounts `Access Key Id` and `Secret Access Key`.
 Click `Store Secret` to securely encrypt and save your
 [secret](../reference/vocabulary#secret).
 
+:::warning
+
+A side note about [qualifications](/reference/vocabulary#qualification)
+
+If you see a red hexagon in the lower corner of your AWS credential frame at
+this point, it means that the credentials are invalid and need to be re-entered.
+In some cases, you may need to also add your AWS Session Key.
+
+:::
+
 ## Add an AWS Region component and set its properties
 
 Click on the `Region` from the AWS category of the asset pallete, and drop it

@@ -67,3 +67,10 @@ A resource is the data about the real-world thing represented by a component.
 
 Secrets are encrypted data stored for a given type of credential. They are
 defined by a credential component.
+
+## Qualification
+
+Qualifications are functions that are executed to ensure that the component can
+be applied successfully to the workspace. An example is the qualification
+function that checks if the Secret you have passed into your AWS Credential
+component are valid.
