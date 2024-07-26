@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
 use strum::EnumDiscriminants;
+
+use si_events::ContentHash;
 
 #[remain::sorted]
 #[derive(
@@ -30,7 +31,9 @@ pub enum ContentAddress {
     Secret(ContentHash),
     StaticArgumentValue(ContentHash),
     ValidationOutput(ContentHash),
-    ValidationPrototype(ContentHash), // TODO(victor): Remove this after module index gets new data
+    // With validations moving to the props and not having prototypes anymore, this is unused
+    // TODO(victor): remove this as soon as it does not break graph (de)serialization
+    ValidationPrototype(ContentHash),
 }
 
 impl ContentAddress {

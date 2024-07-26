@@ -33,9 +33,6 @@ pub async fn get_variant(
     let schema_id = SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
     let schema_variant = schema_variant.into_frontend_type(&ctx, schema_id).await?;
 
-    // Ported from `lib/sdf-server/src/server/service/variant/get_variant.rs`, so changes may be
-    // desired here...
-
     track(
         &posthog_client,
         &ctx,
