@@ -10,10 +10,11 @@
     showSelection
     labelClasses="w-full"
     leftBorderSize="none"
+    primaryIconClasses=""
     :isSelected="isSelected"
     @mousedown.left.stop="onClick"
   >
-    <template #primaryIcon><Icon name="component" /></template>
+    <template #primaryIcon><Icon name="component" size="sm" /></template>
     <template #label>
       <div class="w-full truncate text-xs">
         {{ moduleSummary.name }}

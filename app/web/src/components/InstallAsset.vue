@@ -3,71 +3,78 @@
     class="flex flex-col h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
   >
     <template #top>
-      <div class="p-xs">
-        <TruncateWithTooltip
-          class="text-2xl font-bold pb-2xs flex flex-row items-center gap-xs"
-        >
-          <Icon name="component" size="xl" />
-          <div class="flex flex-row items-center gap-xs">
+      <div class="flex flex-col py-xs">
+        <div class="flex flex-row items-center gap-xs text-2xl font-bold px-xs">
+          <Icon name="component" size="xl" class="flex-none" />
+          <TruncateWithTooltip class="flex-grow">
             {{ $props.moduleName }}
+          </TruncateWithTooltip>
+          <VButton
+            class="flex-none"
+            icon="component-plus"
+            label="Install Module"
+            :loading="installReqStatus.isPending"
+            loadingText="Installing..."
+            :requestStatus="installReqStatus"
+            successText="Successfully Installed"
+            tone="action"
+            @click="install"
+          />
+        </div>
+        <div
+          v-if="moduleObj"
+          class="px-xs text-xs italic flex flex-row flex-wrap gap-x-lg text-neutral-600 dark:text-neutral-200"
+        >
+          <div>
+            <span class="font-bold">Name: </span>
+            {{ moduleObj.name }}
           </div>
-        </TruncateWithTooltip>
-        <VButton
-          icon="component-plus"
-          label="Install Module"
-          :loading="installReqStatus.isPending"
-          loadingText="Installing..."
-          :requestStatus="installReqStatus"
-          successText="Successfully Installed"
-          tone="action"
-          @click="install"
-        />
-      </div>
-      <div
-        v-if="moduleObj"
-        class="text-xs italic flex flex-row flex-wrap gap-x-lg text-neutral-600 dark:text-neutral-200"
-      >
-        <div>
-          <span class="font-bold">Name: </span>
-          {{ moduleObj.name }}
-        </div>
-        <div>
-          <span class="font-bold">Module Created At: </span>
-          <Timestamp :date="moduleObj.createdAt" size="long" />
-        </div>
-        <div>
-          <span class="font-bold">Created By: </span>{{ moduleObj.createdBy }}
-        </div>
-        <div>
-          <span class="font-bold">Version: </span>{{ moduleObj.version }}
+          <div>
+            <span class="font-bold">Module Created At: </span>
+            <Timestamp :date="moduleObj.createdAt" size="long" />
+          </div>
+          <div>
+            <span class="font-bold">Created By: </span>{{ moduleObj.createdBy }}
+          </div>
+          <div>
+            <span class="font-bold">Version: </span>{{ moduleObj.version }}
+          </div>
         </div>
       </div>
     </template>
 
     <div
       v-if="loadModuleReqStatus.isError || !loadModuleReqStatus.isRequested"
-      class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+      class="p-xs text-center text-neutral-400 dark:text-neutral-300"
     >
-      <template v-if="moduleId">
-        Cannot retrieve details for "{{ moduleId }}"
-      </template>
+      Unable to retrieve details for
+      {{ moduleId ? `"${moduleId}"` : "unknown module" }}
     </div>
     <template v-else-if="moduleObj">
-      <CodeEditor
-        :id="`module-asset-${moduleId}`"
-        v-model="assetFn.code"
-        disabled
-        :recordId="moduleId"
-      />
-      <template v-for="func in functions" :key="func.id">
-        <h2 class="text-xl">{{ func.name }}</h2>
-        <CodeEditor
-          :id="`module-${func.name}-${moduleId}`"
-          v-model="func.code"
-          disabled
-          :recordId="moduleId"
-        />
-      </template>
+      <TreeNode
+        v-if="functions.length > 0"
+        alwaysShowArrow
+        enableGroupToggle
+        :defaultOpen="false"
+        noIndentationOrLeftBorder
+        enableDefaultHoverClasses
+        :label="assetFn.name"
+      >
+        <CodeViewer :code="assetFn.code" disableScroll />
+      </TreeNode>
+      <CodeViewer v-else :code="assetFn.code" disableScroll />
+      <TreeNode
+        v-for="func in functions"
+        :key="func.id"
+        alwaysShowArrow
+        enableGroupToggle
+        :defaultOpen="false"
+        noIndentationOrLeftBorder
+        enableDefaultHoverClasses
+        :label="func.name"
+      >
+        <CodeViewer :code="func.code" disableScroll />
+      </TreeNode>
     </template>
     <RequestStatusMessage
       v-else
@@ -86,12 +93,13 @@ import {
   Timestamp,
   VButton,
   Icon,
+  TreeNode,
 } from "@si/vue-lib/design-system";
 import { useModuleStore, ModuleSpec } from "@/store/module.store";
 import { nilId } from "@/utils/nilId";
 import { ModuleId } from "@/api/sdf/dal/module";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";
-import CodeEditor from "./CodeEditor.vue";
+import CodeViewer from "./CodeViewer.vue";
 
 const props = defineProps<{
   moduleId: ModuleId;

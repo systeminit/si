@@ -1,5 +1,12 @@
 <template>
-  <div class="flex flex-col w-full max-h-full overflow-hidden">
+  <div
+    :class="
+      clsx(
+        'flex flex-col w-full overflow-hidden',
+        !disableScroll && 'max-h-full',
+      )
+    "
+  >
     <div
       v-if="showTitle"
       class="flex flex-row items-center justify-between p-xs text-base align-middle"
@@ -94,6 +101,7 @@ const props = defineProps({
   title: { type: String },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
+  disableScroll: { type: Boolean },
 });
 
 const numberOfLinesInCode = computed(() => {

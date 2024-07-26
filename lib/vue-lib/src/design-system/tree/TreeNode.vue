@@ -89,7 +89,8 @@
           size="md"
           :class="
             clsx(
-              'mr-xs flex-none',
+              'flex-none',
+              primaryIconClasses,
               enableGroupToggle &&
                 !alwaysShowArrow &&
                 'group-hover:scale-0 transition-all',

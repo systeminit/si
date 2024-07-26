@@ -7,21 +7,26 @@
     rememberSizeKey="func-picker"
     side="left"
   >
-    <template #subpanel1>
+    <CustomizeTabs
+      v-if="tabContentSlug === 'newassets'"
+      :tabContentSlug="tabContentSlug"
+    >
+      <template #newassets>
+        <InstallAssetsPanel ref="install" />
+      </template>
+    </CustomizeTabs>
+    <template v-if="tabContentSlug === 'assets'" #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
-          <CustomizeTabs ref="tabs" :tabContentSlug="tabContentSlug">
+          <CustomizeTabs :tabContentSlug="tabContentSlug">
             <template #assets>
               <AssetListPanel />
-            </template>
-            <template #newassets>
-              <InstallAssetsPanel ref="install" />
             </template>
           </CustomizeTabs>
         </div>
       </div>
     </template>
-    <template v-if="tabs?.group?.selectedTabSlug !== 'newassets'" #subpanel2>
+    <template v-if="tabContentSlug === 'assets'" #subpanel2>
       <AssetFuncListPanel :schemaVariantId="selectedVariantId" />
     </template>
   </component>
@@ -32,24 +37,16 @@
     <div class="absolute left-0 right-0 top-0 bottom-0">
       <FuncEditor
         v-if="
-          router.currentRoute.value.name === 'workspace-lab-assets' &&
-          selectedVariantId &&
-          selectedFuncId
+          tabContentSlug === 'assets' && selectedVariantId && selectedFuncId
         "
         :funcId="selectedFuncId"
       />
       <AssetEditor
-        v-else-if="
-          router.currentRoute.value.name === 'workspace-lab-assets' &&
-          selectedVariantId
-        "
+        v-else-if="tabContentSlug === 'assets' && selectedVariantId"
         :schemaVariantId="selectedVariantId"
       />
       <InstallAsset
-        v-else-if="
-          router.currentRoute.value.name === 'workspace-lab-newassets' &&
-          !!install?.selectedModule
-        "
+        v-else-if="tabContentSlug === 'newassets' && !!install?.selectedModule"
         :moduleId="install?.selectedModule.id"
         :moduleName="install?.selectedModule.name"
       />
@@ -68,6 +65,7 @@
 
   <component
     :is="ResizablePanel"
+    v-if="tabContentSlug === 'assets'"
     ref="rightResizablePanelRef"
     :minSize="300"
     rememberSizeKey="func-details"
@@ -145,7 +143,6 @@ import { useRoute } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useModuleStore } from "@/store/module.store";
-import router from "@/router";
 import AssetCard from "../AssetCard.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import InstallAssetsPanel from "../InstallAssetsPanel.vue";
@@ -174,8 +171,6 @@ const install = ref<InstanceType<typeof InstallAssetsPanel>>();
 
 const leftResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
 const rightResizablePanelRef = ref<InstanceType<typeof ResizablePanel>>();
-
-const tabs = ref<InstanceType<typeof CustomizeTabs>>();
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
