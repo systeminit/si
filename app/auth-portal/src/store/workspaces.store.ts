@@ -118,6 +118,18 @@ export const useWorkspacesStore = defineStore("workspaces", {
       });
     },
 
+    async SETUP_PRODUCTION_WORKSPACE_BY_USER_ID(userId: string) {
+      return new ApiRequest<{
+        newWorkspace: Workspace;
+      }>({
+        method: "post",
+        url: "/workspaces/setup-production-workspace-by-userid",
+        params: {
+          userId,
+        },
+      });
+    },
+
     async DELETE_WORKSPACE(workspaceId: WorkspaceId) {
       return new ApiRequest({
         method: "delete",
