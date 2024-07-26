@@ -7,6 +7,7 @@
         </div>
       </div>
 
+      <div>Create by User Email</div>
       <Stack>
         <ErrorMessage :requestStatus="createWorkspaceReqStatus" />
         <VormInput
@@ -25,7 +26,31 @@
           variant="solid"
           @click="createWorkspace()"
         >
-          Create Workspace
+          Create Workspace For User Email Address
+        </VButton>
+      </Stack>
+      <div class="pt-4">
+        Create by User Id - this must be an ID that is in our auth-api database
+      </div>
+      <Stack>
+        <ErrorMessage :requestStatus="createWorkspaceByUserIdReqStatus" />
+        <VormInput
+          v-model="workspaceById.userId"
+          label="User ID"
+          placeholder="The user id of the user to invite"
+          required
+          :maxLength="500"
+        />
+
+        <VButton
+          iconRight="chevron--right"
+          :requestStatus="createWorkspaceByUserIdReqStatus"
+          loadingText="Creating..."
+          tone="action"
+          variant="solid"
+          @click="createWorkspaceById()"
+        >
+          Create Workspace for Know SystemInit UserID
         </VButton>
       </Stack>
     </template>
@@ -52,17 +77,29 @@ const router = useRouter();
 const workspacesStore = useWorkspacesStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
-const invitedUser = {
+const invitedUserByEmail = {
   userEmail: "",
 };
-const workspace = reactive(_.cloneDeep(invitedUser));
+const invitedUserById = {
+  userId: "",
+};
+const workspace = reactive(_.cloneDeep(invitedUserByEmail));
+const workspaceById = reactive(_.cloneDeep(invitedUserById));
 
 const createWorkspaceReqStatus = workspacesStore.getRequestStatus(
   "SETUP_PRODUCTION_WORKSPACE",
 );
+const createWorkspaceByUserIdReqStatus = workspacesStore.getRequestStatus(
+  "SETUP_PRODUCTION_WORKSPACE_BY_USER_ID",
+);
 
 const createWorkspace = async () => {
   await workspacesStore.SETUP_PRODUCTION_WORKSPACE(workspace.userEmail);
+};
+const createWorkspaceById = async () => {
+  await workspacesStore.SETUP_PRODUCTION_WORKSPACE_BY_USER_ID(
+    workspaceById.userId,
+  );
 };
 
 onMounted(async () => {

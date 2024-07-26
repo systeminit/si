@@ -124,6 +124,49 @@ router.post("/workspaces/setup-production-workspace", async (ctx) => {
   }
 });
 
+router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
+  if (!ctx.state.authUser) {
+    throw new ApiError("Unauthorized", "You are not logged in");
+  }
+
+  if (!ctx.state.authUser.email.includes("@systeminit.com")) {
+    throw new ApiError(
+      "Forbidden",
+      "You are not allowed to perform this operation",
+    );
+  }
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      userId: z.string(),
+    }),
+  );
+
+  const user = await getUserById(reqBody.userId);
+  if (user) {
+    const userWorkspaces = await getUserWorkspaces(user.id);
+    const hasDefaultWorkspace = _.head(
+      _.filter(
+        userWorkspaces,
+        (w) => w.isDefault && w.creatorUserId === user.id,
+      ),
+    );
+
+    const workspaceDetails = await createWorkspace(
+      user,
+      InstanceEnvType.SI,
+      "https://app.systeminit.com",
+      `${user.nickname}'s Production Workspace`,
+      hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
+    );
+
+    ctx.body = {
+      newWorkspace: workspaceDetails,
+    };
+  }
+});
+
 router.post("/workspaces/new", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
