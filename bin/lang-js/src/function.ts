@@ -97,13 +97,12 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
 
   for (const beforeFunction of request.before || []) {
     await executor(ctx, beforeFunction, FunctionKind.Before, before);
-  }
-
-  // Set process environment variables, set from requestStorage
-  {
-    const requestStorageEnv = rawStorageRequest().env();
-    for (const key in requestStorageEnv) {
-      process.env[key] = requestStorageEnv[key];
+    // Set process environment variables, set from requestStorage
+    {
+      const requestStorageEnv = rawStorageRequest().env();
+      for (const key in requestStorageEnv) {
+        process.env[key] = requestStorageEnv[key];
+      }
     }
   }
 
