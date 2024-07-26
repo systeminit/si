@@ -289,7 +289,6 @@ impl AttributeBinding {
                             WorkspaceSnapshotGraphError::NodeWithIdNotFound(raw_id),
                         ),
                     ) if raw_id == arg.func_argument_id.into() => {
-                        dbg!("raw id == arg.func_arg.id.into");
                         continue;
                     }
                     err => return Err(err.into()),

@@ -691,15 +691,14 @@ impl Func {
             .await
             .map_err(Box::new)?
         {
-            dbg!(&arg);
             // create new func args for the new func
             FuncArgument::new(ctx, arg.name, arg.kind, arg.element_kind, new_func.id)
                 .await
                 .map_err(Box::new)?;
         }
-        dbg!(FuncArgument::list_for_func(ctx, new_func.id)
+        FuncArgument::list_for_func(ctx, new_func.id)
             .await
-            .map_err(Box::new)?);
+            .map_err(Box::new)?;
         Ok(new_func)
     }
 
