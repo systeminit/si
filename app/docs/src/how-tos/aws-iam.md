@@ -6,7 +6,7 @@ outline:
 
 This how-to assumes:
 
-- Basic [familiarity with System Initiative](../tutorial/getting-started)
+- Basic [familiarity with System Initiative](../tutorials/getting-started)
 - Are familiar with [AWS IAM](https://docs.aws.amazon.com/iam/)
 
 It will teach you how to create an AWS IAM policy and
