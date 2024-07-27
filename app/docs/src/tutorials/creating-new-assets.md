@@ -1,11 +1,9 @@
 # Creating a new asset
 
-<div style="position: relative; padding-bottom: calc(52.18540712019739% + 41px); height: 0; width: 100%;"><iframe src="https://demo.arcade.software/etd5PHI79RHSeveMR6R3?embed&show_copy_link=true" title="" frameborder="0" loading="lazy" webkitallowfullscreen mozallowfullscreen allowfullscreen allow="clipboard-write" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;color-scheme: light;"></iframe></div>
-
 This tutorial will teach you how to create a new asset. The asset models an
 \[AWS
-ARN\](<https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html>). You
-will need to know basic programming concepts to follow along.
+ARN\](<https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html>).
+You will need to know basic programming concepts to follow along.
 
 ## Create a new change set
 
@@ -13,8 +11,8 @@ Create a new change set called `My AWS ARN`.
 
 ## Go to the customize screen
 
-Go to the customize screen by clicking on the Beaker icon. This is where you
-can create new assets, or customize existing assets.
+Go to the customize screen by clicking on the Beaker icon. This is where you can
+create new assets, or customize existing assets.
 
 ## Create a new asset
 
@@ -65,10 +63,9 @@ which are meaningful:
 - A resource-id
 
 ## Adding the partition attribute
-`
-To add your partition attribute, click on line 3, then type `new`. You will see
-an auto-complete dropdown. Select `New Prop Snippet` by clicking or pressing the
-down arrow and then enter.
+
+`To add your partition attribute, click on line 3, then type`new`. You will see an auto-complete dropdown. Select`New
+Prop Snippet` by clicking or pressing the down arrow and then enter.
 
 Your definition will look like this:
 
@@ -110,8 +107,8 @@ function main() {
 
 ## Regenerate your updated schema
 
-Execute your updated schema definition function by clicking the `Regenerate
-Asset` button.
+Execute your updated schema definition function by clicking the
+`Regenerate Asset` button.
 
 ## Check your work
 
