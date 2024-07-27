@@ -144,7 +144,7 @@ impl NodeWeight {
 
     pub fn content_address_discriminants(&self) -> Option<ContentAddressDiscriminants> {
         match self {
-            NodeWeight::Content(weight) => Some(weight.content_address().into()),
+            NodeWeight::Content(weight) => Some(weight.content_address_discriminants()),
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)

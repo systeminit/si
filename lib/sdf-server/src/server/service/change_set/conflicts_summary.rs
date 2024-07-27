@@ -73,8 +73,9 @@ pub async fn conflicts_summary(
     let mut components = HashSet::new();
     for conflict in conflicts_and_updates_change_set_into_base.conflicts {
         if let Some(node_index) = change_set_node_index(conflict) {
+            let node_weight = cs_workspace_snapshot.get_node_weight(node_index).await?;
             if let Some(component_id) = cs_workspace_snapshot
-                .associated_component_id(&ctx, node_index)
+                .associated_component_id(&ctx, node_weight)
                 .await?
             {
                 components.insert(component_id);
