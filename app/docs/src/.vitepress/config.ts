@@ -33,6 +33,7 @@ export default defineConfig({
     nav: [
       { text: "Home", link: "/" },
       { text: "Tutorials", link: "/tutorials/" },
+      { text: "How To", link: "/how-tos/" },
       { text: "Reference Guides", link: "/reference/" },
       { text: "Changelog", link: "/changelog/" },
       { text: "Log In", link: 'https://auth.systeminit.com/login', target: '__self', },
@@ -58,6 +59,17 @@ export default defineConfig({
           {
             text: "Creating a new Asset",
             link: "/tutorials/creating-new-assets",
+          }
+        ]
+      },
+      {
+        text: "How To Guides",
+        link: "/how-tos/",
+        collapsed: false,
+        items: [
+          {
+            text: "AWS IAM Policy",
+            link: "/how-tos/aws-iam",
           }
         ]
       },
