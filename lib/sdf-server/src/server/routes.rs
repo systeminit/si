@@ -43,7 +43,6 @@ pub fn routes(state: AppState) -> Router {
             crate::server::service::component::routes(),
         )
         .nest("/api/diagram", crate::server::service::diagram::routes())
-        .nest("/api/func", crate::server::service::func::routes())
         .nest("/api/graphviz", crate::server::service::graphviz::routes())
         .nest(
             "/api/qualification",

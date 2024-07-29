@@ -5,9 +5,11 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use chrono::Utc;
 use convert_case::{Case, Casing};
-use pkg::import::import_schema_variant;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
+use thiserror::Error;
+
+use pkg::import::import_schema_variant;
 use si_events::ulid::Ulid;
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
@@ -16,7 +18,6 @@ use si_pkg::{
     SchemaVariantSpec, SiPkg, SiPkgError, SpecError,
 };
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::action::prototype::ActionPrototypeError;
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
@@ -51,6 +52,8 @@ pub enum VariantAuthoringError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("there already exists a Schema with the name {0}")]
+    DuplicatedSchemaName(String),
     #[error("empty value within func run value (FuncId {0} and FuncRunId {1})")]
     EmptyValueWithinFuncRunValue(FuncId, FuncRunId),
     #[error("func error: {0}")]
@@ -133,6 +136,10 @@ impl VariantAuthoringClient {
         color: impl Into<String>,
     ) -> VariantAuthoringResult<SchemaVariant> {
         let name = name.into();
+        if Schema::is_name_taken(ctx, &name).await? {
+            return Err(VariantAuthoringError::DuplicatedSchemaName(name));
+        };
+
         let variant_version = SchemaVariant::generate_version_string();
 
         let code_base64 = general_purpose::STANDARD_NO_PAD.encode(DEFAULT_ASSET_CODE);
@@ -204,6 +211,10 @@ impl VariantAuthoringClient {
         schema_variant_id: SchemaVariantId,
         schema_name: String,
     ) -> VariantAuthoringResult<(SchemaVariant, Schema)> {
+        if Schema::is_name_taken(ctx, &schema_name).await? {
+            return Err(VariantAuthoringError::DuplicatedSchemaName(schema_name));
+        };
+
         let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
         let schema = variant.schema(ctx).await?;
 

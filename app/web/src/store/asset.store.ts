@@ -86,10 +86,15 @@ export const useAssetStore = () => {
   const workspaceStore = useWorkspacesStore();
   const workspaceId = workspaceStore.selectedWorkspacePk;
 
+  const changeSetsStore = useChangeSetsStore();
+  const selectedChangeSetId = changeSetsStore.selectedChangeSet?.id;
+
   const funcStore = useFuncStore();
   const moduleStore = useModuleStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
+
+  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${selectedChangeSetId}/schema-variants`;
 
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/asset`, {
@@ -432,7 +437,7 @@ export const useAssetStore = () => {
 
         async LOAD_SCHEMA_VARIANT_LIST() {
           return new ApiRequest<SchemaVariant[], Visibility>({
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
+            url: `${API_PREFIX}`,
             params: { ...visibility },
             onSuccess: (response) => {
               this.variantList = response;
@@ -450,12 +455,8 @@ export const useAssetStore = () => {
 
           return new ApiRequest<SchemaVariant>({
             method: "post",
-            url: "/variant/create_unlocked_copy",
+            url: `${API_PREFIX}/${id}`,
             keyRequestStatusBy: id,
-            params: {
-              ...visibility,
-              id,
-            },
             onSuccess: (variant) => {
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
@@ -473,8 +474,8 @@ export const useAssetStore = () => {
             changeSetStore.creatingChangeSet = true;
 
           return new ApiRequest<SchemaVariant>({
-            method: "post",
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants/${id}/delete_unlocked_variant`,
+            method: "delete",
+            url: `${API_PREFIX}/${id}`,
             keyRequestStatusBy: id,
             params: {
               // ...visibility,

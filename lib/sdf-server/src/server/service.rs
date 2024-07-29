@@ -11,7 +11,6 @@ pub mod attribute;
 pub mod change_set;
 pub mod component;
 pub mod diagram;
-pub mod func;
 pub mod graphviz;
 pub mod module;
 pub mod node_debug;

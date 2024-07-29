@@ -1,15 +1,18 @@
+use axum::routing::delete;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
+use thiserror::Error;
+
 use dal::{ChangeSetError, SchemaVariantId, WsEventError};
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{server::state::AppState, service::ApiError};
 
+pub mod create_unlocked_copy;
 mod delete_unlocked_variant;
 mod get_variant;
 mod list_variants;
@@ -61,7 +64,11 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/", get(list_variants::list_variants))
         .route("/:schema_variant_id", get(get_variant::get_variant))
         .route(
-            "/:schema_variant_id/delete_unlocked_variant",
-            post(delete_unlocked_variant::delete_unlocked_variant),
+            "/:schema_variant_id",
+            post(create_unlocked_copy::create_unlocked_copy),
+        )
+        .route(
+            "/:schema_variant_id",
+            delete(delete_unlocked_variant::delete_unlocked_variant),
         )
 }

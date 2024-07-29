@@ -1,18 +1,17 @@
-use std::sync::Arc;
-
-use axum::{extract::Query, Json};
+use axum::extract::Path;
+use axum::Json;
 use chrono::{DateTime, Utc};
-use dal::ContentHash;
-use dal::Visibility;
+use dal::{ContentHash, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use si_events::{
     ActionId, ActionKind, ActionPrototypeId, ActionResultState, Actor, AttributeValueId, CasValue,
     ChangeSetId, ComponentId, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
     FuncRunId, FuncRunLog, FuncRunLogId, FuncRunState, OutputLine,
 };
+use std::sync::Arc;
 
-use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::service::v2::func::FuncAPIResult;
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -145,14 +144,6 @@ impl FuncRunView {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetFuncRun {
-    pub func_run_id: FuncRunId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
-
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GetFuncRunResponse {
@@ -161,12 +152,18 @@ pub struct GetFuncRunResponse {
 
 pub async fn get_func_run(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<GetFuncRun>,
-) -> FuncResult<Json<GetFuncRunResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    AccessBuilder(access_builder): AccessBuilder,
+    Path((_workspace_pk, change_set_id, func_run_id)): Path<(
+        WorkspacePk,
+        dal::ChangeSetId,
+        FuncRunId,
+    )>,
+) -> FuncAPIResult<Json<GetFuncRunResponse>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
 
-    let maybe_func_run = ctx.layer_db().func_run().read(request.func_run_id).await?;
+    let maybe_func_run = ctx.layer_db().func_run().read(func_run_id).await?;
 
     match maybe_func_run {
         Some(func_run) => {

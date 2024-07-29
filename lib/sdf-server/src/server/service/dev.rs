@@ -14,8 +14,6 @@ use thiserror::Error;
 // };
 
 use crate::server::state::AppState;
-// use crate::service::dev::author_single_schema_with_default_variant::author_single_schema_with_default_variant;
-use crate::service::func;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -33,8 +31,6 @@ pub enum DevError {
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    SdfFunc(#[from] func::FuncError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("user error: {0}")]

@@ -1,32 +1,31 @@
+use axum::extract::{OriginalUri, Path};
+use axum::response::IntoResponse;
+
+use dal::schema::variant::authoring::VariantAuthoringClient;
+use dal::{ChangeSet, ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent};
+
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
-use axum::extract::OriginalUri;
-use axum::{response::IntoResponse, Json};
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, Schema, SchemaVariant, SchemaVariantId, Visibility, WsEvent};
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CloneVariantRequest {
-    pub id: SchemaVariantId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
 
 pub async fn create_unlocked_copy(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<CloneVariantRequest>,
+    Path((_workspace_pk, change_set_id, schema_variant_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        SchemaVariantId,
+    )>,
 ) -> SchemaVariantResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder
+        .build(request_ctx.build(change_set_id.into()))
+        .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let original_variant = SchemaVariant::get_by_id_or_error(&ctx, request.id).await?;
+    let original_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
     let schema = original_variant.schema(&ctx).await?;
 

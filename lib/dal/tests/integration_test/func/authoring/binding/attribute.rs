@@ -83,9 +83,9 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         .expect("could not perform find by name for func")
         .expect("func argument not found");
 
-    dbg!(FuncArgument::list_for_func(ctx, func_id)
+    FuncArgument::list_for_func(ctx, func_id)
         .await
-        .expect("could list"));
+        .expect("could list");
     let prototype_arguments = vec![AttributeArgumentBinding {
         func_argument_id: func_argument.id,
         attribute_prototype_argument_id: None,
@@ -251,7 +251,6 @@ async fn detach_attribute_func(ctx: &mut DalContext) {
         .await
         .expect("unable to get the funcs for a schema variant");
     let total_funcs = funcs.len();
-    dbg!(&funcs);
 
     // Detach one attribute func to the schema variant and commit.
     let func_id = Func::find_id_by_name(ctx, "test:falloutEntriesToGalaxies")

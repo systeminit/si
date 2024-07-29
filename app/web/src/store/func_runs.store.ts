@@ -134,6 +134,8 @@ export const useFuncRunsStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
+  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/funcs/runs`;
+
   return addStoreHooks(
     defineStore(`ws${workspaceId || "NONE"}/func_runs`, {
       state: () => ({
@@ -143,12 +145,8 @@ export const useFuncRunsStore = () => {
         async GET_FUNC_RUN(funcRunId: FuncRunId) {
           // note: this lookup is not cached, always re-fetch, even though the payload is large. things may have changed since last load!
           return new ApiRequest<GetFuncRunResponse>({
-            url: "/func/get_func_run",
+            url: `${API_PREFIX}/${funcRunId}`,
             headers: { accept: "application/json" },
-            params: {
-              funcRunId,
-              visibility_change_set_pk: changeSetId,
-            },
             onSuccess: (response) => {
               if (response.funcRun) {
                 this.funcRuns[response.funcRun.id] = response.funcRun;

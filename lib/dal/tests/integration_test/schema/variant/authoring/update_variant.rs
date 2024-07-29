@@ -632,14 +632,12 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot");
 
     // Check the qualifications for all components.
-    let component_one_qualifications =
-        dbg!(Component::list_qualifications(ctx, component_one.id())
-            .await
-            .expect("could not list qualifications"));
-    let component_two_qualifications =
-        dbg!(Component::list_qualifications(ctx, component_two.id())
-            .await
-            .expect("could not list qualifications"));
+    let component_one_qualifications = Component::list_qualifications(ctx, component_one.id())
+        .await
+        .expect("could not list qualifications");
+    let component_two_qualifications = Component::list_qualifications(ctx, component_two.id())
+        .await
+        .expect("could not list qualifications");
 
     assert_eq!(
         3,                                  // expected

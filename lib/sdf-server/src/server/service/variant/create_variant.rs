@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, Schema, Visibility, WsEvent};
+use dal::{ChangeSet, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -26,12 +26,6 @@ pub async fn create_variant(
     Json(request): Json<CreateVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    if Schema::is_name_taken(&ctx, &request.name).await? {
-        return Ok(axum::response::Response::builder()
-            .status(409)
-            .body("schema name already taken".to_string())?);
-    }
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 

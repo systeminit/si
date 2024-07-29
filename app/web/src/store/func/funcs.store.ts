@@ -190,7 +190,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
-            url: `${API_PREFIX}/create`,
+            url: `${API_PREFIX}`,
             params: { ...createFuncRequest },
             onSuccess: (response) => {
               // summary coming through the WsEvent
@@ -208,7 +208,7 @@ export const useFuncStore = () => {
         ) {
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/create_unlocked_copy`,
+            url: `${API_PREFIX}/${funcId}`,
             params: {
               schemaVariantId,
             },
@@ -231,7 +231,7 @@ export const useFuncStore = () => {
         async DELETE_UNLOCKED_FUNC(funcId: FuncId) {
           return new ApiRequest<DeleteFuncResponse>({
             method: "delete",
-            url: `${API_PREFIX}/${funcId}/delete`,
+            url: `${API_PREFIX}/${funcId}`,
           });
         },
         async UPDATE_FUNC(func: FuncSummary) {
@@ -242,8 +242,8 @@ export const useFuncStore = () => {
           const isHead = changeSetsStore.headSelected;
 
           return new ApiRequest({
-            method: "post",
-            url: `${API_PREFIX}/${func.funcId}/update`,
+            method: "put",
+            url: `${API_PREFIX}/${func.funcId}`,
             params: {
               displayName: func.displayName,
               description: func.description,
@@ -275,7 +275,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<{ bindings: FuncBinding[] }>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/bindings/create`,
+            url: `${API_PREFIX}/${funcId}/bindings`,
             params: {
               bindings,
             },
@@ -291,8 +291,8 @@ export const useFuncStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
-            method: "post",
-            url: `${API_PREFIX}/${funcId}/bindings/update`,
+            method: "put",
+            url: `${API_PREFIX}/${funcId}/bindings`,
             params: {
               funcId,
               bindings,
@@ -328,8 +328,8 @@ export const useFuncStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
-            method: "post",
-            url: `${API_PREFIX}/${funcId}/bindings/delete`,
+            method: "delete",
+            url: `${API_PREFIX}/${funcId}/bindings`,
             params: {
               bindings,
             },
@@ -346,7 +346,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/create_argument`,
+            url: `${API_PREFIX}/${funcId}/arguments`,
             params: {
               ...funcArg,
             },
@@ -362,8 +362,8 @@ export const useFuncStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
-            method: "post",
-            url: `${API_PREFIX}/${funcId}/${funcArg.id}/update`,
+            method: "put",
+            url: `${API_PREFIX}/${funcId}/arguments/${funcArg.id}`,
             params: {
               ...funcArg,
             },
@@ -382,8 +382,8 @@ export const useFuncStore = () => {
             changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
-            method: "post",
-            url: `${API_PREFIX}/${funcId}/${funcArgumentId}/delete`,
+            method: "delete",
+            url: `${API_PREFIX}/${funcId}/arguments/${funcArgumentId}`,
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
@@ -484,7 +484,7 @@ export const useFuncStore = () => {
         async SAVE_FUNC(func: FuncCode) {
           return new ApiRequest<FuncCode>({
             method: "post",
-            url: `${API_PREFIX}/${func.funcId}/save_code`,
+            url: `${API_PREFIX}/${func.funcId}/code`,
             params: { code: func.code },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
