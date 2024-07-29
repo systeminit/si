@@ -62,8 +62,7 @@ jobs:
       - name: Invalidate web cache
         if: ${{ inputs.service == 'web' }}
         run: |
-          ENV=${{ inputs.environment }}
-          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='$ENV-cdn'].Id | [0]" --output text)
+          DIST_ID=${{ secrets.CLOUDFRONT_DIST_ID }}
           # Create a CloudFront invalidation for all objects (/*)
           invalidation_id=$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)
           # Check the status of the invalidation until it's completed
