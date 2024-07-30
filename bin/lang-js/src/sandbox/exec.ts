@@ -23,6 +23,24 @@ const debug = Debug("langJs:siExec");
 
 export type SiExecResult = ExecaReturnValue<string>;
 
+const defaultOptions: Options = {
+  all: true,
+  buffer: true,
+  reject: false,
+  stdin: 'ignore',
+};
+
+/**
+ * Merges default options with user-provided options and sets stdin to 'pipe' if input is provided.
+ */
+function mergedOptions(userOptions?: Options): Options {
+  return {
+    ...defaultOptions,
+    ...userOptions,
+    stdin: userOptions?.input ? 'pipe' : 'ignore',
+  };
+}
+
 // Note(paulo): This is highly dangerous as it bypasses the sandbox
 // We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
 //
@@ -39,8 +57,8 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
+    execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
-    const execaOptions: Options<string> = { stdin: 'ignore' };
     debug(
       `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
         ?.map((a) => `'${a}'`)
@@ -59,12 +77,11 @@ export const makeExec = (executionId: string) => {
       }),
     );
 
-    const child = await execa(execaFile, execaArgs, {
-      all: true,
-      buffer: true,
-      reject: false,
-      ...execaOptions,
-    });
+    const child = await execa(
+      execaFile,
+      execaArgs,
+      mergedOptions(execaOptions),
+    );
     return child;
   }
 
@@ -84,6 +101,7 @@ export const makeExec = (executionId: string) => {
     const c = await waitUntilEnd(
       options.cmd,
       options.args,
+      options.execaOptions,
     );
     // Update the count of how many attempts we have made
     deadlineCount += 1;
