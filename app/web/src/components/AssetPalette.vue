@@ -12,7 +12,7 @@
           <SidebarSubpanelTitle icon="component-plus">
             <template #label>
               <div class="flex flex-row gap-xs">
-                <div>Assets</div>
+                <div id="asset-palette-title">Assets</div>
                 <PillCounter :count="assetCount" />
               </div>
             </template>

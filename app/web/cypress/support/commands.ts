@@ -70,6 +70,24 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
   })
 });
 
+Cypress.Commands.add('appModelPageLoaded', () => {
+  cy.get('#asset-palette-title', { timeout: 60000 });
+})
+
+Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
+  cy.get('body').then(($body) => {
+    // Check if element exists
+    if ($body.find(`#${id}`).length > 0) {
+      // Element exists, perform click
+      cy.log(`Trying to click the #${id} now`);
+      cy.get(`#${id}`).click();
+    } else {
+      // Element does not exist, continue with other actions
+      cy.log('Button not found, continuing with other actions');
+    }
+  });
+});
+
 //Cypress.Commands.add('setupVariables', () => {
 //  const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
 //  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
