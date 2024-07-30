@@ -2206,118 +2206,107 @@ impl WorkspaceSnapshot {
     pub async fn associated_component_id(
         &self,
         ctx: &DalContext,
-        mut node_weight: NodeWeight,
+        node_weight: NodeWeight,
     ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
         // For a lot of node types, we follow backwards through the graph step by step until
         // we find something that definitely is or is not from a component.
+        let mut node_weight = node_weight;
         while let Some(parent_edge_weight) = match &node_weight {
-            // Component is a component :)
+            // Components
             NodeWeight::Component(component) => return Ok(Some(component.id().into())),
+            NodeWeight::AttributeValue(value) => return Ok(Some(
+                AttributeValue::component_id(ctx, value.id.into()).await.map_err(Box::new)?
+            )),
+            NodeWeight::Ordering(_) => Some(EdgeWeightKindDiscriminants::Ordinal),
 
-            // AttributeValue is always from a component
-            NodeWeight::AttributeValue(value) => {
-                return Ok(Some(
-                    AttributeValue::component_id(ctx, value.id.into())
-                        .await
-                        .map_err(Box::new)?,
-                ))
-            }
+            // Schema Variant
+            NodeWeight::ActionPrototype(_)
+            | NodeWeight::Prop(_) => None,
 
-            // Follow the [PrototypeArgument] edge back to the AttributePrototype
-            NodeWeight::AttributePrototypeArgument(_) => {
-                Some(EdgeWeightKindDiscriminants::PrototypeArgument)
-            }
+            // Values (Schema Variant or Component)
+            NodeWeight::AttributePrototypeArgument(_) => Some(EdgeWeightKindDiscriminants::PrototypeArgument),
 
             NodeWeight::Content(content) => match content.content_address_discriminants() {
                 // ValidationOutput should always be for a Component, since SchemaVariants do not have
                 // AttributeValues to validate (malformed graph if the ValidationOutput isn't for a
                 // Component). The ValidationOutput will have an incoming ValidationOutput edge from an
                 // AttributeValue.
-                ContentAddressDiscriminants::ValidationOutput => {
-                    Some(EdgeWeightKindDiscriminants::ValidationOutput)
-                }
 
-                // AttributePrototype
-                // |    <--[Prototype]-- AttributeValue <--...-- Component
-                // | or <--[Prop|InputSocket|OutputSocket] ...-- SchemaVariant
-                ContentAddressDiscriminants::AttributePrototype => {
-                    Some(EdgeWeightKindDiscriminants::Prototype)
-                }
+                // Components
+                ContentAddressDiscriminants::ValidationOutput => Some(EdgeWeightKindDiscriminants::ValidationOutput),
 
-                // StaticArgumentValue
-                //     <--[PrototypeArgumentValue]-- AttributePrototypeArgument
-                //         <--[PrototypeArgument]-- AttributePrototype
-                //         |    <--[Prototype]-- AttributeValue <--...-- Component
-                //         | or <--[Prop|InputSocket|OutputSocket] ...-- SchemaVariant
-                ContentAddressDiscriminants::StaticArgumentValue => {
-                    Some(EdgeWeightKindDiscriminants::PrototypeArgumentValue)
-                }
+                // Schema Variants or Components
+                ContentAddressDiscriminants::AttributePrototype => Some(EdgeWeightKindDiscriminants::Prototype),
+                ContentAddressDiscriminants::StaticArgumentValue => Some(EdgeWeightKindDiscriminants::PrototypeArgumentValue),
 
-                ContentAddressDiscriminants::ActionPrototype
-                | ContentAddressDiscriminants::Func
-                | ContentAddressDiscriminants::FuncArg
-                | ContentAddressDiscriminants::InputSocket
-                | ContentAddressDiscriminants::Module
+                // Schema Variants
+                ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::OutputSocket
-                | ContentAddressDiscriminants::Prop
-                | ContentAddressDiscriminants::Root
-                | ContentAddressDiscriminants::Schema
-                | ContentAddressDiscriminants::SchemaVariant
-                | ContentAddressDiscriminants::Secret => None,
+                | ContentAddressDiscriminants::SchemaVariant => None,
 
+                // Top Level
+                ContentAddressDiscriminants::Root => None,
+
+                // Schemas
+                ContentAddressDiscriminants::Schema => None,
+
+                // Modules
+                ContentAddressDiscriminants::Module => None,
+    
                 // These cases don't exist anymore and will be removed
                 ContentAddressDiscriminants::DeprecatedAction
                 | ContentAddressDiscriminants::DeprecatedActionBatch
                 | ContentAddressDiscriminants::DeprecatedActionRunner
                 | ContentAddressDiscriminants::ValidationPrototype => None,
 
-                discriminant @ (ContentAddressDiscriminants::JsonValue
-                | ContentAddressDiscriminants::Component) => {
-                    return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                // We don't expect these to appear as a node
+                discriminant @ (
+                    // Components
+                    ContentAddressDiscriminants::JsonValue
+                    | ContentAddressDiscriminants::Component
+                    | ContentAddressDiscriminants::Secret
+                    // Schema Variants
+                    | ContentAddressDiscriminants::Prop
+                    | ContentAddressDiscriminants::ActionPrototype
+                    // Functions
+                    | ContentAddressDiscriminants::Func
+                    | ContentAddressDiscriminants::FuncArg
+                ) => return Err(
+                    NodeWeightError::InvalidContentAddressForWeightKind(
                         discriminant.to_string(),
                         NodeWeightDiscriminants::Content.to_string(),
-                    ))?
-                }
-            },
+                    )
+                )?,
+            }
+    
+            // Top Level
+            NodeWeight::Category(_)
 
-            // TODO: Find whether the Ordering is for something Component-specific.
-            NodeWeight::Ordering(_) => None,
+            // Actions
+            | NodeWeight::Action(_)
 
-            NodeWeight::Action(_)
-            | NodeWeight::ActionPrototype(_)
-            | NodeWeight::Category(_)
+            // Dependent value roots
             | NodeWeight::DependentValueRoot(_)
+
+            // Functions
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
-            | NodeWeight::Prop(_)
+
+            // Secrets
             | NodeWeight::Secret(_) => None,
         } {
             let parents = self
                 .incoming_sources_for_edge_weight_kind(node_weight.id(), parent_edge_weight)
                 .await?;
             node_weight = match parents.first() {
-                Some(&parent_node_index) => self.get_node_weight(parent_node_index).await?,
-                None => {
-                    return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
-                        parent_edge_weight,
-                        NodeWeightDiscriminants::from(&node_weight),
-                        node_weight.id(),
-                    ))
-                }
+                Some(&parent_node_index) if parents.len() == 1 => self.get_node_weight(parent_node_index).await?,
+                _ => return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
+                    parent_edge_weight,
+                    NodeWeightDiscriminants::from(&node_weight),
+                    node_weight.id(),
+                )),
             };
         }
         Ok(None)
     }
 }
-
-// struct NodeAncestryIter(Option<NodeIndex>);
-
-// impl Iterator for NodeAncestryIter {
-//     type Item = NodeIndex;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let current = self.0?;
-//         self.0 = Some(current);
-//         Some(current)
-//     }
-// }
