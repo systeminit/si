@@ -27,5 +27,9 @@ declare namespace Cypress {
     dragTo(sourceElement: string, targetElement: string, offsetX? :number, offsetY?: number): void;
 
     createComponent(componentName: string): void;
+
+    appModelPageLoaded(): void;
+    
+    clickButtonByIdIfExists(id: string): void;
   }
 }

@@ -33,13 +33,15 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+      cy.appModelPageLoaded();
+      cy.clickButtonByIdIfExists("first-time-modal-continue-button");
+      
       cy.get('[class=vorm-input__input]').get('[type=text]').clear().type(UUID);
 
       cy.contains('Create change set', { timeout: 30000 }).click();
 
       // Give time to redirect onto the new change set
       cy.url().should('not.include', 'head', { timeout: 10000 });
-      cy.get('.vbutton').contains("Let's Get Started!").parent().parent().click();
 
       // Needs a proper way to select from the updated asset tree panel
       // Find the region asset
@@ -86,9 +88,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         });
       });
 
-      // Give the page a few seconds to load
-      cy.wait(1000);
-      cy.get('.vbutton').contains("Let's Get Started!").parent().parent().click();
+      cy.appModelPageLoaded();
+      cy.clickButtonByIdIfExists("first-time-modal-continue-button");
 
       cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
 
@@ -112,9 +113,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         });
       });
 
-      // Wait for the values to propagate
-      cy.wait(10000);
-      cy.get('.vbutton').contains("Let's Get Started!").parent().parent().click();
+      cy.appModelPageLoaded();
+      cy.clickButtonByIdIfExists("first-time-modal-continue-button");
 
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')

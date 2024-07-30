@@ -23,9 +23,11 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+      cy.appModelPageLoaded();
+      cy.clickButtonByIdIfExists("first-time-modal-continue-button");
+
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
       cy.get('.modal-close-button').should('exist').click();
-      cy.get('.vbutton').contains("Let's Get Started!").parent().parent().click();
       cy.get('[aria-label="Profile"]').should('exist').click();
       cy.get('.profile-dropdown-menu-logout').should('exist').should('be.visible').click({ force: true });
 

@@ -105,6 +105,7 @@
             inlineLabel
           />
           <VButton
+            id="first-time-modal-continue-button"
             class="flex-grow"
             label="Let's Get Started!"
             @click="closeFirstTimeModal"
