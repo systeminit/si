@@ -32,7 +32,6 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
-use futures::executor;
 use graph::WorkspaceSnapshotGraph;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
@@ -55,6 +54,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::change_set::{ChangeSetError, ChangeSetId};
+use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -117,6 +117,8 @@ pub enum WorkspaceSnapshotError {
     RecentlySeenClocksMissing(ChangeSetId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -362,30 +364,37 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
         // Pull out the working copy and clean it up.
         let new_address = {
+            // Everything needs to be pulled out here so we can throw it into
+            // the closure that will run on the "slow runtime"
             let self_clone = self.clone();
-            tokio::task::spawn_blocking(move || {
-                let mut working_copy = executor::block_on(self_clone.working_copy_mut());
+            let layer_db = ctx.layer_db().clone();
+            let events_tenancy = ctx.events_tenancy();
+            let events_actor = ctx.events_actor();
+
+            // The write includes a potentially expensive serialization
+            // operation, so we throw it onto the "slow" runtime, the one not
+            // listening for requests/processing a nats queue
+            let new_address = slow_rt::spawn(async move {
+                let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup();
 
                 // Mark everything left as seen.
                 working_copy.mark_graph_seen(vector_clock_id)?;
 
-                Ok::<(), WorkspaceSnapshotGraphError>(())
-            })
+                let (new_address, _) = layer_db
+                    .workspace_snapshot()
+                    .write(
+                        Arc::new(WorkspaceSnapshotGraph::V1(working_copy.clone())),
+                        None,
+                        events_tenancy,
+                        events_actor,
+                    )
+                    .await?;
+
+                Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(new_address)
+            })?
             .await??;
 
-            let (new_address, _) = ctx
-                .layer_db()
-                .workspace_snapshot()
-                .write(
-                    Arc::new(WorkspaceSnapshotGraph::V1(
-                        self.working_copy().await.clone(),
-                    )),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
             Span::current().record("si.workspace_snapshot.address", new_address.to_string());
 
             new_address
@@ -525,10 +534,10 @@ impl WorkspaceSnapshot {
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
         Ok(if self.cycle_check().await {
             let self_clone = self.clone();
-            tokio::task::spawn_blocking(move || {
-                let mut working_copy = executor::block_on(self_clone.working_copy_mut());
+            slow_rt::spawn(async move {
+                let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.add_edge_with_cycle_check(from_node_index, edge_weight, to_node_index)
-            })
+            })?
             .await??
         } else {
             self.working_copy_mut()
@@ -600,13 +609,16 @@ impl WorkspaceSnapshot {
         let self_clone = self.clone();
         let onto_clone = onto_workspace_snapshot.clone();
 
-        Ok(tokio::task::spawn_blocking(move || {
-            executor::block_on(self_clone.working_copy()).detect_conflicts_and_updates(
-                to_rebase_vector_clock_id,
-                &executor::block_on(onto_clone.working_copy()),
-                onto_vector_clock_id,
-            )
-        })
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy()
+                .await
+                .detect_conflicts_and_updates(
+                    to_rebase_vector_clock_id,
+                    &*onto_clone.working_copy().await,
+                    onto_vector_clock_id,
+                )
+        })?
         .await??)
     }
 
@@ -2098,9 +2110,14 @@ impl WorkspaceSnapshot {
 
         let collapse_id = VectorClockId::new(change_set_id.into_inner(), ulid::Ulid(0));
 
-        self.working_copy_mut()
-            .await
-            .collapse_vector_clock_entries(ancestors, collapse_id);
+        let self_clone = self.clone();
+        slow_rt::spawn(async move {
+            self_clone
+                .working_copy_mut()
+                .await
+                .collapse_vector_clock_entries(ancestors, collapse_id);
+        })?
+        .await?;
 
         Ok(())
     }

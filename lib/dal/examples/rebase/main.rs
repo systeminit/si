@@ -45,7 +45,7 @@ fn main() -> Result<()> {
             dal::workspace_snapshot::update::Update::NewEdge {
                 source,
                 destination,
-                edge_weight,
+                ..
             } => {
                 if matches!(source.node_weight_kind, NodeWeightDiscriminants::Ordering) {
                     if let Some(ordering_node) = &last_ordering_node {
@@ -55,12 +55,8 @@ fn main() -> Result<()> {
                     }
                 }
             }
-            dal::workspace_snapshot::update::Update::RemoveEdge {
-                source,
-                destination,
-                edge_kind,
-            } => {}
-            dal::workspace_snapshot::update::Update::ReplaceSubgraph { onto, to_rebase } => {
+            dal::workspace_snapshot::update::Update::RemoveEdge { .. } => {}
+            dal::workspace_snapshot::update::Update::ReplaceSubgraph { onto, .. } => {
                 if matches!(onto.node_weight_kind, NodeWeightDiscriminants::Ordering) {
                     last_ordering_node = onto_graph
                         .get_node_weight_opt(onto.index)
@@ -68,10 +64,7 @@ fn main() -> Result<()> {
                         .map(ToOwned::to_owned);
                 }
             }
-            dal::workspace_snapshot::update::Update::MergeCategoryNodes {
-                to_rebase_category_id,
-                onto_category_id,
-            } => {}
+            dal::workspace_snapshot::update::Update::MergeCategoryNodes { .. } => {}
         }
     }
 

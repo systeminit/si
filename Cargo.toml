@@ -42,6 +42,7 @@ members = [
     "lib/si-pkg",
     "lib/si-pool-noodle",
     "lib/si-posthog-rs",
+    "lib/si-runtime-rs",
     "lib/si-service",
     "lib/si-settings",
     "lib/si-std",

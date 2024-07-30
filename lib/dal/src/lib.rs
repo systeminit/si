@@ -49,6 +49,7 @@ pub mod qualification;
 pub mod schema;
 pub mod secret;
 pub mod serde_impls;
+pub mod slow_rt;
 pub mod socket;
 pub mod standard_accessors;
 pub mod standard_connection;

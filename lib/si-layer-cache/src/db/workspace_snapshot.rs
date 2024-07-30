@@ -45,8 +45,7 @@ where
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
         let value_clone = value.clone();
-        let postcard_value =
-            tokio::task::spawn_blocking(move || serialize::to_vec(&value)).await??;
+        let postcard_value = serialize::to_vec(&value)?;
 
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();

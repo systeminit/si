@@ -17,6 +17,7 @@ rust_library(
         "//lib/si-hash:si-hash",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
+        "//lib/si-runtime-rs:si-runtime",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",

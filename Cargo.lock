@@ -1353,6 +1353,7 @@ dependencies = [
  "si-hash",
  "si-layer-cache",
  "si-pkg",
+ "si-runtime",
  "si-settings",
  "si-std",
  "sodiumoxide",
@@ -5373,11 +5374,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-runtime"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "si-service"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
  "glob",
+ "si-runtime",
  "telemetry",
  "telemetry-application",
  "thiserror",
