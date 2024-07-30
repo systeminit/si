@@ -252,7 +252,7 @@ async fn prepare_contribution_works(ctx: &DalContext) {
         .expect("unable to get a default variant")
         .expect("error getting the default variant id");
 
-    let (actual_name, actual_version, _, _, _) =
+    let (actual_name, actual_version, _, _, _, _, _) =
         Module::prepare_contribution(ctx, name, version, default_variant_id)
             .await
             .expect("could not prepare contribution");

@@ -538,7 +538,15 @@ impl Module {
         name: impl AsRef<str>,
         version: impl AsRef<str>,
         schema_variant_id: SchemaVariantId,
-    ) -> ModuleResult<(String, String, Option<String>, Option<SchemaId>, Vec<u8>)> {
+    ) -> ModuleResult<(
+        String,
+        String,
+        Option<String>,
+        Option<SchemaId>,
+        Vec<u8>,
+        String,
+        String,
+    )> {
         let user = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
             _ => None,
@@ -592,6 +600,8 @@ impl Module {
             local_module_based_on_hash,
             local_module_schema_id,
             module_payload,
+            created_by_name,
+            created_by_email,
         ))
     }
 }
