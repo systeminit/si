@@ -1,34 +1,34 @@
 <template>
   <Stack class="h-full w-full my-4 mx-4">
     <Inline align="center" alignY="bottom">
-      <VButton size="sm" icon="refresh" @click="loadData"></VButton>
+      <VButton icon="refresh" size="sm" @click="loadData"></VButton>
       <VormInput
         v-model="schemaVariant"
-        label="Display"
-        type="dropdown"
-        class="flex-1"
         :options="schemaVariantOptions"
+        class="flex-1"
+        label="Display"
         placeholder="Only Diagram Components"
         placeholderSelectable
+        type="dropdown"
       />
       <VormInput
         v-model="search_query"
+        class="flex-1"
         label="Find Node"
         type="text"
-        class="flex-1"
       />
-      <div>
-        <VButton
-          :disabled="clickedNodes.size === 0 && clickedNeighbors.size === 0"
-          @click="clearSelections"
-          >Reset Selection(s)</VButton
-        >
-      </div>
-      <div>
-        <VButton :disabled="reqData?.isPending" @click="toggleLayout"
-          >{{ animate_layout ? "Stop" : "Start" }} Animation</VButton
-        >
-      </div>
+      <VButton
+        :disabled="clickedNodes.size === 0 && clickedNeighbors.size === 0"
+        @click="clearSelections"
+      >
+        Reset Selection(s)
+      </VButton>
+      <VButton :disabled="reqData?.isPending" @click="toggleLayout">
+        {{ animate_layout ? "Stop" : "Start" }} Animation
+      </VButton>
+      <VButton :disabled="reqData?.isPending" @click="toggleEdgeLabels">
+        {{ showEdgeLabels ? "Hide" : "Show" }} Edge Labels
+      </VButton>
       <!--
       <VormInput
         v-model="debugNodeId"
@@ -66,6 +66,7 @@ import {
   Ref,
   reactive,
   ComputedRef,
+  watch,
 } from "vue";
 import {
   VormInput,
@@ -245,9 +246,32 @@ async function loadData() {
   }
 
   for (const edge of vizStore.edges) {
-    graph.addEdge(edge.from, edge.to);
+    graph.addEdge(edge.from, edge.to, {
+      type: "arrow",
+      label: edge.edgeWeightKind,
+      size: 2,
+    });
   }
 }
+
+const setLabelColorsToTheme = () => {
+  renderer.setSetting("labelColor", {
+    color: theme.value === "dark" ? "#fff" : "#000",
+  });
+  renderer.setSetting("edgeLabelColor", {
+    color: theme.value === "dark" ? "#DDD" : "#666",
+  });
+};
+
+watch(theme, () => {
+  setLabelColorsToTheme();
+});
+
+const showEdgeLabels = ref(false);
+const toggleEdgeLabels = () => {
+  showEdgeLabels.value = !showEdgeLabels.value;
+  renderer.setSetting("renderEdgeLabels", showEdgeLabels.value);
+};
 
 // we need DOM loaded
 onMounted(async () => {
@@ -273,8 +297,9 @@ onMounted(async () => {
 
     renderer = new Sigma(graph, container, {
       allowInvalidContainer: true,
-      labelColor: { color: theme.value === "dark" ? "#fff" : "#000" },
+      renderEdgeLabels: showEdgeLabels.value,
     });
+    setLabelColorsToTheme();
 
     const sensibleSettings = forceAtlas2.inferSettings(graph);
     fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });

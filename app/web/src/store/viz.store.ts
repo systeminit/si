@@ -34,6 +34,7 @@ export interface VizResponse {
   edges: {
     from: string;
     to: string;
+    edgeWeightKind: string;
   }[];
 
   nodes: {
