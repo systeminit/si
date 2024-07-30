@@ -206,6 +206,7 @@ async fn all_funcs(ctx: &DalContext) {
             "test:deleteActionSwifty",
             "test:generateCode",
             "test:refreshActionSwifty",
+            "test:swiftyQualification",
             "test:updateActionSwifty",
         ],
         all_funcs.as_slice(),

@@ -3,12 +3,12 @@
 //! [migrate()](crate::builtins::migrate_local()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
-use std::collections::HashSet;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use si_pkg::{SiPkgError, SpecError};
 
+use crate::func::argument::FuncArgumentError;
 use crate::func::FuncError;
 use crate::module::ModuleError;
 use crate::pkg::PkgError;
@@ -17,7 +17,6 @@ use crate::{
     SchemaVariantId, StandardModelError, TransactionsError,
 };
 
-// Private builtins modules.
 pub mod func;
 pub mod schema;
 
@@ -30,39 +29,41 @@ pub enum BuiltinsError {
     AttributeValueNotFound(AttributeValueId),
     #[error("builtin {0} missing func argument {1}")]
     BuiltinMissingFuncArgument(String, String),
-    #[error("Filesystem IO error: {0}")]
-    FilesystemIO(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("func error")]
     Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("json error {1} at file {0}")]
     FuncJson(String, serde_json::Error),
-    #[error("Func Metadata error: {0}")]
+    #[error("func metadata error: {0}")]
     FuncMetadata(String),
     #[error("func not found in migration cache {0}")]
     FuncNotFoundInMigrationCache(&'static str),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("missing attribute prototype for attribute value")]
     MissingAttributePrototypeForAttributeValue,
     #[error("no packages path configured")]
     MissingPkgsPath,
-    #[error(transparent)]
+    #[error("module error: {0}")]
     Module(#[from] ModuleError),
-    #[error(transparent)]
+    #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
     #[error("prop cache not found: {0}")]
     PropCacheNotFound(SchemaVariantId),
     #[error("prop not bound by id: {0}")]
     PropNotFound(PropId),
-    #[error("Regex parsing error: {0}")]
+    #[error("regex parsing error: {0}")]
     Regex(#[from] regex::Error),
-    #[error(transparent)]
+    #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
     SerdeJsonErrorForFunc(String, serde_json::Error),
-    #[error(transparent)]
+    #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
-    #[error(transparent)]
+    #[error("spec error: {0}")]
     Spec(#[from] SpecError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
@@ -71,19 +72,3 @@ pub enum BuiltinsError {
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
-
-/// This enum drives what builtin [`Schemas`](crate::Schema) to migrate for tests.
-///
-/// This enum _should not_ be used outside of tests!
-#[remain::sorted]
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum SelectedTestBuiltinSchemas {
-    /// Migrate everything (default behavior).
-    All,
-    /// Migrate nothing.
-    None,
-    /// Migrate _some_ [`Schema(s)`](crate::Schema) based on user input.
-    Some(HashSet<String>),
-    /// Migrate _only_ test-exclusive [`Schemas`](crate::Schema).
-    Test,
-}

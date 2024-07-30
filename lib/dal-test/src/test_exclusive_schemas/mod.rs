@@ -1,13 +1,20 @@
+use base64::engine::general_purpose;
+use base64::Engine;
 use category_pirate::migrate_test_exclusive_schema_pet_shop;
 use category_pirate::migrate_test_exclusive_schema_pirate;
 use category_validated::migrate_test_exclusive_schema_bad_validations;
 use category_validated::migrate_test_exclusive_schema_validated_input;
 use category_validated::migrate_test_exclusive_schema_validated_output;
-use dal::builtins::schema;
+use dal::func::argument::FuncArgument;
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::{BuiltinsError, BuiltinsResult, DalContext};
+use dal::Func;
+use dal::FuncBackendKind;
+use dal::FuncBackendResponseType;
+use dal::{BuiltinsResult, DalContext};
 use dummy_secret::migrate_test_exclusive_schema_dummy_secret;
+use fake_butane::migrate_test_exclusive_schema_fake_butane;
+use fake_docker_image::migrate_test_exclusive_schema_fake_docker_image;
 use fallout::migrate_test_exclusive_schema_fallout;
 use katy_perry::migrate_test_exclusive_schema_katy_perry;
 use legos::migrate_test_exclusive_schema_large_even_lego;
@@ -27,6 +34,8 @@ use swifty::migrate_test_exclusive_schema_swifty;
 mod category_pirate;
 mod category_validated;
 mod dummy_secret;
+mod fake_butane;
+mod fake_docker_image;
 mod fallout;
 mod katy_perry;
 mod legos;
@@ -35,12 +44,9 @@ mod swifty;
 
 const PKG_VERSION: &str = "2019-06-03";
 const PKG_CREATED_BY: &str = "System Initiative";
-const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
-const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 
 pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
-    schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
+    migrate_test_exclusive_func_si_resource_payload_to_value(ctx).await?;
     migrate_test_exclusive_schema_starfield(ctx).await?;
     migrate_test_exclusive_schema_etoiles(ctx).await?;
     migrate_test_exclusive_schema_morningstar(ctx).await?;
@@ -59,6 +65,45 @@ pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     migrate_test_exclusive_schema_medium_odd_lego(ctx).await?;
     migrate_test_exclusive_schema_small_odd_lego(ctx).await?;
     migrate_test_exclusive_schema_small_even_lego(ctx).await?;
+    migrate_test_exclusive_schema_fake_docker_image(ctx).await?;
+    migrate_test_exclusive_schema_fake_butane(ctx).await?;
+    Ok(())
+}
+
+// TODO(nick): remove this if "si:resourcePayloadToValue" becomes an instrinsic func.
+async fn migrate_test_exclusive_func_si_resource_payload_to_value(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
+    let func_name = "si:resourcePayloadToValue";
+
+    let func_id = match Func::find_id_by_name(ctx, func_name).await? {
+        Some(existing_func_id) => existing_func_id,
+        None => {
+            let new_func = Func::new(
+                ctx,
+                func_name,
+                None::<String>,
+                None::<String>,
+                None::<String>,
+                false,
+                true,
+                FuncBackendKind::JsAttribute,
+                FuncBackendResponseType::Json,
+                Some("main"),
+                Some(general_purpose::STANDARD_NO_PAD.encode("async function main(arg: Input): Promise<Output> { return arg.payload ?? {}; }")),
+            )
+            .await?;
+            new_func.id
+        }
+    };
+
+    if FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
+        .await?
+        .is_none()
+    {
+        FuncArgument::new(ctx, "payload", FuncArgumentKind::Object, None, func_id).await?;
+    }
+
     Ok(())
 }
 
@@ -94,7 +139,7 @@ fn build_resource_payload_to_value_func() -> BuiltinsResult<FuncSpec> {
     Ok(resource_payload_to_value_func)
 }
 
-fn build_action_func(code: &str, fn_name: &str) -> Result<FuncSpec, BuiltinsError> {
+fn build_action_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> {
     let func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)

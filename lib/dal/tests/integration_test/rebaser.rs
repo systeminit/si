@@ -371,7 +371,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 #[test]
 async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     let shared_component_id =
-        create_component_for_default_schema_name(ctx, "Docker Image", "Shared component")
+        create_component_for_default_schema_name(ctx, "swifty", "Shared component")
             .await
             .expect("could not create component")
             .id();
@@ -423,7 +423,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
         .await
         .expect("Unable to switch to change set B");
     let _change_set_b_component_id =
-        create_component_for_default_schema_name(ctx, "Docker Image", "Change Set B Component")
+        create_component_for_default_schema_name(ctx, "swifty", "Change Set B Component")
             .await
             .expect("could not creat component")
             .id();
@@ -450,10 +450,10 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
         .expect("Unable to get attribute values for si.name");
     assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
     let av_ids = shared_component
-        .attribute_values_for_prop(ctx, &["root", "domain", "image"])
+        .attribute_values_for_prop(ctx, &["root", "domain", "name"])
         .await
-        .expect("Unable to get attribute values for domain.image");
-    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.image");
+        .expect("Unable to get attribute values for domain.name");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
         .await
@@ -482,10 +482,10 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
         .expect("Unable to get attribute values for si.name");
     assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
     let av_ids = shared_component
-        .attribute_values_for_prop(ctx, &["root", "domain", "image"])
+        .attribute_values_for_prop(ctx, &["root", "domain", "name"])
         .await
-        .expect("Unable to get attribute values for domain.image");
-    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.image");
+        .expect("Unable to get attribute values for domain.name");
+    assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
         .await

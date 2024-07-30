@@ -3,9 +3,10 @@ use dal::pkg::import_pkg_from_pkg;
 use dal::{prop::PropPath, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
-    PropSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec,
-    SocketSpecData, SocketSpecKind,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, FuncSpecData, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData,
+    SocketSpecKind,
 };
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
@@ -73,6 +74,9 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                 };
             }";
     let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name)?;
+
+    // Assemble Qualification Func
+    let (qualification_func_spec, qualfiication_leaf_func_spec) = assemble_qualification()?;
 
     let swifty_schema = SchemaSpec::builder()
         .name(schema_name)
@@ -164,6 +168,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
                         .inputs(vec![LeafInputLocation::Domain])
                         .build()?,
                 )
+                .leaf_function(qualfiication_leaf_func_spec)
                 .build()?,
         )
         .build()?;
@@ -177,6 +182,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
         .func(swifty_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .func(code_gen_func)
+        .func(qualification_func_spec)
         .schema(swifty_schema)
         .build()?;
 
@@ -184,4 +190,35 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
     import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
 
     Ok(())
+}
+
+fn assemble_qualification() -> BuiltinsResult<(FuncSpec, LeafFunctionSpec)> {
+    let fn_code = "async function qualification(_component: Input): Promise<Output> {\
+        return {
+            result: 'success',
+            message: 'this cannot fail'
+        };
+    }";
+    let fn_name = "test:swiftyQualification";
+    let func_spec = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(fn_code)
+                .handler("qualification")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Qualification)
+                .build()?,
+        )
+        .build()?;
+
+    let leaf_function_spec = LeafFunctionSpec::builder()
+        .func_unique_id(&func_spec.unique_id)
+        .leaf_kind(LeafKind::Qualification)
+        .inputs(vec![LeafInputLocation::Domain])
+        .build()?;
+
+    Ok((func_spec, leaf_function_spec))
 }

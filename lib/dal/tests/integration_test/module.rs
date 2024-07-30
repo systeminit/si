@@ -19,6 +19,8 @@ async fn list_modules(ctx: &DalContext) {
 
     let expected_installed_module_names = vec![
         "BadValidations".to_string(),
+        "Butane".to_string(),
+        "Docker Image".to_string(),
         "ValidatedInput".to_string(),
         "ValidatedOutput".to_string(),
         "dummy-secret".to_string(),
@@ -32,8 +34,6 @@ async fn list_modules(ctx: &DalContext) {
         "morningstar".to_string(),
         "pet_shop".to_string(),
         "pirate".to_string(),
-        "si-coreos-2023-09-13".to_string(),
-        "si-docker-image-2023-09-13".to_string(),
         "si-intrinsic-funcs".to_string(),
         "small even lego".to_string(),
         "small odd lego".to_string(),
