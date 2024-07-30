@@ -18,6 +18,7 @@ rust_library(
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
         "//lib/si-settings:si-settings",
+        "//lib/si-service:si-service",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//lib/telemetry-nats-rs:telemetry-nats",

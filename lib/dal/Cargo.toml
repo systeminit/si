@@ -46,6 +46,7 @@ si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
+si-service = { path = "../../lib/si-service" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-hash = { path = "../../lib/si-hash" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }

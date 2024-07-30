@@ -1353,6 +1353,7 @@ dependencies = [
  "si-hash",
  "si-layer-cache",
  "si-pkg",
+ "si-service",
  "si-settings",
  "si-std",
  "sodiumoxide",
