@@ -1,5 +1,5 @@
 [package]
-name = "si-service"
+name = "si-runtime"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -9,11 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-color-eyre = { workspace = true }
-glob = { workspace = true }
-si-runtime = { path = "../../lib/si-runtime-rs" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-application = { path = "../../lib/telemetry-application-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

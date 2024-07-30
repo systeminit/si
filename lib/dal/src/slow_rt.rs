@@ -2,7 +2,7 @@ use std::{future::Future, sync::OnceLock};
 use thiserror::Error;
 use tokio::{runtime::Runtime, task::JoinHandle};
 
-use si_service::rt;
+use si_runtime::build_runtime;
 
 /// A singleton for a second, alternative tokio runtime used for CPU intensive operations.
 pub static SLOW_RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -33,7 +33,7 @@ where
     Ok(match SLOW_RUNTIME.get() {
         Some(slow_rt) => slow_rt,
         None => {
-            let slow_rt = rt::build_runtime("slow_runtime")?;
+            let slow_rt = build_runtime("slow_runtime")?;
             SLOW_RUNTIME.get_or_init(move || slow_rt)
         }
     }
