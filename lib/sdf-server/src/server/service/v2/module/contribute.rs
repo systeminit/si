@@ -59,7 +59,7 @@ pub async fn contribute(
         &posthog_client,
         &ctx,
         &original_uri,
-        "contribute",
+        "export_module",
         serde_json::json!({
             "name": name,
             "version": version,
