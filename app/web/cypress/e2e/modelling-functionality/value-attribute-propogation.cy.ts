@@ -116,6 +116,9 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.appModelPageLoaded();
       cy.clickButtonByIdIfExists("first-time-modal-continue-button");
 
+      // This is needed if the page has loaded, but the function to propogate the value has not passed yet
+      cy.wait(10000);
+
       // Validate that the value has propagated through the system
       cy.get('.attributes-panel-item__input-wrap input.region')
       .should('have.value', 'us-east-1');

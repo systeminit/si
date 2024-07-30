@@ -80,7 +80,8 @@ Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
     if ($body.find(`#${id}`).length > 0) {
       // Element exists, perform click
       cy.log(`Trying to click the #${id} now`);
-      cy.get(`#${id}`).click();
+      // Sometimes the div is hidden behind another modal, the force allows it to be clicked anyway
+      cy.get(`#${id}`).click( { force: true });
     } else {
       // Element does not exist, continue with other actions
       cy.log('Button not found, continuing with other actions');
