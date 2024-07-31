@@ -6,7 +6,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use telemetry_utils::metric;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::info;
@@ -230,15 +229,12 @@ where
             );
             warn!("{:?}", e);
         }
-        info!(counter.pool_noodle.to_be_cleaned = 1);
-        metric!("counter.pool_noodle.to_be_cleaned", 1);
     }
 
     fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
         if let Err(i) = me.ready.push(instance) {
             warn!("PoolNoodle: failed to push instance to ready: {}", i.id());
         }
-        metric!("counter.pool_noodle.ready", 1);
     }
 
     fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
@@ -246,7 +242,6 @@ where
             warn!("PoolNoodle: failed to push instance to unprepared: {}", id);
             warn!("{:?}", e);
         }
-        metric!("counter.pool_noodle.unprepared", 1);
     }
 
     /// This will attempt to get a ready, healthy instance from the pool.

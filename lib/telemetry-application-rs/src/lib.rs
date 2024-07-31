@@ -378,7 +378,17 @@ fn tracing_subscriber(
         (layer, reloader)
     };
 
-    let metrics_layer = MetricsLayer::new(otel_metrics(config)?).with_filter(IncludeMetricsFilter);
+    let (metrics_layer, metrics_filter_reload) = {
+        let layer = MetricsLayer::new(otel_metrics(config)?);
+        let env_filter = EnvFilter::try_new(directives.as_str())?;
+        let (filter, handle) = reload::Layer::new(env_filter);
+        let layer = layer.with_filter(filter.and(IncludeMetricsFilter));
+
+        let reloader =
+            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (layer, reloader)
+    };
 
     let registry = Registry::default();
     let registry = registry.with(console_log_layer);
@@ -388,6 +398,7 @@ fn tracing_subscriber(
     let handles = TelemetryHandles {
         console_log_filter_reload,
         otel_filter_reload,
+        metrics_filter_reload,
     };
 
     Ok((registry, handles))
@@ -414,7 +425,7 @@ fn otel_metrics(config: &TelemetryConfig) -> result::Result<SdkMeterProvider, Me
             "service.name",
             config.service_name,
         )]))
-        .with_period(Duration::from_secs(3))
+        .with_period(Duration::from_secs(1))
         .with_timeout(Duration::from_secs(10))
         .build()
 }
@@ -530,6 +541,7 @@ type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
 struct TelemetryHandles {
     console_log_filter_reload: ReloadHandle,
     otel_filter_reload: ReloadHandle,
+    metrics_filter_reload: ReloadHandle,
 }
 
 struct TelemetrySignalHandlerTask {
@@ -663,6 +675,7 @@ impl TelemetryUpdateTask {
 
         (self.handles.console_log_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
         (self.handles.otel_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
+        (self.handles.metrics_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
 
         info!(
             task = Self::NAME,
@@ -718,9 +731,10 @@ impl<S> Filter<S> for IncludeMetricsFilter {
         metadata
             .fields()
             .iter()
-            .any(|field| field.name() != "metrics")
+            .any(|field| field.name() == "metrics")
     }
 }
+
 struct ExcludeMetricsFilter;
 
 impl<S> Filter<S> for ExcludeMetricsFilter {
@@ -729,7 +743,7 @@ impl<S> Filter<S> for ExcludeMetricsFilter {
         metadata: &Metadata<'_>,
         _: &tracing_subscriber::layer::Context<'_, S>,
     ) -> bool {
-        metadata
+        !metadata
             .fields()
             .iter()
             .any(|field| field.name() == "metrics")
