@@ -1,7 +1,9 @@
+mod conflict;
 mod func;
 mod module;
 mod schema_variant;
 
+pub use crate::conflict::ConflictWithHead;
 pub use crate::func::{
     AttributeArgumentBinding, FuncArgument, FuncArgumentKind, FuncBinding, FuncBindings, FuncCode,
     FuncSummary, LeafInputLocation,

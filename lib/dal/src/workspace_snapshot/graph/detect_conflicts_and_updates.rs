@@ -447,7 +447,19 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                             id: to_rebase_item_weight.id().into(),
                             node_weight_kind: to_rebase_item_weight.into(),
                         };
-                        conflicts.push(Conflict::ModifyRemovedItem(node_information))
+                        let container_node_weight = self
+                            .to_rebase_graph
+                            .get_node_weight(to_rebase_container_index)?;
+                        let container_node_information = NodeInformation {
+                            index: to_rebase_container_index,
+                            id: container_node_weight.id().into(),
+                            node_weight_kind: container_node_weight.into(),
+                        };
+
+                        conflicts.push(Conflict::ModifyRemovedItem {
+                            container: container_node_information,
+                            modified_item: node_information,
+                        });
                     } else {
                         let source_node_weight = self
                             .to_rebase_graph

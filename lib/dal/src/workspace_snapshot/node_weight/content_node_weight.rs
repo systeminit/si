@@ -3,6 +3,8 @@ use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::VectorClockId;
 use si_events::{ulid::Ulid, ContentHash};
 
+use super::deprecated::DeprecatedContentNodeWeight;
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
@@ -10,8 +12,6 @@ use crate::workspace_snapshot::{
     vector_clock::{HasVectorClocks, VectorClock},
 };
 use crate::EdgeWeightKindDiscriminants;
-
-use super::deprecated::DeprecatedContentNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContentNodeWeight {
@@ -61,6 +61,10 @@ impl ContentNodeWeight {
 
     pub fn content_address(&self) -> ContentAddress {
         self.content_address
+    }
+
+    pub fn content_address_discriminants(&self) -> ContentAddressDiscriminants {
+        self.content_address.into()
     }
 
     pub fn content_hash(&self) -> ContentHash {
