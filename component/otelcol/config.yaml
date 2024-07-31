@@ -95,6 +95,8 @@ exporters:
     endpoint: jaeger:4317
     tls:
       insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:9090
 
 extensions:
   zpages:
@@ -113,5 +115,5 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [prometheus]
   extensions: [zpages, health_check]

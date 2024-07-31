@@ -8204,6 +8204,30 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "metrics",
+    actual = ":metrics-0.23.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "metrics-0.23.0.crate",
+    sha256 = "884adb57038347dfbaf2d5065887b6cf4312330dc8e94bc30a1a839bd79d3261",
+    strip_prefix = "metrics-0.23.0",
+    urls = ["https://static.crates.io/crates/metrics/0.23.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "metrics-0.23.0",
+    srcs = [":metrics-0.23.0.crate"],
+    crate = "metrics",
+    crate_root = "metrics-0.23.0.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [":ahash-0.8.11"],
+)
+
 http_archive(
     name = "miette-5.10.0.crate",
     sha256 = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e",
@@ -9272,6 +9296,7 @@ cargo.rust_library(
         "default",
         "grpc-tonic",
         "http",
+        "metrics",
         "prost",
         "tokio",
         "tonic",
@@ -9310,6 +9335,7 @@ cargo.rust_library(
     features = [
         "gen-tonic",
         "gen-tonic-messages",
+        "metrics",
         "prost",
         "tonic",
         "trace",
@@ -15569,6 +15595,7 @@ cargo.rust_binary(
         ":jwt-simple-0.12.9",
         ":krata-loopdev-0.0.12",
         ":lazy_static-1.4.0",
+        ":metrics-0.23.0",
         ":miniz_oxide-0.7.3",
         ":moka-0.12.7",
         ":names-0.14.0",

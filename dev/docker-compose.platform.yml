@@ -154,9 +154,20 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "9090:9090"
       - "55679:55679"
     depends_on:
       - jaeger
+
+  prometheus:
+    #<<: *loki-logged-service
+    image: prom/prometheus
+    ports:
+      - "9000:9090"
+    volumes:
+      - "./prometheus-config/config.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - otelcol
 
   localstack:
     #<<: *loki-logged-service

@@ -1,0 +1,8 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "telemetry-utils",
+    deps = [
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
