@@ -51,13 +51,14 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import {
   ScrollArea,
   RequestStatusMessage,
   themeClasses,
   Icon,
 } from "@si/vue-lib/design-system";
+import { useRoute } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import router from "@/router";
 import { useModuleStore } from "@/store/module.store";
@@ -66,6 +67,7 @@ import EmptyStateCard from "./EmptyStateCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const moduleStore = useModuleStore();
+const route = useRoute();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
@@ -93,6 +95,12 @@ const selectModule = (module: LatestModule) => {
     query: newQueryObj,
   });
 };
+
+onMounted(() => {
+  if (route.query.s) {
+    router.replace({ query: {} });
+  }
+});
 
 defineExpose({ selectedModule });
 </script>
