@@ -123,12 +123,18 @@ importers:
       eslint:
         specifier: ^8.36.0
         version: 8.36.0
+      medium-zoom:
+        specifier: ^1.1.0
+        version: 1.1.0
       typescript:
         specifier: ^4.9.5
         version: 4.9.5
       vitepress:
         specifier: ~1.0.2
         version: 1.0.2(@types/node@18.15.11)(typescript@4.9.5)
+      vitepress-plugin-lightbox:
+        specifier: ^1.0.2
+        version: 1.0.2
 
   app/web:
     dependencies:
@@ -14483,6 +14489,10 @@ packages:
     resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}
     engines: {node: '>= 0.6'}
 
+  /medium-zoom@1.1.0:
+    resolution: {integrity: sha512-ewyDsp7k4InCUp3jRmwHBRFGyjBimKps/AJLjRSox+2q/2H4p/PNpQf+pwONWlJiOudkBXtbdmVbFjqyybfTmQ==}
+    dev: true
+
   /memoize-one@6.0.0:
     resolution: {integrity: sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==}
     dev: true
@@ -16153,6 +16163,11 @@ packages:
 
   /performance-now@2.1.0:
     resolution: {integrity: sha512-7EAHlyLHI56VEIdK57uwHdHKIaAGbnXPiw0yWbarQZOKaKpvUIgW0jWRVLiatnM+XXlSwsanIBH/hzGMJulMow==}
+    dev: true
+
+  /photoswipe@5.4.4:
+    resolution: {integrity: sha512-WNFHoKrkZNnvFFhbHL93WDkW3ifwVOXSW3w1UuZZelSmgXpIGiZSNlZJq37rR8YejqME2rHs9EhH9ZvlvFH2NA==}
+    engines: {node: '>= 0.12.0'}
     dev: true
 
   /picocolors@1.0.0:
@@ -20094,6 +20109,13 @@ packages:
       rollup: 4.18.0
     optionalDependencies:
       fsevents: 2.3.3
+    dev: true
+
+  /vitepress-plugin-lightbox@1.0.2:
+    resolution: {integrity: sha512-CLgz6iWzhTH/Buk0y/SPRy0Ukh+X9QPD1HMAlpVcBPPpENlKwtxKUrAzqwxgh/vOz+6Q+Kw5nKfPH1yL78Rlag==}
+    dependencies:
+      medium-zoom: 1.1.0
+      photoswipe: 5.4.4
     dev: true
 
   /vitepress@1.0.2(@types/node@18.15.11)(typescript@4.9.5):
