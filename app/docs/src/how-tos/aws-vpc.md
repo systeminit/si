@@ -46,7 +46,7 @@ the region frame.
 
 Set the component name to be `How to VPC`.
 
-Set the ` CidrBlock`` to be  `10.0.0.0/16`
+Set the `CidrBlock` to be  `10.0.0.0/16`
 
 Enable `EnableDnsHostnames` and `EnableDnsResolution`.
 
