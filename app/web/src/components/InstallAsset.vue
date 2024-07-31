@@ -9,6 +9,29 @@
           <TruncateWithTooltip class="flex-grow">
             {{ $props.moduleName }}
           </TruncateWithTooltip>
+          <template v-if="functions.length > 0">
+            <IconButton
+              class="flex-none"
+              icon="dots-vertical"
+              variant="classic"
+              noBorderOnHover
+              iconIdleTone="neutral"
+              :selected="codeMenuRef?.isOpen"
+              @click="codeMenuRef?.open"
+            />
+            <DropdownMenu ref="codeMenuRef">
+              <DropdownMenuItem
+                :label="assetFn.name"
+                @click="jumpTo(assetFuncCodeRef)"
+              />
+              <DropdownMenuItem
+                v-for="(func, index) in functions"
+                :key="index"
+                :label="func.name"
+                @click="jumpTo(funcCodeRefs[index])"
+              />
+            </DropdownMenu>
+          </template>
           <VButton
             class="flex-none"
             icon="component-plus"
@@ -53,6 +76,7 @@
     <template v-else-if="moduleObj">
       <TreeNode
         v-if="functions.length > 0"
+        ref="assetFuncCodeRef"
         alwaysShowArrow
         enableGroupToggle
         :defaultOpen="false"
@@ -65,6 +89,7 @@
       <CodeViewer v-else :code="assetFn.code" disableScroll />
       <TreeNode
         v-for="func in functions"
+        ref="funcCodeRefs"
         :key="func.id"
         alwaysShowArrow
         enableGroupToggle
@@ -85,7 +110,7 @@
 </template>
 
 <script lang="ts" setup>
-import { watch, computed } from "vue";
+import { watch, computed, ref } from "vue";
 import * as _ from "lodash-es";
 import {
   RequestStatusMessage,
@@ -94,12 +119,15 @@ import {
   VButton,
   Icon,
   TreeNode,
+  DropdownMenu,
+  DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import { useModuleStore, ModuleSpec } from "@/store/module.store";
 import { nilId } from "@/utils/nilId";
 import { ModuleId } from "@/api/sdf/dal/module";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 import CodeViewer from "./CodeViewer.vue";
+import IconButton from "./IconButton.vue";
 
 const props = defineProps<{
   moduleId: ModuleId;
@@ -168,4 +196,22 @@ watch(
   },
   { immediate: true },
 );
+
+const codeMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+const assetFuncCodeRef = ref<InstanceType<typeof TreeNode>>();
+const funcCodeRefs = ref<InstanceType<typeof TreeNode>[]>([]);
+
+const jumpTo = (code: InstanceType<typeof TreeNode> | undefined) => {
+  if (code) {
+    if (code !== assetFuncCodeRef.value) {
+      assetFuncCodeRef.value?.toggleIsOpen(false);
+    }
+    funcCodeRefs.value.forEach((t) => {
+      t.toggleIsOpen(false);
+    });
+    code.toggleIsOpen(true);
+    const el = code.$el as Element;
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+};
 </script>
