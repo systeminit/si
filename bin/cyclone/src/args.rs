@@ -127,6 +127,10 @@ pub(crate) struct Args {
     #[arg(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,
 
+    /// Overrides the default function timeout of the lang server program.
+    #[arg(long)]
+    pub(crate) lang_server_function_timeout: Option<usize>,
+
     /// Limits execution requests to 1 before shutting down
     #[arg(long, group = "request_limiting")]
     pub(crate) oneshot: bool,
@@ -162,6 +166,7 @@ impl TryFrom<Args> for Config {
         }
 
         builder.try_lang_server_path(args.lang_server)?;
+        builder.lang_server_function_timeout(args.lang_server_function_timeout);
 
         if args.enable_watch {
             builder.watch(Some(Duration::from_secs(args.watch_timeout)));

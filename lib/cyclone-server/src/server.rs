@@ -214,7 +214,11 @@ fn build_service(
 ) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let state = AppState::new(config.lang_server_path(), telemetry_level);
+    let state = AppState::new(
+        config.lang_server_path(),
+        telemetry_level,
+        config.lang_server_function_timeout(),
+    );
 
     let routes = routes(config, state, shutdown_tx);
 

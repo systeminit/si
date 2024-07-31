@@ -199,6 +199,8 @@ pub enum CycloneConfig {
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
         #[serde(default)]
+        lang_server_function_timeout: Option<usize>,
+        #[serde(default)]
         socket_strategy: LocalHttpSocketStrategy,
         #[serde(default)]
         watch_timeout: Option<Duration>,
@@ -216,6 +218,8 @@ pub enum CycloneConfig {
         cyclone_cmd_path: String,
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
+        #[serde(default)]
+        lang_server_function_timeout: Option<usize>,
         #[serde(default)]
         socket_strategy: LocalUdsSocketStrategy,
         #[serde(default)]
@@ -242,6 +246,7 @@ impl CycloneConfig {
         Self::LocalHttp {
             cyclone_cmd_path: default_cyclone_cmd_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
+            lang_server_function_timeout: Default::default(),
             socket_strategy: Default::default(),
             watch_timeout: Default::default(),
             limit_requets: default_limit_requests(),
@@ -255,6 +260,7 @@ impl CycloneConfig {
         Self::LocalUds {
             cyclone_cmd_path: default_cyclone_cmd_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
+            lang_server_function_timeout: Default::default(),
             socket_strategy: Default::default(),
             runtime_strategy: default_runtime_strategy(),
             watch_timeout: Default::default(),
@@ -358,6 +364,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
             CycloneConfig::LocalUds {
                 cyclone_cmd_path,
                 lang_server_cmd_path,
+                lang_server_function_timeout,
                 socket_strategy,
                 runtime_strategy,
                 watch_timeout,
@@ -369,6 +376,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 connect_timeout,
             } => {
                 let mut builder = LocalUdsInstance::spec();
+
                 //we only need these if running local process. Maybe the builder should handle
                 //this?
                 if matches!(runtime_strategy, LocalUdsRuntimeStrategy::LocalProcess) {
@@ -379,6 +387,8 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                         .try_lang_server_cmd_path(lang_server_cmd_path)
                         .map_err(ConfigError::cyclone_spec_build)?;
                 }
+                builder.lang_server_function_timeout(lang_server_function_timeout);
+
                 builder.socket_strategy(socket_strategy);
                 builder.runtime_strategy(runtime_strategy);
                 if let Some(watch_timeout) = watch_timeout {
@@ -404,6 +414,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
             CycloneConfig::LocalHttp {
                 cyclone_cmd_path,
                 lang_server_cmd_path,
+                lang_server_function_timeout,
                 socket_strategy,
                 watch_timeout,
                 limit_requets,
@@ -415,9 +426,12 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 builder
                     .try_cyclone_cmd_path(cyclone_cmd_path)
                     .map_err(ConfigError::cyclone_spec_build)?;
+
                 builder
                     .try_lang_server_cmd_path(lang_server_cmd_path)
                     .map_err(ConfigError::cyclone_spec_build)?;
+                builder.lang_server_function_timeout(lang_server_function_timeout);
+
                 builder.socket_strategy(socket_strategy);
                 if let Some(watch_timeout) = watch_timeout {
                     builder.watch_timeout(watch_timeout);

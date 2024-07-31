@@ -1,30 +1,24 @@
-# Lang JS
+# `lang-js`
 
-This directory contains `lang-js`.
+This directory contains `lang-js`, the primary executor for functions in SI.
 
-## Testing Locally
+## Local Testing Guide
 
-Here is an example of testing `lang-js` locally:
+This is a guide for testing `lang-js` locally by using functions in the [examples](exmaples) directory.
 
-```bash
-SI_LANG_JS_LOG=* buck2 run :lang-js -- ${CHECK_NAME} < examples/${FILE_NAME}
-```
+> [!NOTE]
+> While [dal integration tests](../../lib/dal/tests/integration.rs) are useful for testing new functions and workflows that leverage `lang-js`, it can be helpful to run `lang-js` directly for an efficient developer feedback loop.
 
-## Encoding the Code
+### 1) Writing the Function
 
-Here is an example of "encoding the code" locally:
+Before writing a payload file, we will want to write a function to be executed.
+We can do this anywhere, but for this guide, we will write the file to the [examples](examples) directory.
 
-```bash
-cat examples/commandRunFailCode.js | base64 | tr -d '\n'
-```
+> [!TIP]
+> You can write the function in JavaScript (`.js`) or TypeScript (`.ts`).
+> You can also write an `async` function or a regular, synchronous one.
 
-## Example Test Workflow
-
-While [dal integration tests](../../lib/dal/tests/integration.rs) are useful for testing new functions and workflows
-that leverage `lang-js`, it can be helpful to run `lang-js` directly for an efficient
-developer feedback loop.
-
-First, let's author a function and save it to the [examples](./examples) directory.
+Here is an example function:
 
 ```js
 function fail() {
@@ -32,26 +26,34 @@ function fail() {
 }
 ```
 
-Now, let's base64 encode this function and save the result to our clipboard.
+### 2) Encoding the Function
+
+With our new function written, we need to "base64 encode" it for the payload file.
+You can do that by executing the following:
 
 ```bash
-cat examples/commandRunFailCode.js | base64 | tr -d '\n'
+cat examples/<code-file>.<js-or-ts> | base64 | tr -d '\n'
 ```
 
-Then, we can create a `json` file in the same directory that's in a format that `lang-js` expects.
+You'll want to copy the result to your clipboard.
+On macOS, you can execute the following to do it in one step:
 
-```json
-{
-  "executionId": "fail",
-  "handler": "fail",
-  "codeBase64": "ZnVuY3Rpb24gZmFpbCgpIHsKICAgIHRocm93IG5ldyBFcnJvcigid2hlZWVlZWVlZWVlZWVlZWVlIik7Cn0K"
-}
+```bash
+cat examples/<code-file>.<js-or-ts> | base64 | tr -d '\n' | pbcopy
 ```
 
-Finally, we can run our function in `lang-js` directly.
+### 3) Preparing the Payload File
+
+
+With the encoded function in our clipboard, we can create a payload file to send to `lang-js`.
+The payload file will be a `json` file in the same directory.
+
+At the time of writing the guide ([PR #4259](https://github.com/systeminit/si/pull/4259)), the shape the the `json` file has drifted from what it used to be, so developers will need to read the source code to learn its shape.
+
+### 4) Running the Function via the Payload File
 
 When we run our function in `lang-js`, let's set the debug flag to see what's going on!
 
 ```bash
-cat examples/commandRunFail.json | SI_LANG_JS_LOG=* buck2 run :lang-js -- commandRun
+cat examples/<payload-file>.json | SI_LANG_JS_LOG=* buck2 run :lang-js -- <function-kind>
 ```

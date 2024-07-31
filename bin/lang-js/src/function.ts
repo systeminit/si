@@ -91,12 +91,12 @@ export interface OutputLine {
   message: string;
 }
 
-export async function executeFunction(kind: FunctionKind, request: Request) {
+export async function executeFunction(kind: FunctionKind, request: Request, timeout: number) {
   // Run Before Functions
   const ctx = ctxFromRequest(request);
 
   for (const beforeFunction of request.before || []) {
-    await executor(ctx, beforeFunction, FunctionKind.Before, before);
+    await executor(ctx, beforeFunction, FunctionKind.Before, timeout, before);
     // Set process environment variables, set from requestStorage
     {
       const requestStorageEnv = rawStorageRequest().env();
@@ -110,7 +110,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
   let result;
   switch (kind) {
     case FunctionKind.ActionRun:
-      result = await executor(ctx, request as ActionRunFunc, kind, action_run);
+      result = await executor(ctx, request as ActionRunFunc, kind, timeout, action_run);
 
       console.log(
         JSON.stringify({
@@ -129,6 +129,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
         ctx,
         request as ReconciliationFunc,
         kind,
+        timeout,
         reconciliation,
       );
       break;
@@ -137,6 +138,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
         ctx,
         request as ResolverFunc,
         kind,
+        timeout,
         resolver_function,
       );
 
@@ -152,13 +154,14 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
       );
       break;
     case FunctionKind.Validation:
-      result = await executor(ctx, request as JoiValidationFunc, kind, joi_validation);
+      result = await executor(ctx, request as JoiValidationFunc, kind, timeout, joi_validation);
       break;
     case FunctionKind.SchemaVariantDefinition:
       result = await executor(
         ctx,
         request as SchemaVariantDefinitionFunc,
         kind,
+        timeout,
         schema_variant_definition,
       );
       break;
@@ -169,10 +172,18 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
   console.log(JSON.stringify(result));
 }
 
+async function timer(seconds: number): Promise<never> {
+  const ms = seconds * 1000;
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(`function timed out after ${seconds} seconds`)), ms);
+  });
+}
+
 export async function executor<F extends Func | ActionRunFunc, Result>(
   ctx: RequestCtx,
   func: F,
   kind: FunctionKind,
+  timeout: number,
   {
     debug,
     wrapCode,
@@ -199,8 +210,16 @@ export async function executor<F extends Func | ActionRunFunc, Result>(
 
   const vm = createNodeVm(createSandbox(kind, ctx.executionId));
 
-  const result = await execute(vm, ctx, func, code);
-  debug({ result });
+  debug({ timeout });
 
-  return result;
+  try {
+    const result = await Promise.race([
+      execute(vm, ctx, func, code),
+      timer(timeout),
+    ]);
+    debug({ result });
+    return result;
+  } catch (error) {
+    throw new Error(`${error}`);
+  }
 }
