@@ -70,6 +70,10 @@ export default defineConfig({
           {
             text: "AWS IAM Policy",
             link: "/how-tos/aws-iam",
+          },
+          {
+            text: "AWS VPC",
+            link: "/how-tos/aws-vpc",
           }
         ]
       },
