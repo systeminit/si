@@ -11,7 +11,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
-use super::deprecated::DeprecatedAttributeValueNodeWeight;
+use super::{deprecated::DeprecatedAttributeValueNodeWeight, traits::UpdateConflictsAndUpdates};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AttributeValueNodeWeight {
@@ -174,3 +174,5 @@ impl From<DeprecatedAttributeValueNodeWeight> for AttributeValueNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for AttributeValueNodeWeight {}

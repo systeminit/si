@@ -10,7 +10,10 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
-use super::{deprecated::DeprecatedActionPrototypeNodeWeight, NodeWeightResult};
+use super::{
+    deprecated::DeprecatedActionPrototypeNodeWeight, traits::UpdateConflictsAndUpdates,
+    NodeWeightResult,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionPrototypeNodeWeight {
@@ -144,3 +147,5 @@ impl From<DeprecatedActionPrototypeNodeWeight> for ActionPrototypeNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for ActionPrototypeNodeWeight {}

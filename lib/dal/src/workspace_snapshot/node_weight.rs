@@ -52,6 +52,7 @@ pub mod func_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod secret_node_weight;
+pub mod traits;
 
 pub mod deprecated;
 

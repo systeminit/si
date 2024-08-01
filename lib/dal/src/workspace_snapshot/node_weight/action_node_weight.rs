@@ -10,7 +10,9 @@ use crate::{
     ChangeSetId, EdgeWeightKindDiscriminants,
 };
 
-use super::{deprecated::DeprecatedActionNodeWeight, NodeWeightResult};
+use super::{
+    deprecated::DeprecatedActionNodeWeight, traits::UpdateConflictsAndUpdates, NodeWeightResult,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionNodeWeight {
@@ -135,3 +137,5 @@ impl From<DeprecatedActionNodeWeight> for ActionNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for ActionNodeWeight {}

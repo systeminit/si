@@ -16,6 +16,7 @@ use crate::{
 };
 
 use super::deprecated::DeprecatedPropNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PropNodeWeight {
@@ -188,3 +189,5 @@ impl From<DeprecatedPropNodeWeight> for PropNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for PropNodeWeight {}

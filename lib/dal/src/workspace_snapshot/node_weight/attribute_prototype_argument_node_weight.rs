@@ -10,7 +10,9 @@ use crate::{
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
-use super::deprecated::DeprecatedAttributePrototypeArgumentNodeWeight;
+use super::{
+    deprecated::DeprecatedAttributePrototypeArgumentNodeWeight, traits::UpdateConflictsAndUpdates,
+};
 
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
@@ -163,3 +165,5 @@ impl From<DeprecatedAttributePrototypeArgumentNodeWeight> for AttributePrototype
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for AttributePrototypeArgumentNodeWeight {}

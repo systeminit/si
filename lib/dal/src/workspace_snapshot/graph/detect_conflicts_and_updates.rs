@@ -90,7 +90,11 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
 
         conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
 
-        Ok(ConflictsAndUpdates { conflicts, updates })
+        let conflicts_and_updates = ConflictsAndUpdates { conflicts, updates };
+
+        // TODO: Nodes filtering Conflicts and Updates
+
+        Ok(conflicts_and_updates)
     }
 
     fn detect_conflicts_and_updates_process_dfs_event(
