@@ -93,7 +93,7 @@ fn change_set_node_index(conflict: Conflict) -> Option<NodeIndex> {
     match conflict {
         Conflict::ChildOrder { onto, .. } => Some(onto.index),
         Conflict::ExclusiveEdgeMismatch { destination, .. } => Some(destination.index),
-        Conflict::ModifyRemovedItem(node) => Some(node.index),
+        Conflict::ModifyRemovedItem { modified_item, .. } => Some(modified_item.index),
         Conflict::NodeContent { onto, .. } => Some(onto.index),
         Conflict::RemoveModifiedItem { .. } => None,
     }
