@@ -17,6 +17,7 @@ use si_pkg::{SiPkg, SiPkgError};
 use si_std::canonical_file::safe_canonically_join;
 use si_std::CanonicalFileError;
 use std::path::{Path, PathBuf};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::fs::read_dir;
 
@@ -136,7 +137,7 @@ impl IntoResponse for ModuleError {
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
-
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }

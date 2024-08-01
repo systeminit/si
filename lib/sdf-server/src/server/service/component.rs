@@ -18,6 +18,7 @@ use dal::{
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -125,6 +126,7 @@ impl IntoResponse for ComponentError {
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
 
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }

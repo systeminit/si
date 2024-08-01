@@ -52,6 +52,8 @@ impl IntoResponse for ModulesAPIError {
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 
+        error!(si.error.message = ?self.to_string());
+
         ApiError::new(status_code, self).into_response()
     }
 }

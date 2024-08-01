@@ -10,6 +10,7 @@ use hyper::StatusCode;
 use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tower_http::cors::CorsLayer;
 use tower_http::{compression::CompressionLayer, cors::AllowOrigin};
@@ -127,7 +128,7 @@ impl IntoResponse for AppError {
                 "statusCode": status.as_u16(),
             },
         }));
-
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }

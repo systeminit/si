@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{Json, Router};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use dal::func::summary::FuncSummaryError;
@@ -97,6 +98,7 @@ impl IntoResponse for SchemaVariantError {
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
+        error!(si.error.message = error_message);
 
         (status, body).into_response()
     }

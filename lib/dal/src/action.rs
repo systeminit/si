@@ -309,6 +309,7 @@ impl Action {
         Ok(action)
     }
 
+    #[instrument(level = "info", skip_all, fields(si.action.id = ?id, si.action.state = ?state))]
     pub async fn set_state(ctx: &DalContext, id: ActionId, state: ActionState) -> ActionResult<()> {
         let idx = ctx.workspace_snapshot()?.get_node_index_by_id(id).await?;
         let node_weight = ctx
@@ -614,6 +615,9 @@ impl Action {
         Ok(result)
     }
 
+    #[instrument(name = "workspace_snapshot.dispatch_action", level = "info", skip_all, fields(
+        si.action.id = ?action_id,
+    ))]
     pub async fn dispatch_action(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
         Action::set_state(ctx, action_id, ActionState::Dispatched).await?;
 

@@ -394,8 +394,14 @@ impl DalContext {
     ) -> Result<(), TransactionsError> {
         if let Some(conflicts) = rebase(&self.tenancy, &self.layer_db(), rebase_request).await? {
             let conflict_count = &conflicts.conflicts_found.len();
+            let updates_found_and_skipped = &conflicts.updates_found_and_skipped.clone();
             let err = TransactionsError::ConflictsOccurred(conflicts);
-            error!(error= ?err, si.conflicts.count={conflict_count}, "conflicts found on commit");
+            error!(
+                si.error.message = ?err,
+                si.conflicts.count = { conflict_count },
+                si.updates_found_and_skipped = format!("{:?}", updates_found_and_skipped),
+                "conflicts found on commit"
+            );
             return Err(err);
         }
         Ok(())
@@ -459,8 +465,13 @@ impl DalContext {
             self.commit_internal(rebase_request).await?
         } {
             let conflict_count = &conflicts.conflicts_found.len();
-            let err = TransactionsError::ConflictsOccurred(conflicts);
-            error!(error= ?err, conflict.count={conflict_count}, "conflicts found on commit");
+            let err = TransactionsError::ConflictsOccurred(conflicts.clone());
+            error!(
+                si.error.message = ?err,
+                si.conflicts.count = { conflict_count },
+                si.conflicts = ?conflicts.conflicts_found.clone(),
+                "conflicts found on commit"
+            );
             return Err(err);
         }
         Ok(())
@@ -1225,7 +1236,7 @@ pub struct Updates {
     skip_all,
     fields(
             si.change_set.id = Empty,
-            si.workspace.pk = Empty,
+            si.workspace.id = Empty,
             si.conflicts = Empty,
             si.updates = Empty,
             si.conflicts.count = Empty,
@@ -1252,7 +1263,7 @@ async fn rebase(
         rebase_request.to_rebase_change_set_id.to_string(),
     );
     span.record(
-        "si.workspace.pk",
+        "si.workspace.id",
         tenancy
             .workspace_pk()
             .unwrap_or(WorkspacePk::NONE)
@@ -1345,7 +1356,7 @@ impl Transactions {
         skip_all,
         fields(
             si.change_set.id = Empty,
-            si.workspace.pk = Empty,
+            si.workspace.id = Empty,
         )
     )]
     pub async fn commit_into_conns(
@@ -1356,7 +1367,7 @@ impl Transactions {
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let span = Span::current();
         span.record(
-            "si.workspace.pk",
+            "si.workspace.id",
             tenancy
                 .workspace_pk()
                 .unwrap_or(WorkspacePk::NONE)
@@ -1410,8 +1421,15 @@ impl Transactions {
         } else {
             None
         };
-        if conflicts.is_some() {
-            error!("conflicts found");
+        if let Some(ref conflicts) = conflicts {
+            let conflict_count = conflicts.conflicts_found.len();
+            let err = TransactionsError::ConflictsOccurred(conflicts.clone());
+            error!(
+                si.error.message = ?err,
+                si.conflicts.count = { conflict_count },
+                si.conflicts = ?conflicts.conflicts_found.clone(),
+                "conflicts found on blocking commit"
+            );
         }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;

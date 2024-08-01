@@ -11,6 +11,7 @@ use dal::{
 };
 use si_frontend_types::FuncCode;
 use si_layer_cache::LayerDbError;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub mod argument;
@@ -109,6 +110,7 @@ impl IntoResponse for FuncAPIError {
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
+        error!(si.error.message = ?self.to_string());
 
         ApiError::new(status_code, self).into_response()
     }
