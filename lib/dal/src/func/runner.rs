@@ -1297,7 +1297,11 @@ impl FuncRunnerLogsTask {
 
     async fn run(self) {
         if let Err(err) = self.try_run().await {
-            error!(task = Self::NAME, error = ?err, "error while processing function logs");
+            error!(
+                si.error.message = ?err,
+                task = Self::NAME,
+                "error while processing function logs"
+            );
         }
     }
 
@@ -1390,7 +1394,11 @@ impl FuncRunnerExecutionTask {
                 parent_span.record_err(err)
             })
         {
-            error!(task = Self::NAME, error = ?err, "error while dispatching and running function");
+            error!(
+                si.error.message = ?err,
+                task = Self::NAME,
+                "error while dispatching and running function"
+            );
         }
     }
 

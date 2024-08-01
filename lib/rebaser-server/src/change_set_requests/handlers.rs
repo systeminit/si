@@ -60,7 +60,7 @@ type Result<T> = result::Result<T, HandlerError>;
 
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
-        error!(error = ?self, "failed to process message");
+        error!(si.error.message = ?self, "failed to process message");
         Response::server_error()
     }
 }

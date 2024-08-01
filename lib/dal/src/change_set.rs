@@ -336,7 +336,7 @@ impl ChangeSet {
         skip_all,
         fields(
             si.change_set.id = %change_set_id,
-            si.workspace.pk = Empty,
+            si.workspace.id = Empty,
         ),
     )]
     pub async fn find(
@@ -360,7 +360,7 @@ impl ChangeSet {
                 let change_set = Self::try_from(row)?;
 
                 if let Some(workspace_id) = change_set.workspace_id {
-                    span.record("si.workspace.pk", workspace_id.to_string());
+                    span.record("si.workspace.id", workspace_id.to_string());
                 }
                 Ok(Some(change_set))
             }
@@ -609,7 +609,7 @@ impl ChangeSet {
         skip_all,
         fields(
             si.workspace_snapshot_address = %workspace_snapshot_address,
-            si.workspace.pk = Empty,
+            si.workspace.id = Empty,
         ),
     )]
     pub async fn workspace_snapshot_address_in_use(

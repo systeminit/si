@@ -94,9 +94,9 @@ impl JobConsumer for ActionJob {
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         if let Err(err) = inner_run(ctx, self.id).await {
-            error!(error = ?err, si.action.id = %self.id, "unable to finish action");
+            error!(si.error.message = ?err, si.action.id = %self.id, "unable to finish action");
             if let Err(err) = process_failed_action(ctx, self.id).await {
-                error!(error = ?err, "failed to process action failure");
+                error!(si.error.message = ?err, "failed to process action failure");
             }
         }
 
@@ -210,6 +210,9 @@ async fn prepare_for_execution(
     Ok((prototype_id, component_id))
 }
 
+#[instrument(name = "action_job.process_and_record_execution",
+skip_all, level = "info", fields(
+    si.action.id = ?action_id))]
 async fn process_and_record_execution(
     mut ctx: DalContext,
     maybe_resource: Option<&ActionRunResultSuccess>,
@@ -282,13 +285,16 @@ async fn process_and_record_execution(
         .await?
         .publish_on_commit(&ctx)
         .await?;
-
     ctx.commit().await?;
 
     Ok(())
 }
 
-#[instrument(name = "action_job.process_failed_action", skip_all, level = "info")]
+#[instrument(
+    name = "action_job.process_failed_action",
+    skip_all,
+    level = "info",
+    fields(si.action.id = ?action_id))]
 async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobConsumerResult<()> {
     info!(%action_id, "processing action failed");
 

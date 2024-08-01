@@ -5,6 +5,7 @@ use crdt::CrdtError;
 use dal::{TransactionsError, WsEventError};
 use nats_multiplexer_client::MultiplexerClientError;
 use si_data_pg::{PgError, PgPoolError};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
@@ -45,6 +46,7 @@ impl IntoResponse for WsError {
                 "statusCode": status.as_u16()
             }
         }));
+        error!(si.error.message = error_message);
 
         (status, body).into_response()
     }

@@ -43,11 +43,27 @@ pub enum RebaseError {
 
 type RebaseResult<T> = Result<T, RebaseError>;
 
-#[instrument(name = "perform_rebase", level = "debug", skip_all, fields())]
+#[instrument(name = "rebase.perform_rebase", level = "info", skip_all, fields(
+    si.change_set.id = Empty,
+    si.workspace.id = Empty,
+    si.conflicts = Empty,
+    si.updates = Empty,
+    si.conflicts.count = Empty,
+    si.updates.count = Empty,
+))]
 pub async fn perform_rebase(
     ctx: &mut DalContext,
     message: &ActivityRebaseRequest,
 ) -> RebaseResult<RebaseStatus> {
+    let span = Span::current();
+    span.record(
+        "si.change_set.id",
+        &message.metadata.tenancy.change_set_id.to_string(),
+    );
+    span.record(
+        "si.workspace.id",
+        &message.metadata.tenancy.workspace_pk.to_string(),
+    );
     let start = Instant::now();
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set =
@@ -153,13 +169,19 @@ pub async fn perform_rebase(
                 .await?;
             info!("pointer updated: {:?}", start.elapsed());
         }
+        let updates_count = conflicts_and_updates.updates.len();
+        let updates_performed = serde_json::to_value(conflicts_and_updates.updates)?.to_string();
 
-        RebaseStatus::Success {
-            updates_performed: serde_json::to_value(conflicts_and_updates.updates)?.to_string(),
-        }
+        span.record("si.updates", updates_performed.clone());
+        span.record("si.updates.count", updates_count.to_string());
+        RebaseStatus::Success { updates_performed }
     } else {
+        let conflicts_count = conflicts_and_updates.conflicts.len();
+        let conflicts_found = serde_json::to_value(conflicts_and_updates.conflicts)?.to_string();
+        span.record("si.conflicts", conflicts_found.clone());
+        span.record("si.conflicts.count", conflicts_count.to_string());
         RebaseStatus::ConflictsFound {
-            conflicts_found: serde_json::to_value(conflicts_and_updates.conflicts)?.to_string(),
+            conflicts_found,
             updates_found_and_skipped: serde_json::to_value(conflicts_and_updates.updates)?
                 .to_string(),
         }

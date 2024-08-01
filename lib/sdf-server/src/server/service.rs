@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use serde::{Serialize, Serializer};
+use telemetry::prelude::*;
 
 pub mod action;
 pub mod async_route;
@@ -49,6 +50,7 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        error!(err=?self, ?self.error.status_code, ?self.error.status_code, self.error.message );
         (self.error.status_code, Json(self)).into_response()
     }
 }

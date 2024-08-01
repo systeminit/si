@@ -85,6 +85,7 @@ impl IntoResponse for ChangeSetError {
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
 
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }

@@ -13,6 +13,7 @@ use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
 use std::num::ParseFloatError;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -118,7 +119,7 @@ impl IntoResponse for DiagramError {
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
-
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }

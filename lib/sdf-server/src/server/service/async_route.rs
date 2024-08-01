@@ -17,11 +17,11 @@ pub async fn handle_error(
     match WsEvent::async_error(ctx, task_id, err_string).await {
         Ok(event) => {
             if let Err(commit_err) = event.publish_immediately(ctx).await {
-                error!("Unable to publish ws event for async error: {commit_err}");
+                error!(si.error.message = ?commit_err.to_string(), "Unable to publish ws event for async error");
             }
         }
         Err(creation_err) => {
-            error!("Unable to create ws event for async error: {creation_err}")
+            error!( si.error.message = ?creation_err.to_string(), "Unable to create ws event for async error");
         }
     }
 }

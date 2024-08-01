@@ -256,7 +256,7 @@ impl Server {
         skip_all,
         fields(
             si.change_set.id = %change_set_id,
-            si.workspace.pk = %workspace_id,
+            si.workspace.id = %workspace_id,
         )
     )]
     async fn launch_change_set_task(
