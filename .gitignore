@@ -47,3 +47,6 @@ bin/lang-js/docs/
 
 # direnv
 .direnv
+
+# toolbox
+component/toolbox/results/

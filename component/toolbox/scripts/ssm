@@ -97,7 +97,7 @@ while read -r line; do
     ((i++))
 done <<< "$instances"
 
-read -p "Select an instance by number: " selection
+read -p "Select an instance by index: " selection
 instance_id=$(echo "$instances" | sed -n "${selection}p" | awk '{print $2}')
 
 if [ -z "$instance_id" ]; then
