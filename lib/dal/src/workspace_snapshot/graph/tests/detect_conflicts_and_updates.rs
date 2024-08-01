@@ -82,6 +82,19 @@ mod test {
         }
     }
 
+    fn get_root_node_info(graph: &WorkspaceSnapshotGraphV1) -> NodeInformation {
+        let root_id = graph
+            .get_node_weight(graph.root_index)
+            .expect("Unable to get root node")
+            .id();
+
+        NodeInformation {
+            index: graph.root_index,
+            node_weight_kind: NodeWeightDiscriminants::Content,
+            id: root_id.into(),
+        }
+    }
+
     #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_no_updates_in_base() {
         let actor_id = Ulid::new();
@@ -995,14 +1008,19 @@ mod test {
             .detect_conflicts_and_updates(new_vector_clock_id, &base_graph, initial_vector_clock_id)
             .expect("Unable to detect conflicts and updates");
 
+        let container = get_root_node_info(&new_graph);
+
         assert_eq!(
-            vec![Conflict::ModifyRemovedItem(NodeInformation {
-                id: component_id.into(),
-                index: new_graph
-                    .get_node_index_by_id(component_id)
-                    .expect("Unable to get NodeIndex"),
-                node_weight_kind: NodeWeightDiscriminants::Content,
-            })],
+            vec![Conflict::ModifyRemovedItem {
+                container,
+                modified_item: NodeInformation {
+                    id: component_id.into(),
+                    index: new_graph
+                        .get_node_index_by_id(component_id)
+                        .expect("Unable to get NodeIndex"),
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                }
+            }],
             conflicts_and_updates.conflicts
         );
         assert!(conflicts_and_updates.updates.is_empty());
@@ -1135,17 +1153,22 @@ mod test {
             .detect_conflicts_and_updates(vector_clock_id, &base_graph, vector_clock_id)
             .expect("Unable to detect conflicts and updates");
 
+        let container = get_root_node_info(&new_graph);
+
         // Even though we have identical vector clocks, this still produces a
         // conflict, since this item has been modified in to_rebase after onto
         // removed it.
         assert_eq!(
-            vec![Conflict::ModifyRemovedItem(NodeInformation {
-                id: component_id.into(),
-                index: new_graph
-                    .get_node_index_by_id(component_id)
-                    .expect("Unable to get NodeIndex"),
-                node_weight_kind: NodeWeightDiscriminants::Content,
-            })],
+            vec![Conflict::ModifyRemovedItem {
+                container,
+                modified_item: NodeInformation {
+                    id: component_id.into(),
+                    index: new_graph
+                        .get_node_index_by_id(component_id)
+                        .expect("Unable to get NodeIndex"),
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                }
+            }],
             conflicts_and_updates.conflicts
         );
         assert!(conflicts_and_updates.updates.is_empty());
@@ -1672,15 +1695,19 @@ mod test {
 
         // base_graph.dot();
         // new_graph.dot();
+        let container = get_root_node_info(&new_graph);
 
         let expected_conflicts = vec![
-            Conflict::ModifyRemovedItem(NodeInformation {
-                index: new_graph
-                    .get_node_index_by_id(nginx_butane_component_id)
-                    .expect("Unable to get component NodeIndex"),
-                id: nginx_butane_component_id.into(),
-                node_weight_kind: NodeWeightDiscriminants::Content,
-            }),
+            Conflict::ModifyRemovedItem {
+                container,
+                modified_item: NodeInformation {
+                    index: new_graph
+                        .get_node_index_by_id(nginx_butane_component_id)
+                        .expect("Unable to get component NodeIndex"),
+                    id: nginx_butane_component_id.into(),
+                    node_weight_kind: NodeWeightDiscriminants::Content,
+                },
+            },
             Conflict::NodeContent {
                 onto: NodeInformation {
                     index: base_graph
@@ -4063,15 +4090,8 @@ mod test {
         assert!(updates.is_empty());
         assert_eq!(1, conflicts.len());
 
-        let container = NodeInformation {
-            index: to_rebase_graph.root_index,
-            id: to_rebase_graph
-                .get_node_weight(to_rebase_graph.root())
-                .expect("Unable to get root node")
-                .id()
-                .into(),
-            node_weight_kind: NodeWeightDiscriminants::Content,
-        };
+        let container = get_root_node_info(&to_rebase_graph);
+
         let removed_index = onto_graph
             .get_node_index_by_id(prototype_node_id)
             .expect("get_node_index_by_id");
@@ -4097,7 +4117,14 @@ mod test {
             .detect_conflicts_and_updates(vector_clock_id, &to_rebase_graph, vector_clock_id)
             .expect("detect_conflicts_and_updates");
         assert!(updates.is_empty());
-        assert_eq!(Conflict::ModifyRemovedItem(removed_item), conflicts[0]);
+        let container = get_root_node_info(&onto_graph);
+        assert_eq!(
+            Conflict::ModifyRemovedItem {
+                container,
+                modified_item: removed_item
+            },
+            conflicts[0]
+        );
     }
 
     #[test]

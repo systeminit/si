@@ -16,7 +16,10 @@ pub enum Conflict {
         destination: NodeInformation,
         edge_kind: EdgeWeightKindDiscriminants,
     },
-    ModifyRemovedItem(NodeInformation),
+    ModifyRemovedItem {
+        container: NodeInformation,
+        modified_item: NodeInformation,
+    },
     NodeContent {
         onto: NodeInformation,
         to_rebase: NodeInformation,
