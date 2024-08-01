@@ -6,6 +6,7 @@ use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClock};
 use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedDependentValueRootNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 use super::NodeWeightResult;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -141,3 +142,5 @@ impl From<DeprecatedDependentValueRootNodeWeight> for DependentValueRootNodeWeig
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for DependentValueRootNodeWeight {}

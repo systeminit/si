@@ -14,6 +14,7 @@ use crate::workspace_snapshot::{
 use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedFuncNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FuncNodeWeight {
@@ -185,3 +186,5 @@ impl From<DeprecatedFuncNodeWeight> for FuncNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for FuncNodeWeight {}

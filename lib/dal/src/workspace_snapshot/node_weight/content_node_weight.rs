@@ -12,6 +12,7 @@ use crate::workspace_snapshot::{
 use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedContentNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContentNodeWeight {
@@ -209,3 +210,5 @@ impl From<DeprecatedContentNodeWeight> for ContentNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for ContentNodeWeight {}

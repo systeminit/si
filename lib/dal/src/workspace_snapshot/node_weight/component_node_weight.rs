@@ -7,10 +7,13 @@ use crate::{
         graph::LineageId,
         vector_clock::{HasVectorClocks, VectorClock},
     },
-    EdgeWeightKindDiscriminants,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV1,
 };
 
-use super::{deprecated::DeprecatedComponentNodeWeight, NodeWeightError, NodeWeightResult};
+use super::{
+    deprecated::DeprecatedComponentNodeWeight, traits::UpdateConflictsAndUpdates, NodeWeightError,
+    NodeWeightResult,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentNodeWeight {
@@ -159,5 +162,18 @@ impl From<DeprecatedComponentNodeWeight> for ComponentNodeWeight {
             vector_clock_write: VectorClock::empty(),
             to_delete: value.to_delete,
         }
+    }
+}
+
+impl UpdateConflictsAndUpdates for ComponentNodeWeight {
+    fn update_conflicts_and_updates(
+        &self,
+        _to_rebase_workspace_snapshot_graph: &WorkspaceSnapshotGraphV1,
+        _other_workspace_snapshot_graph: &WorkspaceSnapshotGraphV1,
+        conflicts_and_updates: crate::workspace_snapshot::graph::ConflictsAndUpdates,
+    ) -> super::traits::UpdateConflictsAndUpdatesResult<
+        crate::workspace_snapshot::graph::ConflictsAndUpdates,
+    > {
+        Ok(conflicts_and_updates)
     }
 }

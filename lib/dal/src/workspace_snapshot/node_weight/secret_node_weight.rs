@@ -13,6 +13,7 @@ use crate::workspace_snapshot::{
 use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedSecretNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecretNodeWeight {
@@ -172,3 +173,5 @@ impl From<DeprecatedSecretNodeWeight> for SecretNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for SecretNodeWeight {}

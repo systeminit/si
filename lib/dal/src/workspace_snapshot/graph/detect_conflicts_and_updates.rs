@@ -10,7 +10,9 @@ use crate::{
         conflict::Conflict,
         edge_info::EdgeInfo,
         graph::WorkspaceSnapshotGraphError,
-        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
+        node_weight::{
+            category_node_weight::CategoryNodeKind, traits::UpdateConflictsAndUpdates, NodeWeight,
+        },
         update::Update,
         vector_clock::HasVectorClocks,
         NodeInformation,
@@ -90,7 +92,80 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
 
         conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
 
-        Ok(ConflictsAndUpdates { conflicts, updates })
+        let mut conflicts_and_updates = ConflictsAndUpdates { conflicts, updates };
+
+        let mut nodes_to_interrogate = HashSet::new();
+        for conflict in &conflicts_and_updates.conflicts {
+            match conflict {
+                Conflict::ChildOrder { to_rebase, .. } => {
+                    nodes_to_interrogate.insert(to_rebase.id);
+                }
+                Conflict::ExclusiveEdgeMismatch {
+                    source,
+                    destination,
+                    edge_kind: _,
+                } => {
+                    nodes_to_interrogate.insert(source.id);
+                    nodes_to_interrogate.insert(destination.id);
+                }
+                Conflict::ModifyRemovedItem(_onto) => {
+                    // TODO: Use the container node id once it's added to this variant
+                }
+                Conflict::NodeContent { to_rebase, .. } => {
+                    nodes_to_interrogate.insert(to_rebase.id);
+                }
+                Conflict::RemoveModifiedItem {
+                    container: _,
+                    removed_item,
+                } => {
+                    nodes_to_interrogate.insert(removed_item.id);
+                }
+            }
+        }
+        for update in &conflicts_and_updates.updates {
+            match update {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight: _,
+                } => {
+                    nodes_to_interrogate.insert(source.id);
+                    nodes_to_interrogate.insert(destination.id);
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind: _,
+                } => {
+                    nodes_to_interrogate.insert(source.id);
+                    nodes_to_interrogate.insert(destination.id);
+                }
+                Update::ReplaceSubgraph { to_rebase, .. } => {
+                    nodes_to_interrogate.insert(to_rebase.id);
+                }
+                Update::MergeCategoryNodes {
+                    to_rebase_category_id,
+                    onto_category_id: _,
+                } => {
+                    nodes_to_interrogate.insert((*to_rebase_category_id).into());
+                }
+            }
+        }
+        for node_to_interrogate in nodes_to_interrogate {
+            if let Some(node_index) = self
+                .to_rebase_graph
+                .try_get_node_index_by_id(node_to_interrogate)?
+            {
+                let node_weight = self.to_rebase_graph.get_node_weight(node_index)?;
+                conflicts_and_updates = node_weight.update_conflicts_and_updates(
+                    self.to_rebase_graph,
+                    self.onto_graph,
+                    conflicts_and_updates,
+                )?;
+            }
+        }
+
+        Ok(conflicts_and_updates)
     }
 
     fn detect_conflicts_and_updates_process_dfs_event(

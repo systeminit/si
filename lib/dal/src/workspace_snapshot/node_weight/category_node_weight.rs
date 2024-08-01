@@ -9,6 +9,7 @@ use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::Vec
 use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedCategoryNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 
 /// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
 /// assume the new categories already exists on the graph. In places where you need to access the
@@ -149,3 +150,5 @@ impl From<DeprecatedCategoryNodeWeight> for CategoryNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for CategoryNodeWeight {}

@@ -12,7 +12,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
-use super::deprecated::DeprecatedFuncArgumentNodeWeight;
+use super::{deprecated::DeprecatedFuncArgumentNodeWeight, traits::UpdateConflictsAndUpdates};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FuncArgumentNodeWeight {
@@ -169,3 +169,5 @@ impl From<DeprecatedFuncArgumentNodeWeight> for FuncArgumentNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for FuncArgumentNodeWeight {}

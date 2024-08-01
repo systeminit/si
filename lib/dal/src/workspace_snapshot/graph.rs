@@ -35,6 +35,8 @@ use crate::workspace_snapshot::{
 };
 use crate::ChangeSetId;
 
+use super::node_weight::traits::UpdateConflictsAndUpdatesError;
+
 pub mod deprecated;
 pub mod detect_conflicts_and_updates;
 mod tests;
@@ -87,6 +89,8 @@ pub enum WorkspaceSnapshotGraphError {
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
     TooManyPropForNode(NodeIndex),
+    #[error("UpdateConflictsAndUpdates error: {0}")]
+    UpdateConflictsAndUpdates(#[from] UpdateConflictsAndUpdatesError),
     #[error("Workspace Snapshot has conflicts and must be rebased")]
     WorkspaceNeedsRebase,
     #[error("Workspace Snapshot has conflicts")]

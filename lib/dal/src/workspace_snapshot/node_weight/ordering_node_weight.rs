@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::deprecated::DeprecatedOrderingNodeWeight;
+use super::traits::UpdateConflictsAndUpdates;
 use super::NodeWeightError;
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
@@ -202,3 +203,5 @@ impl From<DeprecatedOrderingNodeWeight> for OrderingNodeWeight {
         }
     }
 }
+
+impl UpdateConflictsAndUpdates for OrderingNodeWeight {}
