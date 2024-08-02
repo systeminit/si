@@ -9,6 +9,7 @@ use dal::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use telemetry::tracing::warn;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -132,6 +133,11 @@ async fn find_or_create_user_and_workspace(
                 let _key_pair = KeyPair::new(&ctx, "default").await?;
                 workspace
             } else {
+                warn!(
+                    "user: {} has no permissions to create workspace: {:#?}",
+                    &user.email(),
+                    create_workspace_allowlist
+                );
                 return Err(SessionError::WorkspacePermissions);
             }
         }
