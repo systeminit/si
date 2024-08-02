@@ -103,7 +103,5 @@ async fn delete_single_component(
         }),
     );
 
-    ctx.commit().await?;
-
     Ok(component_still_exists)
 }

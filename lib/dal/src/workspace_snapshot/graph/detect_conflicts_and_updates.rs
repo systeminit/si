@@ -392,6 +392,11 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             .vector_clock_recently_seen()
             .entry_for(self.to_rebase_vector_clock_id);
 
+            // uncomment to interrogate an update you don't expect
+        // let action_id = "01J48QEXVCKE2FR8BX8R0154HF";
+        // let ulid = Ulid::from_string(action_id).expect("could not get ulid");
+
+        // Items unique in to_rebase -- CHECK CHECK GOOD TO GO IF CLOCKS ARE RIGHT
         for only_to_rebase_edge_info in only_to_rebase_edges.values() {
             let to_rebase_edge_weight = self
                 .to_rebase_graph
@@ -400,7 +405,9 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             let to_rebase_item_weight = self
                 .to_rebase_graph
                 .get_node_weight(only_to_rebase_edge_info.target_node_index)?;
-
+            // find the ulid you care about
+            //let go_time = to_rebase_item_weight.id() == ulid;
+            let go_time = false;
             // This is an edge that is only to_rebase. So either:
             // -- Onto has seen this edge:
             //     -- So, if to_rebase has modified the target of the edge since onto last saw the target,
@@ -412,16 +419,53 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             //          graph.
 
             // This will always be Some(_)
+            if go_time {
+                dbg!(onto_root_node.vector_clock_recently_seen());
+                dbg!(onto_root_node.vector_clock_recently_seen().len());
+                dbg!(onto_root_node.vector_clock_first_seen());
+
+                dbg!(onto_root_node.vector_clock_first_seen().len());
+                dbg!(to_rebase_root_node.vector_clock_first_seen());
+                dbg!(to_rebase_root_node.vector_clock_recently_seen());
+                dbg!(self.to_rebase_vector_clock_id);
+                dbg!(self.onto_vector_clock_id);
+                dbg!(to_rebase_item_weight.vector_clock_first_seen());
+                dbg!(to_rebase_edge_weight.vector_clock_first_seen());
+                dbg!(to_rebase_item_weight.vector_clock_recently_seen());
+                dbg!(to_rebase_edge_weight.vector_clock_recently_seen());
+                let container_node_weight = self
+                    .to_rebase_graph
+                    .get_node_weight(to_rebase_container_index)?;
+                dbg!(container_node_weight.vector_clock_first_seen());
+                dbg!(container_node_weight.vector_clock_recently_seen());
+                let onto_container_node_weight =
+                    self.onto_graph.get_node_weight(onto_container_index)?;
+                dbg!(onto_container_node_weight.vector_clock_recently_seen());
+                dbg!(onto_container_node_weight.vector_clock_recently_seen());
+            }
             if let Some(edge_first_seen_by_to_rebase) = to_rebase_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(self.to_rebase_vector_clock_id)
+            // when was the first time to_rebase saw this edge
             {
                 let maybe_seen_by_onto_at = if let Some(onto_last_seen_by_to_rebase_vector_clock) =
                     onto_last_seen_by_to_rebase_vector_clock
+                // if onto has at some point seen to_rebase at the root
                 {
                     if edge_first_seen_by_to_rebase <= onto_last_seen_by_to_rebase_vector_clock {
+                        // AND if onto Root Node has seen ANY writes after the first time to_rebase saw this edge in question,
+                        // return the last time onto saw to_rebase
+                        if go_time {
+                            dbg!();
+                        }
+                        // When did to_rebase FIRST know about this edge
                         Some(onto_last_seen_by_to_rebase_vector_clock)
                     } else {
+                        if go_time {
+                            dbg!();
+                        }
+                        // This means onto has never seen this edge, and has never known about it because it was added after onto was forked
+                        // so the result is don't touch it
                         None
                     }
                 } else {
@@ -429,13 +473,21 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                         .vector_clock_recently_seen()
                         .entry_for(self.onto_vector_clock_id)
                         .or_else(|| {
+                            if go_time {
+                                dbg!();
+                            }
                             to_rebase_edge_weight
                                 .vector_clock_first_seen()
                                 .entry_for(self.onto_vector_clock_id)
                         })
                 };
-
+                if go_time {
+                    dbg!(maybe_seen_by_onto_at);
+                }
                 if let Some(seen_by_onto_at) = maybe_seen_by_onto_at {
+                    if go_time {
+                        dbg!();
+                    }
                     if to_rebase_item_weight
                         .vector_clock_write()
                         .has_entries_newer_than(seen_by_onto_at)
@@ -461,6 +513,9 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                             modified_item: node_information,
                         });
                     } else {
+                        if go_time {
+                            dbg!();
+                        }
                         let source_node_weight = self
                             .to_rebase_graph
                             .get_node_weight(only_to_rebase_edge_info.source_node_index)?;
@@ -506,6 +561,7 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             //      update necessary since it's already gone in to_rebase)
 
             // this will always be Some(_)
+            // if onto has seen this edge initially
             if let Some(edge_weight_first_seen_by_onto) = onto_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(self.onto_vector_clock_id)
@@ -514,11 +570,18 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                     if let Some(to_rebase_last_seen_by_onto_vector_clock_id) =
                         to_rebase_last_seen_by_onto_vector_clock_id
                     {
+                        // when was the last time onto saw to_rebase
                         if edge_weight_first_seen_by_onto
                             <= to_rebase_last_seen_by_onto_vector_clock_id
                         {
+                            // if this edge was created before onto was forked
+                            // has to rebase ever seen this edge
+                            // there might be nothing to do with it
+                            // this is the case we expect to be in if the clocks are right
                             Some(to_rebase_last_seen_by_onto_vector_clock_id)
                         } else {
+                            // this edge was created after onto last saw to_rebase
+                            // so to_rebase has never known about this edge
                             None
                         }
                     } else {
@@ -559,6 +622,9 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                                 container: container_node_information,
                                 removed_item: removed_item_node_information,
                             });
+                        } else {
+                            // no need to do anything, because onto hasn't made any changes since it last saw to_rebase
+                            // so defer to to_rebase (aka, keep the thing gone)
                         }
                     }
                     None => {

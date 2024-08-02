@@ -434,13 +434,13 @@ impl WorkspaceSnapshot {
         skip_all
     )]
     async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
-        if self.working_copy.read().await.is_none() {
+        let mut working_copy = self.working_copy.write().await;
+        if working_copy.is_none() {
             // Make a copy of the read only graph as our new working copy
-            *self.working_copy.write().await = Some(self.read_only_graph.inner().clone());
+            *working_copy = Some((*self.read_only_graph).inner().clone());
         }
-
         SnapshotWriteGuard {
-            working_copy_write_guard: self.working_copy.write().await,
+            working_copy_write_guard: working_copy,
         }
     }
 
@@ -782,6 +782,7 @@ impl WorkspaceSnapshot {
         }
     }
 
+    #[instrument(name = "workspace_snapshot.write_to_disk", level = "info", skip(self))]
     /// Write the snapshot to disk. *WARNING* can panic! Use only for debugging
     pub async fn write_to_disk(&self, file_suffix: &str) {
         self.working_copy().await.write_to_disk(file_suffix);

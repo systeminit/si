@@ -820,7 +820,7 @@ impl WorkspaceSnapshotGraphV1 {
         let mut file = File::create(home.join(&filename)).expect("could not create file");
         file.write_all(&serialized).expect("could not write file");
 
-        println!("Wrote graph to {}", home.join(&filename).display());
+        info!("Wrote graph to {}", home.join(&filename).display());
     }
 
     #[allow(clippy::disallowed_methods)]

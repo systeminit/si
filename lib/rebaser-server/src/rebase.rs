@@ -133,6 +133,18 @@ pub async fn perform_rebase(
     if conflicts_and_updates.conflicts.len() < len_before {
         info!("automatically resolved prototype edge exclusive edge mismatch");
     }
+    let onto_workspace_snapshot_address = onto_workspace_snapshot.id().await;
+    info!(
+        ?onto_workspace_snapshot_address,
+        ?to_rebase_workspace_snapshot_address,
+        "NICK WRITING"
+    );
+    onto_workspace_snapshot
+        .write_to_disk(format!("{onto_workspace_snapshot_address}-onto").as_str())
+        .await;
+    to_rebase_workspace_snapshot
+        .write_to_disk(format!("{to_rebase_workspace_snapshot_address}-to-rebase").as_str())
+        .await;
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.

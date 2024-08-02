@@ -23,16 +23,21 @@ fn main() -> Result<()> {
     let to_rebase_path = args.get(1).expect(USAGE);
     let onto_path = args.get(2).expect(USAGE);
 
-    let mut to_rebase_graph = load_snapshot_graph(&to_rebase_path)?;
-    let onto_graph = load_snapshot_graph(&onto_path)?;
+    let mut to_rebase_graph = load_snapshot_graph(to_rebase_path)?;
+    let onto_graph = load_snapshot_graph(onto_path)?;
 
-    let to_rebase_vector_clock_id = dbg!(to_rebase_graph
+    let to_rebase_vector_clock_id = to_rebase_graph
         .max_recently_seen_clock_id(None)
-        .expect("Unable to find a vector clock id in to_rebase"));
-    let onto_vector_clock_id = dbg!(onto_graph
+        .expect("Unable to find a vector clock id in to_rebase");
+    let onto_vector_clock_id = onto_graph
         .max_recently_seen_clock_id(None)
-        .expect("Unable to find a vector clock id in onto"));
+        .expect("Unable to find a vector clock id in onto");
 
+    let conflicts_and_updates = to_rebase_graph.detect_conflicts_and_updates(
+        to_rebase_vector_clock_id,
+        &onto_graph,
+        onto_vector_clock_id,
+    )?;
     let conflicts_and_updates = to_rebase_graph.detect_conflicts_and_updates(
         dbg!(to_rebase_vector_clock_id),
         &onto_graph,

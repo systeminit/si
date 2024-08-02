@@ -458,7 +458,23 @@ impl DalContext {
             }
             None => None,
         };
-
+        if let Some(req) = rebase_request.clone() {
+            let to_rebase_change_set = ChangeSet::find(self, req.to_rebase_change_set_id)
+                .await
+                .expect("could not get to rebase change set")
+                .expect("to rebase change set not found");
+            let to_rebase_workspace_snapshot_address = to_rebase_change_set
+                .workspace_snapshot_address
+                .expect("no workspace snapshot address for to rebase change set");
+            let onto_workspace_snapshot_address = req.onto_workspace_snapshot_address;
+            info!(
+                ?onto_workspace_snapshot_address,
+                ?to_rebase_workspace_snapshot_address,
+                "NICK COMMIT WITH REBASE"
+            );
+        } else {
+            info!("NICK COMMIT NO REBASE");
+        }
         if let Some(conflicts) = if self.blocking {
             self.blocking_commit_internal(rebase_request).await?
         } else {
@@ -570,6 +586,7 @@ impl DalContext {
             }
             None => None,
         };
+        info!(?rebase_request, "NICK BLOCKING COMMIT AND REBASE");
 
         self.blocking_commit_internal(rebase_request).await
     }
