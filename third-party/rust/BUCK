@@ -14544,6 +14544,35 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "snowdon",
+    actual = ":snowdon-0.2.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "snowdon-0.2.0.crate",
+    sha256 = "ed11e67e4c9d7eca68eb26a1562431ebeb45398d46cdb0a1c4980db90ffdebc6",
+    strip_prefix = "snowdon-0.2.0",
+    urls = ["https://static.crates.io/crates/snowdon/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "snowdon-0.2.0",
+    srcs = [":snowdon-0.2.0.crate"],
+    crate = "snowdon",
+    crate_root = "snowdon-0.2.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "lock-free",
+        "serde",
+    ],
+    visibility = [],
+    deps = [":serde-1.0.203"],
+)
+
 http_archive(
     name = "socket2-0.5.7.crate",
     sha256 = "ce305eb0b4296696835b71df73eb912e0f1ffd2556a501fcede6e0c50349191c",
@@ -15610,6 +15639,7 @@ cargo.rust_binary(
         ":serde_url_params-0.2.1",
         ":serde_with-3.8.1",
         ":serde_yaml-0.9.34+deprecated",
+        ":snowdon-0.2.0",
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.2",
         ":strum-0.26.2",
