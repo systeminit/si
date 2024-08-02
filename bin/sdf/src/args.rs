@@ -302,10 +302,12 @@ impl TryFrom<Args> for Config {
                 config_map.set("create_workspace_permissions", create_workspace_permissions);
             }
 
-            config_map.set(
-                "create_workspace_allowlist",
-                args.create_workspace_allowlist,
-            );
+            if !args.create_workspace_allowlist.is_empty() {
+                config_map.set(
+                    "create_workspace_allowlist",
+                    args.create_workspace_allowlist,
+                );
+            }
 
             config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);
