@@ -93,6 +93,8 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
+    debug!(config =?config, "entire startup config");
+
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =
         Server::load_jwt_public_signing_key(config.jwt_signing_public_key().clone()).await?;
