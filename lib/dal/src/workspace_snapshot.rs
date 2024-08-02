@@ -2204,13 +2204,14 @@ impl WorkspaceSnapshot {
 
     /// Return the location of the conflict.
     pub async fn associated_component_id(
-        &self,
         ctx: &DalContext,
-        node_weight: NodeWeight,
+        id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<Option<ComponentId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
         // For a lot of node types, we follow backwards through the graph step by step until
         // we find something that definitely is or is not from a component.
-        let mut node_weight = node_weight;
+        let mut node_weight = workspace_snapshot.get_node_weight_by_id(id).await?;
         while let Some(parent_edge_weight) = match &node_weight {
             // Components
             NodeWeight::Component(component) => return Ok(Some(component.id().into())),
@@ -2295,11 +2296,11 @@ impl WorkspaceSnapshot {
             // Secrets
             | NodeWeight::Secret(_) => None,
         } {
-            let parents = self
+            let parents = workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(node_weight.id(), parent_edge_weight)
                 .await?;
             node_weight = match parents.first() {
-                Some(&parent_node_index) if parents.len() == 1 => self.get_node_weight(parent_node_index).await?,
+                Some(&parent_node_index) if parents.len() == 1 => workspace_snapshot.get_node_weight(parent_node_index).await?,
                 _ => return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
                     parent_edge_weight,
                     NodeWeightDiscriminants::from(&node_weight),

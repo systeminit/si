@@ -20,3 +20,4 @@ mod schema;
 mod secret;
 mod validations;
 mod workspace;
+mod workspace_snapshot;

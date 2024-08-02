@@ -4,8 +4,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    workspace_snapshot::{conflict::Conflict, graph::NodeIndex},
-    ChangeSet, ComponentId, FuncId, Visibility, WorkspaceSnapshot, WorkspaceSnapshotError,
+    workspace_snapshot::{conflict::Conflict, NodeId}, ChangeSet, ComponentId, FuncId, Ulid, Visibility, WorkspaceSnapshot, WorkspaceSnapshotError
 };
 
 use super::ChangeSetResult;
@@ -72,14 +71,11 @@ pub async fn conflicts_summary(
 
     let mut components = HashSet::new();
     for conflict in conflicts_and_updates_change_set_into_base.conflicts {
-        if let Some(node_index) = change_set_node_index(conflict) {
-            let node_weight = cs_workspace_snapshot.get_node_weight(node_index).await?;
-            if let Some(component_id) = cs_workspace_snapshot
-                .associated_component_id(&ctx, node_weight)
-                .await?
-            {
-                components.insert(component_id);
-            }
+        let id = change_set_node_index(conflict);
+        if let Some(component_id) = WorkspaceSnapshot::associated_component_id(&ctx, id)
+            .await?
+        {
+            components.insert(component_id);
         }
     }
 
@@ -89,12 +85,15 @@ pub async fn conflicts_summary(
     }))
 }
 
-fn change_set_node_index(conflict: Conflict) -> Option<NodeIndex> {
+fn change_set_node_index(conflict: Conflict) -> Ulid {
     match conflict {
-        Conflict::ChildOrder { onto, .. } => Some(onto.index),
-        Conflict::ExclusiveEdgeMismatch { destination, .. } => Some(destination.index),
-        Conflict::ModifyRemovedItem { modified_item, .. } => Some(modified_item.index),
-        Conflict::NodeContent { onto, .. } => Some(onto.index),
-        Conflict::RemoveModifiedItem { .. } => None,
+        Conflict::ChildOrder { onto, .. } => onto.id,
+        Conflict::ExclusiveEdgeMismatch { destination, .. } => destination.id,
+        // TODO - we know removed_item does not exist in the change set, but we're not sure
+        // if the container does either ... depends how the conflict detection algorithm works
+        Conflict::ModifyRemovedItem { container, .. } => container.id,
+        Conflict::NodeContent { onto, .. } => onto.id,
+        Conflict::RemoveModifiedItem { removed_item, .. } => removed_item.id,
     }
+    .into()
 }
