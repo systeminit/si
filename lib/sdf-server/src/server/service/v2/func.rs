@@ -125,7 +125,7 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/runs/:func_run_id", get(get_func_run::get_func_run)) // accepts a list of func_ids
         .route("/", post(create_func::create_func))
         .route("/:func_id", put(update_func::update_func)) // only save the func's metadata
-        .route("/:func_id/code", post(get_func_run::get_func_run)) // only saves func code
+        .route("/:func_id/code", put(save_code::save_code)) // only saves func code
         .route("/:func_id/test_execute", post(test_execute::test_execute))
         .route("/:func_id/execute", post(execute_func::execute_func))
         .route(

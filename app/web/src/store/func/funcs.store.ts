@@ -483,7 +483,7 @@ export const useFuncStore = () => {
 
         async SAVE_FUNC(func: FuncCode) {
           return new ApiRequest<FuncCode>({
-            method: "post",
+            method: "put",
             url: `${API_PREFIX}/${func.funcId}/code`,
             params: { code: func.code },
             onFail: () => {
