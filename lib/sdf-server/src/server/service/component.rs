@@ -171,5 +171,6 @@ pub fn routes() -> Router<AppState> {
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))
         .route("/upgrade_component", post(upgrade::upgrade))
-        .route("/conflicts", get(conflicts_for_component))
+        // TODO Make this v2 get not post before merging 
+        .route("/conflicts", post(conflicts_for_component))
 }

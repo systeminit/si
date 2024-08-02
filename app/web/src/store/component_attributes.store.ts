@@ -16,6 +16,7 @@ import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
+import { AttributeValueId } from "@/store/status.store";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -76,6 +77,10 @@ export type AttributeTreeItem = {
   arrayIndex?: number;
 };
 
+export type ConflictWithHead = {
+  bindingKind: string;
+};
+
 export const useComponentAttributesStore = (componentId: ComponentId) => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
@@ -97,6 +102,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
           values: null as PropertyEditorValues | null,
+          conflictForAttributeValueId: {} as Record<
+            AttributeValueId,
+            ConflictWithHead
+          >,
         }),
         getters: {
           // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
@@ -243,9 +252,25 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             });
           },
 
+          async FETCH_PROPERTY_EDITOR_CONFLICTS() {
+            return new ApiRequest<Record<AttributeValueId, ConflictWithHead>>({
+              url: "component/conflicts",
+              method: "post",
+              params: {
+                componentId: this.selectedComponentId,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                console.log(response);
+                this.conflictForAttributeValueId = response;
+              },
+            });
+          },
+
           reloadPropertyEditorData() {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
+            this.FETCH_PROPERTY_EDITOR_CONFLICTS();
           },
 
           async REMOVE_PROPERTY_VALUE(
