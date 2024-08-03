@@ -984,7 +984,7 @@ impl WorkspaceSnapshotGraphV1 {
     }
 
     #[inline(always)]
-    pub(crate) fn get_node_index_by_id(
+    pub fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {

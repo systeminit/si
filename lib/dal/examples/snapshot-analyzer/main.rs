@@ -8,7 +8,7 @@ use dal::{
         node_weight::{NodeWeight, NodeWeightDiscriminants},
         vector_clock::HasVectorClocks,
     },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV1,
 };
 use tokio::time::Instant;
 
@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     println!("decompressed: {}", decompressed.len());
 
     let now = Instant::now();
-    let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&snap_bytes)?;
+    let graph: WorkspaceSnapshotGraphV1 = serialize::from_bytes(&snap_bytes)?;
     println!("deserialization took: {:?}", now.elapsed());
     let inner_graph = graph.graph();
 
@@ -70,9 +70,21 @@ async fn main() -> Result<()> {
             if let NodeWeight::Content(content_node) = node_weight {
                 let cad_discrim: ContentAddressDiscriminants =
                     content_node.content_address().into();
+                if cad_discrim == ContentAddressDiscriminants::Root {
+                    println!("root node: {:#?}", node_weight);
+                }
                 cad_discrim.to_string()
             } else {
                 let kind: NodeWeightDiscriminants = node_weight.into();
+                if kind == NodeWeightDiscriminants::Action && (node_weight.id().to_string() == "01J4B49RX00EVFWRD77Y720HPY" || node_weight.id().to_string() == "01J4ARMWZE220J636JPNBVPGXP")
+ {
+                    println!("action node: {:#?}", node_weight);
+                    let node_idx = graph.get_node_index_by_id(node_weight.id()).expect("no node index");
+                    let edges = graph.edges_directed(node_idx, petgraph::Direction::Incoming);
+                    for edge in edges {
+                        println!("action node edge: {:#?}", edge);
+                    }
+                }
                 kind.to_string()
             }
         };

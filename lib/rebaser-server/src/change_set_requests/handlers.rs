@@ -94,7 +94,9 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
     if RebaseStatusDiscriminants::Success == rebase_status.clone().into() {
         if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_pk.into()).await? {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                // Should be the snapshot from perform rebase
                 ctx.update_snapshot_to_visibility().await?;
+                info!("action dispatch starting snapshot id (should match post updates): {}", ctx.workspace_snapshot()?.id().await);
                 let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
                     .await?
                     .ok_or(RebaseError::MissingChangeSet(
@@ -110,6 +112,7 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
                     change_set.update_pointer(&ctx, new_snapshot_id).await?;
                     // No need to send the request over to the rebaser as we are the rebaser.
                     ctx.commit_no_rebase().await?;
+                    info!("post action dispatch snapshot id (should be the starting id for next action in pinga and next rebase): {}", ctx.workspace_snapshot()?.id().await);
                 }
             }
         }

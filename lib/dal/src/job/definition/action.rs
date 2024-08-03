@@ -137,6 +137,8 @@ async fn inner_run(
     ctx: &mut DalContext,
     action_id: ActionId,
 ) -> JobConsumerResult<Option<ActionRunResultSuccess>> {
+    info!("workspace snapshot id when pinga job begins: {}", ctx.workspace_snapshot()?.id().await);
+
     let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
     // Execute the action function
@@ -145,7 +147,8 @@ async fn inner_run(
     // Retry process_and_record_execution on a conflict error up to a max
     let nodes_to_remove: Vec<Ulid> = retry_on_conflicts(
         || process_and_record_execution(ctx.clone(), maybe_resource.as_ref(), action_id),
-        10,
+        // used to be 10
+        1,
         Duration::from_millis(10),
         "si.action_job.process.retry.process_and_record_execution",
     )
@@ -155,7 +158,7 @@ async fn inner_run(
     if !nodes_to_remove.is_empty() {
         retry_on_conflicts(
             || ensure_deletes_happened(ctx.clone(), nodes_to_remove.clone()),
-            10,
+            1,
             Duration::from_millis(10),
             "si.action_job.process.retry.ensure_deletes_happened",
         )
@@ -201,13 +204,17 @@ async fn ensure_deletes_happened(
     mut ctx: DalContext,
     nodes_to_remove: Vec<Ulid>,
 ) -> JobConsumerResult<()> {
+    info!("workspace snapshot id when ensure deletes happened begins: {}", ctx.workspace_snapshot()?.id().await);
     ctx.update_snapshot_to_visibility().await?;
+    info!("workspace snapshot id when ensure deletes happened after snapshot visibility updates: {}", ctx.workspace_snapshot()?.id().await);
     let snapshot = ctx.workspace_snapshot()?;
     let mut removed_at_least_once = false;
 
     for node_id in nodes_to_remove {
         match snapshot.get_node_weight_by_id(node_id).await {
             Ok(_) => {
+                error!("bye bye bye");
+                std::process::exit(0x0100);
                 warn!(?node_id, "removing node with edge because it is lingering");
                 snapshot
                     .remove_node_by_id(ctx.vector_clock_id()?, node_id)
@@ -248,7 +255,9 @@ async fn prepare_for_execution(
 
     // Updates the action's state
     ctx.commit().await?;
+    info!("workspace snapshot id sent to the rebaser in prepare for execution: {}", ctx.workspace_snapshot()?.id().await);
     ctx.update_snapshot_to_visibility().await?;
+    info!("workspace snapshot after updating prepare for execution: {}", ctx.workspace_snapshot()?.id().await);
 
     let component_id = Action::component_id(ctx, action_id)
         .await?
@@ -266,7 +275,9 @@ async fn process_and_record_execution(
     action_id: ActionId,
 ) -> JobConsumerResult<Vec<Ulid>> {
     let mut to_remove_nodes = Vec::new();
+    info!("workspace snapshot id when process and record execution begins: {}", ctx.workspace_snapshot()?.id().await);
     ctx.update_snapshot_to_visibility().await?;
+    info!("workspace snapshot id when process and record execution updates snapshot and visibility: {}", ctx.workspace_snapshot()?.id().await);
 
     let prototype_id = Action::prototype_id(&ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
@@ -334,7 +345,9 @@ async fn process_and_record_execution(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+    info!("workspace snapshot id when process and record execution before it commits: {}", ctx.workspace_snapshot()?.id().await);
     ctx.commit().await?;
+    info!("workspace snapshot id when process and record execution after it commits (what the rebaser used for onto): {}", ctx.workspace_snapshot()?.id().await);
 
     Ok(to_remove_nodes)
 }

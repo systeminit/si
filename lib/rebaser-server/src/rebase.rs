@@ -82,7 +82,7 @@ pub async fn perform_rebase(
     let onto_workspace_snapshot: WorkspaceSnapshot =
         WorkspaceSnapshot::find(ctx, message.payload.onto_workspace_snapshot_address).await?;
     info!(
-        "to_rebase_id: {}, onto_id: {}",
+        "to_rebase_id (change set pointer): {}, onto_id (what we were sent): {}",
         to_rebase_workspace_snapshot_address,
         onto_workspace_snapshot.id().await
     );
@@ -172,13 +172,14 @@ pub async fn perform_rebase(
                 .collapse_vector_clocks(ctx)
                 .await?;
 
-            to_rebase_workspace_snapshot
+            let to_rebase_workspace_snapshot_id = to_rebase_workspace_snapshot
                 .write(ctx, vector_clock_id)
                 .await?;
             info!("snapshot written: {:?}", start.elapsed());
             to_rebase_change_set
-                .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
+                .update_pointer(ctx, to_rebase_workspace_snapshot_id)
                 .await?;
+            info!("post updates rebase snapshot id (what the action dispatch should use): {}", to_rebase_workspace_snapshot_id);
             info!("pointer updated: {:?}", start.elapsed());
         }
         let updates_count = conflicts_and_updates.updates.len();
