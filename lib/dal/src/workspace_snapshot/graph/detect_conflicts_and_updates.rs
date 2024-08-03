@@ -7,15 +7,10 @@ use si_events::{ulid::Ulid, VectorClockId};
 
 use crate::{
     workspace_snapshot::{
-        conflict::Conflict,
-        edge_info::EdgeInfo,
-        graph::WorkspaceSnapshotGraphError,
-        node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-        update::Update,
-        vector_clock::HasVectorClocks,
-        NodeInformation,
+        conflict::Conflict, edge_info::EdgeInfo, graph::WorkspaceSnapshotGraphError,
+        node_weight::NodeWeight, update::Update, vector_clock::HasVectorClocks, NodeInformation,
     },
-    EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV1,
+    EdgeWeightKind, WorkspaceSnapshotGraphV1,
 };
 
 use super::{ConflictsAndUpdates, WorkspaceSnapshotGraphResult};
@@ -30,7 +25,12 @@ pub struct DetectConflictsAndUpdates<'a, 'b> {
 
 enum ConflictsAndUpdatesControl {
     Continue(Vec<Conflict>, Vec<Update>),
-    Prune(Vec<Conflict>, Vec<Update>),
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+enum OntoNodeDifference {
+    MerkleTreeHash,
+    NewNode,
 }
 
 impl ConflictsAndUpdatesControl {
@@ -38,9 +38,6 @@ impl ConflictsAndUpdatesControl {
         match self {
             ConflictsAndUpdatesControl::Continue(conflicts, updates) => {
                 (petgraph::visit::Control::Continue, conflicts, updates)
-            }
-            ConflictsAndUpdatesControl::Prune(conflicts, updates) => {
-                (petgraph::visit::Control::Prune, conflicts, updates)
             }
         }
     }
@@ -80,7 +77,7 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
         }
 
-        updates.extend(self.maybe_merge_category_nodes()?);
+        // updates.extend(self.maybe_merge_category_nodes()?);
 
         // Now that we have the full set of updates to be performed, we can check to see if we'd be
         // breaking any "exclusive edge" constraints. We need to wait until after we've detected
@@ -88,7 +85,7 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
         // violation of the constraint if we are not also removing the first one. We need to ensure
         // that the net result is that there is only one of that edge kind.
 
-        conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
+        // conflicts.extend(self.detect_exclusive_edge_conflicts_in_updates(&updates)?);
 
         Ok(ConflictsAndUpdates { conflicts, updates })
     }
@@ -101,6 +98,51 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
     ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
         match event {
             DfsEvent::Discover(onto_node_index, _) => {
+                let node_diff = self
+                    .onto_node_difference_from_to_rebase(onto_node_index)
+                    .map_err(|err| {
+                        error!(
+                            err=?err,
+                            "Error detecting conflicts and updates for onto {:?}",
+                            onto_node_index,
+                        );
+                        event
+                    })?;
+
+                Ok(match node_diff {
+                    None => petgraph::visit::Control::Prune,
+                    Some(OntoNodeDifference::NewNode) => {
+                        let node_weight= self.onto_graph.get_node_weight(onto_node_index)
+                            .map_err(|err| {
+                                error!(err=?err, "Error detecting conflicts and updates for onto: {:?}", onto_node_index);
+                                event
+                            })?.to_owned();
+
+                        updates.push(Update::NewNode { node_weight });
+                        petgraph::visit::Control::Continue
+                    }
+                    Some(OntoNodeDifference::MerkleTreeHash) => petgraph::visit::Control::Continue,
+                })
+            }
+            DfsEvent::Finish(onto_node_index, _time) => {
+                // Even though we're pruning in `DfsEvent::Discover`, we'll still get a `Finish`
+                // for the node where we returned a `petgraph::visit::Control::Prune`. Since we
+                // already know that there won't be any conflicts/updates with a nodes that have
+                // identical merkle tree hashes, we can `Continue`
+                let node_diff = self
+                    .onto_node_difference_from_to_rebase(onto_node_index)
+                    .map_err(|err| {
+                        error!(
+                            err=?err,
+                            "Error detecting conflicts and updates for onto {:?}",
+                            onto_node_index,
+                        );
+                        event
+                    })?;
+                if node_diff.is_none() {
+                    return Ok(petgraph::visit::Control::Continue);
+                }
+
                 let (petgraph_control, node_conflicts, node_updates) = self
                     .detect_conflicts_and_updates_for_node_index(onto_node_index)
                     .map_err(|err| {
@@ -120,6 +162,61 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             }
             _ => Ok(petgraph::visit::Control::Continue),
         }
+    }
+
+    fn onto_node_difference_from_to_rebase(
+        &self,
+        onto_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<OntoNodeDifference>> {
+        let onto_node_weight = self.onto_graph.get_node_weight(onto_node_index)?;
+        let mut to_rebase_node_indexes = HashSet::new();
+        if onto_node_index == self.onto_graph.root_index {
+            // There can only be one (valid/current) `ContentAddress::Root` at any
+            // given moment, and the `lineage_id` isn't really relevant as it's not
+            // globally stable (even though it is locally stable). This matters as we
+            // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
+            // externally from a module that we're attempting to import. The external
+            // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
+            // `onto`.
+            to_rebase_node_indexes.insert(self.to_rebase_graph.root());
+        } else {
+            // Only retain node indexes... or indices... if they are part of the current
+            // graph. There may still be garbage from previous updates to the graph
+            // laying around.
+            let mut potential_to_rebase_node_indexes = self
+                .to_rebase_graph
+                .get_node_index_by_lineage(onto_node_weight.lineage_id());
+            potential_to_rebase_node_indexes
+                .retain(|node_index| self.to_rebase_graph.has_path_to_root(*node_index));
+
+            to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
+        }
+
+        if to_rebase_node_indexes.is_empty() {
+            return Ok(Some(OntoNodeDifference::NewNode));
+        }
+
+        // If everything with the same `lineage_id` is identical, then we can prune the
+        // graph traversal, and avoid unnecessary lookups/comparisons.
+        let mut any_content_with_lineage_is_different = false;
+
+        for to_rebase_node_index in to_rebase_node_indexes {
+            let to_rebase_node_weight =
+                self.to_rebase_graph.get_node_weight(to_rebase_node_index)?;
+            if onto_node_weight.merkle_tree_hash() == to_rebase_node_weight.merkle_tree_hash() {
+                // If the merkle tree hashes are the same, then the entire sub-graph is
+                // identical, and we don't need to check any further.
+                continue;
+            }
+
+            any_content_with_lineage_is_different = true
+        }
+
+        Ok(if any_content_with_lineage_is_different {
+            Some(OntoNodeDifference::MerkleTreeHash)
+        } else {
+            None
+        })
     }
 
     fn detect_conflicts_and_updates_for_node_index(
@@ -153,9 +250,25 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
         }
 
-        // If everything with the same `lineage_id` is identical, then we can prune the
-        // graph traversal, and avoid unnecessary lookups/comparisons.
-        let mut any_content_with_lineage_has_changed = false;
+        if to_rebase_node_indexes.is_empty() {
+            // this node exists in onto, but not in to rebase. We should have
+            // produced a NewNode update already. Now we just need to produce
+            // new edge updates for all outgoing edges of this node.
+            for edgeref in self.onto_graph.edges_directed(onto_node_index, Outgoing) {
+                let edge_info = EdgeInfo {
+                    source_node_index: edgeref.source(),
+                    target_node_index: edgeref.target(),
+                    edge_kind: edgeref.weight().kind().into(),
+                    edge_index: edgeref.id(),
+                };
+                updates.push(Update::new_edge(
+                    self.onto_graph,
+                    &edge_info,
+                    edgeref.weight().to_owned(),
+                )?);
+            }
+            return Ok(ConflictsAndUpdatesControl::Continue(conflicts, updates));
+        }
 
         for to_rebase_node_index in to_rebase_node_indexes {
             let to_rebase_node_weight =
@@ -170,7 +283,6 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                 );
                 continue;
             }
-            any_content_with_lineage_has_changed = true;
 
             // Check if there's a difference in the node itself (and whether it is a
             // conflict if there is a difference).
@@ -186,22 +298,11 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                     .vector_clock_write()
                     .is_newer_than(to_rebase_node_weight.vector_clock_write())
                 {
-                    let onto_node_information = NodeInformation {
-                        index: onto_node_index,
-                        id: onto_node_weight.id().into(),
-                        node_weight_kind: onto_node_weight.clone().into(),
-                    };
-                    let to_rebase_node_information = NodeInformation {
-                        index: to_rebase_node_index,
-                        id: to_rebase_node_weight.id().into(),
-                        node_weight_kind: to_rebase_node_weight.clone().into(),
-                    };
                     // `onto` has changes, but has already seen all of the changes in
                     // `to_rebase`. There is no conflict, and we should update to use the
                     // `onto` node.
-                    updates.push(Update::ReplaceSubgraph {
-                        onto: onto_node_information,
-                        to_rebase: to_rebase_node_information,
+                    updates.push(Update::ReplaceNode {
+                        node_weight: onto_node_weight.to_owned(),
                     });
                 } else {
                     // There are changes on both sides that have not
@@ -245,12 +346,10 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                         };
                         if common_onto_items != common_to_rebase_items {
                             let to_rebase_node_information = NodeInformation {
-                                index: to_rebase_node_index,
                                 id: to_rebase_node_weight.id().into(),
                                 node_weight_kind: to_rebase_node_weight.into(),
                             };
                             let onto_node_information = NodeInformation {
-                                index: onto_node_index,
                                 id: onto_node_weight.id().into(),
                                 node_weight_kind: onto_node_weight.into(),
                             };
@@ -262,12 +361,10 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                         }
                     } else {
                         let to_rebase_node_information = NodeInformation {
-                            index: to_rebase_node_index,
                             id: to_rebase_node_weight.id().into(),
                             node_weight_kind: to_rebase_node_weight.into(),
                         };
                         let onto_node_information = NodeInformation {
-                            index: onto_node_index,
                             id: onto_node_weight.id().into(),
                             node_weight_kind: onto_node_weight.into(),
                         };
@@ -290,16 +387,13 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
             conflicts.extend(container_conflicts);
         }
 
-        if any_content_with_lineage_has_changed {
-            // There was at least one thing with a merkle tree hash difference, so we need
-            // to examine further down the tree to see where the difference(s) are, and
-            // where there are conflicts, if there are any.
-            Ok(ConflictsAndUpdatesControl::Continue(conflicts, updates))
-        } else {
-            // Everything to be rebased is identical, so there's no need to examine the
-            // rest of the tree looking for differences & conflicts that won't be there.
-            Ok(ConflictsAndUpdatesControl::Prune(conflicts, updates))
-        }
+        // This function is run in `DfsEvent::Finish`, so regardless of whether there are any
+        // updates/conflicts, we need to return `Continue`. We shouldn't ever get here if there
+        // aren't any differences at all, as we prune the graph during `DfsEvent::Discover`, but
+        // the differences might not result in any changes/conflicts in the direction we're doing
+        // the comparison.
+
+        Ok(ConflictsAndUpdatesControl::Continue(conflicts, updates))
     }
 
     fn find_container_membership_conflicts_and_updates(
@@ -443,7 +537,6 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                         // Item has been modified in `to_rebase` since
                         // `onto` last saw `to_rebase`
                         let node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.target_node_index,
                             id: to_rebase_item_weight.id().into(),
                             node_weight_kind: to_rebase_item_weight.into(),
                         };
@@ -451,7 +544,6 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                             .to_rebase_graph
                             .get_node_weight(to_rebase_container_index)?;
                         let container_node_information = NodeInformation {
-                            index: to_rebase_container_index,
                             id: container_node_weight.id().into(),
                             node_weight_kind: container_node_weight.into(),
                         };
@@ -468,12 +560,10 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                             .to_rebase_graph
                             .get_node_weight(only_to_rebase_edge_info.target_node_index)?;
                         let source_node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.source_node_index,
                             id: source_node_weight.id().into(),
                             node_weight_kind: source_node_weight.into(),
                         };
                         let target_node_information = NodeInformation {
-                            index: only_to_rebase_edge_info.target_node_index,
                             id: target_node_weight.id().into(),
                             node_weight_kind: target_node_weight.into(),
                         };
@@ -544,29 +634,26 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
                             let onto_node_weight = self
                                 .onto_graph
                                 .get_node_weight(only_onto_edge_info.target_node_index)?;
-                            let container_node_information = NodeInformation {
-                                index: to_rebase_container_index,
+                            let _container_node_information = NodeInformation {
                                 id: container_node_weight.id().into(),
                                 node_weight_kind: container_node_weight.into(),
                             };
-                            let removed_item_node_information = NodeInformation {
-                                index: only_onto_edge_info.target_node_index,
+                            let _removed_item_node_information = NodeInformation {
                                 id: onto_node_weight.id().into(),
                                 node_weight_kind: onto_node_weight.into(),
                             };
 
-                            conflicts.push(Conflict::RemoveModifiedItem {
-                                container: container_node_information,
-                                removed_item: removed_item_node_information,
-                            });
+                            // NOTE: The clocks don't actually matter anymore. -- Adam & Fletcher
+                            //conflicts.push(Conflict::RemoveModifiedItem {
+                            //    container: container_node_information,
+                            //    removed_item: removed_item_node_information,
+                            //});
                         }
                     }
                     None => {
                         // This edge has never been seen by to_rebase
                         updates.push(Update::new_edge(
-                            self.to_rebase_graph,
                             self.onto_graph,
-                            to_rebase_container_index,
                             only_onto_edge_info,
                             onto_edge_weight.to_owned(),
                         )?);
@@ -577,125 +664,5 @@ impl<'a, 'b> DetectConflictsAndUpdates<'a, 'b> {
 
         // - Sets same: No conflicts/updates
         Ok((conflicts, updates))
-    }
-
-    fn maybe_merge_category_nodes(&self) -> WorkspaceSnapshotGraphResult<Vec<Update>> {
-        Ok(
-            match (
-                self.to_rebase_graph
-                    .get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
-                self.onto_graph
-                    .get_category_node(None, CategoryNodeKind::DependentValueRoots)?,
-            ) {
-                (Some((to_rebase_category_id, _)), Some((onto_category_id, _)))
-                    if to_rebase_category_id != onto_category_id =>
-                {
-                    vec![Update::MergeCategoryNodes {
-                        to_rebase_category_id,
-                        onto_category_id,
-                    }]
-                }
-                _ => vec![],
-            },
-        )
-    }
-
-    fn detect_exclusive_edge_conflicts_in_updates(
-        &self,
-        updates: &Vec<Update>,
-    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
-        let mut conflicts = Vec::new();
-
-        #[derive(Debug, Default, Clone)]
-        struct NodeEdgeWeightUpdates {
-            additions: Vec<(NodeInformation, NodeInformation)>,
-            removals: Vec<(NodeInformation, NodeInformation)>,
-        }
-
-        let mut edge_updates: HashMap<
-            NodeIndex,
-            HashMap<EdgeWeightKindDiscriminants, NodeEdgeWeightUpdates>,
-        > = HashMap::new();
-
-        for update in updates {
-            match update {
-                Update::NewEdge {
-                    source,
-                    destination,
-                    edge_weight,
-                } => {
-                    let source_entry = edge_updates.entry(source.index).or_default();
-                    let edge_weight_entry = source_entry
-                        .entry(edge_weight.kind().clone().into())
-                        .or_default();
-                    edge_weight_entry.additions.push((*source, *destination));
-                }
-                Update::RemoveEdge {
-                    source,
-                    destination,
-                    edge_kind,
-                } => {
-                    let source_entry = edge_updates.entry(source.index).or_default();
-                    let edge_weight_entry = source_entry.entry(*edge_kind).or_default();
-                    edge_weight_entry.removals.push((*source, *destination));
-                }
-                _ => { /* Other updates are unused for exclusive edge conflict detection */ }
-            }
-        }
-
-        for (source_node_index, source_node_updates) in &edge_updates {
-            for (edge_weight_kind, edge_kind_updates) in source_node_updates {
-                if edge_kind_updates.additions.is_empty() {
-                    // There haven't been any new edges added for this EdgeWeightKind, so we can't
-                    // have created any Conflict::ExclusiveEdge
-                    continue;
-                }
-
-                if !self
-                    .to_rebase_graph
-                    .get_node_weight(*source_node_index)?
-                    .is_exclusive_outgoing_edge(*edge_weight_kind)
-                {
-                    // Nothing to check. This edge weight kind isn't considered exclusive.
-                    continue;
-                }
-
-                // We can only have (removals.len() + (1 - existing edge count)) additions
-                // _at most_, or we'll be creating a Conflict::ExclusiveEdge because there will be
-                // multiple of the same edge kind outgoing from the same node.
-                let existing_outgoing_edges_of_kind = self
-                    .to_rebase_graph
-                    .graph()
-                    .edges_directed(*source_node_index, Outgoing)
-                    .filter(|edge| *edge_weight_kind == edge.weight().kind().into())
-                    .count();
-
-                if edge_kind_updates.additions.len()
-                    > (edge_kind_updates.removals.len() + (1 - existing_outgoing_edges_of_kind))
-                {
-                    warn!(
-                        "ExclusiveEdgeMismatch: Found {} pre-existing edges. Requested {} removals, {} additions.",
-                        existing_outgoing_edges_of_kind,
-                        edge_kind_updates.removals.len(),
-                        edge_kind_updates.additions.len(),
-                    );
-                    // The net count of outgoing edges of this kind is >1. Consider *ALL* of the
-                    // additions to be in conflict.
-                    for (
-                        edge_addition_source_node_information,
-                        edge_addition_destination_node_information,
-                    ) in &edge_kind_updates.additions
-                    {
-                        conflicts.push(Conflict::ExclusiveEdgeMismatch {
-                            source: *edge_addition_source_node_information,
-                            destination: *edge_addition_destination_node_information,
-                            edge_kind: *edge_weight_kind,
-                        });
-                    }
-                }
-            }
-        }
-
-        Ok(conflicts)
     }
 }

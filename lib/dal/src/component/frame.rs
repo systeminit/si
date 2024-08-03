@@ -138,8 +138,6 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
-        let total_start = std::time::Instant::now();
-
         // cache current map of input <-> output sockets based on what the parent knows about right now!!!!
         let initial_impacted_values: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
@@ -150,10 +148,6 @@ impl Frame {
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
             //remove the edge
             Component::remove_edge_from_frame(ctx, current_parent_id, child_id).await?;
-            info!(
-                "Remove existing edge from frame took: {:?}",
-                total_start.elapsed()
-            );
             // get the map of input <-> output sockets after the edge was removed. so we can determine if more
             // updates need to be made due to the upsert
             // note we need to see what the current parent's tree looked like, as there could be nested impacts
@@ -172,10 +166,6 @@ impl Frame {
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
         drop(cycle_check_guard);
-        info!(
-            "Cycle Check Guard dropped, add edge took {:?}",
-            total_start.elapsed()
-        );
 
         // now figure out what needs to rerun!
         let mut values_to_run: HashSet<SocketAttributeValuePair> = HashSet::new();

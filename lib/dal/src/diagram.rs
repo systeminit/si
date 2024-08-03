@@ -392,7 +392,9 @@ impl Diagram {
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
         let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+
         let components = Component::list(ctx).await?;
+
         let mut virtual_and_real_components_by_id: HashMap<ComponentId, Component> =
             components.iter().cloned().map(|c| (c.id(), c)).collect();
         let mut component_views = Vec::with_capacity(components.len());
@@ -403,13 +405,17 @@ impl Diagram {
             .iter()
             .copied()
             .collect();
-        let new_attribute_prototype_argument_ids: HashSet<AttributePrototypeArgumentId> = ctx
-            .workspace_snapshot()?
-            .socket_edges_added_relative_to_base(ctx)
-            .await?
-            .iter()
-            .copied()
-            .collect();
+
+        // let new_attribute_prototype_argument_ids: HashSet<AttributePrototypeArgumentId> = ctx
+        //     .workspace_snapshot()?
+        //     .socket_edges_added_relative_to_base(ctx)
+        //     .await?
+        //     .iter()
+        //     .copied()
+        //     .collect();
+
+        let new_attribute_prototype_argument_ids: HashSet<AttributePrototypeArgumentId> =
+            HashSet::new();
 
         for component in &components {
             let component_change_status = if new_component_ids.contains(&component.id()) {
@@ -441,7 +447,6 @@ impl Diagram {
                     edge_change_status,
                 )?);
             }
-
             for inferred_incoming_connection in component.inferred_incoming_connections(ctx).await?
             {
                 diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
@@ -502,10 +507,12 @@ impl Diagram {
 
             // We need to bring in any AttributePrototypeArguments for incoming & outgoing
             // connections that have been removed.
-            let removed_attribute_prototype_argument_ids = ctx
-                .workspace_snapshot()?
-                .socket_edges_removed_relative_to_base(ctx)
-                .await?;
+            let removed_attribute_prototype_argument_ids: Vec<AttributePrototypeArgumentId> =
+                vec![];
+            //  = ctx
+            //     .workspace_snapshot()?
+            //     .socket_edges_removed_relative_to_base(ctx)
+            //     .await?;
             let mut incoming_connections_by_component_id: HashMap<
                 ComponentId,
                 Vec<IncomingConnection>,

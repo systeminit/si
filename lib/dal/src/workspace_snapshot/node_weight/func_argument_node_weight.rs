@@ -14,7 +14,7 @@ use crate::{
 
 use super::deprecated::DeprecatedFuncArgumentNodeWeight;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

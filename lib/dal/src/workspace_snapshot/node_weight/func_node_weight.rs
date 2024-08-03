@@ -15,7 +15,7 @@ use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedFuncNodeWeight;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

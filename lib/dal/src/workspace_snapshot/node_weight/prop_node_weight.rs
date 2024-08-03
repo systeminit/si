@@ -17,7 +17,7 @@ use crate::{
 
 use super::deprecated::DeprecatedPropNodeWeight;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PropNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

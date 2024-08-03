@@ -136,8 +136,6 @@ impl JobQueueProcessor for NatsProcessor {
             }
         }
 
-        info!("processed_queue");
-
         if !results.is_empty() {
             Err(BlockingJobError::JobExecution(
                 results

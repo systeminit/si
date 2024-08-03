@@ -306,7 +306,7 @@ impl Client {
         loop {
             tokio::select! {
                 _ = keep_alive_subscriber.next() => {
-                    info!("Heartbeat from veritech");
+                    debug!("Heartbeat from veritech");
                     continue;
                 }
                 // Abort if no keep-alive for too long

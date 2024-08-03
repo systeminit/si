@@ -88,7 +88,7 @@ impl DependentValueGraph {
             // at the time the job was created.
             if workspace_snapshot
                 .try_get_node_index_by_id(initial_id)
-                .await?
+                .await
                 .is_none()
             {
                 debug!(%initial_id, "missing node, skipping it in DependentValueGraph");

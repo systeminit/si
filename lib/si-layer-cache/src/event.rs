@@ -97,6 +97,8 @@ pub enum LayeredEventKind {
     FuncRunLogWrite,
     FuncRunWrite,
     Raw,
+    RebaseBatchEvict,
+    RebaseBatchWrite,
     SnapshotEvict,
     SnapshotWrite,
 }

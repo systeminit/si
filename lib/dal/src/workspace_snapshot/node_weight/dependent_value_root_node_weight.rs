@@ -8,7 +8,7 @@ use crate::EdgeWeightKindDiscriminants;
 use super::deprecated::DeprecatedDependentValueRootNodeWeight;
 use super::NodeWeightResult;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DependentValueRootNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,

@@ -7,6 +7,7 @@ use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::ulid::Ulid;
 use si_events::VectorClockActorId;
 use si_events::VectorClockChangeSetId;
@@ -27,8 +28,12 @@ use veritech_client::Client as VeritechClient;
 use crate::feature_flags::FeatureFlagService;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
+use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::{
-    conflict::Conflict, graph::WorkspaceSnapshotGraph, update::Update, vector_clock::VectorClockId,
+    conflict::Conflict,
+    graph::{RebaseBatch, WorkspaceSnapshotGraph},
+    update::Update,
+    vector_clock::VectorClockId,
 };
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
@@ -42,9 +47,9 @@ use crate::{
     AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
     WorkspaceSnapshot,
 };
-use crate::{EncryptedSecret, Workspace};
+use crate::{slow_rt, EncryptedSecret, Workspace};
 
-pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph>;
+pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph, RebaseBatch>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -374,20 +379,6 @@ impl DalContext {
         }
     }
 
-    fn get_rebase_request(
-        &self,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    ) -> Result<RebaseRequest, TransactionsError> {
-        let vector_clock_id = self.vector_clock_id()?;
-        Ok(RebaseRequest {
-            onto_workspace_snapshot_address,
-            // the vector clock id of the current change set is just the id
-            // of the current change set
-            to_rebase_change_set_id: self.change_set_id(),
-            onto_vector_clock_id: vector_clock_id,
-        })
-    }
-
     pub async fn do_rebase_request(
         &self,
         rebase_request: RebaseRequest,
@@ -450,14 +441,53 @@ impl DalContext {
         }
     }
 
+    pub async fn write_rebase_batch(
+        &self,
+        rebase_batch: RebaseBatch,
+    ) -> Result<RebaseBatchAddress, TransactionsError> {
+        let layer_db = self.layer_db().clone();
+        let events_tenancy = self.events_tenancy();
+        let events_actor = self.events_actor();
+
+        let rebase_batch_address = slow_rt::spawn(async move {
+            let (rebase_batch_address, _) = layer_db
+                .rebase_batch()
+                .write(Arc::new(rebase_batch), None, events_tenancy, events_actor)
+                .await?;
+
+            Ok::<RebaseBatchAddress, TransactionsError>(rebase_batch_address)
+        })?
+        .await??;
+
+        Ok(rebase_batch_address)
+    }
+
+    pub async fn write_current_rebase_batch(
+        &self,
+    ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
+        Ok(if let Some(snapshot) = &self.workspace_snapshot {
+            if let Some(rebase_batch) = snapshot
+                .current_rebase_batch(self.change_set_id(), self.vector_clock_id()?)
+                .await
+                .map_err(Box::new)?
+            {
+                Some(self.write_rebase_batch(rebase_batch).await?)
+            } else {
+                None
+            }
+        } else {
+            None
+        })
+    }
+
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<(), TransactionsError> {
-        let rebase_request = match self.write_snapshot().await? {
-            Some(workspace_snapshot_address) => {
-                Some(self.get_rebase_request(workspace_snapshot_address)?)
-            }
-            None => None,
-        };
+        let rebase_request = self
+            .write_current_rebase_batch()
+            .await?
+            .map(|rebase_batch_address| {
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+            });
 
         if let Some(conflicts) = if self.blocking {
             self.blocking_commit_internal(rebase_request).await?
@@ -564,12 +594,14 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
-        let rebase_request = match self.write_snapshot().await? {
-            Some(workspace_snapshot_address) => {
-                Some(self.get_rebase_request(workspace_snapshot_address)?)
-            }
-            None => None,
-        };
+        let rebase_request = self
+            .write_current_rebase_batch()
+            .await?
+            .map(|rebase_batch_address| {
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+            });
+
+        info!("rebase_request: {:?}", rebase_request);
 
         self.blocking_commit_internal(rebase_request).await
     }
@@ -1108,6 +1140,8 @@ pub enum TransactionsError {
     ConflictsOccurred(Conflicts),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
+    #[error("tokio join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error(transparent)]
     LayerDb(#[from] LayerDbError),
     #[error(transparent)]
@@ -1118,10 +1152,12 @@ pub enum TransactionsError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
-    #[error("rebase of snapshot {0} change set id {1} failed {2}")]
-    RebaseFailed(WorkspaceSnapshotAddress, ChangeSetId, String),
+    #[error("rebase of batch {0} for change set id {1} failed: {2}")]
+    RebaseFailed(RebaseBatchAddress, ChangeSetId, String),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow rt error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
     #[error("Unable to acquire lock: {0}")]
@@ -1139,7 +1175,7 @@ pub enum TransactionsError {
     #[error("workspace not set on DalContext")]
     WorkspaceNotSet,
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(Box<WorkspaceSnapshotError>),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
 }
 
 impl TransactionsError {
@@ -1214,8 +1250,19 @@ pub struct Transactions {
 #[derive(Clone, Debug)]
 pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
-    pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    pub onto_vector_clock_id: VectorClockId,
+    pub rebase_batch_address: RebaseBatchAddress,
+}
+
+impl RebaseRequest {
+    pub fn new(
+        to_rebase_change_set_id: ChangeSetId,
+        rebase_batch_address: RebaseBatchAddress,
+    ) -> Self {
+        Self {
+            to_rebase_change_set_id,
+            rebase_batch_address,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1275,8 +1322,7 @@ async fn rebase(
         .rebase()
         .rebase_and_wait(
             rebase_request.to_rebase_change_set_id.into(),
-            rebase_request.onto_workspace_snapshot_address,
-            rebase_request.onto_vector_clock_id,
+            rebase_request.rebase_batch_address,
             metadata,
         )
         .await?;
@@ -1287,16 +1333,15 @@ async fn rebase(
     );
     match rebase_finished_activity.payload {
         ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
-            RebaseStatus::Success { updates_performed } => {
-                let updates = Updates {
-                    updates_found: serde_json::from_str(updates_performed)?,
-                };
-                span.record("si.updates", updates_performed);
-                span.record("si.updates.count", updates.updates_found.len().to_string());
+            RebaseStatus::Success {
+                updates_performed: _,
+            } => {
+                //span.record("si.updates", updates_performed);
+                //span.record("si.updates.count", updates.updates_found.len().to_string());
                 Ok(None)
             }
             RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
-                rebase_request.onto_workspace_snapshot_address,
+                rebase_request.rebase_batch_address,
                 rebase_request.to_rebase_change_set_id,
                 message.to_string(),
             )),

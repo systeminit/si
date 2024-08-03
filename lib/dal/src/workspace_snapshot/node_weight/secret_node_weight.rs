@@ -14,7 +14,7 @@ use crate::EdgeWeightKindDiscriminants;
 
 use super::deprecated::DeprecatedSecretNodeWeight;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

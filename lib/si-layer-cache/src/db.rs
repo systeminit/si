@@ -23,27 +23,33 @@ use crate::{
     persister::{PersisterClient, PersisterTask},
 };
 
-use self::{cache_updates::CacheUpdatesTask, cas::CasDb, workspace_snapshot::WorkspaceSnapshotDb};
+use self::{
+    cache_updates::CacheUpdatesTask, cas::CasDb, rebase_batch::RebaseBatchDb,
+    workspace_snapshot::WorkspaceSnapshotDb,
+};
 
 mod cache_updates;
 pub mod cas;
 pub mod encrypted_secret;
 pub mod func_run;
 pub mod func_run_log;
+pub mod rebase_batch;
 pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
     func_run: FuncRunDb,
     func_run_log: FuncRunLogDb,
+    rebase_batch: RebaseBatchDb<RebaseBatchValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     pg_pool: PgPool,
     nats_client: NatsClient,
@@ -52,12 +58,13 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
+    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
@@ -122,6 +129,13 @@ where
             memory_cache_config.clone(),
         )?;
 
+        let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
+            rebase_batch::CACHE_NAME,
+            disk_path,
+            pg_pool.clone(),
+            memory_cache_config.clone(),
+        )?;
+
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             disk_path,
@@ -136,6 +150,7 @@ where
             encrypted_secret_cache.clone(),
             func_run_cache.clone(),
             func_run_log_cache.clone(),
+            rebase_batch_cache.clone(),
             snapshot_cache.clone(),
             token.clone(),
         )
@@ -159,6 +174,7 @@ where
         let func_run = FuncRunDb::new(func_run_cache, persister_client.clone());
         let func_run_log = FuncRunLogDb::new(func_run_log_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
+        let rebase_batch = RebaseBatchDb::new(rebase_batch_cache, persister_client.clone());
 
         let activity = ActivityClient::new(instance_id, nats_client.clone(), token.clone());
         let graceful_shutdown = LayerDbGracefulShutdown { tracker, token };
@@ -174,6 +190,7 @@ where
             persister_client,
             nats_client,
             instance_id,
+            rebase_batch,
         };
 
         Ok((layerdb, graceful_shutdown))
@@ -205,6 +222,10 @@ where
 
     pub fn func_run_log(&self) -> &FuncRunLogDb {
         &self.func_run_log
+    }
+
+    pub fn rebase_batch(&self) -> &RebaseBatchDb<RebaseBatchValue> {
+        &self.rebase_batch
     }
 
     pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {

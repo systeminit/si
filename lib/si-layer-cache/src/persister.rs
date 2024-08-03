@@ -421,6 +421,8 @@ impl PersistEventTask {
             LayeredEventKind::CasInsertion
             | LayeredEventKind::EncryptedSecretInsertion
             | LayeredEventKind::Raw
+            | LayeredEventKind::RebaseBatchEvict
+            | LayeredEventKind::RebaseBatchWrite
             | LayeredEventKind::SnapshotEvict
             | LayeredEventKind::SnapshotWrite => {
                 pg_layer

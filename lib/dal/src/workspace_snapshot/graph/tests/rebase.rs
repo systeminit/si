@@ -153,7 +153,7 @@ mod test {
             .expect("could not detect conflicts and updates");
         assert!(conflicts.is_empty());
         assert_eq!(
-            2,             // expected
+            7,             // expected
             updates.len()  // actual
         );
         assert_eq!(
@@ -176,7 +176,7 @@ mod test {
         // Perform the updates. In the future, we may want to see if the onto and resulting to
         // rebase graphs are logically equivalent after updates are performed.
         to_rebase
-            .perform_updates(to_rebase_vector_clock_id, &onto, &updates)
+            .perform_updates(to_rebase_vector_clock_id, &updates)
             .expect("could not perform updates");
     }
 }
