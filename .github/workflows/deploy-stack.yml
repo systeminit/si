@@ -3,6 +3,7 @@ name: Deploy Services
 run-name: Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{ github.actor }}
 
 on:
+
   workflow_call:
     inputs:
       environment:
@@ -14,6 +15,10 @@ on:
       version:
         type: string
         default: "stable"
+      deploy-type:
+        type: string
+        required: false
+
   workflow_dispatch:
     inputs:
       environment:
@@ -40,6 +45,14 @@ on:
         required: true
         description: "version to deploy"
         default: "stable"
+      deploy-type:
+        type: choice
+        required: true
+        description: "deployment variant"
+        default: "instance"
+        options:
+          - binary
+          - instance
 
 jobs:
   set-init:
@@ -74,6 +87,7 @@ jobs:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ inputs.version }}
+      deploy-type: ${{ inputs.deploy-type }}
     secrets: inherit
 
   e2e-validation:

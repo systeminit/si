@@ -1,4 +1,23 @@
 #!/bin/bash
+# ---------------------------------------------------------------------------------------------------
+# Lists all the instances in a given region and upon user selection opens an interactive SSM session
+# with that instance.
+# ---------------------------------------------------------------------------------------------------
+
+# Stop immediately if anything goes wrong, let's not create too much
+# mess if John's shell is poor
+set -eo pipefail
+
+# Find & Import all the supporting functions from the supporting folder
+# Get the directory of the current script to figure out where the 
+# Supporting funcs are
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
 
 usage() {
     echo
@@ -21,17 +40,6 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     usage
 fi
 
-# Function to list EC2 instances with their Name tag
-list_instances() {
-    aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text
-}
-
-# Function to start SSM session
-start_ssm_session() {
-    instance_id=$1
-    aws ssm start-session --target "$instance_id" --document-name AWS-StartInteractiveCommand --parameters command="bash -l"
-}
-
 # Parse flags
 while getopts ":p:r:" opt; do
     case ${opt} in
@@ -51,25 +59,6 @@ while getopts ":p:r:" opt; do
             ;;
     esac
 done
-
-# Function to get input or use environment variable
-get_param_or_env() {
-    local param=$1
-    local env_var=$2
-    local prompt=$3
-
-    if [ -z "$param" ]; then
-        if [ -z "${!env_var}" ]; then
-            read -p "$prompt: " value
-            echo "$value"
-        else
-            echo "${!env_var}"
-        fi
-    else
-        echo "$param"
-    fi
-}
-
 
 # Main script
 profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
@@ -105,6 +94,5 @@ if [ -z "$instance_id" ]; then
     exit 1
 fi
 
-echo "Starting SSM session with instance $instance_id..."
-start_ssm_session "$instance_id"
-
+echo "Starting Interactive SSM session with instance $instance_id..."
+start_interactive_ssm_session "$instance_id"

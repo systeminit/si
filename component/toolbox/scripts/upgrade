@@ -13,6 +13,18 @@
 # mess if John's shell is poor
 set -eo pipefail
 
+# Find & Import all the supporting functions from the supporting folder
+# Get the directory of the current script to figure out where the 
+# Supporting funcs are
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
+
+# Usage for this script
 usage() {
     echo
     echo "upgrade"
@@ -22,10 +34,11 @@ usage() {
     echo "upgrade available, if so the user can proceed and upgrade"
     echo "them all in parallel"
     echo "----------------------------------"
-    echo "Usage: upgrade [-p profile] [-r region] [-a automatic]"
-    echo "  -p profile    AWS profile to use"
-    echo "  -r region     AWS region to use"
-    echo "  -a automatic  [Y/N] Run through automatically/no-interact"
+    echo "Usage: upgrade [-p profile] [-r region] [-a automatic] [-s service]"
+    echo "  -p profile        AWS profile to use"
+    echo "  -r region         AWS region to use"
+    echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
+    echo "  -a automatic      [Y/N] Run through automatically/no-interact"
     echo
     exit 1
 }
@@ -36,7 +49,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
 fi
 
 # Parse flags
-while getopts ":p:r:a:" opt; do
+while getopts ":p:r:a:s:" opt; do
     case ${opt} in
         p)
             profile=$OPTARG
@@ -46,6 +59,9 @@ while getopts ":p:r:a:" opt; do
             ;;
         a)
             automatic=$OPTARG
+            ;;
+        s)
+            service=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -57,157 +73,6 @@ while getopts ":p:r:a:" opt; do
             ;;
     esac
 done
-
-# Function to list EC2 instances with their Name tag
-list_instances() {
-  aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text
-}
-
-# Function to check command status
-check_ssm_command_status() {
-  status=$(aws ssm list-command-invocations \
-    --command-id "$command_id" \
-    --details \
-    | jq -r '.CommandInvocations[0].Status')
-  echo "$status"
-}
-
-# Function to start SSM session
-start_and_track_ssm_session() {
-
-    instance_id=$1
-    script=$2
-    service=$3
-    action=$4
-    results_directory=$5
-
-    output=$(aws ssm send-command --instance-ids "$instance_id" --document-name "$script" --parameters "Service=$service,InstanceId=$instance_id,Action=$action" 2>&1)
-    
-    status=$?
-
-    if [ $status -ne 0 ]; then
-      output=$(echo "{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"service\": \"$service\", \"message\": \"$output\"}")
-      echo $output > "$results_directory/$instance_id.json"
-      return
-    fi
-
-    command_id=$(echo "$output" | jq -r '.Command.CommandId')
-
-    # Poll for command status with a timeout of 60 seconds
-    timeout=60
-    elapsed=0
-    interval=1
-
-    while [ $elapsed -lt $timeout ]; do
-      status=$(check_ssm_command_status)
-      
-      if [ "$status" == "Success" ] || [ "$status" == "Failed" ] || [ "$status" == "TimedOut" ] || [ "$status" == "Cancelled" ]; then
-        break
-      fi
-      
-      sleep $interval
-      elapsed=$((elapsed + interval))
-    done
-
-    # Check if command was successful
-    if [ "$status" == "Success" ]; then
-      # Get the output
-      output=$(aws ssm get-command-invocation \
-        --command-id "$command_id" \
-        --instance-id "$instance_id" \
-        | jq -r '.StandardOutputContent')
-      echo $output > "$results_directory/$instance_id.json"
-    else
-      echo "Command failed with status: $status"
-      exit_code=$(aws ssm get-command-invocation \
-        --command-id "$command_id" \
-        --instance-id "$instance_id" \
-        | jq -r '.ResponseCode')
-      
-      echo "Exit code: $exit_code"
-      echo "Failure message:"
-      aws ssm get-command-invocation \
-        --command-id "$command_id" \
-        --instance-id "$instance_id" \
-        | jq -r '.StandardErrorContent'
-    fi
-
-  }
-
-# Function to get input or use environment variable
-get_param_or_env() {
-    local param=$1
-    local env_var=$2
-    local prompt=$3
-
-    if [ -z "$param" ]; then
-        if [ -z "${!env_var}" ]; then
-            read -p "$prompt: " value
-            echo "$value"
-        else
-            echo "${!env_var}"
-        fi
-    else
-        echo "$param"
-    fi
-}
-
-await_ssm_results() {
-
-  results_directory=$1
-  required_file_count=$2
-
-  timeout=60  # Timeout in seconds
-  start_time=$(date +%s)  # Record the start time
-
-  while true; do
-      current_time=$(date +%s)
-      elapsed_time=$((current_time - start_time))
-      
-      if (( elapsed_time > timeout )); then
-          echo "Error: Timeout reached waiting for SSM document responses to arrive. Not all files are present."
-          exit 1
-      fi
-      
-      file_count=$(ls "$results_directory" | wc -l)
-      
-      if (( file_count >= required_file_count )); then
-          break
-      fi
-      
-      # Wait for a short period before checking again
-      sleep 1
-  done
-
-}
-
-sassy_selection_check() {
-  selection=${1^^}
-  if [ "$selection" != "Y" ]; then
-    echo "Don't Trust Scott and John? We're friends I promise, exiting"
-    exit 1
-  fi
-}
-
-concat_and_output() {
- 
-  results_directory=$1
-  output_file=$2
-
-  # Check if the directory exists
-  if [ -d "$results_directory/" ]; then
-    # Aggregate all the individual json documents into one
-    cat $results_directory/* | jq -s '.' >> $results_directory/$output_file
-    cat $results_directory/$output_file | jq
-    echo "----------------------------------------"
-    echo "Results can be found within $results_directory"
-  else
-    echo "Results Directory $results_directory does not exist."
-    exit 1
-  fi
-  echo "----------------------------------------"
-
-}
 
 # ---------------------------------------------------------------------------------------------------
 # Main script
@@ -223,14 +88,15 @@ export AWS_PROFILE="$profile"
 export AWS_REGION="$region"
 
 # List instances with fixed-width columns and filter for the upgradeable instances
-instances=$(list_instances | grep -E 'sdf|pinga|rebaser|veritech' )
+# Based on the filter provided
+instances=$(list_instances ${service,,} )
 if [ -z "$instances" ]; then
     echo "No running instances found."
     exit 1
 fi
 
 echo "----------------------------------------"
-echo "Running instances of sdf/pinga/rebaser/veritech in the region $region:"
+echo "Running instances of services in the region $region:"
 printf "%-5s %-20s %-20s %-20s %-20s\n" "Index" "Name" "InstanceId" "InstanceType" "PrivateIpAddress"
 i=1
 while read -r line; do
@@ -263,16 +129,16 @@ while read -r line; do
     ((i++))
 done <<< "$instances"
 
-await_ssm_results "$results_directory" $((i - 1))
+await_file_results "$results_directory" $((i - 1))
 
-concat_and_output "$results_directory" "$check_results_file"
+concat_and_output_json "$results_directory" "$check_results_file"
 
 if jq -e 'all(.[]; .status == "success") and any(.[]; .upgradeable == "true")' "$results_directory/$check_results_file" > /dev/null; then
   [[ "${automatic,,}" == "y" ]] || read -p "Would you like to push the new binaries out to the upgradeable hosts? (Y/N) " selection
   [[ "${automatic,,}" == "y" ]] || sassy_selection_check $selection
 else
   echo "Error: Either none are upgradeable or one or more of the checks failed to determine whether it was possible to upgrade the node."
-  exit 1
+  exit 2
 fi
 
 # For all order 1 services, upgrade them in *sequence*
@@ -292,7 +158,7 @@ jq 'map(select(.service == "veritech")) | .[]' <<< $upgrade_candidates_json | jq
 done
 
 # Wait until all the results arrive
-await_ssm_results "$results_directory" "$upgrade_hosts_num"
+await_file_results "$results_directory" "$upgrade_hosts_num"
 
 # Continue with the rest of the service nodes
 upgrade_hosts_num=$(jq 'map(select(.service != "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | wc -l)
@@ -305,8 +171,8 @@ done
 
 # Concatenate all the results together
 upgrade_hosts_num=$(jq '.[]' <<< $upgrade_candidates_json | jq -c '.' | wc -l)
-await_ssm_results "$results_directory" "$upgrade_hosts_num"
-concat_and_output "$results_directory" "$upgrade_results_file"
+await_file_results "$results_directory" "$upgrade_hosts_num"
+concat_and_output_json "$results_directory" "$upgrade_results_file"
 
 echo "All active binary services have been rotated, WEB IS STILL TO BE UPDATED."
 echo "If you are running in CI, this will be ran automatically for you. If you"
