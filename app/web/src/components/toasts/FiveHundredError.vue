@@ -19,7 +19,7 @@
     <ErrorMessage class="mx-1" icon="alert-triangle" tone="warning">
       <div class="break-words max-w-lg">{{ message }}</div>
     </ErrorMessage>
-    <div class="flex flex-row gap-sm items-center">
+    <div class="flex flex-row gap-sm items-center mt-xs">
       <VButton
         class="grow text-action-300 dark:hover:text-white hover:text-black hover:bg-action-400 hover:underline"
         label="Close"

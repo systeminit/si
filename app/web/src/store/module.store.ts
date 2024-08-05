@@ -465,14 +465,6 @@ export const useModuleStore = () => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
             {
-              eventType: "ModuleImported",
-              callback: () => {
-                if (!this.installingModuleId) {
-                  window.location.reload();
-                }
-              },
-            },
-            {
               eventType: "AsyncFinish",
               callback: async ({ id }: { id: string }) => {
                 if (id === this.installingModuleId) {

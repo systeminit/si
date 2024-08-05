@@ -10,6 +10,7 @@ use dal::validation::ValidationError;
 use dal::{
     action::prototype::ActionPrototypeError, action::ActionError,
     ComponentError as DalComponentError, FuncError, StandardModelError, WorkspaceError,
+    WorkspaceSnapshotError,
 };
 use dal::{
     attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
@@ -17,9 +18,11 @@ use dal::{
 };
 use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
 use dal::{ChangeSetError, TransactionsError};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::server::state::AppState;
+use crate::service::component::conflicts_for_component::conflicts_for_component;
 
 pub mod delete_property_editor_value;
 pub mod get_actions;
@@ -34,6 +37,7 @@ pub mod update_property_editor_value;
 // pub mod list_resources;
 pub mod refresh;
 // pub mod resource_domain_diff;
+pub mod conflicts_for_component;
 pub mod debug;
 pub mod get_code;
 pub mod restore_default_function;
@@ -95,6 +99,8 @@ pub enum ComponentError {
     ValidationResolver(#[from] ValidationError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -120,6 +126,7 @@ impl IntoResponse for ComponentError {
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
 
+        error!(si.error.message = error_message);
         (status, body).into_response()
     }
 }
@@ -164,4 +171,5 @@ pub fn routes() -> Router<AppState> {
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))
         .route("/upgrade_component", post(upgrade::upgrade))
+        .route("/conflicts", get(conflicts_for_component))
 }

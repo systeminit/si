@@ -8,6 +8,7 @@ use dal::{
     WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -63,25 +64,26 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
         let (status, error_code, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::CONFLICT, None, None),
+            SessionError::LoginFailed => (StatusCode::CONFLICT, None, self.to_string()),
             SessionError::InvalidWorkspace(_) => (
                 StatusCode::CONFLICT,
                 Some("WORKSPACE_NOT_INITIALIZED"),
-                None,
+                self.to_string(),
             ),
             SessionError::WorkspacePermissions => {
-                (StatusCode::UNAUTHORIZED, None, Some(self.to_string()))
+                (StatusCode::UNAUTHORIZED, None, self.to_string())
             }
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, None, None),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, None, self.to_string()),
         };
 
         let body = Json(serde_json::json!({
             "error": {
-                "message": error_message.unwrap_or(self.to_string()),
+                "message": error_message,
                 "code": error_code.unwrap_or("42"),
                 "statusCode": status.as_u16()
             }
         }));
+        error!(si.error.message = error_message);
 
         (status, body).into_response()
     }

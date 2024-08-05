@@ -148,6 +148,7 @@
             }[indentationSize],
           internalScrolling && 'overflow-auto flex-1',
           childrenContainerClasses,
+          'relative',
         )
       "
     >

@@ -112,14 +112,14 @@ impl JobConsumer for DependentValuesUpdate {
         skip_all,
         fields(
                 si.change_set.id = Empty,
-                si.workspace.pk = Empty,
+                si.workspace.id = Empty,
             ),
         )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         let span = Span::current();
         span.record("si.change_set.id", ctx.change_set_id().to_string());
         span.record(
-            "si.workspace.pk",
+            "si.workspace.id",
             ctx.tenancy()
                 .workspace_pk()
                 .unwrap_or(WorkspacePk::NONE)
@@ -261,7 +261,7 @@ impl DependentValuesUpdate {
                     )
                     .await
                     {
-                        error!("status update finished event send failed for AttributeValue {finished_value_id}: {err}");
+                        error!(si.error.message = ?err, "status update finished event send failed for AttributeValue {finished_value_id}");
                     };
                 }
             }
@@ -301,7 +301,7 @@ async fn execution_error(
         fallback
     };
 
-    error!("{}", error_message);
+    error!(si.error.message = error_message, %attribute_value_id);
 }
 
 async fn execution_error_detail(

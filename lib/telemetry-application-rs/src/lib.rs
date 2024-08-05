@@ -7,6 +7,7 @@
 )]
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
+use tracing_subscriber::{filter::FilterExt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use std::{
     borrow::Cow,
@@ -18,9 +19,12 @@ use std::{
     result, thread,
     time::{Duration, Instant},
 };
+use tracing::Metadata;
+use tracing_subscriber::layer::Filter;
 
 use derive_builder::Builder;
 use opentelemetry_sdk::{
+    metrics::SdkMeterProvider,
     propagation::TraceContextPropagator,
     resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
     runtime,
@@ -29,7 +33,7 @@ use opentelemetry_sdk::{
 };
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
-    opentelemetry::{global, trace::TraceError, KeyValue},
+    opentelemetry::{global, metrics::MetricsError, trace::TraceError, KeyValue},
     prelude::*,
     tracing::Subscriber,
     TelemetryCommand, TracingLevel, Verbosity,
@@ -41,13 +45,10 @@ use tokio::{
     time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
-    filter::ParseError,
-    fmt::format::FmtSpan,
-    layer::SubscriberExt as _,
-    reload,
-    util::{SubscriberInitExt as _, TryInitError},
-    EnvFilter, Layer, Registry,
+    filter::ParseError, fmt::format::FmtSpan, reload, util::TryInitError, EnvFilter, Layer,
+    Registry,
 };
 
 pub use telemetry::tracing;
@@ -68,6 +69,8 @@ const DEFAULT_NEVER_MODULES: &[&str] = &["h2", "hyper"];
 pub enum Error {
     #[error(transparent)]
     DirectivesParse(#[from] ParseError),
+    #[error("metrics error {0}")]
+    Metrics(#[from] MetricsError),
     #[error("error creating signal handler: {0}")]
     Signal(#[source] io::Error),
     #[error("failed to parse span event fmt token: {0}")]
@@ -354,7 +357,8 @@ fn tracing_subscriber(
 
         let env_filter = EnvFilter::try_new(directives.as_str())?;
         let (filter, handle) = reload::Layer::new(env_filter);
-        let layer = layer.with_filter(filter);
+
+        let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
 
         let reloader =
             Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
@@ -364,10 +368,21 @@ fn tracing_subscriber(
 
     let (otel_layer, otel_filter_reload) = {
         let layer = tracing_opentelemetry::layer().with_tracer(otel_tracer(config)?);
-
         let env_filter = EnvFilter::try_new(directives.as_str())?;
         let (filter, handle) = reload::Layer::new(env_filter);
-        let layer = layer.with_filter(filter);
+        let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
+
+        let reloader =
+            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (layer, reloader)
+    };
+
+    let (metrics_layer, metrics_filter_reload) = {
+        let layer = MetricsLayer::new(otel_metrics(config)?);
+        let env_filter = EnvFilter::try_new(directives.as_str())?;
+        let (filter, handle) = reload::Layer::new(env_filter);
+        let layer = layer.with_filter(filter.and(IncludeMetricsFilter));
 
         let reloader =
             Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
@@ -378,10 +393,12 @@ fn tracing_subscriber(
     let registry = Registry::default();
     let registry = registry.with(console_log_layer);
     let registry = registry.with(otel_layer);
+    let registry = registry.with(metrics_layer);
 
     let handles = TelemetryHandles {
         console_log_filter_reload,
         otel_filter_reload,
+        metrics_filter_reload,
     };
 
     Ok((registry, handles))
@@ -398,6 +415,19 @@ fn otel_tracer(config: &TelemetryConfig) -> result::Result<Tracer, TraceError> {
                 .build(),
         )
         .install_batch(runtime::Tokio)
+}
+
+fn otel_metrics(config: &TelemetryConfig) -> result::Result<SdkMeterProvider, MetricsError> {
+    opentelemetry_otlp::new_pipeline()
+        .metrics(opentelemetry_sdk::runtime::Tokio)
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+        .with_resource(Resource::new(vec![KeyValue::new(
+            "service.name",
+            config.service_name,
+        )]))
+        .with_period(Duration::from_secs(1))
+        .with_timeout(Duration::from_secs(10))
+        .build()
 }
 
 fn telemetry_resource(config: &TelemetryConfig) -> Resource {
@@ -511,6 +541,7 @@ type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
 struct TelemetryHandles {
     console_log_filter_reload: ReloadHandle,
     otel_filter_reload: ReloadHandle,
+    metrics_filter_reload: ReloadHandle,
 }
 
 struct TelemetrySignalHandlerTask {
@@ -644,6 +675,7 @@ impl TelemetryUpdateTask {
 
         (self.handles.console_log_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
         (self.handles.otel_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
+        (self.handles.metrics_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
 
         info!(
             task = Self::NAME,
@@ -685,6 +717,36 @@ impl TelemetryUpdateTask {
                 );
             }
         };
+    }
+}
+
+struct IncludeMetricsFilter;
+
+impl<S> Filter<S> for IncludeMetricsFilter {
+    fn enabled(
+        &self,
+        metadata: &Metadata<'_>,
+        _: &tracing_subscriber::layer::Context<'_, S>,
+    ) -> bool {
+        metadata
+            .fields()
+            .iter()
+            .any(|field| field.name() == "metrics")
+    }
+}
+
+struct ExcludeMetricsFilter;
+
+impl<S> Filter<S> for ExcludeMetricsFilter {
+    fn enabled(
+        &self,
+        metadata: &Metadata<'_>,
+        _: &tracing_subscriber::layer::Context<'_, S>,
+    ) -> bool {
+        !metadata
+            .fields()
+            .iter()
+            .any(|field| field.name() == "metrics")
     }
 }
 

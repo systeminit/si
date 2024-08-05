@@ -15,6 +15,7 @@ use dal::{
     Visibility,
 };
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::server::{

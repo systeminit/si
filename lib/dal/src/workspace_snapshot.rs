@@ -49,12 +49,15 @@ use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
+use self::graph::ConflictsAndUpdates;
+use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::slow_rt::{self, SlowRuntimeError};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -63,14 +66,14 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::{pk, ChangeSet, Component, ComponentError, ComponentId, Workspace, WorkspaceError};
+use crate::{
+    pk, AttributeValueId, ChangeSet, Component, ComponentError, ComponentId, Workspace,
+    WorkspaceError,
+};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraphV1,
 };
-
-use self::graph::ConflictsAndUpdates;
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 pk!(NodeId);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -2120,5 +2123,79 @@ impl WorkspaceSnapshot {
         .await?;
 
         Ok(())
+    }
+
+    /// If this node is associated to a single av, return it
+    pub async fn associated_attribute_value_id(
+        &self,
+        node_weight: NodeWeight,
+    ) -> WorkspaceSnapshotResult<Option<AttributeValueId>> {
+        let mut this_node_weight = node_weight;
+        while let Some(edge_kind) = match &this_node_weight {
+            NodeWeight::AttributeValue(av) => return Ok(Some(av.id().into())),
+            NodeWeight::AttributePrototypeArgument(_) => {
+                Some(EdgeWeightKindDiscriminants::PrototypeArgument)
+            }
+            NodeWeight::Ordering(_) => Some(EdgeWeightKindDiscriminants::Ordering),
+
+            NodeWeight::Content(content) => match content.content_address_discriminants() {
+                ContentAddressDiscriminants::AttributePrototype => {
+                    Some(EdgeWeightKindDiscriminants::Prototype)
+                }
+                ContentAddressDiscriminants::StaticArgumentValue => {
+                    Some(EdgeWeightKindDiscriminants::PrototypeArgumentValue)
+                }
+                ContentAddressDiscriminants::ValidationOutput => {
+                    Some(EdgeWeightKindDiscriminants::ValidationOutput)
+                }
+
+                ContentAddressDiscriminants::ActionPrototype
+                | ContentAddressDiscriminants::Component
+                | ContentAddressDiscriminants::DeprecatedAction
+                | ContentAddressDiscriminants::DeprecatedActionBatch
+                | ContentAddressDiscriminants::DeprecatedActionRunner
+                | ContentAddressDiscriminants::Func
+                | ContentAddressDiscriminants::FuncArg
+                | ContentAddressDiscriminants::InputSocket
+                | ContentAddressDiscriminants::JsonValue
+                | ContentAddressDiscriminants::Module
+                | ContentAddressDiscriminants::OutputSocket
+                | ContentAddressDiscriminants::Prop
+                | ContentAddressDiscriminants::Root
+                | ContentAddressDiscriminants::Schema
+                | ContentAddressDiscriminants::SchemaVariant
+                | ContentAddressDiscriminants::Secret
+                | ContentAddressDiscriminants::ValidationPrototype => None,
+            },
+
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::Component(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::Func(_)
+            | NodeWeight::FuncArgument(_)
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_) => None,
+        } {
+            let next_node_idxs = self
+                .incoming_sources_for_edge_weight_kind(this_node_weight.id(), edge_kind)
+                .await?;
+
+            this_node_weight = match next_node_idxs.first() {
+                Some(&next_node_idx) if next_node_idxs.len() == 1 => {
+                    self.get_node_weight(next_node_idx).await?
+                }
+                _ => {
+                    return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
+                        edge_kind,
+                        NodeWeightDiscriminants::from(&this_node_weight),
+                        this_node_weight.id(),
+                    ))
+                }
+            };
+        }
+
+        Ok(None)
     }
 }

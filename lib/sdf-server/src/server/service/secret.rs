@@ -1,16 +1,13 @@
 use axum::routing::{get, patch};
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
+use axum::{response::Response, routing::post, Json, Router};
 use dal::{
     ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
     WorkspacePk, WsEventError,
 };
+use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::server::impl_default_error_into_response;
 use crate::server::state::AppState;
 
 pub mod create_secret;
@@ -23,8 +20,6 @@ pub mod update_secret;
 pub enum SecretError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("context transactions error: {0}")]
-    ContextTransactions(#[from] TransactionsError),
     #[error("dal secret error: {0}")]
     DalSecret(#[from] dal::SecretError),
     #[error("hyper error: {0}")]
@@ -45,6 +40,8 @@ pub enum SecretError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("workspace not found: {0}")]
@@ -55,21 +52,7 @@ pub enum SecretError {
 
 pub type SecretResult<T> = Result<T, SecretError>;
 
-impl IntoResponse for SecretError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(serde_json::json!({
-            "error": {
-                "message": error_message,
-                "code": 42,
-                "statusCode": status.as_u16()
-            }
-        }));
-
-        (status, body).into_response()
-    }
-}
+impl_default_error_into_response!(SecretError);
 
 pub fn routes() -> Router<AppState> {
     Router::new()

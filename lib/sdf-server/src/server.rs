@@ -10,6 +10,7 @@ pub use routes::{routes, AppError};
 pub use server::{build_service, build_service_for_tests, Server};
 pub use si_data_pg::PgPool;
 pub use si_layer_cache::LayerDb;
+pub use telemetry::prelude::*;
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
@@ -38,6 +39,7 @@ macro_rules! impl_default_error_into_response {
                 let body = Json(
                     serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
                 );
+                telemetry::prelude::tracing::error!(si.error.message = error_message);
 
                 (status, body).into_response()
             }

@@ -19,6 +19,7 @@ services:
     ports:
       - 4317:4317
       - 55679:55679
+      - 9090:9090
     volumes:
       - config:/etc/otelcol/
     depends_on:

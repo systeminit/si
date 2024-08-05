@@ -19,11 +19,13 @@ derive_builder = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
 nix = { workspace = true }
+opentelemetry = { workspace = true }
 rand = {workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 si-firecracker = { path = "../si-firecracker" }
 si-std = { path = "../si-std" }
+telemetry-utils = { path = "../telemetry-utils-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

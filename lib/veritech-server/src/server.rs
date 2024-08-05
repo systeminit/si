@@ -1,4 +1,5 @@
 use std::{io, sync::Arc};
+use telemetry_utils::metric;
 
 use chrono::Utc;
 use futures::{channel::oneshot, join, StreamExt};
@@ -420,6 +421,7 @@ async fn resolver_function_request(
     process_span: &Span,
 ) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
     let span = Span::current();
+    metric!(counter.function_run.resolver = 1);
 
     let mut sensitive_strings = SensitiveStrings::default();
     // Decrypt the relevant contents of the request and track any resulting sensitive strings
@@ -462,6 +464,7 @@ async fn resolver_function_request(
             }
         }
     }
+    metric!(counter.function_run.resolver = -1);
 
     let function_result = progress
         .finish()
@@ -593,6 +596,7 @@ async fn validation_request(
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
+    metric!(counter.function_run.validation = 1);
 
     let mut payload_request = request.payload;
 
@@ -639,6 +643,7 @@ async fn validation_request(
             }
         }
     }
+    metric!(counter.function_run.validation = -1);
     publisher
         .finalize_output()
         .await
@@ -779,6 +784,7 @@ async fn schema_variant_definition_request(
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
+    metric!(counter.function_run.schema_variant_definition = 1);
 
     let mut payload_request = request.payload;
 
@@ -825,6 +831,7 @@ async fn schema_variant_definition_request(
             }
         }
     }
+    metric!(counter.function_run.schema_variant_definition = -1);
     publisher
         .finalize_output()
         .await
@@ -964,6 +971,7 @@ async fn action_run_request(
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
+    metric!(counter.function_run.action = 1);
 
     let mut payload_request = request.payload;
 
@@ -1010,6 +1018,7 @@ async fn action_run_request(
             }
         }
     }
+    metric!(counter.function_run.action = -1);
     publisher
         .finalize_output()
         .await
@@ -1149,6 +1158,7 @@ async fn reconciliation_request(
     process_span: &Span,
 ) -> ServerResult<()> {
     let span = Span::current();
+    metric!(counter.function_run.reconciliation = 1);
 
     let mut payload_request = request.payload;
 
@@ -1196,6 +1206,7 @@ async fn reconciliation_request(
             }
         }
     }
+    metric!(counter.function_run.reconciliation = -1);
     publisher
         .finalize_output()
         .await

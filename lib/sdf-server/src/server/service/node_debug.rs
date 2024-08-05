@@ -1,20 +1,18 @@
-use axum::{
-    extract::Query,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::Query, response::Response, routing::get, Json, Router};
 use dal::{
     workspace_snapshot::{node_weight::NodeWeight, Direction},
     EdgeWeight, TransactionsError, Visibility, WorkspaceSnapshotError,
 };
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::server::state::AppState;
+use crate::server::{
+    extract::{AccessBuilder, HandlerContext},
+    impl_default_error_into_response,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -27,17 +25,7 @@ pub enum NodeDebugError {
 
 pub type NodeDebugResult<T> = std::result::Result<T, NodeDebugError>;
 
-impl IntoResponse for NodeDebugError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-
-        (status, body).into_response()
-    }
-}
+impl_default_error_into_response!(NodeDebugError);
 
 pub fn routes() -> Router<AppState> {
     Router::new().route("/", get(node_debug))

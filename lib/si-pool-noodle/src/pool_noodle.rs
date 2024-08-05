@@ -83,10 +83,7 @@ where
     pub fn new(pool_size: u32, spec: S, shutdown_rx: tokio::sync::broadcast::Receiver<()>) -> Self {
         // start by cleaning jails just to make sure
         let to_be_cleaned = ArrayQueue::new(pool_size as usize);
-        for n in 1..=pool_size {
-            let _ = to_be_cleaned.push(n);
-        }
-        PoolNoodle(Arc::new(PoolNoodleInner {
+        let pool = PoolNoodle(Arc::new(PoolNoodleInner {
             pool_size,
             spec,
             active: AtomicUsize::new(0),
@@ -95,7 +92,12 @@ where
             to_be_cleaned,
             unprepared: ArrayQueue::new(pool_size as usize),
             shutdown_rx: shutdown_rx.into(),
-        }))
+        }));
+        for n in 1..=pool_size {
+            let me = Arc::clone(&pool.0);
+            Self::push_to_clean(me, n);
+        }
+        pool
     }
 
     /// Gets the current pool stats from the inner struct
@@ -151,19 +153,19 @@ where
                         match PoolNoodleInner::spawn(id, &me.spec).await {
                             Ok(instance) => {
                                 debug!("PoolNoodle: instance started: {}", id);
-                                Self::push_to_ready(me.clone(), instance).await;
+                                Self::push_to_ready(me.clone(), instance);
                             }
                             Err(e) => {
                                 warn!("PoolNoodle: failed to start instance: {}", id);
                                 warn!("{:?}", e);
-                                Self::push_to_clean(me.clone(), id).await;
+                                Self::push_to_clean(me.clone(), id);
                             }
                         }
                     }
                     Err(e) => {
                         warn!("PoolNoodle: failed to ready instance: {}", id);
                         warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id).await;
+                        Self::push_to_clean(me.clone(), id);
                     }
                 }
             }
@@ -181,12 +183,12 @@ where
                 match PoolNoodleInner::clean(id, &me.spec).await {
                     Ok(_) => {
                         debug!("PoolNoodle: instance cleaned: {}", id);
-                        Self::push_to_unprepared(me.clone(), id).await
+                        Self::push_to_unprepared(me.clone(), id)
                     }
                     Err(e) => {
                         warn!("PoolNoodle: failed to clean instance: {}", id);
                         warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id).await;
+                        Self::push_to_clean(me.clone(), id);
                     }
                 }
             }
@@ -206,12 +208,12 @@ where
                 match PoolNoodleInner::terminate(instance, &me.spec).await {
                     Ok(_) => {
                         debug!("PoolNoodle: instance terminated: {}", id);
-                        Self::push_to_clean(me.clone(), id).await;
+                        Self::push_to_clean(me.clone(), id);
                     }
                     Err(e) => {
                         warn!("PoolNoodle: failed to terminate instance: {}", id);
                         warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id).await;
+                        Self::push_to_clean(me.clone(), id);
                     }
                 }
             }
@@ -219,7 +221,7 @@ where
         }
     }
 
-    async fn push_to_clean(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
+    fn push_to_clean(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
         if let Err(e) = me.to_be_cleaned.push(id) {
             warn!(
                 "PoolNoodle: failed to push instance to to_be_cleaned: {}",
@@ -227,22 +229,19 @@ where
             );
             warn!("{:?}", e);
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
-    async fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
+    fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
         if let Err(i) = me.ready.push(instance) {
             warn!("PoolNoodle: failed to push instance to ready: {}", i.id());
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
-    async fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
+    fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
         if let Err(e) = me.unprepared.push(id) {
             warn!("PoolNoodle: failed to push instance to unprepared: {}", id);
             warn!("{:?}", e);
         }
-        debug!("{}", me.stats().await.to_string());
     }
 
     /// This will attempt to get a ready, healthy instance from the pool.

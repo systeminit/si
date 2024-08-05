@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
 import dotenv from "dotenv";
 import path from "path";
+import lightbox from "vitepress-plugin-lightbox";
 
 dotenv.config();
 
@@ -12,6 +13,9 @@ export default defineConfig({
       light: "github-light",
       dark: "github-dark",
     },
+    config: (md) => {
+      md.use(lightbox, {});
+    }
   },
   head: [
     ['script', {}, `
@@ -70,6 +74,10 @@ export default defineConfig({
           {
             text: "AWS IAM Policy",
             link: "/how-tos/aws-iam",
+          },
+          {
+            text: "AWS VPC",
+            link: "/how-tos/aws-vpc",
           }
         ]
       },

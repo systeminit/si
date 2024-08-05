@@ -54,7 +54,7 @@ pub struct Frame;
 
 impl Frame {
     /// Provides an ability to remove the existing ['Component']'s parent``
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn orphan_child(ctx: &DalContext, child_id: ComponentId) -> FrameResult<()> {
         // Normally, we'd call `Component::get_parent_by_id` to get the parent's ID, but that
         // returns a hard error if there are multiple parents. Since we want to be able to use this

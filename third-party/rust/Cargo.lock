@@ -2931,6 +2931,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "metrics"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "884adb57038347dfbaf2d5065887b6cf4312330dc8e94bc30a1a839bd79d3261"
+dependencies = [
+ "ahash 0.8.11",
+ "portable-atomic",
+]
+
+[[package]]
 name = "miette"
 version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5545,6 +5555,7 @@ dependencies = [
  "jwt-simple",
  "krata-loopdev",
  "lazy_static",
+ "metrics",
  "miniz_oxide",
  "moka",
  "names",
