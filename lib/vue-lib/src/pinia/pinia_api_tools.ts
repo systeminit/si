@@ -81,7 +81,6 @@ declare module "pinia" {
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
     apiRequestStatuses: RawRequestStatusesByKey;
-    availableRetries: ConflictsForRetry;
   }
 }
 
@@ -230,15 +229,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
     store.apiRequestStatuses = reactive({} as RawRequestStatusesByKey);
     (store.$state as any).apiRequestStatuses = store.apiRequestStatuses;
 
-    // 409 conflicts get stored in here
-    store.availableRetries = reactive({} as ConflictsForRetry);
-    (store.$state as any).availableRetries = store.availableRetries;
-
     // make available to devtools
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-underscore-dangle
       store._customProperties.add("apiRequestStatuses");
-      store._customProperties.add("availableRetries");
     }
 
     // triggers a named api request passing in a payload
@@ -433,14 +427,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           span.end();
         });
         request.setFailedResult(triggerResult.error);
-        if (
-          actionName !== "SET_COMPONENT_GEOMETRY" &&
-          triggerResult.error.response?.status === 409
-        ) {
-          store.$patch((state) => {
-            state.availableRetries[requestUlid] = [actionName, actionResult];
-          });
-        }
       } else {
         request.setSuccessfulResult(triggerResult.data);
       }
@@ -552,24 +538,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       delete store.$state.apiRequestStatuses[fullKey];
     };
 
-    const RETRY_CONFLICT = async (requestUlid: RequestUlid) => {
-      const r = store.$state.availableRetries[requestUlid];
-      if (!r) throw Error(`No retry found for: ${requestUlid}`);
-      const actionName = r[0];
-      const apiRequest = r[1];
-      store.$patch((state) => {
-        delete state.availableRetries[requestUlid];
-      });
-      const newRequestUlid = ulid();
-      await fireActionResult(actionName, apiRequest, newRequestUlid);
-      return apiRequest;
-    };
-
     return {
       getRequestStatus,
       getRequestStatuses,
       clearRequestStatus,
-      RETRY_CONFLICT,
       ...apiRequestActions,
     };
   };

@@ -10,7 +10,6 @@ import { ComponentId, SocketId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import UpdatingModel from "../components/toasts/UpdatingModel.vue";
-import ConflictToast from "../components/toasts/Conflict.vue";
 
 import { useComponentsStore } from "./components.store";
 import handleStoreError from "./errors";
@@ -269,17 +268,6 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             const latestUpdate = this.latestComponentUpdate;
             if (!latestUpdate) return;
             return `Updating ${latestUpdate.componentLabel}`;
-          },
-        },
-        actions: {
-          addConflictFromHttp(conflict: Conflict): void {
-            this.rawConflicts.push(conflict);
-            toast({
-              component: ConflictToast,
-              props: {
-                conflict,
-              },
-            });
           },
         },
         onActivated() {
