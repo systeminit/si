@@ -30,6 +30,7 @@ use crate::workspace_snapshot::{
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
 };
 
+pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
 mod tests;
@@ -637,7 +638,7 @@ impl WorkspaceSnapshotGraphV2 {
     }
 
     pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
-        Detector::new(self, updated_graph).calculate_updates()
+        Detector::new(self, updated_graph).detect_updates()
     }
 
     #[allow(dead_code)]
@@ -962,7 +963,7 @@ impl WorkspaceSnapshotGraphV2 {
     }
 
     #[inline(always)]
-    pub(crate) fn try_get_node_index_by_id(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+    pub(crate) fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         let id = id.into();
 
         self.node_index_by_id.get(&id).copied()
@@ -1594,8 +1595,8 @@ impl WorkspaceSnapshotGraphV2 {
                     destination,
                     edge_weight,
                 } => {
-                    let updated_source = self.try_get_node_index_by_id(source.id);
-                    let destination = self.try_get_node_index_by_id(destination.id);
+                    let updated_source = self.get_node_index_by_id_opt(source.id);
+                    let destination = self.get_node_index_by_id_opt(destination.id);
 
                     if let (Some(updated_source), Some(destination)) = (updated_source, destination)
                     {
@@ -1607,8 +1608,8 @@ impl WorkspaceSnapshotGraphV2 {
                     destination,
                     edge_kind,
                 } => {
-                    let updated_source = self.try_get_node_index_by_id(source.id);
-                    let destination = self.try_get_node_index_by_id(destination.id);
+                    let updated_source = self.get_node_index_by_id_opt(source.id);
+                    let destination = self.get_node_index_by_id_opt(destination.id);
 
                     if let (Some(updated_source), Some(destination)) = (updated_source, destination)
                     {
@@ -1616,12 +1617,12 @@ impl WorkspaceSnapshotGraphV2 {
                     }
                 }
                 Update::NewNode { node_weight } => {
-                    if self.try_get_node_index_by_id(node_weight.id()).is_none() {
+                    if self.get_node_index_by_id_opt(node_weight.id()).is_none() {
                         self.add_node(node_weight.to_owned())?;
                     }
                 }
                 Update::ReplaceNode { node_weight } => {
-                    let updated_to_rebase = self.try_get_node_index_by_id(node_weight.id());
+                    let updated_to_rebase = self.get_node_index_by_id_opt(node_weight.id());
                     if let Some(updated_to_rebase) = updated_to_rebase {
                         self.add_node(node_weight.to_owned())?;
                         self.replace_references(updated_to_rebase)?;

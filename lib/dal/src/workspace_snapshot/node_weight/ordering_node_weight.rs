@@ -1,10 +1,15 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use super::NodeWeightError;
+use super::traits::CorrectTransformsError;
+use super::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
+use crate::workspace_snapshot::graph::detect_updates::Update;
+use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::workspace_snapshot::node_weight::NodeWeightResult;
-use crate::EdgeWeightKindDiscriminants;
+use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OrderingNodeWeight {
@@ -123,4 +128,104 @@ impl From<DeprecatedOrderingNodeWeightV1> for OrderingNodeWeight {
             merkle_tree_hash: value.merkle_tree_hash,
         }
     }
+}
+
+impl CorrectTransforms for OrderingNodeWeight {
+    fn correct_transforms(
+        &self,
+        _workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        updates: Vec<Update>,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        let mut updates = updates;
+
+        //
+        // After this, final_children:
+        // - includes all nodes that *either* had an AddEdge, *or* are in our graph's children.
+        // - never includes nodes with a RemoveEdge or in our graph's children.
+        // - NOTE: if the same edge has both an AddEdge and RemoveEdge, the above is not true.
+        //
+        let mut final_children: HashSet<Ulid> = self.order.iter().copied().collect();
+        let mut replace_node_index = None;
+        for (index, update) in updates.iter().enumerate() {
+            match update {
+                // We don't do this for NewNode because we know nothing needs to be resolved.
+                Update::ReplaceNode { node_weight } if node_weight.id() == self.id => {
+                    replace_node_index = Some(index);
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if source.id == self.id.into()
+                    && edge_weight.kind() == &EdgeWeightKind::Ordinal =>
+                {
+                    final_children.insert(destination.id.into());
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind: EdgeWeightKindDiscriminants::Ordinal,
+                } if source.id == self.id.into() => {
+                    final_children.remove(&destination.id.into());
+                }
+                _ => (),
+            }
+        }
+
+        // Generally, this will only be None if this is an entirely new ordering node.
+        if let Some(replace_node_index) = replace_node_index {
+            match updates.get_mut(replace_node_index) {
+                Some(Update::ReplaceNode {
+                    node_weight: NodeWeight::Ordering(ref mut update_ordering),
+                }) => {
+                    let new_order =
+                        resolve_ordering(final_children, &self.order, &update_ordering.order);
+                    update_ordering.set_order(new_order);
+                }
+                _ => {
+                    return Err(CorrectTransformsError::UnexpectedNodeWeight(
+                        super::NodeWeightDiscriminants::Ordering,
+                    ))
+                }
+            };
+        }
+        Ok(updates)
+    }
+}
+
+fn resolve_ordering(
+    final_children: HashSet<Ulid>,
+    order: &[Ulid],
+    update_order: &[Ulid],
+) -> Vec<Ulid> {
+    let mut final_children = final_children;
+
+    // The final order is always:
+    // - in the order of the updated node
+    // - without children that were removed from our graph (in updated_order, has no AddEdge, and was not in our graph)
+    // - with children that were added to our graph (not in updated_order, has no RemoveEdge, and *was* in our graph)
+
+    //
+    // Grab the child ordering from the updated node. Only include elements that are
+    // supposed to be part of our children. Remove any such elements from final_order,
+    // so that it will only have children left if they were *added* in our graph.
+    //
+    let mut final_order = update_order
+        .iter()
+        .filter(|id| final_children.remove(id))
+        .copied()
+        .collect::<Vec<_>>();
+
+    //
+    // final_children now has only children that were *added* in our graph. Add them to
+    // the final order, in the order they appear in our graph.
+    //
+    // NOTE/TODO: we could probably put these in a better order theoretically, but that's
+    // more complexity and work than it's worth for what we would buy (at least right now).
+    // new_order and final_children now have the same set of children.
+    //
+    let added_children = final_children;
+    final_order.extend(order.iter().filter(|id| added_children.contains(id)));
+
+    final_order
 }

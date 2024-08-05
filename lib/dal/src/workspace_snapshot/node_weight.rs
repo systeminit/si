@@ -4,13 +4,17 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
+use traits::{CorrectTransforms, CorrectTransformsResult};
 
-use crate::EdgeWeightKindDiscriminants;
 use crate::{
     action::prototype::ActionKind,
-    workspace_snapshot::{content_address::ContentAddress, vector_clock::VectorClockError},
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        vector_clock::VectorClockError,
+    },
     ChangeSetId, PropKind,
 };
+use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
 use crate::func::FuncKind;
 use crate::workspace_snapshot::graph::LineageId;
@@ -29,8 +33,8 @@ pub use func_node_weight::FuncNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 
-use super::content_address::ContentAddressDiscriminants;
 use super::graph::deprecated::v1::DeprecatedNodeWeightV1;
+use super::graph::detect_updates::Update;
 
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;
@@ -45,6 +49,7 @@ pub mod func_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod secret_node_weight;
+pub mod traits;
 
 pub mod deprecated;
 
@@ -678,6 +683,56 @@ impl From<DeprecatedNodeWeightV1> for NodeWeight {
             DeprecatedNodeWeightV1::Secret(weight) => Self::Secret(weight.into()),
             DeprecatedNodeWeightV1::DependentValueRoot(weight) => {
                 Self::DependentValueRoot(weight.into())
+            }
+        }
+    }
+}
+
+impl CorrectTransforms for NodeWeight {
+    fn correct_transforms(
+        &self,
+        workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        updates: Vec<Update>,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        match self {
+            NodeWeight::Action(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::ActionPrototype(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::AttributePrototypeArgument(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::AttributeValue(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Category(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Component(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Content(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::DependentValueRoot(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Func(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::FuncArgument(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Ordering(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Prop(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
+            }
+            NodeWeight::Secret(weight) => {
+                weight.correct_transforms(workspace_snapshot_graph, updates)
             }
         }
     }

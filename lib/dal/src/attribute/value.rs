@@ -904,66 +904,69 @@ impl AttributeValue {
             .into())
     }
 
+    async fn element_prop_id_for_id(
+        ctx: &DalContext,
+        parent_attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        // Find the array or map prop.
+        let prop_index = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                parent_attribute_value_id,
+                EdgeWeightKindDiscriminants::Prop,
+            )
+            .await?
+            .first()
+            .copied()
+            .ok_or(AttributeValueError::MissingPropEdge(
+                parent_attribute_value_id,
+            ))?;
+
+        let prop_node_weight = workspace_snapshot
+            .get_node_weight(prop_index)
+            .await?
+            .get_prop_node_weight()?;
+
+        // Ensure it actually is an array or map prop.
+        if prop_node_weight.kind() != PropKind::Array && prop_node_weight.kind() != PropKind::Map {
+            return Err(AttributeValueError::InsertionForInvalidPropKind(
+                prop_node_weight.kind(),
+            ));
+        }
+
+        // Find a singular child prop for the map or an array prop (i.e. the "element" or "entry" prop").
+        let prop_id = PropId::from(prop_node_weight.id());
+        let child_prop_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                prop_node_weight.id(),
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+        if child_prop_indices.len() > 1 {
+            return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
+        }
+        let element_prop_index = child_prop_indices
+            .first()
+            .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
+            .to_owned();
+
+        Ok(workspace_snapshot
+            .get_node_weight(element_prop_index)
+            .await?
+            .get_prop_node_weight()?
+            .clone()
+            .id()
+            .into())
+    }
+
     pub async fn insert(
         ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
-        let element_prop_id: PropId = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            // Find the array or map prop.
-            let prop_index = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(
-                    parent_attribute_value_id,
-                    EdgeWeightKindDiscriminants::Prop,
-                )
-                .await?
-                .first()
-                .copied()
-                .ok_or(AttributeValueError::MissingPropEdge(
-                    parent_attribute_value_id,
-                ))?;
-
-            let prop_node_weight = workspace_snapshot
-                .get_node_weight(prop_index)
-                .await?
-                .get_prop_node_weight()?;
-
-            // Ensure it actually is an array or map prop.
-            if prop_node_weight.kind() != PropKind::Array
-                && prop_node_weight.kind() != PropKind::Map
-            {
-                return Err(AttributeValueError::InsertionForInvalidPropKind(
-                    prop_node_weight.kind(),
-                ));
-            }
-
-            // Find a singular child prop for the map or an array prop (i.e. the "element" or "entry" prop").
-            let prop_id = PropId::from(prop_node_weight.id());
-            let child_prop_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(
-                    prop_node_weight.id(),
-                    EdgeWeightKindDiscriminants::Use,
-                )
-                .await?;
-            if child_prop_indices.len() > 1 {
-                return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
-            }
-            let element_prop_index = child_prop_indices
-                .first()
-                .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
-                .to_owned();
-
-            workspace_snapshot
-                .get_node_weight(element_prop_index)
-                .await?
-                .get_prop_node_weight()?
-                .clone()
-                .id()
-                .into()
-        };
+        let element_prop_id = Self::element_prop_id_for_id(ctx, parent_attribute_value_id).await?;
 
         // Create the "element" attribute value in the array or map alongside an attribute prototype for it.
         let new_attribute_value = Self::new(

@@ -5,6 +5,7 @@ use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{deprecated::v1::DeprecatedFuncArgumentNodeWeightV1, LineageId},
+        node_weight::traits::CorrectTransforms,
         node_weight::NodeWeightResult,
         NodeWeightError,
     },
@@ -119,3 +120,5 @@ impl From<DeprecatedFuncArgumentNodeWeightV1> for FuncArgumentNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for FuncArgumentNodeWeight {}

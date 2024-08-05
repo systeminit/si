@@ -83,9 +83,18 @@ impl ChangeSetTestHelpers {
 
         Self::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-        let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
+        let mut open_change_sets = ChangeSet::list_open(ctx)
+            .await?
+            .iter()
+            .map(|change_set| (change_set.id, change_set.updated_at))
+            .collect::<Vec<(_, _)>>();
 
-        Self::blocking_commit(ctx).await?;
+        let expected_rebase_batch = ctx
+            .change_set()?
+            .detect_updates_that_will_be_applied(ctx)
+            .await?;
+
+        let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
 
         ctx.update_visibility_and_snapshot_to_visibility(
             applied_change_set.base_change_set_id.ok_or(eyre!(
@@ -94,6 +103,37 @@ impl ChangeSetTestHelpers {
             ))?,
         )
         .await?;
+
+        // Applying to head will replay the changes against any open change
+        // sets. We want to be sure that we've waited until those changes are
+        // replayed, so we loop here for a little while (up to 10 seconds),
+        // waiting for the changes to reach the open change sets.
+        if let Some(expected_rebase_batch) = expected_rebase_batch {
+            if !expected_rebase_batch.updates().is_empty() {
+                let mut iters = 0;
+                // only do this for 10 seconds
+                while !open_change_sets.is_empty() && iters < 1000 {
+                    let mut updated_sets = vec![];
+                    for (change_set_id, original_updated_at) in &open_change_sets {
+                        if let Some(change_set) = ChangeSet::find(ctx, *change_set_id).await? {
+                            if &change_set.updated_at > original_updated_at {
+                                updated_sets.push(change_set.id);
+                            }
+                        } else {
+                            // if we couldn't get it remove it so we don't loop forever
+                            updated_sets.push(*change_set_id);
+                        }
+                    }
+                    open_change_sets
+                        .retain(|(change_set_id, _)| !updated_sets.contains(change_set_id));
+                    if open_change_sets.is_empty() {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    iters += 1
+                }
+            }
+        }
         Ok(())
     }
 

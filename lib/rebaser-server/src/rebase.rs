@@ -99,13 +99,18 @@ pub async fn perform_rebase(
     );
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
+    let corrected_updates = to_rebase_workspace_snapshot
+        .correct_transforms(rebase_batch.updates().to_vec())
+        .await?;
+    debug!("corrected transforms: {:?}", start.elapsed());
+
     to_rebase_workspace_snapshot
-        .perform_updates(rebase_batch.updates())
+        .perform_updates(&corrected_updates)
         .await?;
 
     debug!("updates complete: {:?}", start.elapsed());
 
-    if !rebase_batch.updates().is_empty() {
+    if !corrected_updates.is_empty() {
         // Once all updates have been performed, we can write out, mark everything as recently seen
         // and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;

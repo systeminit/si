@@ -336,7 +336,7 @@ impl<'a, 'b> Detector<'a, 'b> {
     /// Performs a post order walk of the updated graph, finding the updates
     /// made to it when compared to the base graph, using the Merkle tree hash
     /// to detect changes and ignore unchanged branches.
-    pub fn calculate_updates(&self) -> Vec<Update> {
+    pub fn detect_updates(&self) -> Vec<Update> {
         let mut updates = vec![];
         let mut difference_cache = HashMap::new();
 

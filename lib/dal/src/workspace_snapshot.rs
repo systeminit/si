@@ -30,8 +30,10 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use node_weight::traits::CorrectTransformsError;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -92,8 +94,8 @@ pub enum WorkspaceSnapshotError {
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
-    #[error("conflicts detected when generating rebase batch")]
-    ConflictsInRebaseBatch,
+    #[error("error correcting transforms: {0}")]
+    CorrectTransforms(#[from] CorrectTransformsError),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
@@ -361,6 +363,15 @@ impl WorkspaceSnapshot {
         .await??;
 
         Ok((!updates.is_empty()).then_some(RebaseBatch::new(updates)))
+    }
+
+    /// Given the state of the graph in `self`, and a set of updates, transform
+    /// those updates to ensure an incorrect graph is not created
+    pub async fn correct_transforms(
+        &self,
+        updates: Vec<Update>,
+    ) -> WorkspaceSnapshotResult<Vec<Update>> {
+        Ok(correct_transforms(&*self.working_copy().await, updates)?)
     }
 
     #[instrument(
@@ -800,7 +811,7 @@ impl WorkspaceSnapshot {
         fields()
     )]
     pub async fn try_get_node_index_by_id(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
-        self.working_copy().await.try_get_node_index_by_id(id)
+        self.working_copy().await.get_node_index_by_id_opt(id)
     }
 
     #[instrument(
@@ -1417,7 +1428,7 @@ impl WorkspaceSnapshot {
                     if let NodeWeight::Component(inner) = node_weight {
                         if base_snapshot
                             .read_only_graph
-                            .try_get_node_index_by_id(inner.id)
+                            .get_node_index_by_id_opt(inner.id)
                             .is_none()
                         {
                             new_component_ids.push(inner.id.into())
