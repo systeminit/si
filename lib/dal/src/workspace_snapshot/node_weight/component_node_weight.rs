@@ -12,7 +12,7 @@ use crate::{
 
 use super::{deprecated::DeprecatedComponentNodeWeight, NodeWeightError, NodeWeightResult};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ComponentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

@@ -7,7 +7,7 @@ use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 use crate::EdgeWeightKindDiscriminants;
 
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OrderingNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,

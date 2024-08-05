@@ -13,7 +13,7 @@ use crate::{
 
 use super::deprecated::DeprecatedAttributeValueNodeWeight;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

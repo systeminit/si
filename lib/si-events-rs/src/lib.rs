@@ -1,6 +1,7 @@
 pub mod content_hash;
 pub mod encrypted_secret;
 pub mod merkle_tree_hash;
+pub mod rebase_batch_address;
 pub mod ulid;
 pub mod workspace_snapshot_address;
 pub mod xxhash_type;

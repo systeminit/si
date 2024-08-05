@@ -93,7 +93,7 @@ impl JobConsumer for ComputeValidation {
             // the job was created.
             if workspace_snapshot
                 .try_get_node_index_by_id(av_id)
-                .await?
+                .await
                 .is_none()
             {
                 debug!("Attribute Value {av_id} missing, skipping it in ComputeValidations");

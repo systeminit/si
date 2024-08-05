@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
+use si_events::rebase_batch_address::RebaseBatchAddress;
 use strum::EnumDiscriminants;
 
-use si_events::{VectorClockId, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 use telemetry::tracing::instrument;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -20,27 +20,17 @@ pub struct RebaseRequest {
     pub to_rebase_change_set_id: Ulid,
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
     /// rebasing the "to rebase" workspace snapshot.
-    pub onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-    /// *DEPRECATED*: We no longer have "edit sessions", the correct vector
-    /// clock to choose for the onto workspace is always the most up to date
-    /// "recently seen" clock in the root node of the onto snapshot. This field
-    /// is ignored in the request.
-    pub onto_vector_clock_id: VectorClockId,
-    /// DEPRECATED: We have to hang on to this to ensure we can deserialize this message
-    pub dvu_values: Option<Vec<Ulid>>,
+    pub rebase_batch_address: RebaseBatchAddress,
 }
 
 impl RebaseRequest {
     pub fn new(
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: VectorClockId,
+        rebase_batch_address: RebaseBatchAddress,
     ) -> RebaseRequest {
         RebaseRequest {
             to_rebase_change_set_id,
-            onto_workspace_snapshot_address,
-            onto_vector_clock_id,
-            dvu_values: None,
+            rebase_batch_address,
         }
     }
 }
@@ -49,19 +39,19 @@ impl RebaseRequest {
 pub struct RebaseFinished {
     status: RebaseStatus,
     to_rebase_change_set_id: Ulid,
-    onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
+    rebase_batch_address: RebaseBatchAddress,
 }
 
 impl RebaseFinished {
     pub fn new(
         status: RebaseStatus,
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
+        rebase_batch_address: RebaseBatchAddress,
     ) -> RebaseFinished {
         RebaseFinished {
             status,
             to_rebase_change_set_id,
-            onto_workspace_snapshot_address,
+            rebase_batch_address,
         }
     }
 
@@ -73,8 +63,8 @@ impl RebaseFinished {
         &self.to_rebase_change_set_id
     }
 
-    pub fn onto_workspace_snapshot_address(&self) -> &WorkspaceSnapshotAddress {
-        &self.onto_workspace_snapshot_address
+    pub fn rebase_batch_address(&self) -> &RebaseBatchAddress {
+        &self.rebase_batch_address
     }
 }
 
@@ -86,7 +76,7 @@ pub enum RebaseStatus {
     /// Processing the request and performing updates were both successful. Additionally, no conflicts were found.
     Success {
         /// The serialized updates performed when rebasing.
-        updates_performed: String,
+        updates_performed: RebaseBatchAddress,
     },
     /// Conflicts found when processing the request.
     ConflictsFound {
@@ -117,15 +107,10 @@ impl<'a> ActivityRebase<'a> {
     pub async fn rebase(
         &self,
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: VectorClockId,
+        rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseRequest::new(
-            to_rebase_change_set_id,
-            onto_workspace_snapshot_address,
-            onto_vector_clock_id,
-        );
+        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
         let activity = Activity::rebase(payload, metadata);
         self.activity_base.publish(&activity).await?;
         Ok(activity)
@@ -135,15 +120,10 @@ impl<'a> ActivityRebase<'a> {
     pub async fn rebase_and_wait(
         &self,
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
-        onto_vector_clock_id: VectorClockId,
+        rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseRequest::new(
-            to_rebase_change_set_id,
-            onto_workspace_snapshot_address,
-            onto_vector_clock_id,
-        );
+        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
         let activity = Activity::rebase(payload, metadata);
         // println!("trigger: sending rebase and waiting for response");
         debug!(?activity, "sending rebase and waiting for response");
@@ -182,15 +162,11 @@ impl<'a> ActivityRebase<'a> {
         &self,
         status: RebaseStatus,
         to_rebase_change_set_id: Ulid,
-        onto_workspace_snapshot_address: WorkspaceSnapshotAddress,
+        rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
         parent_activity_id: ActivityId,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseFinished::new(
-            status,
-            to_rebase_change_set_id,
-            onto_workspace_snapshot_address,
-        );
+        let payload = RebaseFinished::new(status, to_rebase_change_set_id, rebase_batch_address);
         let activity = Activity::rebase_finished(payload, metadata, parent_activity_id);
         self.activity_base.publish(&activity).await?;
         Ok(activity)

@@ -20,7 +20,7 @@ pub struct ArgumentTargets {
     pub destination_component_id: ComponentId,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributePrototypeArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

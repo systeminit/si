@@ -515,8 +515,7 @@ impl Module {
 
         debug!(?synced_modules.installable, "collected installable modules");
         debug!(?synced_modules.upgradeable, "collected upgradeable modules");
-
-        info!("syncing modules took: {:?}", start.elapsed());
+        debug!("syncing modules took: {:?}", start.elapsed());
 
         Ok(synced_modules)
     }

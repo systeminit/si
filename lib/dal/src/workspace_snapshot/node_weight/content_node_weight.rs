@@ -13,7 +13,7 @@ use crate::workspace_snapshot::{
 };
 use crate::EdgeWeightKindDiscriminants;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ContentNodeWeight {
     /// The stable local ID of the object in question. Mainly used by external things like
     /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an

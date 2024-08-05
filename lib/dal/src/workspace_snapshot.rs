@@ -32,7 +32,7 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
-use graph::WorkspaceSnapshotGraph;
+use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -78,7 +78,6 @@ use crate::{
 pk!(NodeId);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
-    pub index: NodeIndex,
     pub node_weight_kind: NodeWeightDiscriminants,
     pub id: NodeId,
 }
@@ -98,6 +97,8 @@ pub enum WorkspaceSnapshotError {
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("conflicts detected when generating rebase batch")]
+    ConflictsInRebaseBatch,
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("join error: {0}")]
@@ -106,6 +107,8 @@ pub enum WorkspaceSnapshotError {
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
+    #[error("could not find a max vector clock for change set id {0}")]
+    MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
@@ -351,6 +354,88 @@ impl WorkspaceSnapshot {
         self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
+    pub async fn current_rebase_batch(
+        &self,
+        to_rebase_change_set_id: ChangeSetId,
+        vector_clock_id: VectorClockId,
+    ) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
+        let self_clone = self.clone();
+        let conflicts_and_updates = slow_rt::spawn(async move {
+            let mut working_copy = self_clone.working_copy_mut().await;
+            working_copy.cleanup();
+            working_copy.mark_graph_seen(vector_clock_id)?;
+
+            let to_rebase_vector_clock_id = self_clone
+                .read_only_graph
+                .max_recently_seen_clock_id(Some(to_rebase_change_set_id))
+                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
+                    to_rebase_change_set_id,
+                ))?;
+
+            let onto_vector_clock_id = working_copy.max_recently_seen_clock_id(None).ok_or(
+                WorkspaceSnapshotError::MissingVectorClockForChangeSet(to_rebase_change_set_id),
+            )?;
+
+            let conflicts_and_updates = self_clone.read_only_graph.detect_conflicts_and_updates(
+                to_rebase_vector_clock_id,
+                &working_copy,
+                onto_vector_clock_id,
+            )?;
+            Ok::<ConflictsAndUpdates, WorkspaceSnapshotError>(conflicts_and_updates)
+        })?
+        .await??;
+
+        Ok(if !conflicts_and_updates.conflicts.is_empty() {
+            Err(WorkspaceSnapshotError::ConflictsInRebaseBatch)?
+        } else if conflicts_and_updates.updates.is_empty() {
+            None
+        } else {
+            Some(RebaseBatch::new(conflicts_and_updates.updates))
+        })
+    }
+
+    pub async fn calculate_rebase_batch(
+        to_rebase_change_set_id: ChangeSetId,
+        to_rebase_workspace_snapshot: Arc<WorkspaceSnapshot>,
+        onto_workspace_snapshot: Arc<WorkspaceSnapshot>,
+    ) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
+        let conflicts_and_updates = slow_rt::spawn(async move {
+            let to_rebase_vector_clock_id = to_rebase_workspace_snapshot
+                .max_recently_seen_clock_id(Some(to_rebase_change_set_id))
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
+                    to_rebase_change_set_id,
+                ))?;
+
+            let onto_vector_clock_id = onto_workspace_snapshot
+                .max_recently_seen_clock_id(None)
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
+                    to_rebase_change_set_id,
+                ))?;
+
+            let conflicts_and_updates = to_rebase_workspace_snapshot
+                .detect_conflicts_and_updates(
+                    to_rebase_vector_clock_id,
+                    &onto_workspace_snapshot,
+                    onto_vector_clock_id,
+                )
+                .await?;
+
+            Ok::<ConflictsAndUpdates, WorkspaceSnapshotError>(conflicts_and_updates)
+        })?
+        .await??;
+
+        Ok(if !conflicts_and_updates.conflicts.is_empty() {
+            // error
+            Err(WorkspaceSnapshotError::ConflictsInRebaseBatch)?
+        } else if conflicts_and_updates.updates.is_empty() {
+            None
+        } else {
+            Some(RebaseBatch::new(conflicts_and_updates.updates))
+        })
+    }
+
     #[instrument(
         name = "workspace_snapshot.write",
         level = "debug",
@@ -434,13 +519,13 @@ impl WorkspaceSnapshot {
         skip_all
     )]
     async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
-        if self.working_copy.read().await.is_none() {
+        let mut working_copy = self.working_copy.write().await;
+        if working_copy.is_none() {
             // Make a copy of the read only graph as our new working copy
-            *self.working_copy.write().await = Some(self.read_only_graph.inner().clone());
+            *working_copy = Some(self.read_only_graph.inner().clone());
         }
-
         SnapshotWriteGuard {
-            working_copy_write_guard: self.working_copy.write().await,
+            working_copy_write_guard: working_copy,
         }
     }
 
@@ -783,8 +868,12 @@ impl WorkspaceSnapshot {
     }
 
     /// Write the snapshot to disk. *WARNING* can panic! Use only for debugging
-    pub async fn write_to_disk(&self, file_suffix: &str) {
+    pub async fn write_working_copy_to_disk(&self, file_suffix: &str) {
         self.working_copy().await.write_to_disk(file_suffix);
+    }
+
+    pub fn write_readonly_graph_to_disk(&self, file_suffix: &str) {
+        self.read_only_graph.write_to_disk(file_suffix);
     }
 
     #[instrument(
@@ -806,11 +895,8 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn try_get_node_index_by_id(
-        &self,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
-        Ok(self.working_copy().await.try_get_node_index_by_id(id)?)
+    pub async fn try_get_node_index_by_id(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+        self.working_copy().await.try_get_node_index_by_id(id)
     }
 
     #[instrument(
@@ -831,8 +917,6 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         workspace_snapshot_addr: WorkspaceSnapshotAddress,
     ) -> WorkspaceSnapshotResult<Self> {
-        let start = tokio::time::Instant::now();
-
         let snapshot = match ctx
             .layer_db()
             .workspace_snapshot()
@@ -851,8 +935,6 @@ impl WorkspaceSnapshot {
                 err => Err(err)?,
             },
         };
-
-        debug!("snapshot fetch took: {:?}", start.elapsed());
 
         Ok(Self {
             address: Arc::new(RwLock::new(workspace_snapshot_addr)),
@@ -1314,14 +1396,12 @@ impl WorkspaceSnapshot {
     pub async fn perform_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshot,
         updates: &[Update],
     ) -> WorkspaceSnapshotResult<()> {
-        Ok(self.working_copy_mut().await.perform_updates(
-            to_rebase_vector_clock_id,
-            &*onto.working_copy().await,
-            updates,
-        )?)
+        Ok(self
+            .working_copy_mut()
+            .await
+            .perform_updates(to_rebase_vector_clock_id, updates)?)
     }
 
     /// Mark whether a prop can be used as an input to a function. Props below
@@ -1451,20 +1531,6 @@ impl WorkspaceSnapshot {
                 base_change_set_id,
             ))?;
 
-        // We need to use the index of the Category node in the base snapshot, as that's the
-        // `to_rebase` when detecting conflicts & updates later, and the source node index in the
-        // Update is from the `to_rebase` graph.
-        let component_category_idx = if let Some((_category_id, category_idx)) = base_snapshot
-            .read_only_graph
-            .get_category_node(None, CategoryNodeKind::Component)?
-        {
-            category_idx
-        } else {
-            // Can't have any new Components if there's no Component category node to put them
-            // under.
-            return Ok(new_component_ids);
-        };
-
         // If there is no vector clock in this snapshot for the current change
         // set, that's because the snapshot has *just* been forked from the base
         // change set, and has not been written to yet
@@ -1481,35 +1547,19 @@ impl WorkspaceSnapshot {
 
             for update in &conflicts_and_updates.updates {
                 match update {
-                    Update::RemoveEdge {
-                        source: _,
-                        destination: _,
-                        edge_kind: _,
-                    }
-                    | Update::ReplaceSubgraph {
-                        onto: _,
-                        to_rebase: _,
-                    }
-                    | Update::MergeCategoryNodes {
-                        to_rebase_category_id: _,
-                        onto_category_id: _,
-                    } => {
-                        /* Updates unused for determining if a Component is new with regards to the updates */
-                    }
-                    Update::NewEdge {
-                        source,
-                        destination,
-                        edge_weight: _,
-                    } => {
-                        if !(source.index == component_category_idx
-                            && destination.node_weight_kind == NodeWeightDiscriminants::Component)
-                        {
-                            // We only care about new edges coming from the Component category node,
-                            // and going to Component nodes, so keep looking.
-                            continue;
+                    Update::RemoveEdge { .. }
+                    | Update::ReplaceNode { .. }
+                    | Update::NewEdge { .. } => {}
+                    Update::NewNode { node_weight } => {
+                        if let NodeWeight::Component(inner) = node_weight {
+                            if base_snapshot
+                                .read_only_graph
+                                .try_get_node_index_by_id(inner.id)
+                                .is_none()
+                            {
+                                new_component_ids.push(inner.id.into())
+                            }
                         }
-
-                        new_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
                     }
                 }
             }
@@ -1557,14 +1607,11 @@ impl WorkspaceSnapshot {
                 base_change_set_id,
             ))?;
 
-        // We need to use the index of the Category node in the base snapshot, as that's the
-        // `to_rebase` when detecting conflicts & updates later, and the source node index in the
-        // Update is from the `to_rebase` graph.
-        let component_category_idx = if let Some((_category_id, category_idx)) = base_snapshot
+        let component_category_id = if let Some((category_id, _)) = base_snapshot
             .read_only_graph
             .get_category_node(None, CategoryNodeKind::Component)?
         {
-            category_idx
+            category_id
         } else {
             // Can't have any new Components if there's no Component category node to put them
             // under.
@@ -1586,14 +1633,7 @@ impl WorkspaceSnapshot {
 
             for update in &conflicts_and_updates.updates {
                 match update {
-                    Update::ReplaceSubgraph {
-                        onto: _,
-                        to_rebase: _,
-                    }
-                    | Update::MergeCategoryNodes {
-                        to_rebase_category_id: _,
-                        onto_category_id: _,
-                    } => {
+                    Update::ReplaceNode { .. } | Update::NewNode { .. } => {
                         /* Updates unused for determining if a Component is removed in regard to the updates */
                     }
                     Update::NewEdge {
@@ -1602,7 +1642,7 @@ impl WorkspaceSnapshot {
                         edge_weight: _,
                     } => {
                         // get updates that add an edge from the Components category to a component, which implies component creation
-                        if source.index != component_category_idx
+                        if source.id != component_category_id.into()
                             || destination.node_weight_kind != NodeWeightDiscriminants::Component
                         {
                             continue;
@@ -1616,7 +1656,7 @@ impl WorkspaceSnapshot {
                         edge_kind: _,
                     } => {
                         // get updates that remove an edge from the Components category to a component, which implies component deletion
-                        if source.index != component_category_idx
+                        if source.id != component_category_id.into()
                             || destination.node_weight_kind != NodeWeightDiscriminants::Component
                         {
                             continue;
@@ -1692,19 +1732,9 @@ impl WorkspaceSnapshot {
 
             for update in &conflicts_and_updates.updates {
                 match update {
-                    Update::RemoveEdge {
-                        source: _,
-                        destination: _,
-                        edge_kind: _,
-                    }
-                    | Update::ReplaceSubgraph {
-                        onto: _,
-                        to_rebase: _,
-                    }
-                    | Update::MergeCategoryNodes {
-                        to_rebase_category_id: _,
-                        onto_category_id: _,
-                    } => {
+                    Update::NewNode { .. }
+                    | Update::RemoveEdge { .. }
+                    | Update::ReplaceNode { .. } => {
                         // Updates unused for determining if a socket to socket connection (in frontend
                         // terms) is new.
                     }
@@ -1854,19 +1884,9 @@ impl WorkspaceSnapshot {
 
             for update in conflicts_and_updates.updates {
                 match update {
-                    Update::ReplaceSubgraph {
-                        onto: _,
-                        to_rebase: _,
-                    }
-                    | Update::NewEdge {
-                        source: _,
-                        destination: _,
-                        edge_weight: _,
-                    }
-                    | Update::MergeCategoryNodes {
-                        to_rebase_category_id: _,
-                        onto_category_id: _,
-                    } => {
+                    Update::ReplaceNode { .. }
+                    | Update::NewEdge { .. }
+                    | Update::NewNode { .. } => {
                         /* Updates unused for determining if a connection between sockets has been removed */
                     }
                     Update::RemoveEdge {

@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,7 @@ use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
 use crate::context::{Conflicts, RebaseRequest};
+use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     action::{ActionError, ActionId},
@@ -46,6 +48,8 @@ pub enum ChangeSetError {
     InvalidActor(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
+    #[error("tokio join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("ulid monotonic error: {0}")]
@@ -62,6 +66,8 @@ pub enum ChangeSetError {
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]
@@ -453,15 +459,26 @@ impl ChangeSet {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
-        let onto_workspace_snapshot_address = self
-            .workspace_snapshot_address
-            .ok_or(ChangeSetError::NoWorkspaceSnapshot(self.id))?;
-        let rebase_request = RebaseRequest {
-            onto_workspace_snapshot_address,
-            onto_vector_clock_id: ctx.vector_clock_id()?,
+
+        let to_rebase_workspace_snapshot = Arc::new(
+            WorkspaceSnapshot::find_for_change_set(ctx, to_rebase_change_set_id)
+                .await
+                .map_err(Box::new)?,
+        );
+
+        if let Some(rebase_batch) = WorkspaceSnapshot::calculate_rebase_batch(
             to_rebase_change_set_id,
-        };
-        ctx.do_rebase_request(rebase_request).await?;
+            to_rebase_workspace_snapshot,
+            ctx.workspace_snapshot().map_err(Box::new)?,
+        )
+        .await
+        .map_err(Box::new)?
+        {
+            let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
+
+            let rebase_request = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
+            ctx.do_rebase_request(rebase_request).await?;
+        }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;

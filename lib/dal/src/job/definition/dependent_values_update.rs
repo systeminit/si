@@ -270,6 +270,7 @@ impl DependentValuesUpdate {
         }
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
+
         Ok(match ctx.commit().await {
             Ok(_) => JobCompletionState::Done,
             Err(err) => match err {

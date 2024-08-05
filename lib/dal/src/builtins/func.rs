@@ -4,6 +4,7 @@ use crate::module::Module;
 use crate::{
     func::intrinsics::IntrinsicFunc, pkg::import_pkg_from_pkg, BuiltinsResult, DalContext,
 };
+use telemetry::prelude::*;
 
 /// We want the src/builtins/func/** files to be available at run time inside of the Docker container
 /// that we build, but it would be nice to not have to include arbitrary bits of the source tree when
@@ -36,8 +37,11 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .is_none()
     {
+        info!("importing");
         import_pkg_from_pkg(ctx, &intrinsics_pkg, None).await?;
+        info!("imported, commiting");
         ctx.blocking_commit().await?;
+        info!("commit finished");
     }
 
     Ok(())

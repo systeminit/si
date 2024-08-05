@@ -374,6 +374,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     let module_index_client =
         ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?);
     let module_list = module_index_client.list_builtins().await?;
+    info!("builtins install starting");
     let install_builtins = install_builtins(ctx, module_list, module_index_client);
     tokio::pin!(install_builtins);
     loop {
@@ -402,6 +403,9 @@ async fn install_builtins(
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules: Vec<ModuleDetailsResponse> = module_list.modules;
+    // .into_iter()
+    // .filter(|module| module.name.contains("docker-image"))
+    // .collect();
 
     let total = modules.len();
 

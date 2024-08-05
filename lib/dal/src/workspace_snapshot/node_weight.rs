@@ -86,7 +86,7 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
 /// **WARNING**: the order of this enum is important! Do not re-order elements.
 /// New variants must go at the end, even if it's not in lexical order!
-#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq)]
 #[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize))]
 pub enum NodeWeight {
     Action(ActionNodeWeight),

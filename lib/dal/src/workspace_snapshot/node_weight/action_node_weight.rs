@@ -12,7 +12,7 @@ use crate::{
 
 use super::{deprecated::DeprecatedActionNodeWeight, NodeWeightResult};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionNodeWeight {
     pub id: Ulid,
     state: ActionState,

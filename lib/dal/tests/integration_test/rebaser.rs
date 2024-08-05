@@ -378,10 +378,12 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("Unable to commit_and_update_snapshot_to_visibility");
+    // Swifty is in HEAD
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
         .expect("Unable to merge to base change set");
 
+    // Both change sets have Swifty in HEAD
     let change_set_a =
         ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set A")
             .await
@@ -407,6 +409,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
             .copied()
             .expect("si.name attribute value not found")
     };
+    // Swifty in Change Set A has a name of 'Modified in change set A'
     AttributeValue::update(
         ctx,
         cs_a_name_av_id,
@@ -414,6 +417,7 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
     )
     .await
     .expect("Unable to update shared component name in change set A");
+    // Change set A is committed to the rebaser
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("Unable to commit_and_update_snapshot_to_visibility for change set A");

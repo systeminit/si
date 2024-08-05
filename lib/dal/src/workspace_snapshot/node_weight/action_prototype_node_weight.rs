@@ -12,7 +12,7 @@ use crate::{
 
 use super::{deprecated::DeprecatedActionPrototypeNodeWeight, NodeWeightResult};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionPrototypeNodeWeight {
     pub id: Ulid,
     kind: ActionKind,

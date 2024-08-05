@@ -28,7 +28,7 @@ pub enum CategoryNodeKind {
     DependentValueRoots,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CategoryNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

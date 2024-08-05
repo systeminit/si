@@ -26,28 +26,35 @@ enum CacheName {
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-where
+pub struct CacheUpdatesTask<
+    CasValue,
+    EncryptedSecretValue,
+    WorkspaceSnapshotValue,
+    RebaseBatchValue,
+> where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<CasValue>>,
     encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
     func_run_cache: LayerCache<Arc<FuncRun>>,
     func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
+    rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>>,
     snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
     event_channel: UnboundedReceiver<LayeredEvent>,
     shutdown_token: CancellationToken,
     tracker: TaskTracker,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
-    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue>
+impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
+    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
@@ -59,6 +66,7 @@ where
         encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
         func_run_cache: LayerCache<Arc<FuncRun>>,
         func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
+        rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>>,
         snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
@@ -74,6 +82,7 @@ where
             encrypted_secret_cache,
             func_run_cache,
             func_run_log_cache,
+            rebase_batch_cache,
             snapshot_cache,
             event_channel,
             shutdown_token,
@@ -103,6 +112,7 @@ where
                 self.func_run_cache.clone(),
                 self.func_run_log_cache.clone(),
                 self.snapshot_cache.clone(),
+                self.rebase_batch_cache.clone(),
             );
             self.tracker
                 .spawn(async move { cache_update_task.run(event).await });
@@ -110,24 +120,27 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R, S>
+struct CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<Q>>,
     encrypted_secret_cache: LayerCache<Arc<R>>,
     func_run_cache: LayerCache<Arc<FuncRun>>,
     func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
     snapshot_cache: LayerCache<Arc<S>>,
+    rebase_batch_cache: LayerCache<Arc<T>>,
 }
 
-impl<Q, R, S> CacheUpdateTask<Q, R, S>
+impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     fn new(
         cas_cache: LayerCache<Arc<Q>>,
@@ -135,13 +148,15 @@ where
         func_run_cache: LayerCache<Arc<FuncRun>>,
         func_run_log_cache: LayerCache<Arc<FuncRunLog>>,
         snapshot_cache: LayerCache<Arc<S>>,
-    ) -> CacheUpdateTask<Q, R, S> {
+        rebase_batch_cache: LayerCache<Arc<T>>,
+    ) -> CacheUpdateTask<Q, R, S, T> {
         CacheUpdateTask {
             cas_cache,
             encrypted_secret_cache,
             func_run_cache,
             func_run_log_cache,
             snapshot_cache,
+            rebase_batch_cache,
         }
     }
 
@@ -174,6 +189,25 @@ where
             crate::event::LayeredEventKind::Raw => {
                 warn!("Recevied a 'raw' layered event kind - this is for testing only. Bug!");
             }
+
+            crate::event::LayeredEventKind::RebaseBatchWrite => {
+                if !self.rebase_batch_cache.contains(&event.key) {
+                    let memory_value = self
+                        .rebase_batch_cache
+                        .deserialize_memory_value(&event.payload.value)?;
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.rebase_batch_cache
+                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .await?;
+                }
+            }
+            crate::event::LayeredEventKind::RebaseBatchEvict => {
+                self.rebase_batch_cache
+                    .evict_from_cache_updates(event.key)
+                    .await?;
+            }
+
             crate::event::LayeredEventKind::SnapshotWrite => {
                 if !self.snapshot_cache.contains(&event.key) {
                     let memory_value = self
@@ -212,6 +246,7 @@ where
                     .await?;
             }
         }
+
         Ok(())
     }
 

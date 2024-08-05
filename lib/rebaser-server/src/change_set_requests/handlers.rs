@@ -121,7 +121,7 @@ pub async fn process_request(State(state): State<AppState>, msg: InnerMessage) -
         .finished(
             rebase_status.clone(),
             message.payload.to_rebase_change_set_id,
-            message.payload.onto_workspace_snapshot_address,
+            message.payload.rebase_batch_address,
             message.metadata.clone(),
             message.id,
         )
