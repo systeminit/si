@@ -37,6 +37,8 @@ export function useChangeSetsStore() {
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
   return addStoreHooks(
+    workspacePk,
+    undefined,
     defineStore(`w${workspacePk || "NONE"}/change-sets`, {
       state: () => ({
         headChangeSetId: null as ChangeSetId | null,

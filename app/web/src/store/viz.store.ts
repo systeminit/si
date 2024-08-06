@@ -48,6 +48,8 @@ export interface VizResponse {
 }
 
 export const useVizStore = addStoreHooks(
+  undefined,
+  undefined,
   // TODO look into whether this ID on the store needs to be more dynamic
   defineStore(`ws/viz`, () => {
     const changeSetStore = useChangeSetsStore();

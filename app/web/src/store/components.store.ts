@@ -242,6 +242,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   };
 
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/components`,
       {
@@ -784,7 +786,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async FETCH_AVAILABLE_SCHEMAS() {
             return new ApiRequest<Array<SchemaVariant>>({
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/schema-variants`,
+              url: [
+                "v2",
+                "workspaces",
+                { workspaceId },
+                "change-sets",
+                { changeSetId },
+                "schema-variants",
+              ],
               params: {
                 ...visibilityParams,
               },

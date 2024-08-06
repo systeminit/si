@@ -9,6 +9,8 @@ const REFRESH_FEATURE_FLAG_FREQUENCY = 10000;
 
 export const useOnboardingStore = () => {
   return addStoreHooks(
+    undefined,
+    undefined,
     defineStore("onboarding", {
       state: () => {
         const authStore = useAuthStore();

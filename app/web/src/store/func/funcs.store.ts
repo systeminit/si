@@ -56,7 +56,8 @@ export interface DeleteFuncResponse {
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetsStore = useChangeSetsStore();
-  const selectedChangeSetId = changeSetsStore.selectedChangeSet?.id;
+  const selectedChangeSetId: string | undefined =
+    changeSetsStore.selectedChangeSet?.id;
 
   // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
   // query to find the default change set.
@@ -108,9 +109,18 @@ export const useFuncStore = () => {
     };
   };
 
-  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${selectedChangeSetId}/funcs`;
+  const API_PREFIX = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { selectedChangeSetId },
+    "funcs",
+  ];
 
   return addStoreHooks(
+    workspaceId,
+    selectedChangeSetId,
     defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
         // this powers the list

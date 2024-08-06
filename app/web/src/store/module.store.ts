@@ -126,7 +126,18 @@ export const useModuleStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
+  const API_PREFIX = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { changeSetId },
+    "modules",
+  ];
+
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
       {
@@ -216,7 +227,7 @@ export const useModuleStore = () => {
               },
               Visibility
             >({
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/sync`,
+              url: API_PREFIX.concat(["sync"]),
               params: { ...visibility },
               onSuccess: (response) => {
                 this.upgradeableModules = response.upgradeable;
@@ -231,7 +242,7 @@ export const useModuleStore = () => {
           async CONTRIBUTE(request: ModuleContributeRequest) {
             return new ApiRequest({
               method: "post",
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/modules/contribute`,
+              url: API_PREFIX.concat(["contribute"]),
               params: {
                 name: request.name,
                 version: request.version,

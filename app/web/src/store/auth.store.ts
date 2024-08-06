@@ -101,14 +101,14 @@ export const useAuthStore = defineStore("auth", {
 
     async CHECK_FIRST_MODAL(userPk: string) {
       return new AuthApiRequest<boolean>({
-        url: `/users/${userPk}/firstTimeModal`,
+        url: ["users", { userPk }, "firstTimeModal"],
       });
     },
 
     async DISMISS_FIRST_TIME_MODAL(userPk: string) {
       return new AuthApiRequest<boolean>({
         method: "post",
-        url: `/users/${userPk}/dismissFirstTimeModal`,
+        url: ["users", { userPk }, "dismissFirstTimeModal"],
       });
     },
 

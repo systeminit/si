@@ -161,6 +161,30 @@ export function registerApi(axiosInstance: AxiosInstance) {
 
 // types to describe our api request definitions
 type ApiRequestDescriptionGenerator = (payload: any) => ApiRequestDescription;
+type OptimisticReturn = (() => void) | void;
+type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
+
+// accepting null | undefined just to allow other parts of the codebase flexibility
+// throwing if we ever hit that :(
+type URLPattern = Array<string | Record<string, string | undefined | null>>;
+const describePattern = (pattern: URLPattern): [string, string] => {
+  const _url: string[] = [];
+  const _urlName: string[] = [];
+  pattern.forEach((p) => {
+    if (typeof p === "string") {
+      _url.push(p);
+      _urlName.push(p);
+    } else {
+      const vals = Object.values(p);
+      if (!vals[0]) throw Error(`Bad URLPattern ${pattern} with: ${p}`);
+      else _url.push(vals[0]); // url gets the value
+      const keys = Object.keys(p);
+      if (keys.length > 0) _urlName.push(`:${keys[0]}`); // name gets the str
+    }
+  });
+  return [_url.join("/"), _urlName.join("/")];
+};
+
 export type ApiRequestDescription<
   Response = any,
   RequestParams = Record<string, unknown>,
@@ -168,8 +192,8 @@ export type ApiRequestDescription<
   api?: AxiosInstance;
   /** http request method, defaults to "get" */
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
-  /** url to request */
-  url: string;
+  /** url to request, or url pattern for improved instrumentation when the url path constains data */
+  url?: string | URLPattern;
   /** request data, passed as querystring for GET, body for everything else */
   params?: RequestParams;
   /** additional args to key the request status */
@@ -183,7 +207,7 @@ export type ApiRequestDescription<
   /** additional axios options */
   options?: Record<string, any>; // TODO: pull in axios options type?
   /** optional optimistic update fn to call before api request is made, should return a rollback fn called on api error */
-  optimistic?: (requestUlid: RequestUlid) => (() => void) | void;
+  optimistic?: OptimisticFn;
   /** add artificial delay (in ms) before fetching */
   _delay?: number;
 };
@@ -298,114 +322,153 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
       // if optimistic update logic is defined, we trigger it here, before actually making the API request
       // that fn should return a fn to call which rolls back any optimistic updates in case the request fails
-      let optimisticRollbackFn;
+      let optimisticRollbackFn: OptimisticReturn;
       if (requestSpec.optimistic) {
         optimisticRollbackFn = requestSpec.optimistic(requestUlid);
       }
 
-      const { method, url, params, headers, options, onSuccess, onFail } =
-        requestSpec;
-      try {
-        // the api (axios instance) to use can be set several ways:
-        // - passed in with the specific request (probably not common)
-        // - use registerApi(api) to create new SpecificApiRequest class with api attached
-        // - fallback to default api that was set when initializing the plugin
-        const api = requestSpec.api || config.api;
+      const { method, url, params, options, onSuccess, onFail } = requestSpec;
+      let { headers } = requestSpec;
+      let _url: string;
 
-        // add artificial delay - helpful to test loading states in UI when using local API which is very fast
-        if (import.meta.env.VITE_DELAY_API_REQUESTS) {
-          await promiseDelay(
-            parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
-          );
-        } else if (requestSpec._delay) {
-          await promiseDelay(requestSpec._delay);
-        }
-
-        // actually trigger the API request (uses the axios instance that was passed in)
-        // may need to handle registering multiple apis if we need to hit more than 1
-        const request = await api({
-          method,
-          url,
-          ...(headers && { headers }),
-          ...(method === "get" ? { params } : { data: params }),
-          ...options,
-        });
-
-        // request was successful if reaching here
-        // because axios throws an error if http status >= 400, timeout, etc
-
-        // TODO: trigger global success hook that can be added on plugin init (or split by api)
-
-        // mark request as received, which in absence of an error also means successful
-        // TODO: we may want to reverse the order here of calling success and marking received?
-        // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
-        store.$patch((state) => {
-          state.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
-          state.apiRequestStatuses[trackingKey].receivedAt = new Date();
-        });
-
-        // call success handler if one was defined - this will usually be what updates the store
-        // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
-        if (typeof onSuccess === "function") {
-          await onSuccess.call(store, request.data);
-        }
-
-        completed.resolve({
-          data: request.data,
-        });
-        return await completed.promise;
-
-        // normally we want to get any response data from the store directly
-        // but there are cases where its useful to be able to get it from the return value
-        // like redirecting to a newly created ID, so we return the api response
-      } catch (err: any) {
-        store.$patch((state) => {
-          state.apiRequestStatuses[trackingKey].receivedAt = new Date();
-        });
-
-        /* eslint-disable-next-line no-console */
-        console.log(err);
-        // TODO: trigger global error hook that can be added on plugin init (or split by api)
-
-        // if we made an optimistic update, we'll roll it back here
-        if (optimisticRollbackFn) optimisticRollbackFn();
-
-        // call explicit failure handler if one is defined (usually rare)
-        if (typeof onFail === "function") {
-          const convertedData = onFail(err);
-
-          if (convertedData) {
-            err.response = {
-              ...err.response,
-              data: convertedData,
-            };
-          }
-        }
-
-        // mark the request as failure and store the error info
-        store.$patch((state) => {
-          if (err.response) {
-            state.apiRequestStatuses[trackingKey].error = err.response;
-          } else {
-            // if error was not http error or had no response body
-            // we still want some kind of fallback message to show
-            // and we keep it in a similar format to what the http error response bodies
-            state.apiRequestStatuses[trackingKey].error = {
-              data: {
-                error: {
-                  message: "Something went wrong, please contact support",
-                },
-              },
-            };
-          }
-        });
-
-        // return false so caller can easily detect a failure
-        completed.resolve({
-          error: err,
-        });
-        return await completed.promise;
+      let urlName;
+      if (Array.isArray(url)) {
+        [_url, urlName] = describePattern(url);
+      } else if (typeof url === "string") {
+        urlName = url; // string
+        _url = url;
+      } else {
+        throw Error("URL is required");
       }
+
+      const name = `${method?.toUpperCase()} ${urlName}`;
+      return tracer.startActiveSpan(name, async (span: Span) => {
+        const time = window.performance.getEntriesByType(
+          "navigation",
+        )[0] as PerformanceNavigationTiming;
+        const dns_duration = time.domainLookupEnd - time.domainLookupStart;
+        const tcp_duration = time.connectEnd - time.connectStart;
+        span.setAttributes({
+          "http.body": JSON.stringify(requestSpec.params),
+          "http.url": _url,
+          "http.method": method,
+          "si.requestUlid": requestUlid,
+          dns_duration,
+          tcp_duration,
+          "si.workspace.id": store.workspaceId,
+          "si.change_set.id": store.changeSetId,
+        });
+        try {
+          if (!headers) headers = {};
+          opentelemetry.propagation.inject(
+            opentelemetry.context.active(),
+            headers,
+          );
+
+          // the api (axios instance) to use can be set several ways:
+          // - passed in with the specific request (probably not common)
+          // - use registerApi(api) to create new SpecificApiRequest class with api attached
+          // - fallback to default api that was set when initializing the plugin
+          const api = requestSpec.api || config.api;
+
+          // add artificial delay - helpful to test loading states in UI when using local API which is very fast
+          if (import.meta.env.VITE_DELAY_API_REQUESTS) {
+            await promiseDelay(
+              parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
+            );
+          } else if (requestSpec._delay) {
+            await promiseDelay(requestSpec._delay);
+          }
+
+          // actually trigger the API request (uses the axios instance that was passed in)
+          // may need to handle registering multiple apis if we need to hit more than 1
+          const request = await api({
+            method,
+            url: _url,
+            ...(headers && { headers }),
+            ...(method === "get" ? { params } : { data: params }),
+            ...options,
+          });
+
+          // request was successful if reaching here
+          // because axios throws an error if http status >= 400, timeout, etc
+
+          // TODO: trigger global success hook that can be added on plugin init (or split by api)
+
+          // mark request as received, which in absence of an error also means successful
+          // TODO: we may want to reverse the order here of calling success and marking received?
+          // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
+          store.$patch((state) => {
+            state.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
+            state.apiRequestStatuses[trackingKey].receivedAt = new Date();
+          });
+
+          // call success handler if one was defined - this will usually be what updates the store
+          // we may want to bundle this change together with onSuccess somehow? maybe doesnt matter?
+          if (typeof onSuccess === "function") {
+            await onSuccess.call(store, request.data);
+          }
+
+          completed.resolve({
+            data: request.data,
+          });
+          span.setAttributes({ "http.status_code": request.status });
+          span.end();
+          return await completed.promise;
+
+          // normally we want to get any response data from the store directly
+          // but there are cases where its useful to be able to get it from the return value
+          // like redirecting to a newly created ID, so we return the api response
+        } catch (err: any) {
+          store.$patch((state) => {
+            state.apiRequestStatuses[trackingKey].receivedAt = new Date();
+          });
+
+          /* eslint-disable-next-line no-console */
+          console.log(err);
+          // TODO: trigger global error hook that can be added on plugin init (or split by api)
+
+          // if we made an optimistic update, we'll roll it back here
+          if (optimisticRollbackFn) optimisticRollbackFn();
+
+          // call explicit failure handler if one is defined (usually rare)
+          if (typeof onFail === "function") {
+            const convertedData = onFail(err);
+
+            if (convertedData) {
+              err.response = {
+                ...err.response,
+                data: convertedData,
+              };
+            }
+          }
+
+          // mark the request as failure and store the error info
+          store.$patch((state) => {
+            if (err.response) {
+              state.apiRequestStatuses[trackingKey].error = err.response;
+              span.setAttributes({ "http.status_code": err.response.status });
+            } else {
+              // if error was not http error or had no response body
+              // we still want some kind of fallback message to show
+              // and we keep it in a similar format to what the http error response bodies
+              state.apiRequestStatuses[trackingKey].error = {
+                data: {
+                  error: {
+                    message: "Something went wrong, please contact support",
+                  },
+                },
+              };
+            }
+          });
+
+          // return false so caller can easily detect a failure
+          completed.resolve({
+            error: err,
+          });
+          return await completed.promise;
+        }
+      });
     }
 
     async function fireActionResult(
@@ -424,14 +487,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
 
       if (triggerResult.error) {
-        tracer.startActiveSpan("pinia-http-error", (span: Span) => {
-          span.setAttributes({
-            "http.body": JSON.stringify(actionResult.requestSpec.params),
-            "http.url": actionResult.requestSpec.url,
-            "http.status_code": triggerResult.error.response?.status,
-          });
-          span.end();
-        });
         request.setFailedResult(triggerResult.error);
         if (
           actionName !== "SET_COMPONENT_GEOMETRY" &&

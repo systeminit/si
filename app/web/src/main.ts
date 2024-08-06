@@ -1,7 +1,6 @@
 // Example filename: tracing.js
 import { Buffer } from "buffer";
 import { HoneycombWebSDK } from "@honeycombio/opentelemetry-web";
-import { getWebAutoInstrumentations } from "@opentelemetry/auto-instrumentations-web";
 import { DocumentLoadInstrumentation } from "@opentelemetry/instrumentation-document-load";
 import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-user-interaction";
 import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-task";
@@ -26,33 +25,15 @@ import store from "./store";
 
 const { envVariables } = getProjectEnvVariables();
 
-const backendHosts = import.meta.env.VITE_BACKEND_HOSTS
-  ? JSON.parse(import.meta.env.VITE_BACKEND_HOSTS).map(
-      (r: string) => new RegExp(r),
-    )
-  : [];
-
 const otelEndpoint =
   envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
   import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 const sdk = new HoneycombWebSDK({
-  endpoint: `${otelEndpoint}/v1/traces`,
+  endpoint: `${otelEndpoint}:4318/v1/traces`,
   serviceName: "si-vue",
   skipOptionsValidation: true,
   instrumentations: [
-    getWebAutoInstrumentations({
-      // load custom configuration for xml-http-request instrumentation
-      "@opentelemetry/instrumentation-xml-http-request": {
-        propagateTraceHeaderCorsUrls: backendHosts,
-        ignoreNetworkEvents: true,
-        ignoreUrls: [/^https:\/\/e\.systeminit\.com/],
-      },
-      "@opentelemetry/instrumentation-fetch": {
-        propagateTraceHeaderCorsUrls: backendHosts,
-        ignoreNetworkEvents: true,
-        ignoreUrls: [/^https:\/\/e\.systeminit\.com/],
-      },
-    }), // add automatic instrumentation
+    // we're not auto-instrumenting XMLHttpRequest, we're instrumenting that in pinia_tools.APIRequest
     new DocumentLoadInstrumentation(),
     new UserInteractionInstrumentation({
       shouldPreventSpanCreation: (eventType, element, span) => {
