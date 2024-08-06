@@ -42,7 +42,6 @@ pub enum SchemaVariantError {
     FuncNotFound(FuncId),
     #[error("func summary error: {0}")]
     FuncSummary(#[from] FuncSummaryError),
-
     #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]
@@ -63,6 +62,8 @@ pub enum SchemaVariantError {
     Spec(#[from] SpecError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("schema variant already is unlocked: {0}")]
+    VariantAlreadyUnlocked(SchemaVariantId),
     #[error("variant authoring: {0}")]
     VariantAuthoring(#[from] VariantAuthoringError),
     #[error("schema variant not found: {0}")]

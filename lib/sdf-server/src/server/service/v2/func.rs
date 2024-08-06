@@ -39,6 +39,8 @@ pub enum FuncAPIError {
     ChangeSet(#[from] ChangeSetError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func already unlocked: {0}")]
+    FuncAlreadyUnlocked(FuncId),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("func authoring error: {0}")]

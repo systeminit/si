@@ -37,6 +37,12 @@ pub async fn create_unlocked_copy(
         ));
     }
 
+    if !original_variant.is_locked() {
+        return Err(SchemaVariantError::VariantAlreadyUnlocked(
+            original_variant.id,
+        ));
+    }
+
     let unlocked_variant =
         VariantAuthoringClient::create_unlocked_variant_copy(&ctx, original_variant.id()).await?;
 
