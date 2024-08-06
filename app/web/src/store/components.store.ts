@@ -1797,6 +1797,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.schemaVariantsById[data.schemaVariantId];
                 },
               },
+              {
+                eventType: "ModuleImported",
+                callback: (schemaVariants, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+                  for (const variant of schemaVariants) {
+                    this.schemaVariantsById[variant.schemaVariantId] = variant;
+                  }
+                },
+              },
               /* { TODO PUT BACK
               eventType: "DeprecatedActionRunnerReturn",
               callback: (update) => {

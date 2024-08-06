@@ -48,6 +48,8 @@
             tooltip="Update"
             tooltipPlacement="top"
             variant="simple"
+            :loading="installStatus.isPending"
+            loadingIcon="loader"
             @click="updateAsset"
           />
 
@@ -152,6 +154,11 @@ const moduleStore = useModuleStore();
 const router = useRouter();
 const { theme } = useTheme();
 
+const installStatus = moduleStore.getRequestStatus(
+  "INSTALL_REMOTE_MODULE",
+  moduleStore.upgradeableModules[props.assetId]?.id,
+);
+
 const contributeAssetModalRef =
   ref<InstanceType<typeof AssetContributeModal>>();
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
@@ -202,7 +209,7 @@ const updateAsset = () => {
     throw new Error("cannot update asset: no upgradeable module for asset");
   }
 
-  moduleStore.INSTALL_REMOTE_MODULE(module.id);
+  moduleStore.INSTALL_REMOTE_MODULE([module.id]);
   router.replace({
     name: "workspace-lab-assets",
   });

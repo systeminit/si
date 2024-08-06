@@ -602,6 +602,22 @@ export const useAssetStore = () => {
             },
           },
           {
+            eventType: "ModuleImported",
+            callback: (schemaVariants, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+
+              for (const variant of schemaVariants) {
+                const savedAssetIdx = this.variantList.findIndex(
+                  (a) => a.schemaId === variant.schemaId,
+                );
+                if (savedAssetIdx !== -1) {
+                  this.variantList.splice(savedAssetIdx, 1, variant);
+                  this.setSchemaVariantSelection(variant.schemaVariantId);
+                } else this.variantList.push(variant);
+              }
+            },
+          },
+          {
             eventType: "ChangeSetApplied",
             callback: () => {
               this.LOAD_SCHEMA_VARIANT_LIST();

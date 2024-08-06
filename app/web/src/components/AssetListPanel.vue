@@ -46,6 +46,8 @@
             tooltip="Update All"
             tooltipPlacement="top"
             variant="simple"
+            :loading="updateModulesReqStatus.isPending"
+            loadingIcon="loader"
             @click="updateAllAssets"
           />
         </div>
@@ -152,6 +154,9 @@ const loadAssetsReqStatus = assetStore.getRequestStatus(
   "LOAD_SCHEMA_VARIANT_LIST",
 );
 const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
+const updateModulesReqStatus = moduleStore.getRequestStatus(
+  "INSTALL_REMOTE_MODULE",
+);
 
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const newAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
@@ -232,9 +237,10 @@ const newAsset = async (newAssetName: string) => {
 };
 
 const updateAllAssets = () => {
-  Object.values(moduleStore.upgradeableModules).forEach((module) => {
-    moduleStore.INSTALL_REMOTE_MODULE(module.id);
-  });
+  const moduleIds = Object.values(moduleStore.upgradeableModules).map(
+    (m) => m.id,
+  );
+  moduleStore.INSTALL_REMOTE_MODULE(moduleIds);
   router.replace({
     name: "workspace-lab-assets",
   });

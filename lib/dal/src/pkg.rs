@@ -21,8 +21,7 @@ use crate::{
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
     DalContext, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
-    SchemaVariantId, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
-    WsEventResult, WsPayload,
+    TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 
@@ -263,12 +262,6 @@ where
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", tag = "kind")]
-pub struct ModuleImportedPayload {
-    schema_variant_ids: Vec<SchemaVariantId>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceImportPayload {
     workspace_pk: Option<WorkspacePk>,
@@ -310,13 +303,9 @@ pub struct WorkspaceImportApprovalActorPayload {
 impl WsEvent {
     pub async fn module_imported(
         ctx: &DalContext,
-        schema_variant_ids: Vec<SchemaVariantId>,
+        schema_variants: Vec<si_frontend_types::SchemaVariant>,
     ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ModuleImported(ModuleImportedPayload { schema_variant_ids }),
-        )
-        .await
+        WsEvent::new(ctx, WsPayload::ModuleImported(schema_variants)).await
     }
 
     pub async fn import_workspace_vote(
