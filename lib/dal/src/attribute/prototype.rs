@@ -350,7 +350,6 @@ impl AttributePrototype {
 
         workspace_snapshot
             .remove_edge(
-                ctx.vector_clock_id()?,
                 attribute_prototype_idx,
                 current_func_node_idx,
                 EdgeWeightKindDiscriminants::Use,

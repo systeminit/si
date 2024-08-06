@@ -275,12 +275,7 @@ impl Schema {
             // We have found the existing Default edge between schema and schema variant
             // we now need to update that edge to be a Use
             workspace_snapshot
-                .remove_edge(
-                    ctx.vector_clock_id()?,
-                    source_index,
-                    target_index,
-                    edge_weight.kind().into(),
-                )
+                .remove_edge(source_index, target_index, edge_weight.kind().into())
                 .await?;
 
             Self::add_edge_to_variant(
@@ -302,12 +297,7 @@ impl Schema {
             .await?;
 
         workspace_snapshot
-            .remove_edge(
-                ctx.vector_clock_id()?,
-                source_index,
-                target_index,
-                EdgeWeightKind::new_use().into(),
-            )
+            .remove_edge(source_index, target_index, EdgeWeightKind::new_use().into())
             .await?;
 
         Self::add_edge_to_variant(

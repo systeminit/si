@@ -78,14 +78,6 @@ pub enum RebaseStatus {
         /// The serialized updates performed when rebasing.
         updates_performed: RebaseBatchAddress,
     },
-    /// Conflicts found when processing the request.
-    ConflictsFound {
-        /// A serialized list of the conflicts found during detection.
-        conflicts_found: String,
-        /// A serialized list of the updates found during detection and skipped because at least
-        /// once conflict was found.
-        updates_found_and_skipped: String,
-    },
     /// Error encountered when processing the request.
     Error {
         /// The error message.

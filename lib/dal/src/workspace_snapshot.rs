@@ -21,9 +21,7 @@
 //     clippy::missing_panics_doc
 // )]
 
-pub mod conflict;
 pub mod content_address;
-pub mod edge_info;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
@@ -32,6 +30,7 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use graph::detect_updates::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
@@ -49,7 +48,6 @@ use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
-use self::graph::ConflictsAndUpdates;
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::{
@@ -64,7 +62,6 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     pk, AttributeValueId, ChangeSet, Component, ComponentError, ComponentId, Workspace,
@@ -311,7 +308,7 @@ impl WorkspaceSnapshot {
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
         };
 
-        initial.write(ctx, vector_clock_id).await?;
+        initial.write(ctx).await?;
 
         Ok(initial)
     }
@@ -354,86 +351,35 @@ impl WorkspaceSnapshot {
         self.cycle_check.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    pub async fn current_rebase_batch(
-        &self,
-        to_rebase_change_set_id: ChangeSetId,
-        vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
+    /// Calculates the set of updates for the current snapshot against its working copy
+    pub async fn current_rebase_batch(&self) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
         let self_clone = self.clone();
-        let conflicts_and_updates = slow_rt::spawn(async move {
+        let updates = slow_rt::spawn(async move {
             let mut working_copy = self_clone.working_copy_mut().await;
             working_copy.cleanup();
-            working_copy.mark_graph_seen(vector_clock_id)?;
 
-            let to_rebase_vector_clock_id = self_clone
-                .read_only_graph
-                .max_recently_seen_clock_id(Some(to_rebase_change_set_id))
-                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
-                    to_rebase_change_set_id,
-                ))?;
-
-            let onto_vector_clock_id = working_copy.max_recently_seen_clock_id(None).ok_or(
-                WorkspaceSnapshotError::MissingVectorClockForChangeSet(to_rebase_change_set_id),
-            )?;
-
-            let conflicts_and_updates = self_clone.read_only_graph.detect_conflicts_and_updates(
-                to_rebase_vector_clock_id,
-                &working_copy,
-                onto_vector_clock_id,
-            )?;
-            Ok::<ConflictsAndUpdates, WorkspaceSnapshotError>(conflicts_and_updates)
+            self_clone.read_only_graph.detect_updates(&working_copy)
         })?
-        .await??;
+        .await?;
 
-        Ok(if !conflicts_and_updates.conflicts.is_empty() {
-            Err(WorkspaceSnapshotError::ConflictsInRebaseBatch)?
-        } else if conflicts_and_updates.updates.is_empty() {
-            None
-        } else {
-            Some(RebaseBatch::new(conflicts_and_updates.updates))
-        })
+        Ok((!updates.is_empty()).then_some(RebaseBatch::new(updates)))
     }
 
+    /// Calculates the set of updates made to `updated_snapshot` against
+    /// `base_snapshot`. For these updates to be correct, `updated_snapshot` must
+    /// have already seen all the changes made to `base_snapshot`
     pub async fn calculate_rebase_batch(
-        to_rebase_change_set_id: ChangeSetId,
-        to_rebase_workspace_snapshot: Arc<WorkspaceSnapshot>,
-        onto_workspace_snapshot: Arc<WorkspaceSnapshot>,
+        base_snapshot: Arc<WorkspaceSnapshot>,
+        updated_snapshot: Arc<WorkspaceSnapshot>,
     ) -> WorkspaceSnapshotResult<Option<RebaseBatch>> {
-        let conflicts_and_updates = slow_rt::spawn(async move {
-            let to_rebase_vector_clock_id = to_rebase_workspace_snapshot
-                .max_recently_seen_clock_id(Some(to_rebase_change_set_id))
-                .await?
-                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
-                    to_rebase_change_set_id,
-                ))?;
+        let updates = slow_rt::spawn(async move {
+            let updates = base_snapshot.detect_updates(&updated_snapshot).await?;
 
-            let onto_vector_clock_id = onto_workspace_snapshot
-                .max_recently_seen_clock_id(None)
-                .await?
-                .ok_or(WorkspaceSnapshotError::MissingVectorClockForChangeSet(
-                    to_rebase_change_set_id,
-                ))?;
-
-            let conflicts_and_updates = to_rebase_workspace_snapshot
-                .detect_conflicts_and_updates(
-                    to_rebase_vector_clock_id,
-                    &onto_workspace_snapshot,
-                    onto_vector_clock_id,
-                )
-                .await?;
-
-            Ok::<ConflictsAndUpdates, WorkspaceSnapshotError>(conflicts_and_updates)
+            Ok::<Vec<Update>, WorkspaceSnapshotError>(updates)
         })?
         .await??;
 
-        Ok(if !conflicts_and_updates.conflicts.is_empty() {
-            // error
-            Err(WorkspaceSnapshotError::ConflictsInRebaseBatch)?
-        } else if conflicts_and_updates.updates.is_empty() {
-            None
-        } else {
-            Some(RebaseBatch::new(conflicts_and_updates.updates))
-        })
+        Ok((!updates.is_empty()).then_some(RebaseBatch::new(updates)))
     }
 
     #[instrument(
@@ -441,14 +387,12 @@ impl WorkspaceSnapshot {
         level = "debug",
         skip_all,
         fields(
-            si.vector_clock.id = %vector_clock_id,
             si.workspace_snapshot.address = Empty,
         )
     )]
     pub async fn write(
         &self,
         ctx: &DalContext,
-        vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
         // Pull out the working copy and clean it up.
         let new_address = {
@@ -465,9 +409,6 @@ impl WorkspaceSnapshot {
             let new_address = slow_rt::spawn(async move {
                 let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup();
-
-                // Mark everything left as seen.
-                working_copy.mark_graph_seen(vector_clock_id)?;
 
                 let (new_address, _) = layer_db
                     .workspace_snapshot()
@@ -683,17 +624,15 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(
-        name = "workspace_snapshot.detect_conflicts_and_updates",
+        name = "workspace_snapshot.detect_updates",
         level = "debug",
         skip_all,
         fields()
     )]
-    pub async fn detect_conflicts_and_updates(
+    pub async fn detect_updates(
         &self,
-        to_rebase_vector_clock_id: VectorClockId,
         onto_workspace_snapshot: &WorkspaceSnapshot,
-        onto_vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<ConflictsAndUpdates> {
+    ) -> WorkspaceSnapshotResult<Vec<Update>> {
         let self_clone = self.clone();
         let onto_clone = onto_workspace_snapshot.clone();
 
@@ -701,13 +640,9 @@ impl WorkspaceSnapshot {
             self_clone
                 .working_copy()
                 .await
-                .detect_conflicts_and_updates(
-                    to_rebase_vector_clock_id,
-                    &*onto_clone.working_copy().await,
-                    onto_vector_clock_id,
-                )
+                .detect_updates(&*onto_clone.working_copy().await)
         })?
-        .await??)
+        .await?)
     }
 
     /// Gives the exact node index endpoints of an edge. Use with care, since
@@ -1105,18 +1040,14 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn remove_all_edges(
-        &self,
-        vector_clock_id: VectorClockId,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
+    pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
         let id = id.into();
         for (edge_weight, source, target) in self.edges_directed(id, Direction::Outgoing).await? {
-            self.remove_edge(vector_clock_id, source, target, edge_weight.kind().into())
+            self.remove_edge(source, target, edge_weight.kind().into())
                 .await?;
         }
         for (edge_weight, source, target) in self.edges_directed(id, Direction::Incoming).await? {
-            self.remove_edge(vector_clock_id, source, target, edge_weight.kind().into())
+            self.remove_edge(source, target, edge_weight.kind().into())
                 .await?;
         }
         Ok(())
@@ -1258,7 +1189,7 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_incoming_edges_of_kind(
         &self,
-        vector_clock_id: VectorClockId,
+        _vector_clock_id: VectorClockId,
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
@@ -1269,7 +1200,7 @@ impl WorkspaceSnapshot {
             .await?;
         for source_node_idx in sources {
             let target_node_idx = self.get_node_index_by_id(target_id).await?;
-            self.remove_edge(vector_clock_id, source_node_idx, target_node_idx, kind)
+            self.remove_edge(source_node_idx, target_node_idx, kind)
                 .await?;
         }
 
@@ -1307,12 +1238,12 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_node_by_id(
         &self,
-        vector_clock_id: VectorClockId,
+        _vector_clock_id: VectorClockId,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let id: Ulid = id.into();
         let node_idx = self.get_node_index_by_id(id).await?;
-        self.remove_all_edges(vector_clock_id, id).await?;
+        self.remove_all_edges(id).await?;
         self.working_copy_mut().await.remove_node(node_idx);
         self.working_copy_mut().await.remove_node_id(id);
 
@@ -1327,13 +1258,11 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_edge(
         &self,
-        vector_clock_id: VectorClockId,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
         Ok(self.working_copy_mut().await.remove_edge(
-            vector_clock_id,
             source_node_index,
             target_node_index,
             edge_kind,
@@ -1363,7 +1292,7 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_edge_for_ulids(
         &self,
-        vector_clock_id: VectorClockId,
+        _vector_clock_id: VectorClockId,
         source_node_id: impl Into<Ulid>,
         target_node_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -1376,13 +1305,8 @@ impl WorkspaceSnapshot {
             .working_copy()
             .await
             .get_node_index_by_id(target_node_id)?;
-        self.remove_edge(
-            vector_clock_id,
-            source_node_index,
-            target_node_index,
-            edge_kind,
-        )
-        .await
+        self.remove_edge(source_node_index, target_node_index, edge_kind)
+            .await
     }
 
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
@@ -1393,15 +1317,8 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn perform_updates(
-        &self,
-        to_rebase_vector_clock_id: VectorClockId,
-        updates: &[Update],
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(self
-            .working_copy_mut()
-            .await
-            .perform_updates(to_rebase_vector_clock_id, updates)?)
+    pub async fn perform_updates(&self, updates: &[Update]) -> WorkspaceSnapshotResult<()> {
+        Ok(self.working_copy_mut().await.perform_updates(updates)?)
     }
 
     /// Mark whether a prop can be used as an input to a function. Props below
@@ -1524,41 +1441,26 @@ impl WorkspaceSnapshot {
         }
 
         let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-        let base_vector_clock_id = base_snapshot
-            .read_only_graph
-            .max_recently_seen_clock_id(Some(base_change_set_id))
-            .ok_or(WorkspaceSnapshotError::RecentlySeenClocksMissing(
-                base_change_set_id,
-            ))?;
 
         // If there is no vector clock in this snapshot for the current change
         // set, that's because the snapshot has *just* been forked from the base
         // change set, and has not been written to yet
-        if let Some(change_set_vector_clock_id) = self
+        let updates = base_snapshot
             .read_only_graph
-            .max_recently_seen_clock_id(Some(ctx.change_set_id()))
-        {
-            let conflicts_and_updates =
-                base_snapshot.read_only_graph.detect_conflicts_and_updates(
-                    base_vector_clock_id,
-                    &self.read_only_graph,
-                    change_set_vector_clock_id,
-                )?;
+            .detect_updates(&self.read_only_graph);
 
-            for update in &conflicts_and_updates.updates {
-                match update {
-                    Update::RemoveEdge { .. }
-                    | Update::ReplaceNode { .. }
-                    | Update::NewEdge { .. } => {}
-                    Update::NewNode { node_weight } => {
-                        if let NodeWeight::Component(inner) = node_weight {
-                            if base_snapshot
-                                .read_only_graph
-                                .try_get_node_index_by_id(inner.id)
-                                .is_none()
-                            {
-                                new_component_ids.push(inner.id.into())
-                            }
+        for update in &updates {
+            match update {
+                Update::RemoveEdge { .. } | Update::ReplaceNode { .. } | Update::NewEdge { .. } => {
+                }
+                Update::NewNode { node_weight } => {
+                    if let NodeWeight::Component(inner) = node_weight {
+                        if base_snapshot
+                            .read_only_graph
+                            .try_get_node_index_by_id(inner.id)
+                            .is_none()
+                        {
+                            new_component_ids.push(inner.id.into())
                         }
                     }
                 }
@@ -1600,13 +1502,6 @@ impl WorkspaceSnapshot {
         }
 
         let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-        let base_vector_clock_id = base_snapshot
-            .read_only_graph
-            .max_recently_seen_clock_id(Some(base_change_set_id))
-            .ok_or(WorkspaceSnapshotError::RecentlySeenClocksMissing(
-                base_change_set_id,
-            ))?;
-
         let component_category_id = if let Some((category_id, _)) = base_snapshot
             .read_only_graph
             .get_category_node(None, CategoryNodeKind::Component)?
@@ -1618,63 +1513,53 @@ impl WorkspaceSnapshot {
             return Ok(removed_component_ids);
         };
 
-        if let Some(change_set_vector_clock_id) = self
+        let updates = base_snapshot
             .read_only_graph
-            .max_recently_seen_clock_id(Some(ctx.change_set_id()))
-        {
-            let conflicts_and_updates =
-                base_snapshot.read_only_graph.detect_conflicts_and_updates(
-                    base_vector_clock_id,
-                    &self.read_only_graph,
-                    change_set_vector_clock_id,
-                )?;
+            .detect_updates(&self.read_only_graph);
 
-            let mut added_component_ids = HashSet::new();
+        let mut added_component_ids = HashSet::new();
 
-            for update in &conflicts_and_updates.updates {
-                match update {
-                    Update::ReplaceNode { .. } | Update::NewNode { .. } => {
-                        /* Updates unused for determining if a Component is removed in regard to the updates */
+        for update in &updates {
+            match update {
+                Update::ReplaceNode { .. } | Update::NewNode { .. } => {
+                    /* Updates unused for determining if a Component is removed in regard to the updates */
+                }
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight: _,
+                } => {
+                    // get updates that add an edge from the Components category to a component, which implies component creation
+                    if source.id != component_category_id.into()
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
+                    {
+                        continue;
                     }
-                    Update::NewEdge {
-                        source,
-                        destination,
-                        edge_weight: _,
-                    } => {
-                        // get updates that add an edge from the Components category to a component, which implies component creation
-                        if source.id != component_category_id.into()
-                            || destination.node_weight_kind != NodeWeightDiscriminants::Component
-                        {
-                            continue;
-                        }
 
-                        added_component_ids.insert(ComponentId::from(Ulid::from(destination.id)));
+                    added_component_ids.insert(ComponentId::from(Ulid::from(destination.id)));
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind: _,
+                } => {
+                    // get updates that remove an edge from the Components category to a component, which implies component deletion
+                    if source.id != component_category_id.into()
+                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
+                    {
+                        continue;
                     }
-                    Update::RemoveEdge {
-                        source,
-                        destination,
-                        edge_kind: _,
-                    } => {
-                        // get updates that remove an edge from the Components category to a component, which implies component deletion
-                        if source.id != component_category_id.into()
-                            || destination.node_weight_kind != NodeWeightDiscriminants::Component
-                        {
-                            continue;
-                        }
 
-                        removed_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
-                    }
+                    removed_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
                 }
             }
-
-            // Filter out ComponentIds that have both been deleted and created, since that implies an upgrade and not a real deletion
-            Ok(removed_component_ids
-                .into_iter()
-                .filter(|id| !added_component_ids.contains(id))
-                .collect())
-        } else {
-            Ok(removed_component_ids)
         }
+
+        // Filter out ComponentIds that have both been deleted and created, since that implies an upgrade and not a real deletion
+        Ok(removed_component_ids
+            .into_iter()
+            .filter(|id| !added_component_ids.contains(id))
+            .collect())
     }
 
     #[instrument(
@@ -1709,62 +1594,43 @@ impl WorkspaceSnapshot {
         }
 
         let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-        let base_vector_clock_id = base_snapshot
-            .read_only_graph
-            .max_recently_seen_clock_id(Some(base_change_set_id))
-            .ok_or(WorkspaceSnapshotError::RecentlySeenClocksMissing(
-                base_change_set_id,
-            ))?;
 
-        // If there is no vector clock in this snapshot for the current change
-        // set, that's because the snapshot has *just* been forked from the base
-        // change set, and has not been written to yet
-        if let Some(change_set_vector_clock_id) = self
+        let updates = base_snapshot
             .read_only_graph
-            .max_recently_seen_clock_id(Some(ctx.change_set_id()))
-        {
-            let conflicts_and_updates =
-                base_snapshot.read_only_graph.detect_conflicts_and_updates(
-                    base_vector_clock_id,
-                    &self.read_only_graph,
-                    change_set_vector_clock_id,
-                )?;
+            .detect_updates(&self.read_only_graph);
 
-            for update in &conflicts_and_updates.updates {
-                match update {
-                    Update::NewNode { .. }
-                    | Update::RemoveEdge { .. }
-                    | Update::ReplaceNode { .. } => {
-                        // Updates unused for determining if a socket to socket connection (in frontend
-                        // terms) is new.
+        for update in &updates {
+            match update {
+                Update::NewNode { .. } | Update::RemoveEdge { .. } | Update::ReplaceNode { .. } => {
+                    // Updates unused for determining if a socket to socket connection (in frontend
+                    // terms) is new.
+                }
+                Update::NewEdge {
+                    source: _source,
+                    destination,
+                    edge_weight: _,
+                } => {
+                    if destination.node_weight_kind
+                        != NodeWeightDiscriminants::AttributePrototypeArgument
+                    {
+                        // We're interested in new AttributePrototypeArguments as they represent
+                        // the connection between sockets. (The input socket has the output
+                        // socket as one of its function arguments.)
+                        continue;
                     }
-                    Update::NewEdge {
-                        source: _source,
-                        destination,
-                        edge_weight: _,
-                    } => {
-                        if destination.node_weight_kind
-                            != NodeWeightDiscriminants::AttributePrototypeArgument
-                        {
-                            // We're interested in new AttributePrototypeArguments as they represent
-                            // the connection between sockets. (The input socket has the output
-                            // socket as one of its function arguments.)
-                            continue;
-                        }
 
-                        let prototype_argument = AttributePrototypeArgument::get_by_id(
-                            ctx,
-                            AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
-                        )
-                        .await
-                        .map_err(Box::new)?;
-                        if prototype_argument.targets().is_some() {
-                            new_attribute_prototype_argument_ids.push(prototype_argument.id());
-                        } else {
-                            // If the AttributePrototypeArgument doesn't have targets, then it's
-                            // not for a socket to socket connection.
-                            continue;
-                        }
+                    let prototype_argument = AttributePrototypeArgument::get_by_id(
+                        ctx,
+                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
+                    )
+                    .await
+                    .map_err(Box::new)?;
+                    if prototype_argument.targets().is_some() {
+                        new_attribute_prototype_argument_ids.push(prototype_argument.id());
+                    } else {
+                        // If the AttributePrototypeArgument doesn't have targets, then it's
+                        // not for a socket to socket connection.
+                        continue;
                     }
                 }
             }
@@ -1783,11 +1649,6 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
     ) -> WorkspaceSnapshotResult<Vec<AttributePrototypeArgumentId>> {
         let mut removed_attribute_prototype_argument_ids = Vec::new();
-        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
-            change_set_id
-        } else {
-            return Ok(removed_attribute_prototype_argument_ids);
-        };
 
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
@@ -1865,59 +1726,41 @@ impl WorkspaceSnapshot {
         // * For each removed AttributePrototypeArgument (removed edge connects two Components
         //   that have not been removed):
         let base_snapshot = base_change_set_ctx.workspace_snapshot()?;
-        let base_vector_clock_id = base_snapshot
+        let updates = base_snapshot
             .read_only_graph
-            .max_recently_seen_clock_id(Some(base_change_set_id))
-            .ok_or(WorkspaceSnapshotError::RecentlySeenClocksMissing(
-                base_change_set_id,
-            ))?;
-        if let Some(change_set_vector_clock_id) = self
-            .read_only_graph
-            .max_recently_seen_clock_id(Some(ctx.change_set_id()))
-        {
-            let conflicts_and_updates =
-                base_snapshot.read_only_graph.detect_conflicts_and_updates(
-                    base_vector_clock_id,
-                    &self.read_only_graph,
-                    change_set_vector_clock_id,
-                )?;
+            .detect_updates(&self.read_only_graph);
 
-            for update in conflicts_and_updates.updates {
-                match update {
-                    Update::ReplaceNode { .. }
-                    | Update::NewEdge { .. }
-                    | Update::NewNode { .. } => {
-                        /* Updates unused for determining if a connection between sockets has been removed */
+        for update in updates {
+            match update {
+                Update::ReplaceNode { .. } | Update::NewEdge { .. } | Update::NewNode { .. } => {
+                    /* Updates unused for determining if a connection between sockets has been removed */
+                }
+                Update::RemoveEdge {
+                    source: _,
+                    destination,
+                    edge_kind,
+                } => {
+                    if edge_kind != EdgeWeightKindDiscriminants::PrototypeArgument {
+                        continue;
                     }
-                    Update::RemoveEdge {
-                        source: _,
-                        destination,
-                        edge_kind,
-                    } => {
-                        if edge_kind != EdgeWeightKindDiscriminants::PrototypeArgument {
-                            continue;
-                        }
-                        let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
-                            base_change_set_ctx,
-                            AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
-                        )
-                        .await
-                        .map_err(Box::new)?;
+                    let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
+                        base_change_set_ctx,
+                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
+                    )
+                    .await
+                    .map_err(Box::new)?;
 
-                        // * Interested in all of them that have targets (connecting two Components
-                        //   via sockets).
-                        if attribute_prototype_argument.targets().is_some() {
-                            removed_attribute_prototype_argument_ids
-                                .push(attribute_prototype_argument.id());
-                        }
+                    // * Interested in all of them that have targets (connecting two Components
+                    //   via sockets).
+                    if attribute_prototype_argument.targets().is_some() {
+                        removed_attribute_prototype_argument_ids
+                            .push(attribute_prototype_argument.id());
                     }
                 }
             }
-
-            Ok(removed_attribute_prototype_argument_ids)
-        } else {
-            Ok(vec![])
         }
+
+        Ok(removed_attribute_prototype_argument_ids)
     }
 
     /// Returns whether or not any Actions were dispatched.

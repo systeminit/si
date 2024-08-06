@@ -1,11 +1,9 @@
-use std::{convert::TryFrom, time::Duration};
+use std::convert::TryFrom;
 
 use async_trait::async_trait;
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_events::ActionResultState;
 use telemetry::prelude::*;
-use tryhard::RetryPolicy;
 use ulid::Ulid;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
@@ -24,8 +22,8 @@ use crate::{
         producer::{JobProducer, JobProducerResult},
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, TransactionsError,
-    Visibility, WorkspaceSnapshotError, WsEvent,
+    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Visibility,
+    WorkspaceSnapshotError, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -142,25 +140,9 @@ async fn inner_run(
     // Execute the action function
     let maybe_resource = ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
-    // Retry process_and_record_execution on a conflict error up to a max
-    let nodes_to_remove: Vec<Ulid> = retry_on_conflicts(
-        || process_and_record_execution(ctx.clone(), maybe_resource.as_ref(), action_id),
-        10,
-        Duration::from_millis(10),
-        "si.action_job.process.retry.process_and_record_execution",
-    )
-    .await?;
-
-    // check if the things we expected to be removed actually were. The snapshot has already been updated to latest by this point
-    if !nodes_to_remove.is_empty() {
-        retry_on_conflicts(
-            || ensure_deletes_happened(ctx.clone(), nodes_to_remove.clone()),
-            10,
-            Duration::from_millis(10),
-            "si.action_job.process.retry.ensure_deletes_happened",
-        )
-        .await?;
-    }
+    let nodes_to_remove =
+        process_and_record_execution(ctx.clone(), maybe_resource.as_ref(), action_id).await?;
+    ensure_deletes_happened(ctx.clone(), nodes_to_remove).await?;
 
     // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
@@ -179,18 +161,7 @@ async fn inner_run(
             }
         }
         if did_remove {
-            if let Err(err) = ctx.commit().await {
-                match err {
-                    // if this fails due to conflicts, it's recoverable.
-                    // the next time a destroy action runs we'll try again
-                    TransactionsError::ConflictsOccurred(ref conflicts) => warn!(
-                        ?err,
-                        ?conflicts,
-                        "Conflicts occurred while deleting components"
-                    ),
-                    _ => return Err(JobConsumerError::Transactions(err)),
-                }
-            }
+            ctx.commit().await.map_err(JobConsumerError::Transactions)?;
         }
     }
     Ok(maybe_resource)
@@ -361,39 +332,4 @@ async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobCons
 
     ctx.commit().await?;
     Ok(())
-}
-
-async fn retry_on_conflicts<F, Fut, T>(
-    f: F,
-    max_attempts: u32,
-    fixed_delay: Duration,
-    span_field: &'static str,
-) -> Result<T, JobConsumerError>
-where
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, JobConsumerError>>,
-{
-    let span = Span::current();
-
-    // Jitter implementation thanks to the `fure` crate, released under the MIT license.
-    //
-    // See: https://github.com/Leonqn/fure/blob/8945c35655f7e0f6966d8314ab21a297181cc080/src/backoff.rs#L44-L51
-    fn jitter(duration: Duration) -> Duration {
-        let jitter = rand::random::<f64>();
-        let secs = ((duration.as_secs() as f64) * jitter).ceil() as u64;
-        let nanos = ((f64::from(duration.subsec_nanos())) * jitter).ceil() as u32;
-        Duration::new(secs, nanos)
-    }
-
-    tryhard::retry_fn(f)
-        .retries(max_attempts.saturating_sub(1))
-        .custom_backoff(|attempt, err: &JobConsumerError| {
-            if let JobConsumerError::Transactions(TransactionsError::ConflictsOccurred(_)) = err {
-                span.record(span_field, attempt);
-                RetryPolicy::Delay(jitter(fixed_delay))
-            } else {
-                RetryPolicy::Break
-            }
-        })
-        .await
 }

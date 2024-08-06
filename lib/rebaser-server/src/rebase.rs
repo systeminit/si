@@ -1,8 +1,6 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
-use dal::workspace_snapshot::graph::ConflictsAndUpdates;
-use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{DalContext, TransactionsError, WorkspacePk, WorkspaceSnapshot, WsEventError};
+use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
@@ -93,69 +91,25 @@ pub async fn perform_rebase(
     );
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
-    // Choose the most recent vector clock for the to_rebase change set for conflict detection
-    let to_rebase_vector_clock_id = to_rebase_workspace_snapshot
-        .max_recently_seen_clock_id(Some(to_rebase_change_set.id))
-        .await?
-        .ok_or(RebaseError::MissingVectorClockForChangeSet(
-            to_rebase_change_set.id,
-        ))?;
+    to_rebase_workspace_snapshot
+        .perform_updates(rebase_batch.updates())
+        .await?;
 
-    let conflicts_and_updates = ConflictsAndUpdates {
-        ..Default::default()
-    };
+    debug!("updates complete: {:?}", start.elapsed());
 
-    // If there are conflicts, immediately assemble a reply message that conflicts were found.
-    // Otherwise, we can perform updates and assemble a "success" reply message.
-    let message: RebaseStatus = if conflicts_and_updates.conflicts.is_empty() {
-        to_rebase_workspace_snapshot
-            .perform_updates(to_rebase_vector_clock_id, rebase_batch.updates())
+    if !rebase_batch.updates().is_empty() {
+        // Once all updates have been performed, we can write out, mark everything as recently seen
+        // and update the pointer.
+        to_rebase_workspace_snapshot.write(ctx).await?;
+        debug!("snapshot written: {:?}", start.elapsed());
+        to_rebase_change_set
+            .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
             .await?;
 
-        debug!("updates complete: {:?}", start.elapsed());
-
-        if !rebase_batch.updates().is_empty() {
-            // Once all updates have been performed, we can write out, mark everything as recently seen
-            // and update the pointer.
-            let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
-            let vector_clock_id = VectorClockId::new(
-                to_rebase_change_set.id.into_inner(),
-                workspace_pk.into_inner(),
-            );
-
-            to_rebase_workspace_snapshot
-                .collapse_vector_clocks(ctx)
-                .await?;
-
-            to_rebase_workspace_snapshot
-                .write(ctx, vector_clock_id)
-                .await?;
-            debug!("snapshot written: {:?}", start.elapsed());
-            to_rebase_change_set
-                .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
-                .await?;
-
-            debug!("pointer updated: {:?}", start.elapsed());
-        }
-        let updates_count = rebase_batch.updates().len();
-        //let updates_performed = serde_json::to_value(rebase_batch.updates())?.to_string();
-
-        //span.record("si.updates", updates_performed.clone());
-        span.record("si.updates.count", updates_count.to_string());
-        RebaseStatus::Success {
-            updates_performed: message.payload.rebase_batch_address,
-        }
-    } else {
-        let conflicts_count = conflicts_and_updates.conflicts.len();
-        let conflicts_found = serde_json::to_value(conflicts_and_updates.conflicts)?.to_string();
-        span.record("si.conflicts", conflicts_found.clone());
-        span.record("si.conflicts.count", conflicts_count.to_string());
-        RebaseStatus::ConflictsFound {
-            conflicts_found,
-            updates_found_and_skipped: serde_json::to_value(conflicts_and_updates.updates)?
-                .to_string(),
-        }
-    };
+        debug!("pointer updated: {:?}", start.elapsed());
+    }
+    let updates_count = rebase_batch.updates().len();
+    span.record("si.updates.count", updates_count.to_string());
 
     info!("rebase performed: {:?}", start.elapsed());
 
@@ -179,7 +133,9 @@ pub async fn perform_rebase(
         });
     }
 
-    Ok(message)
+    Ok(RebaseStatus::Success {
+        updates_performed: message.payload.rebase_batch_address,
+    })
 }
 
 pub(crate) async fn evict_unused_snapshots(

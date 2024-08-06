@@ -440,7 +440,6 @@ impl AttributePrototypeArgument {
             let self_node_index = workspace_snapshot.get_node_index_by_id(self.id).await?;
             workspace_snapshot
                 .remove_edge(
-                    ctx.vector_clock_id()?,
                     self_node_index,
                     existing_value_source,
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue,

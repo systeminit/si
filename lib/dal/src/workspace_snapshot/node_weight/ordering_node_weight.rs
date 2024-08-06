@@ -99,26 +99,12 @@ impl OrderingNodeWeight {
     }
 
     /// Returns `true` if the id passed was actually removed, `false` if not (because not in the order)
-    pub fn remove_from_order(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        inc_clocks: bool,
-    ) -> bool {
-        let mut order = self.order.to_owned();
-        order.retain(|&item_id| item_id != id);
-        if order.len() != self.order().len() {
-            if inc_clocks {
-                self.set_order(vector_clock_id, order);
-            } else {
-                self.set_order_without_inc_clocks(order);
-            }
-
-            true
-        } else {
-            false
-        }
+    pub fn remove_from_order(&mut self, id: Ulid) -> bool {
+        let order_len = self.order.len();
+        self.order.retain(|&item_id| item_id != id);
+        order_len != self.order().len()
     }
+
     pub fn get_index_for_id(&self, id: Ulid) -> NodeWeightResult<i64> {
         let index = &self
             .order

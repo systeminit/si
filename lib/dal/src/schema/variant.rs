@@ -2001,7 +2001,6 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::ActionPrototype => {
                     workspace_snapshot
                         .remove_all_edges(
-                            ctx.vector_clock_id()?,
                             workspace_snapshot.get_node_weight(target_index).await?.id(),
                         )
                         .await?;
@@ -2009,7 +2008,7 @@ impl SchemaVariant {
 
                 EdgeWeightKindDiscriminants::AuthenticationPrototype => {
                     workspace_snapshot
-                        .remove_edge(ctx.vector_clock_id()?, source_index, target_index, kind)
+                        .remove_edge(source_index, target_index, kind)
                         .await?;
                 }
 
