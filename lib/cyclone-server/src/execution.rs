@@ -32,7 +32,7 @@ use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 use crate::WebSocketMessage;
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
-const LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+const LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
