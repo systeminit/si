@@ -25,9 +25,10 @@ import store from "./store";
 
 const { envVariables } = getProjectEnvVariables();
 
-const otelEndpoint =
+let otelEndpoint =
   envVariables.VITE_OTEL_EXPORTER_OTLP_ENDPOINT ??
   import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
+if (!otelEndpoint) otelEndpoint = window.location.host;
 const sdk = new HoneycombWebSDK({
   endpoint: `${otelEndpoint}:4318/v1/traces`,
   serviceName: "si-vue",
