@@ -5,7 +5,7 @@ import { posthog } from "@/utils/posthog";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 import { isDevMode } from "./utils/debug";
-import { useChangeSetsStore } from "./store/change_sets.store";
+// import { useChangeSetsStore } from "./store/change_sets.store";
 
 // Cannot use inside the template directly.
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
@@ -189,7 +189,7 @@ router.beforeResolve((to) => {
 
   // whenever we navigate across changesets we need to stay
   // up to date with the status against base
-  if ("changeSetId" in to.params) {
+  /* if ("changeSetId" in to.params) {
     const changeSetStore = useChangeSetsStore();
     const changeSetId = to.params.changeSetId;
     if (
@@ -199,7 +199,7 @@ router.beforeResolve((to) => {
       !Array.isArray(changeSetId)
     )
       changeSetStore.FETCH_STATUS_WITH_BASE(changeSetId);
-  }
+  } */
 });
 
 router.afterEach((to) => {
