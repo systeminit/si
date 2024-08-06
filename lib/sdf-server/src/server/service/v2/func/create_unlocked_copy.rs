@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, FuncId, SchemaVariantId,
+    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, SchemaVariantId,
     WorkspacePk, WsEvent,
 };
 
@@ -16,7 +16,7 @@ use crate::server::{
     tracking::track,
 };
 
-use super::{get_code_response, FuncAPIResult};
+use super::{get_code_response, FuncAPIError, FuncAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -43,6 +43,11 @@ pub async fn create_unlocked_copy(
         .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+
+    let existing_func = Func::get_by_id_or_error(&ctx, func_id).await?;
+    if !existing_func.is_locked {
+        return Err(FuncAPIError::FuncAlreadyUnlocked(func_id));
+    }
 
     let new_func =
         FuncAuthoringClient::create_unlocked_func_copy(&ctx, func_id, request.schema_variant_id)
