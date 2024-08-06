@@ -11,9 +11,6 @@
       System&nbsp;Initiative
     </div>
     <div class="border-l border-shade-100">
-      <StatusBarConflictSummary />
-    </div>
-    <div class="border-l border-shade-100">
       <StatusBarDiffSummary v-if="!changeSetStore.headSelected" />
     </div>
     <div v-if="changeSetStore.headSelected" class="border-i border-shade-100">
@@ -31,7 +28,6 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 
-import StatusBarConflictSummary from "./StatusBarConflictSummary.vue";
 import StatusBarDiffSummary from "./StatusBarDiffSummary.vue";
 import StatusBarResourceSummary from "./StatusBarResourceSummary.vue";
 import StatusBarQualificationSummary from "./StatusBarQualificationSummary.vue";

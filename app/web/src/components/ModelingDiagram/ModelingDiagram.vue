@@ -199,7 +199,6 @@ overflow hidden */
       </v-stage>
 
       <DiagramHelpModal ref="helpModalRef" />
-      RECTS: {{ selectionRects }}
     </div>
   </div>
 </template>
