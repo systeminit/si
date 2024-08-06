@@ -165,7 +165,9 @@ type OptimisticFn = (requestUlid: RequestUlid) => OptimisticReturn;
 
 // accepting null | undefined just to allow other parts of the codebase flexibility
 // throwing if we ever hit that :(
-type URLPattern = Array<string | Record<string, string | undefined | null>>;
+export type URLPattern = Array<
+  string | Record<string, string | undefined | null>
+>;
 const describePattern = (pattern: URLPattern): [string, string] => {
   const _url: string[] = [];
   const _urlName: string[] = [];
