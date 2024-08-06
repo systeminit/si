@@ -35,11 +35,12 @@ usage() {
     echo "them all in parallel"
     echo "----------------------------------"
     echo "Usage: upgrade [-p profile] [-r region] [-a automatic] [-s service]"
-    echo "  -p profile        AWS profile to use"
+    echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
     echo "  -r region         AWS region to use"
     echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
     echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-    echo
+    echo "----------------------------------"
+    echo "e.g. ./awsi.sh -p pull-from-env -r us-east-1 -s sdf -a y"
     exit 1
 }
 
@@ -77,15 +78,17 @@ done
 # ---------------------------------------------------------------------------------------------------
 # Main script
 # ---------------------------------------------------------------------------------------------------
-profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+# Use the profile if in the invocation
+if [[ "$profile" != "pull-from-env" ]]; then
+  profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+  export AWS_PROFILE="$profile"
+fi
 region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
+export AWS_REGION="$region"
 
 # Define the SSM documents to execute the functions
 upgrade_check_script="si-check-node-upgrade"
 service_state_script="si-service-state"
-
-export AWS_PROFILE="$profile"
-export AWS_REGION="$region"
 
 # List instances with fixed-width columns and filter for the upgradeable instances
 # Based on the filter provided
@@ -124,8 +127,8 @@ mkdir -p "$results_directory/"
 i=1
 while read -r line; do
     instance_id=$(echo "$line" | awk '{print $2}')
-    service=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
-    start_and_track_ssm_session "$instance_id" "$upgrade_check_script" "$service" "check" "$results_directory" &
+    service_name=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
+    start_and_track_ssm_session "$instance_id" "$upgrade_check_script" "$service_name" "check" "$results_directory" &
     ((i++))
 done <<< "$instances"
 
@@ -153,8 +156,8 @@ mkdir -p $results_directory
 upgrade_hosts_num=$(jq 'map(select(.service == "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | wc -l)
 jq 'map(select(.service == "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | while read -r line; do
   instance_id=$(echo "$line" | jq -r '.instance_id')
-  service=$(echo "$line" | jq -r '.service')
-  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service" "upgrade" "$results_directory" # Serially
+  service_name=$(echo "$line" | jq -r '.service')
+  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service_name" "upgrade" "$results_directory" # Serially
 done
 
 # Wait until all the results arrive
@@ -164,8 +167,8 @@ await_file_results "$results_directory" "$upgrade_hosts_num"
 upgrade_hosts_num=$(jq 'map(select(.service != "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | wc -l)
 jq 'map(select(.service != "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | while read -r line; do
   instance_id=$(echo "$line" | jq -r '.instance_id')
-  service=$(echo "$line" | jq -r '.service')
-  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service" "upgrade" "$results_directory" & # In Parallel
+  service_name=$(echo "$line" | jq -r '.service')
+  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service_name" "upgrade" "$results_directory" & # In Parallel
   ((i++))
 done
 
@@ -174,7 +177,8 @@ upgrade_hosts_num=$(jq '.[]' <<< $upgrade_candidates_json | jq -c '.' | wc -l)
 await_file_results "$results_directory" "$upgrade_hosts_num"
 concat_and_output_json "$results_directory" "$upgrade_results_file"
 
-echo "All active binary services have been rotated, WEB IS STILL TO BE UPDATED."
+echo "All active binary services of ${service} have been rotated"
+echo "*******WEB IS NOT UPDATED VIA THIS TOOLING**************"
 echo "If you are running in CI, this will be ran automatically for you. If you"
 echo "executed this manually/locally, you need to run the below pipeline, with"
 echo "either tools or production, depending which environment you're executing"

@@ -17,14 +17,14 @@ on:
         default: "stable"
       deploy-type:
         type: string
-        required: false
+        default: "instance"
 
   workflow_dispatch:
     inputs:
       environment:
         type: choice
         required: true
-        description: "where to deploy"
+        description: "Where to deploy"
         default: "tools"
         options:
           - tools

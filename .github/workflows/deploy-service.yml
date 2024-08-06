@@ -18,13 +18,9 @@ on:
         required: true
         description: "version to deploy"
       deploy-type:
-        type: choice
+        type: string
         required: true
         description: "deployment variant"
-        default: "instance"
-        options:
-          - binary
-          - instance
 
 jobs:
   deploy:
@@ -81,7 +77,7 @@ jobs:
           echo "Invalidation is complete."
 
       - name: Deploy service
-        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'instance'}}
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'instance' }}
         run: |
             check_version_exists() {
                 local version="$1"
@@ -150,8 +146,10 @@ jobs:
                 exit 1
             fi
 
+      - name: Checkout code
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
+        uses: actions/checkout@v4
+
       - name: Deploy service
-        if: if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
-        run: |
-            [[ ${{ inputs.environment }} == "tools" ]] && component/toolbox/awsi.sh upgrade -p tools-prod -r us-east-1 -a y -s ${{ inputs.service }}
-            [[ ${{ inputs.environment }} == "production" ]] && component/toolbox/awsi.sh upgrade -p si-apps-prod -r us-east-1 -a y -s ${{ inputs.service }}
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
+        run: component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}

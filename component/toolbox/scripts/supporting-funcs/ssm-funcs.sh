@@ -14,8 +14,8 @@ start_and_track_ssm_session() {
   status=$?
 
   if [ $status -ne 0 ]; then
-    output=$(echo "{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"service\": \"$service\", \"message\": \"$output\"}")
-    echo $output >"$results_directory/$instance_id.json"
+    output="{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"service\": \"$service\", \"message\": \"$output\"}"
+    echo "$output" >"$results_directory/$instance_id.json"
     return
   fi
 
@@ -44,7 +44,7 @@ start_and_track_ssm_session() {
       --command-id "$command_id" \
       --instance-id "$instance_id" \
       | jq -r '.StandardOutputContent')
-    echo $output >"$results_directory/$instance_id.json"
+    echo "$output" >"$results_directory/$instance_id.json"
   else
     echo "Command failed with status: $status"
     exit_code=$(aws ssm get-command-invocation \

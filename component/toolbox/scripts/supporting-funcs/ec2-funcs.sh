@@ -4,8 +4,10 @@
 list_instances() {
   filter=$1
   if [[ "${filter,,}" == "all" || -z "${filter}" ]]; then
-    aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text | grep -E "sdf|veritech|pinga|rebaser"
+    # shellcheck disable=SC2016
+    aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text | grep -E 'sdf|veritech|pinga|rebaser'
   elif [[ "${filter,,}" != "all" ]]; then
+    # shellcheck disable=SC2016
     aws ec2 describe-instances --query 'Reservations[*].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value | [0],InstanceId,InstanceType,PrivateIpAddress]' --output text | grep -E "${filter}"
   fi
 }

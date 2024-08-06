@@ -8,7 +8,7 @@ get_param_or_env() {
 
   if [ -z "$param" ]; then
     if [ -z "${!env_var}" ]; then
-      read -p "$prompt: " value
+      read -r -p "$prompt: " value
       echo "$value"
     else
       echo "${!env_var}"
@@ -35,7 +35,8 @@ await_file_results() {
       exit 1
     fi
 
-    file_count=$(ls "$results_directory" | wc -l)
+    # shellcheck disable=SC2012
+    file_count=$(ls "$results_directory/" | wc -l)
 
     if ((file_count >= required_file_count)); then
       break
@@ -63,8 +64,10 @@ concat_and_output_json() {
   # Check if the directory exists
   if [ -d "$results_directory/" ]; then
     # Aggregate all the individual json documents into one
-    cat $results_directory/* | jq -s '.' >>$results_directory/$output_file
-    cat $results_directory/$output_file | jq
+    # shellcheck disable=SC2002
+    cat "${results_directory}/*" | jq -s '.' >>"$results_directory/$output_file"
+    # shellcheck disable=SC2002
+    cat "$results_directory/$output_file" | jq
     echo "----------------------------------------"
     echo "Results can be found within $results_directory"
   else
