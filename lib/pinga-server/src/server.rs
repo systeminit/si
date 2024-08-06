@@ -4,6 +4,7 @@ use std::{
     sync::atomic::{self, AtomicUsize},
     sync::Arc,
 };
+use telemetry_utils::metric;
 
 use dal::{
     feature_flags::FeatureFlagService, job::definition::compute_validation::ComputeValidation,
@@ -175,6 +176,7 @@ impl Server {
         let graceful_shutdown_rx =
             prepare_graceful_shutdown(external_shutdown_rx, shutdown_watch_tx)?;
 
+        metric!(monotonic_counter.pinga.concurrency_limit = concurrency_limit);
         Ok(Server {
             concurrency_limit,
             services_context,
@@ -379,6 +381,7 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
     UnboundedReceiverStream::new(rx)
         .for_each_concurrent(concurrency_limit, |job| async move {
             let concurrency_count = CONCURRENT_TASKS.fetch_add(1, atomic::Ordering::Relaxed) + 1;
+            metric!(counter.pinga.concurrency_count = 1);
 
             let span = Span::current();
             span.record("concurrency.count", concurrency_count);
@@ -414,6 +417,7 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
             }
 
             let concurrency_count = CONCURRENT_TASKS.fetch_sub(1, atomic::Ordering::Relaxed) - 1;
+            metric!(counter.pinga.concurrency_count = -1);
 
             let span = Span::current();
             span.record("concurrency.count", concurrency_count);
