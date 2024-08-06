@@ -21,6 +21,7 @@ use serde_json::Value;
 use si_crypto::SensitiveStrings;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time::timeout;
 use tokio::{
     process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
     time,
@@ -31,6 +32,7 @@ use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 use crate::WebSocketMessage;
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
+const LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
@@ -60,6 +62,8 @@ pub enum ExecutionError {
     ChildShutdown(#[from] ShutdownError),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),
+    #[error("child ran for to long")]
+    ChildTimeout,
     #[error("failed to decode string as utf8")]
     FromUtf8(#[from] FromUtf8Error),
     #[error("failed to deserialize json message")]
@@ -239,7 +243,7 @@ where
     SymmetricalJson<SiMessage<LangServerSuccess>>: Deserializer<SiMessage<LangServerSuccess>>,
     SiDecoderError: From<SiJsonError<LangServerSuccess>>,
 {
-    pub async fn process(self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
+    pub async fn process(mut self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
         tokio::spawn(handle_stderr(self.stderr, self.sensitive_strings.clone()));
 
         let mut stream = self
@@ -269,9 +273,25 @@ where
                 Err(err) => Err(err),
             });
 
-        while let Some(msg) = stream.try_next().await? {
-            ws.send(msg).await.map_err(ExecutionError::WSSendIO)?;
-        }
+        let receive_loop = async {
+            while let Some(msg) = stream.try_next().await? {
+                ws.send(msg).await.map_err(ExecutionError::WSSendIO)?;
+            }
+
+            Result::<_>::Ok(())
+        };
+
+        match timeout(LANG_SERVER_PROCESS_TIMEOUT, receive_loop).await {
+            Ok(execution) => execution?,
+            Err(_) => {
+                // Exceeded timeout, shutdown child process
+                process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None)
+                    .await?;
+                drop(self.child);
+
+                return Err(ExecutionError::ChildTimeout);
+            }
+        };
 
         Ok(ExecutionClosing {
             child: self.child,
