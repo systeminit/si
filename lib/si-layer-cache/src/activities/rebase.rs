@@ -21,16 +21,21 @@ pub struct RebaseRequest {
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
     /// rebasing the "to rebase" workspace snapshot.
     pub rebase_batch_address: RebaseBatchAddress,
+    /// If the rebase batch comes from another change set (i.e. the default change set), then this
+    /// field is set.
+    pub from_change_set_id: Option<Ulid>,
 }
 
 impl RebaseRequest {
     pub fn new(
         to_rebase_change_set_id: Ulid,
         rebase_batch_address: RebaseBatchAddress,
+        from_change_set_id: Option<Ulid>,
     ) -> RebaseRequest {
         RebaseRequest {
             to_rebase_change_set_id,
             rebase_batch_address,
+            from_change_set_id,
         }
     }
 }
@@ -102,7 +107,25 @@ impl<'a> ActivityRebase<'a> {
         rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
+        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address, None);
+        let activity = Activity::rebase(payload, metadata);
+        self.activity_base.publish(&activity).await?;
+        Ok(activity)
+    }
+
+    #[instrument(name = "activity::rebase::rebase", level = "info")]
+    pub async fn rebase_from_change_set(
+        &self,
+        to_rebase_change_set_id: Ulid,
+        rebase_batch_address: RebaseBatchAddress,
+        from_change_set_id: Ulid,
+        metadata: LayeredEventMetadata,
+    ) -> LayerDbResult<Activity> {
+        let payload = RebaseRequest::new(
+            to_rebase_change_set_id,
+            rebase_batch_address,
+            Some(from_change_set_id),
+        );
         let activity = Activity::rebase(payload, metadata);
         self.activity_base.publish(&activity).await?;
         Ok(activity)
@@ -115,7 +138,7 @@ impl<'a> ActivityRebase<'a> {
         rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
+        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address, None);
         let activity = Activity::rebase(payload, metadata);
         // println!("trigger: sending rebase and waiting for response");
         debug!(?activity, "sending rebase and waiting for response");
