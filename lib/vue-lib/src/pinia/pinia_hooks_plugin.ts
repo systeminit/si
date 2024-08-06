@@ -24,11 +24,17 @@ declare module "pinia" {
 }
 
 // TODO: couldnt get the typing of T happy here... but it works for consumers
-export function addStoreHooks<T extends () => any>(useStoreFn: T) {
+export function addStoreHooks<T extends () => any>(
+  workspaceId: string | undefined | null,
+  changeSetId: string | undefined | null,
+  useStoreFn: T,
+) {
   return (...args: Parameters<T>): ReturnType<T> => {
     const store = useStoreFn.apply(null, [...args]) as ReturnType<T>;
     const component = getCurrentInstance();
     if (component) store.trackStoreUsedByComponent(component);
+    store.workspaceId = workspaceId;
+    store.changeSetId = changeSetId;
     return store;
   };
 }

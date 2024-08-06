@@ -94,9 +94,18 @@ export const useAssetStore = () => {
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
-  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${selectedChangeSetId}/schema-variants`;
+  const API_PREFIX = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { selectedChangeSetId },
+    "schema-variants",
+  ];
 
   return addStoreHooks(
+    workspaceId,
+    selectedChangeSetId,
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
         variantList: [] as SchemaVariant[],
@@ -437,7 +446,7 @@ export const useAssetStore = () => {
 
         async LOAD_SCHEMA_VARIANT_LIST() {
           return new ApiRequest<SchemaVariant[], Visibility>({
-            url: `${API_PREFIX}`,
+            url: API_PREFIX,
             params: { ...visibility },
             onSuccess: (response) => {
               this.variantList = response;
@@ -455,7 +464,7 @@ export const useAssetStore = () => {
 
           return new ApiRequest<SchemaVariant>({
             method: "post",
-            url: `${API_PREFIX}/${id}`,
+            url: API_PREFIX.concat([id]),
             keyRequestStatusBy: id,
             onSuccess: (variant) => {
               const savedAssetIdx = this.variantList.findIndex(
@@ -475,7 +484,7 @@ export const useAssetStore = () => {
 
           return new ApiRequest<SchemaVariant>({
             method: "delete",
-            url: `${API_PREFIX}/${id}`,
+            url: API_PREFIX.concat([id]),
             keyRequestStatusBy: id,
             params: {
               // ...visibility,

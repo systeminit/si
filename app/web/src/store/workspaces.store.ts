@@ -47,6 +47,8 @@ const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 // in a different store.
 export const useWorkspacesStore = () => {
   return addStoreHooks(
+    undefined,
+    undefined,
     defineStore("workspaces", {
       state: () => ({
         workspacesByPk: {} as Record<WorkspacePk, AuthApiWorkspace>,

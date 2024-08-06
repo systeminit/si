@@ -5,6 +5,8 @@ import { watch } from "vue";
 import { addStoreHooks } from "@si/vue-lib/pinia";
 
 export const useCounterStore = addStoreHooks(
+  "",
+  undefined,
   defineStore("counter", {
     state: () => ({
       counter: 20,
@@ -42,6 +44,8 @@ export const useCounterStore = addStoreHooks(
 );
 
 export const useCounterStore2 = addStoreHooks(
+  "",
+  undefined,
   defineStore("indirect-counter", {
     state: () => ({
       foo: 1,

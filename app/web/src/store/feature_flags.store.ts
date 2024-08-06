@@ -19,6 +19,8 @@ const PH_TO_STORE_FLAG_LOOKUP = _.invert(FLAG_MAPPING) as Record<
 
 export function useFeatureFlagsStore() {
   return addStoreHooks(
+    undefined,
+    undefined,
     defineStore("feature-flags", {
       // all flags default to false
       state: () => _.mapValues(FLAG_MAPPING, () => false),

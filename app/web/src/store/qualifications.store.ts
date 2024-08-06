@@ -27,6 +27,8 @@ export const useQualificationsStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/qualifications`,
       {

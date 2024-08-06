@@ -119,6 +119,8 @@ export const useActionsStore = () => {
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`,
       {

@@ -137,6 +137,8 @@ export const useFuncRunsStore = () => {
   const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/funcs/runs`;
 
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(`ws${workspaceId || "NONE"}/func_runs`, {
       state: () => ({
         funcRuns: {} as Record<FuncRunId, FuncRun>,

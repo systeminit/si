@@ -5,6 +5,8 @@ import posthog from "posthog-js";
 
 export const useFeatureFlagsStore = () => {
   return addStoreHooks(
+    undefined,
+    undefined,
     defineStore("feature-flags", {
       state: () => ({
         OSS_RELEASE: true, // todo: cleanup consumption of this flag

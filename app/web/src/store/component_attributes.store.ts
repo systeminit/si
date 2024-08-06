@@ -87,6 +87,8 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
   return addStoreHooks(
+    workspaceId,
+    changeSetId,
     defineStore(
       `ws${
         workspaceId || "NONE"

@@ -50,6 +50,8 @@ export const usePresenceStore = () => {
   const changeSetsStore = useChangeSetsStore();
 
   return addStoreHooks(
+    workspaceId,
+    undefined,
     defineStore(`ws${workspaceId}/presence`, {
       state: () => ({
         x: null as number | null,
