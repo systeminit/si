@@ -13,6 +13,7 @@ rust_library(
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",

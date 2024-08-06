@@ -3770,6 +3770,7 @@ dependencies = [
  "si-std",
  "stream-cancel",
  "telemetry",
+ "telemetry-utils",
  "thiserror",
  "tokio",
  "tokio-stream",
