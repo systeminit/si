@@ -430,15 +430,18 @@ async fn resolver_function_request(
 
     let cyclone_request = CycloneRequest::from_parts(request, sensitive_strings);
 
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+    let mut client = cyclone_pool.get().await.map_err(|err| {
+        metric!(counter.function_run.resolver = -1);
+        span.record_err(ServerError::CyclonePool(Box::new(err)))
+    })?;
 
     let mut progress = client
         .execute_resolver(cyclone_request)
         .await
-        .map_err(|err| span.record_err(err))?
+        .map_err(|err| {
+            metric!(counter.function_run.resolver = -1);
+            span.record_err(err)
+        })?
         .start()
         .await
         .map_err(|err| span.record_err(err))?;
@@ -446,17 +449,17 @@ async fn resolver_function_request(
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher
-                    .publish_output(&output)
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_output(&output).await.map_err(|err| {
+                    metric!(counter.function_run.resolver = -1);
+                    span.record_err(err)
+                })?
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
-                publisher
-                    .publish_keep_alive()
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_keep_alive().await.map_err(|err| {
+                    metric!(counter.function_run.resolver = -1);
+                    span.record_err(err)
+                })?
             }
             Err(err) => {
                 warn!(error = ?err, "next progress message was an error, bailing out");
@@ -464,13 +467,13 @@ async fn resolver_function_request(
             }
         }
     }
+
+    let function_result = progress.finish().await.map_err(|err| {
+        metric!(counter.function_run.resolver = -1);
+        span.record_err(err)
+    })?;
+
     metric!(counter.function_run.resolver = -1);
-
-    let function_result = progress
-        .finish()
-        .await
-        .map_err(|err| span.record_err(err))?;
-
     span.record_ok();
     Ok(function_result)
 }
@@ -610,29 +613,38 @@ async fn validation_request(
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+    let mut client = cyclone_pool.get().await.map_err(|err| {
+        metric!(counter.function_run.validation = -1);
+        span.record_err(ServerError::CyclonePool(Box::new(err)))
+    })?;
 
     let mut progress = client
         .execute_validation(cyclone_request)
         .await
-        .map_err(|err| span.record_err(err))?
+        .map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?
         .start()
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher
-                    .publish_output(&output)
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_output(&output).await.map_err(|err| {
+                    metric!(counter.function_run.validation = -1);
+                    span.record_err(err)
+                })?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -643,21 +655,24 @@ async fn validation_request(
             }
         }
     }
-    metric!(counter.function_run.validation = -1);
-    publisher
-        .finalize_output()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    publisher.finalize_output().await.map_err(|err| {
+        metric!(counter.function_run.validation = -1);
+        span.record_err(err)
+    })?;
 
-    let function_result = progress
-        .finish()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    let function_result = progress.finish().await.map_err(|err| {
+        metric!(counter.function_run.validation = -1);
+        span.record_err(err)
+    })?;
     publisher
         .publish_result(&function_result)
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
 
+    metric!(counter.function_run.validation = -1);
     span.record_ok();
     Ok(())
 }
@@ -798,29 +813,38 @@ async fn schema_variant_definition_request(
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+    let mut client = cyclone_pool.get().await.map_err(|err| {
+        metric!(counter.function_run.schema_variant_definition = 1);
+        span.record_err(ServerError::CyclonePool(Box::new(err)))
+    })?;
 
     let mut progress = client
         .execute_schema_variant_definition(cyclone_request)
         .await
-        .map_err(|err| span.record_err(err))?
+        .map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?
         .start()
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher
-                    .publish_output(&output)
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_output(&output).await.map_err(|err| {
+                    metric!(counter.function_run.schema_variant_definition = -1);
+                    span.record_err(err)
+                })?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -831,21 +855,24 @@ async fn schema_variant_definition_request(
             }
         }
     }
-    metric!(counter.function_run.schema_variant_definition = -1);
-    publisher
-        .finalize_output()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    publisher.finalize_output().await.map_err(|err| {
+        metric!(counter.function_run.schema_variant_definition = -1);
+        span.record_err(err)
+    })?;
 
-    let function_result = progress
-        .finish()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    let function_result = progress.finish().await.map_err(|err| {
+        metric!(counter.function_run.schema_variant_definition = -1);
+        span.record_err(err)
+    })?;
     publisher
         .publish_result(&function_result)
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
 
+    metric!(counter.function_run.schema_variant_definition = -1);
     span.record_ok();
     Ok(())
 }
@@ -985,29 +1012,38 @@ async fn action_run_request(
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+    let mut client = cyclone_pool.get().await.map_err(|err| {
+        metric!(counter.function_run.action = -1);
+        span.record_err(ServerError::CyclonePool(Box::new(err)))
+    })?;
 
     let mut progress = client
         .execute_action_run(cyclone_request)
         .await
-        .map_err(|err| span.record_err(err))?
+        .map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?
         .start()
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher
-                    .publish_output(&output)
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_output(&output).await.map_err(|err| {
+                    metric!(counter.function_run.action = -1);
+                    span.record_err(err)
+                })?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -1018,21 +1054,24 @@ async fn action_run_request(
             }
         }
     }
-    metric!(counter.function_run.action = -1);
-    publisher
-        .finalize_output()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    publisher.finalize_output().await.map_err(|err| {
+        metric!(counter.function_run.action = -1);
+        span.record_err(err)
+    })?;
 
-    let function_result = progress
-        .finish()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    let function_result = progress.finish().await.map_err(|err| {
+        metric!(counter.function_run.action = -1);
+        span.record_err(err)
+    })?;
     publisher
         .publish_result(&function_result)
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
 
+    metric!(counter.function_run.action = -1);
     span.record_ok();
     Ok(())
 }
@@ -1172,30 +1211,39 @@ async fn reconciliation_request(
     let reply_mailbox = request
         .reply
         .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
 
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
+    let mut client = cyclone_pool.get().await.map_err(|err| {
+        metric!(counter.function_run.reconciliation = -1);
+        span.record_err(ServerError::CyclonePool(Box::new(err)))
+    })?;
 
     let mut progress = client
         .execute_reconciliation(cyclone_request)
         .await
-        .map_err(|err| span.record_err(err))?
+        .map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?
         .start()
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher
-                    .publish_output(&output)
-                    .await
-                    .map_err(|err| span.record_err(err))?;
+                publisher.publish_output(&output).await.map_err(|err| {
+                    metric!(counter.function_run.reconciliation = -1);
+                    span.record_err(err)
+                })?
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -1206,21 +1254,24 @@ async fn reconciliation_request(
             }
         }
     }
-    metric!(counter.function_run.reconciliation = -1);
-    publisher
-        .finalize_output()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    publisher.finalize_output().await.map_err(|err| {
+        metric!(counter.function_run.reconciliation = -1);
+        span.record_err(err)
+    })?;
 
-    let function_result = progress
-        .finish()
-        .await
-        .map_err(|err| span.record_err(err))?;
+    let function_result = progress.finish().await.map_err(|err| {
+        metric!(counter.function_run.reconciliation = -1);
+        span.record_err(err)
+    })?;
     publisher
         .publish_result(&function_result)
         .await
-        .map_err(|err| span.record_err(err))?;
+        .map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
 
+    metric!(counter.function_run.reconciliation = -1);
     span.record_ok();
     Ok(())
 }
