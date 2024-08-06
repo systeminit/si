@@ -40,9 +40,6 @@ impl IntoResponse for ModulesAPIError {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
                 StatusCode::FORBIDDEN
             }
-            Self::Transactions(dal::TransactionsError::ConflictsOccurred(_)) => {
-                StatusCode::CONFLICT
-            }
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(schema_variant_id)) => {
                 error!(%schema_variant_id, "schema variant not found");
                 StatusCode::NOT_FOUND

@@ -48,7 +48,6 @@ pub async fn rebase_on_base(
 
     let base_snapshot = WorkspaceSnapshot::find_for_change_set(&ctx, base_change_set.id).await?;
     if let Some(rebase_batch) = WorkspaceSnapshot::calculate_rebase_batch(
-        ctx.change_set_id(),
         ctx.workspace_snapshot()?,
         Arc::new(base_snapshot),
     )

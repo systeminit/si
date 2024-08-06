@@ -46,10 +46,6 @@ impl IntoResponse for SchemaVariantsAPIError {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
                 StatusCode::FORBIDDEN
             }
-            // Return 409 when we see a conflict
-            Self::Transactions(dal::TransactionsError::ConflictsOccurred(_)) => {
-                StatusCode::CONFLICT
-            }
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,

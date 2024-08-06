@@ -109,9 +109,6 @@ impl IntoResponse for DiagramError {
             | DiagramError::FrameSocketNotFound(_)
             | DiagramError::EdgeNotFound
             | DiagramError::SocketNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            DiagramError::ContextTransaction(TransactionsError::ConflictsOccurred(_)) => {
-                (StatusCode::CONFLICT, self.to_string())
-            }
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };

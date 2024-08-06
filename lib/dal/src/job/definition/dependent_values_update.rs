@@ -20,7 +20,7 @@ use crate::{
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
-            JobConsumerResult, JobInfo, RetryBackoff,
+            JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
@@ -29,8 +29,6 @@ use crate::{
     AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
     WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
-
-const MAX_RETRIES: u32 = 8;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -271,20 +269,9 @@ impl DependentValuesUpdate {
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
-        Ok(match ctx.commit().await {
-            Ok(_) => JobCompletionState::Done,
-            Err(err) => match err {
-                TransactionsError::ConflictsOccurred(_) => {
-                    // retry still on conflicts in DVU
-                    warn!("Retrying DependentValueUpdate due to conflicts");
-                    JobCompletionState::Retry {
-                        limit: MAX_RETRIES,
-                        backoff: RetryBackoff::Exponential,
-                    }
-                }
-                err => return Err(DependentValueUpdateError::Transactions(err)),
-            },
-        })
+        ctx.commit().await?;
+
+        Ok(JobCompletionState::Done)
     }
 }
 

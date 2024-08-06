@@ -8,7 +8,6 @@ mod test {
     use crate::func::FuncKind;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
-    use crate::workspace_snapshot::graph::ConflictsAndUpdates;
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
@@ -132,12 +131,7 @@ mod test {
         .expect("could not add edge");
 
         // Before cleanup, detect conflicts and updates.
-        let ConflictsAndUpdates {
-            conflicts: before_cleanup_conflicts,
-            updates: before_cleanup_updates,
-        } = to_rebase
-            .detect_conflicts_and_updates(to_rebase_vector_clock_id, &onto, onto_vector_clock_id)
-            .expect("could not detect conflicts and updates");
+        let before_cleanup_updates = to_rebase.detect_updates(&onto);
 
         // Cleanup and check node count.
         onto.cleanup();
@@ -148,17 +142,10 @@ mod test {
         );
 
         // Detect conflicts and updates. Ensure cleanup did not affect the results.
-        let ConflictsAndUpdates { conflicts, updates } = to_rebase
-            .detect_conflicts_and_updates(to_rebase_vector_clock_id, &onto, onto_vector_clock_id)
-            .expect("could not detect conflicts and updates");
-        assert!(conflicts.is_empty());
+        let updates = to_rebase.detect_updates(&onto);
         assert_eq!(
             7,             // expected
             updates.len()  // actual
-        );
-        assert_eq!(
-            before_cleanup_conflicts, // expected
-            conflicts                 // actual
         );
         assert_eq!(
             before_cleanup_updates, // expected
@@ -176,7 +163,7 @@ mod test {
         // Perform the updates. In the future, we may want to see if the onto and resulting to
         // rebase graphs are logically equivalent after updates are performed.
         to_rebase
-            .perform_updates(to_rebase_vector_clock_id, &updates)
+            .perform_updates(&updates)
             .expect("could not perform updates");
     }
 }

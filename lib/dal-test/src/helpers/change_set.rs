@@ -140,9 +140,7 @@ impl ChangeSetTestHelpers {
     async fn blocking_commit(ctx: &DalContext) -> Result<()> {
         // TODO(nick,brit): we need to expand Brit's 409 conflict work to work with blocking commits
         // too rather than evaluating an optional set of conflicts.
-        match ctx.blocking_commit().await? {
-            Some(conflicts) => Err(eyre!("found conflicts after commit: {conflicts:?}")),
-            None => Ok(()),
-        }
+        ctx.blocking_commit().await?;
+        Ok(())
     }
 }

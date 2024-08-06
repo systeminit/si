@@ -105,9 +105,8 @@ mod test {
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
-    use crate::workspace_snapshot::graph::ConflictsAndUpdates;
+    use crate::workspace_snapshot::graph::detect_updates::Update;
     use crate::workspace_snapshot::node_weight::NodeWeight;
-    use crate::workspace_snapshot::update::Update;
     use crate::WorkspaceSnapshotGraphV1;
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
 
@@ -1289,7 +1288,6 @@ mod test {
 
         graph_with_deleted_edge
             .remove_edge(
-                new_vector_clock_id,
                 graph_with_deleted_edge
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex for schema"),
@@ -1320,15 +1318,8 @@ mod test {
             .mark_graph_seen(new_vector_clock_id)
             .expect("Unable to mark new graph as seen");
 
-        let ConflictsAndUpdates { conflicts, updates } = graph
-            .detect_conflicts_and_updates(
-                initial_vector_clock_id,
-                &graph_with_deleted_edge,
-                new_vector_clock_id,
-            )
-            .expect("Failed to detect conflicts and updates");
+        let updates = graph.detect_updates(&graph_with_deleted_edge);
 
-        assert!(conflicts.is_empty());
         assert_eq!(1, updates.len());
 
         assert!(matches!(
@@ -1436,7 +1427,6 @@ mod test {
 
         graph
             .remove_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex for schema"),
@@ -1705,7 +1695,6 @@ mod test {
 
         graph
             .remove_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeIndex for prop"),

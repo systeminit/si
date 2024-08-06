@@ -82,10 +82,7 @@ impl IntoResponse for SchemaVariantError {
             | SchemaVariantError::VariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaVariantError::VariantAuthoring(VariantAuthoringError::DuplicatedSchemaName(
                 _,
-            ))
-            | SchemaVariantError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
-                (StatusCode::CONFLICT, self.to_string())
-            }
+            )) => (StatusCode::CONFLICT, self.to_string()),
             SchemaVariantError::VariantAuthoring(
                 VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _),
             ) => (

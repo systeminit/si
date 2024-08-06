@@ -115,9 +115,6 @@ impl IntoResponse for ComponentError {
             | ComponentError::PropNotFound(_)
             | ComponentError::SchemaVariantNotFound
             | ComponentError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            ComponentError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
-                (StatusCode::CONFLICT, self.to_string())
-            }
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };

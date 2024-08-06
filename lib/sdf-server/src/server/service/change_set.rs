@@ -74,9 +74,6 @@ impl IntoResponse for ChangeSetError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            ChangeSetError::Transactions(TransactionsError::ConflictsOccurred(_)) => {
-                (StatusCode::CONFLICT, self.to_string())
-            }
             ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };

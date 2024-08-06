@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_events::VectorClockChangeSetId;
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
@@ -14,9 +13,8 @@ use si_data_pg::{PgError, PgRow};
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 
-use crate::context::{Conflicts, RebaseRequest};
+use crate::context::RebaseRequest;
 use crate::slow_rt::SlowRuntimeError;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     action::{ActionError, ActionId},
     id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
@@ -109,8 +107,6 @@ pub enum ChangeSetApplyError {
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("could not apply to head because of merge conflicts")]
-    ConflictsOnApply(Conflicts),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -177,10 +173,6 @@ impl ChangeSet {
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<Self> {
         let id: Ulid = Ulid::new();
-        let vector_clock_id = VectorClockId::new(
-            VectorClockChangeSetId::new(id),
-            ctx.vector_clock_id()?.actor_id(),
-        );
         let change_set_id: ChangeSetId = id.into();
 
         let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
@@ -191,10 +183,7 @@ impl ChangeSet {
         // the edit session vs what the changeset already contained. The "onto"
         // changeset needs to have seen the "to_rebase" or we will treat them as
         // completely disjoint changesets.
-        let workspace_snapshot_address = workspace_snapshot
-            .write(ctx, vector_clock_id)
-            .await
-            .map_err(Box::new)?;
+        let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
 
         let workspace_id = ctx.tenancy().workspace_pk();
         let name = name.as_ref();
@@ -437,16 +426,10 @@ impl ChangeSet {
             .apply_to_base_change_set_inner(ctx)
             .await?;
 
-        // do we need this commit?
-        if let Some(conflicts) = ctx.blocking_commit().await? {
-            error!("Conflicts when commiting again:{:?}", conflicts);
+        // This is just to send the ws events
+        ctx.blocking_commit_no_rebase().await?;
 
-            return Err(ChangeSetApplyError::ConflictsOnApply(conflicts));
-        }
-
-        let change_set_that_was_applied = change_set_to_be_applied;
-
-        Ok(change_set_that_was_applied)
+        Ok(change_set_to_be_applied)
     }
 
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`] to its base
@@ -456,19 +439,18 @@ impl ChangeSet {
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
     async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
-        let to_rebase_change_set_id = self
+        let base_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
-        let to_rebase_workspace_snapshot = Arc::new(
-            WorkspaceSnapshot::find_for_change_set(ctx, to_rebase_change_set_id)
+        let base_snapshot = Arc::new(
+            WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id)
                 .await
                 .map_err(Box::new)?,
         );
 
         if let Some(rebase_batch) = WorkspaceSnapshot::calculate_rebase_batch(
-            to_rebase_change_set_id,
-            to_rebase_workspace_snapshot,
+            base_snapshot,
             ctx.workspace_snapshot().map_err(Box::new)?,
         )
         .await
@@ -476,13 +458,13 @@ impl ChangeSet {
         {
             let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
 
-            let rebase_request = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address);
+            let rebase_request = RebaseRequest::new(base_change_set_id, rebase_batch_address);
             ctx.do_rebase_request(rebase_request).await?;
         }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
         let user = Self::extract_userid_from_context(ctx).await;
-        WsEvent::change_set_applied(ctx, self.id, to_rebase_change_set_id, user)
+        WsEvent::change_set_applied(ctx, self.id, base_change_set_id, user)
             .await?
             .publish_on_commit(ctx)
             .await?;

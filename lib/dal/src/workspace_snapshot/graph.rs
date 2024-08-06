@@ -4,7 +4,7 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
-use detect_conflicts_and_updates::DetectConflictsAndUpdates;
+use detect_updates::{Detector, Update};
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::Edges;
@@ -27,16 +27,14 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
 use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{
-    conflict::Conflict,
     content_address::ContentAddress,
     edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
-    update::Update,
 };
 use crate::ChangeSetId;
 
 pub mod deprecated;
-pub mod detect_conflicts_and_updates;
+pub mod detect_updates;
 mod tests;
 
 pub type LineageId = Ulid;
@@ -129,12 +127,6 @@ pub struct WorkspaceSnapshotGraphV1 {
 
     #[serde(skip)]
     ulid_generator: Arc<Mutex<Generator>>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ConflictsAndUpdates {
-    pub conflicts: Vec<Conflict>,
-    pub updates: Vec<Update>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -476,8 +468,6 @@ impl WorkspaceSnapshotGraphV1 {
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
         self.graph.node_indices().filter_map(|node_idx| {
             self.get_node_weight_opt(node_idx)
-                .ok()
-                .flatten()
                 .map(|weight| (weight, node_idx))
         })
     }
@@ -679,15 +669,8 @@ impl WorkspaceSnapshotGraphV1 {
         self.add_node(self.get_node_weight(node_index_to_copy)?.clone())
     }
 
-    #[instrument(level = "info", skip_all)]
-    pub fn detect_conflicts_and_updates(
-        &self,
-        to_rebase_vector_clock_id: VectorClockId,
-        onto: &WorkspaceSnapshotGraphV1,
-        onto_vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotGraphResult<ConflictsAndUpdates> {
-        DetectConflictsAndUpdates::new(self, to_rebase_vector_clock_id, onto, onto_vector_clock_id)
-            .detect_conflicts_and_updates()
+    pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
+        Detector::new(self, updated_graph).calculate_updates()
     }
 
     #[allow(dead_code)]
@@ -1031,18 +1014,15 @@ impl WorkspaceSnapshotGraphV1 {
             .map(|node_weight| node_weight.id())
     }
 
-    pub fn get_node_weight_opt(
-        &self,
-        node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<Option<&NodeWeight>> {
-        Ok(self.graph.node_weight(node_index))
+    pub fn get_node_weight_opt(&self, node_index: NodeIndex) -> Option<&NodeWeight> {
+        self.graph.node_weight(node_index)
     }
 
     pub fn get_node_weight(
         &self,
         node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
-        self.get_node_weight_opt(node_index)?
+        self.get_node_weight_opt(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
@@ -1293,7 +1273,7 @@ impl WorkspaceSnapshotGraphV1 {
     ) -> WorkspaceSnapshotGraphResult<Option<OrderingNodeWeight>> {
         Ok(
             match self.ordering_node_index_for_container(container_node_index)? {
-                Some(ordering_node_idx) => match self.get_node_weight_opt(ordering_node_idx)? {
+                Some(ordering_node_idx) => match self.get_node_weight_opt(ordering_node_idx) {
                     Some(node_weight) => Some(node_weight.get_ordering_node_weight()?.clone()),
                     None => None,
                 },
@@ -1342,18 +1322,11 @@ impl WorkspaceSnapshotGraphV1 {
     /// [`Self::cleanup()`] has run should be considered invalid.
     pub fn remove_edge(
         &mut self,
-        vector_clock_id: VectorClockId,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        self.remove_edge_inner(
-            vector_clock_id,
-            source_node_index,
-            target_node_index,
-            edge_kind,
-            true,
-        )
+        self.remove_edge_inner(source_node_index, target_node_index, edge_kind)
     }
 
     /// Removes an edge from `source_node_index` to `target_node_index`, and
@@ -1361,11 +1334,9 @@ impl WorkspaceSnapshotGraphV1 {
     /// the node at `source_node_index`.
     fn remove_edge_inner(
         &mut self,
-        vector_clock_id: VectorClockId,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-        increment_vector_clocks: bool,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let source_node_index = self.get_latest_node_idx(source_node_index)?;
         let target_node_index = self.get_latest_node_idx(target_node_index)?;
@@ -1392,11 +1363,7 @@ impl WorkspaceSnapshotGraphV1 {
 
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
-                if new_container_ordering_node_weight.remove_from_order(
-                    vector_clock_id,
-                    element_id,
-                    increment_vector_clocks,
-                ) {
+                if new_container_ordering_node_weight.remove_from_order(element_id) {
                     self.remove_edge_of_kind(
                         previous_container_ordering_node_index,
                         target_node_index,
@@ -1677,11 +1644,7 @@ impl WorkspaceSnapshotGraphV1 {
 
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
     /// and a provided graph as the "onto" graph.
-    pub fn perform_updates(
-        &mut self,
-        to_rebase_vector_clock_id: VectorClockId,
-        updates: &[Update],
-    ) -> WorkspaceSnapshotGraphResult<()> {
+    pub fn perform_updates(&mut self, updates: &[Update]) -> WorkspaceSnapshotGraphResult<()> {
         for update in updates {
             match update {
                 Update::NewEdge {
@@ -1707,16 +1670,7 @@ impl WorkspaceSnapshotGraphV1 {
 
                     if let (Some(updated_source), Some(destination)) = (updated_source, destination)
                     {
-                        self.remove_edge_inner(
-                            to_rebase_vector_clock_id,
-                            updated_source,
-                            destination,
-                            *edge_kind,
-                            // Updating the vector clocks here may cause us to pick
-                            // the to_rebase node incorrectly in ReplaceNode, if
-                            // ReplaceNode comes after this RemoveEdge
-                            false,
-                        )?;
+                        self.remove_edge_inner(updated_source, destination, *edge_kind)?;
                     }
                 }
                 Update::NewNode { node_weight } => {

@@ -183,7 +183,7 @@ impl Workspace {
             // 'reset' the workspace snapshot' so that we remigrate all builtins on each startup
             let vector_clock = ctx.vector_clock_id()?;
             let new_snapshot = WorkspaceSnapshot::initial(ctx, vector_clock).await?;
-            let new_snap_address = new_snapshot.write(ctx, vector_clock).await?;
+            let new_snap_address = new_snapshot.write(ctx).await?;
             let new_change_set =
                 ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None, new_snap_address).await?;
             found_builtin
@@ -549,9 +549,7 @@ impl Workspace {
                         )?)
                     };
 
-                // XXX: fake vector clock here. Figure out the right one
-                let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-                let new_snap_address = imported_snapshot.write(ctx, vector_clock_id).await?;
+                let new_snap_address = imported_snapshot.write(ctx).await?;
 
                 let new_change_set = ChangeSet::new(
                     ctx,
