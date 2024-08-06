@@ -1,6 +1,6 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,
@@ -116,7 +116,7 @@ export const useFuncStore = () => {
     "change-sets",
     { selectedChangeSetId },
     "funcs",
-  ];
+  ] as URLPattern;
 
   return addStoreHooks(
     workspaceId,
@@ -154,7 +154,7 @@ export const useFuncStore = () => {
       actions: {
         async FETCH_FUNC_LIST() {
           return new ApiRequest<FuncSummary[], Visibility>({
-            url: `${API_PREFIX}`,
+            url: API_PREFIX,
             onSuccess: (response) => {
               response.forEach((func) => {
                 const bindings = processBindings(func);
@@ -174,7 +174,7 @@ export const useFuncStore = () => {
         },
         async FETCH_CODE(funcId: FuncId) {
           return new ApiRequest<FuncCode[]>({
-            url: `${API_PREFIX}/code`,
+            url: API_PREFIX.concat(["code"]),
             params: {
               id: funcId,
             },
@@ -200,7 +200,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
-            url: `${API_PREFIX}`,
+            url: API_PREFIX,
             params: { ...createFuncRequest },
             onSuccess: (response) => {
               // summary coming through the WsEvent
@@ -218,7 +218,7 @@ export const useFuncStore = () => {
         ) {
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}`,
+            url: API_PREFIX.concat([{ funcId }]),
             params: {
               schemaVariantId,
             },
@@ -241,7 +241,7 @@ export const useFuncStore = () => {
         async DELETE_UNLOCKED_FUNC(funcId: FuncId) {
           return new ApiRequest<DeleteFuncResponse>({
             method: "delete",
-            url: `${API_PREFIX}/${funcId}`,
+            url: API_PREFIX.concat([{ funcId }]),
           });
         },
         async UPDATE_FUNC(func: FuncSummary) {
@@ -253,7 +253,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest({
             method: "put",
-            url: `${API_PREFIX}/${func.funcId}`,
+            url: API_PREFIX.concat([{ funcId: func.funcId }]),
             params: {
               displayName: func.displayName,
               description: func.description,
@@ -285,7 +285,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<{ bindings: FuncBinding[] }>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/bindings`,
+            url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
               bindings,
             },
@@ -302,7 +302,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "put",
-            url: `${API_PREFIX}/${funcId}/bindings`,
+            url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
               funcId,
               bindings,
@@ -321,7 +321,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/reset_attribute_binding`,
+            url: API_PREFIX.concat([{ funcId }, "reset_attribute_binding"]),
             params: {
               bindings,
             },
@@ -339,7 +339,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "delete",
-            url: `${API_PREFIX}/${funcId}/bindings`,
+            url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
               bindings,
             },
@@ -356,7 +356,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/arguments`,
+            url: API_PREFIX.concat([{ funcId }, "arguments"]),
             params: {
               ...funcArg,
             },
@@ -373,7 +373,11 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "put",
-            url: `${API_PREFIX}/${funcId}/arguments/${funcArg.id}`,
+            url: API_PREFIX.concat([
+              { funcId },
+              "arguments",
+              { funcArgumentId: funcArg.id },
+            ]),
             params: {
               ...funcArg,
             },
@@ -393,7 +397,11 @@ export const useFuncStore = () => {
 
           return new ApiRequest<null>({
             method: "delete",
-            url: `${API_PREFIX}/${funcId}/arguments/${funcArgumentId}`,
+            url: API_PREFIX.concat([
+              { funcId },
+              "arguments",
+              { funcArgumentId },
+            ]),
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
@@ -416,7 +424,7 @@ export const useFuncStore = () => {
 
           return new ApiRequest({
             method: "post",
-            url: `${API_PREFIX}/${funcId}/execute`,
+            url: API_PREFIX.concat([{ funcId }, "execute"]),
             keyRequestStatusBy: funcId,
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
@@ -453,7 +461,10 @@ export const useFuncStore = () => {
             funcRunId: FuncRunId;
           }>({
             method: "post",
-            url: `${API_PREFIX}/${executeRequest.funcId}/test_execute`,
+            url: API_PREFIX.concat([
+              { funcId: executeRequest.funcId },
+              "test_execute",
+            ]),
             params: { ...executeRequest },
           });
         },
@@ -494,7 +505,7 @@ export const useFuncStore = () => {
         async SAVE_FUNC(func: FuncCode) {
           return new ApiRequest<FuncCode>({
             method: "put",
-            url: `${API_PREFIX}/${func.funcId}/code`,
+            url: API_PREFIX.concat([{ funcId: func.funcId }, "code"]),
             params: { code: func.code },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
