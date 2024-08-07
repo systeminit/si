@@ -312,13 +312,15 @@ impl Workspace {
             .feature_is_enabled(&FeatureFlag::ActionsV2);
 
         let name = name.as_ref();
+        let version_string = WorkspaceSnapshotGraphDiscriminants::V2.to_string();
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2) VALUES ($1, $2, $3, $4) RETURNING *",
-                &[&pk, &name, &change_set_id, &uses_actions_v2],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string],
             )
             .await?;
         let new_workspace = Self::try_from(row)?;
