@@ -216,13 +216,14 @@ impl Workspace {
             .feature_flags_service()
             .feature_is_enabled(&FeatureFlag::ActionsV2);
 
+        let version_string = WorkspaceSnapshotGraphDiscriminants::V2.to_string();
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, token) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id, &uses_actions_v2, &DEFAULT_BUILTIN_WORKSPACE_TOKEN],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, token, snapshot_version) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id, &uses_actions_v2, &DEFAULT_BUILTIN_WORKSPACE_TOKEN, &version_string],
             )
             .await?;
 
