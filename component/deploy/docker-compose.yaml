@@ -38,7 +38,7 @@ services:
       - --path.rootfs=/rootfs
       - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
     ports:
-      - 9100:9100
+      - 9000:9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -75,7 +75,7 @@ services:
     image: prom/prometheus
     profiles: [rebaser, pinga, sdf, veritech]
     ports:
-      - "9000:9090"
+      - "9100:9090"
     volumes:
       - "config:/etc/prometheus/"
     depends_on:

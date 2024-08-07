@@ -14,6 +14,8 @@ exporters:
     endpoint: "api.honeycomb.io:443"
     headers:
       "x-honeycomb-team": "$SI_HONEYCOMB_API_KEY"
+  prometheus:
+    endpoint: 0.0.0.0:9090
 
 extensions:
   zpages:
@@ -27,5 +29,5 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [prometheus]
   extensions: [zpages]
