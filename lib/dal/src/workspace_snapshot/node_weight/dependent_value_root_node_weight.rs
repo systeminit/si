@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
-use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClock};
-use crate::EdgeWeightKindDiscriminants;
-
-use super::deprecated::DeprecatedDependentValueRootNodeWeight;
-use super::NodeWeightResult;
+use crate::{
+    workspace_snapshot::graph::deprecated::v1::DeprecatedDependentValueRootNodeWeightV1,
+    EdgeWeightKindDiscriminants,
+};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DependentValueRootNodeWeight {
@@ -14,9 +12,6 @@ pub struct DependentValueRootNodeWeight {
     pub lineage_id: Ulid,
     value_id: Ulid,
     merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
 }
 
 impl DependentValueRootNodeWeight {
@@ -40,34 +35,17 @@ impl DependentValueRootNodeWeight {
         self.lineage_id
     }
 
-    pub fn merge_clocks(&mut self, vector_clock_id: VectorClockId, other: &Self) {
-        self.vector_clock_write
-            .merge(vector_clock_id, other.vector_clock_write());
-        self.vector_clock_first_seen
-            .merge(vector_clock_id, other.vector_clock_first_seen());
-        self.vector_clock_recently_seen
-            .merge(vector_clock_id, other.vector_clock_recently_seen());
-    }
-
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         self.merkle_tree_hash
     }
 
-    pub fn new(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        value_id: Ulid,
-    ) -> NodeWeightResult<Self> {
-        Ok(Self {
+    pub fn new(id: Ulid, lineage_id: Ulid, value_id: Ulid) -> Self {
+        Self {
             id,
             lineage_id,
             value_id,
-            vector_clock_write: VectorClock::new(vector_clock_id),
-            vector_clock_first_seen: VectorClock::new(vector_clock_id),
             merkle_tree_hash: Default::default(),
-            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
-        })
+        }
     }
 
     pub fn node_hash(&self) -> ContentHash {
@@ -85,32 +63,6 @@ impl DependentValueRootNodeWeight {
     }
 }
 
-impl HasVectorClocks for DependentValueRootNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
 impl std::fmt::Debug for DependentValueRootNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("DependentValueNodeWeight")
@@ -118,26 +70,17 @@ impl std::fmt::Debug for DependentValueRootNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("value_id", &self.value_id.to_string())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
-            .field(
-                "vector_clock_recently_seen",
-                &self.vector_clock_recently_seen,
-            )
-            .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
 }
 
-impl From<DeprecatedDependentValueRootNodeWeight> for DependentValueRootNodeWeight {
-    fn from(value: DeprecatedDependentValueRootNodeWeight) -> Self {
+impl From<DeprecatedDependentValueRootNodeWeightV1> for DependentValueRootNodeWeight {
+    fn from(value: DeprecatedDependentValueRootNodeWeightV1) -> Self {
         Self {
             id: value.id,
             lineage_id: value.lineage_id,
             value_id: value.value_id,
             merkle_tree_hash: value.merkle_tree_hash,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
         }
     }
 }

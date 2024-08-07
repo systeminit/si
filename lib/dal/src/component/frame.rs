@@ -7,9 +7,7 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValueError;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, WsEvent,
@@ -27,8 +25,6 @@ pub enum FrameError {
     AttributeValueError(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("input socket error: {0}")]
     InputSocketError(#[from] InputSocketError),
     #[error("parent is not a frame (child id: {0}) (parent id: {1})")]

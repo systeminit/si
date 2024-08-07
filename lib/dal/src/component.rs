@@ -37,13 +37,10 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
@@ -105,8 +102,6 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
@@ -442,8 +437,7 @@ impl Component {
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
 
-        let node_weight =
-            NodeWeight::new_component(ctx.vector_clock_id()?, id, lineage_id, content_address)?;
+        let node_weight = NodeWeight::new_component(id, lineage_id, content_address);
 
         // Attach component to category and add use edge to schema variant
         workspace_snapshot.add_node(node_weight).await?;
@@ -1558,7 +1552,7 @@ impl Component {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, id.into(), hash)
+                .update_content(id.into(), hash)
                 .await?;
         }
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
@@ -1966,7 +1960,6 @@ impl Component {
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.vector_clock_id()?,
                 parent_id,
                 child_id,
                 EdgeWeightKindDiscriminants::FrameContains,
@@ -2497,8 +2490,7 @@ impl Component {
                 .get_node_weight(component_idx)
                 .await?
                 .get_component_node_weight()?;
-            let mut new_component_node_weight =
-                component_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
+            let mut new_component_node_weight = component_node_weight.clone();
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
                 .add_node(NodeWeight::Component(new_component_node_weight))
@@ -2521,7 +2513,7 @@ impl Component {
                 )
                 .await?;
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, component.id.into(), hash)
+                .update_content(component.id.into(), hash)
                 .await?;
         }
 
@@ -2536,8 +2528,6 @@ impl Component {
 
     #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
-        let vector_clock_id = ctx.vector_clock_id()?;
-
         let component = Self::get_by_id(ctx, id).await?;
 
         if component.parent(ctx).await?.is_some() {
@@ -2580,9 +2570,7 @@ impl Component {
             .publish_on_commit(ctx)
             .await?;
 
-        ctx.workspace_snapshot()?
-            .remove_node_by_id(vector_clock_id, id)
-            .await?;
+        ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         WsEvent::component_deleted(ctx, id)
             .await?
@@ -3876,11 +3864,7 @@ impl Component {
         let base_change_set_ctx = ctx.clone_with_base().await?;
 
         ctx.workspace_snapshot()?
-            .import_component_subgraph(
-                ctx.vector_clock_id()?,
-                &*base_change_set_ctx.workspace_snapshot()?,
-                component_id,
-            )
+            .import_component_subgraph(&*base_change_set_ctx.workspace_snapshot()?, component_id)
             .await?;
 
         let component = Component::get_by_id(ctx, component_id).await?;

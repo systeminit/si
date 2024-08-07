@@ -1,20 +1,19 @@
 use std::collections::HashMap;
 
-use si_events::{ulid::Ulid, ContentHash, VectorClockId};
+use si_events::{ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::node_weight::NodeWeight, EdgeWeight, EdgeWeightKind, PropKind,
-    WorkspaceSnapshotGraphV1,
+    WorkspaceSnapshotGraphV2,
 };
 
 mod attribute_value_build_view;
-mod detect_conflicts_and_updates;
+mod detect_updates;
 mod rebase;
 
 #[allow(dead_code)]
 fn add_prop_nodes_to_graph<'a, 'b>(
-    graph: &'a mut WorkspaceSnapshotGraphV1,
-    vector_clock_id: VectorClockId,
+    graph: &'a mut WorkspaceSnapshotGraphV2,
     nodes: &'a [&'b str],
     ordered: bool,
 ) -> HashMap<&'b str, Ulid> {
@@ -25,17 +24,15 @@ fn add_prop_nodes_to_graph<'a, 'b>(
         let node_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let node_lineage_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_node_weight = NodeWeight::new_prop(
-            vector_clock_id,
             node_id,
             node_lineage_id,
             PropKind::Object,
             node,
             ContentHash::new(node.as_bytes()),
-        )
-        .expect("create prop node weight");
+        );
         if ordered {
             graph
-                .add_ordered_node(vector_clock_id, prop_node_weight)
+                .add_ordered_node(prop_node_weight)
                 .expect("Unable to add prop");
         } else {
             graph
@@ -50,9 +47,8 @@ fn add_prop_nodes_to_graph<'a, 'b>(
 
 #[allow(dead_code)]
 fn add_edges(
-    graph: &mut WorkspaceSnapshotGraphV1,
+    graph: &mut WorkspaceSnapshotGraphV2,
     node_id_map: &HashMap<&str, Ulid>,
-    vector_clock_id: VectorClockId,
     edges: &[(Option<&str>, &str)],
 ) {
     for (source, target) in edges {
@@ -78,12 +74,7 @@ fn add_edges(
             .expect("get node index by id");
 
         graph
-            .add_edge(
-                source,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("create edge weight"),
-                target,
-            )
+            .add_edge(source, EdgeWeight::new(EdgeWeightKind::new_use()), target)
             .expect("add edge");
     }
 }
@@ -97,7 +88,7 @@ mod test {
     use pretty_assertions_sorted::assert_eq;
     use si_events::merkle_tree_hash::MerkleTreeHash;
     use si_events::ulid::Ulid;
-    use si_events::{ContentHash, VectorClockId};
+    use si_events::ContentHash;
     use std::collections::HashSet;
     use std::str::FromStr;
 
@@ -107,7 +98,7 @@ mod test {
     };
     use crate::workspace_snapshot::graph::detect_updates::Update;
     use crate::workspace_snapshot::node_weight::NodeWeight;
-    use crate::WorkspaceSnapshotGraphV1;
+    use crate::WorkspaceSnapshotGraphV2;
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
 
     use super::add_edges;
@@ -115,9 +106,8 @@ mod test {
 
     #[test]
     fn new() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
     }
 
@@ -126,9 +116,8 @@ mod test {
     // on a fresh graph (like add_ordered_node)
     #[test]
     fn get_root_index_by_root_id_on_fresh_graph() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let root_id = graph
             .get_node_weight(graph.root_index)
@@ -186,13 +175,11 @@ mod test {
             (Some("a"), "b"),
         ];
 
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
-
-        let node_id_map = add_prop_nodes_to_graph(&mut graph, vector_clock_id, &nodes, false);
-        add_edges(&mut graph, &node_id_map, vector_clock_id, &edges);
+        let node_id_map = add_prop_nodes_to_graph(&mut graph, &nodes, false);
+        add_edges(&mut graph, &node_id_map, &edges);
 
         graph.cleanup();
 
@@ -244,67 +231,51 @@ mod test {
 
     #[test]
     fn add_nodes_and_edges() {
-        let actor_a = Ulid::new();
-        let vector_clock_id = VectorClockId::new(Ulid::new(), actor_a);
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    component_id,
-                    Ulid::new(),
-                    ContentAddress::Component(ContentHash::new(
-                        ComponentId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                component_id,
+                Ulid::new(),
+                ContentAddress::Component(ContentHash::new(
+                    ComponentId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add component");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 component_index,
             )
             .expect("Unable to add root -> component edge");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -313,8 +284,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -323,8 +293,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
@@ -333,38 +302,25 @@ mod test {
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    func_id,
-                    Ulid::new(),
-                    ContentAddress::Func(ContentHash::new(
-                        FuncId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                func_id,
+                Ulid::new(),
+                ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add func");
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    prop_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                prop_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add prop");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 func_index,
             )
             .expect("Unable to add root -> func edge");
@@ -373,8 +329,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 prop_index,
             )
             .expect("Unable to add schema variant -> prop edge");
@@ -383,8 +338,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(func_id)
                     .expect("Unable to get NodeIndex"),
@@ -396,66 +350,51 @@ mod test {
 
     #[test]
     fn cyclic_failure() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_schema_node_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_schema_variant_node_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_component_node_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    component_id,
-                    Ulid::new(),
-                    ContentAddress::Component(ContentHash::new(
-                        ComponentId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                component_id,
+                Ulid::new(),
+                ContentAddress::Component(ContentHash::new(
+                    ComponentId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add component");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 initial_component_node_index,
             )
             .expect("Unable to add root -> component edge");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 initial_schema_node_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -464,8 +403,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 initial_schema_variant_node_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -474,8 +412,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to find NodeIndex"),
@@ -490,8 +427,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to find NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to find NodeIndex"),
@@ -503,62 +439,45 @@ mod test {
 
     #[test]
     fn update_content() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::from("Constellation")),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::from("Constellation")),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        "Freestar Collective".as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new("Freestar Collective".as_bytes())),
+            ))
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    component_id,
-                    Ulid::new(),
-                    ContentAddress::Component(ContentHash::from("Crimson Fleet")),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                component_id,
+                Ulid::new(),
+                ContentAddress::Component(ContentHash::from("Crimson Fleet")),
+            ))
             .expect("Unable to add component");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 component_index,
             )
             .expect("Unable to add root -> component edge");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -567,8 +486,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -577,8 +495,7 @@ mod test {
                 graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
@@ -599,7 +516,7 @@ mod test {
 
         let updated_content_hash = ContentHash::from("new_content");
         graph
-            .update_content(vector_clock_id, component_id, updated_content_hash)
+            .update_content(component_id, updated_content_hash)
             .expect("Unable to update Component content hash");
 
         let post_update_root_node_merkle_tree_hash: MerkleTreeHash =
@@ -652,44 +569,34 @@ mod test {
 
     #[test]
     fn add_ordered_node() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -698,57 +605,41 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    func_id,
-                    Ulid::new(),
-                    ContentAddress::Func(ContentHash::new(
-                        FuncId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                func_id,
+                Ulid::new(),
+                ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add func");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 func_index,
             )
             .expect("Unable to add root -> func edge");
 
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
-            .add_ordered_node(
-                vector_clock_id,
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    prop_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_ordered_node(NodeWeight::new_content(
+                prop_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add prop");
         graph
             .add_edge(
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 prop_index,
             )
             .expect("Unable to add schema variant -> prop edge");
@@ -757,8 +648,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(func_id)
                     .expect("Unable to get NodeIndex"),
@@ -769,78 +659,54 @@ mod test {
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_1_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_1_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_1_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_1_index,
             )
             .expect("Unable to add prop -> ordered_prop_1 edge");
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_2_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_2_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_2_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_2_index,
             )
             .expect("Unable to add prop -> ordered_prop_2 edge");
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_3_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_3_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_3_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_3_index,
             )
             .expect("Unable to add prop -> ordered_prop_3 edge");
@@ -866,30 +732,22 @@ mod test {
 
     #[test]
     fn add_ordered_node_below_root() {
-        let active_vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-
-        let mut graph = WorkspaceSnapshotGraphV1::new(active_vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
-            .add_ordered_node(
-                active_vector_clock_id,
-                NodeWeight::new_content(
-                    active_vector_clock_id,
-                    prop_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(prop_id.to_string().as_bytes())),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_ordered_node(NodeWeight::new_content(
+                prop_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(prop_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add prop");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(active_vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 prop_index,
             )
             .expect("Unable to add root -> prop edge");
@@ -910,45 +768,34 @@ mod test {
 
     #[test]
     fn reorder_ordered_node() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -957,57 +804,41 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    func_id,
-                    Ulid::new(),
-                    ContentAddress::Func(ContentHash::new(
-                        FuncId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                func_id,
+                Ulid::new(),
+                ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add func");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 func_index,
             )
             .expect("Unable to add root -> func edge");
 
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
-            .add_ordered_node(
-                vector_clock_id,
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    prop_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_ordered_node(NodeWeight::new_content(
+                prop_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add prop");
         graph
             .add_edge(
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 prop_index,
             )
             .expect("Unable to add schema variant -> prop edge");
@@ -1016,8 +847,7 @@ mod test {
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(func_id)
                     .expect("Unable to get NodeIndex"),
@@ -1028,104 +858,72 @@ mod test {
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_1_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_1_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_1_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_1_index,
             )
             .expect("Unable to add prop -> ordered_prop_1 edge");
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_2_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_2_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_2_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_2_index,
             )
             .expect("Unable to add prop -> ordered_prop_2 edge");
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_3_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_3_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_3_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_3_index,
             )
             .expect("Unable to add prop -> ordered_prop_3 edge");
 
         let ordered_prop_4_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_4_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_4_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_4_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_4_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_4_index,
             )
             .expect("Unable to add prop -> ordered_prop_4 edge");
@@ -1158,7 +956,7 @@ mod test {
         ];
 
         graph
-            .update_order(vector_clock_id, prop_id, new_order)
+            .update_order(prop_id, new_order)
             .expect("Unable to update order of prop's children");
 
         assert_eq!(
@@ -1181,45 +979,34 @@ mod test {
 
     #[test]
     fn remove_unordered_node_and_detect_edge_removal() {
-        let initial_vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-
-        let mut graph = WorkspaceSnapshotGraphV1::new(initial_vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    initial_vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    initial_vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(initial_vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -1228,25 +1015,20 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(initial_vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
 
         let schema_variant_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_2_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    initial_vector_clock_id,
-                    schema_variant_2_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_2_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
@@ -1254,8 +1036,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(initial_vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_2_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -1277,12 +1058,7 @@ mod test {
             "confirm edges are there before deleting"
         );
 
-        graph
-            .mark_graph_seen(initial_vector_clock_id)
-            .expect("Unable to mark initial graph as seen");
-
         let mut graph_with_deleted_edge = graph.clone();
-        let new_vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
 
         graph_with_deleted_edge.dot();
 
@@ -1314,10 +1090,6 @@ mod test {
             "confirm edges after deletion"
         );
 
-        graph_with_deleted_edge
-            .mark_graph_seen(new_vector_clock_id)
-            .expect("Unable to mark new graph as seen");
-
         let updates = graph.detect_updates(&graph_with_deleted_edge);
 
         assert_eq!(1, updates.len());
@@ -1330,44 +1102,34 @@ mod test {
 
     #[test]
     fn remove_unordered_node() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    Ulid::new(),
-                    schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                Ulid::new(),
+                schema_variant_id,
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -1376,25 +1138,20 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
 
         let schema_variant_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_2_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_2_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_2_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
@@ -1402,8 +1159,7 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_2_index,
             )
             .expect("Unable to add schema -> schema variant edge");
@@ -1454,44 +1210,34 @@ mod test {
 
     #[test]
     fn remove_ordered_node() {
-        let vector_clock_id = VectorClockId::new(Ulid::new(), Ulid::new());
-        let mut graph = WorkspaceSnapshotGraphV1::new(vector_clock_id)
-            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut graph =
+            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_id,
-                    Ulid::new(),
-                    ContentAddress::Schema(ContentHash::new(
-                        SchemaId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_id,
+                Ulid::new(),
+                ContentAddress::Schema(ContentHash::new(
+                    SchemaId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    schema_variant_id,
-                    Ulid::new(),
-                    ContentAddress::SchemaVariant(ContentHash::new(
-                        SchemaVariantId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                schema_variant_id,
+                Ulid::new(),
+                ContentAddress::SchemaVariant(ContentHash::new(
+                    SchemaVariantId::generate().to_string().as_bytes(),
+                )),
+            ))
             .expect("Unable to add schema variant");
 
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
             .expect("Unable to add root -> schema edge");
@@ -1500,57 +1246,41 @@ mod test {
                 graph
                     .get_node_index_by_id(schema_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_variant_index,
             )
             .expect("Unable to add schema -> schema variant edge");
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    func_id,
-                    Ulid::new(),
-                    ContentAddress::Func(ContentHash::new(
-                        FuncId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                func_id,
+                Ulid::new(),
+                ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add func");
         graph
             .add_edge(
                 graph.root_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 func_index,
             )
             .expect("Unable to add root -> func edge");
 
         let root_prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let root_prop_index = graph
-            .add_ordered_node(
-                vector_clock_id,
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    root_prop_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_ordered_node(NodeWeight::new_content(
+                root_prop_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+            ))
             .expect("Unable to add prop");
         graph
             .add_edge(
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 root_prop_index,
             )
             .expect("Unable to add schema variant -> prop edge");
@@ -1559,8 +1289,7 @@ mod test {
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create EdgeWeight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 graph
                     .get_node_index_by_id(func_id)
                     .expect("Unable to get NodeIndex"),
@@ -1571,104 +1300,72 @@ mod test {
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_1_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_1_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_1_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_1_index,
             )
             .expect("Unable to add prop -> ordered_prop_1 edge");
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_2_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_2_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_2_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_2_index,
             )
             .expect("Unable to add prop -> ordered_prop_2 edge");
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_3_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_3_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_3_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_3_index,
             )
             .expect("Unable to add prop -> ordered_prop_3 edge");
 
         let ordered_prop_4_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_4_index = graph
-            .add_node(
-                NodeWeight::new_content(
-                    vector_clock_id,
-                    ordered_prop_4_id,
-                    Ulid::new(),
-                    ContentAddress::Prop(ContentHash::new(
-                        ordered_prop_4_id.to_string().as_bytes(),
-                    )),
-                )
-                .expect("Unable to create NodeWeight"),
-            )
+            .add_node(NodeWeight::new_content(
+                ordered_prop_4_id,
+                Ulid::new(),
+                ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
+            ))
             .expect("Unable to add ordered prop");
         graph
             .add_ordered_edge(
-                vector_clock_id,
                 graph
                     .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())
-                    .expect("Unable to create uses edge weight"),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 ordered_prop_4_index,
             )
             .expect("Unable to add prop -> ordered_prop_4 edge");

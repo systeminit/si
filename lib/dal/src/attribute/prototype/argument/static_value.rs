@@ -58,12 +58,8 @@ impl StaticArgumentValue {
 
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            ContentAddress::StaticArgumentValue(hash),
-        )?;
+        let node_weight =
+            NodeWeight::new_content(id, lineage_id, ContentAddress::StaticArgumentValue(hash));
 
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 

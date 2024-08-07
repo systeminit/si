@@ -21,7 +21,7 @@ use crate::func::FuncError;
 use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -46,8 +46,6 @@ pub enum PropError {
     ChangeSet(#[from] ChangeSetError),
     #[error("child prop of {0:?} not found by name: {1}")]
     ChildPropNotFoundByName(NodeIndex, String),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("prop {0} of kind {1} does not have an element prop")]
     ElementPropNotOnKind(PropId, PropKind),
     #[error("func error: {0}")]
@@ -544,17 +542,14 @@ impl Prop {
             )
             .await?;
 
-        let vector_clock_id = ctx.vector_clock_id()?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_prop(vector_clock_id, id, lineage_id, kind, name, hash)?;
+        let node_weight = NodeWeight::new_prop(id, lineage_id, kind, name, hash);
         let prop_node_weight = node_weight.get_prop_node_weight()?;
 
         if ordered {
-            workspace_snapshot
-                .add_ordered_node(vector_clock_id, node_weight)
-                .await?;
+            workspace_snapshot.add_ordered_node(node_weight).await?;
         } else {
             workspace_snapshot.add_node(node_weight).await?;
         }
@@ -1084,7 +1079,7 @@ impl Prop {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, prop.id.into(), hash)
+                .update_content(prop.id.into(), hash)
                 .await?;
         }
         Ok(prop)

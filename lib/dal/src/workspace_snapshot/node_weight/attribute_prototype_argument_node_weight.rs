@@ -1,16 +1,12 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
-    workspace_snapshot::{
-        graph::LineageId,
-        node_weight::NodeWeightResult,
-        vector_clock::{HasVectorClocks, VectorClock},
+    workspace_snapshot::graph::{
+        deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1, LineageId,
     },
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
-
-use super::deprecated::DeprecatedAttributePrototypeArgumentNodeWeight;
 
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
@@ -25,30 +21,19 @@ pub struct AttributePrototypeArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
     targets: Option<ArgumentTargets>,
     timestamp: Timestamp,
 }
 
 impl AttributePrototypeArgumentNodeWeight {
-    pub fn new(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        targets: Option<ArgumentTargets>,
-    ) -> NodeWeightResult<Self> {
-        Ok(Self {
+    pub fn new(id: Ulid, lineage_id: Ulid, targets: Option<ArgumentTargets>) -> Self {
+        Self {
             id,
             lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
             targets,
-            vector_clock_first_seen: VectorClock::new(vector_clock_id),
-            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
-            vector_clock_write: VectorClock::new(vector_clock_id),
             timestamp: Timestamp::now(),
-        })
+        }
     }
 
     pub fn timestamp(&self) -> &Timestamp {
@@ -105,32 +90,6 @@ impl AttributePrototypeArgumentNodeWeight {
     }
 }
 
-impl HasVectorClocks for AttributePrototypeArgumentNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
 impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("AttributePrototypeArgumentNodeWeight")
@@ -139,25 +98,18 @@ impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
             .field("targets", &self.targets)
             .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
-            .field(
-                "vector_clock_recently_seen",
-                &self.vector_clock_recently_seen,
-            )
-            .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
 }
 
-impl From<DeprecatedAttributePrototypeArgumentNodeWeight> for AttributePrototypeArgumentNodeWeight {
-    fn from(value: DeprecatedAttributePrototypeArgumentNodeWeight) -> Self {
+impl From<DeprecatedAttributePrototypeArgumentNodeWeightV1>
+    for AttributePrototypeArgumentNodeWeight
+{
+    fn from(value: DeprecatedAttributePrototypeArgumentNodeWeightV1) -> Self {
         Self {
             id: value.id,
             lineage_id: value.lineage_id,
             merkle_tree_hash: value.merkle_tree_hash,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
             targets: value.targets,
             timestamp: value.timestamp,
         }

@@ -1,22 +1,14 @@
-use std::collections::HashSet;
 use std::num::TryFromIntError;
 
-use chrono::{DateTime, Utc};
-use deprecated::DeprecatedNodeWeight;
 use serde::{Deserialize, Serialize};
-use si_events::VectorClockChangeSetId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::EdgeWeightKindDiscriminants;
 use crate::{
     action::prototype::ActionKind,
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        vector_clock::{HasVectorClocks, VectorClock, VectorClockError},
-    },
+    workspace_snapshot::{content_address::ContentAddress, vector_clock::VectorClockError},
     ChangeSetId, PropKind,
 };
 
@@ -38,6 +30,7 @@ pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 
 use super::content_address::ContentAddressDiscriminants;
+use super::graph::deprecated::v1::DeprecatedNodeWeightV1;
 
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;
@@ -252,27 +245,6 @@ impl NodeWeight {
         }
     }
 
-    pub fn merge_clocks(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        other: &NodeWeight,
-    ) -> NodeWeightResult<()> {
-        let self_discrim: NodeWeightDiscriminants = (&*self).into();
-        let other_discrim: NodeWeightDiscriminants = other.into();
-        if self_discrim != other_discrim {
-            return Err(NodeWeightError::IncompatibleNodeWeightVariants);
-        }
-
-        self.vector_clock_write_mut()
-            .merge(vector_clock_id, other.vector_clock_write());
-        self.vector_clock_first_seen_mut()
-            .merge(vector_clock_id, other.vector_clock_first_seen());
-        self.vector_clock_recently_seen_mut()
-            .merge(vector_clock_id, other.vector_clock_recently_seen());
-
-        Ok(())
-    }
-
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
         match self {
             NodeWeight::Action(weight) => weight.merkle_tree_hash(),
@@ -348,14 +320,10 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_order(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        order: Vec<Ulid>,
-    ) -> NodeWeightResult<()> {
+    pub fn set_order(&mut self, order: Vec<Ulid>) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Ordering(ordering_weight) => {
-                ordering_weight.set_order(vector_clock_id, order);
+                ordering_weight.set_order(order);
                 Ok(())
             }
             NodeWeight::Action(_)
@@ -371,30 +339,6 @@ impl NodeWeight {
             | NodeWeight::Prop(_)
             | NodeWeight::Secret(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
-    }
-
-    pub fn set_vector_clock_recently_seen_to(
-        &mut self,
-        vector_clock_id: VectorClockId,
-        new_clock_value: DateTime<Utc>,
-    ) {
-        self.vector_clock_recently_seen_mut()
-            .inc_to(vector_clock_id, new_clock_value);
-    }
-
-    pub fn collapse_vector_clock_entries(
-        &mut self,
-        allow_list: &HashSet<VectorClockChangeSetId>,
-        collapse_id: VectorClockId,
-    ) {
-        self.vector_clock_first_seen_mut()
-            .collapse_entries(allow_list, collapse_id);
-
-        self.vector_clock_recently_seen_mut()
-            .collapse_entries(allow_list, collapse_id);
-
-        self.vector_clock_write_mut()
-            .collapse_entries(allow_list, collapse_id);
     }
 
     /// Many node kinds need to have complete control of their outgoing edges
@@ -584,308 +528,155 @@ impl NodeWeight {
         }
     }
 
-    pub fn new_content(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        kind: ContentAddress,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Content(ContentNodeWeight::new(
-            vector_clock_id,
-            id,
-            lineage_id,
-            kind,
-        )?))
+    pub fn new_content(id: Ulid, lineage_id: Ulid, kind: ContentAddress) -> Self {
+        NodeWeight::Content(ContentNodeWeight::new(id, lineage_id, kind))
     }
 
     pub fn new_action(
-        vector_clock_id: VectorClockId,
         originating_change_set_id: ChangeSetId,
         action_id: Ulid,
         lineage_id: Ulid,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Action(ActionNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::Action(ActionNodeWeight::new(
             originating_change_set_id,
             action_id,
             lineage_id,
-        )?))
+        ))
     }
 
     pub fn new_action_prototype(
-        vector_clock_id: VectorClockId,
         action_prototype_id: Ulid,
         lineage_id: Ulid,
         kind: ActionKind,
         name: String,
         description: Option<String>,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::ActionPrototype(ActionPrototypeNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::ActionPrototype(ActionPrototypeNodeWeight::new(
             action_prototype_id,
             lineage_id,
             kind,
             name,
             description,
-        )?))
+        ))
     }
 
     pub fn new_attribute_value(
-        vector_clock_id: VectorClockId,
         attribute_value_id: Ulid,
         lineage_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
             attribute_value_id,
             lineage_id,
             unprocessed_value,
             value,
-        )?))
-    }
-
-    pub fn new_dependent_value_root(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        value_id: Ulid,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::DependentValueRoot(
-            DependentValueRootNodeWeight::new(vector_clock_id, id, lineage_id, value_id)?,
         ))
     }
 
-    pub fn new_component(
-        vector_clock_id: VectorClockId,
-        component_id: Ulid,
-        lineage_id: Ulid,
-        content_hash: ContentHash,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Component(ComponentNodeWeight::new(
-            vector_clock_id,
+    pub fn new_dependent_value_root(id: Ulid, lineage_id: Ulid, value_id: Ulid) -> Self {
+        NodeWeight::DependentValueRoot(DependentValueRootNodeWeight::new(id, lineage_id, value_id))
+    }
+
+    pub fn new_component(component_id: Ulid, lineage_id: Ulid, content_hash: ContentHash) -> Self {
+        NodeWeight::Component(ComponentNodeWeight::new(
             component_id,
             lineage_id,
             ContentAddress::Component(content_hash),
-        )?))
+        ))
     }
 
     pub fn new_prop(
-        vector_clock_id: VectorClockId,
         prop_id: Ulid,
         lineage_id: Ulid,
         prop_kind: PropKind,
         name: impl AsRef<str>,
         content_hash: ContentHash,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Prop(PropNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::Prop(PropNodeWeight::new(
             prop_id,
             lineage_id,
             ContentAddress::Prop(content_hash),
             prop_kind,
             name.as_ref().to_string(),
-        )?))
+        ))
     }
 
     pub fn new_func(
-        vector_clock_id: VectorClockId,
         func_id: Ulid,
         lineage_id: Ulid,
         name: impl AsRef<str>,
         func_kind: FuncKind,
         content_hash: ContentHash,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Func(FuncNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::Func(FuncNodeWeight::new(
             func_id,
             lineage_id,
             ContentAddress::Func(content_hash),
             name.as_ref().to_string(),
             func_kind,
-        )?))
+        ))
     }
 
     pub fn new_func_argument(
-        vector_clock_id: VectorClockId,
         func_arg_id: Ulid,
         lineage_id: Ulid,
         name: impl AsRef<str>,
         content_hash: ContentHash,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::FuncArgument(FuncArgumentNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::FuncArgument(FuncArgumentNodeWeight::new(
             func_arg_id,
             lineage_id,
             ContentAddress::FuncArg(content_hash),
             name.as_ref().to_string(),
-        )?))
+        ))
     }
 
     pub fn new_attribute_prototype_argument(
-        vector_clock_id: VectorClockId,
         attribute_prototype_argument_id: Ulid,
         lineage_id: Ulid,
         targets: Option<ArgumentTargets>,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::AttributePrototypeArgument(
-            AttributePrototypeArgumentNodeWeight::new(
-                vector_clock_id,
-                attribute_prototype_argument_id,
-                lineage_id,
-                targets,
-            )?,
+    ) -> Self {
+        NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight::new(
+            attribute_prototype_argument_id,
+            lineage_id,
+            targets,
         ))
     }
 
     pub fn new_secret(
-        vector_clock_id: VectorClockId,
         secret_id: Ulid,
         lineage_id: Ulid,
         encrypted_secret_key: EncryptedSecretKey,
         content_hash: ContentHash,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Secret(SecretNodeWeight::new(
-            vector_clock_id,
+    ) -> Self {
+        NodeWeight::Secret(SecretNodeWeight::new(
             secret_id,
             lineage_id,
             ContentAddress::Secret(content_hash),
             encrypted_secret_key,
-        )?))
+        ))
     }
 }
 
-impl HasVectorClocks for NodeWeight {
-    fn vector_clock_write(&self) -> &VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_write(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_write(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_write(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_write(),
-            NodeWeight::Category(weight) => weight.vector_clock_write(),
-            NodeWeight::Component(weight) => weight.vector_clock_write(),
-            NodeWeight::Content(weight) => weight.vector_clock_write(),
-            NodeWeight::Func(weight) => weight.vector_clock_write(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_write(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_write(),
-            NodeWeight::Prop(weight) => weight.vector_clock_write(),
-            NodeWeight::Secret(weight) => weight.vector_clock_write(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_write(),
-        }
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_write_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_write_mut(),
-        }
-    }
-
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Category(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Component(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Content(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Func(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Prop(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::Secret(weight) => weight.vector_clock_first_seen(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_first_seen(),
-        }
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_first_seen_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_first_seen_mut(),
-        }
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Category(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Component(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Content(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Func(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Prop(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::Secret(weight) => weight.vector_clock_recently_seen(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_recently_seen(),
-        }
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        match self {
-            NodeWeight::Action(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::ActionPrototype(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::AttributePrototypeArgument(weight) => {
-                weight.vector_clock_recently_seen_mut()
-            }
-            NodeWeight::AttributeValue(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Category(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Component(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Content(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Func(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::FuncArgument(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Ordering(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Prop(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::Secret(weight) => weight.vector_clock_recently_seen_mut(),
-            NodeWeight::DependentValueRoot(weight) => weight.vector_clock_recently_seen_mut(),
-        }
-    }
-}
-
-impl From<DeprecatedNodeWeight> for NodeWeight {
-    fn from(value: DeprecatedNodeWeight) -> Self {
+impl From<DeprecatedNodeWeightV1> for NodeWeight {
+    fn from(value: DeprecatedNodeWeightV1) -> Self {
         match value {
-            DeprecatedNodeWeight::Action(weight) => Self::Action(weight.into()),
-            DeprecatedNodeWeight::ActionPrototype(weight) => Self::ActionPrototype(weight.into()),
-            DeprecatedNodeWeight::AttributePrototypeArgument(weight) => {
+            DeprecatedNodeWeightV1::Action(weight) => Self::Action(weight.into()),
+            DeprecatedNodeWeightV1::ActionPrototype(weight) => Self::ActionPrototype(weight.into()),
+            DeprecatedNodeWeightV1::AttributePrototypeArgument(weight) => {
                 Self::AttributePrototypeArgument(weight.into())
             }
-            DeprecatedNodeWeight::AttributeValue(weight) => Self::AttributeValue(weight.into()),
-            DeprecatedNodeWeight::Category(weight) => Self::Category(weight.into()),
-            DeprecatedNodeWeight::Component(weight) => Self::Component(weight.into()),
-            DeprecatedNodeWeight::Content(weight) => Self::Content(weight.into()),
-            DeprecatedNodeWeight::Func(weight) => Self::Func(weight.into()),
-            DeprecatedNodeWeight::FuncArgument(weight) => Self::FuncArgument(weight.into()),
-            DeprecatedNodeWeight::Ordering(weight) => Self::Ordering(weight.into()),
-            DeprecatedNodeWeight::Prop(weight) => Self::Prop(weight.into()),
-            DeprecatedNodeWeight::Secret(weight) => Self::Secret(weight.into()),
-            DeprecatedNodeWeight::DependentValueRoot(weight) => {
+            DeprecatedNodeWeightV1::AttributeValue(weight) => Self::AttributeValue(weight.into()),
+            DeprecatedNodeWeightV1::Category(weight) => Self::Category(weight.into()),
+            DeprecatedNodeWeightV1::Component(weight) => Self::Component(weight.into()),
+            DeprecatedNodeWeightV1::Content(weight) => Self::Content(weight.into()),
+            DeprecatedNodeWeightV1::Func(weight) => Self::Func(weight.into()),
+            DeprecatedNodeWeightV1::FuncArgument(weight) => Self::FuncArgument(weight.into()),
+            DeprecatedNodeWeightV1::Ordering(weight) => Self::Ordering(weight.into()),
+            DeprecatedNodeWeightV1::Prop(weight) => Self::Prop(weight.into()),
+            DeprecatedNodeWeightV1::Secret(weight) => Self::Secret(weight.into()),
+            DeprecatedNodeWeightV1::DependentValueRoot(weight) => {
                 Self::DependentValueRoot(weight.into())
             }
         }

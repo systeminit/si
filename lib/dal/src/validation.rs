@@ -14,10 +14,9 @@ use crate::layer_db_types::{ValidationContent, ValidationContentV1};
 use crate::prop::PropError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
@@ -35,8 +34,6 @@ pub enum ValidationError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func run went away before a value could be sent down the channel")]
@@ -159,8 +156,7 @@ impl ValidationOutputNode {
                 .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::ValidationOutput)?;
 
-            let mut new_node_weight =
-                node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
+            let mut new_node_weight = node_weight.clone();
 
             new_node_weight.new_content_hash(hash)?;
 
@@ -173,18 +169,14 @@ impl ValidationOutputNode {
         } else {
             let id = workspace_snapshot.generate_ulid().await?;
             let lineage_id = workspace_snapshot.generate_ulid().await?;
-            let node_weight = NodeWeight::new_content(
-                ctx.vector_clock_id()?,
-                id,
-                lineage_id,
-                ContentAddress::ValidationOutput(hash),
-            )?;
+            let node_weight =
+                NodeWeight::new_content(id, lineage_id, ContentAddress::ValidationOutput(hash));
             workspace_snapshot.add_node(node_weight).await?;
 
             workspace_snapshot
                 .add_edge(
                     attribute_value_id,
-                    EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::ValidationOutput)?,
+                    EdgeWeight::new(EdgeWeightKind::ValidationOutput),
                     id,
                 )
                 .await?;
@@ -238,7 +230,6 @@ impl ValidationOutputNode {
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let vector_clock_id = ctx.vector_clock_id()?;
 
         for validation_idx in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -251,9 +242,7 @@ impl ValidationOutputNode {
                 .get_node_weight(validation_idx)
                 .await?
                 .id();
-            workspace_snapshot
-                .remove_node_by_id(vector_clock_id, validation_id)
-                .await?;
+            workspace_snapshot.remove_node_by_id(validation_id).await?;
         }
 
         Ok(())

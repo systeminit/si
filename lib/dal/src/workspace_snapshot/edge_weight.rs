@@ -1,28 +1,11 @@
 //! Edges
 
-use std::collections::HashSet;
-
-use deprecated::DeprecatedEdgeWeight;
+use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedEdgeWeightV1;
 use serde::{Deserialize, Serialize};
-use si_events::VectorClockChangeSetId;
 use strum::EnumDiscriminants;
-use thiserror::Error;
-
-use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
-
-use super::vector_clock::HasVectorClocks;
 
 pub mod deprecated;
 
-#[derive(Debug, Error)]
-pub enum EdgeWeightError {
-    #[error("Vector Clock error: {0}")]
-    VectorClock(#[from] VectorClockError),
-}
-
-pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
-
-#[remain::sorted]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 #[strum_discriminants(derive(Hash, Serialize, Deserialize))]
 pub enum EdgeWeightKind {
@@ -96,9 +79,6 @@ impl EdgeWeightKind {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct EdgeWeight {
     kind: EdgeWeightKind,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
 }
 
 impl EdgeWeight {
@@ -106,66 +86,13 @@ impl EdgeWeight {
         &self.kind
     }
 
-    /// Remove stale vector clock entries. `allow_list` should always include
-    /// the current editing clock id...
-    pub fn collapse_vector_clock_entries(
-        &mut self,
-        allow_list: &HashSet<VectorClockChangeSetId>,
-        collapse_id: VectorClockId,
-    ) {
-        self.vector_clock_first_seen
-            .collapse_entries(allow_list, collapse_id);
-        self.vector_clock_recently_seen
-            .collapse_entries(allow_list, collapse_id);
-        self.vector_clock_write
-            .collapse_entries(allow_list, collapse_id);
-    }
-
-    pub fn new(vector_clock_id: VectorClockId, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
-        let empty_vector_clock = VectorClock::new(vector_clock_id);
-
-        Ok(Self {
-            kind,
-            vector_clock_first_seen: empty_vector_clock.clone(),
-            vector_clock_recently_seen: empty_vector_clock.clone(),
-            vector_clock_write: empty_vector_clock,
-        })
+    pub fn new(kind: EdgeWeightKind) -> Self {
+        Self { kind }
     }
 }
 
-impl HasVectorClocks for EdgeWeight {
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
-impl From<DeprecatedEdgeWeight> for EdgeWeight {
-    fn from(value: DeprecatedEdgeWeight) -> Self {
-        Self {
-            kind: value.kind,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
-        }
+impl From<DeprecatedEdgeWeightV1> for EdgeWeight {
+    fn from(value: DeprecatedEdgeWeightV1) -> Self {
+        Self { kind: value.kind }
     }
 }

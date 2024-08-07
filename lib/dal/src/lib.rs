@@ -123,9 +123,9 @@ pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
-pub use workspace_snapshot::graph::{WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV1};
+pub use workspace_snapshot::graph::{WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV2};
 pub use workspace_snapshot::{
-    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::NodeWeightDiscriminants,
 };
 pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};

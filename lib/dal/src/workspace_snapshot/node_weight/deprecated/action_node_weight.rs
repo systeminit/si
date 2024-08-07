@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeprecatedActionNodeWeight {
+pub struct DeprecatedActionNodeWeightLegacy {
     pub id: Ulid,
     pub state: ActionState,
     pub originating_changeset_id: ChangeSetId,

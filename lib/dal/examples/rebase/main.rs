@@ -2,13 +2,13 @@ use std::{env, fs::File, io::prelude::*};
 
 use si_layer_cache::db::serialize;
 
-use dal::WorkspaceSnapshotGraphV1;
+use dal::WorkspaceSnapshotGraphV2;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
 const USAGE: &str = "usage: cargo run --example rebase <TO_REBASE_FILE_PATH> <ONTO_FILE_PATH>";
 
-fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraphV1> {
+fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraphV2> {
     let mut file = File::open(path)?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;

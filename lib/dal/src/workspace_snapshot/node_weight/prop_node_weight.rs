@@ -1,21 +1,17 @@
 use serde::{Deserialize, Serialize};
-use si_events::VectorClockId;
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
+use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedPropNodeWeightV1;
 use crate::EdgeWeightKindDiscriminants;
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
         node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::VectorClock,
     },
     PropKind,
 };
-
-use super::deprecated::DeprecatedPropNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PropNodeWeight {
@@ -26,21 +22,17 @@ pub struct PropNodeWeight {
     kind: PropKind,
     name: String,
     can_be_used_as_prototype_arg: bool,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
 }
 
 impl PropNodeWeight {
     pub fn new(
-        vector_clock_id: VectorClockId,
         id: Ulid,
         lineage_id: Ulid,
         content_address: ContentAddress,
         kind: PropKind,
         name: String,
-    ) -> NodeWeightResult<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             id,
             lineage_id,
             content_address,
@@ -48,10 +40,7 @@ impl PropNodeWeight {
             kind,
             name,
             can_be_used_as_prototype_arg: false,
-            vector_clock_first_seen: VectorClock::new(vector_clock_id),
-            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
-            vector_clock_write: VectorClock::new(vector_clock_id),
-        })
+        }
     }
 
     pub fn kind(&self) -> PropKind {
@@ -127,32 +116,6 @@ impl PropNodeWeight {
     }
 }
 
-impl HasVectorClocks for PropNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
 impl std::fmt::Debug for PropNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("PropNodeWeight")
@@ -162,18 +125,12 @@ impl std::fmt::Debug for PropNodeWeight {
             .field("name", &self.name)
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
-            .field(
-                "vector_clock_recently_seen",
-                &self.vector_clock_recently_seen,
-            )
-            .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
 }
 
-impl From<DeprecatedPropNodeWeight> for PropNodeWeight {
-    fn from(value: DeprecatedPropNodeWeight) -> Self {
+impl From<DeprecatedPropNodeWeightV1> for PropNodeWeight {
+    fn from(value: DeprecatedPropNodeWeightV1) -> Self {
         Self {
             id: value.id,
             lineage_id: value.lineage_id,
@@ -182,9 +139,6 @@ impl From<DeprecatedPropNodeWeight> for PropNodeWeight {
             kind: value.kind,
             name: value.name,
             can_be_used_as_prototype_arg: value.can_be_used_as_prototype_arg,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
         }
     }
 }

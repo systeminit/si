@@ -6,7 +6,7 @@ use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 use crate::workspace_snapshot::{content_address::ContentAddress, graph::LineageId};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedFuncNodeWeight {
+pub struct DeprecatedFuncNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub content_address: ContentAddress,

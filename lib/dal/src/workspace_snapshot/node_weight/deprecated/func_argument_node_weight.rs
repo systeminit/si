@@ -7,7 +7,7 @@ use crate::workspace_snapshot::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeprecatedFuncArgumentNodeWeight {
+pub struct DeprecatedFuncArgumentNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub content_address: ContentAddress,

@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedAttributePrototypeArgumentNodeWeight {
+pub struct DeprecatedAttributePrototypeArgumentNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub merkle_tree_hash: MerkleTreeHash,

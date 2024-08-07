@@ -67,15 +67,11 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{
-    serde_value_to_string_type, vector_clock::HasVectorClocks, WorkspaceSnapshotError,
-};
+use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
@@ -130,8 +126,6 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("func error: {0}")]
@@ -295,11 +289,9 @@ impl AttributeValue {
         maybe_parent_attribute_value: Option<AttributeValueId>,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
-        let vector_clock_id = ctx.vector_clock_id()?;
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let node_weight =
-            NodeWeight::new_attribute_value(vector_clock_id, id, lineage_id, None, None)?;
+        let node_weight = NodeWeight::new_attribute_value(id, lineage_id, None, None);
         let is_for = is_for.into();
 
         let ordered = if let Some(prop_id) = is_for.prop_id() {
@@ -315,7 +307,7 @@ impl AttributeValue {
 
         if ordered {
             ctx.workspace_snapshot()?
-                .add_ordered_node(vector_clock_id, node_weight.clone())
+                .add_ordered_node(node_weight.clone())
                 .await?;
         } else {
             ctx.workspace_snapshot()?
@@ -1135,7 +1127,7 @@ impl AttributeValue {
                 .id();
 
             workspace_snapshot
-                .remove_node_by_id(ctx.vector_clock_id()?, current_target_id)
+                .remove_node_by_id(current_target_id)
                 .await?;
         }
 
@@ -1779,7 +1771,6 @@ impl AttributeValue {
 
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.vector_clock_id()?,
                 attribute_value_id,
                 prototype_id,
                 EdgeWeightKindDiscriminants::Prototype,
@@ -1952,8 +1943,7 @@ impl AttributeValue {
             )
             .await?;
 
-        let mut new_av_node_weight =
-            av_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
+        let mut new_av_node_weight = av_node_weight.clone();
 
         new_av_node_weight.set_value(value_address.map(ContentAddress::JsonValue));
         new_av_node_weight
@@ -2201,11 +2191,9 @@ impl AttributeValue {
             .await?
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
+        ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.vector_clock_id()?, id)
-            .await?;
-        ctx.workspace_snapshot()?
-            .remove_dependent_value_root(ctx.vector_clock_id()?, id)
+            .remove_dependent_value_root(id)
             .await?;
 
         ctx.add_dependent_values_and_enqueue(vec![parent_av_id])

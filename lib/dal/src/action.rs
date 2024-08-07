@@ -18,14 +18,11 @@ use crate::{
     func::FuncExecutionPk,
     id, implement_add_edge_to,
     job::definition::ActionJob,
-    workspace_snapshot::{
-        node_weight::{
-            category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
-        },
-        vector_clock::HasVectorClocks,
+    workspace_snapshot::node_weight::{
+        category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
     },
     AttributeValue, ChangeSetError, ChangeSetId, ComponentError, ComponentId, DalContext,
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
+    EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, TransactionsError,
     WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
@@ -45,8 +42,6 @@ pub enum ActionError {
     Component(#[from] ComponentError),
     #[error("component not found for action: {0}")]
     ComponentNotFoundForAction(ActionId),
-    #[error("Edge Weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("Layer DB error: {0}")]
@@ -317,8 +312,7 @@ impl Action {
             .get_node_weight(idx)
             .await?
             .get_action_node_weight()?;
-        let mut new_node_weight =
-            node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?);
+        let mut new_node_weight = node_weight.clone();
         new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
             .add_node(NodeWeight::Action(new_node_weight))
@@ -342,17 +336,12 @@ impl Action {
         action_prototype_id: ActionPrototypeId,
         maybe_component_id: Option<ComponentId>,
     ) -> ActionResult<Self> {
-        let vector_clock_id = ctx.vector_clock_id()?;
         let new_id: ActionId = ctx.workspace_snapshot()?.generate_ulid().await?.into();
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
 
         let originating_change_set_id = ctx.change_set_id();
-        let node_weight = NodeWeight::new_action(
-            vector_clock_id,
-            originating_change_set_id,
-            new_id.into(),
-            lineage_id,
-        )?;
+        let node_weight =
+            NodeWeight::new_action(originating_change_set_id, new_id.into(), lineage_id);
         ctx.workspace_snapshot()?.add_node(node_weight).await?;
 
         let action_category_id = ctx
@@ -395,7 +384,7 @@ impl Action {
 
     pub async fn remove_by_id(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.vector_clock_id()?, action_id)
+            .remove_node_by_id(action_id)
             .await?;
         Ok(())
     }
@@ -410,8 +399,7 @@ impl Action {
         if let Some(action_id) =
             Self::find_equivalent(ctx, action_prototype_id, maybe_component_id).await?
         {
-            snap.remove_node_by_id(ctx.vector_clock_id()?, action_id)
-                .await?;
+            snap.remove_node_by_id(action_id).await?;
         }
         Ok(())
     }

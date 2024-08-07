@@ -8,9 +8,6 @@ use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::rebase_batch_address::RebaseBatchAddress;
-use si_events::ulid::Ulid;
-use si_events::VectorClockActorId;
-use si_events::VectorClockChangeSetId;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityPayload;
@@ -30,10 +27,7 @@ use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::detect_updates::Update;
-use crate::workspace_snapshot::{
-    graph::{RebaseBatch, WorkspaceSnapshotGraph},
-    vector_clock::VectorClockId,
-};
+use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
@@ -309,8 +303,6 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
-    /// The vector clock's "actor id" if this context does not have a User
-    system_actor_id: Ulid,
 }
 
 impl DalContext {
@@ -481,19 +473,6 @@ impl DalContext {
 
     pub fn change_set_id(&self) -> ChangeSetId {
         self.visibility.change_set_id
-    }
-
-    pub fn vector_clock_id(&self) -> Result<VectorClockId, TransactionsError> {
-        let change_set_id = self.visibility.change_set_id.into_inner();
-        let actor_id = match self.history_actor {
-            HistoryActor::SystemInit => self.system_actor_id,
-            HistoryActor::User(user_pk) => user_pk.into_inner().into(),
-        };
-
-        Ok(VectorClockId::new(
-            VectorClockChangeSetId::new(change_set_id.into()),
-            VectorClockActorId::new(actor_id),
-        ))
     }
 
     pub fn change_set(&self) -> Result<&ChangeSet, TransactionsError> {
@@ -705,7 +684,7 @@ impl DalContext {
     ) -> Result<(), WorkspaceSnapshotError> {
         for id in ids {
             self.workspace_snapshot()?
-                .add_dependent_value_root(self.vector_clock_id()?, id)
+                .add_dependent_value_root(id)
                 .await?;
         }
 
@@ -965,7 +944,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
         })
     }
 
@@ -986,7 +964,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1017,7 +994,6 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
-            system_actor_id: Ulid::new(),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {

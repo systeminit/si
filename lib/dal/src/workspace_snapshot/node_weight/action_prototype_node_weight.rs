@@ -1,16 +1,11 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     action::prototype::ActionKind,
-    workspace_snapshot::{
-        graph::LineageId,
-        vector_clock::{HasVectorClocks, VectorClock},
-    },
+    workspace_snapshot::graph::{deprecated::v1::DeprecatedActionPrototypeNodeWeightV1, LineageId},
     EdgeWeightKindDiscriminants,
 };
-
-use super::{deprecated::DeprecatedActionPrototypeNodeWeight, NodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionPrototypeNodeWeight {
@@ -22,35 +17,27 @@ pub struct ActionPrototypeNodeWeight {
     description: Option<String>,
     pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
 }
 
 impl ActionPrototypeNodeWeight {
     pub fn new(
-        vector_clock_id: VectorClockId,
         id: Ulid,
         lineage_id: Ulid,
         kind: ActionKind,
         name: impl AsRef<str>,
         description: Option<impl AsRef<str>>,
-    ) -> NodeWeightResult<Self> {
-        let new_vector_clock = VectorClock::new(vector_clock_id);
+    ) -> Self {
         let name = name.as_ref().to_string();
         let description = description.map(|d| d.as_ref().to_string());
 
-        Ok(Self {
+        Self {
             id,
             kind,
             name,
             description,
             lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
-            vector_clock_first_seen: new_vector_clock.clone(),
-            vector_clock_recently_seen: new_vector_clock.clone(),
-            vector_clock_write: new_vector_clock,
-        })
+        }
     }
 
     pub fn content_hash(&self) -> ContentHash {
@@ -103,34 +90,8 @@ impl ActionPrototypeNodeWeight {
     }
 }
 
-impl HasVectorClocks for ActionPrototypeNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
-impl From<DeprecatedActionPrototypeNodeWeight> for ActionPrototypeNodeWeight {
-    fn from(value: DeprecatedActionPrototypeNodeWeight) -> Self {
+impl From<DeprecatedActionPrototypeNodeWeightV1> for ActionPrototypeNodeWeight {
+    fn from(value: DeprecatedActionPrototypeNodeWeightV1) -> Self {
         Self {
             id: value.id,
             kind: value.kind,
@@ -138,9 +99,6 @@ impl From<DeprecatedActionPrototypeNodeWeight> for ActionPrototypeNodeWeight {
             description: value.description,
             lineage_id: value.lineage_id,
             merkle_tree_hash: value.merkle_tree_hash,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
         }
     }
 }

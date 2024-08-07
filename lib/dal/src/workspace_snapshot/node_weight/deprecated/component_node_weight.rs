@@ -7,7 +7,7 @@ use crate::workspace_snapshot::{
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedComponentNodeWeight {
+pub struct DeprecatedComponentNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub content_address: ContentAddress,

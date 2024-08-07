@@ -1,15 +1,13 @@
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::VectorClockId;
 use si_events::{ulid::Ulid, ContentHash};
 
-use super::deprecated::DeprecatedContentNodeWeight;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedContentNodeWeightV1;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
     node_weight::{NodeWeightError, NodeWeightResult},
-    vector_clock::{HasVectorClocks, VectorClock},
 };
 use crate::EdgeWeightKindDiscriminants;
 
@@ -34,29 +32,18 @@ pub struct ContentNodeWeight {
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
     to_delete: bool,
 }
 
 impl ContentNodeWeight {
-    pub fn new(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        content_address: ContentAddress,
-    ) -> NodeWeightResult<Self> {
-        Ok(Self {
+    pub fn new(id: Ulid, lineage_id: Ulid, content_address: ContentAddress) -> Self {
+        Self {
             id,
             lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
-            vector_clock_first_seen: VectorClock::new(vector_clock_id),
-            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
-            vector_clock_write: VectorClock::new(vector_clock_id),
             to_delete: false,
-        })
+        }
     }
 
     pub fn content_address(&self) -> ContentAddress {
@@ -156,32 +143,6 @@ impl ContentNodeWeight {
     }
 }
 
-impl HasVectorClocks for ContentNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
 impl std::fmt::Debug for ContentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("ContentNodeWeight")
@@ -189,26 +150,17 @@ impl std::fmt::Debug for ContentNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("content_address", &self.content_address)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
-            .field(
-                "vector_clock_recently_seen",
-                &self.vector_clock_recently_seen,
-            )
-            .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
 }
 
-impl From<DeprecatedContentNodeWeight> for ContentNodeWeight {
-    fn from(value: DeprecatedContentNodeWeight) -> Self {
+impl From<DeprecatedContentNodeWeightV1> for ContentNodeWeight {
+    fn from(value: DeprecatedContentNodeWeightV1) -> Self {
         Self {
             id: value.id,
             lineage_id: value.lineage_id,
             content_address: value.content_address,
             merkle_tree_hash: value.merkle_tree_hash,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
             to_delete: value.to_delete,
         }
     }

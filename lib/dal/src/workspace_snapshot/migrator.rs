@@ -7,26 +7,18 @@ use std::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use super::{
-    graph::{
-        WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
-    },
-    vector_clock::{
-        deprecated::{DeprecatedVectorClock, DeprecatedVectorClockId},
-        HasVectorClocks, VectorClock,
-    },
+use super::graph::{
+    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
 };
 use crate::{
     dependency_graph::DependencyGraph,
     workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::{deprecated::DeprecatedWorkspaceSnapshotGraph, LineageId},
-        node_weight::NodeWeight,
+        content_address::ContentAddress, graph::LineageId, node_weight::NodeWeight,
     },
-    ChangeSet, ChangeSetError, ChangeSetId, DalContext, EdgeWeight, Workspace, WorkspaceError,
-    WorkspaceSnapshotError, WorkspaceSnapshotGraphV1,
+    ChangeSet, ChangeSetError, DalContext, EdgeWeight, Workspace, WorkspaceError,
+    WorkspaceSnapshotError, WorkspaceSnapshotGraphV2,
 };
-use si_events::{ulid::Ulid, VectorClockId, WorkspaceSnapshotAddress};
+use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 
 #[derive(Error, Debug)]
 #[remain::sorted]
@@ -35,6 +27,11 @@ pub enum SnapshotGraphMigratorError {
     ChangeSet(#[from] ChangeSetError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("unexpected graph version {1:?} for snapshot {0}, cannot migrate")]
+    UnexpectedGraphVersion(
+        WorkspaceSnapshotAddress,
+        WorkspaceSnapshotGraphDiscriminants,
+    ),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("workspace snapshot error: {0}")]
@@ -45,21 +42,17 @@ pub enum SnapshotGraphMigratorError {
 
 pub type SnapshotGraphMigratorResult<T> = Result<T, SnapshotGraphMigratorError>;
 
-pub struct SnapshotGraphMigrator {
-    vector_clock_map: HashMap<DeprecatedVectorClockId, VectorClockId>,
-}
+pub struct SnapshotGraphMigrator;
 
 impl SnapshotGraphMigrator {
     pub fn new() -> Self {
-        Self {
-            vector_clock_map: HashMap::new(),
-        }
+        Self
     }
 
     async fn should_migrate(&self, ctx: &DalContext) -> SnapshotGraphMigratorResult<bool> {
         Ok(
             if let Some(builtin_workspace) = Workspace::find_builtin(ctx).await? {
-                builtin_workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V1
+                builtin_workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2
             } else {
                 false
             },
@@ -103,11 +96,12 @@ impl SnapshotGraphMigrator {
                         snapshot_address, change_set_id, change_set.base_change_set_id,
                     );
 
-                    let new_snapshot_address = self
-                        .migrate_snapshot(ctx, change_set_id, snapshot_address)
-                        .await?;
-
+                    let new_snapshot_address = self.migrate_snapshot(ctx, snapshot_address).await?;
                     change_set.update_pointer(ctx, new_snapshot_address).await?;
+                    info!(
+                        "Migrated snapshot {} for change set {} with base change set of {:?}",
+                        snapshot_address, change_set_id, change_set.base_change_set_id,
+                    );
                 }
 
                 change_set_graph.remove_id(change_set_id);
@@ -118,7 +112,7 @@ impl SnapshotGraphMigrator {
 
         Workspace::set_snapshot_version_for_all_workspaces(
             ctx,
-            WorkspaceSnapshotGraphDiscriminants::V1,
+            WorkspaceSnapshotGraphDiscriminants::V2,
         )
         .await?;
 
@@ -128,7 +122,6 @@ impl SnapshotGraphMigrator {
     pub async fn migrate_snapshot(
         &mut self,
         ctx: &DalContext,
-        change_set_id: ChangeSetId,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> SnapshotGraphMigratorResult<WorkspaceSnapshotAddress> {
         let snapshot_bytes = ctx
@@ -140,8 +133,21 @@ impl SnapshotGraphMigrator {
                 workspace_snapshot_address,
             ))?;
 
-        let deprecated_graph: DeprecatedWorkspaceSnapshotGraph =
+        info!("snapshot is {} bytes", snapshot_bytes.len());
+
+        let deprecated_graph: WorkspaceSnapshotGraph =
             si_layer_cache::db::serialize::from_bytes(&snapshot_bytes)?;
+
+        let deprecated_graph = match deprecated_graph {
+            WorkspaceSnapshotGraph::Legacy | WorkspaceSnapshotGraph::V2(_) => {
+                let discrim: WorkspaceSnapshotGraphDiscriminants = deprecated_graph.into();
+                return Err(SnapshotGraphMigratorError::UnexpectedGraphVersion(
+                    workspace_snapshot_address,
+                    discrim,
+                ));
+            }
+            WorkspaceSnapshotGraph::V1(deprecated_graph) => deprecated_graph,
+        };
 
         let deprecated_graph_inner = &deprecated_graph.graph;
 
@@ -157,31 +163,9 @@ impl SnapshotGraphMigrator {
         let mut old_graph_idx_to_id = HashMap::new();
 
         for deprecated_node_weight in deprecated_graph_inner.node_weights() {
-            let first_seen_clock = deprecated_node_weight.vector_clock_first_seen();
-            let recently_seen_clock = deprecated_node_weight.vector_clock_recently_seen();
-            let write_clock = deprecated_node_weight.vector_clock_write();
-
-            let mut node_weight: NodeWeight = deprecated_node_weight.clone().into();
+            let node_weight: NodeWeight = deprecated_node_weight.clone().into();
             let id = node_weight.id();
             let lineage_id = node_weight.lineage_id();
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &first_seen_clock,
-                node_weight.vector_clock_first_seen_mut(),
-            );
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &recently_seen_clock,
-                node_weight.vector_clock_recently_seen_mut(),
-            );
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &write_clock,
-                node_weight.vector_clock_write_mut(),
-            );
 
             let is_root_node = if let NodeWeight::Content(content_node_weight) = &node_weight {
                 matches!(content_node_weight.content_address(), ContentAddress::Root)
@@ -209,25 +193,7 @@ impl SnapshotGraphMigrator {
 
         for edge_ref in deprecated_graph_inner.edge_references() {
             let deprecated_edge_weight = edge_ref.weight();
-            let mut new_edge_weight: EdgeWeight = deprecated_edge_weight.to_owned().into();
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &deprecated_edge_weight.vector_clock_first_seen,
-                new_edge_weight.vector_clock_first_seen_mut(),
-            );
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &deprecated_edge_weight.vector_clock_recently_seen,
-                new_edge_weight.vector_clock_recently_seen_mut(),
-            );
-
-            self.migrate_vector_clock(
-                change_set_id,
-                &deprecated_edge_weight.vector_clock_write,
-                new_edge_weight.vector_clock_write_mut(),
-            );
+            let new_edge_weight: EdgeWeight = deprecated_edge_weight.to_owned().into();
 
             let source_idx = edge_ref.source();
             let target_idx = edge_ref.target();
@@ -248,7 +214,7 @@ impl SnapshotGraphMigrator {
             }
         }
 
-        let mut new_snapshot_graph = WorkspaceSnapshotGraphV1::new_from_parts(
+        let mut new_snapshot_graph = WorkspaceSnapshotGraphV2::new_from_parts(
             new_graph,
             node_index_by_id,
             node_indices_by_lineage_id,
@@ -261,7 +227,7 @@ impl SnapshotGraphMigrator {
             .layer_db()
             .workspace_snapshot()
             .write(
-                Arc::new(WorkspaceSnapshotGraph::V1(new_snapshot_graph)),
+                Arc::new(WorkspaceSnapshotGraph::V2(new_snapshot_graph)),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -269,29 +235,6 @@ impl SnapshotGraphMigrator {
             .await?;
 
         Ok(migrated_address)
-    }
-
-    fn migrate_vector_clock(
-        &mut self,
-        change_set_id: ChangeSetId,
-        deprecated_clock: &DeprecatedVectorClock,
-        new_vector_clock: &mut VectorClock,
-    ) {
-        for (deprecated_clock_id, lamport_clock) in &deprecated_clock.entries {
-            match self.vector_clock_map.get(deprecated_clock_id) {
-                Some(already_mapped_clock_id) => {
-                    new_vector_clock.inc_to_max_of(*already_mapped_clock_id, lamport_clock.counter)
-                }
-                None => {
-                    let new_vector_clock_id =
-                        VectorClockId::new(change_set_id.into_inner(), ulid::Ulid(0));
-                    new_vector_clock.inc_to_max_of(new_vector_clock_id, lamport_clock.counter);
-
-                    self.vector_clock_map
-                        .insert(*deprecated_clock_id, new_vector_clock_id);
-                }
-            }
-        }
     }
 }
 

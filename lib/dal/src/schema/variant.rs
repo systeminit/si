@@ -39,9 +39,7 @@ use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -95,8 +93,6 @@ pub enum SchemaVariantError {
     DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -493,12 +489,8 @@ impl SchemaVariant {
 
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            ContentAddress::SchemaVariant(hash),
-        )?;
+        let node_weight =
+            NodeWeight::new_content(id, lineage_id, ContentAddress::SchemaVariant(hash));
         workspace_snapshot.add_node(node_weight).await?;
 
         // Schema --Use--> SchemaVariant (this)
@@ -536,7 +528,7 @@ impl SchemaVariant {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, schema_variant.id.into(), hash)
+                .update_content(schema_variant.id.into(), hash)
                 .await?;
         }
 
@@ -563,16 +555,12 @@ impl SchemaVariant {
 
         if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
             if variant.id == default_schema_variant_id {
-                workspace_snapshot
-                    .remove_node_by_id(ctx.vector_clock_id()?, schema.id())
-                    .await?;
+                workspace_snapshot.remove_node_by_id(schema.id()).await?;
             }
         }
 
         // now we want to delete the schema variant
-        workspace_snapshot
-            .remove_node_by_id(ctx.vector_clock_id()?, variant.id)
-            .await?;
+        workspace_snapshot.remove_node_by_id(variant.id).await?;
 
         Ok(())
     }
@@ -1182,7 +1170,6 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<()> {
         ctx.workspace_snapshot()?
             .remove_edge_for_ulids(
-                ctx.vector_clock_id()?,
                 schema_variant_id,
                 func_id,
                 EdgeWeightKindDiscriminants::AuthenticationPrototype,

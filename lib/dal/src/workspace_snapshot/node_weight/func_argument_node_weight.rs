@@ -1,18 +1,15 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, VectorClockId};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::LineageId,
+        graph::{deprecated::v1::DeprecatedFuncArgumentNodeWeightV1, LineageId},
         node_weight::NodeWeightResult,
-        vector_clock::{HasVectorClocks, VectorClock},
         NodeWeightError,
     },
     EdgeWeightKindDiscriminants,
 };
-
-use super::deprecated::DeprecatedFuncArgumentNodeWeight;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncArgumentNodeWeight {
@@ -20,30 +17,18 @@ pub struct FuncArgumentNodeWeight {
     pub lineage_id: LineageId,
     content_address: ContentAddress,
     merkle_tree_hash: MerkleTreeHash,
-    vector_clock_first_seen: VectorClock,
-    vector_clock_recently_seen: VectorClock,
-    vector_clock_write: VectorClock,
     name: String,
 }
 
 impl FuncArgumentNodeWeight {
-    pub fn new(
-        vector_clock_id: VectorClockId,
-        id: Ulid,
-        lineage_id: Ulid,
-        content_address: ContentAddress,
-        name: String,
-    ) -> NodeWeightResult<Self> {
-        Ok(Self {
+    pub fn new(id: Ulid, lineage_id: Ulid, content_address: ContentAddress, name: String) -> Self {
+        Self {
             id,
             lineage_id,
             content_address,
             merkle_tree_hash: MerkleTreeHash::default(),
             name,
-            vector_clock_first_seen: VectorClock::new(vector_clock_id),
-            vector_clock_recently_seen: VectorClock::new(vector_clock_id),
-            vector_clock_write: VectorClock::new(vector_clock_id),
-        })
+        }
     }
 
     pub fn content_address(&self) -> ContentAddress {
@@ -111,32 +96,6 @@ impl FuncArgumentNodeWeight {
     }
 }
 
-impl HasVectorClocks for FuncArgumentNodeWeight {
-    fn vector_clock_first_seen(&self) -> &VectorClock {
-        &self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen(&self) -> &VectorClock {
-        &self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write(&self) -> &VectorClock {
-        &self.vector_clock_write
-    }
-
-    fn vector_clock_first_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_first_seen
-    }
-
-    fn vector_clock_recently_seen_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_recently_seen
-    }
-
-    fn vector_clock_write_mut(&mut self) -> &mut VectorClock {
-        &mut self.vector_clock_write
-    }
-}
-
 impl std::fmt::Debug for FuncArgumentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("FuncNodeWeight")
@@ -145,26 +104,17 @@ impl std::fmt::Debug for FuncArgumentNodeWeight {
             .field("name", &self.name)
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
-            .field(
-                "vector_clock_recently_seen",
-                &self.vector_clock_recently_seen,
-            )
-            .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
 }
 
-impl From<DeprecatedFuncArgumentNodeWeight> for FuncArgumentNodeWeight {
-    fn from(value: DeprecatedFuncArgumentNodeWeight) -> Self {
+impl From<DeprecatedFuncArgumentNodeWeightV1> for FuncArgumentNodeWeight {
+    fn from(value: DeprecatedFuncArgumentNodeWeightV1) -> Self {
         Self {
             id: value.id,
             lineage_id: value.lineage_id,
             content_address: value.content_address,
             merkle_tree_hash: value.merkle_tree_hash,
-            vector_clock_first_seen: VectorClock::empty(),
-            vector_clock_recently_seen: VectorClock::empty(),
-            vector_clock_write: VectorClock::empty(),
             name: value.name,
         }
     }
