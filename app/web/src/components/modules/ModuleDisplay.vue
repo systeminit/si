@@ -135,10 +135,10 @@
         </ErrorMessage>
 
         <ErrorMessage :requestStatus="installReqStatus" />
-        <ErrorMessage :message="moduleStore.installingError" />
+        <ErrorMessage :message="installError" />
         <VButton
           :requestStatus="installReqStatus"
-          :loading="moduleStore.installingLoading"
+          :loading="installReqStatus.isPending"
           @click="installButtonHandler"
         >
           Install this module
@@ -204,7 +204,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount, watch } from "vue";
+import { computed, onBeforeMount, watch, ref } from "vue";
 import {
   Icon,
   Timestamp,
@@ -231,7 +231,6 @@ const _localDetailsReq = moduleStore.getRequestStatus(
 const _remoteDetailsReq = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_DETAILS",
 );
-const installReqStatus = moduleStore.getRequestStatus("INSTALL_REMOTE_MODULE");
 const remoteModuleSpecStatus = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_SPEC",
 );
@@ -260,6 +259,12 @@ const remoteSpec = computed(() =>
     : undefined,
 );
 
+const remoteSummaryId = computed(() => remoteSummary.value?.id);
+const installReqStatus = moduleStore.getRequestStatus(
+  "INSTALL_REMOTE_MODULE",
+  remoteSummaryId,
+);
+
 // since the URL is based on the name, but we need the hash to fetch the module details
 // we have to wait until we have the local info loaded
 watch(
@@ -286,9 +291,16 @@ onBeforeMount(() => {
   if (!moduleStore.urlSelectedModuleSlug) return; // can't happen, but makes TS happy
 });
 
+const installError = ref<string | undefined>();
 async function installButtonHandler() {
+  installError.value = undefined;
   if (!remoteSummary.value) return;
-  await moduleStore.INSTALL_REMOTE_MODULE(remoteSummary.value?.id);
+  const resp = await moduleStore.INSTALL_REMOTE_MODULE([
+    remoteSummary.value?.id,
+  ]);
+  if (!resp.result.success) {
+    installError.value = resp.result.err.message;
+  }
 }
 
 async function rejectModuleSpecHandler() {

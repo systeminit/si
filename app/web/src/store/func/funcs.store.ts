@@ -587,6 +587,12 @@ export const useFuncStore = () => {
             },
           },
           {
+            eventType: "ModuleImported",
+            callback: () => {
+              if (this.selectedFuncId) this.FETCH_CODE(this.selectedFuncId);
+            },
+          },
+          {
             eventType: "FuncSaved",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;

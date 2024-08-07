@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
 };
 use convert_case::{Case, Casing};
+use dal::FuncError;
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder,
     SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
@@ -20,6 +21,7 @@ use std::path::{Path, PathBuf};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::fs::read_dir;
+use ulid::Ulid;
 
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
@@ -48,6 +50,8 @@ pub enum ModuleError {
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
     ExportingImportingWithRootTenancy,
+    #[error("transparent")]
+    Func(#[from] FuncError),
     #[error(transparent)]
     Hyper(#[from] hyper::http::Error),
     #[error("Invalid package file name: {0}")]
@@ -90,6 +94,8 @@ pub enum ModuleError {
     Reqwest(#[from] reqwest::Error),
     #[error("schema not found for variant {0}")]
     SchemaNotFoundForVariant(SchemaVariantId),
+    #[error("schema install pkg result empty: {0}")]
+    SchemaNotFoundFromInstall(Ulid),
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found {0}")]

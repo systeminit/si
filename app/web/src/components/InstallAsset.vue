@@ -187,7 +187,7 @@ const functions = computed<FuncDisplay[]>(() => {
     });
 });
 
-const install = () => moduleStore.INSTALL_REMOTE_MODULE(props.moduleId);
+const install = () => moduleStore.INSTALL_REMOTE_MODULE([props.moduleId]);
 
 watch(
   () => props.moduleId,

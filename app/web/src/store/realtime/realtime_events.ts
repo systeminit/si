@@ -203,9 +203,7 @@ export type WsEventPayloadMap = {
     toSocketId: string;
     changeSetId: string;
   };
-  ModuleImported: {
-    schemaVariantIds: string[];
-  };
+  ModuleImported: SchemaVariant[];
   WorkspaceImportBeginApprovalProcess: {
     workspacePk: WorkspacePk;
     userPk: UserId;

@@ -154,10 +154,6 @@ export const useModuleStore = () => {
           remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
           remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
 
-          installingModuleId: null as string | null,
-          installingError: undefined as string | undefined,
-          installingLoading: false as boolean,
-
           exportingWorkspaceOperationId: null as string | null,
           exportingWorkspaceOperationError: undefined as string | undefined,
           exportingWorkspaceOperationRunning: false as boolean,
@@ -370,30 +366,21 @@ export const useModuleStore = () => {
             });
           },
 
-          async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
+          async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            this.installingModuleId = null;
-            this.installingLoading = true;
-            this.installingError = undefined;
-
             return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/module/install_module",
-              keyRequestStatusBy: moduleId,
+              keyRequestStatusBy: moduleIds,
               params: {
-                id: moduleId,
+                ids: moduleIds,
                 ...getVisibilityParams(),
               },
-              onSuccess: (data) => {
-                this.installingModuleId = data.id;
-              },
               onFail: () => {
-                this.installingModuleId = null;
-                this.installingLoading = false;
                 changeSetsStore.creatingChangeSet = false;
               },
             });
@@ -478,14 +465,18 @@ export const useModuleStore = () => {
             {
               eventType: "AsyncFinish",
               callback: async ({ id }: { id: string }) => {
-                if (id === this.installingModuleId) {
-                  this.installingError = undefined;
-                  this.installingModuleId = null;
-                  await this.LOAD_LOCAL_MODULES();
-                  this.installingLoading = false;
-                }
+                await this.LOAD_LOCAL_MODULES();
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationRunning = false;
+                }
+              },
+            },
+            {
+              eventType: "ModuleImported",
+              callback: (schemaVariants, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                for (const variant of schemaVariants) {
+                  delete this.upgradeableModules[variant.schemaVariantId];
                 }
               },
             },
@@ -498,11 +489,6 @@ export const useModuleStore = () => {
                 id: string;
                 error: string;
               }) => {
-                if (id === this.installingModuleId) {
-                  this.installingLoading = false;
-                  this.installingError = error;
-                  this.installingModuleId = null;
-                }
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationError = error;
                   this.exportingWorkspaceOperationRunning = false;

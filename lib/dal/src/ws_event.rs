@@ -28,8 +28,8 @@ use crate::schema::variant::{
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
-    pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
 
@@ -97,7 +97,7 @@ pub enum WsPayload {
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
     InferredEdgeRemove(InferredEdgeRemovePayload),
     InferredEdgeUpsert(InferredEdgeUpsertPayload),
-    ModuleImported(ModuleImportedPayload),
+    ModuleImported(Vec<si_frontend_types::SchemaVariant>),
     Online(OnlinePayload),
     ResourceRefreshed(ComponentUpdatedPayload),
     SchemaVariantCloned(SchemaVariantClonedPayload),
