@@ -17,7 +17,6 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 
 const toast = useToast();
 
@@ -371,7 +370,6 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApplied",
             callback: (data) => {
-              const ffStore = useFeatureFlagsStore();
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
@@ -388,32 +386,13 @@ export function useChangeSetsStore() {
               /* if (this.selectedChangeSetId && !this.headSelected)
                 this.FETCH_STATUS_WITH_BASE(this.selectedChangeSetId); */
 
-              // did head get an update and I'm not on head?
-              // and make sure I'm not moving to head
+              // did I get an update from head (and I am not head)?
               if (
-                ffStore.DEV_SLICE_REBASING &&
-                this.headChangeSetId === toRebaseChangeSetId &&
-                this.selectedChangeSetId !== this.headChangeSetId &&
-                this.selectedChangeSetId !== changeSetId
+                this.selectedChangeSetId === toRebaseChangeSetId &&
+                this.selectedChangeSetId !== this.headChangeSetId
               ) {
                 toast({
                   component: RebaseOnBase,
-                  props: {
-                    action: "prompt",
-                  },
-                });
-              }
-
-              // did I get an update from head?
-              if (
-                ffStore.DEV_SLICE_REBASING &&
-                this.selectedChangeSetId === toRebaseChangeSetId
-              ) {
-                toast({
-                  component: RebaseOnBase,
-                  props: {
-                    action: "done",
-                  },
                 });
               }
 
