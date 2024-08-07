@@ -339,6 +339,21 @@
       />
     </v-group>
 
+    <DiagramIcon
+      v-if="group.def.canBeUpgraded"
+      :color="getToneColorHex('action')"
+      :size="24 + (diffIconHover ? 4 : 0)"
+      :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
+      :y="
+        -nodeHeaderHeight +
+        GROUP_HEADER_ICON_SIZE / 2 -
+        GROUP_HEADER_BOTTOM_MARGIN +
+        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+      "
+      icon="bolt"
+      origin="center"
+    />
+
     <!-- added/modified indicator -->
     <DiagramIcon
       v-if="isAdded || isModified || isDeleted"
