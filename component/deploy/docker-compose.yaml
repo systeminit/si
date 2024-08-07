@@ -71,5 +71,27 @@ services:
       init:
         condition: service_completed_successfully
 
+  prometheus:
+    image: prom/prometheus
+    profiles: [rebaser, pinga, sdf, veritech]
+    ports:
+      - "9000:9090"
+    volumes:
+      - "config:/etc/prometheus/"
+    depends_on:
+      - otelcol
+
+  process-exporter:
+    image: ncabatoff/process-exporter
+    profiles: [veritech]
+    command:
+      - '-procfs=/host/proc'
+      - '-config.path=/config/proc-exporter.yml'
+    ports:
+      - "9256:9256"
+    volumes:
+      - "config:/config/"
+      - /proc:/host/proc:ro
+
 volumes:
   config:
