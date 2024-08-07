@@ -1,7 +1,7 @@
 global:
   scrape_interval: 100ms
 scrape_configs:
- - job_name: metrics
+ - job_name: service_metrics
    static_configs:
     - targets:
        - otelcol:9090
@@ -9,3 +9,7 @@ scrape_configs:
    static_configs:
     - targets:
        - process-exporter:9256
+ - job_name: node-exporter
+   static_configs:
+    - targets:
+      - node-exporter:9100
