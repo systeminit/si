@@ -102,6 +102,7 @@
         minio-client
         fastly
         doctl
+        google-cloud-sdk
       ];
 
       buck2Derivation = {
