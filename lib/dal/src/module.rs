@@ -18,7 +18,7 @@ use crate::pkg::export::PkgExporter;
 use crate::pkg::PkgError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
@@ -34,8 +34,6 @@ use crate::{
 pub enum ModuleError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("found empty metadata (name: '{0}') (version: '{1}')")]
     EmptyMetadata(String, String),
     #[error("func error: {0}")]
@@ -166,12 +164,7 @@ impl Module {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            ContentAddress::Module(hash),
-        )?;
+        let node_weight = NodeWeight::new_content(id, lineage_id, ContentAddress::Module(hash));
 
         workspace_snapshot.add_node(node_weight).await?;
 
@@ -181,7 +174,7 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 schema_module_index_id,
-                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 id,
             )
             .await?;
@@ -291,7 +284,7 @@ impl Module {
         workspace_snapshot
             .add_edge(
                 self.id,
-                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 target_id,
             )
             .await?;

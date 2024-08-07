@@ -1,8 +1,9 @@
 //! A per-changeset task to debounce dependent values updates
 
 use dal::{
-    ChangeSet, ChangeSetError, ChangeSetStatus, DalContextBuilder, Tenancy, TransactionsError,
-    Visibility, WorkspaceSnapshotError,
+    workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetError,
+    ChangeSetStatus, DalContextBuilder, Tenancy, TransactionsError, Visibility, Workspace,
+    WorkspaceError, WorkspaceSnapshotError,
 };
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
@@ -22,6 +23,9 @@ pub enum DvuDebouncerError {
     /// A transactions error
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    /// Workspace error
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
     /// Workspace Snapshot Error
     #[error("workspace snapshot: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
@@ -71,6 +75,15 @@ impl DvuDebouncer {
         ctx.update_visibility_deprecated(Visibility::new(self.change_set_id.into_raw_id().into()));
         ctx.update_tenancy(Tenancy::new(self.workspace_id.into_raw_id().into()));
 
+        if let Some(workspace) =
+            Workspace::get_by_pk(&ctx, &self.workspace_id.into_raw_id().into()).await?
+        {
+            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
+                debug!("Snapshot not yet migrated. Not attempting dvu");
+                return Ok(());
+            }
+        }
+
         if let Some(change_set) =
             ChangeSet::find(&ctx, self.change_set_id.into_raw_id().into()).await?
         {
@@ -85,13 +98,7 @@ impl DvuDebouncer {
             }
         }
 
-        if let Err(err) = ctx.update_snapshot_to_visibility().await {
-            if err.is_unmigrated_snapshot_error() {
-                debug!("Snapshot not yet migrated. Not attempting dvu");
-            } else {
-                Err(err)?
-            }
-        }
+        ctx.update_snapshot_to_visibility().await?;
 
         if ctx
             .workspace_snapshot()?

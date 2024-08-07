@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedPropNodeWeight {
+pub struct DeprecatedPropNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub content_address: ContentAddress,

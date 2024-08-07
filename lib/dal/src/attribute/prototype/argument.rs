@@ -18,7 +18,7 @@ use crate::{
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        edge_weight::{EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
         node_weight::{
             AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
             NodeWeightError,
@@ -65,8 +65,6 @@ pub enum AttributePrototypeArgumentError {
     AttributeValue(String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("helper error: {0}")]
@@ -210,12 +208,10 @@ impl AttributePrototypeArgument {
         prototype_id: AttributePrototypeId,
         arg_id: FuncArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let vector_clock_id = ctx.vector_clock_id()?;
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
 
-        let node_weight =
-            NodeWeight::new_attribute_prototype_argument(vector_clock_id, id, lineage_id, None)?;
+        let node_weight = NodeWeight::new_attribute_prototype_argument(id, lineage_id, None);
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -246,18 +242,16 @@ impl AttributePrototypeArgument {
         destination_component_id: ComponentId,
         destination_attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let vector_clock_id = ctx.vector_clock_id()?;
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let node_weight = NodeWeight::new_attribute_prototype_argument(
-            vector_clock_id,
             id,
             lineage_id,
             Some(ArgumentTargets {
                 source_component_id,
                 destination_component_id,
             }),
-        )?;
+        );
 
         let prototype_func_id =
             AttributePrototype::func_id(ctx, destination_attribute_prototype_id).await?;
@@ -690,9 +684,7 @@ impl AttributePrototypeArgument {
         }
 
         // Remove the argument
-        ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.vector_clock_id()?, self.id)
-            .await?;
+        ctx.workspace_snapshot()?.remove_node_by_id(self.id).await?;
 
         // Enqueue a dependent values update with the destination attribute values
         ctx.add_dependent_values_and_enqueue(avs_to_update).await?;

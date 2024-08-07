@@ -3,7 +3,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
-use si_events::{ContentHash, VectorClockId};
+use si_events::ContentHash;
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -116,7 +116,9 @@ impl TryFrom<PgRow> for Workspace {
             uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
             token: row.try_get("token")?,
-            snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
+            snapshot_version: dbg!(WorkspaceSnapshotGraphDiscriminants::from_str(
+                &snapshot_version
+            )?),
         })
     }
 }
@@ -181,8 +183,7 @@ impl Workspace {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(mut found_builtin) = Self::find_builtin(ctx).await? {
             // 'reset' the workspace snapshot' so that we remigrate all builtins on each startup
-            let vector_clock = ctx.vector_clock_id()?;
-            let new_snapshot = WorkspaceSnapshot::initial(ctx, vector_clock).await?;
+            let new_snapshot = WorkspaceSnapshot::initial(ctx).await?;
             let new_snap_address = new_snapshot.write(ctx).await?;
             let new_change_set =
                 ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None, new_snap_address).await?;
@@ -197,11 +198,7 @@ impl Workspace {
             return Ok(());
         }
 
-        let initial_vector_clock_id = VectorClockId::new(
-            WorkspaceId::NONE.into_inner(),
-            WorkspaceId::NONE.into_inner(),
-        );
-        let workspace_snapshot = WorkspaceSnapshot::initial(ctx, initial_vector_clock_id).await?;
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.

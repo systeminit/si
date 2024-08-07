@@ -40,6 +40,7 @@ where
 {
     let uncompressed = miniz_oxide::inflate::decompress_to_vec(bytes)
         .map_err(|e| LayerDbError::Decompress(e.to_string()))?;
+
     Ok(postcard::from_bytes(&uncompressed)?)
 }
 

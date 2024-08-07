@@ -13,7 +13,7 @@ use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
@@ -35,8 +35,6 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 pub enum SchemaError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("helper error: {0}")]
@@ -156,12 +154,8 @@ impl Schema {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id.into(),
-            lineage_id,
-            ContentAddress::Schema(hash),
-        )?;
+        let node_weight =
+            NodeWeight::new_content(id.into(), lineage_id, ContentAddress::Schema(hash));
 
         workspace_snapshot.add_node(node_weight).await?;
 
@@ -171,7 +165,7 @@ impl Schema {
         workspace_snapshot
             .add_edge(
                 schema_category_index_id,
-                EdgeWeight::new(ctx.vector_clock_id()?, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 id,
             )
             .await?;
@@ -354,7 +348,7 @@ impl Schema {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, schema.id.into(), hash)
+                .update_content(schema.id.into(), hash)
                 .await?;
         }
 

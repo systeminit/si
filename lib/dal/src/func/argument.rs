@@ -13,12 +13,11 @@ use crate::attribute::prototype::argument::{
 };
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::{
     FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
@@ -32,8 +31,6 @@ pub enum FuncArgumentError {
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("unable to create func argument with empty name")]
     EmptyNameDuringCreation,
     #[error("func error: {0}")]
@@ -248,8 +245,7 @@ impl FuncArgument {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight =
-            NodeWeight::new_func_argument(ctx.vector_clock_id()?, id, lineage_id, name, hash)?;
+        let node_weight = NodeWeight::new_func_argument(id, lineage_id, name, hash);
 
         workspace_snapshot.add_node(node_weight.clone()).await?;
         Func::add_edge_to_argument(ctx, func_id, id.into(), EdgeWeightKind::new_use()).await?;
@@ -452,9 +448,7 @@ impl FuncArgument {
             node_weight.set_name(func_argument.name.as_str());
 
             workspace_snapshot
-                .add_node(NodeWeight::FuncArgument(
-                    node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
-                ))
+                .add_node(NodeWeight::FuncArgument(node_weight.clone()))
                 .await?;
 
             workspace_snapshot
@@ -475,7 +469,7 @@ impl FuncArgument {
                 )
                 .await?;
             workspace_snapshot
-                .update_content(ctx.vector_clock_id()?, func_argument.id.into(), hash)
+                .update_content(func_argument.id.into(), hash)
                 .await?;
         }
 
@@ -528,9 +522,7 @@ impl FuncArgument {
         }
 
         // Now, we can remove the argument.
-        ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.vector_clock_id()?, id)
-            .await?;
+        ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         Ok(())
     }

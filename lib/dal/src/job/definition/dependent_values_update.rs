@@ -134,10 +134,7 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
         let span = Span::current();
-        let node_ids = ctx
-            .workspace_snapshot()?
-            .take_dependent_values(ctx.vector_clock_id()?)
-            .await?;
+        let node_ids = ctx.workspace_snapshot()?.take_dependent_values().await?;
 
         let mut dependency_graph = DependentValueGraph::new(ctx, node_ids).await?;
 

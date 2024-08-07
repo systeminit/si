@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use chrono::Utc;
+use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
 use detect_updates::{Detector, Update};
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
@@ -13,7 +13,6 @@ pub use petgraph::Direction;
 use petgraph::{algo, prelude::*};
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::VectorClockChangeSetId;
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
 use strum::{EnumDiscriminants, EnumString};
@@ -25,13 +24,11 @@ use ulid::Generator;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
-use crate::workspace_snapshot::vector_clock::{HasVectorClocks, VectorClockId};
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
-    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
 };
-use crate::ChangeSetId;
 
 pub mod deprecated;
 pub mod detect_updates;
@@ -57,8 +54,6 @@ pub enum WorkspaceSnapshotGraphError {
     DestinationNotUpdatedWhenImportingSubgraph,
     #[error("Edge does not exist for EdgeIndex: {0:?}")]
     EdgeDoesNotExist(EdgeIndex),
-    #[error("EdgeWeight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("EdgeWeight not found")]
     EdgeWeightNotFound,
     #[error("Problem during graph traversal: {0:?}")]
@@ -97,11 +92,12 @@ pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString))]
 pub enum WorkspaceSnapshotGraph {
     Legacy,
-    V1(WorkspaceSnapshotGraphV1),
+    V1(DeprecatedWorkspaceSnapshotGraphV1),
+    V2(WorkspaceSnapshotGraphV2),
 }
 
 impl std::ops::Deref for WorkspaceSnapshotGraph {
-    type Target = WorkspaceSnapshotGraphV1;
+    type Target = WorkspaceSnapshotGraphV2;
 
     fn deref(&self) -> &Self::Target {
         self.inner()
@@ -110,16 +106,18 @@ impl std::ops::Deref for WorkspaceSnapshotGraph {
 
 impl WorkspaceSnapshotGraph {
     /// Return a reference to the most up to date enum variant for the graph type
-    pub fn inner(&self) -> &WorkspaceSnapshotGraphV1 {
+    pub fn inner(&self) -> &WorkspaceSnapshotGraphV2 {
         match self {
-            Self::Legacy => unimplemented!("Attempted to access an unmigrated snapshot!"),
-            Self::V1(inner) => inner,
+            Self::Legacy | Self::V1(_) => {
+                unimplemented!("Attempted to access an unmigrated snapshot!")
+            }
+            Self::V2(inner) => inner,
         }
     }
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraphV1 {
+pub struct WorkspaceSnapshotGraphV2 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
@@ -144,7 +142,7 @@ impl RebaseBatch {
     }
 }
 
-impl std::fmt::Debug for WorkspaceSnapshotGraphV1 {
+impl std::fmt::Debug for WorkspaceSnapshotGraphV2 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
@@ -154,17 +152,17 @@ impl std::fmt::Debug for WorkspaceSnapshotGraphV1 {
     }
 }
 
-impl WorkspaceSnapshotGraphV1 {
-    pub fn new(vector_clock_id: VectorClockId) -> WorkspaceSnapshotGraphResult<Self> {
+impl WorkspaceSnapshotGraphV2 {
+    pub fn new() -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
             StableDiGraph::with_capacity(1024, 1024);
         let mut generator = Generator::new();
+
         let root_node = NodeWeight::new_content(
-            vector_clock_id,
             generator.generate()?.into(),
             generator.generate()?.into(),
             ContentAddress::Root,
-        )?;
+        );
 
         let node_id = root_node.id();
         let lineage_id = root_node.lineage_id();
@@ -213,20 +211,6 @@ impl WorkspaceSnapshotGraphV1 {
             .map_err(|e| WorkspaceSnapshotGraphError::MutexPoison(e.to_string()))?
             .generate()?
             .into())
-    }
-
-    pub fn max_recently_seen_clock_id(
-        &self,
-        change_set_id_filter: Option<ChangeSetId>,
-    ) -> Option<VectorClockId> {
-        self.graph
-            .node_weight(self.root())
-            .and_then(|root_node| {
-                root_node
-                    .vector_clock_recently_seen()
-                    .max(change_set_id_filter)
-            })
-            .map(|(clock_id, _)| clock_id)
     }
 
     pub async fn update_node_id(
@@ -393,12 +377,11 @@ impl WorkspaceSnapshotGraphV1 {
 
     pub fn add_category_node(
         &mut self,
-        vector_clock_id: VectorClockId,
         id: Ulid,
         lineage_id: Ulid,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let inner_weight = CategoryNodeWeight::new(id, lineage_id, vector_clock_id, kind)?;
+        let inner_weight = CategoryNodeWeight::new(id, lineage_id, kind);
         let new_node_index = self.add_node(NodeWeight::Category(inner_weight))?;
         Ok(new_node_index)
     }
@@ -489,7 +472,6 @@ impl WorkspaceSnapshotGraphV1 {
     #[allow(clippy::type_complexity)]
     pub fn add_ordered_edge(
         &mut self,
-        vector_clock_id: VectorClockId,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -509,7 +491,7 @@ impl WorkspaceSnapshotGraphV1 {
         {
             let ordinal_edge_index = self.add_edge(
                 container_ordering_node_index,
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::Ordinal)?,
+                EdgeWeight::new(EdgeWeightKind::Ordinal),
                 to_node_index,
             )?;
 
@@ -525,7 +507,7 @@ impl WorkspaceSnapshotGraphV1 {
 
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
-                new_container_ordering_node_weight.push_to_order(vector_clock_id, element_id);
+                new_container_ordering_node_weight.push_to_order(element_id);
                 self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
@@ -544,7 +526,6 @@ impl WorkspaceSnapshotGraphV1 {
 
     pub fn add_ordered_node(
         &mut self,
-        vector_clock_id: VectorClockId,
         node: NodeWeight,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let new_node_index = self.add_node(node)?;
@@ -554,29 +535,15 @@ impl WorkspaceSnapshotGraphV1 {
         let ordering_node_index = self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(
             ordering_node_id,
             ordering_node_lineage_id,
-            vector_clock_id,
-        )?))?;
+        )))?;
 
         let edge_index = self.add_edge(
             new_node_index,
-            EdgeWeight::new(vector_clock_id, EdgeWeightKind::Ordering)?,
+            EdgeWeight::new(EdgeWeightKind::Ordering),
             ordering_node_index,
         )?;
         let (source, _) = self.edge_endpoints(edge_index)?;
         Ok(source)
-    }
-
-    pub fn collapse_vector_clock_entries(
-        &mut self,
-        allow_list: HashSet<VectorClockChangeSetId>,
-        collapse_id: VectorClockId,
-    ) {
-        for edge in self.graph.edge_weights_mut() {
-            edge.collapse_vector_clock_entries(&allow_list, collapse_id);
-        }
-        for node in self.graph.node_weights_mut() {
-            node.collapse_vector_clock_entries(&allow_list, collapse_id);
-        }
     }
 
     pub fn cleanup(&mut self) {
@@ -1048,8 +1015,7 @@ impl WorkspaceSnapshotGraphV1 {
 
     pub fn import_component_subgraph(
         &mut self,
-        vector_clock_id: VectorClockId,
-        other: &WorkspaceSnapshotGraphV1,
+        other: &WorkspaceSnapshotGraphV2,
         component_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         // * DFS event-based traversal.
@@ -1061,12 +1027,7 @@ impl WorkspaceSnapshotGraphV1 {
         //     Add edge from Funcs Category node to imported Func node.
         let mut edges_by_tail = HashMap::new();
         petgraph::visit::depth_first_search(&other.graph, Some(component_node_index), |event| {
-            self.import_component_subgraph_process_dfs_event(
-                other,
-                &mut edges_by_tail,
-                vector_clock_id,
-                event,
-            )
+            self.import_component_subgraph_process_dfs_event(other, &mut edges_by_tail, event)
         })?;
 
         Ok(())
@@ -1075,9 +1036,8 @@ impl WorkspaceSnapshotGraphV1 {
     /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
     fn import_component_subgraph_process_dfs_event(
         &mut self,
-        other: &WorkspaceSnapshotGraphV1,
+        other: &WorkspaceSnapshotGraphV2,
         edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
-        vector_clock_id: VectorClockId,
         event: DfsEvent<NodeIndex>,
     ) -> WorkspaceSnapshotGraphResult<petgraph::visit::Control<()>> {
         match event {
@@ -1178,7 +1138,7 @@ impl WorkspaceSnapshotGraphV1 {
                             ))?;
                         self.add_edge(
                             category_node_idx,
-                            EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())?,
+                            EdgeWeight::new(EdgeWeightKind::new_use()),
                             self_node_index,
                         )?;
                     }
@@ -1218,21 +1178,6 @@ impl WorkspaceSnapshotGraphV1 {
     fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
         algo::has_path_connecting(&self.graph, start, node, None)
             && algo::has_path_connecting(&self.graph, node, end, None)
-    }
-
-    pub fn mark_graph_seen(
-        &mut self,
-        vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let seen_at = Utc::now();
-        for edge in self.graph.edge_weights_mut() {
-            edge.mark_seen_at(vector_clock_id, seen_at);
-        }
-        for node in self.graph.node_weights_mut() {
-            node.mark_seen_at(vector_clock_id, seen_at);
-        }
-
-        Ok(())
     }
 
     pub fn node_count(&self) -> usize {
@@ -1494,14 +1439,12 @@ impl WorkspaceSnapshotGraphV1 {
 
     pub fn update_content(
         &mut self,
-        vector_clock_id: VectorClockId,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let original_node_index = self.get_node_index_by_id(id)?;
         let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.increment_vector_clocks(vector_clock_id);
         node_weight.new_content_hash(new_content_hash)?;
 
         self.replace_references(original_node_index)?;
@@ -1510,7 +1453,6 @@ impl WorkspaceSnapshotGraphV1 {
 
     pub fn update_order(
         &mut self,
-        vector_clock_id: VectorClockId,
         container_id: Ulid,
         new_order: Vec<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<()> {
@@ -1519,7 +1461,7 @@ impl WorkspaceSnapshotGraphV1 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
         let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.set_order(vector_clock_id, new_order)?;
+        node_weight.set_order(new_order)?;
 
         self.replace_references(original_node_index)?;
         Ok(())
@@ -1714,7 +1656,7 @@ impl WorkspaceSnapshotGraphV1 {
 }
 
 fn ordering_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV1,
+    snapshot: &WorkspaceSnapshotGraphV2,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -1736,7 +1678,7 @@ fn ordering_node_indexes_for_node_index(
 }
 
 fn prop_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV1,
+    snapshot: &WorkspaceSnapshotGraphV2,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot

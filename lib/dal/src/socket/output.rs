@@ -13,9 +13,7 @@ use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -39,8 +37,6 @@ pub enum OutputSocketError {
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("found too many matches for input and socket: {0}, {1}")]
     FoundTooManyForInputSocketId(InputSocketId, ComponentId),
     #[error("helper error: {0}")]
@@ -195,12 +191,8 @@ impl OutputSocket {
 
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            ContentAddress::OutputSocket(hash),
-        )?;
+        let node_weight =
+            NodeWeight::new_content(id, lineage_id, ContentAddress::OutputSocket(hash));
 
         workspace_snapshot.add_node(node_weight).await?;
 

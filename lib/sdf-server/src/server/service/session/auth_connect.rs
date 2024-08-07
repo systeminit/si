@@ -108,7 +108,7 @@ async fn find_or_create_user_and_workspace(
                 workspace.set_token(&ctx, auth_api_workspace.token).await?;
             }
 
-            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V1 {
+            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
                 return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
             }
 

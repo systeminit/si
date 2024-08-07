@@ -57,19 +57,17 @@ use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
-    pk, AttributeValueId, ChangeSet, Component, ComponentError, ComponentId, Workspace,
-    WorkspaceError,
+    pk, AttributeValueId, Component, ComponentError, ComponentId, Workspace, WorkspaceError,
 };
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphV1,
+    DalContext, TransactionsError, WorkspaceSnapshotGraphV2,
 };
 
 pk!(NodeId);
@@ -96,8 +94,6 @@ pub enum WorkspaceSnapshotError {
     Component(#[from] Box<ComponentError>),
     #[error("conflicts detected when generating rebase batch")]
     ConflictsInRebaseBatch,
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
@@ -190,7 +186,7 @@ pub struct WorkspaceSnapshot {
     /// to read or write to the graph. See the SnapshotReadGuard and SnapshotWriteGuard
     /// implemenations of Deref and DerefMut, and their construction in
     /// working_copy()/working_copy_mut()
-    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraphV1>>>,
+    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraphV2>>>,
 
     /// Whether we should perform cycle checks on add edge operations
     cycle_check: Arc<AtomicBool>,
@@ -225,16 +221,16 @@ impl std::ops::Drop for CycleCheckGuard {
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
-    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphV1>>,
+    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
 }
 
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotWriteGuard<'a> {
-    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphV1>>,
+    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
 }
 
 impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
-    type Target = WorkspaceSnapshotGraphV1;
+    type Target = WorkspaceSnapshotGraphV2;
 
     fn deref(&self) -> &Self::Target {
         if self.working_copy_read_guard.is_some() {
@@ -247,7 +243,7 @@ impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
 }
 
 impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
-    type Target = WorkspaceSnapshotGraphV1;
+    type Target = WorkspaceSnapshotGraphV2;
 
     fn deref(&self) -> &Self::Target {
         let option = &*self.working_copy_write_guard;
@@ -259,7 +255,7 @@ impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
 
 impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        let option = &mut *self.working_copy_write_guard;
+        let option: &mut Option<WorkspaceSnapshotGraphV2> = &mut self.working_copy_write_guard;
         &mut *option.as_mut().expect("attempted to DerefMut a snapshot without copying contents into the mutable working copy")
     }
 }
@@ -279,21 +275,18 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
 
 impl WorkspaceSnapshot {
     #[instrument(name = "workspace_snapshot.initial", level = "debug", skip_all)]
-    pub async fn initial(
-        ctx: &DalContext,
-        vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<Self> {
-        let mut graph: WorkspaceSnapshotGraphV1 = WorkspaceSnapshotGraphV1::new(vector_clock_id)?;
+    pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
+        let mut graph: WorkspaceSnapshotGraphV2 = WorkspaceSnapshotGraphV2::new()?;
 
         // Create the category nodes under root.
         for category_node_kind in CategoryNodeKind::iter() {
             let id = graph.generate_ulid()?;
             let lineage_id = graph.generate_ulid()?;
             let category_node_index =
-                graph.add_category_node(vector_clock_id, id, lineage_id, category_node_kind)?;
+                graph.add_category_node(id, lineage_id, category_node_kind)?;
             graph.add_edge(
                 graph.root(),
-                EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())?,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
                 category_node_index,
             )?;
         }
@@ -302,7 +295,7 @@ impl WorkspaceSnapshot {
         // "write" will populate them using the assigned working copy.
         let initial = Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
-            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V1(graph)),
+            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V2(graph)),
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
@@ -315,18 +308,6 @@ impl WorkspaceSnapshot {
 
     pub async fn generate_ulid(&self) -> WorkspaceSnapshotResult<Ulid> {
         Ok(self.working_copy_mut().await.generate_ulid()?)
-    }
-
-    /// Finds the vector clock id with the most up to date "recently seen" clock
-    /// in this graph. Optionally filters by change set id
-    pub async fn max_recently_seen_clock_id(
-        &self,
-        change_set_id_filter: Option<ChangeSetId>,
-    ) -> WorkspaceSnapshotResult<Option<VectorClockId>> {
-        Ok(self
-            .working_copy()
-            .await
-            .max_recently_seen_clock_id(change_set_id_filter))
     }
 
     /// Enables cycle checks on calls to [`Self::add_edge`]. Does not force
@@ -413,7 +394,7 @@ impl WorkspaceSnapshot {
                 let (new_address, _) = layer_db
                     .workspace_snapshot()
                     .write(
-                        Arc::new(WorkspaceSnapshotGraph::V1(working_copy.clone())),
+                        Arc::new(WorkspaceSnapshotGraph::V2(working_copy.clone())),
                         None,
                         events_tenancy,
                         events_actor,
@@ -481,7 +462,7 @@ impl WorkspaceSnapshot {
     pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
         let graph = self.working_copy().await.clone();
         Ok(si_layer_cache::db::serialize::to_vec(
-            &WorkspaceSnapshotGraph::V1(graph),
+            &WorkspaceSnapshotGraph::V2(graph),
         )?)
     }
 
@@ -514,15 +495,8 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn add_ordered_node(
-        &self,
-        vector_clock_id: VectorClockId,
-        node: NodeWeight,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self
-            .working_copy_mut()
-            .await
-            .add_ordered_node(vector_clock_id, node)?;
+    pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
+        let new_node_index = self.working_copy_mut().await.add_ordered_node(node)?;
         Ok(new_node_index)
     }
 
@@ -534,14 +508,13 @@ impl WorkspaceSnapshot {
     )]
     pub async fn update_content(
         &self,
-        vector_clock_id: VectorClockId,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotResult<()> {
         Ok(self
             .working_copy_mut()
             .await
-            .update_content(vector_clock_id, id, new_content_hash)?)
+            .update_content(id, new_content_hash)?)
     }
 
     #[instrument(
@@ -604,7 +577,6 @@ impl WorkspaceSnapshot {
     )]
     pub async fn add_ordered_edge(
         &self,
-        vector_clock_id: VectorClockId,
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
@@ -615,7 +587,6 @@ impl WorkspaceSnapshot {
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
         let (edge_index, _) = self.working_copy_mut().await.add_ordered_edge(
-            vector_clock_id,
             from_node_index,
             edge_weight,
             to_node_index,
@@ -667,16 +638,14 @@ impl WorkspaceSnapshot {
     )]
     pub async fn import_component_subgraph(
         &self,
-        vector_clock_id: VectorClockId,
         other: &Self,
         component_id: ComponentId,
     ) -> WorkspaceSnapshotResult<()> {
         let component_node_index = other.read_only_graph.get_node_index_by_id(component_id)?;
-        Ok(self.working_copy_mut().await.import_component_subgraph(
-            vector_clock_id,
-            &other.read_only_graph,
-            component_node_index,
-        )?)
+        Ok(self
+            .working_copy_mut()
+            .await
+            .import_component_subgraph(&other.read_only_graph, component_node_index)?)
     }
 
     /// Calls [`WorkspaceSnapshotGraph::replace_references()`]
@@ -1189,7 +1158,6 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_incoming_edges_of_kind(
         &self,
-        _vector_clock_id: VectorClockId,
         target_id: impl Into<Ulid>,
         kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
@@ -1236,11 +1204,7 @@ impl WorkspaceSnapshot {
         skip_all,
         fields()
     )]
-    pub async fn remove_node_by_id(
-        &self,
-        _vector_clock_id: VectorClockId,
-        id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
+    pub async fn remove_node_by_id(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
         let id: Ulid = id.into();
         let node_idx = self.get_node_index_by_id(id).await?;
         self.remove_all_edges(id).await?;
@@ -1292,7 +1256,6 @@ impl WorkspaceSnapshot {
     )]
     pub async fn remove_edge_for_ulids(
         &self,
-        _vector_clock_id: VectorClockId,
         source_node_id: impl Into<Ulid>,
         target_node_id: impl Into<Ulid>,
         edge_kind: EdgeWeightKindDiscriminants,
@@ -1442,9 +1405,6 @@ impl WorkspaceSnapshot {
 
         let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
 
-        // If there is no vector clock in this snapshot for the current change
-        // set, that's because the snapshot has *just* been forked from the base
-        // change set, and has not been written to yet
         let updates = base_snapshot
             .read_only_graph
             .detect_updates(&self.read_only_graph);
@@ -1778,7 +1738,6 @@ impl WorkspaceSnapshot {
 
     async fn find_existing_dependent_value_root(
         &self,
-        vector_clock_id: VectorClockId,
         value_id: Ulid,
     ) -> WorkspaceSnapshotResult<(Ulid, Option<Ulid>)> {
         let dv_category_id = match self
@@ -1792,14 +1751,13 @@ impl WorkspaceSnapshot {
                 let id = working_copy.generate_ulid()?;
                 let lineage_id = working_copy.generate_ulid()?;
                 let category_node_idx = working_copy.add_category_node(
-                    vector_clock_id,
                     id,
                     lineage_id,
                     CategoryNodeKind::DependentValueRoots,
                 )?;
                 working_copy.add_edge(
                     root_idx,
-                    EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())?,
+                    EdgeWeight::new(EdgeWeightKind::new_use()),
                     category_node_idx,
                 )?;
 
@@ -1826,7 +1784,6 @@ impl WorkspaceSnapshot {
 
     pub async fn add_dependent_value_root(
         &self,
-        vector_clock_id: VectorClockId,
         value_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let value_id = value_id.into();
@@ -1841,21 +1798,19 @@ impl WorkspaceSnapshot {
             dvu_roots.insert(value_id);
         }
 
-        let (dv_category_id, _) = self
-            .find_existing_dependent_value_root(vector_clock_id, value_id)
-            .await?;
+        let (dv_category_id, _) = self.find_existing_dependent_value_root(value_id).await?;
 
         let id = self.generate_ulid().await?;
         let lineage_id = self.generate_ulid().await?;
 
         let new_dependent_value_node =
-            NodeWeight::new_dependent_value_root(vector_clock_id, id, lineage_id, value_id)?;
+            NodeWeight::new_dependent_value_root(id, lineage_id, value_id);
         let new_dv_node_id = new_dependent_value_node.id();
         self.add_node(new_dependent_value_node).await?;
 
         self.add_edge(
             dv_category_id,
-            EdgeWeight::new(vector_clock_id, EdgeWeightKind::new_use())?,
+            EdgeWeight::new(EdgeWeightKind::new_use()),
             new_dv_node_id,
         )
         .await?;
@@ -1865,16 +1820,13 @@ impl WorkspaceSnapshot {
 
     pub async fn remove_dependent_value_root(
         &self,
-        vector_clock_id: VectorClockId,
         value_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<()> {
         let value_id = value_id.into();
-        let (_, existing_value_id) = self
-            .find_existing_dependent_value_root(vector_clock_id, value_id)
-            .await?;
+        let (_, existing_value_id) = self.find_existing_dependent_value_root(value_id).await?;
 
         if let Some(existing_id) = existing_value_id {
-            self.remove_node_by_id(vector_clock_id, existing_id).await?;
+            self.remove_node_by_id(existing_id).await?;
         }
 
         Ok(())
@@ -1899,10 +1851,7 @@ impl WorkspaceSnapshot {
     }
 
     /// Removes all the dependent value nodes from the category and returns the value_ids
-    pub async fn take_dependent_values(
-        &self,
-        vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
+    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<Ulid>> {
         let dv_category_id = match self
             .get_category_node(None, CategoryNodeKind::DependentValueRoots)
             .await?
@@ -1929,8 +1878,7 @@ impl WorkspaceSnapshot {
         }
 
         for to_remove_id in pending_removes {
-            self.remove_node_by_id(vector_clock_id, to_remove_id)
-                .await?;
+            self.remove_node_by_id(to_remove_id).await?;
         }
 
         Ok(value_ids)
@@ -1961,31 +1909,6 @@ impl WorkspaceSnapshot {
         }
 
         Ok(value_ids)
-    }
-
-    /// Prune and collapse vector clock entries for this snapshot, based on the
-    /// ancestry of its change set. This method assumes that the DalContext has
-    /// the correct change set id for this workspace snapshot.
-    pub async fn collapse_vector_clocks(&self, ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
-        let change_set_id = ctx.change_set_id();
-        let ancestors = ChangeSet::ancestors(ctx, change_set_id)
-            .await?
-            .into_iter()
-            .map(|cs_id| cs_id.into_inner().into())
-            .collect();
-
-        let collapse_id = VectorClockId::new(change_set_id.into_inner(), ulid::Ulid(0));
-
-        let self_clone = self.clone();
-        slow_rt::spawn(async move {
-            self_clone
-                .working_copy_mut()
-                .await
-                .collapse_vector_clock_entries(ancestors, collapse_id);
-        })?
-        .await?;
-
-        Ok(())
     }
 
     /// If this node is associated to a single av, return it

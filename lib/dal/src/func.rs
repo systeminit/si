@@ -18,13 +18,10 @@ use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV2};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, pk, ChangeSetId, DalContext, HelperError, Timestamp,
@@ -62,8 +59,6 @@ pub enum FuncError {
     ChangeSet(#[from] ChangeSetError),
     #[error("chrono parse error: {0}")]
     ChronoParse(#[from] chrono::ParseError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func associations error: {0}")]
@@ -280,14 +275,8 @@ impl Func {
 
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let node_weight = NodeWeight::new_func(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            name.clone().into(),
-            func_kind,
-            hash,
-        )?;
+        let node_weight =
+            NodeWeight::new_func(id, lineage_id, name.clone().into(), func_kind, hash);
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot.add_node(node_weight.clone()).await?;
@@ -489,9 +478,7 @@ impl Func {
             node_weight.set_name(func.name.as_str());
 
             workspace_snapshot
-                .add_node(NodeWeight::Func(
-                    node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
-                ))
+                .add_node(NodeWeight::Func(node_weight.clone()))
                 .await?;
 
             workspace_snapshot
@@ -512,7 +499,7 @@ impl Func {
                 )
                 .await?;
             workspace_snapshot
-                .update_content(ctx.vector_clock_id()?, func.id.into(), hash)
+                .update_content(func.id.into(), hash)
                 .await?;
         }
 
@@ -556,9 +543,7 @@ impl Func {
 
         // Now, we can remove the func.
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        workspace_snapshot
-            .remove_node_by_id(ctx.vector_clock_id()?, id)
-            .await?;
+        workspace_snapshot.remove_node_by_id(id).await?;
 
         Ok(func.name)
     }

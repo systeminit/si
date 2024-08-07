@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeprecatedActionPrototypeNodeWeight {
+pub struct DeprecatedActionPrototypeNodeWeightLegacy {
     pub id: Ulid,
     pub kind: ActionKind,
     // TODO: Move behind ContentHash, and out of the node weight directly.

@@ -55,13 +55,10 @@ use crate::layer_db_types::{SecretContent, SecretContentV1};
 use crate::prop::PropError;
 use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::vector_clock::HasVectorClocks;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
@@ -102,8 +99,6 @@ pub enum SecretError {
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("encrypted secret key parse error: {0}")]
     EncryptedSecretKeyParse(#[from] EncryptedSecretKeyParseError),
     #[error("encrypted secret not found for key: {0}")]
@@ -250,8 +245,7 @@ impl Secret {
             )
             .await?;
 
-        let node_weight =
-            NodeWeight::new_secret(ctx.vector_clock_id()?, id, lineage_id, key, hash)?;
+        let node_weight = NodeWeight::new_secret(id, lineage_id, key, hash);
         let secret_node_weight = node_weight.get_secret_node_weight()?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -652,9 +646,7 @@ impl Secret {
             secret_node_weight.set_encrypted_secret_key(secret.encrypted_secret_key);
 
             workspace_snapshot
-                .add_node(NodeWeight::Secret(
-                    secret_node_weight.new_with_incremented_vector_clock(ctx.vector_clock_id()?),
-                ))
+                .add_node(NodeWeight::Secret(secret_node_weight.clone()))
                 .await?;
 
             workspace_snapshot
@@ -675,7 +667,7 @@ impl Secret {
                 )
                 .await?;
             ctx.workspace_snapshot()?
-                .update_content(ctx.vector_clock_id()?, secret.id.into(), hash)
+                .update_content(secret.id.into(), hash)
                 .await?;
         }
 

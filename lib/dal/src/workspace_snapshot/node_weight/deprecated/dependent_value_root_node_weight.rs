@@ -4,7 +4,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedDependentValueRootNodeWeight {
+pub struct DeprecatedDependentValueRootNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: Ulid,
     pub value_id: Ulid,

@@ -180,9 +180,7 @@ async fn ensure_deletes_happened(
         match snapshot.get_node_weight_by_id(node_id).await {
             Ok(_) => {
                 warn!(?node_id, "removing node with edge because it is lingering");
-                snapshot
-                    .remove_node_by_id(ctx.vector_clock_id()?, node_id)
-                    .await?;
+                snapshot.remove_node_by_id(node_id).await?;
                 removed_at_least_once = true;
             }
             Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(

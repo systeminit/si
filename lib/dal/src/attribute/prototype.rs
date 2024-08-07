@@ -26,9 +26,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
     content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
@@ -53,8 +51,6 @@ pub enum AttributePrototypeError {
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("helper error: {0}")]
@@ -163,12 +159,8 @@ impl AttributePrototype {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight = NodeWeight::new_content(
-            ctx.vector_clock_id()?,
-            id,
-            lineage_id,
-            ContentAddress::AttributePrototype(hash),
-        )?;
+        let node_weight =
+            NodeWeight::new_content(id, lineage_id, ContentAddress::AttributePrototype(hash));
         let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
         let prototype = AttributePrototype::assemble(id.into(), &content);
@@ -481,7 +473,7 @@ impl AttributePrototype {
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
         ctx.workspace_snapshot()?
-            .remove_node_by_id(ctx.vector_clock_id()?, prototype_id)
+            .remove_node_by_id(prototype_id)
             .await?;
 
         Ok(())

@@ -6,7 +6,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DeprecatedCategoryNodeWeight {
+pub struct DeprecatedCategoryNodeWeightLegacy {
     pub id: Ulid,
     pub lineage_id: LineageId,
     pub kind: CategoryNodeKind,

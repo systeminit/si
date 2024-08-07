@@ -1,6 +1,5 @@
 use crate::{
-    EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants, TransactionsError,
-    WorkspaceSnapshotError,
+    EdgeWeightKind, EdgeWeightKindDiscriminants, TransactionsError, WorkspaceSnapshotError,
 };
 use thiserror::Error;
 
@@ -8,8 +7,6 @@ use thiserror::Error;
 pub enum HelperError {
     #[error("invalid edge weight, got {0:?} expected discriminant {1:?}")]
     InvalidEdgeWeight(EdgeWeightKind, EdgeWeightKindDiscriminants),
-    #[error("edge weight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
@@ -37,7 +34,7 @@ macro_rules! implement_add_edge_to {
                 ctx.workspace_snapshot()?
                     .add_edge(
                         source_id,
-                        $crate::EdgeWeight::new(ctx.vector_clock_id()?, weight)?,
+                        $crate::EdgeWeight::new(weight),
                         destination_id,
                     )
                     .await?;
@@ -50,13 +47,10 @@ macro_rules! implement_add_edge_to {
                     return Err($crate::HelperError::InvalidEdgeWeight(weight, $discriminant))?;
                 }
 
-                let vector_clock_id = ctx.vector_clock_id()?;
-
                 ctx.workspace_snapshot()?
                     .add_ordered_edge(
-                        vector_clock_id,
                         source_id,
-                        $crate::EdgeWeight::new(vector_clock_id, weight)?,
+                        $crate::EdgeWeight::new(weight),
                         destination_id
                     )
                     .await?;
