@@ -116,9 +116,7 @@ impl TryFrom<PgRow> for Workspace {
             uses_actions_v2: row.try_get("uses_actions_v2")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
             token: row.try_get("token")?,
-            snapshot_version: dbg!(WorkspaceSnapshotGraphDiscriminants::from_str(
-                &snapshot_version
-            )?),
+            snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
         })
     }
 }
