@@ -21,8 +21,8 @@ fn main() -> Result<()> {
     let to_rebase_path = args.get(1).expect(USAGE);
     let onto_path = args.get(2).expect(USAGE);
 
-    let to_rebase_graph = load_snapshot_graph(&to_rebase_path)?;
-    let onto_graph = load_snapshot_graph(&onto_path)?;
+    let to_rebase_graph = load_snapshot_graph(to_rebase_path)?;
+    let onto_graph = load_snapshot_graph(onto_path)?;
 
     let updates = to_rebase_graph.detect_updates(&onto_graph);
 
