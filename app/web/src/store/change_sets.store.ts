@@ -374,7 +374,9 @@ export function useChangeSetsStore() {
               const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
-                changeSet.status = ChangeSetStatus.Applied;
+                if (changeSet.id !== this.headChangeSetId)
+                  // never set HEAD to Applied
+                  changeSet.status = ChangeSetStatus.Applied;
                 if (this.selectedChangeSet?.id === changeSetId) {
                   this.postApplyActor = userPk;
                 }
@@ -412,14 +414,18 @@ export function useChangeSetsStore() {
                       changeSetId: "head",
                     },
                   });
-                  toast({
-                    component: MovedToHead,
-                    props: {
-                      icon: "tools",
-                      changeSetName: this.selectedChangeSet?.name,
-                      action: "merged",
-                    },
-                  });
+                  if (
+                    this.selectedChangeSet &&
+                    this.selectedChangeSet.name !== "HEAD"
+                  )
+                    toast({
+                      component: MovedToHead,
+                      props: {
+                        icon: "tools",
+                        changeSetName: this.selectedChangeSet?.name,
+                        action: "merged",
+                      },
+                    });
                 }
               }
             },
