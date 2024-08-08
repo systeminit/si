@@ -1,5 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
+use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionState};
 use dal::Func;
@@ -51,6 +52,7 @@ pub async fn list_actions(
 
     let mut queued = Vec::new();
 
+    let action_graph = ActionDependencyGraph::for_workspace(&ctx).await?;
     for action_id in action_ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
 
@@ -75,9 +77,14 @@ pub async fn list_actions(
             state: action.state(),
             func_run_id,
             originating_change_set_id: action.originating_changeset_id(),
-            my_dependencies: action.get_all_dependencies(&ctx).await?,
-            dependent_on: Action::get_dependent_actions_by_id(&ctx, action_id).await?,
-            hold_status_influenced_by: action.get_hold_status_influenced_by(&ctx).await?,
+            my_dependencies: action_graph.get_all_dependencies(action_id),
+            dependent_on: action_graph.direct_dependencies_of(action_id),
+            hold_status_influenced_by: Action::get_hold_status_influenced_by(
+                &ctx,
+                &action_graph,
+                action_id,
+            )
+            .await?,
         };
         queued.push(action_view);
     }
