@@ -412,14 +412,18 @@ export function useChangeSetsStore() {
                       changeSetId: "head",
                     },
                   });
-                  toast({
-                    component: MovedToHead,
-                    props: {
-                      icon: "tools",
-                      changeSetName: this.selectedChangeSet?.name,
-                      action: "merged",
-                    },
-                  });
+                  if (
+                    this.selectedChangeSet &&
+                    this.selectedChangeSet.name !== "HEAD"
+                  )
+                    toast({
+                      component: MovedToHead,
+                      props: {
+                        icon: "tools",
+                        changeSetName: this.selectedChangeSet?.name,
+                        action: "merged",
+                      },
+                    });
                 }
               }
             },
