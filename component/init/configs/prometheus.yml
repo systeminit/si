@@ -1,16 +1,41 @@
 global:
   scrape_interval: 10s
+  external_labels:
+    monitor: prometheus
 scrape_configs:
  - job_name: service_metrics
    static_configs:
     - targets:
        - otelcol:9090
+   relabel_configs:
+    - source_labels:
+      - '__address__'
+      target_label: 'instance'
+      replacement: '$SI_SERVICE'
  - job_name: firecracker
-   scrape_interval: 100ms
    static_configs:
     - targets:
        - process-exporter:9256
+   scrape_interval: 100ms
+   relabel_configs:
+    - source_labels:
+      - '__address__'
+      target_label: 'instance'
+      replacement: '$SI_SERVICE'
  - job_name: node-exporter
    static_configs:
     - targets:
       - node-exporter:9100
+   relabel_configs:
+    - source_labels:
+      - '__address__'
+      target_label: 'instance'
+      replacement: '$SI_SERVICE'
+remote_write:
+  - url: $SI_PROMETHEUS_REMOTE_WRITE_URL
+    sigv4:
+      region: us-east-1
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
