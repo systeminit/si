@@ -4,6 +4,7 @@ use strum::{Display, EnumIter};
 
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedCategoryNodeWeightV1;
 use crate::workspace_snapshot::graph::LineageId;
+use crate::workspace_snapshot::node_weight::traits::CorrectTransforms;
 use crate::EdgeWeightKindDiscriminants;
 
 /// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
@@ -99,3 +100,5 @@ impl From<DeprecatedCategoryNodeWeightV1> for CategoryNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for CategoryNodeWeight {}

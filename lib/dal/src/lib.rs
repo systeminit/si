@@ -111,6 +111,7 @@ pub use secret::SecretUpdatedPayload;
 pub use secret::SecretVersion;
 pub use secret::SecretView;
 pub use secret::SecretViewError;
+pub use si_events::WorkspaceSnapshotAddress;
 pub use si_events::{content_hash::ContentHash, ulid::Ulid};
 pub use socket::input::{InputSocket, InputSocketId};
 pub use socket::output::{OutputSocket, OutputSocketId};

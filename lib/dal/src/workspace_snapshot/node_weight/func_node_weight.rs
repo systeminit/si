@@ -7,6 +7,7 @@ use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedFuncNodeWeightV1
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
+    node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
 use crate::EdgeWeightKindDiscriminants;
@@ -139,3 +140,5 @@ impl From<DeprecatedFuncNodeWeightV1> for FuncNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for FuncNodeWeight {}

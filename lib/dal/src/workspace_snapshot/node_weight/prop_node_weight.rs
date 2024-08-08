@@ -8,6 +8,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
+        node_weight::traits::CorrectTransforms,
         node_weight::{NodeWeightError, NodeWeightResult},
     },
     PropKind,
@@ -142,3 +143,5 @@ impl From<DeprecatedPropNodeWeightV1> for PropNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for PropNodeWeight {}

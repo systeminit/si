@@ -15,6 +15,7 @@ use telemetry::prelude::*;
 
 use crate::context::RebaseRequest;
 use crate::slow_rt::SlowRuntimeError;
+use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::{
     action::{ActionError, ActionId},
     id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
@@ -258,7 +259,7 @@ impl ChangeSet {
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers SET workspace_id = $2 WHERE id = $1",
+                "UPDATE change_set_pointers SET workspace_id = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &workspace_id],
             )
             .await?;
@@ -277,7 +278,7 @@ impl ChangeSet {
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers SET workspace_snapshot_address = $2 WHERE id = $1",
+                "UPDATE change_set_pointers SET workspace_snapshot_address = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &workspace_snapshot_address],
             )
             .await?;
@@ -296,7 +297,7 @@ impl ChangeSet {
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers SET status = $2 WHERE id = $1",
+                "UPDATE change_set_pointers SET status = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &status.to_string()],
             )
             .await?;
@@ -315,7 +316,7 @@ impl ChangeSet {
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2 WHERE id = $1",
+                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &user_pk],
             )
             .await?;
@@ -432,6 +433,28 @@ impl ChangeSet {
         Ok(change_set_to_be_applied)
     }
 
+    pub async fn detect_updates_that_will_be_applied(
+        &self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<Option<RebaseBatch>> {
+        let base_change_set_id = self
+            .base_change_set_id
+            .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
+
+        let base_snapshot = Arc::new(
+            WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id)
+                .await
+                .map_err(Box::new)?,
+        );
+
+        Ok(WorkspaceSnapshot::calculate_rebase_batch(
+            base_snapshot,
+            ctx.workspace_snapshot().map_err(Box::new)?,
+        )
+        .await
+        .map_err(Box::new)?)
+    }
+
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`] to its base
     /// [`ChangeSet`]. This involves performing a rebase request and updating the status
     /// of the [`ChangeSet`] accordingly.
@@ -443,19 +466,7 @@ impl ChangeSet {
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
-        let base_snapshot = Arc::new(
-            WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id)
-                .await
-                .map_err(Box::new)?,
-        );
-
-        if let Some(rebase_batch) = WorkspaceSnapshot::calculate_rebase_batch(
-            base_snapshot,
-            ctx.workspace_snapshot().map_err(Box::new)?,
-        )
-        .await
-        .map_err(Box::new)?
-        {
+        if let Some(rebase_batch) = self.detect_updates_that_will_be_applied(ctx).await? {
             let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
 
             let rebase_request = RebaseRequest::new(base_change_set_id, rebase_batch_address);

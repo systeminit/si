@@ -3,7 +3,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::graph::deprecated::v1::DeprecatedDependentValueRootNodeWeightV1,
-    EdgeWeightKindDiscriminants,
+    workspace_snapshot::node_weight::traits::CorrectTransforms, EdgeWeightKindDiscriminants,
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -84,3 +84,5 @@ impl From<DeprecatedDependentValueRootNodeWeightV1> for DependentValueRootNodeWe
         }
     }
 }
+
+impl CorrectTransforms for DependentValueRootNodeWeight {}

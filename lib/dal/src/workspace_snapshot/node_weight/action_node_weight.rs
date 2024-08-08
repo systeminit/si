@@ -4,6 +4,7 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use crate::{
     action::ActionState,
     workspace_snapshot::graph::{deprecated::v1::DeprecatedActionNodeWeightV1, LineageId},
+    workspace_snapshot::node_weight::traits::CorrectTransforms,
     ChangeSetId, EdgeWeightKindDiscriminants,
 };
 
@@ -88,3 +89,5 @@ impl From<DeprecatedActionNodeWeightV1> for ActionNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for ActionNodeWeight {}

@@ -5,6 +5,7 @@ use crate::{
     workspace_snapshot::graph::{
         deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1, LineageId,
     },
+    workspace_snapshot::node_weight::traits::CorrectTransforms,
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
@@ -115,3 +116,5 @@ impl From<DeprecatedAttributePrototypeArgumentNodeWeightV1>
         }
     }
 }
+
+impl CorrectTransforms for AttributePrototypeArgumentNodeWeight {}

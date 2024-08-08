@@ -61,7 +61,9 @@ use uuid::Uuid;
 #[allow(clippy::expect_used, clippy::panic)]
 pub mod expand_helpers;
 
+pub mod expected;
 pub mod helpers;
+
 mod signup;
 mod test_exclusive_schemas;
 

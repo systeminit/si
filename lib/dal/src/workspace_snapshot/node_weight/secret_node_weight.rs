@@ -6,6 +6,7 @@ use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeight
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
+    node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
 use crate::EdgeWeightKindDiscriminants;
@@ -126,3 +127,5 @@ impl From<DeprecatedSecretNodeWeightV1> for SecretNodeWeight {
         }
     }
 }
+
+impl CorrectTransforms for SecretNodeWeight {}
