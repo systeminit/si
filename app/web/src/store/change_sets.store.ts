@@ -374,7 +374,9 @@ export function useChangeSetsStore() {
               const { changeSetId, userPk, toRebaseChangeSetId } = data;
               const changeSet = this.changeSetsById[changeSetId];
               if (changeSet) {
-                changeSet.status = ChangeSetStatus.Applied;
+                if (changeSet.id !== this.headChangeSetId)
+                  // never set HEAD to Applied
+                  changeSet.status = ChangeSetStatus.Applied;
                 if (this.selectedChangeSet?.id === changeSetId) {
                   this.postApplyActor = userPk;
                 }
