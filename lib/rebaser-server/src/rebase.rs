@@ -1,10 +1,14 @@
 use dal::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{DalContext, TransactionsError, WorkspaceSnapshot, WsEventError};
+use dal::{
+    DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
+    WsEvent, WsEventError,
+};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::activities::rebase::RebaseStatus;
 use si_layer_cache::activities::ActivityRebaseRequest;
+use si_layer_cache::event::LayeredEventMetadata;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -31,6 +35,10 @@ pub enum RebaseError {
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("workspace pk expected but was none")]
+    WorkspacePkExpected,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -131,6 +139,60 @@ pub async fn perform_rebase(
             }
             // TODO: RebaseBatch eviction?
         });
+    }
+
+    if let Some(workspace) = Workspace::get_by_pk(
+        ctx,
+        &ctx.tenancy()
+            .workspace_pk()
+            .ok_or(RebaseError::WorkspacePkExpected)?,
+    )
+    .await?
+    {
+        if workspace.default_change_set_id() == to_rebase_change_set.id
+            && *workspace.pk() != WorkspacePk::NONE
+        {
+            let all_open_change_sets = ChangeSet::list_open(ctx).await?;
+            for change_set in all_open_change_sets.iter().filter(|cs| {
+                cs.id != workspace.default_change_set_id() && cs.id != to_rebase_change_set.id
+            }) {
+                debug!("sending batch to change set {}", change_set.id);
+                let metadata = LayeredEventMetadata::new(
+                    si_events::Tenancy::new(
+                        ctx.tenancy()
+                            .workspace_pk()
+                            .unwrap_or(WorkspacePk::NONE)
+                            .into(),
+                        change_set.id.into(),
+                    ),
+                    si_events::Actor::System,
+                );
+
+                ctx.layer_db()
+                    .activity()
+                    .rebase()
+                    .rebase_from_change_set(
+                        change_set.id.into(),
+                        message.payload.rebase_batch_address,
+                        to_rebase_change_set.id.into(),
+                        metadata,
+                    )
+                    .await?;
+            }
+        }
+    }
+
+    if let Some(source_change_set_id) = message.payload.from_change_set_id {
+        let mut event = WsEvent::change_set_applied(
+            ctx,
+            source_change_set_id.into(),
+            message.payload.to_rebase_change_set_id.into(),
+            None,
+        )
+        .await?;
+        event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_raw_id().into());
+        event.set_change_set_id(Some(message.payload.to_rebase_change_set_id.into()));
+        event.publish_immediately(ctx).await?;
     }
 
     Ok(RebaseStatus::Success {
