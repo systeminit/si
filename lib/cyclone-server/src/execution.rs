@@ -37,11 +37,13 @@ const LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
+    lang_server_function_timeout: Option<usize>,
     command: String,
 ) -> Execution<Request, LangServerSuccess, Success> {
     Execution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
+        lang_server_function_timeout,
         command,
         request_marker: PhantomData,
         lang_server_success_marker: PhantomData,
@@ -90,6 +92,7 @@ type Result<T> = std::result::Result<T, ExecutionError>;
 pub struct Execution<Request, LangServerSuccess, Success> {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
+    lang_server_function_timeout: Option<usize>,
     command: String,
     request_marker: PhantomData<Request>,
     lang_server_success_marker: PhantomData<LangServerSuccess>,
@@ -119,9 +122,14 @@ where
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+
+        if let Some(timeout) = self.lang_server_function_timeout {
+            command.arg("--timeout").arg(timeout.to_string());
+        }
         if self.lang_server_debugging {
             command.env("SI_LANG_JS_LOG", "*");
         }
+
         debug!(cmd = ?command, "spawning child process");
         let mut child = command
             .spawn()

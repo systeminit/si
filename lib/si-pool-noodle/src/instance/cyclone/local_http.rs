@@ -263,6 +263,10 @@ pub struct LocalHttpInstanceSpec {
     #[builder(try_setter, setter(into))]
     lang_server_cmd_path: CanonicalCommand,
 
+    /// Overrides the default function timeout for the language server program, in seconds.
+    #[builder(default)]
+    lang_server_function_timeout: Option<usize>,
+
     /// Socket strategy for a spawned Cyclone server.
     #[builder(default)]
     socket_strategy: LocalHttpSocketStrategy,
@@ -358,6 +362,9 @@ impl LocalHttpInstanceSpec {
             .arg("--lang-server")
             .arg(&self.lang_server_cmd_path)
             .arg("--enable-watch");
+        if let Some(timeout) = self.lang_server_function_timeout {
+            cmd.arg("--timeout").arg(timeout.to_string());
+        }
         if let Some(limit_requests) = self.limit_requests {
             cmd.arg("--limit-requests").arg(limit_requests.to_string());
         }

@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import Joi from "joi";
 import {
-  describe, expect, test, vi,
+  describe, expect, test, vi, fail,
 } from "vitest";
 import { executeFunction, FunctionKind } from "../src/function";
 import { AnyFunction, RequestCtx } from "../src/request";
@@ -27,6 +27,7 @@ interface FuncScenario {
     arg: Record<string, any>
   }[];
   result?: any;
+  timeout?: number;
 }
 
 const scenarios: FuncScenario[] = [
@@ -162,7 +163,21 @@ const scenarios: FuncScenario[] = [
       error: { kind: "JoiValidationFormatError" },
     },
   },
+  {
+    name: "Will Timeout",
+    kind: FunctionKind.ActionRun,
+    funcSpec: {
+      value: {},
+      handler: "main",
+      codeBase64: "", // We rewrite this later
+    },
+    func: "willTimeout.ts",
+    timeout: 1,
+  },
 ];
+
+// This is the test suite timeout in seconds.
+const testSuiteTimeout = 30;
 
 describe("executeFunction", () => {
   test("Name", () => {
@@ -220,21 +235,32 @@ describe("executeFunction", () => {
         });
       }
 
-      await executeFunction(scenario.kind, {
-        ...ctx,
-        ...funcObj,
-        before,
-      });
-
-      const parsedLog = JSON.parse(lastLog);
-
-      expect(parsedLog).toMatchObject(scenario.result ?? {
-        protocol: "result",
-        status: "success",
-      });
+      if (scenario.timeout) {
+        try {
+          await executeFunction(scenario.kind, {
+            ...ctx,
+            ...funcObj,
+            before,
+          }, scenario.timeout);
+          fail("expected function to hit timeout, but no error was thrown");
+        } catch (error) {
+          expect(error.message).toBe(`Error: function timed out after ${scenario.timeout} seconds`);
+        }
+      } else {
+        await executeFunction(scenario.kind, {
+          ...ctx,
+          ...funcObj,
+          before,
+        }, testSuiteTimeout * 1000);
+        const parsedLog = JSON.parse(lastLog);
+        expect(parsedLog).toMatchObject(scenario.result ?? {
+          protocol: "result",
+          status: "success",
+        });
+      }
     },
   );
-});
+}, testSuiteTimeout * 1000);
 
 async function base64FromFile(path: string) {
   const buffer = await fs.readFile(path);

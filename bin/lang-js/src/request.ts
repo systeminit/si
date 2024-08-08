@@ -18,6 +18,7 @@ export type AnyFunction =
 export type Request = AnyFunction &
 RequestCtx & {
   before?: BeforeFunc[];
+  timeout?: number,
 };
 
 export interface RequestCtx {

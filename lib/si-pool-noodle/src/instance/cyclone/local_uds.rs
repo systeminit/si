@@ -298,6 +298,10 @@ pub struct LocalUdsInstanceSpec {
     #[builder(try_setter, setter(into), default)]
     lang_server_cmd_path: CanonicalCommand,
 
+    /// Overrides the default function timeout for the language server program, in seconds.
+    #[builder(default)]
+    lang_server_function_timeout: Option<usize>,
+
     /// Socket strategy for a spawned Cyclone server.
     #[builder(default)]
     socket_strategy: LocalUdsSocketStrategy,
@@ -568,6 +572,9 @@ impl LocalProcessRuntime {
             .arg("--lang-server")
             .arg(&spec.lang_server_cmd_path)
             .arg("--enable-watch");
+        if let Some(timeout) = spec.lang_server_function_timeout {
+            cmd.arg("--timeout").arg(timeout.to_string());
+        }
         if let Some(limit_requests) = spec.limit_requests {
             cmd.arg("--limit-requests").arg(limit_requests.to_string());
         }

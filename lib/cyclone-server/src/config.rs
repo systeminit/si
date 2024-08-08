@@ -52,6 +52,9 @@ pub struct Config {
     #[builder(try_setter, setter(into))]
     lang_server_path: CanonicalFile,
 
+    #[builder(default)]
+    lang_server_function_timeout: Option<usize>,
+
     #[builder(setter(into), default)]
     limit_requests: Option<u32>,
 }
@@ -115,6 +118,12 @@ impl Config {
     #[must_use]
     pub fn lang_server_path(&self) -> &Path {
         self.lang_server_path.as_path()
+    }
+
+    /// Gets a reference to the config's lang server function timeout optional override.
+    #[must_use]
+    pub fn lang_server_function_timeout(&self) -> Option<usize> {
+        self.lang_server_function_timeout
     }
 
     /// Gets a reference to the config's limit requests.

@@ -12,16 +12,21 @@ use tokio::sync::mpsc;
 pub struct AppState {
     lang_server_path: LangServerPath,
     telemetry_level: TelemetryLevel,
+    lang_server_function_timeout: LangServerFunctionTimeout,
 }
 
 impl AppState {
     pub fn new(
         lang_server_path: impl Into<PathBuf>,
         telemetry_level: Box<dyn telemetry::TelemetryLevel>,
+        lang_server_function_timeout: Option<usize>,
     ) -> Self {
         Self {
             lang_server_path: LangServerPath(Arc::new(lang_server_path.into())),
             telemetry_level: TelemetryLevel(Arc::new(telemetry_level)),
+            lang_server_function_timeout: LangServerFunctionTimeout(Arc::new(
+                lang_server_function_timeout,
+            )),
         }
     }
 }
@@ -43,6 +48,15 @@ impl Deref for TelemetryLevel {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Clone, Debug, FromRef)]
+pub struct LangServerFunctionTimeout(Arc<Option<usize>>);
+
+impl LangServerFunctionTimeout {
+    pub fn inner(&self) -> Option<usize> {
+        Arc::clone(&self.0).as_ref().to_owned()
     }
 }
 

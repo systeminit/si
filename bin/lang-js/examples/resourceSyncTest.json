@@ -1,9 +1,0 @@
-{
-  "executionId": "9012",
-  "handler": "sync",
-  "component": {
-    "name": "jane",
-    "properties": {}
-  },
-  "codeBase64": "Ly8gRW5jb2RlIHRoaXMgaW50byBCYXNlNjQgd2l0aDoKLy8KLy8gYGBgc2gKLy8gY2F0IGV4YW1wbGVzL3Jlc291cmNlU3luY1Rlc3RDb2RlLmpzIHwgYmFzZTY0IHwgdHIgLWQgJ1xuJwovLyBgYGAKCmZ1bmN0aW9uIHN5bmMoY29tcG9uZW50KSB7CiAgY29uc29sZS5sb2coSlNPTi5zdHJpbmdpZnkoY29tcG9uZW50KSk7CiAgY29uc29sZS5sb2coInN5bmNpbmcgc29tZXRoaW5nLCByaWdodD8iKTsKICByZXR1cm4ge307Cn0K"
-}
