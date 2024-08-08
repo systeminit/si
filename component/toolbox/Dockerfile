@@ -6,7 +6,8 @@ RUN set -eux; \
         https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_${arch}/session-manager-plugin.rpm; \
     yum install -y jq
 
-COPY ./scripts/* /usr/local/bin/si/
+COPY ./scripts/ /usr/local/bin/si/
+
 ENV PATH="/usr/local/bin/si:${PATH}"
 
 ENTRYPOINT ["bash", "-c"]

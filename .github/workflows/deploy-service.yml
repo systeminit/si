@@ -17,6 +17,10 @@ on:
         type: string
         required: true
         description: "version to deploy"
+      deploy-type:
+        type: string
+        required: true
+        description: "deployment variant"
 
 jobs:
   deploy:
@@ -24,7 +28,7 @@ jobs:
     name: Deploy Service
     runs-on: ubuntu-latest
     steps:
-      - name: Configure AWS credentials for production
+      - name: Configure AWS credentials for ${{ inputs.environment }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
@@ -73,7 +77,7 @@ jobs:
           echo "Invalidation is complete."
 
       - name: Deploy service
-        if: ${{ inputs.service != 'web' }}
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'instance' }}
         run: |
             check_version_exists() {
                 local version="$1"
@@ -141,3 +145,11 @@ jobs:
                 echo "Version $VERSION for $SERVICE not found in the artifacts registry. Skipping!"
                 exit 1
             fi
+
+      - name: Checkout code
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
+        uses: actions/checkout@v4
+
+      - name: Deploy service
+        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
+        run: component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}

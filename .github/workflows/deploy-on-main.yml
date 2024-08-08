@@ -20,4 +20,16 @@ jobs:
       environment: tools
       service: ${{ needs.parse-tag.outputs.service }}
       version: stable
+      deploy-type: binary
     secrets: inherit
+    continue-on-error: true
+  full-deploy-on-failure:
+    if: failure() 
+    uses: ./.github/workflows/deploy-stack.yml
+    with:
+      environment: tools
+      service: all
+      version: stable
+      deploy-type: instance
+    secrets: inherit
+    needs: deploy-tools-prod
