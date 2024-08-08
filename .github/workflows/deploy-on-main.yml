@@ -1,13 +1,23 @@
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '.*(sdf|rebaser|pinga|web|veritech).*'
 
 jobs:
+  parse-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      service: ${{ steps.service.outputs.service }}
+    steps:
+      - id: service
+        run: |
+            echo "service=$(echo "${{ github.ref_name }}" | awk -F'/' '{print $2}')" >> "$GITHUB_OUTPUT"
+
   deploy-tools-prod:
+    needs: parse-tag
     uses: ./.github/workflows/deploy-stack.yml
     with:
       environment: tools
-      service: all
+      service: ${{ needs.parse-tag.outputs.service }}
       version: stable
     secrets: inherit
