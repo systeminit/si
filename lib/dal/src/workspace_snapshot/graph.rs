@@ -994,6 +994,11 @@ impl WorkspaceSnapshotGraphV2 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
+    pub fn get_node_weight_by_id_opt(&self, id: impl Into<Ulid>) -> Option<&NodeWeight> {
+        self.get_node_index_by_id_opt(id)
+            .and_then(|index| self.get_node_weight_opt(index))
+    }
+
     fn get_node_weight_mut(
         &mut self,
         node_index: NodeIndex,
