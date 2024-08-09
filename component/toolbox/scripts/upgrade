@@ -139,8 +139,11 @@ concat_and_output_json "$results_directory" "$check_results_file"
 if jq -e 'all(.[]; .status == "success") and any(.[]; .upgradeable == "true")' "$results_directory/$check_results_file" > /dev/null; then
   [[ "${automatic,,}" == "y" ]] || read -p "Would you like to push the new binaries out to the upgradeable hosts? (Y/N) " selection
   [[ "${automatic,,}" == "y" ]] || sassy_selection_check $selection
+elif jq -e 'all(.[]; .status == "success") and all(.[]; .upgradeable == "false")' "$results_directory/$check_results_file" > /dev/null; then
+  echo "Info: There is no upgrade available from the stable track right now for any of the selected nodes, see above output"
+  exit 0
 else
-  echo "Error: Either none are upgradeable or one or more of the checks failed to determine whether it was possible to upgrade the node."
+  echo "Error: One or more of the checks failed to determine whether it was possible to upgrade the node."
   exit 2
 fi
 
