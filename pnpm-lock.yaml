@@ -392,8 +392,8 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(vite@5.0.10)(vue@3.4.15)
       cypress:
-        specifier: ^13.6.3
-        version: 13.6.3
+        specifier: ^13.8.1
+        version: 13.13.2
       cypress-vite:
         specifier: ^1.5.0
         version: 1.5.0(vite@5.0.10)
@@ -8324,8 +8324,8 @@ packages:
       - supports-color
     dev: true
 
-  /cypress@13.6.3:
-    resolution: {integrity: sha512-d/pZvgwjAyZsoyJ3FOsJT5lDsqnxQ/clMqnNc++rkHjbkkiF2h9s0JsZSyyH4QXhVFW3zPFg82jD25roFLOdZA==}
+  /cypress@13.13.2:
+    resolution: {integrity: sha512-PvJQU33933NvS1StfzEb8/mu2kMy4dABwCF+yd5Bi7Qly1HOVf+Bufrygee/tlmty/6j5lX+KIi8j9Q3JUMbhA==}
     engines: {node: ^16.0.0 || ^18.0.0 || >=20.0.0}
     hasBin: true
     requiresBuild: true
@@ -8369,7 +8369,7 @@ packages:
       request-progress: 3.0.0
       semver: 7.5.4
       supports-color: 8.1.1
-      tmp: 0.2.1
+      tmp: 0.2.3
       untildify: 4.0.0
       yauzl: 2.10.0
     dev: true
@@ -13988,7 +13988,7 @@ packages:
       enquirer: 2.3.6
       log-update: 4.0.0
       p-map: 4.0.0
-      rfdc: 1.3.0
+      rfdc: 1.4.1
       rxjs: 7.5.7
       through: 2.3.8
       wrap-ansi: 7.0.0
@@ -18969,6 +18969,11 @@ packages:
     engines: {node: '>=8.17.0'}
     dependencies:
       rimraf: 3.0.2
+    dev: true
+
+  /tmp@0.2.3:
+    resolution: {integrity: sha512-nZD7m9iCPC5g0pYmcaxogYKggSfLsdxl8of3Q/oIbqCqLLIO9IAF0GWjX1z9NZRHPiXv8Wex4yDCaZsgEw0Y8w==}
+    engines: {node: '>=14.14'}
     dev: true
 
   /tmpl@1.0.5:
