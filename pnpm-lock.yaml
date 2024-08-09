@@ -298,8 +298,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       posthog-js:
-        specifier: ^1.76.0
-        version: 1.76.0
+        specifier: ^1.155.0
+        version: 1.155.0
       reconnecting-websocket:
         specifier: ^4.4.0
         version: 4.4.0
@@ -16485,6 +16485,14 @@ packages:
 
   /posthog-js@1.148.2:
     resolution: {integrity: sha512-YQt8D+RS1a56ykLPLsqSq73vLYLIFQwlvY40ncgOM/uhxAV4FmbnYv85ZtwnB2SAZD/gChWXI/fprYQA9lhc1w==}
+    dependencies:
+      fflate: 0.4.8
+      preact: 10.22.1
+      web-vitals: 4.0.1
+    dev: false
+
+  /posthog-js@1.155.0:
+    resolution: {integrity: sha512-gxi72Qcp7Vnq6efe5gNxsq84zyEFd33NUmoLSgcbMPhxU30qgc89Aw/N2mRB4mGrD3Mq0rCnDJUzGFdN59nR0g==}
     dependencies:
       fflate: 0.4.8
       preact: 10.22.1
