@@ -75,7 +75,7 @@ Also add a `NAT Gateway` component to each of the `Public` subnet frames.
 Set name names of the component to be `NAT Gateway (1|2|3)` - the index should
 align with the subnet it is inside.
 
-Connect the `Alocation ID` output socket of the `Elastic IP` component to the
+Connect the `Allocation ID` output socket of the `Elastic IP` component to the
 `Allocation ID` input socket of the `NAT Gateway` component. The connections
 should be in the same subnet.
 
