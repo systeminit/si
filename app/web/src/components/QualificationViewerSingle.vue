@@ -45,7 +45,10 @@
               :key="idx"
               class="p-2 break-words"
             >
-              <pre trim
+              <pre
+                trim
+                class="break-all"
+                style="word-wrap: break-word; white-space: pre-wrap"
                 >{{ subCheck.description }}
               </pre>
             </li>
