@@ -115,7 +115,14 @@ impl IntoResponse for ComponentError {
             | ComponentError::PropNotFound(_)
             | ComponentError::SchemaVariantNotFound
             | ComponentError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentError::PropertyEditor(err) => match err {
+                PropertyEditorError::ComponentNotFound
+                | PropertyEditorError::SchemaVariantNotFound(_) => {
+                    (StatusCode::NOT_FOUND, err.to_string())
+                }
 
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
