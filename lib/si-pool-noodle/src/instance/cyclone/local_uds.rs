@@ -174,7 +174,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn execute_resolver(
+    async fn prepare_resolver_execution(
         &mut self,
         request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
@@ -184,12 +184,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        let result = self.client.execute_resolver(request).await;
+        let result = self.client.prepare_resolver_execution(request).await;
         self.count_request();
         result
     }
 
-    async fn execute_validation(
+    async fn prepare_validation_execution(
         &mut self,
         request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<
@@ -199,7 +199,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        let result = self.client.execute_validation(request).await;
+        let result = self.client.prepare_validation_execution(request).await;
         self.count_request();
 
         result
@@ -207,7 +207,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     // The request argument is the same as that in the "impl FuncDispatch for
     // FuncBackendJsAction" in the dal.
-    async fn execute_action_run(
+    async fn prepare_action_run_execution(
         &mut self,
         request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<UnixStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
@@ -216,13 +216,13 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute command run.
-        let result = self.client.execute_action_run(request).await;
+        let result = self.client.prepare_action_run_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_reconciliation(
+    async fn prepare_reconciliation_execution(
         &mut self,
         request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
@@ -233,13 +233,13 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute reconciliation.
-        let result = self.client.execute_reconciliation(request).await;
+        let result = self.client.prepare_reconciliation_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_schema_variant_definition(
+    async fn prepare_schema_variant_definition_execution(
         &mut self,
         request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
@@ -250,7 +250,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute reconciliation.
-        let result = self.client.execute_schema_variant_definition(request).await;
+        let result = self
+            .client
+            .prepare_schema_variant_definition_execution(request)
+            .await;
         self.count_request();
 
         result

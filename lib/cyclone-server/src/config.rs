@@ -55,6 +55,9 @@ pub struct Config {
     #[builder(default)]
     lang_server_function_timeout: Option<usize>,
 
+    #[builder(default)]
+    lang_server_process_timeout: Option<u64>,
+
     #[builder(setter(into), default)]
     limit_requests: Option<u32>,
 }
@@ -124,6 +127,12 @@ impl Config {
     #[must_use]
     pub fn lang_server_function_timeout(&self) -> Option<usize> {
         self.lang_server_function_timeout
+    }
+
+    /// Gets a reference to the config's lang server process timeout optional override.
+    #[must_use]
+    pub fn lang_server_process_timeout(&self) -> Option<u64> {
+        self.lang_server_process_timeout
     }
 
     /// Gets a reference to the config's limit requests.

@@ -140,7 +140,7 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
         result
     }
 
-    async fn execute_resolver(
+    async fn prepare_resolver_execution(
         &mut self,
         request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
@@ -151,13 +151,13 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_resolver(request).await;
+        let result = self.client.prepare_resolver_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_validation(
+    async fn prepare_validation_execution(
         &mut self,
         request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<TcpStream, ValidationRequest, ValidationResultSuccess>, ClientError>
@@ -166,13 +166,13 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_validation(request).await;
+        let result = self.client.prepare_validation_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_action_run(
+    async fn prepare_action_run_execution(
         &mut self,
         request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<TcpStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
@@ -181,13 +181,13 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_action_run(request).await;
+        let result = self.client.prepare_action_run_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_reconciliation(
+    async fn prepare_reconciliation_execution(
         &mut self,
         request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
@@ -198,13 +198,13 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_reconciliation(request).await;
+        let result = self.client.prepare_reconciliation_execution(request).await;
         self.count_request();
 
         result
     }
 
-    async fn execute_schema_variant_definition(
+    async fn prepare_schema_variant_definition_execution(
         &mut self,
         request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
@@ -215,7 +215,10 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_schema_variant_definition(request).await;
+        let result = self
+            .client
+            .prepare_schema_variant_definition_execution(request)
+            .await;
         self.count_request();
 
         result

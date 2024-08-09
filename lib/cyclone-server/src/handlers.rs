@@ -30,7 +30,10 @@ use crate::{
         LangServerActionRunResultSuccess, LangServerReconciliationResultSuccess,
         LangServerResolverFunctionResultSuccess, LangServerValidationResultSuccess,
     },
-    state::{LangServerFunctionTimeout, LangServerPath, TelemetryLevel, WatchKeepalive},
+    state::{
+        LangServerFunctionTimeout, LangServerPath, LangServerProcessTimeout, TelemetryLevel,
+        WatchKeepalive,
+    },
     watch,
 };
 
@@ -44,7 +47,6 @@ pub async fn readiness() -> Result<&'static str, StatusCode> {
     Ok(ReadinessStatus::Ready.into())
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_watch(
     wsu: WebSocketUpgrade,
     Extension(watch_keepalive): Extension<Arc<WatchKeepalive>>,
@@ -63,7 +65,6 @@ pub async fn ws_watch(
     wsu.on_upgrade(move |socket| handle_socket(socket, watch_keepalive))
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_ping(
     wsu: WebSocketUpgrade,
     limit_request_guard: LimitRequestGuard,
@@ -97,12 +98,12 @@ pub async fn ws_execute_ping(
     })
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(telemetry_level): State<TelemetryLevel>,
     State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
@@ -117,6 +118,7 @@ pub async fn ws_execute_resolver(
             lang_server_path,
             telemetry_level,
             lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
             limit_request_guard,
             "resolverfunction".to_owned(),
             request,
@@ -127,12 +129,12 @@ pub async fn ws_execute_resolver(
     })
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_validation(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(telemetry_level): State<TelemetryLevel>,
     State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
@@ -147,6 +149,7 @@ pub async fn ws_execute_validation(
             lang_server_path,
             telemetry_level,
             lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
             limit_request_guard,
             "validation".to_owned(),
             request,
@@ -157,12 +160,12 @@ pub async fn ws_execute_validation(
     })
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_action_run(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(telemetry_level): State<TelemetryLevel>,
     State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
@@ -177,6 +180,7 @@ pub async fn ws_execute_action_run(
             lang_server_path,
             telemetry_level,
             lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
             limit_request_guard,
             "actionRun".to_owned(),
             request,
@@ -187,12 +191,12 @@ pub async fn ws_execute_action_run(
     })
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_reconciliation(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(telemetry_level): State<TelemetryLevel>,
     State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
@@ -207,6 +211,7 @@ pub async fn ws_execute_reconciliation(
             lang_server_path,
             telemetry_level,
             lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
             limit_request_guard,
             "reconciliation".to_owned(),
             request,
@@ -217,12 +222,12 @@ pub async fn ws_execute_reconciliation(
     })
 }
 
-#[allow(clippy::unused_async)]
 pub async fn ws_execute_schema_variant_definition(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(telemetry_level): State<TelemetryLevel>,
     State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
     limit_request_guard: LimitRequestGuard,
     Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
@@ -237,6 +242,7 @@ pub async fn ws_execute_schema_variant_definition(
             lang_server_path,
             telemetry_level,
             lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
             limit_request_guard,
             "schemaVariantDefinition".to_owned(),
             request,
@@ -260,6 +266,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
     lang_server_function_timeout: Option<usize>,
+    lang_server_process_timeout: Option<u64>,
     _limit_request_guard: LimitRequestGuard,
     sub_command: String,
     _request_marker: PhantomData<Request>,
@@ -276,6 +283,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
             lang_server_path,
             lang_server_debugging,
             lang_server_function_timeout,
+            lang_server_process_timeout,
             sub_command,
         );
         match execution.start(&mut socket).await {
