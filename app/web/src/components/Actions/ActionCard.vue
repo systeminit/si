@@ -51,7 +51,7 @@
           :class="clsx(themeClasses('text-action-700', 'text-action-300'))"
           name="play"
           size="sm"
-          @click="retry"
+          @click.stop="retry"
         />
         <Icon
           :class="

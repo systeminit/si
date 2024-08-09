@@ -49,7 +49,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, watch, WatchStopHandle } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import { ActionId, ActionState } from "@/api/sdf/dal/action";
 import {
@@ -103,6 +103,8 @@ const removeAll = () => {
 const funcRun = ref<FuncRun | undefined>();
 const selectedTab = ref<string | undefined>();
 
+let funcRunWatcher: WatchStopHandle | undefined;
+
 const clickAction = async (action_view: ActionView, e: MouseEvent) => {
   const action = action_view as ActionProposedView;
 
@@ -126,6 +128,23 @@ const clickAction = async (action_view: ActionView, e: MouseEvent) => {
     if (!funcRunId) {
       return;
     }
+
+    if (funcRunWatcher) {
+      funcRunWatcher();
+    }
+    funcRunWatcher = watch(
+      () => funcRunsStore.lastRuns[action.id],
+      async () => {
+        // we don't want the variable from the closure b/c
+        // the actions list has been updated behind the scenes
+        // and it has a new fun run id, go get it and load that func run
+        const updatedAction = actionsStore.actionsById.get(action.id);
+        if (updatedAction && updatedAction.funcRunId) {
+          await funcRunsStore.GET_FUNC_RUN(updatedAction.funcRunId);
+          funcRun.value = funcRunsStore.funcRuns[updatedAction.funcRunId];
+        }
+      },
+    );
 
     await funcRunsStore.GET_FUNC_RUN(funcRunId);
     funcRun.value = funcRunsStore.funcRuns[funcRunId];
