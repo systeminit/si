@@ -508,39 +508,31 @@ impl Action {
         Ok(result)
     }
 
-    /// Gets all actions this action is dependent on
-    pub async fn get_dependent_actions_by_id(
-        ctx: &DalContext,
-        action_id: ActionId,
-    ) -> ActionResult<Vec<ActionId>> {
-        let action_dependency_graph: ActionDependencyGraph =
-            ActionDependencyGraph::for_workspace(ctx).await?;
-        Ok(action_dependency_graph.direct_dependencies_of(action_id))
-    }
-
-    // Gets all actions that are dependent on this action (the entire subgraph)
-    #[instrument(level = "info", skip(ctx))]
-    pub async fn get_all_dependencies(&self, ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
-        let action_dependency_graph: ActionDependencyGraph =
-            ActionDependencyGraph::for_workspace(ctx).await?;
-        Ok(action_dependency_graph.get_all_dependencies(self.id()))
-    }
-
-    #[instrument(level = "info", skip(ctx))]
+    /// For a given [ActionId] and [ActionDependencyGraph], determine which (if any) actions
+    /// are influencing the current action's hold status.
+    /// For example, the given Action might be queued, but if it's dependent on an action that is failed or on
+    /// hold, we will not dispatch the action
+    #[instrument(
+        name = "action.get_hold_status_influenced_by",
+        level = "debug",
+        skip(ctx)
+    )]
     pub async fn get_hold_status_influenced_by(
-        &self,
         ctx: &DalContext,
+        action_dependency_graph: &ActionDependencyGraph,
+        for_action_id: ActionId,
     ) -> ActionResult<Vec<ActionId>> {
         let mut reasons_for_hold = vec![];
+
         let mut work_queue =
-            VecDeque::from(Self::get_dependent_actions_by_id(ctx, self.id()).await?);
+            VecDeque::from(action_dependency_graph.direct_dependencies_of(for_action_id));
         while let Some(action_id) = work_queue.pop_front() {
             let act = Self::get_by_id(ctx, action_id).await?;
             match act.state() {
                 ActionState::Failed | ActionState::OnHold => reasons_for_hold.push(act.id()),
                 _ => (),
             }
-            work_queue.extend(Self::get_dependent_actions_by_id(ctx, action_id).await?);
+            work_queue.extend(action_dependency_graph.direct_dependencies_of(action_id));
         }
         Ok(reasons_for_hold)
     }

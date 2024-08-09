@@ -1,3 +1,4 @@
+use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionId};
 use dal::func::authoring::FuncAuthoringClient;
@@ -130,6 +131,9 @@ async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
 #[test]
 async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalContext) {
     pub async fn can_assemble(ctx: &DalContext, action_id: ActionId) -> bool {
+        let action_graph = ActionDependencyGraph::for_workspace(ctx)
+            .await
+            .expect("could get action graph");
         let action = Action::get_by_id(ctx, action_id)
             .await
             .expect("unable to get action");
@@ -149,17 +153,12 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         let _component_id = Action::component_id(ctx, action_id)
             .await
             .expect("unable to get component id");
-        let _my_dependencies = action
-            .get_all_dependencies(ctx)
-            .await
-            .expect("unable to get dependencies");
-        let _dependent_on = Action::get_dependent_actions_by_id(ctx, action_id)
-            .await
-            .expect("unable to get dependent actions");
-        let _hold_status_influenced_by = action
-            .get_hold_status_influenced_by(ctx)
-            .await
-            .expect("unable to get hold status");
+        let _my_dependencies = &action_graph.get_all_dependencies(action_id);
+        let _dependent_on = &action_graph.direct_dependencies_of(action_id);
+        let _hold_status_influenced_by =
+            Action::get_hold_status_influenced_by(ctx, &action_graph, action_id)
+                .await
+                .expect("could get hold status");
         true
     }
     let schema = Schema::find_by_name(ctx, "starfield")
