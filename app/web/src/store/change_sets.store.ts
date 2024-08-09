@@ -508,6 +508,12 @@ export function useChangeSetsStore() {
               }
             },
           },
+          {
+            eventType: "ChangeSetWritten",
+            callback: (changeSetId) => {
+              this.changeSetsWrittenAtById[changeSetId] = new Date();
+            },
+          },
         ]);
 
         const actionUnsub = this.$onAction(handleStoreError);
