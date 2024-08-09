@@ -891,6 +891,7 @@ defineExpose({
 .vorm-input__error-message {
   @apply capsize text-xs;
   padding-top: @vertical-gap;
+  padding-bottom: 4px;
 }
 
 .vorm-input__instructions {
