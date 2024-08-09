@@ -64,7 +64,14 @@ impl<const N: usize> ExpectPropId for [&str; N] {
 }
 
 #[derive(Debug)]
-pub struct ExpectComponent;
+pub struct ExpectComponent(pub Component);
+
+impl Deref for ExpectComponent {
+    type Target = Component;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl ExpectComponent {
     pub async fn schema_variant_id(ctx: &DalContext, component_id: ComponentId) -> SchemaVariantId {
@@ -73,24 +80,23 @@ impl ExpectComponent {
             .expect("find variant id for component")
     }
 
-    pub async fn prop_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        prop: impl ExpectPropId,
-    ) -> PropId {
-        let schema_variant_id = ExpectComponent::schema_variant_id(ctx, component_id).await;
+    pub async fn prop_id(&self, ctx: &DalContext, prop: impl ExpectPropId) -> PropId {
+        let schema_variant_id = ExpectComponent::schema_variant_id(ctx, self.id()).await;
         prop.expect_prop_id(ctx, schema_variant_id).await
     }
 
-    pub async fn prop(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        prop: impl ExpectPropId,
-    ) -> ExpectComponentProp {
+    pub async fn prop(&self, ctx: &DalContext, prop: impl ExpectPropId) -> ExpectComponentProp {
         ExpectComponentProp(
-            component_id,
-            ExpectComponent::prop_id(ctx, component_id, prop).await,
+            self.id(),
+            self.prop_id(ctx, prop).await,
         )
+    }
+
+    pub async fn value(&self, ctx: &DalContext) -> Value {
+        self.0.view(ctx).await.expect("component must have value").expect("component must have value")
+    }
+    pub async fn view(&self, ctx: &DalContext) -> Option<Value> {
+        self.0.view(ctx).await.expect("component must have value")
     }
 
     pub async fn attribute_values_for_prop_id(
@@ -180,6 +186,9 @@ impl ExpectAttributeValue {
     pub async fn child_at(&self, ctx: &DalContext, index: usize) -> ExpectAttributeValue {
         let child_ids = ExpectAttributeValue::get_child_av_ids_in_order(ctx, self.0.id).await;
         ExpectAttributeValue::get_by_id(ctx, child_ids[index]).await
+    }
+    pub async fn set(&self, ctx: &DalContext, value: impl Into<Value>) {
+        ExpectAttributeValue::update(ctx, self.0.id, Some(value.into())).await
     }
     pub async fn remove_child_at(&self, ctx: &DalContext, index: usize) {
         let child_ids = ExpectAttributeValue::get_child_av_ids_in_order(ctx, self.0.id).await;
@@ -271,6 +280,14 @@ pub async fn fork_from_head_change_set(ctx: &mut DalContext) -> ChangeSet {
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
         .expect("fork from head")
+}
+
+pub async fn create_component(ctx: &mut DalContext, schema_name: impl AsRef<str>) -> ExpectComponent {
+    ExpectComponent(
+        crate::helpers::create_component(ctx, schema_name)
+            .await
+            .expect("could not create component")
+    )
 }
 
 pub async fn create_component_for_default_schema_name(

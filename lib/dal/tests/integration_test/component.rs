@@ -2,15 +2,16 @@ use dal::attribute::value::DependentValueGraph;
 use dal::component::{ComponentGeometry, DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
-use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, AttributeValueId};
+use dal::AttributeValue;
 use dal::{Component, DalContext, Schema, SchemaVariant};
+use dal_test::expected;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use serde_json::json;
 
 mod debug;
 mod delete;
@@ -21,142 +22,40 @@ mod upgrade;
 
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
-    let component =
-        create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
-
-    let property_values = PropertyEditorValues::assemble(ctx, component.id())
-        .await
-        .expect("able to list prop values");
-
-    let image_prop_id =
-        Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(["root", "domain", "image"]))
-            .await
-            .expect("able to find image prop");
-
-    let exposed_ports_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        variant_id,
-        &PropPath::new(["root", "domain", "ExposedPorts"]),
-    )
-    .await
-    .expect("able to find exposed ports prop");
-
-    let exposed_ports_elem_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        variant_id,
-        &PropPath::new(["root", "domain", "ExposedPorts", "ExposedPort"]),
-    )
-    .await
-    .expect("able to find exposed ports element prop");
+    let component = expected::create_component(ctx, "Docker Image").await;
+    let image = component.prop(ctx, ["root", "domain", "image"]).await;
+    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
 
     // Update image
-    let image_av_id = property_values
-        .find_by_prop_id(image_prop_id)
-        .expect("can't find default attribute value for ExposedPorts");
-
-    let image_value = serde_json::json!("fiona/apple");
-    AttributeValue::update(ctx, image_av_id, Some(image_value.clone()))
-        .await
-        .expect("able to update image prop with 'fiona/apple'");
-
-    let exposed_port_attribute_value_id = property_values
-        .find_by_prop_id(exposed_ports_prop_id)
-        .expect("can't find default attribute value for ExposedPorts");
+    image.set(ctx, "fiona/apple").await;
 
     // Insert it unset first (to mimick frontend)
-    let inserted_av_id = AttributeValue::insert(ctx, exposed_port_attribute_value_id, None, None)
-        .await
-        .expect("able to insert");
+    exposed_ports.insert(ctx, None, None).await;
 
     // Before sending to the rebaser, confirm the value is there and it's the only one for the
     // ExposedPorts prop
-    let property_values = PropertyEditorValues::assemble(ctx, component.id())
-        .await
-        .expect("able to list prop values");
-
-    let (fetched_image_value, image_av_id_again) = property_values
-        .find_with_value_by_prop_id(image_prop_id)
-        .expect("able to get image av id from pvalues");
-
-    assert_eq!(image_av_id, image_av_id_again);
-    assert_eq!(image_value, fetched_image_value);
-
-    let mut inserted_attribute_values: Vec<AttributeValueId> =
-        property_values.list_by_prop_id(exposed_ports_elem_prop_id);
-
-    assert_eq!(1, inserted_attribute_values.len());
-    let pvalues_inserted_attribute_value_id =
-        inserted_attribute_values.pop().expect("get our av id");
-    assert_eq!(inserted_av_id, pvalues_inserted_attribute_value_id);
+    assert_eq!("fiona/apple", image.get(ctx).await);
+    assert_eq!(json!([null]), exposed_ports.get(ctx).await);
 
     // Rebase!
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    component.view(ctx).await.expect("view for component");
+    (*component).view(ctx).await.expect("view for component");
 
     // Confirm after rebase
-    let property_values = PropertyEditorValues::assemble(ctx, component.id())
-        .await
-        .expect("able to list prop values");
-
-    let (fetched_image_value, image_av_id_again) = property_values
-        .find_with_value_by_prop_id(image_prop_id)
-        .expect("able to get image av id from pvalues");
-
-    assert_eq!(image_av_id, image_av_id_again);
-    assert_eq!(image_value, fetched_image_value);
-
-    let mut inserted_attribute_values =
-        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
-    assert_eq!(1, inserted_attribute_values.len());
-    let (inserted_value, pvalues_inserted_attribute_value_id) =
-        inserted_attribute_values.pop().expect("get our av id");
-    assert_eq!(inserted_av_id, pvalues_inserted_attribute_value_id);
-    assert_eq!(inserted_value, serde_json::Value::Null);
-
-    let value = serde_json::json!("i ran out of white doves feathers");
+    assert_eq!("fiona/apple", image.get(ctx).await);
+    assert_eq!(json!([null]), exposed_ports.get(ctx).await);
 
     // Update the value we inserted
-    AttributeValue::update(ctx, inserted_av_id, Some(value.clone()))
-        .await
-        .expect("able to update");
+    exposed_ports.child_at(ctx, 0).await.set(ctx, "i ran out of white doves feathers").await;
 
     // Confirm again before rebase
-    let property_values = PropertyEditorValues::assemble(ctx, component.id())
-        .await
-        .expect("able to list prop values");
-
-    let mut inserted_attribute_values =
-        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
-    assert_eq!(1, inserted_attribute_values.len());
-    let (inserted_value, pvalues_inserted_attribute_value_id) =
-        inserted_attribute_values.pop().expect("get our av id");
-    assert_eq!(inserted_av_id, pvalues_inserted_attribute_value_id);
-    assert_eq!(inserted_value, value.clone());
+    assert_eq!(json!(["i ran out of white doves feathers"]), exposed_ports.get(ctx).await);
 
     // Rebase again!
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    let property_values = PropertyEditorValues::assemble(ctx, component.id())
-        .await
-        .expect("able to list prop values");
-
-    let mut inserted_attribute_values =
-        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
-    assert_eq!(1, inserted_attribute_values.len());
-    let (inserted_value, pvalues_inserted_attribute_value_id) =
-        inserted_attribute_values.pop().expect("get our av id");
-    assert_eq!(inserted_av_id, pvalues_inserted_attribute_value_id);
-    assert_eq!(inserted_value, value.clone());
+    assert_eq!(json!(["i ran out of white doves feathers"]), exposed_ports.get(ctx).await);
 }
 
 #[test]

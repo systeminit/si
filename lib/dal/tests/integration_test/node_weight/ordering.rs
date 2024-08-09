@@ -1,5 +1,5 @@
 use dal::DalContext;
-use dal_test::expected::{self, ExpectComponent};
+use dal_test::expected;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -19,11 +19,8 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
     //
     // Make a docker image with two ExposedPorts
     //
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), "root/domain/ExposedPorts").await;
+    let component = expected::create_component(ctx, "Docker Image").await;
+    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "2").await;
     assert_eq!(json!(["1", "2"]), exposed_ports.get(ctx).await);
@@ -46,11 +43,8 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_added_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = expected::create_component(ctx, "Docker Image").await;
+    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
     exposed_ports.push(ctx, "1").await;
     expected::apply_change_set_to_base(ctx).await;
     assert_eq!(json!(["1"]), exposed_ports.get(ctx).await);
@@ -79,11 +73,8 @@ async fn correct_transforms_added_edges(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = expected::create_component(ctx, "Docker Image").await;
+    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;
@@ -120,11 +111,8 @@ async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = expected::create_component(ctx, "Docker Image").await;
+    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;

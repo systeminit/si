@@ -58,6 +58,13 @@ pub async fn create_schema(ctx: &DalContext) -> Result<Schema> {
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
 /// [`Schema`] name.
+pub async fn create_component(ctx: &DalContext, schema_name: impl AsRef<str>) -> Result<Component> {
+    let name = generate_fake_name()?;
+    create_component_for_default_schema_name(ctx, schema_name, name).await
+}
+
+/// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
+/// [`Schema`] name.
 pub async fn create_component_for_default_schema_name(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
