@@ -1,6 +1,13 @@
+use std::collections::HashSet;
+
 use dal::component::frame::Frame;
-use dal::{Component, DalContext};
-use dal_test::expected::{self, create_component_for_default_schema_name};
+use dal::{Component, ComponentId, DalContext};
+use dal_test::expected::{
+    self, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
+    create_component_for_default_schema_name, fork_from_head_change_set,
+    update_visibility_and_snapshot_to_visibility,
+};
+use dal_test::helpers::connect_components_with_socket_names;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -147,4 +154,92 @@ async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
             .await
             .expect("get parent by id succeeds")
     );
+}
+
+#[test]
+async fn deleting_a_component_deletes_outgoing_connections_in_other_change_sets(
+    ctx: &mut DalContext,
+) {
+    let docker_image_1 =
+        create_component_for_default_schema_name(ctx, "Docker Image", "docker 1").await;
+    let docker_image_2 =
+        create_component_for_default_schema_name(ctx, "Docker Image", "docker 2").await;
+    let docker_image_3 =
+        create_component_for_default_schema_name(ctx, "Docker Image", "docker 3").await;
+    let docker_image_4 =
+        create_component_for_default_schema_name(ctx, "Docker Image", "docker 4").await;
+
+    let butane = create_component_for_default_schema_name(ctx, "Butane", "butane").await;
+
+    expected::apply_change_set_to_base(ctx).await;
+
+    // fork this change set and connect the docker images to the butane
+    let cs_1 = fork_from_head_change_set(ctx).await;
+    let mut docker_ids = HashSet::from([
+        docker_image_1.id(),
+        docker_image_2.id(),
+        docker_image_3.id(),
+        docker_image_4.id(),
+    ]);
+
+    for docker_image_id in &docker_ids {
+        connect_components_with_socket_names(
+            ctx,
+            *docker_image_id,
+            "Container Image",
+            butane.id(),
+            "Container Image",
+        )
+        .await
+        .expect("able to connect")
+    }
+    commit_and_update_snapshot_to_visibility(ctx).await;
+    let incoming_sources: HashSet<ComponentId> = butane
+        .incoming_connections(ctx)
+        .await
+        .expect("able to get incoming connections")
+        .iter()
+        .map(|conn| conn.from_component_id)
+        .collect();
+
+    assert_eq!(docker_ids, incoming_sources);
+
+    // fork and delete a docker image
+    fork_from_head_change_set(ctx).await;
+    Component::remove(ctx, docker_image_1.id())
+        .await
+        .expect("able to remove");
+    docker_ids.remove(&docker_image_1.id());
+
+    apply_change_set_to_base(ctx).await;
+
+    update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
+    let incoming_sources: HashSet<ComponentId> = butane
+        .incoming_connections(ctx)
+        .await
+        .expect("able to get incoming connections")
+        .iter()
+        .map(|conn| conn.from_component_id)
+        .collect();
+
+    assert_eq!(docker_ids, incoming_sources);
+
+    // fork and delete the rest
+    fork_from_head_change_set(ctx).await;
+    for docker_id in docker_ids {
+        Component::remove(ctx, docker_id)
+            .await
+            .expect("delete delete");
+    }
+    apply_change_set_to_base(ctx).await;
+
+    update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
+    let incoming_sources: HashSet<ComponentId> = butane
+        .incoming_connections(ctx)
+        .await
+        .expect("able to get incoming connections")
+        .iter()
+        .map(|conn| conn.from_component_id)
+        .collect();
+    assert!(incoming_sources.is_empty());
 }
