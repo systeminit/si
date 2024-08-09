@@ -1,4 +1,4 @@
-use std::{io, sync::Arc};
+use std::{io, sync::Arc, time::Duration};
 use telemetry_utils::metric;
 
 use chrono::Utc;
@@ -20,6 +20,7 @@ use thiserror::Error;
 use tokio::{
     signal::unix,
     sync::{broadcast, mpsc},
+    time::timeout,
 };
 use veritech_core::VeritechValueDecryptError;
 
@@ -43,6 +44,8 @@ pub enum ServerError {
     CycloneSetupError(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone spec builder error: {0}")]
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
+    #[error("cyclone timed out: {0:?}")]
+    CycloneTimeout(Duration),
     #[error("error connecting to nats: {0}")]
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error("no reply mailbox found")]
@@ -82,6 +85,7 @@ pub struct Server {
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_rx: oneshot::Receiver<()>,
     metadata: Arc<ServerMetadata>,
+    cyclone_client_execution_timeout: Duration,
 }
 
 impl Server {
@@ -160,6 +164,9 @@ impl Server {
                     shutdown_tx,
                     shutdown_rx: graceful_shutdown_rx,
                     metadata: Arc::new(metadata),
+                    cyclone_client_execution_timeout: Duration::from_secs(
+                        config.cyclone_client_execution_timeout(),
+                    ),
                 })
             }
             wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
@@ -186,6 +193,7 @@ impl Server {
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.decryption_key.clone(),
+                self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_validation_requests_task(
@@ -194,6 +202,7 @@ impl Server {
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.decryption_key.clone(),
+                self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_action_run_requests_task(
@@ -202,6 +211,7 @@ impl Server {
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.decryption_key.clone(),
+                self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_reconciliation_requests_task(
@@ -210,6 +220,7 @@ impl Server {
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.decryption_key.clone(),
+                self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_schema_variant_definition_requests_task(
@@ -218,6 +229,7 @@ impl Server {
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.decryption_key.clone(),
+                self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
         );
@@ -247,6 +259,7 @@ impl VeritechShutdownHandle {
     }
 }
 
+// NOTE(nick): oh no, now's there's five (I didn't add it I promise). We need to delete unused ones anyway.
 // NOTE(fnichol): resolver function, action are parallel and extremely similar, so there
 // is a lurking "unifying" refactor here. It felt like waiting until the third time adding one of
 // these would do the trick, and as a result the first 2 impls are here and not split apart into
@@ -258,6 +271,7 @@ async fn process_resolver_function_requests_task(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_resolver_function_requests(
@@ -266,6 +280,7 @@ async fn process_resolver_function_requests_task(
         subject_prefix,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         shutdown_broadcast_rx,
     )
     .await
@@ -280,6 +295,7 @@ async fn process_resolver_function_requests(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -302,6 +318,7 @@ async fn process_resolver_function_requests(
                             nats.clone(),
                             cyclone_pool.clone(),
                             decryption_key.clone(),
+        cyclone_client_execution_timeout,
                             request,
                         ));
                     }
@@ -333,6 +350,7 @@ async fn resolver_function_request_task(
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ResolverFunctionRequest>,
 ) {
     let cyclone_request = request.payload;
@@ -352,6 +370,7 @@ async fn resolver_function_request_task(
         &publisher,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         cyclone_request,
         &request.process_span,
     )
@@ -417,6 +436,7 @@ async fn resolver_function_request(
     publisher: &Publisher<'_>,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut request: ResolverFunctionRequest,
     process_span: &Span,
 ) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
@@ -435,43 +455,59 @@ async fn resolver_function_request(
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
 
-    let mut progress = client
-        .execute_resolver(cyclone_request)
+    let unstarted_progress = client
+        .prepare_resolver_execution(cyclone_request)
         .await
         .map_err(|err| {
             metric!(counter.function_run.resolver = -1);
             span.record_err(err)
-        })?
-        .start()
-        .await
-        .map_err(|err| span.record_err(err))?;
+        })?;
 
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await.map_err(|err| {
-                    metric!(counter.function_run.resolver = -1);
-                    span.record_err(err)
-                })?
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-                publisher.publish_keep_alive().await.map_err(|err| {
-                    metric!(counter.function_run.resolver = -1);
-                    span.record_err(err)
-                })?
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
+    let progress_loop = async {
+        let mut progress = unstarted_progress
+            .start()
+            .await
+            .map_err(|err| span.record_err(err))?;
+
+        while let Some(msg) = progress.next().await {
+            match msg {
+                Ok(ProgressMessage::OutputStream(output)) => {
+                    publisher.publish_output(&output).await.map_err(|err| {
+                        metric!(counter.function_run.resolver = -1);
+                        span.record_err(err)
+                    })?
+                }
+                Ok(ProgressMessage::Heartbeat) => {
+                    trace!("received heartbeat message");
+                    publisher.publish_keep_alive().await.map_err(|err| {
+                        metric!(counter.function_run.resolver = -1);
+                        span.record_err(err)
+                    })?
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next progress message was an error, bailing out");
+                    break;
+                }
             }
         }
-    }
 
-    let function_result = progress.finish().await.map_err(|err| {
-        metric!(counter.function_run.resolver = -1);
-        span.record_err(err)
-    })?;
+        let function_result = progress.finish().await.map_err(|err| {
+            metric!(counter.function_run.resolver = -1);
+            span.record_err(err)
+        })?;
+
+        ServerResult::Ok(function_result)
+    };
+
+    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
+        Ok(progress_loop_result) => progress_loop_result?,
+        Err(err) => {
+            error!(?err, "hit timeout for communicating with cyclone server");
+            return Err(ServerError::CycloneTimeout(
+                cyclone_client_execution_timeout,
+            ));
+        }
+    };
 
     metric!(counter.function_run.resolver = -1);
     span.record_ok();
@@ -484,6 +520,7 @@ async fn process_validation_requests_task(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_validation_requests(
@@ -492,6 +529,7 @@ async fn process_validation_requests_task(
         subject_prefix,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         shutdown_broadcast_rx,
     )
     .await
@@ -506,6 +544,7 @@ async fn process_validation_requests(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::validation(&nats, subject_prefix.as_deref()).await?;
@@ -527,6 +566,7 @@ async fn process_validation_requests(
                             nats.clone(),
                             cyclone_pool.clone(),
                             decryption_key.clone(),
+        cyclone_client_execution_timeout,
                             request,
                         ));
                     }
@@ -558,6 +598,7 @@ async fn validation_request_task(
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ValidationRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -566,6 +607,7 @@ async fn validation_request_task(
         nats,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         request,
         &process_span,
     )
@@ -595,6 +637,7 @@ async fn validation_request(
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ValidationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -624,46 +667,60 @@ async fn validation_request(
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
 
-    let mut progress = client
-        .execute_validation(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?
-        .start()
+    let unstarted_progress = client
+        .prepare_validation_execution(cyclone_request)
         .await
         .map_err(|err| {
             metric!(counter.function_run.validation = -1);
             span.record_err(err)
         })?;
 
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await.map_err(|err| {
-                    metric!(counter.function_run.validation = -1);
-                    span.record_err(err)
-                })?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
+    let progress_loop = async {
+        let mut progress = unstarted_progress.start().await.map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
+
+        while let Some(msg) = progress.next().await {
+            match msg {
+                Ok(ProgressMessage::OutputStream(output)) => {
+                    publisher.publish_output(&output).await.map_err(|err| {
+                        metric!(counter.function_run.validation = -1);
+                        span.record_err(err)
+                    })?;
+                }
+                Ok(ProgressMessage::Heartbeat) => {
+                    trace!("received heartbeat message");
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next progress message was an error, bailing out");
+                    break;
+                }
             }
         }
-    }
-    publisher.finalize_output().await.map_err(|err| {
-        metric!(counter.function_run.validation = -1);
-        span.record_err(err)
-    })?;
+        publisher.finalize_output().await.map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
 
-    let function_result = progress.finish().await.map_err(|err| {
-        metric!(counter.function_run.validation = -1);
-        span.record_err(err)
-    })?;
+        let function_result = progress.finish().await.map_err(|err| {
+            metric!(counter.function_run.validation = -1);
+            span.record_err(err)
+        })?;
+
+        ServerResult::Ok(function_result)
+    };
+
+    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
+        Ok(progress_loop_result) => progress_loop_result?,
+        Err(err) => {
+            error!(?err, "hit timeout for communicating with cyclone server");
+            return Err(ServerError::CycloneTimeout(
+                cyclone_client_execution_timeout,
+            ));
+        }
+    };
+
     publisher
         .publish_result(&function_result)
         .await
@@ -683,6 +740,7 @@ async fn process_schema_variant_definition_requests_task(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_schema_variant_definition_requests(
@@ -691,6 +749,7 @@ async fn process_schema_variant_definition_requests_task(
         subject_prefix,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         shutdown_broadcast_rx,
     )
     .await
@@ -705,6 +764,7 @@ async fn process_schema_variant_definition_requests(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests =
@@ -727,6 +787,7 @@ async fn process_schema_variant_definition_requests(
                             nats.clone(),
                             cyclone_pool.clone(),
                             decryption_key.clone(),
+        cyclone_client_execution_timeout,
                             request,
                         ));
                     }
@@ -758,6 +819,7 @@ async fn schema_variant_definition_request_task(
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<SchemaVariantDefinitionRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -766,6 +828,7 @@ async fn schema_variant_definition_request_task(
         nats,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         request,
         &process_span,
     )
@@ -795,6 +858,7 @@ async fn schema_variant_definition_request(
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<SchemaVariantDefinitionRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -824,46 +888,60 @@ async fn schema_variant_definition_request(
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
 
-    let mut progress = client
-        .execute_schema_variant_definition(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?
-        .start()
+    let unstarted_progress = client
+        .prepare_schema_variant_definition_execution(cyclone_request)
         .await
         .map_err(|err| {
             metric!(counter.function_run.schema_variant_definition = -1);
             span.record_err(err)
         })?;
 
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await.map_err(|err| {
-                    metric!(counter.function_run.schema_variant_definition = -1);
-                    span.record_err(err)
-                })?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
+    let progress_loop = async {
+        let mut progress = unstarted_progress.start().await.map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
+
+        while let Some(msg) = progress.next().await {
+            match msg {
+                Ok(ProgressMessage::OutputStream(output)) => {
+                    publisher.publish_output(&output).await.map_err(|err| {
+                        metric!(counter.function_run.schema_variant_definition = -1);
+                        span.record_err(err)
+                    })?;
+                }
+                Ok(ProgressMessage::Heartbeat) => {
+                    trace!("received heartbeat message");
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next progress message was an error, bailing out");
+                    break;
+                }
             }
         }
-    }
-    publisher.finalize_output().await.map_err(|err| {
-        metric!(counter.function_run.schema_variant_definition = -1);
-        span.record_err(err)
-    })?;
+        publisher.finalize_output().await.map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
 
-    let function_result = progress.finish().await.map_err(|err| {
-        metric!(counter.function_run.schema_variant_definition = -1);
-        span.record_err(err)
-    })?;
+        let function_result = progress.finish().await.map_err(|err| {
+            metric!(counter.function_run.schema_variant_definition = -1);
+            span.record_err(err)
+        })?;
+
+        ServerResult::Ok(function_result)
+    };
+
+    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
+        Ok(progress_loop_result) => progress_loop_result?,
+        Err(err) => {
+            error!(?err, "hit timeout for communicating with cyclone server");
+            return Err(ServerError::CycloneTimeout(
+                cyclone_client_execution_timeout,
+            ));
+        }
+    };
+
     publisher
         .publish_result(&function_result)
         .await
@@ -883,6 +961,7 @@ async fn process_action_run_requests_task(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_action_run_requests(
@@ -891,6 +970,7 @@ async fn process_action_run_requests_task(
         subject_prefix,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         shutdown_broadcast_rx,
     )
     .await
@@ -905,6 +985,7 @@ async fn process_action_run_requests(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::action_run(&nats, subject_prefix.as_deref()).await?;
@@ -926,6 +1007,7 @@ async fn process_action_run_requests(
                             nats.clone(),
                             cyclone_pool.clone(),
                             decryption_key.clone(),
+                            cyclone_client_execution_timeout,
                             request,
                         ));
                     }
@@ -957,6 +1039,7 @@ async fn action_run_request_task(
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ActionRunRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -965,6 +1048,7 @@ async fn action_run_request_task(
         nats,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         request,
         &process_span,
     )
@@ -994,6 +1078,7 @@ async fn action_run_request(
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ActionRunRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -1023,46 +1108,60 @@ async fn action_run_request(
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
 
-    let mut progress = client
-        .execute_action_run(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?
-        .start()
+    let unstarted_progress = client
+        .prepare_action_run_execution(cyclone_request)
         .await
         .map_err(|err| {
             metric!(counter.function_run.action = -1);
             span.record_err(err)
         })?;
 
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await.map_err(|err| {
-                    metric!(counter.function_run.action = -1);
-                    span.record_err(err)
-                })?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
+    let progress_loop = async {
+        let mut progress = unstarted_progress.start().await.map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
+
+        while let Some(msg) = progress.next().await {
+            match msg {
+                Ok(ProgressMessage::OutputStream(output)) => {
+                    publisher.publish_output(&output).await.map_err(|err| {
+                        metric!(counter.function_run.action = -1);
+                        span.record_err(err)
+                    })?;
+                }
+                Ok(ProgressMessage::Heartbeat) => {
+                    trace!("received heartbeat message");
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next progress message was an error, bailing out");
+                    break;
+                }
             }
         }
-    }
-    publisher.finalize_output().await.map_err(|err| {
-        metric!(counter.function_run.action = -1);
-        span.record_err(err)
-    })?;
+        publisher.finalize_output().await.map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
 
-    let function_result = progress.finish().await.map_err(|err| {
-        metric!(counter.function_run.action = -1);
-        span.record_err(err)
-    })?;
+        let function_result = progress.finish().await.map_err(|err| {
+            metric!(counter.function_run.action = -1);
+            span.record_err(err)
+        })?;
+
+        ServerResult::Ok(function_result)
+    };
+
+    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
+        Ok(progress_loop_result) => progress_loop_result?,
+        Err(err) => {
+            error!(?err, "hit timeout for communicating with cyclone server");
+            return Err(ServerError::CycloneTimeout(
+                cyclone_client_execution_timeout,
+            ));
+        }
+    };
+
     publisher
         .publish_result(&function_result)
         .await
@@ -1082,6 +1181,7 @@ async fn process_reconciliation_requests_task(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_reconciliation_requests(
@@ -1090,6 +1190,7 @@ async fn process_reconciliation_requests_task(
         subject_prefix,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         shutdown_broadcast_rx,
     )
     .await
@@ -1104,6 +1205,7 @@ async fn process_reconciliation_requests(
     subject_prefix: Option<String>,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
     let mut requests = FunctionSubscriber::reconciliation(&nats, subject_prefix.as_deref()).await?;
@@ -1125,6 +1227,7 @@ async fn process_reconciliation_requests(
                             nats.clone(),
                             cyclone_pool.clone(),
                             decryption_key.clone(),
+        cyclone_client_execution_timeout,
                             request,
                         ));
                     }
@@ -1156,6 +1259,7 @@ async fn reconciliation_request_task(
     nats: NatsClient,
     cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ReconciliationRequest>,
 ) {
     let process_span = request.process_span.clone();
@@ -1164,6 +1268,7 @@ async fn reconciliation_request_task(
         nats,
         cyclone_pool,
         decryption_key,
+        cyclone_client_execution_timeout,
         request,
         &process_span,
     )
@@ -1193,6 +1298,7 @@ async fn reconciliation_request(
     nats: NatsClient,
     mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     decryption_key: Arc<VeritechDecryptionKey>,
+    cyclone_client_execution_timeout: Duration,
     request: Request<ReconciliationRequest>,
     process_span: &Span,
 ) -> ServerResult<()> {
@@ -1223,46 +1329,60 @@ async fn reconciliation_request(
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
 
-    let mut progress = client
-        .execute_reconciliation(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?
-        .start()
+    let unstarted_progress = client
+        .prepare_reconciliation_execution(cyclone_request)
         .await
         .map_err(|err| {
             metric!(counter.function_run.reconciliation = -1);
             span.record_err(err)
         })?;
 
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await.map_err(|err| {
-                    metric!(counter.function_run.reconciliation = -1);
-                    span.record_err(err)
-                })?
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
+    let progress_loop = async {
+        let mut progress = unstarted_progress.start().await.map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
+
+        while let Some(msg) = progress.next().await {
+            match msg {
+                Ok(ProgressMessage::OutputStream(output)) => {
+                    publisher.publish_output(&output).await.map_err(|err| {
+                        metric!(counter.function_run.reconciliation = -1);
+                        span.record_err(err)
+                    })?
+                }
+                Ok(ProgressMessage::Heartbeat) => {
+                    trace!("received heartbeat message");
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next progress message was an error, bailing out");
+                    break;
+                }
             }
         }
-    }
-    publisher.finalize_output().await.map_err(|err| {
-        metric!(counter.function_run.reconciliation = -1);
-        span.record_err(err)
-    })?;
+        publisher.finalize_output().await.map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
 
-    let function_result = progress.finish().await.map_err(|err| {
-        metric!(counter.function_run.reconciliation = -1);
-        span.record_err(err)
-    })?;
+        let function_result = progress.finish().await.map_err(|err| {
+            metric!(counter.function_run.reconciliation = -1);
+            span.record_err(err)
+        })?;
+
+        ServerResult::Ok(function_result)
+    };
+
+    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
+        Ok(progress_loop_result) => progress_loop_result?,
+        Err(err) => {
+            error!(?err, "hit timeout for communicating with cyclone server");
+            return Err(ServerError::CycloneTimeout(
+                cyclone_client_execution_timeout,
+            ));
+        }
+    };
+
     publisher
         .publish_result(&function_result)
         .await

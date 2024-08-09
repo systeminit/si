@@ -14,7 +14,7 @@ use tokio_tungstenite::WebSocketStream;
 
 pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
 
-pub fn execute<T, Request, Success>(
+pub fn new_unstarted_execution<T, Request, Success>(
     stream: WebSocketStream<T>,
     request: CycloneRequest<Request>,
 ) -> Execution<T, Request, Success> {
@@ -69,6 +69,7 @@ where
     Request: Serialize,
 {
     pub async fn start(mut self) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
+        // As soon as we see the "start" message, we are good to go.
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
                 let msg = Message::deserialize_from_str(&json_str)
@@ -85,6 +86,7 @@ where
             None => return Err(ExecutionError::WSClosedBeforeStart),
         }
 
+        // Once the start message has been seen on the stream, we can send the request.
         let msg = serde_json::to_string(&self.request).map_err(ExecutionError::JSONSerialize)?;
         self.stream
             .send(WebSocketMessage::Text(msg))

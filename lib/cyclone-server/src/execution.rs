@@ -32,18 +32,23 @@ use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 use crate::WebSocketMessage;
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
-const LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
+const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
     lang_server_function_timeout: Option<usize>,
+    lang_server_process_timeout: Option<u64>,
     command: String,
 ) -> Execution<Request, LangServerSuccess, Success> {
     Execution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
         lang_server_function_timeout,
+        lang_server_process_timeout: match lang_server_process_timeout {
+            Some(timeout) => Duration::from_secs(timeout),
+            None => DEFAULT_LANG_SERVER_PROCESS_TIMEOUT,
+        },
         command,
         request_marker: PhantomData,
         lang_server_success_marker: PhantomData,
@@ -64,8 +69,8 @@ pub enum ExecutionError {
     ChildShutdown(#[from] ShutdownError),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),
-    #[error("child ran for to long")]
-    ChildTimeout,
+    #[error("child process timed out: {0:?}")]
+    ChildTimeout(Duration),
     #[error("failed to decode string as utf8")]
     FromUtf8(#[from] FromUtf8Error),
     #[error("failed to deserialize json message")]
@@ -93,6 +98,7 @@ pub struct Execution<Request, LangServerSuccess, Success> {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
     lang_server_function_timeout: Option<usize>,
+    lang_server_process_timeout: Duration,
     command: String,
     request_marker: PhantomData<Request>,
     lang_server_success_marker: PhantomData<LangServerSuccess>,
@@ -161,6 +167,7 @@ where
             stderr,
             sensitive_strings: Arc::new(sensitive_strings),
             success_marker: self.success_marker,
+            lang_server_process_timeout: self.lang_server_process_timeout,
         })
     }
 
@@ -219,6 +226,7 @@ pub struct ExecutionStarted<LangServerSuccess, Success> {
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
     sensitive_strings: Arc<SensitiveStrings>,
     success_marker: PhantomData<Success>,
+    lang_server_process_timeout: Duration,
 }
 
 // TODO: implement shutdown oneshot
@@ -289,15 +297,18 @@ where
             Result::<_>::Ok(())
         };
 
-        match timeout(LANG_SERVER_PROCESS_TIMEOUT, receive_loop).await {
+        match timeout(self.lang_server_process_timeout, receive_loop).await {
             Ok(execution) => execution?,
-            Err(_) => {
+            Err(err) => {
                 // Exceeded timeout, shutdown child process
                 process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None)
                     .await?;
                 drop(self.child);
 
-                return Err(ExecutionError::ChildTimeout);
+                error!(?err, "shutdown child process due to timeout");
+                return Err(ExecutionError::ChildTimeout(
+                    self.lang_server_process_timeout,
+                ));
             }
         };
 

@@ -90,6 +90,10 @@ pub(crate) struct Args {
     /// Veritech decryption key file location [example: /run/veritech/veritech.key]
     #[arg(long)]
     pub(crate) decryption_key: Option<PathBuf>,
+
+    /// Execution timeout when communicating with a cyclone instance executing a function, in seconds
+    #[arg(long)]
+    pub(crate) cyclone_client_execution_timeout: Option<u64>,
 }
 
 impl TryFrom<Args> for Config {
@@ -128,6 +132,9 @@ impl TryFrom<Args> for Config {
                 );
             }
             config_map.set("nats.connection_name", NAME);
+            if let Some(timeout) = args.cyclone_client_execution_timeout {
+                config_map.set("cyclone_client_execution_timeout", timeout);
+            }
         })?
         .try_into()
     }

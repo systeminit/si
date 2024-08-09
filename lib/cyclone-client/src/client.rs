@@ -139,7 +139,7 @@ where
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
 
-    async fn execute_resolver(
+    async fn prepare_resolver_execution(
         &mut self,
         request: CycloneRequest<ResolverFunctionRequest>,
     ) -> result::Result<
@@ -147,12 +147,12 @@ where
         ClientError,
     >;
 
-    async fn execute_action_run(
+    async fn prepare_action_run_execution(
         &mut self,
         request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>;
 
-    async fn execute_reconciliation(
+    async fn prepare_reconciliation_execution(
         &mut self,
         request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
@@ -160,12 +160,12 @@ where
         ClientError,
     >;
 
-    async fn execute_validation(
+    async fn prepare_validation_execution(
         &mut self,
         request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>;
 
-    async fn execute_schema_variant_definition(
+    async fn prepare_schema_variant_definition_execution(
         &mut self,
         request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
@@ -284,24 +284,24 @@ where
         Ok(ping::execute(stream))
     }
 
-    async fn execute_resolver(
+    async fn prepare_resolver_execution(
         &mut self,
         request: CycloneRequest<ResolverFunctionRequest>,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(execution::execute(stream, request))
+        Ok(execution::new_unstarted_execution(stream, request))
     }
 
-    async fn execute_action_run(
+    async fn prepare_action_run_execution(
         &mut self,
         request: CycloneRequest<ActionRunRequest>,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         let stream = self.websocket_stream("/execute/command").await?;
-        Ok(execution::execute(stream, request))
+        Ok(execution::new_unstarted_execution(stream, request))
     }
 
-    async fn execute_reconciliation(
+    async fn prepare_reconciliation_execution(
         &mut self,
         request: CycloneRequest<ReconciliationRequest>,
     ) -> result::Result<
@@ -309,28 +309,28 @@ where
         ClientError,
     > {
         let stream = self.websocket_stream("/execute/reconciliation").await?;
-        Ok(execution::execute(stream, request))
+        Ok(execution::new_unstarted_execution(stream, request))
     }
 
-    async fn execute_validation(
+    async fn prepare_validation_execution(
         &mut self,
         request: CycloneRequest<ValidationRequest>,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
     {
-        Ok(execution::execute(
+        Ok(execution::new_unstarted_execution(
             self.websocket_stream("/execute/validation").await?,
             request,
         ))
     }
 
-    async fn execute_schema_variant_definition(
+    async fn prepare_schema_variant_definition_execution(
         &mut self,
         request: CycloneRequest<SchemaVariantDefinitionRequest>,
     ) -> result::Result<
         Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
     > {
-        Ok(execution::execute(
+        Ok(execution::new_unstarted_execution(
             self.websocket_stream("/execute/schema_variant_definition")
                 .await?,
             request,
@@ -839,7 +839,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_resolver(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_resolver_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -940,7 +940,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_resolver(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_resolver_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1012,7 +1012,7 @@ mod tests {
             before: vec![],
         };
         let mut progress = client
-            .execute_validation(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_validation_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1082,7 +1082,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_action_run(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_action_run_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1168,7 +1168,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_action_run(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_action_run_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1253,7 +1253,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_reconciliation(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_reconciliation_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1328,7 +1328,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_reconciliation(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_reconciliation_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1405,7 +1405,10 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_schema_variant_definition(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_schema_variant_definition_execution(CycloneRequest::from_parts(
+                req,
+                Default::default(),
+            ))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1482,7 +1485,10 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_schema_variant_definition(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_schema_variant_definition_execution(CycloneRequest::from_parts(
+                req,
+                Default::default(),
+            ))
             .await
             .expect("failed to establish websocket stream")
             .start()

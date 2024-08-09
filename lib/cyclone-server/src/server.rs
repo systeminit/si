@@ -218,6 +218,7 @@ fn build_service(
         config.lang_server_path(),
         telemetry_level,
         config.lang_server_function_timeout(),
+        config.lang_server_process_timeout(),
     );
 
     let routes = routes(config, state, shutdown_tx);
