@@ -48,6 +48,11 @@ for secret_name in $(echo "$SECRETS" | jq -r '.[]'); do
     fi
 done
 
+# Set some basic machine-specific env vars
+TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+export SI_HOSTNAME=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/hostname)
+export SI_INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+
 for file_path in "$DIR"/*; do
   file_name=$(basename "$file_path")
   echo "Updating $file_name"

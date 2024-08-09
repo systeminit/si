@@ -72,6 +72,7 @@ services:
         condition: service_completed_successfully
 
   prometheus:
+    container_name: prometheus
     image: prom/prometheus
     profiles: [rebaser, pinga, sdf, veritech]
     ports:
