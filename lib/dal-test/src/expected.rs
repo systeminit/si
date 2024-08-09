@@ -8,95 +8,100 @@ use crate::helpers::ChangeSetTestHelpers;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, ChangeSetId, ComponentId, PropId, SchemaVariantId,
+    AttributeValue, AttributeValueId, ChangeSet, ChangeSetId, ComponentId, PropId, SchemaVariantId
 };
 use dal::{Component, DalContext};
 use serde_json::Value;
 
 ///
-/// Things that you can pass as prop paths / ids
+/// Things that you can pass as prop paths
 ///
-pub trait ExpectPropId {
+pub trait IntoPropPath {
     ///
-    /// Turn this into a proper prop id
-    ///
-    async fn expect_prop_id(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: impl Into<SchemaVariantId>,
-    ) -> PropId;
+    /// Convert into a PropPath
+    /// 
+    fn into_prop_path(self) -> PropPath;
 }
-impl ExpectPropId for PropId {
-    async fn expect_prop_id(&self, _: &DalContext, _: impl Into<SchemaVariantId>) -> PropId {
-        *self
+impl IntoPropPath for PropPath {
+    fn into_prop_path(self) -> PropPath {
+        self
     }
 }
-impl ExpectPropId for PropPath {
-    async fn expect_prop_id(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: impl Into<SchemaVariantId>,
-    ) -> PropId {
-        ExpectProp::find_prop_id_by_path(ctx, schema_variant_id, self).await
+impl IntoPropPath for &str {
+    fn into_prop_path(self) -> PropPath {
+        [self].into_prop_path()
     }
 }
-impl ExpectPropId for &str {
-    async fn expect_prop_id(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: impl Into<SchemaVariantId>,
-    ) -> PropId {
-        PropPath::new(self.split('/'))
-            .expect_prop_id(ctx, schema_variant_id)
-            .await
-    }
-}
-impl<const N: usize> ExpectPropId for [&str; N] {
-    async fn expect_prop_id(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: impl Into<SchemaVariantId>,
-    ) -> PropId {
+impl<const N: usize> IntoPropPath for [&str; N] {
+    fn into_prop_path(self) -> PropPath {
         PropPath::new(self)
-            .expect_prop_id(ctx, schema_variant_id)
-            .await
     }
 }
 
 #[derive(Debug)]
-pub struct ExpectComponent(pub Component);
+pub struct ExpectSchemaVariant(pub SchemaVariantId);
+
+impl Deref for ExpectSchemaVariant {
+    type Target = SchemaVariantId;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ExpectSchemaVariant {
+    pub async fn id(&self) -> SchemaVariantId {
+        self.0
+    }
+    pub async fn prop(&self, ctx: &DalContext, prop_path: impl IntoPropPath) -> ExpectProp {
+        ExpectProp(ExpectProp::find_prop_id_by_path(ctx, self.0, prop_path).await)
+    }
+    pub async fn domain_prop(&self, ctx: &DalContext, prop_path: impl IntoPropPath) -> ExpectProp {
+        let prop_path = PropPath::new(["root", "domain"]).join(&prop_path.into_prop_path());
+        ExpectProp(ExpectProp::find_prop_id_by_path(ctx, self.0, prop_path).await)
+    }
+}
+
+#[derive(Debug)]
+pub struct ExpectComponent(pub ComponentId);
 
 impl Deref for ExpectComponent {
-    type Target = Component;
+    type Target = ComponentId;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl ExpectComponent {
-    pub async fn schema_variant_id(ctx: &DalContext, component_id: ComponentId) -> SchemaVariantId {
-        Component::schema_variant_id(ctx, component_id)
+    pub fn id(&self) -> ComponentId {
+        self.0
+    }
+
+    pub async fn component(&self, ctx: &DalContext) -> Component {
+        Component::get_by_id(ctx, self.0).await.expect("find component by id")
+    }
+
+    pub async fn schema_variant(&self, ctx: &DalContext) -> ExpectSchemaVariant {
+        let schema_variant_id = Component::schema_variant_id(ctx, self.id())
             .await
-            .expect("find variant id for component")
+            .expect("find variant id for component");
+        ExpectSchemaVariant(schema_variant_id)
     }
 
-    pub async fn prop_id(&self, ctx: &DalContext, prop: impl ExpectPropId) -> PropId {
-        let schema_variant_id = ExpectComponent::schema_variant_id(ctx, self.id()).await;
-        prop.expect_prop_id(ctx, schema_variant_id).await
+    pub async fn domain_prop(&self, ctx: &DalContext, path: impl IntoPropPath) -> ExpectComponentProp {
+        let prop = self.schema_variant(ctx).await.domain_prop(ctx, path).await;
+        ExpectComponentProp(self.id(), prop.id())
     }
 
-    pub async fn prop(&self, ctx: &DalContext, prop: impl ExpectPropId) -> ExpectComponentProp {
-        ExpectComponentProp(
-            self.id(),
-            self.prop_id(ctx, prop).await,
-        )
+    pub async fn prop(&self, ctx: &DalContext, path: impl IntoPropPath) -> ExpectComponentProp {
+        let prop = self.schema_variant(ctx).await.prop(ctx, path).await;
+        ExpectComponentProp(self.id(), prop.id())
     }
 
     pub async fn value(&self, ctx: &DalContext) -> Value {
-        self.0.view(ctx).await.expect("component must have value").expect("component must have value")
+        self.component(ctx).await.view(ctx).await.expect("component must have value").expect("component must have value")
     }
     pub async fn view(&self, ctx: &DalContext) -> Option<Value> {
-        self.0.view(ctx).await.expect("component must have value")
+        self.component(ctx).await.view(ctx).await.expect("component must have value")
     }
 
     pub async fn attribute_values_for_prop_id(
@@ -240,15 +245,37 @@ impl ExpectAttributeValue {
 }
 
 #[derive(Debug)]
-pub struct ExpectProp;
+pub struct ExpectProp(pub PropId);
+
+impl Deref for ExpectProp {
+    type Target = PropId;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl ExpectProp {
+    pub fn id(&self) -> PropId { self.0 }
+
+    pub async fn child(&self, ctx: &DalContext, path: impl IntoPropPath) -> ExpectProp {
+        ExpectProp(Self::find_child_prop_id_by_path(ctx, self.0, path).await)
+    }
+
+    pub async fn find_child_prop_id_by_path(
+        ctx: &DalContext,
+        prop_id: impl Into<PropId>,
+        path: impl IntoPropPath,
+    ) -> PropId {
+        Prop::find_child_prop_id_by_path(ctx, prop_id, &path.into_prop_path())
+            .await
+            .expect("able to find child prop")
+    }
     pub async fn find_prop_id_by_path(
         ctx: &DalContext,
         schema_variant_id: impl Into<SchemaVariantId>,
-        path: &PropPath,
+        path: impl IntoPropPath,
     ) -> PropId {
-        Prop::find_prop_id_by_path(ctx, schema_variant_id.into(), path)
+        Prop::find_prop_id_by_path(ctx, schema_variant_id.into(), &path.into_prop_path())
             .await
             .expect("able to find prop")
     }
@@ -287,6 +314,7 @@ pub async fn create_component(ctx: &mut DalContext, schema_name: impl AsRef<str>
         crate::helpers::create_component(ctx, schema_name)
             .await
             .expect("could not create component")
+            .id()
     )
 }
 

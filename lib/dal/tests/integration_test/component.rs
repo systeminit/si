@@ -23,8 +23,8 @@ mod upgrade;
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let component = expected::create_component(ctx, "Docker Image").await;
-    let image = component.prop(ctx, ["root", "domain", "image"]).await;
-    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
+    let image = component.domain_prop(ctx, "image").await;
+    let exposed_ports = component.domain_prop(ctx, "ExposedPorts").await;
 
     // Update image
     image.set(ctx, "fiona/apple").await;
@@ -40,7 +40,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
     // Rebase!
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    (*component).view(ctx).await.expect("view for component");
+    component.component(ctx).await.view(ctx).await.expect("view for component");
 
     // Confirm after rebase
     assert_eq!("fiona/apple", image.get(ctx).await);

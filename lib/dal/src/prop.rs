@@ -755,6 +755,32 @@ impl Prop {
         Err(PropError::MapOrArrayMissingElementProp(self.id))
     }
 
+    pub async fn find_child_prop_id_by_path(
+        ctx: &DalContext,
+        prop_id: impl Into<PropId>,
+        path: &PropPath,
+    ) -> PropResult<PropId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let schema_variant_node_index = workspace_snapshot
+            .get_node_index_by_id(prop_id.into())
+            .await?;
+
+        let path_parts = path.as_parts();
+
+        let mut current_node_index = schema_variant_node_index;
+        for part in path_parts {
+            current_node_index =
+                Self::find_child_prop_index_by_name(ctx, current_node_index, part).await?;
+        }
+
+        Ok(workspace_snapshot
+            .get_node_weight(current_node_index)
+            .await?
+            .id()
+            .into())
+    }
+
     pub async fn find_child_prop_index_by_name(
         ctx: &DalContext,
         node_index: NodeIndex,

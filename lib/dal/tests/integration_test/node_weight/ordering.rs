@@ -20,7 +20,7 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
     // Make a docker image with two ExposedPorts
     //
     let component = expected::create_component(ctx, "Docker Image").await;
-    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
+    let exposed_ports = component.domain_prop(ctx, "ExposedPorts").await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "2").await;
     assert_eq!(json!(["1", "2"]), exposed_ports.get(ctx).await);
@@ -44,7 +44,7 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
 async fn correct_transforms_added_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
     let component = expected::create_component(ctx, "Docker Image").await;
-    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
+    let exposed_ports = component.domain_prop(ctx, "ExposedPorts").await;
     exposed_ports.push(ctx, "1").await;
     expected::apply_change_set_to_base(ctx).await;
     assert_eq!(json!(["1"]), exposed_ports.get(ctx).await);
@@ -74,7 +74,7 @@ async fn correct_transforms_added_edges(ctx: &mut DalContext) {
 async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
     let component = expected::create_component(ctx, "Docker Image").await;
-    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
+    let exposed_ports = component.domain_prop(ctx, "ExposedPorts").await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;
@@ -112,7 +112,7 @@ async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
 async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
     let component = expected::create_component(ctx, "Docker Image").await;
-    let exposed_ports = component.prop(ctx, ["root", "domain", "ExposedPorts"]).await;
+    let exposed_ports = component.domain_prop(ctx, "ExposedPorts").await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;
