@@ -79,6 +79,15 @@ pub struct NodeInformation {
     pub id: NodeId,
 }
 
+impl From<&NodeWeight> for NodeInformation {
+    fn from(node_weight: &NodeWeight) -> Self {
+        Self {
+            node_weight_kind: node_weight.into(),
+            id: node_weight.id().into(),
+        }
+    }
+}
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
