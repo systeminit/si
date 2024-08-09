@@ -39,7 +39,11 @@
         variant="ghost"
         icon="trash"
         size="sm"
-        :disabled="!selectedChangeSetName || changeSetsStore.headSelected"
+        :disabled="
+          !selectedChangeSetName ||
+          changeSetsStore.headSelected ||
+          changeSetsStore.creatingChangeSet
+        "
         @click="openApprovalFlowModal"
       />
     </div>
