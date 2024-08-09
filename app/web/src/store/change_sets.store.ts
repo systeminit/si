@@ -132,6 +132,8 @@ export function useChangeSetsStore() {
           });
         },
         async ABANDON_CHANGE_SET() {
+          if (this.creatingChangeSet)
+            throw new Error("Wait until change set is created to abandon");
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           else if (this.headSelected) {
             throw new Error("You cannot abandon HEAD!");
@@ -149,6 +151,13 @@ export function useChangeSetsStore() {
             url: "change_set/abandon_change_set",
             params: {
               changeSetId: this.selectedChangeSet.id,
+            },
+            optimistic: () => {
+              // remove component selections, its corrupting navigation
+              const key = `${this.selectedChangeSetId}_selected_component`;
+              window.localStorage.removeItem(key);
+              const headkey = `${this.headChangeSetId}_selected_component`;
+              window.localStorage.removeItem(headkey);
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
