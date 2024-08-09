@@ -65,7 +65,7 @@ concat_and_output_json() {
   if [ -d "$results_directory/" ]; then
     # Aggregate all the individual json documents into one
     # shellcheck disable=SC2002
-    cat "${results_directory}/*" | jq -s '.' >>"$results_directory/$output_file"
+    jq -s '.' "${results_directory}"/* >>"${results_directory}/${output_file}"
     # shellcheck disable=SC2002
     cat "$results_directory/$output_file" | jq
     echo "----------------------------------------"
