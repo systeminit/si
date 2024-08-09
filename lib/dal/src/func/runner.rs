@@ -5,8 +5,8 @@ use std::sync::Arc;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use si_events::{
-    ActionResultState, CasValue, ContentHash, EncryptedSecretKey, FuncRun, FuncRunBuilder,
-    FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId, FuncRunValue,
+    ActionId, ActionResultState, CasValue, ContentHash, EncryptedSecretKey, FuncRun,
+    FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId, FuncRunValue,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -1027,6 +1027,7 @@ impl FuncRunner {
 
     async fn execute(self, ctx: DalContext, execution_parent_span: Span) -> FuncRunnerValueChannel {
         let func_run_id = self.func_run.id();
+        let action_id = self.func_run.action_id();
         let (func_dispatch_context, output_stream_rx) = FuncDispatchContext::new(&ctx);
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
 
@@ -1034,6 +1035,7 @@ impl FuncRunner {
             ctx: ctx.clone(),
             func_run_id,
             output_stream_rx,
+            action_id,
         };
 
         let execution_task = FuncRunnerExecutionTask {
@@ -1290,6 +1292,7 @@ struct FuncRunnerLogsTask {
     ctx: DalContext,
     func_run_id: FuncRunId,
     output_stream_rx: mpsc::Receiver<OutputStream>,
+    action_id: Option<ActionId>,
 }
 
 impl FuncRunnerLogsTask {
@@ -1317,10 +1320,18 @@ impl FuncRunnerLogsTask {
                 timestamp: item.timestamp,
             });
 
-            WsEvent::func_run_log_updated(&self.ctx, func_run_log.func_run_id(), func_run_log.id())
-                .await?
-                .publish_immediately(&self.ctx)
-                .await?;
+            dbg!("YES PLEASE");
+            dbg!(self.action_id);
+
+            WsEvent::func_run_log_updated(
+                &self.ctx,
+                func_run_log.func_run_id(),
+                func_run_log.id(),
+                self.action_id,
+            )
+            .await?
+            .publish_immediately(&self.ctx)
+            .await?;
 
             self.ctx
                 .layer_db()
@@ -1592,6 +1603,7 @@ impl FuncRunnerExecutionTask {
 pub struct FuncRunLogUpdatedPayload {
     func_run_id: FuncRunId,
     func_run_log_id: FuncRunLogId,
+    action_id: Option<ActionId>,
 }
 
 impl WsEvent {
@@ -1599,12 +1611,14 @@ impl WsEvent {
         ctx: &DalContext,
         func_run_id: FuncRunId,
         func_run_log_id: FuncRunLogId,
+        action_id: Option<ActionId>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FuncRunLogUpdated(FuncRunLogUpdatedPayload {
                 func_run_id,
                 func_run_log_id,
+                action_id,
             }),
         )
         .await

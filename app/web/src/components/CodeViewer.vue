@@ -196,7 +196,12 @@ function syncEditorCode() {
 onMounted(initCodeMirrorEditor);
 onBeforeMount(teardownCodeMirrorEditor);
 watch(editorExtensionList, syncEditorConfig, { immediate: true });
-watch(() => props.code, syncEditorCode);
+watch(
+  () => props.code,
+  () => {
+    syncEditorCode();
+  },
+);
 
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
 // RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE

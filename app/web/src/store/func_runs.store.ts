@@ -12,6 +12,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
+import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -142,6 +143,7 @@ export const useFuncRunsStore = () => {
     defineStore(`ws${workspaceId || "NONE"}/func_runs`, {
       state: () => ({
         funcRuns: {} as Record<FuncRunId, FuncRun>,
+        lastRuns: {} as Record<ActionId, Date>,
       }),
       actions: {
         async GET_FUNC_RUN(funcRunId: FuncRunId) {
@@ -159,8 +161,20 @@ export const useFuncRunsStore = () => {
       },
       onActivated() {
         const actionUnsub = this.$onAction(handleStoreError);
+        const realtimeStore = useRealtimeStore();
+        realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+          {
+            eventType: "FuncRunLogUpdated",
+            callback: (payload) => {
+              if (payload.actionId)
+                this.lastRuns[payload.actionId] = new Date();
+            },
+          },
+        ]);
+
         return () => {
           actionUnsub();
+          realtimeStore.unsubscribe(this.$id);
         };
       },
     }),

@@ -17,6 +17,8 @@ import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { SecretId } from "../secrets.store";
+import { FuncRunId } from "../actions.store";
+import { FuncRunLogId } from "../func_runs.store";
 
 export type WebsocketRequest =
   | CursorRequest
@@ -310,5 +312,10 @@ export type WsEventPayloadMap = {
   FuncArgumentsSaved: {
     funcId: FuncId;
     changeSetId: ChangeSetId;
+  };
+  FuncRunLogUpdated: {
+    funcRunId: FuncRunId;
+    funcRunLogId: FuncRunLogId;
+    actionId?: ActionId;
   };
 };
