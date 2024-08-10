@@ -29,6 +29,8 @@ use crate::{
     PublisherError,
 };
 
+const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(35 * 60);
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ServerError {
@@ -164,9 +166,12 @@ impl Server {
                     shutdown_tx,
                     shutdown_rx: graceful_shutdown_rx,
                     metadata: Arc::new(metadata),
-                    cyclone_client_execution_timeout: Duration::from_secs(
-                        config.cyclone_client_execution_timeout(),
-                    ),
+                    cyclone_client_execution_timeout: match config
+                        .cyclone_client_execution_timeout()
+                    {
+                        Some(timeout) => Duration::from_secs(timeout),
+                        None => DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT,
+                    },
                 })
             }
             wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
