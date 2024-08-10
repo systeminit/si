@@ -65,8 +65,8 @@ pub struct Config {
     #[builder(default = "healthcheck_pool_default()")]
     healthcheck_pool: bool,
 
-    #[builder(default = "default_cyclone_client_execution_timeout()")]
-    cyclone_client_execution_timeout: u64,
+    #[builder(default)]
+    cyclone_client_execution_timeout: Option<u64>,
 }
 
 #[remain::sorted]
@@ -86,7 +86,7 @@ pub struct ConfigFile {
     pub cyclone: CycloneConfig,
     pub crypto: VeritechCryptoConfig,
     pub healthcheck_pool: bool,
-    pub cyclone_client_execution_timeout: u64,
+    pub cyclone_client_execution_timeout: Option<u64>,
 }
 
 impl ConfigFile {
@@ -96,7 +96,7 @@ impl ConfigFile {
             cyclone: CycloneConfig::default_local_http(),
             crypto: Default::default(),
             healthcheck_pool: healthcheck_pool_default(),
-            cyclone_client_execution_timeout: default_cyclone_client_execution_timeout(),
+            cyclone_client_execution_timeout: None,
         }
     }
 
@@ -106,14 +106,13 @@ impl ConfigFile {
             cyclone: CycloneConfig::default_local_uds(),
             crypto: Default::default(),
             healthcheck_pool: healthcheck_pool_default(),
-            cyclone_client_execution_timeout: default_cyclone_client_execution_timeout(),
+            cyclone_client_execution_timeout: None,
         }
     }
 
     pub fn new_for_dal_test(nats: NatsConfig) -> Self {
         Self {
             nats,
-            cyclone_client_execution_timeout: default_cyclone_client_execution_timeout(),
             ..Default::default()
         }
     }
@@ -175,8 +174,8 @@ impl Config {
         self.cyclone_spec
     }
 
-    /// Gets the config's execution timeout, in seconds.
-    pub fn cyclone_client_execution_timeout(&self) -> u64 {
+    /// Gets the config's option override cyclone client execution timeout, in seconds.
+    pub fn cyclone_client_execution_timeout(&self) -> Option<u64> {
         self.cyclone_client_execution_timeout
     }
 }
@@ -509,10 +508,6 @@ fn random_instance_id() -> String {
 
 fn healthcheck_pool_default() -> bool {
     true
-}
-
-fn default_cyclone_client_execution_timeout() -> u64 {
-    35 * 60
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
