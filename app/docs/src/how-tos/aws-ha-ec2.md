@@ -8,14 +8,17 @@ outline:
 This how-to assumes:
 
 - Basic [familiarity with System Initiative](../tutorials/getting-started)
-- Have [build an AWS VPC with System Initiative](../aws-vpc)
+- You have completed the
+  [build an AWS VPC with System Initiative tutorial](../aws-vpc) (and not
+  deleted the resulting resources)
 
 It will teach you how to create a highly available application architecture and
 manage it with System Initiative.
 
 We will cover:
 
-- The creation an EC2 Launch Template and AutoScaling group
+- The creation an EC2 Launch Template and AutoScaling group, with a simple
+  Python application
 - An AWS Application Load Balancer
 - The networking required to allow the application instances to serve traffic to
   the application
@@ -38,12 +41,13 @@ this in your diagram:
 
 ### Create a Loadbalancer component
 
-Add a `VPC` to your `VPC How-to` vpc frame.
+Add a `Loadbalancer` to your `VPC How-to` vpc frame.
 
-Set the component type to be `Configuration Frame (down)` and expand it to fill
-the region frame.
+Set the component type to be `Configuration Frame (down)`.
 
-Set the component name & `LbName` to be `application-alb`.
+Set the component name to `application-lb`.
+
+Set the `LbName` to `application-alb`.
 
 Set the `IpAddressType` to be `ipv4`.
 
@@ -58,7 +62,9 @@ the `Subnet ID` input socket of the `application-alb` component.
 
 Add a `Security Group` to your `application-alb` loadbalancer frame.
 
-Set the component name & `GroupName` to be `ALB Security Group`.
+Set the component name to `ALB Security Group`.
+
+Set the `GroupName` to `ALB Security Group`.
 
 Set the `Description` to be `ALB to the world`
 
@@ -88,17 +94,21 @@ to the `Security Group ID` input socket of this `alb-8080-ingress` component.
 
 Add a `Listener` component to your `application-alb` loadbalancer frame.
 
+Set the component name to `HTTP:8080`.
+
 Set the `Port` to be `8080`.
 
 Set the `Protocol` to be `HTTP`.
 
-The name of the component
+Resize the frame to be large enough to fit another component.
 
 ### Create a Target Group
 
 Add a `Target Group` component to your `Listener` frame.
 
-Set the component name and `TgName` to be `app-tg`.
+Set the component name to `app-tg`.
+
+Set `TgName` to be `app-tg`.
 
 Set `HealthCheckEnabled` to be enabled.
 
@@ -110,7 +120,9 @@ Set `HealthCheckPort` to be `8080`.
 
 Set `HealthCheckProtocol` to be `HTTP`.
 
-Set `HealthCheckTimeoutSeconds` and `HealthyThresholdCount` to be `5`.
+Set `HealthCheckTimeoutSeconds` to be `5`.
+
+Set `HealthyThresholdCount` to be `5`.
 
 Set `HttpCode` to be `200`.
 
@@ -129,29 +141,69 @@ Add a `Generic Frame` component to your `VPC` frame.
 
 Set the component name to be `Application`.
 
+Resize the frame to hold many components.
+
 ### Create an IAM Role
 
-Add an `IAM Role` component to your `Application` frame.
+Add an `AWS IAM Role` component to your `Application` frame.
 
-Set the component name and `RoleName` to be `application-role`.
+Set the component name to `application-role`.
 
-Set `GeneratePolicyForService` to be `ec2.amazonaws.com`.
+Set the `RoleName` to `application-role`.
+
+Set the `Description` to `EC2 Application Role`.
+
+Set the `Path` to `/si-tutorial/`.
+
+### Create an Assume Role Policy
+
+Add an `AWS IAM Policy Statement` within the `application-role` AWS IAM Role
+frame.
+
+Set the component name to `allow-ec2`.
+
+Set the `Sid` to `allow-ec2`.
+
+Set the `Effect` to `Allow`.
+
+Add an array item to the `Action` array.
+
+Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
+
+### Create an AWS IAM AWS Service Principal
+
+Add an `AWS IAM Service Principal` within the `application-role` AWS IAM Role
+frame.
+
+Set the component name to `ec2 service`.
+
+Set the `Service` to `ec2.amazonaws.com`.
+
+Connect the `Principal` output socket of the `ec2-service` AWS IAM AWS Service
+Principal to the `Principal` input socket of your `allow-ec2` AWS IAM Policy
+Statement.
 
 ### Create an IAM Instance Profile
 
 Add an `IAM Instance Profile` to your `Application` frame.
 
-Set the component name and `InstanceProfileName` to be
-`application-instance-profile-how-to`.
+Set the component name to `application-instance-profile-how-to`.
 
-Connect the `Role Name` output socket of `application-role` component to the
-`Role Name` input socket of the `application-instance-profile` component.
+Set the `InstanceProfileName` to `application-instance-profile-how-to`.
 
-### Create an EC2 security group component for the Application
+Set the `Path` to `/si-tutorial/`.
+
+Connect the `Role Name` output socket of `application-role` IAM Role component
+to the `Role Name` input socket of the `application-instance-profile` IAM
+Instance Profile component.
+
+### Create a Security Group component for the Application
 
 Add a `Security Group` to your `Application` frame.
 
-Set the component name & `GroupName` to be `application-sg`.
+Set the component name to `application-sg`
+
+Set the `GroupName` to `application-sg`.
 
 Set the `Description` to be `Application Security Group`
 
@@ -177,7 +229,9 @@ to the `Source Traffic Security Group ID` input socket of this
 
 Add a `Key Pair` to your `Application` frame.
 
-Set the component name and `KeyName` to be `application-key-pair`.
+Set the component name to `application-key-pair`.
+
+Set the `KeyName` to `application-key-pair`.
 
 ### Create an AMI component
 
@@ -191,8 +245,9 @@ Set the `ImageId` to be `ami-0c11a84584d4e09dd`.
 
 Add a `Launch Template` component to your `Application` frame.
 
-Set the component name and `LaunchTemplateName` to be
-`application-launch-template-how-to`
+Set the component name to `application-launch-template-how-to`.
+
+Set the `LaunchTemplateName` to `application-launch-template-how-to`.
 
 Set the `InstanceType` to be `t3.small`
 
@@ -289,9 +344,11 @@ Connect the `Image ID` output socket of `Amazon Linux 2023` component to the
 
 Add an `AutoScaling Group` component to the `Application` frame.
 
-Set the component name and `AutoScalingGroupName` to be `application-asg`.
+Set the component name to `application-asg`.
 
-Set `DesiredSize` to be 1.
+Set `AutoScalingGroupName` to be `application-asg`.
+
+Set `DesiredCapacity` to be 1.
 
 Set `MaxSize` to be 1.
 
@@ -304,8 +361,8 @@ component.
 Connect the `Subnet ID` output socket of each of the `Public` subnet components
 to the `Subnet ID` input socket of this `application-asg` component.
 
-Connect the `Target Group ARN` output socket of each of the `app-tg` subnet
-components to the `Target Group ARN` input socket of this `application-asg`
+Connect the `Target Group ARN` output socket of each of the `app-tg` Target
+Group to the `Target Group ARN` input socket of this `application-asg`
 component.
 
 ### Apply your Change Set

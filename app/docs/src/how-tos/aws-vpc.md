@@ -48,32 +48,37 @@ Set the component name to be `How to VPC`.
 
 Set the `CidrBlock` to be  `10.0.0.0/16`
 
-Enable `EnableDnsHostnames` and `EnableDnsResolution`.
+Enable `EnableDnsHostnames`.
+
+Enable `EnableDnsResolution`.
 
 ### Create the Public Subnet Components
 
 This VPC will span multiple availability zones in our AWS Region. Add 3 `Subnet`
 components to your VPC frame and configure them as follows:
 
-| component name | `CidrBlock`   | `AvailabilityZone` |
-| -------------- | ------------- | ------------------ |
-| Public 1       | 10.0.128.0/20 | us-east-2a         |
-| Public 2       | 10.0.144.0/20 | us-east-2b         |
-| Public 3       | 10.0.160.0/20 | us-east-2c         |
-
-Enable `IsPublic` for each of the public subnet components.
+| Component Name | `CidrBlock`   | `AvailabilityZone` | `IsPublic`  |
+| -------------- | ------------- | ------------------ | ----------- |
+| Public 1       | 10.0.128.0/20 | us-east-2a         | true        |
+| Public 2       | 10.0.144.0/20 | us-east-2b         | true        |
+| Public 3       | 10.0.160.0/20 | us-east-2c         | true        |
 
 Set the component type for each of the public subnet components to be
 `Configuration Frame (down)`.
 
-### Create the Elastic IP and NAT Gateway Components
+### Create the NAT Gateway Components
 
-To each of the `Public` subnet frames, add an `Elastic IP` component.
-
-Also add a `NAT Gateway` component to each of the `Public` subnet frames.
+Add a `NAT Gateway` component to each of the `Public` subnet frames.
 
 Set name names of the component to be `NAT Gateway (1|2|3)` - the index should
 align with the subnet it is inside.
+
+### Create the Elastic IPs for each NAT Gateway
+
+To each of the `Public` subnet frames, add an `Elastic IP` component.
+
+Set the names of the components to be `NAT Gateway IP (1|2|3)` - the index
+should align with the subnet it is inside, and match the `NAT Gateway` component.
 
 Connect the `Allocation ID` output socket of the `Elastic IP` component to the
 `Allocation ID` input socket of the `NAT Gateway` component. The connections
@@ -87,7 +92,7 @@ Set the component type to be `Configuration Frame (down)`.
 
 Set the component name to be `Public Route Table`.
 
-Connect the `Subnet ID` output socket of the public subnet components to the
+Connect the `Subnet ID` output socket of the Public `Subnet` components to the
 `Subnet ID` input socket of the `Public Route Table` component.
 
 ### Create a Route Component
@@ -131,7 +136,7 @@ the subnet frame it is inside.
 Set the component type for each of the `Private Route Table` components to be
 `Configuration Frame (down)`.
 
-### Create theRoute Components
+### Create the Private Route Components
 
 Add a `Route` component to each of the `Private Route Table` frames.
 
