@@ -197,6 +197,7 @@ impl HttpMakeSpan {
             .map(|s| s.as_span());
 
         let uri = request.uri();
+        let host = uri.host().unwrap_or("unknown");
         let uri_path = uri.path();
         let matched_path = request
             .extensions()
@@ -244,6 +245,7 @@ impl HttpMakeSpan {
                             url.path = uri_path,
                             url.query = uri.query(),
                             url.scheme = Empty,
+                            url.domain = host,
                             user_agent.original = Empty,
 
                             // Set special `otel.*` fields which tracing-opentelemetry will use when
@@ -296,6 +298,7 @@ impl HttpMakeSpan {
                             url.path = uri_path,
                             url.query = uri.query(),
                             url.scheme = Empty,
+                            url.domain = host,
                             user_agent.original = Empty,
 
                             // Set special `otel.*` fields which tracing-opentelemetry will use when
