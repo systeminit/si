@@ -56,12 +56,9 @@ import storage from "local-storage-fallback";
 import beautify from "js-beautify";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
-// import { IndexeddbPersistence } from "y-indexeddb";
-import { yUndoManagerKeymap } from "yjs-codemirror-plugin";
+import { yCollab, yUndoManagerKeymap } from "yjs-codemirror-plugin";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-// import { API_WS_URL } from "@/store/apis";
-// import { usePresenceStore } from "@/store/presence.store";
 import {
   createTypescriptSource,
   GetTooltipFromPos,
@@ -92,15 +89,52 @@ const authStore = useAuthStore();
 const editorMount = ref(); // div (template ref) where we will mount the editor
 let view: EditorView; // instance of the CodeMirror editor
 
-// TODO: investigate relative positions so we don't lose cursor context when formatting
+function getCursorInfo(state: EditorState) {
+  const selection = state.selection.main;
+  const cursorPosition = selection.head;
+
+  const line = state.doc.lineAt(cursorPosition);
+  const lineNumber = line.number;
+
+  const column = cursorPosition - line.from;
+
+  return {
+    lineNumber,
+    column,
+    overallPosition: cursorPosition,
+  };
+}
+
+function setCursorPosition(
+  view: EditorView,
+  lineNumber: number,
+  column: number,
+) {
+  const line = view.state.doc.line(lineNumber);
+  const position = Math.min(line.from + column, line.to);
+
+  const transaction = view.state.update({
+    selection: { anchor: position },
+    scrollIntoView: true,
+  });
+
+  view.dispatch(transaction);
+}
+
 const format = (): boolean => {
   if (props.disabled || !yText) return false;
 
   if (props.json || props.typescript) {
+    const preFormatPosition = getCursorInfo(view.state);
     const text = beautify(view.state.doc.toString());
     if (text !== view.state.doc.toString()) {
       yText.delete(0, yText.length);
       yText.insert(0, text);
+      setCursorPosition(
+        view,
+        preFormatPosition.lineNumber,
+        preFormatPosition.column,
+      );
     }
   }
   return true;
@@ -146,7 +180,7 @@ const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const hoverTooltipCompartment = new Compartment();
 const removeTooltipOnUpdateCompartment = new Compartment();
-// const yCompartment = new Compartment();
+const yCompartment = new Compartment();
 
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
@@ -266,17 +300,6 @@ const codeTooltip = {
   },
 };
 
-// const presenceStore = usePresenceStore();
-
-// function getUserInfo(userId: { id: string }) {
-//   const user = presenceStore.usersById[userId.id];
-//   return {
-//     name: user?.name,
-//     colorLight: user?.color ? `${user.color}30` : undefined,
-//     color: user?.color || undefined,
-//   };
-// }
-
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
@@ -370,33 +393,12 @@ const mountEditor = async () => {
     };
   };
 
-  // TODO: investigate the following PRs to fix UX/UI bugs
-  // https://github.com/yjs/y-codemirror.next/pull/12
-  // https://github.com/codemirror/dev/issues/989
-  // https://github.com/yjs/y-codemirror.next/issues/8
-  // https://github.com/yjs/y-codemirror.next/pull/17
-
-  // const id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
-
-  // const _storageProvider = new IndexeddbPersistence(id, ydoc);
-
-  // wsProvider?.destroy();
-  // wsProvider = new WebsocketProvider(
-  //   `${API_WS_URL}/crdt?token=Bearer+${authStore.selectedWorkspaceToken}&id=${id}`,
-  //   id,
-  //   ydoc,
-  // );
-
-  // wsProvider.awareness.setLocalStateField("user", {
-  //   id: authStore.user?.pk,
-  // });
-
   extensions.push(keymap.of([...yUndoManagerKeymap]));
 
   // const undoManager = new Y.UndoManager(yText);
-  // extensions.push(
-  //   yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })), // , { undoManager })),
-  // );
+  extensions.push(
+    yCompartment.of(yCollab(yText, null)), // , { undoManager })),
+  );
 
   yText.delete(0, yText.length);
   yText.insert(0, props.modelValue);
