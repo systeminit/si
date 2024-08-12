@@ -1320,9 +1320,6 @@ impl FuncRunnerLogsTask {
                 timestamp: item.timestamp,
             });
 
-            dbg!("YES PLEASE");
-            dbg!(self.action_id);
-
             WsEvent::func_run_log_updated(
                 &self.ctx,
                 func_run_log.func_run_id(),
