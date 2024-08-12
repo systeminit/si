@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 
 use dal::change_status::ChangeStatus;
@@ -26,6 +26,7 @@ pub async fn set_type(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(SetTypeRequest {
         component_id,
         component_type,
@@ -67,6 +68,7 @@ pub async fn set_type(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "set_component_type",
         serde_json::json!({
             "how": "/component/set_type",

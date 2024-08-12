@@ -1,7 +1,7 @@
 use super::SessionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,7 @@ pub async fn load_workspaces(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
 ) -> SessionResult<Json<LoadWorkspaceResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
@@ -26,6 +27,7 @@ pub async fn load_workspaces(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "workspace_loaded",
         serde_json::json!({}),
     );

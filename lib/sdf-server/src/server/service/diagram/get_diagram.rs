@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::diagram::Diagram;
 use dal::Visibility;
@@ -19,6 +19,7 @@ pub type GetDiagramResponse = Diagram;
 
 pub async fn get_diagram(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -27,10 +28,13 @@ pub async fn get_diagram(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let response = Diagram::assemble(&ctx).await?;
 
+    dbg!(&host_name);
+
     track(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_diagram",
         serde_json::json!({
             "how": "/diagram/get_diagram",

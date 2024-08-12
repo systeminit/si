@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -28,6 +28,7 @@ pub async fn save_code(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<SaveCodeRequest>,
 ) -> FuncAPIResult<impl IntoResponse> {
@@ -48,6 +49,7 @@ pub async fn save_code(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "save_func_code",
         serde_json::json!({
             "how": "/func/save_code",

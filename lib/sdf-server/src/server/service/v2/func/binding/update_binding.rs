@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -26,6 +26,7 @@ pub async fn update_binding(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<frontend_types::FuncBindings>,
 ) -> FuncAPIResult<impl IntoResponse> {
@@ -157,6 +158,7 @@ pub async fn update_binding(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "update_binding",
         serde_json::json!({
             "how": "/func/update_binding",

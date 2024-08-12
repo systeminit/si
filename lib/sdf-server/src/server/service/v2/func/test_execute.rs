@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,7 @@ pub async fn test_execute(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<TestExecuteFuncRequest>,
 ) -> FuncAPIResult<Json<TestExecuteFuncResponse>> {
@@ -58,6 +59,7 @@ pub async fn test_execute(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "test_execute",
         serde_json::json!({
             "how": "/func/test_execute",

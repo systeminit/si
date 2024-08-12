@@ -1,3 +1,4 @@
+use axum::extract::Host;
 use axum::Json;
 use axum::{extract::OriginalUri, http::uri::Uri, response::IntoResponse};
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility};
@@ -19,6 +20,7 @@ async fn remove_single_delete_intent(
     ctx: &DalContext,
     component_id: ComponentId,
     original_uri: &Uri,
+    host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<()> {
     let comp = Component::get_by_id(ctx, component_id).await?;
@@ -30,6 +32,7 @@ async fn remove_single_delete_intent(
         posthog_client,
         ctx,
         original_uri,
+        host_name,
         "remove_delete_intent",
         serde_json::json!({
             "how": "/diagram/remove_delete_intent",
@@ -46,6 +49,7 @@ async fn restore_component_from_base_change_set(
     ctx: &DalContext,
     component_id: ComponentId,
     original_uri: &Uri,
+    host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<()> {
     Component::restore_from_base_change_set(ctx, component_id).await?;
@@ -56,6 +60,7 @@ async fn restore_component_from_base_change_set(
         posthog_client,
         ctx,
         original_uri,
+        host_name,
         "restore_from_base_change_set",
         serde_json::json!({
             "how": "/diagram/remove_delete_intent",
@@ -89,6 +94,7 @@ pub async fn remove_delete_intent(
     AccessBuilder(request_ctx): AccessBuilder,
     posthog_client: PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<RemoveDeleteIntentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -102,6 +108,7 @@ pub async fn remove_delete_intent(
                     &ctx,
                     component_info.component_id,
                     &original_uri,
+                    &host_name,
                     &posthog_client,
                 )
                 .await?
@@ -111,6 +118,7 @@ pub async fn remove_delete_intent(
                     &ctx,
                     component_info.component_id,
                     &original_uri,
+                    &host_name,
                     &posthog_client,
                 )
                 .await?

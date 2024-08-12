@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,7 @@ pub async fn create_variant(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<CreateVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -45,6 +46,7 @@ pub async fn create_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_variant",
         serde_json::json!({
             "variant_name": request.name.clone(),

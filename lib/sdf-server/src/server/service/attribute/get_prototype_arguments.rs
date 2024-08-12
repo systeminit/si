@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::{AttributeValue, OutputSocket, OutputSocketId, Prop, PropId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,7 @@ pub async fn get_prototype_arguments(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Query(request): Query<GetPrototypeArgumentsRequest>,
 ) -> AttributeResult<Json<GetPrototypeArgumentsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -80,6 +81,7 @@ pub async fn get_prototype_arguments(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_prototype_arguments",
         serde_json::json!({
             "how": "/attribute/get_prototype_arguments",

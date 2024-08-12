@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
 use dal::diagram::SummaryDiagramComponent;
@@ -31,6 +31,7 @@ pub async fn update_property_editor_value(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -72,6 +73,7 @@ pub async fn update_property_editor_value(
             &posthog_client,
             &ctx,
             &original_uri,
+            &host_name,
             "property_value_updated",
             serde_json::json!({
                 "how": "/component/property_value_updated",

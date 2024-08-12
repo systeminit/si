@@ -2,7 +2,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::change_set::ChangeSetError;
 use crate::service::change_set::ChangeSetResult;
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,7 @@ pub struct MergeVoteRequest {
 
 pub async fn merge_vote(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -33,6 +34,7 @@ pub async fn merge_vote(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "merge_vote",
         serde_json::json!({
             "how": "/change_set/merge_vote",

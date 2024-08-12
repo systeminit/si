@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::component::resource::ResourceView;
 use dal::{ComponentId, Visibility};
@@ -24,6 +24,7 @@ pub struct GetResourceRequest {
 
 pub async fn get_resource(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -37,6 +38,7 @@ pub async fn get_resource(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_resource",
         serde_json::json!({
             "how": "/component/get_resource",

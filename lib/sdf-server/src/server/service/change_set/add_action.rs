@@ -1,7 +1,7 @@
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use axum::extract::{Json, OriginalUri};
+use axum::extract::{Host, Json, OriginalUri};
 use axum::response::IntoResponse;
 use dal::action::prototype::ActionKind;
 use dal::{
@@ -21,6 +21,7 @@ pub struct AddActionRequest {
 
 pub async fn add_action(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -51,6 +52,7 @@ pub async fn add_action(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_action_v2",
         serde_json::json!({
             "how": "/change_set/add_action",

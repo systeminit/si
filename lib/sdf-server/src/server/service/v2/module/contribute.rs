@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -15,12 +15,14 @@ use crate::server::{
 
 use super::ModulesAPIError;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn contribute(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<frontend_types::ModuleContributeRequest>,
 ) -> Result<impl IntoResponse, ModulesAPIError> {
@@ -60,6 +62,7 @@ pub async fn contribute(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "export_module",
         serde_json::json!({
             "pkg_name": name,

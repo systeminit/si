@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -35,6 +35,7 @@ pub async fn create_unlocked_copy(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<UnlockFuncRequest>,
 ) -> FuncAPIResult<impl IntoResponse> {
@@ -64,6 +65,7 @@ pub async fn create_unlocked_copy(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "unlocked_func",
         serde_json::json!({
             "how": "/func/unlocked_func",

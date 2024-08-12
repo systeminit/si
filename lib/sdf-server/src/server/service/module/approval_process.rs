@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::tracking::track;
 use crate::service::module::{ModuleError, ModuleResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{HistoryActor, User, WsEvent};
 use module_index_client::ModuleIndexClient;
@@ -16,6 +16,7 @@ pub struct BeginImportFlow {
 
 pub async fn begin_approval_process(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -54,6 +55,7 @@ pub async fn begin_approval_process(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "begin_approval_process",
         serde_json::json!({
             "how": "/pkg/begin_approval_process",
@@ -85,6 +87,7 @@ pub async fn begin_approval_process(
 
 pub async fn cancel_approval_process(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -112,6 +115,7 @@ pub async fn cancel_approval_process(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "cancel_approval_process",
         serde_json::json!({
             "how": "/pkg/cancel_approval_process",

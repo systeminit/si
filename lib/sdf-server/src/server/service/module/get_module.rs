@@ -1,6 +1,6 @@
 use std::cmp::{Ord, PartialOrd};
 
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -60,6 +60,7 @@ pub async fn get_module_by_hash(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Query(request): Query<PkgGetRequest>,
 ) -> ModuleResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -93,6 +94,7 @@ pub async fn get_module_by_hash(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_module",
         serde_json::json!({
                     "pkg_name": installed_pkg.clone().name(),

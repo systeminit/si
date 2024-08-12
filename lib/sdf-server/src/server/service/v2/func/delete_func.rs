@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
 };
 
@@ -25,6 +25,7 @@ pub async fn delete_func(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
 ) -> FuncAPIResult<impl IntoResponse> {
     let mut ctx = builder
@@ -51,6 +52,7 @@ pub async fn delete_func(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "deleted_func",
         serde_json::json!({
             "how": "/func/deleted_func",

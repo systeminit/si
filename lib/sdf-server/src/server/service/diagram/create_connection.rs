@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
 use dal::{
@@ -34,6 +34,7 @@ pub async fn create_connection(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<CreateConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -54,6 +55,7 @@ pub async fn create_connection(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_connection",
         serde_json::json!({
             "how": "/diagram/create_connection",

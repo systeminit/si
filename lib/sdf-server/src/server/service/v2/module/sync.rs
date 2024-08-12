@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
 use dal::{module::Module, ChangeSetId, WorkspacePk};
@@ -20,6 +20,7 @@ pub async fn sync(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> Result<Json<frontend_types::SyncedModules>, ModulesAPIError> {
     let ctx = builder
@@ -57,6 +58,7 @@ pub async fn sync(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "sync",
         serde_json::json!({}),
     );

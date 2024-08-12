@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{ChangeSet, Schema, SchemaId, Visibility, WsEvent};
@@ -28,6 +28,7 @@ pub async fn clone_variant(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<CloneVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -56,6 +57,7 @@ pub async fn clone_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "clone_variant",
         serde_json::json!({
             "variant_name": request.name,

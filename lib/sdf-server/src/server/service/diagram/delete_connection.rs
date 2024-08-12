@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::{
     ChangeSet, Component, ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
@@ -28,6 +28,7 @@ pub async fn delete_connection(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<DeleteConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -55,6 +56,7 @@ pub async fn delete_connection(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "delete_connection",
         serde_json::json!({
             "how": "/diagram/delete_connection",

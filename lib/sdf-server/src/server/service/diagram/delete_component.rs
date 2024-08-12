@@ -1,3 +1,4 @@
+use axum::extract::Host;
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
@@ -26,6 +27,7 @@ pub async fn delete_components(
     AccessBuilder(request_ctx): AccessBuilder,
     posthog_client: PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<DeleteComponentsRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -39,6 +41,7 @@ pub async fn delete_components(
             component_id,
             request.force_erase,
             &original_uri,
+            &host_name,
             &posthog_client,
         )
         .await?;
@@ -70,6 +73,7 @@ async fn delete_single_component(
     component_id: ComponentId,
     force_erase: bool,
     original_uri: &Uri,
+    host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<bool> {
     let comp = Component::get_by_id(ctx, component_id).await?;
@@ -94,6 +98,7 @@ async fn delete_single_component(
         posthog_client,
         ctx,
         original_uri,
+        host_name,
         "delete_component",
         serde_json::json!({
             "how": "/diagram/delete_component",

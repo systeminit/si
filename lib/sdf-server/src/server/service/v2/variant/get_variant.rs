@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
 
@@ -19,6 +19,7 @@ pub async fn get_variant(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, schema_variant_id)): Path<(
         WorkspacePk,
         ChangeSetId,
@@ -37,6 +38,7 @@ pub async fn get_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_variant",
         serde_json::json!({
                     "schema_name": &schema_variant.schema_name,

@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::code_view::CodeView;
 use dal::{Component, ComponentId, Visibility};
@@ -25,6 +25,7 @@ pub struct GetCodeResponse {
 
 pub async fn get_code(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -38,6 +39,7 @@ pub async fn get_code(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_code",
         serde_json::json!({
             "how": "/component/get_code",

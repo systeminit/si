@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::component::diff::ComponentDiff;
 use dal::{Component, ComponentId, Visibility};
@@ -24,6 +24,7 @@ pub struct GetDiffResponse {
 
 pub async fn get_diff(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -37,6 +38,7 @@ pub async fn get_diff(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_diff",
         serde_json::json!({
             "how": "/component/get_diff",

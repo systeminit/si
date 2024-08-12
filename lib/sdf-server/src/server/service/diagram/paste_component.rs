@@ -1,3 +1,4 @@
+use axum::extract::Host;
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::component::ComponentGeometry;
@@ -15,6 +16,7 @@ async fn paste_single_component(
     component_id: ComponentId,
     component_geometry: ComponentGeometry,
     original_uri: &Uri,
+    host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<Component> {
     let original_comp = Component::get_by_id(ctx, component_id).await?;
@@ -25,6 +27,7 @@ async fn paste_single_component(
         posthog_client,
         ctx,
         original_uri,
+        host_name,
         "paste_component",
         serde_json::json!({
             "how": "/diagram/paste_component",
@@ -58,6 +61,7 @@ pub async fn paste_components(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<PasteComponentsRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -74,6 +78,7 @@ pub async fn paste_components(
             component_id,
             component_payload.component_geometry.clone(),
             &original_uri,
+            &host_name,
             &posthog_client,
         )
         .await?;

@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +31,7 @@ pub async fn regenerate_variant(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(RegenerateVariantRequest {
         variant,
         code,
@@ -64,6 +65,7 @@ pub async fn regenerate_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "update_variant",
         serde_json::json!({
             "old_schema_variant_id": schema_variant_id,

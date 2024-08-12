@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::change_set::ChangeSet;
 use dal::{Func, Schema, SchemaVariant, Visibility};
@@ -26,6 +26,7 @@ pub async fn apply_change_set(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -58,6 +59,7 @@ pub async fn apply_change_set(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "apply_change_set",
         serde_json::json!({
             "merged_change_set": request.visibility.change_set_id,

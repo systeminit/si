@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::http::Uri;
 use axum::Json;
 use chrono::Utc;
@@ -32,6 +32,7 @@ pub async fn export_workspace(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<ExportWorkspaceRequest>,
 ) -> ModuleResult<Json<ExportWorkspaceResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -51,6 +52,7 @@ pub async fn export_workspace(
             &ctx,
             workspace,
             &original_uri,
+            &host_name,
             PosthogClient(posthog_client),
             RawAccessToken(raw_access_token),
         )
@@ -78,6 +80,7 @@ pub async fn export_workspace_inner(
     ctx: &DalContext,
     workspace: Workspace,
     original_uri: &Uri,
+    host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
     RawAccessToken(raw_access_token): RawAccessToken,
 ) -> ModuleResult<()> {
@@ -115,6 +118,7 @@ pub async fn export_workspace_inner(
             &posthog_client,
             ctx,
             original_uri,
+            host_name,
             "export_workspace",
             serde_json::json!({
                 "pkg_name": workspace.name().to_owned(),

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -47,6 +47,7 @@ pub async fn create_func(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<CreateFuncRequest>,
 ) -> FuncAPIResult<impl IntoResponse> {
@@ -208,6 +209,7 @@ pub async fn create_func(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "created_func",
         serde_json::json!({
             "how": "/func/created_func",

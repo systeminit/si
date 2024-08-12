@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::module::{ModuleError, ModuleResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{HistoryActor, User, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ pub struct ImportVoteRequest {
 
 pub async fn import_workspace_vote(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -40,6 +41,7 @@ pub async fn import_workspace_vote(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "merge_vote",
         serde_json::json!({
             "how": "/variant_definition/import_vote",
