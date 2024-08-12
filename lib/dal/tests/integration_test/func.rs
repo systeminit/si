@@ -8,6 +8,7 @@ use pretty_assertions_sorted::assert_eq;
 mod argument;
 mod associations;
 mod authoring;
+mod cancel_execution;
 
 #[test]
 async fn summary(ctx: &mut DalContext) {

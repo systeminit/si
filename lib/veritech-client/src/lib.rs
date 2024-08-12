@@ -8,19 +8,19 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{
-    nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
-    nats_schema_variant_definition_subject, nats_subject, nats_validation_subject,
-    reply_mailbox_for_keep_alive, reply_mailbox_for_output, reply_mailbox_for_result,
-    FINAL_MESSAGE_HEADER_KEY,
+    nats_action_run_subject, nats_cancel_execution_subject, nats_reconciliation_subject,
+    nats_resolver_function_subject, nats_schema_variant_definition_subject,
+    nats_validation_subject, reply_mailbox_for_keep_alive, reply_mailbox_for_output,
+    reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
 };
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
-    FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
-    ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, CancelExecutionRequest,
+    ComponentKind, ComponentView, FunctionResult, FunctionResultFailure, OutputStream,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
+    ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
+    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
 };
 pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 
@@ -67,26 +67,7 @@ impl Client {
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
         self.execute_request(
             nats_resolver_function_subject(self.nats_subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(
-        name = "client.execute_resolver_function_with_subject",
-        level = "info",
-        skip_all
-    )]
-    pub async fn execute_resolver_function_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ResolverFunctionRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
+            Some(output_tx),
             request,
         )
         .await
@@ -100,26 +81,7 @@ impl Client {
     ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
         self.execute_request(
             nats_validation_subject(self.nats_subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(
-        name = "client.execute_validation_with_subject",
-        level = "info",
-        skip_all
-    )]
-    pub async fn execute_validation_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ValidationResultSuccess,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
+            Some(output_tx),
             request,
         )
         .await
@@ -133,26 +95,7 @@ impl Client {
     ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
         self.execute_request(
             nats_action_run_subject(self.nats_subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(
-        name = "client.execute_action_run_with_subject",
-        level = "info",
-        skip_all
-    )]
-    pub async fn execute_action_run_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ActionRunRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
+            Some(output_tx),
             request,
         )
         .await
@@ -166,26 +109,7 @@ impl Client {
     ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
         self.execute_request(
             nats_reconciliation_subject(self.nats_subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(
-        name = "client.execute_reconciliation_with_subject",
-        level = "info",
-        skip_all
-    )]
-    pub async fn execute_reconciliation_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ReconciliationRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
+            Some(output_tx),
             request,
         )
         .await
@@ -199,26 +123,20 @@ impl Client {
     ) -> ClientResult<FunctionResult<SchemaVariantDefinitionResultSuccess>> {
         self.execute_request(
             nats_schema_variant_definition_subject(self.nats_subject_prefix()),
-            output_tx,
+            Some(output_tx),
             request,
         )
         .await
     }
 
-    #[instrument(
-        name = "client.execute_reconciliation_with_subject",
-        level = "info",
-        skip_all
-    )]
-    pub async fn execute_schema_variant_definition_with_subject(
+    #[instrument(name = "client.cancel_execution", level = "info", skip_all)]
+    pub async fn cancel_execution(
         &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &SchemaVariantDefinitionRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<SchemaVariantDefinitionResultSuccess>> {
+        request: &CancelExecutionRequest,
+    ) -> ClientResult<FunctionResult<()>> {
         self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
+            nats_cancel_execution_subject(self.nats_subject_prefix()),
+            None,
             request,
         )
         .await
@@ -227,7 +145,7 @@ impl Client {
     async fn execute_request<R, S>(
         &self,
         subject: impl Into<String>,
-        output_tx: mpsc::Sender<OutputStream>,
+        output_tx: Option<mpsc::Sender<OutputStream>>,
         request: &R,
     ) -> ClientResult<FunctionResult<S>>
     where
@@ -274,13 +192,17 @@ impl Client {
 
         let shutdown_token = CancellationToken::new();
         let span = Span::current();
-        // Spawn a task to forward output to the sender provided by the caller
-        tokio::spawn(forward_output_task(
-            output_subscriber,
-            output_tx,
-            span,
-            shutdown_token.clone(),
-        ));
+
+        // If the caller wishes to receive forwarded output, spawn a task to forward output to the
+        // sender (provided by the caller).
+        if let Some(output_tx) = output_tx {
+            tokio::spawn(forward_output_task(
+                output_subscriber,
+                output_tx,
+                span,
+                shutdown_token.clone(),
+            ));
+        }
 
         // Submit the request message
         let subject = subject.into();

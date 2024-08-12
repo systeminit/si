@@ -10,6 +10,9 @@ use crate::actor_view::ActorView;
 use crate::{pk, DalContext, Timestamp, User, UserPk};
 use crate::{Tenancy, TransactionsError};
 
+const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
+const TEST_SYSTEMINIT_EMAIL_SUFFIX: &str = "@test.systeminit.com";
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum HistoryEventError {
@@ -53,6 +56,12 @@ impl HistoryActor {
                 .email()
                 .clone(),
         })
+    }
+
+    pub async fn email_is_systeminit(&self, ctx: &DalContext) -> HistoryEventResult<bool> {
+        let email_as_lowercase = self.email(ctx).await?.to_lowercase();
+        Ok(email_as_lowercase.ends_with(SYSTEMINIT_EMAIL_SUFFIX)
+            || email_as_lowercase.ends_with(TEST_SYSTEMINIT_EMAIL_SUFFIX))
     }
 }
 

@@ -1,17 +1,19 @@
 use nats_subscriber::Subscriber;
 use si_data_nats::NatsClient;
 use si_pool_noodle::{
-    ActionRunRequest, ReconciliationRequest, ResolverFunctionRequest,
+    ActionRunRequest, CancelExecutionRequest, ReconciliationRequest, ResolverFunctionRequest,
     SchemaVariantDefinitionRequest, ValidationRequest,
 };
 use telemetry::prelude::*;
 use veritech_core::{
-    nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
-    nats_schema_variant_definition_subject, nats_validation_subject,
+    nats_action_run_subject, nats_cancel_execution_subject, nats_reconciliation_subject,
+    nats_resolver_function_subject, nats_schema_variant_definition_subject,
+    nats_validation_subject,
 };
 
 type Result<T> = std::result::Result<T, nats_subscriber::SubscriberError>;
 
+/// Provides a [`Subscriber`] for function execution via cyclone.
 pub struct FunctionSubscriber;
 
 impl FunctionSubscriber {
@@ -90,6 +92,27 @@ impl FunctionSubscriber {
         );
         Subscriber::create(subject)
             .queue_name("schema_variant_definition")
+            .check_for_reply_mailbox()
+            .start(nats)
+            .await
+    }
+}
+
+/// Provides a [`Subscriber`] for meta management of veritech.
+pub struct MetaSubscriber;
+
+impl MetaSubscriber {
+    pub async fn cancel_execution(
+        nats: &NatsClient,
+        subject_prefix: Option<&str>,
+    ) -> Result<Subscriber<CancelExecutionRequest>> {
+        let subject = nats_cancel_execution_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for cancel_execution requests"
+        );
+        Subscriber::create(subject)
+            .queue_name("cancel_execution")
             .check_for_reply_mailbox()
             .start(nats)
             .await

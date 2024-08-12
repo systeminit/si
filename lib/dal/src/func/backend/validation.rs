@@ -28,7 +28,7 @@ impl FuncDispatch for FuncBackendValidation {
         _before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ValidationRequest {
-            execution_id: "guarabyra".to_string(),
+            execution_id: context.func_run_id.to_string(),
             value: args.value,
             validation_format: args.validation_format,
             handler: "".to_string(),

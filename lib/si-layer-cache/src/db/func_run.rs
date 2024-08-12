@@ -209,6 +209,22 @@ impl FuncRunDb {
         Ok(())
     }
 
+    pub async fn set_state_to_cancelled(
+        &self,
+        func_run_id: FuncRunId,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<()> {
+        let func_run_old = self.try_read(func_run_id).await?;
+        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
+        func_run_new.set_state_to_cancelled();
+
+        self.write(Arc::new(func_run_new), None, tenancy, actor)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn set_action_result_state(
         &self,
         func_run_id: FuncRunId,

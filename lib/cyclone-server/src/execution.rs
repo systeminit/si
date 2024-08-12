@@ -471,14 +471,14 @@ where
     fn from(value: LangServerResult<LangServerSuccess>) -> Self {
         match value {
             LangServerResult::Success(success) => Self::Success(success.into()),
-            LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
-                execution_id: failure.execution_id,
-                error: FunctionResultFailureError {
+            LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure::new(
+                failure.execution_id,
+                FunctionResultFailureError {
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },
-                timestamp: crate::timestamp(),
-            }),
+                crate::timestamp(),
+            )),
         }
     }
 }

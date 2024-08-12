@@ -249,8 +249,8 @@ async fn type_checks_resolve_function() {
                 panic!("should have failed :(");
             }
             FunctionResult::Failure(failure) => {
-                assert_eq!(failure.error.kind, "InvalidReturnType");
-                assert_eq!(failure.execution_id, "1234");
+                assert_eq!(failure.error().kind, "InvalidReturnType");
+                assert_eq!(failure.execution_id(), "1234");
             }
         }
     }

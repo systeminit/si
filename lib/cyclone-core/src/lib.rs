@@ -13,6 +13,7 @@
 
 mod action_run;
 mod before;
+mod cancel_execution;
 mod canonical_command;
 mod component_view;
 mod liveness;
@@ -30,6 +31,7 @@ pub use si_crypto::SensitiveStrings;
 
 pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
 pub use before::BeforeFunction;
+pub use cancel_execution::CancelExecutionRequest;
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
 pub use component_view::{ComponentKind, ComponentView};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};

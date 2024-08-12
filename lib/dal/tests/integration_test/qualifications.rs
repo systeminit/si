@@ -9,6 +9,8 @@ use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestH
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+const DUMMY_OUTPUT_STREAM_VIEW_LINE: &str = "[THIS IS FAKE DATA]";
+
 #[test]
 async fn list_qualifications(ctx: &mut DalContext) {
     let component = create_component_for_default_schema_name(
@@ -41,29 +43,28 @@ async fn list_qualifications(ctx: &mut DalContext) {
         "test:qualificationDummySecretStringIsTodd".to_string();
     let expected_additional_qualification_view = QualificationView {
         title: expected_additional_qualification_view_name.to_owned(),
-        output: vec![
-            QualificationOutputStreamView {
-                stream: "output".to_string(),
-                line: "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"tomcruise\",\n  \"data\": {\n    \"result\": \"failure\",\n    \"message\": \"dummy secret string is empty\"\n  },\n  \"unset\": false\n}".to_string(),
-                level: "info".to_string(),
-            }
-        ],
+        output: vec![QualificationOutputStreamView {
+            stream: "output".to_string(),
+            line: DUMMY_OUTPUT_STREAM_VIEW_LINE.to_string(),
+            level: "info".to_string(),
+        }],
         finalized: true,
         description: None,
         link: None,
         result: Some(QualificationResult {
             status: QualificationSubCheckStatus::Failure,
-            title: Some( expected_additional_qualification_view_name.to_owned()),
+            title: Some(expected_additional_qualification_view_name.to_owned()),
             link: None,
             sub_checks: vec![QualificationSubCheck {
                 description: "dummy secret string is empty".to_string(),
                 status: QualificationSubCheckStatus::Failure,
             }],
         }),
-        qualification_name:  expected_additional_qualification_view_name.to_owned(),
+        qualification_name: expected_additional_qualification_view_name.to_owned(),
     };
 
-    // Check qualifications before committing and running dependent values update.
+    // Check qualifications before committing and running dependent values update. We do not need
+    // to sanitize the views here as there should be no output.
     let qualifications = Component::list_qualifications(ctx, component.id())
         .await
         .expect("could not list qualifications");
@@ -100,13 +101,27 @@ async fn list_qualifications(ctx: &mut DalContext) {
         count += 1;
     }
 
+    // Sanitize the qualification views' output stream view lines.
+    let qualifications: Vec<QualificationView> = qualifications
+        .into_iter()
+        .map(replace_output_stream_view_line_contents)
+        .collect();
+
     // NOTE(nick): at the time of writing this test, we receive the qualifications sorted, so we
     // neither need to perform an additional sort nor use something like a hash set.
     assert_eq!(
         vec![
-            expected_prop_validations_qualification_view,
-            expected_additional_qualification_view
+            replace_output_stream_view_line_contents(expected_prop_validations_qualification_view),
+            replace_output_stream_view_line_contents(expected_additional_qualification_view)
         ], // expected
         qualifications // actual
     );
+}
+
+fn replace_output_stream_view_line_contents(view: QualificationView) -> QualificationView {
+    let mut view = view;
+    for output_stream_view in &mut view.output {
+        output_stream_view.line = DUMMY_OUTPUT_STREAM_VIEW_LINE.to_string();
+    }
+    view
 }

@@ -13,8 +13,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 use veritech_client::{
-    encrypt_value_tree, BeforeFunction, OutputStream, ResolverFunctionComponent,
-    VeritechValueEncryptError,
+    encrypt_value_tree, BeforeFunction, CancelExecutionRequest, FunctionResult,
+    FunctionResultFailure, OutputStream, ResolverFunctionComponent, VeritechValueEncryptError,
 };
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -24,7 +24,6 @@ use crate::attribute::prototype::argument::{
 use crate::component::InputSocketMatch;
 use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
-use crate::TransactionsError;
 use crate::{
     action::{
         prototype::{ActionPrototype, ActionPrototypeError},
@@ -37,6 +36,7 @@ use crate::{
     FuncId, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
+use crate::{HistoryEventError, TransactionsError};
 
 use super::backend::{
     array::FuncBackendArray,
@@ -71,6 +71,8 @@ pub enum FuncRunnerError {
     BeforeFuncMissingCode(FuncId),
     #[error("before func missing expected handler: {0}")]
     BeforeFuncMissingHandler(FuncId),
+    #[error("cancel execution failure: {0:?}")]
+    CancelExecutionFailure(FunctionResultFailure),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -79,6 +81,8 @@ pub enum FuncRunnerError {
     DirectAuthenticationFuncExecutionUnsupported(FuncId),
     #[error("direct validation funcs are no longer supported, found: {0}")]
     DirectValidationFuncsNoLongerSupported(FuncId),
+    #[error("do not have permission to cancel execution")]
+    DoNotHavePermissionToCancelExecution,
     #[error("empty value source for attribute prototype argument: {0}")]
     EmptyValueSource(AttributePrototypeArgumentId),
     #[error("empty widget options for secret prop id: {0}")]
@@ -91,6 +95,8 @@ pub enum FuncRunnerError {
     FuncIntrinsicValidationMissing,
     #[error("func run builder error: {0}")]
     FuncRunBuilder(#[from] FuncRunBuilderError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("invalid resolver function type: {0}")]
     InvalidResolverFunctionType(#[from] InvalidResolverFunctionTypeError),
     #[error("layerdb error: {0}")]
@@ -126,6 +132,8 @@ pub enum FuncRunnerError {
         AttributePrototypeArgumentId,
         ComponentId,
     ),
+    #[error("veritech client error")]
+    VeritechClient(#[from] veritech_client::ClientError),
     #[error("veritech value encrypt error: {0}")]
     VeritechValueEncrypt(#[from] VeritechValueEncryptError),
     #[error("ws event error: {0}")]
@@ -1021,6 +1029,61 @@ impl FuncRunner {
         Ok(result_channel)
     }
 
+    #[instrument(
+        name = "func_runner.cancel_execution",
+        level = "info",
+        skip(ctx),
+        fields(job.id = Empty, si.func_run.id = Empty)
+    )]
+    pub async fn cancel_execution(
+        ctx: &DalContext,
+        func_run_id: FuncRunId,
+    ) -> FuncRunnerResult<()> {
+        let span = Span::current();
+
+        if !span.is_disabled() {
+            let mut id_buf = FuncRunId::array_to_str_buf();
+
+            let id = func_run_id.array_to_str(&mut id_buf);
+            span.record("job.id", &id);
+            span.record("si.func_run.id", &id);
+        }
+
+        if !ctx.history_actor().email_is_systeminit(ctx).await? {
+            return Err(FuncRunnerError::DoNotHavePermissionToCancelExecution);
+        }
+
+        let result = ctx
+            .veritech()
+            .cancel_execution(&CancelExecutionRequest {
+                execution_id: func_run_id.to_string(),
+            })
+            .await;
+
+        match result? {
+            FunctionResult::Success(_) => {
+                info!(%func_run_id, "cancel execution success");
+
+                // NOTE(nick): why are we doing this here? Why aren't we returning a result channel? Well, Victor and I
+                // did that originally, but we learned that most other func runner methods are abstracted out by
+                // another dal entity. Those entities are responsible for "stamping" the func run to a terminating
+                // state. For cancellation, there is no other entity. We need to do that here. Because of that, we also
+                // need to know what the result of the cancellation request was. Therefore, this entire operation is
+                // blocking and we do not return a result channel.
+                ctx.layer_db()
+                    .func_run()
+                    .set_state_to_cancelled(func_run_id, ctx.events_tenancy(), ctx.events_actor())
+                    .await?;
+
+                // NOTE(nick): we may need to consider action result state as well as other fields on the func run
+                // struct. This will require more testing and investigation. For now, I think what we have will
+                // suffice... oh words, do not haunt me.
+                Ok(())
+            }
+            FunctionResult::Failure(err) => Err(FuncRunnerError::CancelExecutionFailure(err)),
+        }
+    }
+
     fn id(&self) -> FuncRunId {
         self.func_run.id()
     }
@@ -1028,8 +1091,8 @@ impl FuncRunner {
     async fn execute(self, ctx: DalContext, execution_parent_span: Span) -> FuncRunnerValueChannel {
         let func_run_id = self.func_run.id();
         let action_id = self.func_run.action_id();
-        let (func_dispatch_context, output_stream_rx) = FuncDispatchContext::new(&ctx);
-        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+        let (func_dispatch_context, output_stream_rx) = FuncDispatchContext::new(&ctx, func_run_id);
+        let (result_tx, result_rx) = oneshot::channel();
 
         let logs_task = FuncRunnerLogsTask {
             ctx: ctx.clone(),

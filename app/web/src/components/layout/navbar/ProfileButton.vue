@@ -1,8 +1,8 @@
 <template>
   <NavbarButton
     ref="navbarButtonRef"
-    tooltipText="Profile"
     class="flex-none py-xs"
+    tooltipText="Profile"
   >
     <template #default="{ open, hovered }">
       <div class="flex-row flex text-white items-center">
@@ -29,15 +29,21 @@
       />
       <DropdownMenuItem
         v-if="isDevMode"
-        linkToNamedRoute="workspace-dev-dashboard"
         icon="cat"
         label="Dev Dashboard"
+        linkToNamedRoute="workspace-dev-dashboard"
+      />
+      <DropdownMenuItem
+        v-if="featureFlagsStore.ADMIN_PANEL_ACCESS"
+        icon="alert-triangle"
+        label="Admin Dashboard"
+        linkToNamedRoute="workspace-admin-dashboard"
       />
       <DropdownMenuItem
         class="profile-dropdown-menu-logout"
-        linkToNamedRoute="logout"
         icon="logout"
         label="Logout"
+        linkToNamedRoute="logout"
       />
     </template>
     <template #dropdownContentSecondary>
@@ -73,8 +79,11 @@ import SiArrow from "@/components/SiArrow.vue";
 import { useAuthStore } from "@/store/auth.store";
 import { isDevMode } from "@/utils/debug";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 import UserIcon from "./UserIcon.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 const workspacesStore = useWorkspacesStore();

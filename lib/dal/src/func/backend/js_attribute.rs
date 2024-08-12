@@ -33,9 +33,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
         before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ResolverFunctionRequest {
-            // Once we start tracking the state of these executions, then this id will be useful,
-            // but for now it's passed along and back, and is opaque
-            execution_id: "tomcruise".to_string(),
+            execution_id: context.func_run_id.to_string(),
             handler: handler.into(),
             component: args.component,
             response_type: args.response_type,
@@ -66,10 +64,10 @@ impl FuncDispatch for FuncBackendJsAttribute {
                 | ResolverFunctionResponseType::Json => FunctionResult::Failure(failure),
                 ResolverFunctionResponseType::Qualification => {
                     FunctionResult::Success(Self::Output {
-                        execution_id: failure.execution_id,
+                        execution_id: failure.execution_id().to_owned(),
                         data: serde_json::json!({
                             "result": "failure",
-                            "message": format!("Function execution failed: {}", failure.error.message),
+                            "message": format!("Function execution failed: {}", failure.error().message),
                         }),
                         unset: false,
                         timestamp: u64::try_from(std::cmp::max(Utc::now().timestamp(), 0))
@@ -78,11 +76,11 @@ impl FuncDispatch for FuncBackendJsAttribute {
                 }
                 ResolverFunctionResponseType::CodeGeneration => {
                     FunctionResult::Success(Self::Output {
-                        execution_id: failure.execution_id,
+                        execution_id: failure.execution_id().to_owned(),
                         data: serde_json::json!({
                             "format": "json",
                             "code": "null",
-                            "message": format!("Function execution failed: {}", failure.error.message),
+                            "message": format!("Function execution failed: {}", failure.error().message),
                         }),
                         unset: false,
                         timestamp: u64::try_from(std::cmp::max(Utc::now().timestamp(), 0))

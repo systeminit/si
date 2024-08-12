@@ -6907,6 +6907,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "once_cell",
  "remain",
  "serde",
  "serde_json",

@@ -88,6 +88,12 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
+      {
+        path: "admin",
+        name: "workspace-admin-dashboard",
+        component: () =>
+          import("@/components/Workspace/WorkspaceAdminDashboard.vue"),
+      },
       ...(isDevMode
         ? [
             {

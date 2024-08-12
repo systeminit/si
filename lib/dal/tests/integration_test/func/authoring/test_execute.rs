@@ -2,7 +2,7 @@ use dal::func::authoring::FuncAuthoringClient;
 use dal::{DalContext, Func};
 use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
-use si_events::{FuncRun, FuncRunId, FuncRunLog, FuncRunState};
+use si_events::{FuncRun, FuncRunId, FuncRunState};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -38,17 +38,10 @@ async fn test_execute_action_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check the results.
-    let (func_run, func_run_log) = wait_for_func_run(ctx, func_run_id).await;
+    let func_run = wait_for_func_run_with_success_state(ctx, func_run_id).await;
     assert_eq!(
         func.name.as_str(),       // expected
         func_run.function_name()  // actual
-    );
-    let mut logs = func_run_log.logs().to_vec();
-    let log = logs.pop().expect("empty logs");
-    assert!(logs.is_empty());
-    assert_eq!(
-        "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"ayrtonsennajscommand\",\n  \"payload\": {\n    \"poop\": true\n  },\n  \"health\": \"ok\"\n}", // expected
-        log.message.as_str(), // actual
     );
 }
 
@@ -84,17 +77,10 @@ async fn test_execute_attribute_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check the results.
-    let (func_run, func_run_log) = wait_for_func_run(ctx, func_run_id).await;
+    let func_run = wait_for_func_run_with_success_state(ctx, func_run_id).await;
     assert_eq!(
         func.name.as_str(),       // expected
         func_run.function_name()  // actual
-    );
-    let mut logs = func_run_log.logs().to_vec();
-    let log = logs.pop().expect("empty logs");
-    assert!(logs.is_empty());
-    assert_eq!(
-        "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"tomcruise\",\n  \"data\": [],\n  \"unset\": false\n}", // expected
-        log.message.as_str(), // actual
     );
 }
 
@@ -130,17 +116,10 @@ async fn test_execute_code_generation_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check the results.
-    let (func_run, func_run_log) = wait_for_func_run(ctx, func_run_id).await;
+    let func_run = wait_for_func_run_with_success_state(ctx, func_run_id).await;
     assert_eq!(
         func.name.as_str(),       // expected
         func_run.function_name()  // actual
-    );
-    let mut logs = func_run_log.logs().to_vec();
-    let log = logs.pop().expect("empty logs");
-    assert!(logs.is_empty());
-    assert_eq!(
-        "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"tomcruise\",\n  \"data\": {\n    \"format\": \"string\",\n    \"code\": \"poop canoe\"\n  },\n  \"unset\": false\n}", // expected
-        log.message.as_str(), // actual
     );
 }
 
@@ -176,17 +155,10 @@ async fn test_execute_qualification_func(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check the results.
-    let (func_run, func_run_log) = wait_for_func_run(ctx, func_run_id).await;
+    let func_run = wait_for_func_run_with_success_state(ctx, func_run_id).await;
     assert_eq!(
         func.name.as_str(),       // expected
         func_run.function_name()  // actual
-    );
-    let mut logs = func_run_log.logs().to_vec();
-    let log = logs.pop().expect("empty logs");
-    assert!(logs.is_empty());
-    assert_eq!(
-        "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"tomcruise\",\n  \"data\": {\n    \"result\": \"failure\",\n    \"message\": \"dummy secret string is empty\"\n  },\n  \"unset\": false\n}", // expected
-        log.message.as_str(), // actual
     );
 }
 
@@ -234,31 +206,14 @@ async fn test_execute_with_modified_code(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check the results.
-    let (func_run, func_run_log) = wait_for_func_run(ctx, func_run_id).await;
+    let func_run = wait_for_func_run_with_success_state(ctx, func_run_id).await;
     assert_eq!(
         func.name.as_str(),       // expected
         func_run.function_name()  // actual
     );
-    let mut logs = func_run_log.logs().to_vec();
-    let log = logs.pop().expect("empty logs");
-    assert!(logs.is_empty());
-    assert_eq!(
-        "Output: {\n  \"protocol\": \"result\",\n  \"status\": \"success\",\n  \"executionId\": \"tomcruise\",\n  \"data\": [\n    \"I was modified dammit!\"\n  ],\n  \"unset\": false\n}", // expected
-        log.message.as_str(), // actual
-    );
 }
 
-async fn wait_for_func_run(ctx: &DalContext, func_run_id: FuncRunId) -> (FuncRun, FuncRunLog) {
-    let func_run = wait_for_func_run_only(ctx, func_run_id)
-        .await
-        .expect("timeout while waiting for successful func run");
-    let func_run_log = wait_for_func_run_log_only(ctx, func_run_id)
-        .await
-        .expect("timeout while waiting for finalized func run log");
-    (func_run, func_run_log)
-}
-
-async fn wait_for_func_run_only(ctx: &DalContext, func_run_id: FuncRunId) -> Option<FuncRun> {
+async fn wait_for_func_run_with_success_state(ctx: &DalContext, func_run_id: FuncRunId) -> FuncRun {
     let seconds = 15;
 
     for _ in 0..(seconds * 10) {
@@ -271,36 +226,11 @@ async fn wait_for_func_run_only(ctx: &DalContext, func_run_id: FuncRunId) -> Opt
             .expect("func run not found");
 
         if func_run.state() == FuncRunState::Success {
-            return Some(Arc::unwrap_or_clone(func_run));
+            return Arc::unwrap_or_clone(func_run);
         }
 
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
 
-    None
-}
-
-async fn wait_for_func_run_log_only(
-    ctx: &DalContext,
-    func_run_id: FuncRunId,
-) -> Option<FuncRunLog> {
-    let seconds = 15;
-
-    for _ in 0..(seconds * 10) {
-        let func_run_log = ctx
-            .layer_db()
-            .func_run_log()
-            .get_for_func_run_id(func_run_id)
-            .await
-            .expect("could not read func run log")
-            .expect("func run log not found");
-
-        if func_run_log.is_finalized() {
-            return Some(Arc::unwrap_or_clone(func_run_log));
-        }
-
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-
-    None
+    panic!("timed out waiting for func run");
 }

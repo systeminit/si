@@ -33,9 +33,7 @@ impl FuncDispatch for FuncBackendJsAction {
         before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ActionRunRequest {
-            // Once we start tracking the state of these executions, then this id will be useful,
-            // but for now it's passed along and back, and is opaue
-            execution_id: "ayrtonsennajscommand".to_string(),
+            execution_id: context.func_run_id.to_string(), // RIP PAULO - GONE (from si) BUT NOT FORGOTTEN
             handler: handler.into(),
             code_base64: code_base64.into(),
             args: args.0,
@@ -75,26 +73,26 @@ impl FuncDispatch for FuncBackendJsAction {
             FunctionResult::Failure(failure) => {
                 output_tx
                     .send(OutputStream {
-                        execution_id: failure.execution_id.clone(),
+                        execution_id: failure.execution_id().to_owned(),
                         stream: "return".to_owned(),
                         level: "error".to_owned(),
                         group: None,
-                        message: failure.error.message.clone(),
+                        message: failure.error().message.to_owned(),
                         timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
                     })
                     .await
                     .map_err(|_| FuncBackendError::SendError)?;
 
                 FunctionResult::Success(Self::Output {
-                    execution_id: failure.execution_id,
+                    execution_id: failure.execution_id().to_owned(),
                     payload: self
                         .request
                         .args
                         .pointer("/properties/resource/payload")
                         .cloned(),
                     status: ResourceStatus::Error,
-                    message: Some(failure.error.message.clone()),
-                    error: Some(serde_json::to_string(&failure.error)?),
+                    message: Some(failure.error().message.clone()),
+                    error: Some(serde_json::to_string(&failure.error())?),
                 })
             }
         };

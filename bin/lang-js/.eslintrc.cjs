@@ -10,8 +10,8 @@ module.exports = {
     {
       files: ["**/*.ts"],
       rules: {
-        "no-console": "off",
+        "no-console": "off"
       }
     }
-  ],
+  ]
 };
