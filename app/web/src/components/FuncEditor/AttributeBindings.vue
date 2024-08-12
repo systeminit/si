@@ -1,5 +1,13 @@
 <template>
   <div>
+    <AttributeBindingsModal
+      ref="bindingsModalRef"
+      :funcId="$props.funcId"
+      :schemaVariantId="$props.schemaVariantId"
+      type="save"
+      @save="saveModal"
+    />
+
     <div
       v-if="!schemaVariantId"
       class="w-full flex p-xs gap-2xs border-b dark:border-neutral-600"
@@ -87,14 +95,6 @@
             />
           </div>
         </li>
-
-        <AttributeBindingsModal
-          ref="bindingsModalRef"
-          :funcId="$props.funcId"
-          :schemaVariantId="$props.schemaVariantId"
-          type="save"
-          @save="saveModal"
-        />
       </ul>
     </template>
     <template v-else>
