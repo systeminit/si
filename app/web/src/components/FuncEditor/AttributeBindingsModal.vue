@@ -191,33 +191,33 @@ const open = (binding: Attribute) => {
     ) || noneOutputLocation;
 
   editableBindings.value = [];
-  if (binding.argumentBindings.length > 0) {
+  const funcArgs = funcStore.funcsById[props.funcId]?.arguments;
+  if (funcArgs) {
     editableBindings.value =
-      binding?.argumentBindings.map(
-        ({
-          funcArgumentId,
-          attributePrototypeArgumentId,
-          inputSocketId,
-          propId,
-        }) => ({
-          funcArgumentId,
-          attributePrototypeArgumentId,
-          binding:
-            inputSourceOptions.value.find(
-              (opt) =>
-                opt.value === `s_${inputSocketId}` ||
-                opt.value === `p_${propId}`,
-            ) || noneSource,
-        }),
-      ) || [];
-  } else {
-    const funcArgs = funcStore.funcsById[props.funcId]?.arguments;
-    if (funcArgs)
-      editableBindings.value = funcArgs.map(({ id }) => ({
-        funcArgumentId: id,
-        attributePrototypeArgumentId: null,
-        binding: noneSource,
-      }));
+      funcArgs.map(({ id: funcArgumentId }) => {
+        const b = binding?.argumentBindings.find(
+          (b) => b.funcArgumentId === funcArgumentId,
+        );
+        if (b) {
+          const { attributePrototypeArgumentId, inputSocketId, propId } = b;
+          return {
+            funcArgumentId,
+            attributePrototypeArgumentId,
+            binding:
+              inputSourceOptions.value.find(
+                (opt) =>
+                  opt.value === `s_${inputSocketId}` ||
+                  opt.value === `p_${propId}`,
+              ) || noneSource,
+          };
+        } else {
+          return {
+            funcArgumentId,
+            attributePrototypeArgumentId: null,
+            binding: noneSource,
+          };
+        }
+      }) || [];
   }
 
   openModal();
