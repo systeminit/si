@@ -10,7 +10,7 @@ pub fn correct_transforms(
 ) -> CorrectTransformsResult<Vec<Update>> {
     let mut new_nodes = HashMap::new();
     let mut nodes_to_interrogate = HashSet::new();
-    let mut nodes_to_correct_exclusive_outgoing = HashSet::new();
+
     for update in &updates {
         match update {
             Update::NewEdge {
@@ -20,7 +20,6 @@ pub fn correct_transforms(
             } => {
                 nodes_to_interrogate.insert(source.id);
                 nodes_to_interrogate.insert(destination.id);
-                nodes_to_correct_exclusive_outgoing.insert(source.id);
             }
             Update::RemoveEdge {
                 source,
@@ -51,10 +50,6 @@ pub fn correct_transforms(
             Some(node_index) => graph.get_node_weight_opt(node_index),
             None => new_nodes.get(&node_to_interrogate.into()),
         } {
-            if nodes_to_correct_exclusive_outgoing.contains(&node_to_interrogate) {
-                updates = node_weight.correct_exclusive_outgoing_edges(graph, updates);
-            }
-
             updates = node_weight.correct_transforms(graph, updates)?;
         }
     }

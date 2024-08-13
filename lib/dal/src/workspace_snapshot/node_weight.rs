@@ -1,14 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    num::TryFromIntError,
-};
+use std::num::TryFromIntError;
 
-use petgraph::{visit::EdgeRef, Direction::Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
-use traits::{CorrectTransforms, CorrectTransformsResult};
+use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
 
 use crate::{
     action::prototype::ActionKind,
@@ -37,8 +33,8 @@ pub use func_node_weight::FuncNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 
+use super::graph::deprecated::v1::DeprecatedNodeWeightV1;
 use super::graph::detect_updates::Update;
-use super::{graph::deprecated::v1::DeprecatedNodeWeightV1, NodeInformation};
 
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;
@@ -666,73 +662,6 @@ impl NodeWeight {
             encrypted_secret_key,
         ))
     }
-
-    pub fn correct_exclusive_outgoing_edges(
-        &self,
-        graph: &WorkspaceSnapshotGraphV2,
-        mut updates: Vec<Update>,
-    ) -> Vec<Update> {
-        let exclusive_edge_kinds = self.exclusive_outgoing_edges();
-        let mut new_edge_map = HashMap::new();
-        let mut removal_set = HashSet::new();
-
-        for update in &updates {
-            match update {
-                Update::NewEdge {
-                    source,
-                    destination,
-                    edge_weight,
-                } if source.id == self.id().into()
-                    && exclusive_edge_kinds.contains(&edge_weight.kind().into()) =>
-                {
-                    let kind: EdgeWeightKindDiscriminants = edge_weight.kind().into();
-                    new_edge_map.insert(kind, destination.id);
-                    removal_set.remove(&(kind, destination.id));
-                }
-                Update::RemoveEdge {
-                    source,
-                    destination,
-                    edge_kind,
-                } if source.id == self.id().into() && exclusive_edge_kinds.contains(edge_kind) => {
-                    removal_set.insert((*edge_kind, destination.id));
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(node_idx) = graph.get_node_index_by_id_opt(self.id()) {
-            updates.extend(
-                graph
-                    .edges_directed(node_idx, Outgoing)
-                    .filter_map(|edge_ref| {
-                        let destination_weight = graph.get_node_weight_opt(edge_ref.target());
-                        let edge_kind = edge_ref.weight().kind().into();
-
-                        destination_weight.and_then(|weight| {
-                            let destination: NodeInformation = weight.into();
-
-                            if removal_set.contains(&(edge_kind, destination.id)) {
-                                // prevent adding unnecessary extra remove edge
-                                // updates
-                                None
-                            } else {
-                                new_edge_map.get(&edge_kind).and_then(|new_edge_dest_id| {
-                                    (new_edge_dest_id != &destination.id).then_some(
-                                        Update::RemoveEdge {
-                                            source: self.into(),
-                                            destination,
-                                            edge_kind,
-                                        },
-                                    )
-                                })
-                            }
-                        })
-                    }),
-            )
-        }
-
-        updates
-    }
 }
 
 impl From<DeprecatedNodeWeightV1> for NodeWeight {
@@ -765,7 +694,7 @@ impl CorrectTransforms for NodeWeight {
         workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
         updates: Vec<Update>,
     ) -> CorrectTransformsResult<Vec<Update>> {
-        match self {
+        let updates = match self {
             NodeWeight::Action(weight) => {
                 weight.correct_transforms(workspace_snapshot_graph, updates)
             }
@@ -805,6 +734,29 @@ impl CorrectTransforms for NodeWeight {
             NodeWeight::Secret(weight) => {
                 weight.correct_transforms(workspace_snapshot_graph, updates)
             }
+        }?;
+
+        Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
+    }
+}
+
+impl CorrectExclusiveOutgoingEdge for NodeWeight {
+    fn exclusive_outgoing_edges(&self) -> Vec<EdgeWeightKindDiscriminants> {
+        match self {
+            NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::ActionPrototype(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributeValue(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Category(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Component(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Content(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::DependentValueRoot(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Func(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::FuncArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
         }
+        .to_vec()
     }
 }
