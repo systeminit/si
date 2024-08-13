@@ -9,8 +9,8 @@ This how-to assumes:
 
 - Basic [familiarity with System Initiative](../tutorials/getting-started)
 - You have completed the
-  [build an AWS VPC with System Initiative tutorial](../aws-vpc) (and not
-  deleted the resulting resources)
+  [build an AWS VPC with System Initiative tutorial](./aws-vpc) (and not deleted
+  the resulting resources)
 
 It will teach you how to create a highly available application architecture and
 manage it with System Initiative.
