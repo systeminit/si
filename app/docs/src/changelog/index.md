@@ -11,6 +11,26 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 20224-08-12
+
+New demo's this week:
+
+- Timeouts
+- Deployment Improvements
+- Metrics Collection
+- Automatic Rebasing
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/A926FqfzTJU?si=Muib8uq6l7Sx9yJK" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 2024-08-05
+
+New demo's this week:
+
+- How SI processes updates
+- Conflict detection
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5xlAJB255qM?si=0gKw_yTyvjGD9Lj_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## 2024-07-29
 
 New demo's this week:
