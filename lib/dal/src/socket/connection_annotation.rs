@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize, Serializer};
+use si_frontend_types::ConnectionAnnotation as FeConnectionAnnotation;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
@@ -16,6 +17,14 @@ pub enum ConnectionAnnotationError {
 #[derive(Clone, Eq, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ConnectionAnnotation {
     tokens: Vec<String>,
+}
+
+impl From<ConnectionAnnotation> for FeConnectionAnnotation {
+    fn from(value: ConnectionAnnotation) -> Self {
+        Self {
+            tokens: value.tokens.clone(),
+        }
+    }
 }
 
 impl TryFrom<String> for ConnectionAnnotation {

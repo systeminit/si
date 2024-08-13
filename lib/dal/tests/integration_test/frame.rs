@@ -1,7 +1,7 @@
 use dal::component::frame::{Frame, FrameError};
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::diagram::SummaryDiagramInferredEdge;
-use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
+use dal::diagram::{Diagram, DiagramResult, SummaryDiagramEdge};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::EventualParent;
 use dal::prop::PropPath;
@@ -22,6 +22,7 @@ use dal_test::helpers::{
 };
 use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
+use si_frontend_types::SummaryDiagramComponent;
 use std::collections::HashMap;
 
 mod omega_nesting;
@@ -207,7 +208,9 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
     assert!(starfield_parent_node_id.is_none());
     assert_eq!(
         starfield_component.id(),
-        fallout_parent_node_id.expect("no parent node id for fallout component")
+        fallout_parent_node_id
+            .expect("fallout should have a parent node")
+            .into()
     );
 }
 
@@ -266,8 +269,8 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
         let found_type = &new_era_taylor_swift_assembled.0.component_type;
@@ -316,13 +319,13 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
 
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_some());
@@ -363,7 +366,7 @@ async fn simple_frames(ctx: &mut DalContext) {
                 //maybe_travis_output_socket = Some(travis_output);
                 assert_eq!(
                     travis_output_match.component_id,
-                    travis_kelce_assembled.0.component_id
+                    travis_kelce_assembled.0.component_id.into()
                 );
             }
         }
@@ -411,13 +414,13 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
 
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -1902,8 +1905,8 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
     }
@@ -1943,13 +1946,13 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
 
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -1958,7 +1961,8 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             travis_kelce_assembled
                 .0
                 .parent_id
-                .expect("no parent node id")  // actual
+                .expect("no parent node id")
+                .into()  // actual
         );
     }
 
@@ -1997,16 +2001,16 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(),                     // expected
-            country_era_taylor_swift_assembled.0.component_id  // actual
+            country_era_taylor_swift.id(),                            // expected
+            country_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -2016,7 +2020,8 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             travis_kelce_assembled
                 .0
                 .parent_id
-                .expect("no parent node id")  // actual
+                .expect("no parent node id")
+                .into()  // actual
         );
     }
 
@@ -2062,20 +2067,20 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(),                     // expected
-            country_era_taylor_swift_assembled.0.component_id  // actual
+            country_era_taylor_swift.id(),                            // expected
+            country_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            mama_kelce.id(),                     // expected
-            mama_kelce_assembled.0.component_id  // actual
+            mama_kelce.id(),                            // expected
+            mama_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -2085,11 +2090,16 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             travis_kelce_assembled
                 .0
                 .parent_id
-                .expect("no parent node id")  // actual
+                .expect("no parent node id")
+                .into()  // actual
         );
         assert_eq!(
             country_era_taylor_swift.id(), // expected
-            mama_kelce_assembled.0.parent_id.expect("no parent node id")  // actual
+            mama_kelce_assembled
+                .0
+                .parent_id
+                .expect("no parent node id")
+                .into()  // actual
         );
     }
 
@@ -2133,20 +2143,20 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into(), // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(),                     // expected
-            country_era_taylor_swift_assembled.0.component_id  // actual
+            country_era_taylor_swift.id(),                            // expected
+            country_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            mama_kelce.id(),                     // expected
-            mama_kelce_assembled.0.component_id  // actual
+            mama_kelce.id(),                            // expected
+            mama_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -2156,17 +2166,23 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
                 .0
                 .parent_id
                 .expect("no parent node id")
+                .into()
         );
         assert_eq!(
             new_era_taylor_swift.id(), // expected
             travis_kelce_assembled
                 .0
                 .parent_id
-                .expect("no parent node id")  // actual
+                .expect("no parent node id") // actual
+                .into()
         );
         assert_eq!(
             country_era_taylor_swift.id(), // expected
-            mama_kelce_assembled.0.parent_id.expect("no parent node id")  // actual
+            mama_kelce_assembled
+                .0
+                .parent_id
+                .expect("no parent node id") // actual
+                .into()
         );
     }
     //Scenario 7?! No more Country Era Swift, she wants to break freeeeeee
@@ -2204,20 +2220,20 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             .expect("could not get component by name");
 
         assert_eq!(
-            new_era_taylor_swift.id(),                     // expected
-            new_era_taylor_swift_assembled.0.component_id  // actual
+            new_era_taylor_swift.id(),                            // expected
+            new_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            travis_kelce_component.id(),           // expected
-            travis_kelce_assembled.0.component_id  // actual
+            travis_kelce_component.id(),                  // expected
+            travis_kelce_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(),                     // expected
-            country_era_taylor_swift_assembled.0.component_id  // actual
+            country_era_taylor_swift.id(),                            // expected
+            country_era_taylor_swift_assembled.0.component_id.into()  // actual
         );
         assert_eq!(
-            mama_kelce.id(),                     // expected
-            mama_kelce_assembled.0.component_id  // actual
+            mama_kelce.id(),                            // expected
+            mama_kelce_assembled.0.component_id.into()  // actual
         );
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
@@ -2228,11 +2244,16 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             travis_kelce_assembled
                 .0
                 .parent_id
-                .expect("no parent node id")  // actual
+                .expect("no parent node id")
+                .into()  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(), // expected
-            mama_kelce_assembled.0.parent_id.expect("no parent node id")  // actual
+            country_era_taylor_swift.id(), // expectedº
+            mama_kelce_assembled
+                .0
+                .parent_id
+                .expect("no parent node id")
+                .into()
         );
     }
 }
@@ -3117,7 +3138,7 @@ impl DiagramByKey {
         for component in &diagram.components {
             let mut inferred_edges = vec![];
             for inferred_edge in &diagram.inferred_edges {
-                if inferred_edge.to_component_id == component.id {
+                if inferred_edge.to_component_id == component.id.into() {
                     inferred_edges.push(inferred_edge.to_owned());
                 }
             }

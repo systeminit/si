@@ -3,7 +3,7 @@ use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
 use dal::component::frame::Frame;
-use dal::diagram::SummaryDiagramComponent;
+use dal::diagram::SummaryDiagramEdge;
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,10 +33,17 @@ pub async fn delete_components(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+    let components_existing_on_head =
+        Component::exists_on_head(&ctx, request.component_ids.clone()).await?;
+    let base_change_set_ctx = ctx.clone_with_base().await?;
 
     let mut components = HashMap::new();
     let mut socket_map = HashMap::new();
     for component_id in request.component_ids {
+        let component: Component = Component::get_by_id(&ctx, component_id).await?;
+        let incoming_connections = component.incoming_connections(&ctx).await?.clone();
+        let outgoing_connections = component.outgoing_connections(&ctx).await?.clone();
+
         let component_still_exists = delete_single_component(
             &ctx,
             component_id,
@@ -48,21 +55,70 @@ pub async fn delete_components(
         .await?;
         components.insert(component_id, component_still_exists);
 
+        let exists_on_head = components_existing_on_head.contains(&component_id);
+
         if component_still_exists {
             // to_delete=True
             let component: Component = Component::get_by_id(&ctx, component_id).await?;
-            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-                &ctx,
-                &component,
-                ChangeStatus::Deleted,
-                &mut socket_map,
-            )
-            .await?;
+            let payload = component
+                .into_frontend_type(&ctx, ChangeStatus::Deleted, &mut socket_map)
+                .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
-        } // component_deleted called further down the stack
+        } else if exists_on_head {
+            let component: Component =
+                Component::get_by_id(&base_change_set_ctx, component_id).await?;
+            let payload = component
+                .into_frontend_type(&base_change_set_ctx, ChangeStatus::Deleted, &mut socket_map)
+                .await?;
+            WsEvent::component_updated(&ctx, payload)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        } else {
+            WsEvent::component_deleted(&ctx, component_id)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+
+        for incoming_connection in incoming_connections {
+            let payload = SummaryDiagramEdge {
+                from_component_id: incoming_connection.from_component_id,
+                from_socket_id: incoming_connection.from_output_socket_id,
+                to_component_id: incoming_connection.to_component_id,
+                to_socket_id: incoming_connection.to_input_socket_id,
+                change_status: ChangeStatus::Deleted,
+                created_info: serde_json::to_value(incoming_connection.created_info)?,
+                deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+                to_delete: true,
+                from_base_change_set: false,
+            };
+            WsEvent::connection_upserted(&ctx, payload)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+
+        for outgoing_connection in outgoing_connections {
+            let payload = SummaryDiagramEdge {
+                from_component_id: outgoing_connection.from_component_id,
+                from_socket_id: outgoing_connection.from_output_socket_id,
+                to_component_id: outgoing_connection.to_component_id,
+                to_socket_id: outgoing_connection.to_input_socket_id,
+                change_status: ChangeStatus::Deleted,
+                created_info: serde_json::to_value(outgoing_connection.created_info)?,
+                deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
+                to_delete: true,
+                from_base_change_set: false,
+            };
+            WsEvent::connection_upserted(&ctx, payload)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
     }
 
     ctx.commit().await?;

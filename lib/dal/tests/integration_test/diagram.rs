@@ -1,4 +1,4 @@
-use dal::{change_status::ChangeStatus, diagram::Diagram, Component, DalContext};
+use dal::{diagram::Diagram, Component, DalContext};
 use dal_test::{
     helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers},
     test,
@@ -47,11 +47,12 @@ async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut
     let removed_component_summary = summary_diagram
         .components
         .iter()
-        .find(|comp| comp.id == component_to_remove.id())
+        .find(|comp| comp.id == component_to_remove.id().into())
         .expect("Removed Component not found in summary diagram");
     assert!(removed_component_summary.from_base_change_set);
+
     assert_eq!(
-        ChangeStatus::Deleted,
+        si_frontend_types::ChangeStatus::Deleted,
         removed_component_summary.change_status
     );
 }

@@ -12,7 +12,7 @@ use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 use crate::{
     action::ActionId,
     component::ComponentUpdatedPayload,
-    diagram::{DiagramError, SummaryDiagramComponent},
+    diagram::DiagramError,
     func::{
         runner::{FuncRunner, FuncRunnerError},
         FuncId,
@@ -24,6 +24,7 @@ use crate::{
     SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
 };
+use si_frontend_types::SummaryDiagramComponent;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

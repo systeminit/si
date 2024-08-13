@@ -438,7 +438,7 @@ const position = computed(
     props.node.def.position,
 );
 
-watch([nodeWidth, nodeHeight, position], () => {
+watch([nodeWidth, nodeHeight, position, actualSockets], () => {
   // we call on nextTick to let the component actually update itself on the stage first
   // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
   nextTick(() => {

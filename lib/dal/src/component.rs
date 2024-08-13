@@ -7,9 +7,9 @@ use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
-use std::num::ParseFloatError;
+use std::num::{ParseFloatError, ParseIntError};
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -29,8 +29,9 @@ use crate::attribute::value::{
     AttributeValueError, ChildAttributeValuePair, DependentValueGraph, ValueIsFor,
 };
 use crate::change_set::ChangeSetError;
+use crate::change_status::ChangeStatus;
 use crate::code_view::CodeViewError;
-use crate::diagram::{SummaryDiagramComponent, SummaryDiagramInferredEdge};
+use crate::diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge};
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
@@ -49,6 +50,10 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
+use si_frontend_types::{
+    DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, GridPoint, Size2D,
+    SummaryDiagramComponent,
+};
 
 use crate::{
     implement_add_edge_to, pk, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
@@ -154,8 +159,10 @@ pub enum ComponentError {
     OutputSocketNotFoundForComponentId(OutputSocketId, ComponentId),
     #[error("output socket {0} has more than one attribute value")]
     OutputSocketTooManyAttributeValues(OutputSocketId),
-    #[error("parse float error: {0}")]
+    #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
+    #[error(transparent)]
+    ParseInt(#[from] ParseIntError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
@@ -564,11 +571,6 @@ impl Component {
                 .await
                 .map_err(|err| ComponentError::Action(Box::new(err)))?;
         }
-
-        WsEvent::component_created(ctx, component.id())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
 
         Ok(component)
     }
@@ -2359,11 +2361,6 @@ impl Component {
 
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
-        WsEvent::component_deleted(ctx, id)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-
         Ok(())
     }
 
@@ -2905,6 +2902,14 @@ impl Component {
 
         // Re fetch the component with the old id
         let finalized_new_component = Self::get_by_id(ctx, original_component_id).await?;
+        let mut diagram_sockets = HashMap::new();
+        let payload = finalized_new_component
+            .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+            .await?;
+        WsEvent::component_upgraded(ctx, payload, finalized_new_component.id())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         // Restore connections on new component
         for incoming in &original_incoming_connections {
@@ -2920,6 +2925,22 @@ impl Component {
                     socket.id(),
                 )
                 .await?;
+                let edge = SummaryDiagramEdge {
+                    from_component_id: incoming.from_component_id,
+                    from_socket_id: incoming.from_output_socket_id,
+                    to_component_id: finalized_new_component.id(),
+                    to_socket_id: socket.id(),
+                    // was Unmodified, but get_diagram shows them as Added
+                    change_status: ChangeStatus::Added,
+                    created_info: serde_json::to_value(&incoming.created_info)?,
+                    deleted_info: serde_json::to_value(&incoming.deleted_info)?,
+                    to_delete: false,
+                    from_base_change_set: false,
+                };
+                WsEvent::connection_upserted(ctx, edge)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
             } else {
                 debug!(
                     "Unable to reconnect to socket_id: {0} for component_id: {1}",
@@ -2942,6 +2963,22 @@ impl Component {
                     outgoing.to_input_socket_id,
                 )
                 .await?;
+                let edge = SummaryDiagramEdge {
+                    from_component_id: finalized_new_component.id(),
+                    from_socket_id: socket.id(),
+                    to_component_id: outgoing.to_component_id,
+                    to_socket_id: outgoing.to_input_socket_id,
+                    // was Unmodified, but get_diagram shows them as Added
+                    change_status: ChangeStatus::Added,
+                    created_info: serde_json::to_value(&outgoing.created_info)?,
+                    deleted_info: serde_json::to_value(&outgoing.deleted_info)?,
+                    to_delete: false,
+                    from_base_change_set: false,
+                };
+                WsEvent::connection_upserted(ctx, edge)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
             } else {
                 debug!(
                     "Unable to reconnect to socket_id: {0} for component_id: {1}",
@@ -3059,13 +3096,159 @@ impl Component {
 
         Ok(())
     }
+
+    pub async fn exists_on_head(
+        ctx: &DalContext,
+        component_ids: Vec<ComponentId>,
+    ) -> ComponentResult<HashSet<ComponentId>> {
+        let mut components = HashSet::new();
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+        for component_id in component_ids {
+            let maybe_component =
+                Component::try_get_by_id(&base_change_set_ctx, component_id).await?;
+            if maybe_component.is_some() {
+                components.insert(component_id);
+            }
+        }
+        Ok(components)
+    }
+
+    pub async fn into_frontend_type(
+        &self,
+        ctx: &DalContext,
+        change_status: ChangeStatus,
+        diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
+    ) -> ComponentResult<SummaryDiagramComponent> {
+        let schema_variant = self.schema_variant(ctx).await?;
+
+        let sockets = match diagram_sockets.entry(schema_variant.id()) {
+            hash_map::Entry::Vacant(entry) => {
+                let (output_sockets, input_sockets) =
+                    SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
+
+                let mut sockets = vec![];
+
+                for socket in input_sockets {
+                    sockets.push(DiagramSocket {
+                        id: socket.id().to_string(),
+                        label: socket.name().to_string(),
+                        connection_annotations: socket
+                            .connection_annotations()
+                            .into_iter()
+                            .map(|a| a.into())
+                            .collect(),
+                        direction: DiagramSocketDirection::Input,
+                        max_connections: match socket.arity() {
+                            SocketArity::Many => None,
+                            SocketArity::One => Some(1),
+                        },
+                        is_required: Some(false),
+                        node_side: DiagramSocketNodeSide::Left,
+                    });
+                }
+
+                for socket in output_sockets {
+                    sockets.push(DiagramSocket {
+                        id: socket.id().to_string(),
+                        label: socket.name().to_string(),
+                        connection_annotations: socket
+                            .connection_annotations()
+                            .into_iter()
+                            .map(|a| a.into())
+                            .collect(),
+                        direction: DiagramSocketDirection::Output,
+                        max_connections: match socket.arity() {
+                            SocketArity::Many => None,
+                            SocketArity::One => Some(1),
+                        },
+                        is_required: Some(false),
+                        node_side: DiagramSocketNodeSide::Right,
+                    });
+                }
+                entry.insert(sockets.to_owned());
+                sockets
+            }
+            hash_map::Entry::Occupied(entry) => entry.get().to_owned(),
+        };
+        let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
+        let schema_id = schema.id();
+
+        let default_schema_variant = SchemaVariant::get_default_for_schema(ctx, schema_id).await?;
+
+        let position = GridPoint {
+            x: self.x().parse::<f64>()?.round() as isize,
+            y: self.y().parse::<f64>()?.round() as isize,
+        };
+        let size = match (self.width(), self.height()) {
+            (Some(w), Some(h)) => Size2D {
+                height: h.parse()?,
+                width: w.parse()?,
+            },
+            _ => Size2D {
+                height: 500,
+                width: 500,
+            },
+        };
+
+        let updated_info = {
+            let history_actor = ctx.history_actor();
+            let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+            serde_json::to_value(HistoryEventMetadata {
+                actor,
+                timestamp: self.timestamp().updated_at,
+            })?
+        };
+
+        let created_info = {
+            let history_actor = ctx.history_actor();
+            let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+            serde_json::to_value(HistoryEventMetadata {
+                actor,
+                timestamp: self.timestamp().created_at,
+            })?
+        };
+
+        let can_be_upgraded = if let Some(unlocked_schema_variant) =
+            SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
+        {
+            unlocked_schema_variant.id() != schema_variant.id()
+        } else {
+            default_schema_variant.id() != schema_variant.id()
+        };
+
+        let maybe_parent = self.parent(ctx).await?;
+
+        Ok(SummaryDiagramComponent {
+            id: self.id().into(),
+            component_id: self.id().into(),
+            schema_name: schema.name().to_owned(),
+            schema_id: schema_id.into(),
+            schema_variant_id: schema_variant.id().into(),
+            schema_variant_name: schema_variant.version().to_owned(),
+            schema_category: schema_variant.category().to_owned(),
+            display_name: self.name(ctx).await?,
+            position,
+            size,
+            component_type: self.get_type(ctx).await?.to_string(),
+            color: self.color(ctx).await?.unwrap_or("#111111".into()),
+            change_status: change_status.into(),
+            has_resource: self.resource(ctx).await?.is_some(),
+            sockets,
+            parent_id: maybe_parent.map(|p| p.into()),
+            updated_info,
+            created_info,
+            deleted_info: serde_json::Value::Null,
+            to_delete: self.to_delete(),
+            can_be_upgraded,
+            from_base_change_set: false,
+        })
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentCreatedPayload {
-    success: bool,
-    component_id: ComponentId,
+    pub component: SummaryDiagramComponent,
     change_set_id: ChangeSetId,
 }
 
@@ -3093,22 +3276,11 @@ pub struct ComponentDeletedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ConnectionCreatedPayload {
-    from_component_id: ComponentId,
-    to_component_id: ComponentId,
-    from_socket_id: OutputSocketId,
-    to_socket_id: InputSocketId,
-    change_set_id: ChangeSetId,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct ConnectionDeletedPayload {
     from_component_id: ComponentId,
     to_component_id: ComponentId,
     from_socket_id: OutputSocketId,
     to_socket_id: InputSocketId,
-    change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -3250,37 +3422,23 @@ impl WsEvent {
 
     pub async fn component_created(
         ctx: &DalContext,
-        component_id: ComponentId,
+        component: SummaryDiagramComponent,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload {
-                success: true,
                 change_set_id: ctx.change_set_id(),
-                component_id,
+                component,
             }),
         )
         .await
     }
 
-    pub async fn connection_created(
+    pub async fn connection_upserted(
         ctx: &DalContext,
-        from_component_id: ComponentId,
-        to_component_id: ComponentId,
-        from_socket_id: OutputSocketId,
-        to_socket_id: InputSocketId,
+        edge: SummaryDiagramEdge,
     ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ConnectionCreated(ConnectionCreatedPayload {
-                from_component_id,
-                to_component_id,
-                from_socket_id,
-                change_set_id: ctx.change_set_id(),
-                to_socket_id,
-            }),
-        )
-        .await
+        WsEvent::new(ctx, WsPayload::ConnectionUpserted(edge)).await
     }
 
     pub async fn connection_deleted(
@@ -3296,7 +3454,6 @@ impl WsEvent {
                 from_component_id,
                 to_component_id,
                 from_socket_id,
-                change_set_id: ctx.change_set_id(),
                 to_socket_id,
             }),
         )

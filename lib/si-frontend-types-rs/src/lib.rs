@@ -1,8 +1,13 @@
+mod component;
 mod conflict;
 mod func;
 mod module;
 mod schema_variant;
 
+pub use crate::component::{
+    ChangeStatus, ConnectionAnnotation, DiagramSocket, DiagramSocketDirection,
+    DiagramSocketNodeSide, GridPoint, Size2D, SummaryDiagramComponent,
+};
 pub use crate::conflict::ConflictWithHead;
 pub use crate::func::{
     AttributeArgumentBinding, FuncArgument, FuncArgumentKind, FuncBinding, FuncBindings, FuncCode,

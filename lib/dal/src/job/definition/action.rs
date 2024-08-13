@@ -14,7 +14,6 @@ use crate::{
         Action, ActionError, ActionId, ActionState,
     },
     change_status::ChangeStatus,
-    diagram::SummaryDiagramComponent,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -158,6 +157,10 @@ async fn inner_run(
             if let Some(component) = component {
                 if component.allowed_to_be_removed(ctx).await? {
                     Component::remove(ctx, component.id()).await?;
+                    WsEvent::component_deleted(ctx, component.id())
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
                     did_remove = true;
                 }
             }
@@ -264,16 +267,16 @@ async fn process_and_record_execution(
 
                 if component.to_delete() {
                     Component::remove(&ctx, component.id()).await?;
+                    WsEvent::component_deleted(&ctx, component.id())
+                        .await?
+                        .publish_on_commit(&ctx)
+                        .await?;
                     to_remove_nodes.push(component.id().into());
                 } else {
                     let mut diagram_sockets = HashMap::new();
-                    let summary = SummaryDiagramComponent::assemble(
-                        &ctx,
-                        &component,
-                        ChangeStatus::Unmodified,
-                        &mut diagram_sockets,
-                    )
-                    .await?;
+                    let summary = component
+                        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                        .await?;
                     WsEvent::resource_refreshed(&ctx, summary)
                         .await?
                         .publish_on_commit(&ctx)
@@ -281,13 +284,9 @@ async fn process_and_record_execution(
                 }
             } else {
                 let mut diagram_sockets = HashMap::new();
-                let summary = SummaryDiagramComponent::assemble(
-                    &ctx,
-                    &component,
-                    ChangeStatus::Unmodified,
-                    &mut diagram_sockets,
-                )
-                .await?;
+                let summary = component
+                    .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                    .await?;
                 WsEvent::resource_refreshed(&ctx, summary)
                     .await?
                     .publish_on_commit(&ctx)

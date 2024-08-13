@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::component::{ComponentError, ComponentResult};
@@ -7,9 +5,7 @@ use axum::extract::{Host, OriginalUri};
 use axum::response::IntoResponse;
 use axum::Json;
 use dal::action::{Action, ActionState};
-use dal::change_status::ChangeStatus;
-use dal::diagram::SummaryDiagramComponent;
-use dal::{ChangeSet, Component, ComponentId, SchemaVariant, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentId, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -58,7 +54,7 @@ pub async fn upgrade(
         return Err(ComponentError::UpgradeSkippedDueToActions);
     }
 
-    let upgraded_component = current_component
+    current_component
         .upgrade_to_new_variant(&ctx, upgrade_target_variant.id())
         .await?;
 
@@ -76,19 +72,6 @@ pub async fn upgrade(
             "change_set_id": ctx.change_set_id(),
         }),
     );
-
-    let mut socket_map = HashMap::new();
-    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-        &ctx,
-        &upgraded_component,
-        ChangeStatus::Unmodified,
-        &mut socket_map,
-    )
-    .await?;
-    WsEvent::component_upgraded(&ctx, payload, request.component_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

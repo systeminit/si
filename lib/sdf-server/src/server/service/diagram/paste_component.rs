@@ -1,7 +1,10 @@
 use axum::extract::Host;
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
 use dal::component::ComponentGeometry;
+use dal::diagram::SummaryDiagramEdge;
+use dal::WsEvent;
 use dal::{component::frame::Frame, ChangeSet, Component, ComponentId, DalContext, Visibility};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -104,6 +107,28 @@ pub async fn paste_components(
             };
         }
 
+        // If the pasted component didn't get a parent already, set the new parent
+        if pasted_component.parent(&ctx).await?.is_none() {
+            if let Some(parent_id) = request.new_parent_node_id {
+                Frame::upsert_parent(&ctx, pasted_component.id(), parent_id).await?;
+            }
+        }
+
+        // re-fetch component with possible parentage
+        let pasted_component = Component::get_by_id(&ctx, pasted_component.id()).await?;
+        let mut diagram_sockets = HashMap::new();
+        let payload = pasted_component
+            .into_frontend_type(
+                &ctx,
+                dal::change_status::ChangeStatus::Added,
+                &mut diagram_sockets,
+            )
+            .await?;
+        WsEvent::component_created(&ctx, payload)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+
         // Create on pasted components copies of edges that existed between original components
         for connection in component.incoming_connections(&ctx).await? {
             if let Some(from_component) =
@@ -117,13 +142,22 @@ pub async fn paste_components(
                     connection.to_input_socket_id,
                 )
                 .await?;
-            }
-        }
 
-        // If the pasted component didn't get a parent already, set the new parent
-        if pasted_component.parent(&ctx).await?.is_none() {
-            if let Some(parent_id) = request.new_parent_node_id {
-                Frame::upsert_parent(&ctx, pasted_component.id(), parent_id).await?;
+                let edge = SummaryDiagramEdge {
+                    from_component_id: from_component.id(),
+                    from_socket_id: connection.from_output_socket_id,
+                    to_component_id: pasted_component.id(),
+                    to_socket_id: connection.to_input_socket_id,
+                    change_status: ChangeStatus::Added,
+                    created_info: serde_json::to_value(connection.created_info)?,
+                    deleted_info: serde_json::to_value(connection.deleted_info)?,
+                    to_delete: false,
+                    from_base_change_set: false,
+                };
+                WsEvent::connection_upserted(&ctx, edge)
+                    .await?
+                    .publish_on_commit(&ctx)
+                    .await?;
             }
         }
     }

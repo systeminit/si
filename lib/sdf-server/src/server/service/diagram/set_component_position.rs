@@ -2,9 +2,8 @@ use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
 use dal::component::ComponentGeometry;
 use dal::{
-    component::frame::Frame,
-    diagram::{SummaryDiagramComponent, SummaryDiagramInferredEdge},
-    ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
+    component::frame::Frame, diagram::SummaryDiagramInferredEdge, ChangeSet, Component,
+    ComponentId, ComponentType, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -54,26 +53,18 @@ pub async fn set_component_position(
 
         if update.detach {
             Frame::orphan_child(&ctx, component.id()).await?;
-            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-                &ctx,
-                &component,
-                ChangeStatus::Unmodified,
-                &mut socket_map,
-            )
-            .await?;
+            let payload = component
+                .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+                .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
         } else if let Some(new_parent) = update.new_parent {
             Frame::upsert_parent(&ctx, component.id(), new_parent).await?;
-            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-                &ctx,
-                &component,
-                ChangeStatus::Unmodified,
-                &mut socket_map,
-            )
-            .await?;
+            let payload = component
+                .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+                .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)
@@ -132,10 +123,12 @@ pub async fn set_component_position(
         .publish_on_commit(&ctx)
         .await?;
 
-    WsEvent::upsert_inferred_edges(&ctx, diagram_inferred_edges)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    if !diagram_inferred_edges.is_empty() {
+        WsEvent::upsert_inferred_edges(&ctx, diagram_inferred_edges)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     ctx.commit().await?;
 
