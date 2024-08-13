@@ -28,7 +28,7 @@ rust-version = "1.78"
 publish = false
 
 [dependencies]
-async-nats = { version = "0.34.0", features = ["service"] }
+async-nats = { version = "0.35.1", features = ["service"] }
 async-recursion = "1.0.5"
 async-trait = "0.1.79"
 axum = { version = "0.6.20", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
@@ -74,6 +74,7 @@ itertools = "0.12.1"
 jwt-simple = { version = "0.12.9", default-features = false, features = ["pure-rust"] }
 krata-loopdev = "0.0.12"
 lazy_static = "1.4.0"
+mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.7.2", features = ["simd"] }
 moka = { version = "0.12.5", features = ["future"] }
 names = { version = "0.14.0", default-features = false }
@@ -150,6 +151,9 @@ y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }
 
 [patch.crates-io]
+# pending a potential merge and release of
+# https://github.com/nats-io/nats.rs/pull/1301
+async-nats = { git = "https://github.com/systeminit/nats.rs.git", branch = "js-kv-recreate-race" }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
