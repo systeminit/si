@@ -5,7 +5,7 @@ use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::module::ModuleError,
 };
-use axum::extract::{OriginalUri, Query};
+use axum::extract::{Host, OriginalUri, Query};
 use axum::Json;
 use dal::Visibility;
 use module_index_client::ModuleIndexClient;
@@ -29,6 +29,7 @@ pub async fn remote_module_spec(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Query(request): Query<RemoteModuleDetailsRequest>,
 ) -> ModuleResult<Json<RemoteModuleDetailsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -49,6 +50,7 @@ pub async fn remote_module_spec(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "remote_module_spec",
         serde_json::json!({
                     "pkg_name": &spec.name,

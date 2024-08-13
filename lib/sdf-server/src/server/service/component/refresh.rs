@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 
 use dal::{
@@ -30,6 +30,7 @@ pub async fn refresh(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<RefreshRequest>,
 ) -> ComponentResult<Json<RefreshResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -40,6 +41,7 @@ pub async fn refresh(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "refresh_resource",
         serde_json::json!({
             "component_ids": &component_ids,

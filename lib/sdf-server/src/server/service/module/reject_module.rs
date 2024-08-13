@@ -2,7 +2,7 @@ use crate::server::extract::RawAccessToken;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::module::{ModuleError, ModuleResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{HistoryActor, User, Visibility};
 use module_index_client::ModuleIndexClient;
@@ -29,6 +29,7 @@ pub async fn reject_module(
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<RejectModuleRequest>,
 ) -> ModuleResult<Json<RejectModuleResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -63,6 +64,7 @@ pub async fn reject_module(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "reject_pkg",
         serde_json::json!({
                     "pkg_id": module_id,

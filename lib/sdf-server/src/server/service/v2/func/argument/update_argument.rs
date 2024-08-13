@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
@@ -22,6 +22,7 @@ pub async fn update_func_argument(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id, func_argument_id)): Path<(
         WorkspacePk,
         ChangeSetId,
@@ -56,6 +57,7 @@ pub async fn update_func_argument(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "update_func_argument",
         serde_json::json!({
             "how": "/func/update_func_argument",

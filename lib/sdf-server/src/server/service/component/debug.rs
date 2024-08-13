@@ -1,4 +1,4 @@
-use axum::extract::{OriginalUri, Query};
+use axum::extract::{Host, OriginalUri, Query};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -21,6 +21,7 @@ pub async fn debug_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     Query(request): Query<DebugComponentRequest>,
 ) -> ComponentResult<Json<ComponentDebugView>> {
@@ -30,6 +31,7 @@ pub async fn debug_component(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "debug",
         serde_json::json!({
             "how": "/component/debug",

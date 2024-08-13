@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::change_set::ChangeSet;
 use dal::WsEvent;
@@ -25,6 +25,7 @@ pub async fn create_change_set(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<CreateChangeSetRequest>,
 ) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
     let ctx = builder.build_head(access_builder).await?;
@@ -39,6 +40,7 @@ pub async fn create_change_set(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_change_set",
         serde_json::json!({
                     "change_set_name": change_set_name,

@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::variant::SchemaVariantResult;
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{ChangeSet, SchemaVariantId, Visibility, WsEvent};
@@ -27,6 +27,7 @@ pub async fn save_variant(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(SaveVariantRequest {
         variant,
         code,
@@ -57,6 +58,7 @@ pub async fn save_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "save_variant",
         serde_json::json!({
                 "variant_id": variant_id,

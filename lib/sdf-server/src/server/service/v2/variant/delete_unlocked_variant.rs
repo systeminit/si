@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     response::IntoResponse,
 };
 use dal::{ChangeSet, ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent};
@@ -16,6 +16,7 @@ pub async fn delete_unlocked_variant(
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, schema_variant_id)): Path<(
         WorkspacePk,
         ChangeSetId,
@@ -45,6 +46,7 @@ pub async fn delete_unlocked_variant(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "delete_unlocked_variant",
         serde_json::json!({
             "schema_variant_id": schema_variant_id,

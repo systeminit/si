@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::change_set::{ChangeSetError, ChangeSetResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,7 @@ pub struct CancelMergeFlow {
 
 pub async fn begin_approval_process(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -38,6 +39,7 @@ pub async fn begin_approval_process(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "begin_approval_process",
         serde_json::json!({
             "how": "/change_set/begin_approval_process",
@@ -52,6 +54,7 @@ pub async fn begin_approval_process(
 
 pub async fn cancel_approval_process(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -68,6 +71,7 @@ pub async fn cancel_approval_process(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "cancel_approval_process",
         serde_json::json!({
             "how": "/change_set/cancel_approval_process",

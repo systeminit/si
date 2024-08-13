@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use axum::{extract::OriginalUri, Json};
+use axum::{
+    extract::{Host, OriginalUri},
+    Json,
+};
 use serde::{Deserialize, Serialize};
 
 use dal::{context::RebaseRequest, ChangeSet, Visibility, WorkspaceSnapshot, WsEvent};
@@ -29,6 +32,7 @@ pub async fn rebase_on_base(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<RebaseOnBaseRequest>,
 ) -> ChangeSetResult<Json<RebaseOnBaseResponse>> {
     let ctx: dal::DalContext = builder.build(request_ctx.build(request.visibility)).await?;
@@ -70,6 +74,7 @@ pub async fn rebase_on_base(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "rebase_on_base",
         serde_json::json!({
             "rebased_change_set": request.visibility.change_set_id,

@@ -1,4 +1,4 @@
-use axum::extract::{OriginalUri, Path};
+use axum::extract::{Host, OriginalUri, Path};
 use axum::response::IntoResponse;
 
 use dal::schema::variant::authoring::VariantAuthoringClient;
@@ -13,6 +13,7 @@ pub async fn create_unlocked_copy(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, schema_variant_id)): Path<(
         WorkspacePk,
         ChangeSetId,
@@ -50,6 +51,7 @@ pub async fn create_unlocked_copy(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_unlocked_variant_copy",
         serde_json::json!({
             "schema_name": schema.name(),

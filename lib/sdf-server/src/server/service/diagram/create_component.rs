@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,7 @@ pub async fn create_component(
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Json(request): Json<CreateComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -53,6 +54,7 @@ pub async fn create_component(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "create_component",
         serde_json::json!({
             "how": "/diagram/create_component",
@@ -83,6 +85,7 @@ pub async fn create_component(
             &posthog_client,
             &ctx,
             &original_uri,
+            &host_name,
             "component_attached_to_frame",
             serde_json::json!({
                 "how": "/diagram/create_component",
@@ -102,6 +105,7 @@ pub async fn create_component(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "component_created",
         serde_json::json!({
             "how": "/diagram/create_component",

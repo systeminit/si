@@ -1,4 +1,4 @@
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, ActionPrototypeId,
@@ -51,6 +51,7 @@ pub struct GetActionsRequest {
 
 pub async fn get_actions(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -78,6 +79,7 @@ pub async fn get_actions(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "get_actions",
         serde_json::json!({
             "how": "/component/get_actions",

@@ -8,6 +8,7 @@ pub fn track(
     posthog_client: &PosthogClient,
     ctx: &DalContext,
     original_uri: &Uri,
+    host_name: &String,
     event_name: impl AsRef<str>,
     mut properties: serde_json::Value,
 ) {
@@ -30,6 +31,7 @@ pub fn track(
         prop_map.insert("workspace_id".to_string(), serde_json::json!(workspace_id));
         prop_map.insert("$current_url".to_string(), serde_json::json!(current_url));
         prop_map.insert("changeset_id".to_string(), serde_json::json!(changeset_id));
+        prop_map.insert("host".to_string(), serde_json::json!(host_name));
 
         posthog_client
             .capture(

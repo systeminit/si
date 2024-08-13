@@ -1,7 +1,7 @@
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::{AttributeValue, AttributeValueId, ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub struct RestoreDefaultFunctionRequest {
 
 pub async fn restore_default_function(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -31,6 +32,7 @@ pub async fn restore_default_function(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "restore_default_function",
         serde_json::json!({
             "how": "/component/restore_default_function",

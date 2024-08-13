@@ -1,4 +1,4 @@
-use axum::extract::{OriginalUri, Query};
+use axum::extract::{Host, OriginalUri, Query};
 use axum::Json;
 use dal::{qualification::QualificationView, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,7 @@ pub type QualificationResponse = Vec<QualificationView>;
 
 pub async fn list_qualifications(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -32,6 +33,7 @@ pub async fn list_qualifications(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "list_qualifications",
         serde_json::json!({
             "how": "/component/list_qualifications",

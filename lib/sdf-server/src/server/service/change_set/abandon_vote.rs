@@ -1,7 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::change_set::{ChangeSetError, ChangeSetResult};
-use axum::extract::OriginalUri;
+use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::{ChangeSet, Visibility};
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub struct AbandonVoteRequest {
 
 pub async fn abandon_vote(
     OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -32,6 +33,7 @@ pub async fn abandon_vote(
         &posthog_client,
         &ctx,
         &original_uri,
+        &host_name,
         "abandon_vote",
         serde_json::json!({
             "how": "/change_set/abandon_vote",
