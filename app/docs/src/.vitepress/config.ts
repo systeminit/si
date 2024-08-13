@@ -15,14 +15,18 @@ export default defineConfig({
     },
     config: (md) => {
       md.use(lightbox, {});
-    }
+    },
   },
   head: [
-    ['script', {}, `
+    [
+      "script",
+      {},
+      `
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonProperties".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
     posthog.init('${process.env.VITE_POSTHOG_PUBLIC_KEY}',{api_host:'${process.env.VITE_POSTHOG_API_HOST}',});
-`],
-    ['link', { rel: "icon", href: "/favicon.png" }],
+`,
+    ],
+    ["link", { rel: "icon", href: "/favicon.png" }],
   ],
   lastUpdated: true,
   outDir: path.join(__dirname, "../../dist"),
@@ -40,14 +44,20 @@ export default defineConfig({
       { text: "How To", link: "/how-tos/" },
       { text: "Reference Guides", link: "/reference/" },
       { text: "Changelog", link: "/changelog/" },
-      { text: "Log In", link: 'https://auth.systeminit.com/login', target: '__self', },
+      {
+        text: "Log In",
+        link: "https://auth.systeminit.com/login",
+        target: "__self",
+      },
     ],
     socialLinks: [
       {
-        icon: 'github', link: "https://github.com/systeminit/si",
+        icon: "github",
+        link: "https://github.com/systeminit/si",
       },
       {
-        icon: "discord", link: "https://discord.com/invite/system-init",
+        icon: "discord",
+        link: "https://discord.com/invite/system-init",
       },
     ],
     sidebar: [
@@ -63,8 +73,8 @@ export default defineConfig({
           {
             text: "Creating a new Asset",
             link: "/tutorials/creating-new-assets",
-          }
-        ]
+          },
+        ],
       },
       {
         text: "How To Guides",
@@ -78,8 +88,12 @@ export default defineConfig({
           {
             text: "AWS VPC",
             link: "/how-tos/aws-vpc",
-          }
-        ]
+          },
+          {
+            text: "AWS HA EC2",
+            link: "/how-tos/aws-ha-ec2",
+          },
+        ],
       },
       {
         text: "Reference Guides",
@@ -94,16 +108,16 @@ export default defineConfig({
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },
-        ]
+        ],
       },
       {
         text: "Changelog",
         link: "/changelog/",
-      }
+      },
     ],
     editLink: {
-      pattern: 'https://github.com/systeminit/si/edit/main/app/docs/src/:path',
-      text: 'Edit this page on GitHub',
+      pattern: "https://github.com/systeminit/si/edit/main/app/docs/src/:path",
+      text: "Edit this page on GitHub",
     },
     search: {
       provider: "local",
