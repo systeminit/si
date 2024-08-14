@@ -8,7 +8,10 @@ use dal::{
 };
 use futures::StreamExt as _;
 use serde::{Deserialize, Serialize};
-use si_data_nats::{async_nats::jetstream::kv::{self, WatcherError}, Subject};
+use si_data_nats::{
+    async_nats::jetstream::kv::{self, WatcherError},
+    Subject,
+};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -170,7 +173,7 @@ impl DvuDebouncerTask {
 
     /// Runs the service to completion, returning its result (i.e. whether it successful or an
     /// internal error was encountered).
-    async fn try_run(&mut self) -> DvuDebouncerTaskResult<()> {
+    async fn try_run(&self) -> DvuDebouncerTaskResult<()> {
         // Set initial state of waiting to become leader
         let mut state = DebouncerState::WaitingToBecomeLeader;
 
@@ -194,7 +197,7 @@ impl DvuDebouncerTask {
         }
     }
 
-    async fn waiting_to_become_leader(&mut self) -> DvuDebouncerTaskResult<DebouncerState> {
+    async fn waiting_to_become_leader(&self) -> DvuDebouncerTaskResult<DebouncerState> {
         info!(
             task = Self::NAME,
             key = self.watch_subject.to_string(),
@@ -236,7 +239,7 @@ impl DvuDebouncerTask {
     }
 
     async fn running_as_leader(
-        &mut self,
+        &self,
         kv_state: KvState,
         revision: u64,
     ) -> DvuDebouncerTaskResult<DebouncerState> {
@@ -299,7 +302,7 @@ impl DvuDebouncerTask {
     }
 
     async fn running_as_leader_inner(
-        &mut self,
+        &self,
         keepalive: DvuDebouncerKeepalive,
     ) -> DvuDebouncerTaskResult<DebouncerState> {
         let mut interval = time::interval_at(
@@ -328,7 +331,10 @@ impl DvuDebouncerTask {
         }
     }
 
-    fn entry_operation(&self, entry: Option<Result<kv::Entry, WatcherError>>) -> DvuDebouncerTaskResult<Option<kv::Operation>> {
+    fn entry_operation(
+        &self,
+        entry: Option<Result<kv::Entry, WatcherError>>,
+    ) -> DvuDebouncerTaskResult<Option<kv::Operation>> {
         match entry {
             // Next item is an watch entry
             Some(Ok(kv::Entry { operation, .. })) => Ok(Some(operation)),
@@ -347,7 +353,7 @@ impl DvuDebouncerTask {
         }
     }
 
-    async fn attempt_to_acquire_key(&mut self) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
+    async fn attempt_to_acquire_key(&self) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         let kv_state = KvState {
             instance_id: self.instance_id.clone(),
             status: KvStatus::Waiting,
@@ -431,7 +437,7 @@ impl DvuDebouncerTask {
     }
 
     async fn run_dvu_if_values_pending(
-        &mut self,
+        &self,
         keepalive: &DvuDebouncerKeepalive,
     ) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         let builder = self.ctx_builder.clone();
