@@ -153,7 +153,7 @@ yrs = { version = "0.17.4" }
 [patch.crates-io]
 # pending a potential merge and release of
 # https://github.com/nats-io/nats.rs/pull/1301
-async-nats = { git = "https://github.com/systeminit/nats.rs.git", branch = "js-kv-recreate-race" }
+async-nats = { git = "https://github.com/systeminit/nats.rs.git", branch = "si/stable" }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
