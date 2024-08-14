@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use petgraph::{prelude::*, visit::EdgeRef, Direction::Incoming};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
@@ -11,7 +13,7 @@ use crate::{
         node_weight::traits::CorrectTransforms,
         NodeInformation,
     },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
 use super::{
@@ -143,7 +145,7 @@ fn remove_hanging_socket_connections(
     graph: &WorkspaceSnapshotGraphV2,
     component_id: Ulid,
     component_idx: NodeIndex,
-) -> Vec<Update> {
+) -> CorrectTransformsResult<Vec<Update>> {
     let mut new_updates = vec![];
 
     // To find the attribute prototype arguments that need to be removed, we
@@ -153,6 +155,8 @@ fn remove_hanging_socket_connections(
     // the argument has our component as a source. Then we can issue RemoveEdge
     // updates for all incoming edges to that attribute prototype argument. With
     // no incoming edges, the APA will be removed from the graph.
+
+    let mut affected_attribute_values = HashSet::new();
 
     for socket_value_target in graph
         .edges_directed(component_idx, Outgoing)
@@ -202,24 +206,62 @@ fn remove_hanging_socket_connections(
                         })
                 })
             {
-                new_updates.extend(
+                for edge_ref in graph.edges_directed(apa_idx, Incoming) {
+                    if let Some(source_weight) = graph.get_node_weight_opt(edge_ref.source()) {
+                        new_updates.push(Update::RemoveEdge {
+                            source: source_weight.into(),
+                            destination: apa_weight.into(),
+                            edge_kind: edge_ref.weight().kind().into(),
+                        })
+                    }
+
+                    // Walk to the attribute value for this socket so we can add it to the DVUs
                     graph
-                        .edges_directed(apa_idx, Incoming)
-                        .filter_map(|edge_ref| {
-                            graph
-                                .get_node_weight_opt(edge_ref.source())
-                                .map(|source_weight| Update::RemoveEdge {
-                                    source: source_weight.into(),
-                                    destination: apa_weight.into(),
-                                    edge_kind: edge_ref.weight().kind().into(),
-                                })
-                        }),
-                )
+                        .edges_directed(edge_ref.source(), Incoming)
+                        .for_each(|edge_ref| {
+                            graph.edges_directed(edge_ref.source(), Incoming).for_each(
+                                |edge_ref| {
+                                    if let Some(id) = graph
+                                        .get_node_weight_opt(edge_ref.source())
+                                        .and_then(|node_weight| match node_weight {
+                                            NodeWeight::AttributeValue(_) => Some(node_weight.id()),
+                                            _ => None,
+                                        })
+                                    {
+                                        affected_attribute_values.insert(id);
+                                    }
+                                },
+                            );
+                        });
+                }
             }
         }
     }
 
-    new_updates
+    // The input sockets that have had connections removed need to be recalculated now
+    if let Some((category_node_id, _)) =
+        graph.get_category_node(None, CategoryNodeKind::DependentValueRoots)?
+    {
+        for affected_av_id in affected_attribute_values {
+            let id = graph.generate_ulid()?;
+            let lineage_id = graph.generate_ulid()?;
+            let new_dvu_node = NodeWeight::new_dependent_value_root(id, lineage_id, affected_av_id);
+            let new_dvu_node_information = (&new_dvu_node).into();
+            new_updates.push(Update::NewNode {
+                node_weight: new_dvu_node,
+            });
+            new_updates.push(Update::NewEdge {
+                source: NodeInformation {
+                    id: category_node_id.into(),
+                    node_weight_kind: NodeWeightDiscriminants::Category,
+                },
+                destination: new_dvu_node_information,
+                edge_weight: EdgeWeight::new(EdgeWeightKind::new_use()),
+            });
+        }
+    }
+
+    Ok(new_updates)
 }
 
 impl CorrectTransforms for ComponentNodeWeight {
@@ -353,7 +395,7 @@ impl CorrectTransforms for ComponentNodeWeight {
                     graph,
                     self.id,
                     component_idx,
-                ))
+                )?)
             }
         }
 
