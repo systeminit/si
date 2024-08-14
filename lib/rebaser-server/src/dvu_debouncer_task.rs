@@ -160,6 +160,12 @@ impl DvuDebouncerTask {
                 }
             }
         }
+
+        debug!(
+            task = Self::NAME,
+            key = self.watch_subject.to_string(),
+            "shutdown complete",
+        );
     }
 
     /// Runs the service to completion, returning its result (i.e. whether it successful or an
@@ -168,22 +174,24 @@ impl DvuDebouncerTask {
         // Set initial state of waiting to become leader
         let mut state = DebouncerState::WaitingToBecomeLeader;
 
+        // Run the loop in each state until it returns and requests to move to a new state
         loop {
             state = match state {
                 DebouncerState::WaitingToBecomeLeader => self.waiting_to_become_leader().await?,
                 DebouncerState::RunningAsLeader((kv_state, revision)) => {
                     self.running_as_leader(kv_state, revision).await?
                 }
-                DebouncerState::Cancelled => break,
+                DebouncerState::Cancelled => {
+                    debug!(
+                        task = Self::NAME,
+                        key = self.watch_subject.to_string(),
+                        state = ?state,
+                        "received cancellation",
+                    );
+                    return Ok(());
+                }
             };
         }
-
-        debug!(
-            task = Self::NAME,
-            key = self.watch_subject.to_string(),
-            "shutdown complete",
-        );
-        Ok(())
     }
 
     async fn waiting_to_become_leader(&mut self) -> DvuDebouncerTaskResult<DebouncerState> {
@@ -206,16 +214,8 @@ impl DvuDebouncerTask {
                 biased;
 
                 // Cancellation token has fired, time to shut down
-                _ = self.token.cancelled() => {
-                    debug!(
-                        task = Self::NAME,
-                        key = self.watch_subject.to_string(),
-                        state = "waiting_to_become_leader",
-                        "received cancellation",
-                    );
-                    // Beggining to shut dow, return to break out of try_run loop
-                    return Ok(DebouncerState::Cancelled);
-                }
+                _ = self.token.cancelled() => return Ok(DebouncerState::Cancelled),
+
                 // Received next watch item
                 maybe_entry_result = watch.next() => {
                     match maybe_entry_result {
@@ -333,16 +333,8 @@ impl DvuDebouncerTask {
                 biased;
 
                 // Cancellation token has fired, time to shut down
-                _ = self.token.cancelled() => {
-                    debug!(
-                        task = Self::NAME,
-                        key = self.watch_subject.to_string(),
-                        state = "running_as_leader",
-                        "received cancellation",
-                    );
-                    // Beggining to shut down, return to break out of try_run loop
-                    return Ok(DebouncerState::Cancelled);
-                }
+                _ = self.token.cancelled() => return Ok(DebouncerState::Cancelled),
+
                 // Interval for running dependent values update if values are pending has ticked
                 _ = interval.tick() => {
                     // This will block the next `select` which is intended as we want a depdendent
