@@ -1,6 +1,6 @@
 //! A per-changeset task to debounce dependent values updates
 
-use std::{ops::ControlFlow, str::Utf8Error, time::Duration};
+use std::{str::Utf8Error, time::Duration};
 
 use dal::{
     workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetStatus,
@@ -49,6 +49,9 @@ pub enum DvuDebouncerTaskError {
     /// When failing to construct a KV key watch subscription
     #[error("kv watch error: {0}")]
     KvWatch(#[source] kv::WatchError),
+    /// When watch_with_history() stream unexpectedly ends
+    #[error("kv watch with history unexpectedly ended")]
+    KvWatchWithHistoryEnded,
     /// When failing to serialize a type to json
     #[error("serialize error: {0}")]
     Serialize(#[source] serde_json::Error),
@@ -88,6 +91,7 @@ struct KvState {
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)] // Variant names are more descriptive with the shared postfix
 enum DebouncerState {
+    Cancelled,
     RunningAsLeader((KvState, u64)),
     WaitingToBecomeLeader,
 }
@@ -102,7 +106,6 @@ pub struct DvuDebouncerTask {
     change_set_id: ChangeSetId,
     ctx_builder: DalContextBuilder,
     interval_duration: Duration,
-    state: DebouncerState,
     token: CancellationToken,
     restarted_count: usize,
 }
@@ -128,7 +131,6 @@ impl DvuDebouncerTask {
             workspace_id,
             change_set_id,
             ctx_builder,
-            state: DebouncerState::WaitingToBecomeLeader,
             interval_duration,
             token: CancellationToken::new(),
             restarted_count: 0,
@@ -164,23 +166,16 @@ impl DvuDebouncerTask {
     /// internal error was encountered).
     async fn try_run(&mut self) -> DvuDebouncerTaskResult<()> {
         // Set initial state of waiting to become leader
-        self.state = DebouncerState::WaitingToBecomeLeader;
+        let mut state = DebouncerState::WaitingToBecomeLeader;
 
         loop {
-            let control_flow = match &self.state {
+            state = match state {
                 DebouncerState::WaitingToBecomeLeader => self.waiting_to_become_leader().await?,
                 DebouncerState::RunningAsLeader((kv_state, revision)) => {
-                    self.running_as_leader(kv_state.clone(), *revision).await?
+                    self.running_as_leader(kv_state, revision).await?
                 }
+                DebouncerState::Cancelled => break,
             };
-
-            // Check if a clean shutdown is in progress (`control_flow` is a `break`) **or** if a
-            // shutdown was fired during a critical operation (such as a "dependent values update"
-            // operation as leader). Checking the cancellation token prevents us from entering
-            // another state only to realize that we are be in a shutdown state.
-            if control_flow.is_break() || self.token.is_cancelled() {
-                break;
-            }
         }
 
         debug!(
@@ -191,7 +186,7 @@ impl DvuDebouncerTask {
         Ok(())
     }
 
-    async fn waiting_to_become_leader(&mut self) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    async fn waiting_to_become_leader(&mut self) -> DvuDebouncerTaskResult<DebouncerState> {
         info!(
             task = Self::NAME,
             key = self.watch_subject.to_string(),
@@ -219,19 +214,15 @@ impl DvuDebouncerTask {
                         "received cancellation",
                     );
                     // Beggining to shut dow, return to break out of try_run loop
-                    return Ok(ControlFlow::Break(()));
+                    return Ok(DebouncerState::Cancelled);
                 }
                 // Received next watch item
                 maybe_entry_result = watch.next() => {
                     match maybe_entry_result {
                         // Next item is an watch entry
                         Some(Ok(entry)) => match self.process_entry_update(entry).await {
-                            Ok(control_flow) => {
-                                if control_flow.is_break() {
-                                    // State change, return to continue in try_run loop
-                                    return Ok(ControlFlow::Continue(()));
-                                }
-                            }
+                            Ok(Some(new_state)) => return Ok(new_state),
+                            Ok(None) => {},
                             Err(err) => {
                                 warn!(
                                     task = Self::NAME,
@@ -251,17 +242,14 @@ impl DvuDebouncerTask {
                             );
                         }
                         // Watch stream has ended
-                        None => {
-                            // End of watch stream, return to break out of try_run loop
-                            return Ok(ControlFlow::Break(()));
-                        }
+                        // End of watch stream, return to break out of try_run loop
+                        None => return Err(DvuDebouncerTaskError::KvWatchWithHistoryEnded),
                     }
                 }
                 // Interval for checking for missing key has ticked
                 _ = check_missing_key_interval.tick() => {
-                    if self.attempt_to_acquire_key().await?.is_break() {
-                        // State change, return to continue in try_run loop
-                        return Ok(ControlFlow::Continue(()));
+                    if let Some(new_state) = self.attempt_to_acquire_key().await? {
+                        return Ok(new_state);
                     }
                 }
             }
@@ -272,7 +260,7 @@ impl DvuDebouncerTask {
         &mut self,
         kv_state: KvState,
         revision: u64,
-    ) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    ) -> DvuDebouncerTaskResult<DebouncerState> {
         info!(
             task = Self::NAME,
             key = self.watch_subject.to_string(),
@@ -334,7 +322,7 @@ impl DvuDebouncerTask {
     async fn running_as_leader_inner(
         &mut self,
         keepalive: DvuDebouncerKeepalive,
-    ) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    ) -> DvuDebouncerTaskResult<DebouncerState> {
         let mut interval = time::interval_at(
             time::Instant::now() + self.interval_duration,
             self.interval_duration,
@@ -352,17 +340,17 @@ impl DvuDebouncerTask {
                         state = "running_as_leader",
                         "received cancellation",
                     );
-                    // Beggining to shut dow, return to break out of try_run loop
-                    return Ok(ControlFlow::Break(()));
+                    // Beggining to shut down, return to break out of try_run loop
+                    return Ok(DebouncerState::Cancelled);
                 }
                 // Interval for running dependent values update if values are pending has ticked
                 _ = interval.tick() => {
                     // This will block the next `select` which is intended as we want a depdendent
                     // values update to be allowed to run to completion before checking to see if
                     // the cancellation token has fired in the meantime.
-                    if self.run_dvu_if_values_pending(&keepalive).await?.is_break() {
+                    if let Some(new_state) = self.run_dvu_if_values_pending(&keepalive).await? {
                         // Dependent values update has run, return to continue try_run loop
-                        return Ok(ControlFlow::Continue(()));
+                        return Ok(new_state);
                     }
                 }
             }
@@ -373,7 +361,7 @@ impl DvuDebouncerTask {
     async fn process_entry_update(
         &mut self,
         entry: kv::Entry,
-    ) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    ) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         match entry.operation {
             // The key has been deleted/purged so we should try to become leader
             kv::Operation::Delete | kv::Operation::Purge => self.attempt_to_acquire_key().await,
@@ -386,12 +374,12 @@ impl DvuDebouncerTask {
                 );
 
                 // No leader changes, return to continue waiting to become leader loop
-                Ok(ControlFlow::Continue(()))
+                Ok(None)
             }
         }
     }
 
-    async fn attempt_to_acquire_key(&mut self) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    async fn attempt_to_acquire_key(&mut self) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         let kv_state = KvState {
             instance_id: self.instance_id.clone(),
             status: KvStatus::Waiting,
@@ -405,13 +393,8 @@ impl DvuDebouncerTask {
             .await
         {
             // Success: we should set up to be the leader
-            Ok(revision) => {
-                // Update internal state to running as leader
-                self.state = DebouncerState::RunningAsLeader((kv_state, revision));
-
-                // State change, return to break out of waiting to become leader loop
-                Ok(ControlFlow::Break(()))
-            }
+            // State change, return to break out of waiting to become leader loop
+            Ok(revision) => Ok(Some(DebouncerState::RunningAsLeader((kv_state, revision)))),
             Err(err) => {
                 if !matches!(err.kind(), kv::CreateErrorKind::AlreadyExists) {
                     warn!(
@@ -424,7 +407,7 @@ impl DvuDebouncerTask {
 
                 // Lost race to become leader, return to continue waiting to become
                 // leader loop
-                Ok(ControlFlow::Continue(()))
+                Ok(Some(DebouncerState::WaitingToBecomeLeader))
             }
         }
     }
@@ -445,6 +428,8 @@ impl DvuDebouncerTask {
                         error = ?err,
                         "failed to purge key with expected revision",
                     );
+                    // TODO remove. If we failed to purge the key, it could be because someone
+                    // else became leader. The key will age itself out.
                     // Attempt to purge the key without revision--as we are the leader this is our
                     // data
                     self.kv
@@ -459,6 +444,8 @@ impl DvuDebouncerTask {
                 }
             }
             None => {
+                // TODO remove. If we failed to purge the key, it could be because someone
+                // else became leader. The key will age itself out.
                 // Attempt to purge the key--as we are the leader this is our data
                 self.kv
                     .purge(self.watch_subject.as_str())
@@ -478,7 +465,7 @@ impl DvuDebouncerTask {
     async fn run_dvu_if_values_pending(
         &mut self,
         keepalive: &DvuDebouncerKeepalive,
-    ) -> DvuDebouncerTaskResult<ControlFlow<()>> {
+    ) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         let builder = self.ctx_builder.clone();
         let mut ctx = builder.build_default().await?;
 
@@ -491,7 +478,7 @@ impl DvuDebouncerTask {
             if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
                 debug!("snapshot not yet migrated; not attempting dependent values update");
                 // No depdendent values update to perform, return to continue running as leader loop
-                return Ok(ControlFlow::Continue(()));
+                return Ok(None);
             }
         }
 
@@ -510,7 +497,7 @@ impl DvuDebouncerTask {
                     si.change_set.id = %self.change_set_id,
                     "change set no longer open, not enqueuing dependent values updates",
                 );
-                return Ok(ControlFlow::Continue(()));
+                return Ok(None);
             }
         }
 
@@ -532,14 +519,11 @@ impl DvuDebouncerTask {
             ctx.enqueue_dependent_values_update().await?;
             ctx.blocking_commit_no_rebase().await?;
 
-            // Update internal state to waiting to become leader again
-            self.state = DebouncerState::WaitingToBecomeLeader;
-
             // Finished as leader, return to break out of running as leader loop
-            Ok(ControlFlow::Break(()))
+            Ok(Some(DebouncerState::WaitingToBecomeLeader))
         } else {
             // No depdendent values update to perform, return to continue running as leader loop
-            Ok(ControlFlow::Continue(()))
+            Ok(None)
         }
     }
 }
