@@ -2,6 +2,8 @@ pkgs_path = "/tmp"
 create_workspace_permissions = "$SI_WORKSPACE_PERMISSIONS"
 create_workspace_allowlist = [ "$SI_WORKSPACE_ALLOW_LIST" ]
 
+concurrency_limit = $SI_PINGA_CONCURRENCY_LIMIT
+
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
 decryption_key_base64 = "$SI_DECRYPTION_KEY_BASE64"
