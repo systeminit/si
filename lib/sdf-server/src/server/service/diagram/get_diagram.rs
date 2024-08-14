@@ -28,8 +28,6 @@ pub async fn get_diagram(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let response = Diagram::assemble(&ctx).await?;
 
-    dbg!(&host_name);
-
     track(
         &posthog_client,
         &ctx,
