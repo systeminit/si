@@ -78,9 +78,10 @@ where
                                 destination_weight.and_then(|weight| {
                                     let destination: NodeInformation = weight.into();
 
-                                    // If this is not the last NewEdge for this kind,
-                                    // and net removals is < 1, then we need to remove
-                                    // this edge since it will still be in the graph
+                                    // If this is not the last NewEdge for this
+                                    // kind, and the edge will not already be
+                                    // removed, then we need to remove this edge
+                                    // since it will still be in the graph
                                     // otherwise.
                                     if destination.id != new_edge_destination_id
                                         && !removal_set.contains(&(edge_kind, destination.id))

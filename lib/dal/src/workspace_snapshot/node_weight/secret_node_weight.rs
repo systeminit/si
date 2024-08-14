@@ -100,7 +100,7 @@ impl SecretNodeWeight {
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[EdgeWeightKindDiscriminants::Use]
+        &[]
     }
 }
 
