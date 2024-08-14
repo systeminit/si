@@ -8,7 +8,7 @@ use dal::{
 };
 use futures::StreamExt as _;
 use serde::{Deserialize, Serialize};
-use si_data_nats::{async_nats::jetstream::kv, Subject};
+use si_data_nats::{async_nats::jetstream::kv::{self, WatcherError}, Subject};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -218,34 +218,13 @@ impl DvuDebouncerTask {
 
                 // Received next watch item
                 maybe_entry_result = watch.next() => {
-                    match maybe_entry_result {
-                        // Next item is an watch entry
-                        Some(Ok(entry)) => match self.process_entry_update(entry).await {
-                            Ok(Some(new_state)) => return Ok(new_state),
-                            Ok(None) => {},
-                            Err(err) => {
-                                warn!(
-                                    task = Self::NAME,
-                                    key = self.watch_subject.to_string(),
-                                    error = ?err,
-                                    "failed to process update message",
-                                );
-                            }
-                        },
-                        // Next item is an error
-                        Some(Err(err)) => {
-                            warn!(
-                                task = Self::NAME,
-                                key = self.watch_subject.to_string(),
-                                error = ?err,
-                                "failed to process message",
-                            );
+                    if let Some(kv::Operation::Delete | kv::Operation::Purge) = self.entry_operation(maybe_entry_result)? {
+                        if let Some(new_state) = self.attempt_to_acquire_key().await? {
+                            return Ok(new_state)
                         }
-                        // Watch stream has ended
-                        // End of watch stream, return to break out of try_run loop
-                        None => return Err(DvuDebouncerTaskError::KvWatchWithHistoryEnded),
                     }
                 }
+
                 // Interval for checking for missing key has ticked
                 _ = check_missing_key_interval.tick() => {
                     if let Some(new_state) = self.attempt_to_acquire_key().await? {
@@ -349,25 +328,22 @@ impl DvuDebouncerTask {
         }
     }
 
-    #[inline]
-    async fn process_entry_update(
-        &mut self,
-        entry: kv::Entry,
-    ) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
-        match entry.operation {
-            // The key has been deleted/purged so we should try to become leader
-            kv::Operation::Delete | kv::Operation::Purge => self.attempt_to_acquire_key().await,
-            // Ingore updates to key--an instance is currently leader and keeping the key alive
-            kv::Operation::Put => {
-                trace!(
+    fn entry_operation(&self, entry: Option<Result<kv::Entry, WatcherError>>) -> DvuDebouncerTaskResult<Option<kv::Operation>> {
+        match entry {
+            // Next item is an watch entry
+            Some(Ok(kv::Entry { operation, .. })) => Ok(Some(operation)),
+            // Next item is an error
+            Some(Err(err)) => {
+                warn!(
                     task = Self::NAME,
-                    key = entry.key.as_str(),
-                    "received update message",
+                    key = self.watch_subject.to_string(),
+                    error = ?err,
+                    "failed to process message",
                 );
-
-                // No leader changes, return to continue waiting to become leader loop
                 Ok(None)
             }
+            // Watch stream has ended
+            None => Err(DvuDebouncerTaskError::KvWatchWithHistoryEnded),
         }
     }
 
