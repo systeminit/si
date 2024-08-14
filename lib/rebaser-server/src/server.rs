@@ -29,13 +29,20 @@ use crate::{
 };
 
 const CONSUMER_NAME: &str = "rebaser-requests";
+const DEBOUNCER_BUCKET_NAME: &str = "REBASER_DEBOUNCER";
+const NATS_KV_MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// Server metadata, used with telemetry.
 #[derive(Clone, Debug)]
 pub struct ServerMetadata {
-    #[allow(dead_code)] // TODO(fnichol): this will be used in telemetry, so drop the dead_code
-    // exception then
     instance_id: String,
+}
+
+impl ServerMetadata {
+    /// Returns the server's unique instance id.
+    pub fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
 }
 
 /// A service which concurrently processes rebaser requests across multiple change sets.
@@ -279,16 +286,24 @@ impl Server {
             .messages()
             .await?;
 
+        let kv = {
+            let prefix = self.ctx_builder.nats_conn().metadata().subject_prefix();
+            let context = si_data_nats::jetstream::new(self.ctx_builder.nats_conn().clone());
+            crate::nats::get_or_create_key_value(&context, Self::debouncer_kv_config(prefix))
+                .await?
+        };
+
         let token = CancellationToken::new();
         let task = ChangeSetRequestsTask::create(
             self.metadata.clone(),
             workspace_id,
             change_set_id,
             incoming,
+            kv,
             self.ctx_builder.clone(),
             token.clone(),
             self.dvu_interval,
-        );
+        )?;
         let handle = tokio::spawn(task.run());
         let running_task = RunningTask { handle, token };
 
@@ -378,6 +393,17 @@ impl Server {
             // meaning they all share this behavior (i.e. only one service processes one message
             // at a time, thus guarenteeing queue is processed serially, in order).
             max_ack_pending: 1,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    fn debouncer_kv_config(prefix: Option<&str>) -> jetstream::kv::Config {
+        jetstream::kv::Config {
+            bucket: crate::nats::nats_stream_name(prefix, DEBOUNCER_BUCKET_NAME),
+            description: "Rebaser dvu debouncers coordination".to_owned(),
+            max_age: Duration::from_secs(5),
+            max_bytes: NATS_KV_MAX_BYTES,
             ..Default::default()
         }
     }

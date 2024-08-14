@@ -6,6 +6,7 @@ rust_library(
     name = "si-std",
     edition = "2021",
     deps = [
+        "//third-party/rust:rand",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_with",
