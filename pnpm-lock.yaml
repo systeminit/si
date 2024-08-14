@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 importers:
@@ -131,7 +131,7 @@ importers:
         version: 4.9.5
       vitepress:
         specifier: ~1.0.2
-        version: 1.0.2(@types/node@18.15.11)(typescript@4.9.5)
+        version: 1.0.2(@algolia/client-search@4.24.0)(@types/node@18.15.11)(search-insights@2.16.3)(typescript@4.9.5)
       vitepress-plugin-lightbox:
         specifier: ^1.0.2
         version: 1.0.2
@@ -140,7 +140,7 @@ importers:
     dependencies:
       '@codemirror/autocomplete':
         specifier: ^6.4.2
-        version: 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)
+        version: 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/common@1.0.1)
       '@codemirror/commands':
         specifier: ^6.1.2
         version: 6.1.2
@@ -182,7 +182,7 @@ importers:
         version: 1.8.0
       '@opentelemetry/auto-instrumentations-web':
         specifier: ^0.39.0
-        version: 0.39.0(@opentelemetry/api@1.8.0)
+        version: 0.39.0(@opentelemetry/api@1.8.0)(zone.js@0.14.10)
       '@opentelemetry/instrumentation-document-load':
         specifier: ^0.38.0
         version: 0.38.0(@opentelemetry/api@1.8.0)
@@ -191,7 +191,7 @@ importers:
         version: 0.38.0(@opentelemetry/api@1.8.0)
       '@opentelemetry/instrumentation-user-interaction':
         specifier: ^0.38.0
-        version: 0.38.0(@opentelemetry/api@1.8.0)
+        version: 0.38.0(@opentelemetry/api@1.8.0)(zone.js@0.14.10)
       '@replit/codemirror-vim':
         specifier: ^6.0.11
         version: 6.0.11(@codemirror/commands@6.1.2)(@codemirror/language@6.3.1)(@codemirror/search@6.3.0)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)
@@ -230,7 +230,7 @@ importers:
         version: 0.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)
       codemirror:
         specifier: ^6.0.1
-        version: 6.0.1
+        version: 6.0.1(@lezer/common@1.0.1)
       date-fns:
         specifier: ^2.29.2
         version: 2.29.3
@@ -586,7 +586,7 @@ importers:
         version: 6.3.3
       tap:
         specifier: ^18.6.1
-        version: 18.6.1(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@4.9.5)
+        version: 18.6.1(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)(typescript@4.9.5)
       ts-node:
         specifier: ^10.9.1
         version: 10.9.1(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@4.9.5)
@@ -895,7 +895,7 @@ importers:
         version: 18.15.11
       codemirror:
         specifier: ^6.0.0
-        version: 6.0.1
+        version: 6.0.1(@lezer/common@1.0.1)
       concurrently:
         specifier: ^5.3.0
         version: 5.3.0
@@ -934,44 +934,47 @@ packages:
       is-fullwidth-code-point: 4.0.0
     dev: true
 
-  /@algolia/autocomplete-core@1.9.3(algoliasearch@4.24.0):
+  /@algolia/autocomplete-core@1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)(search-insights@2.16.3):
     resolution: {integrity: sha512-009HdfugtGCdC4JdXUbVJClA0q0zh24yyePn+KUGk3rP7j8FEe/m5Yo/z65gn6nP/cM39PxpzqKrL7A6fP6PPw==}
     dependencies:
-      '@algolia/autocomplete-plugin-algolia-insights': 1.9.3(algoliasearch@4.24.0)
-      '@algolia/autocomplete-shared': 1.9.3(algoliasearch@4.24.0)
+      '@algolia/autocomplete-plugin-algolia-insights': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)(search-insights@2.16.3)
+      '@algolia/autocomplete-shared': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)
     transitivePeerDependencies:
       - '@algolia/client-search'
       - algoliasearch
       - search-insights
     dev: true
 
-  /@algolia/autocomplete-plugin-algolia-insights@1.9.3(algoliasearch@4.24.0):
+  /@algolia/autocomplete-plugin-algolia-insights@1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)(search-insights@2.16.3):
     resolution: {integrity: sha512-a/yTUkcO/Vyy+JffmAnTWbr4/90cLzw+CC3bRbhnULr/EM0fGNvM13oQQ14f2moLMcVDyAx/leczLlAOovhSZg==}
     peerDependencies:
       search-insights: '>= 1 < 3'
     dependencies:
-      '@algolia/autocomplete-shared': 1.9.3(algoliasearch@4.24.0)
+      '@algolia/autocomplete-shared': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)
+      search-insights: 2.16.3
     transitivePeerDependencies:
       - '@algolia/client-search'
       - algoliasearch
     dev: true
 
-  /@algolia/autocomplete-preset-algolia@1.9.3(algoliasearch@4.24.0):
+  /@algolia/autocomplete-preset-algolia@1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0):
     resolution: {integrity: sha512-d4qlt6YmrLMYy95n5TB52wtNDr6EgAIPH81dvvvW8UmuWRgxEtY0NJiPwl/h95JtG2vmRM804M0DSwMCNZlzRA==}
     peerDependencies:
       '@algolia/client-search': '>= 4.9.1 < 6'
       algoliasearch: '>= 4.9.1 < 6'
     dependencies:
-      '@algolia/autocomplete-shared': 1.9.3(algoliasearch@4.24.0)
+      '@algolia/autocomplete-shared': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)
+      '@algolia/client-search': 4.24.0
       algoliasearch: 4.24.0
     dev: true
 
-  /@algolia/autocomplete-shared@1.9.3(algoliasearch@4.24.0):
+  /@algolia/autocomplete-shared@1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0):
     resolution: {integrity: sha512-Wnm9E4Ye6Rl6sTTqjoymD+l8DjSTHsHboVRYrKgEt8Q7UHm9nYbqhN/i0fhUYA3OAEH7WA8x3jfpnmJm3rKvaQ==}
     peerDependencies:
       '@algolia/client-search': '>= 4.9.1 < 6'
       algoliasearch: '>= 4.9.1 < 6'
     dependencies:
+      '@algolia/client-search': 4.24.0
       algoliasearch: 4.24.0
     dev: true
 
@@ -1516,12 +1519,13 @@ packages:
       csstype: 3.1.1
     dev: false
 
-  /@codemirror/autocomplete@6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1):
+  /@codemirror/autocomplete@6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/common@1.0.1):
     resolution: {integrity: sha512-8WE2xp+D0MpWEv5lZ6zPW1/tf4AGb358T5GWYiKEuCP8MvFfT3tH2mIF9Y2yr2e3KbHuSvsVhosiEyqCpiJhZQ==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
+      '@lezer/common': ^1.0.0
     dependencies:
       '@codemirror/language': 6.3.1
       '@codemirror/state': 6.1.4
@@ -1539,7 +1543,7 @@ packages:
   /@codemirror/lang-javascript@6.1.2:
     resolution: {integrity: sha512-OcwLfZXdQ1OHrLiIcKCn7MqZ7nx205CMKlhe+vL88pe2ymhT9+2P+QhwkYGxMICj8TDHyp8HFKVwpiisUT7iEQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)
+      '@codemirror/autocomplete': 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/common@1.0.1)
       '@codemirror/language': 6.3.1
       '@codemirror/lint': 6.1.0
       '@codemirror/state': 6.1.4
@@ -1660,10 +1664,10 @@ packages:
     resolution: {integrity: sha512-+sbxb71sWre+PwDK7X2T8+bhS6clcVMLwBPznX45Qu6opJcgRjAp7gYSDzVFp187J+feSj5dNBN1mJoi6ckkUQ==}
     dev: true
 
-  /@docsearch/js@3.6.0:
+  /@docsearch/js@3.6.0(@algolia/client-search@4.24.0)(search-insights@2.16.3):
     resolution: {integrity: sha512-QujhqINEElrkIfKwyyyTfbsfMAYCkylInLYMRqHy7PHc8xTBQCow73tlo/Kc7oIwBrCLf0P3YhjlOeV4v8hevQ==}
     dependencies:
-      '@docsearch/react': 3.6.0
+      '@docsearch/react': 3.6.0(@algolia/client-search@4.24.0)(search-insights@2.16.3)
       preact: 10.22.1
     transitivePeerDependencies:
       - '@algolia/client-search'
@@ -1673,7 +1677,7 @@ packages:
       - search-insights
     dev: true
 
-  /@docsearch/react@3.6.0:
+  /@docsearch/react@3.6.0(@algolia/client-search@4.24.0)(search-insights@2.16.3):
     resolution: {integrity: sha512-HUFut4ztcVNmqy9gp/wxNbC7pTOHhgVVkHVGCACTuLhUKUhKAF9KYHJtMiLUJxEqiFLQiuri1fWF8zqwM/cu1w==}
     peerDependencies:
       '@types/react': '>= 16.8.0 < 19.0.0'
@@ -1690,10 +1694,11 @@ packages:
       search-insights:
         optional: true
     dependencies:
-      '@algolia/autocomplete-core': 1.9.3(algoliasearch@4.24.0)
-      '@algolia/autocomplete-preset-algolia': 1.9.3(algoliasearch@4.24.0)
+      '@algolia/autocomplete-core': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)(search-insights@2.16.3)
+      '@algolia/autocomplete-preset-algolia': 1.9.3(@algolia/client-search@4.24.0)(algoliasearch@4.24.0)
       '@docsearch/css': 3.6.0
       algoliasearch: 4.24.0
+      search-insights: 2.16.3
     transitivePeerDependencies:
       - '@algolia/client-search'
     dev: true
@@ -2144,7 +2149,7 @@ packages:
     resolution: {integrity: sha512-ebbEtlI7dxXF5ziNdr05mOY8NnDiPB1XvAlLHctRt/Rc+C3LCOVW5imUVX+mhvUhnNzmPBHewUkOFgGlCxgdAA==}
     dependencies:
       ajv: 8.12.0
-      ajv-formats: 2.1.1
+      ajv-formats: 2.1.1(ajv@8.12.0)
       fast-uri: 2.2.0
     dev: true
 
@@ -3581,7 +3586,7 @@ packages:
     engines: {node: '>=8.0.0'}
     dev: false
 
-  /@opentelemetry/auto-instrumentations-web@0.39.0(@opentelemetry/api@1.8.0):
+  /@opentelemetry/auto-instrumentations-web@0.39.0(@opentelemetry/api@1.8.0)(zone.js@0.14.10):
     resolution: {integrity: sha512-RnN2NdWASajyRmErDk/8aMfSb6Vyphpg1bc7j+5Hz0+XrlokmniTyaQT04z6AU8EYLX06dM26r56/RhUV6yNJQ==}
     engines: {node: '>=14'}
     peerDependencies:
@@ -3592,8 +3597,9 @@ packages:
       '@opentelemetry/instrumentation': 0.51.1(@opentelemetry/api@1.8.0)
       '@opentelemetry/instrumentation-document-load': 0.38.0(@opentelemetry/api@1.8.0)
       '@opentelemetry/instrumentation-fetch': 0.51.1(@opentelemetry/api@1.8.0)
-      '@opentelemetry/instrumentation-user-interaction': 0.38.0(@opentelemetry/api@1.8.0)
+      '@opentelemetry/instrumentation-user-interaction': 0.38.0(@opentelemetry/api@1.8.0)(zone.js@0.14.10)
       '@opentelemetry/instrumentation-xml-http-request': 0.51.1(@opentelemetry/api@1.8.0)
+      zone.js: 0.14.10
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -3667,7 +3673,7 @@ packages:
       - supports-color
     dev: false
 
-  /@opentelemetry/instrumentation-user-interaction@0.38.0(@opentelemetry/api@1.8.0):
+  /@opentelemetry/instrumentation-user-interaction@0.38.0(@opentelemetry/api@1.8.0)(zone.js@0.14.10):
     resolution: {integrity: sha512-/UZT7zZUpi3WavRW6GmxKSa3d3PQ1ApM9nG9PKq95d4w/zhXBaYiqGT/wzcyXefW4TL2oAq4sjJvt1rZpOlImA==}
     engines: {node: '>=14'}
     peerDependencies:
@@ -3678,6 +3684,7 @@ packages:
       '@opentelemetry/core': 1.24.1(@opentelemetry/api@1.8.0)
       '@opentelemetry/instrumentation': 0.51.1(@opentelemetry/api@1.8.0)
       '@opentelemetry/sdk-trace-web': 1.24.1(@opentelemetry/api@1.8.0)
+      zone.js: 0.14.10
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -4438,7 +4445,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       function-loop: 4.0.0
     dev: true
 
@@ -4448,20 +4455,20 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       is-actual-promise: 1.0.1
     dev: true
 
-  /@tapjs/asserts@1.1.17(@tapjs/core@1.4.6):
+  /@tapjs/asserts@1.1.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-eKmbWBORDXu9bUHtPTu7qFrXNj5UeeH2nABJeP9BGHIn2ydmTgMEWCO3E+ljf7tisHchY5/x672lr99+O/mbTQ==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/stack': 1.2.7
       is-actual-promise: 1.0.1
-      tcompare: 6.4.5
+      tcompare: 6.4.5(react-dom@18.3.1)(react@18.2.0)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - react
@@ -4474,7 +4481,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       function-loop: 4.0.0
     dev: true
 
@@ -4484,7 +4491,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       is-actual-promise: 1.0.1
     dev: true
 
@@ -4495,8 +4502,8 @@ packages:
       '@tapjs/core': 1.4.6
       '@tapjs/test': 1.3.17
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
-      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
+      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       chalk: 5.3.0
       jackspeak: 2.3.6
       polite-json: 4.0.1
@@ -4504,13 +4511,13 @@ packages:
       walk-up-path: 3.0.1
     dev: true
 
-  /@tapjs/core@1.4.6(@swc/core@1.3.36)(@types/node@18.15.11):
+  /@tapjs/core@1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-cAKtdGJslrziwi/RJBU7jF930P/eSsemv295t6yLekNVP0XUCNtLFYirxuS1Xwob0nt0g/k+94xXB7o1wdTQvA==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     dependencies:
       '@tapjs/processinfo': 3.1.6
       '@tapjs/stack': 1.2.7
-      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)
+      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       async-hook-domain: 4.0.1
       diff: 5.1.0
       is-actual-promise: 1.0.1
@@ -4518,7 +4525,7 @@ packages:
       signal-exit: 4.1.0
       tap-parser: 15.3.1
       tap-yaml: 2.2.1
-      tcompare: 6.4.5
+      tcompare: 6.4.5(react-dom@18.3.1)(react@18.2.0)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - '@swc/core'
@@ -4541,7 +4548,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     dev: true
 
   /@tapjs/fixture@1.2.17(@tapjs/core@1.4.6):
@@ -4550,7 +4557,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       mkdirp: 3.0.1
       rimraf: 5.0.5
     dev: true
@@ -4562,7 +4569,7 @@ packages:
       '@tapjs/core': 1.4.6
     dependencies:
       '@tapjs/after': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/stack': 1.2.7
     dev: true
 
@@ -4573,7 +4580,7 @@ packages:
       '@tapjs/core': 1.4.6
     dependencies:
       '@tapjs/after': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/stack': 1.2.7
       resolve-import: 1.4.5
       walk-up-path: 3.0.1
@@ -4585,7 +4592,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/error-serdes': 1.2.1
       '@tapjs/stack': 1.2.7
       tap-parser: 15.3.1
@@ -4601,14 +4608,14 @@ packages:
       uuid: 8.3.2
     dev: true
 
-  /@tapjs/reporter@1.3.15(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)(typescript@4.9.5):
+  /@tapjs/reporter@1.3.15(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)(react-dom@18.3.1)(typescript@4.9.5):
     resolution: {integrity: sha512-us1vXd6TW1V8wJxxnP2a8DNSP1WFTpODyYukqWg7ym5nCalREYnz2MFsn65rRNu/xJlmqsmv+9P63rupud7Zlg==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
       '@tapjs/config': 2.4.14(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/stack': 1.2.7
       chalk: 5.3.0
       ink: 4.4.1(react@18.2.0)(typescript@4.9.5)
@@ -4620,7 +4627,7 @@ packages:
       string-length: 6.0.0
       tap-parser: 15.3.1
       tap-yaml: 2.2.1
-      tcompare: 6.4.5(react@18.2.0)
+      tcompare: 6.4.5(react-dom@18.3.1)(react@18.2.0)
     transitivePeerDependencies:
       - '@tapjs/test'
       - '@types/react'
@@ -4631,7 +4638,7 @@ packages:
       - utf-8-validate
     dev: true
 
-  /@tapjs/run@1.4.16(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(typescript@4.9.5):
+  /@tapjs/run@1.4.16(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)(typescript@4.9.5):
     resolution: {integrity: sha512-ZTESjBDj5SitZgWz2hQdzfBoxgaFs89jQjWzqobcdfro0iF7TVRpSrvpz9GTMdo2Tu9aeFfMNfmaAtwNWnDabw==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     hasBin: true
@@ -4641,12 +4648,12 @@ packages:
       '@tapjs/after': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/before': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/config': 2.4.14(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/processinfo': 3.1.6
-      '@tapjs/reporter': 1.3.15(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)(typescript@4.9.5)
+      '@tapjs/reporter': 1.3.15(@tapjs/core@1.4.6)(@tapjs/test@1.3.17)(react-dom@18.3.1)(typescript@4.9.5)
       '@tapjs/spawn': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/stdin': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)
+      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       c8: 8.0.1
       chalk: 5.3.0
       chokidar: 3.5.3
@@ -4662,7 +4669,7 @@ packages:
       signal-exit: 4.1.0
       tap-parser: 15.3.1
       tap-yaml: 2.2.1
-      tcompare: 6.4.5
+      tcompare: 6.4.5(react-dom@18.3.1)(react@18.2.0)
       trivial-deferred: 2.0.0
       which: 4.0.0
     transitivePeerDependencies:
@@ -4680,15 +4687,15 @@ packages:
       - utf-8-validate
     dev: true
 
-  /@tapjs/snapshot@1.2.17(@tapjs/core@1.4.6):
+  /@tapjs/snapshot@1.2.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-xDHys854ZA8s/1uCkE5PgBz4H1vYKChD6a4xjLVkaoRxpBHVp/IJZCD+8d69DRGnyuA4x2MGh0JLClTA9bLGrA==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       is-actual-promise: 1.0.1
-      tcompare: 6.4.5
+      tcompare: 6.4.5(react-dom@18.3.1)(react@18.2.0)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - react
@@ -4701,7 +4708,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     dev: true
 
   /@tapjs/stack@1.2.7:
@@ -4715,10 +4722,10 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     dev: true
 
-  /@tapjs/test@1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11):
+  /@tapjs/test@1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-yQ4uHC2GaDS+Gr5qwx9uMGxqvpYgnlVY+QexBReSeYZthWIN0KD8HDvnVt4An5Sx/Qhd7UlnNpNMBd6AkvPEew==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     hasBin: true
@@ -4728,16 +4735,16 @@ packages:
       '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.5(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@5.2.2)
       '@tapjs/after': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/after-each': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/asserts': 1.1.17(@tapjs/core@1.4.6)
+      '@tapjs/asserts': 1.1.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/before': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/before-each': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/filter': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/fixture': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/intercept': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/mock': 1.2.15(@tapjs/core@1.4.6)
       '@tapjs/node-serialize': 1.2.6(@tapjs/core@1.4.6)
-      '@tapjs/snapshot': 1.2.17(@tapjs/core@1.4.6)
+      '@tapjs/snapshot': 1.2.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/spawn': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/stdin': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/typescript': 1.3.6(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(typescript@5.2.2)
@@ -4766,7 +4773,7 @@ packages:
       '@tapjs/core': 1.4.6
     dependencies:
       '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.5(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@4.9.5)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -4781,7 +4788,7 @@ packages:
       '@tapjs/core': 1.4.6
     dependencies:
       '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.5(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@5.2.2)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -4795,7 +4802,7 @@ packages:
     peerDependencies:
       '@tapjs/core': 1.4.6
     dependencies:
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
     dev: true
 
   /@tootallnate/once@1.1.2:
@@ -6337,8 +6344,13 @@ packages:
       ajv: 8.12.0
     dev: true
 
-  /ajv-formats@2.1.1:
+  /ajv-formats@2.1.1(ajv@8.12.0):
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
     dependencies:
       ajv: 8.12.0
     dev: true
@@ -7789,16 +7801,18 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /codemirror@6.0.1:
+  /codemirror@6.0.1(@lezer/common@1.0.1):
     resolution: {integrity: sha512-J8j+nZ+CdWmIeFIGXEFbFPtpiYacFMDR8GlHK3IyHQJMCaVRfGx9NT+Hxivv1ckLWPvNdZqndbr/7lVhrf/Svg==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)
+      '@codemirror/autocomplete': 6.4.2(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/common@1.0.1)
       '@codemirror/commands': 6.1.2
       '@codemirror/language': 6.3.1
       '@codemirror/lint': 6.1.0
       '@codemirror/search': 6.3.0
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.7.1
+    transitivePeerDependencies:
+      - '@lezer/common'
 
   /collect-v8-coverage@1.0.1:
     resolution: {integrity: sha512-iBPtljfCNcTKNAto0KEtDfZ3qzjJvqE3aTGZsbhjSBlorqpXJlaWWtPO35D+ZImoC3KWejX64o+yPGxhWSTzfg==}
@@ -10458,7 +10472,7 @@ packages:
     dependencies:
       '@fastify/deepmerge': 1.3.0
       ajv: 8.12.0
-      ajv-formats: 2.1.1
+      ajv-formats: 2.1.1(ajv@8.12.0)
       fast-deep-equal: 3.1.3
       fast-uri: 2.2.0
       rfdc: 1.3.0
@@ -16906,18 +16920,17 @@ packages:
       strip-json-comments: 2.0.1
     dev: true
 
-  /react-element-to-jsx-string@15.0.0:
-    resolution: {integrity: sha512-UDg4lXB6BzlobN60P8fHWVPX3Kyw8ORrTeBtClmIlGdkOOE+GYQSFvmEU5iLLpwp/6v42DINwNcwOhOLfQ//FQ==}
+  /react-dom@18.3.1(react@18.2.0):
+    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
     peerDependencies:
-      react: ^0.14.8 || ^15.0.1 || ^16.0.0 || ^17.0.1 || ^18.0.0
-      react-dom: ^0.14.8 || ^15.0.1 || ^16.0.0 || ^17.0.1 || ^18.0.0
+      react: ^18.3.1
     dependencies:
-      '@base2/pretty-print-object': 1.0.1
-      is-plain-object: 5.0.0
-      react-is: 18.1.0
+      loose-envify: 1.4.0
+      react: 18.2.0
+      scheduler: 0.23.2
     dev: true
 
-  /react-element-to-jsx-string@15.0.0(react@18.2.0):
+  /react-element-to-jsx-string@15.0.0(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-UDg4lXB6BzlobN60P8fHWVPX3Kyw8ORrTeBtClmIlGdkOOE+GYQSFvmEU5iLLpwp/6v42DINwNcwOhOLfQ//FQ==}
     peerDependencies:
       react: ^0.14.8 || ^15.0.1 || ^16.0.0 || ^17.0.1 || ^18.0.0
@@ -16926,6 +16939,7 @@ packages:
       '@base2/pretty-print-object': 1.0.1
       is-plain-object: 5.0.0
       react: 18.2.0
+      react-dom: 18.3.1(react@18.2.0)
       react-is: 18.1.0
     dev: true
 
@@ -17617,6 +17631,16 @@ packages:
     resolution: {integrity: sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==}
     dependencies:
       loose-envify: 1.4.0
+    dev: true
+
+  /scheduler@0.23.2:
+    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
+    dependencies:
+      loose-envify: 1.4.0
+    dev: true
+
+  /search-insights@2.16.3:
+    resolution: {integrity: sha512-hSHy/s4Zk2xibhj9XTCACB+1PqS+CaJxepGNBhKc/OsHRpqvHAUAm5+uZ6kJJbGXn0pb3XqekHjg6JAqPExzqg==}
     dev: true
 
   /secure-compare@3.0.1:
@@ -18702,27 +18726,27 @@ packages:
       yaml-types: 0.3.0(yaml@2.3.4)
     dev: true
 
-  /tap@18.6.1(@swc/core@1.3.36)(@types/node@18.15.11)(typescript@4.9.5):
+  /tap@18.6.1(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)(typescript@4.9.5):
     resolution: {integrity: sha512-5cBQhJ1gdbsrTR3tA5kZZTts0HyOML6bcM7pEF7GF8d6y1ajfRMjbInS1Ty7/x2Ip0ko3cY1dYjPJ9JFNPsm7w==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     hasBin: true
     dependencies:
       '@tapjs/after': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/after-each': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/asserts': 1.1.17(@tapjs/core@1.4.6)
+      '@tapjs/asserts': 1.1.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/before': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/before-each': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)
+      '@tapjs/core': 1.4.6(@swc/core@1.3.36)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/filter': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/fixture': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/intercept': 1.2.17(@tapjs/core@1.4.6)
       '@tapjs/mock': 1.2.15(@tapjs/core@1.4.6)
       '@tapjs/node-serialize': 1.2.6(@tapjs/core@1.4.6)
-      '@tapjs/run': 1.4.16(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(typescript@4.9.5)
-      '@tapjs/snapshot': 1.2.17(@tapjs/core@1.4.6)
+      '@tapjs/run': 1.4.16(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)(typescript@4.9.5)
+      '@tapjs/snapshot': 1.2.17(@tapjs/core@1.4.6)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/spawn': 1.1.17(@tapjs/core@1.4.6)
       '@tapjs/stdin': 1.1.17(@tapjs/core@1.4.6)
-      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)
+      '@tapjs/test': 1.3.17(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(react-dom@18.3.1)(react@18.2.0)
       '@tapjs/typescript': 1.3.6(@swc/core@1.3.36)(@tapjs/core@1.4.6)(@types/node@18.15.11)(typescript@4.9.5)
       '@tapjs/worker': 1.1.17(@tapjs/core@1.4.6)
       resolve-import: 1.4.5
@@ -18782,23 +18806,12 @@ packages:
       yallist: 4.0.0
     dev: true
 
-  /tcompare@6.4.5:
+  /tcompare@6.4.5(react-dom@18.3.1)(react@18.2.0):
     resolution: {integrity: sha512-Whuz9xlKKI2XXICKDSDRKjXdBuC6gBNOgmEUtH7UFyQeYzfUMQ19DyjZULarGKDGFhgOg3CJ+IQUEfpkOPg0Uw==}
     engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
     dependencies:
       diff: 5.1.0
-      react-element-to-jsx-string: 15.0.0
-    transitivePeerDependencies:
-      - react
-      - react-dom
-    dev: true
-
-  /tcompare@6.4.5(react@18.2.0):
-    resolution: {integrity: sha512-Whuz9xlKKI2XXICKDSDRKjXdBuC6gBNOgmEUtH7UFyQeYzfUMQ19DyjZULarGKDGFhgOg3CJ+IQUEfpkOPg0Uw==}
-    engines: {node: 16 >=16.17.0 || 18 >= 18.6.0 || >=20}
-    dependencies:
-      diff: 5.1.0
-      react-element-to-jsx-string: 15.0.0(react@18.2.0)
+      react-element-to-jsx-string: 15.0.0(react-dom@18.3.1)(react@18.2.0)
     transitivePeerDependencies:
       - react
       - react-dom
@@ -20131,7 +20144,7 @@ packages:
       photoswipe: 5.4.4
     dev: true
 
-  /vitepress@1.0.2(@types/node@18.15.11)(typescript@4.9.5):
+  /vitepress@1.0.2(@algolia/client-search@4.24.0)(@types/node@18.15.11)(search-insights@2.16.3)(typescript@4.9.5):
     resolution: {integrity: sha512-bEj9yTEdWyewJFOhEREZF+mXuAgOq27etuJZT6DZSp+J3XpQstXMJc5piSVwhZBtuj8OfA0iXy+jdP1c71KMYQ==}
     hasBin: true
     peerDependencies:
@@ -20144,7 +20157,7 @@ packages:
         optional: true
     dependencies:
       '@docsearch/css': 3.6.0
-      '@docsearch/js': 3.6.0
+      '@docsearch/js': 3.6.0(@algolia/client-search@4.24.0)(search-insights@2.16.3)
       '@shikijs/core': 1.10.1
       '@shikijs/transformers': 1.10.1
       '@types/markdown-it': 13.0.8
@@ -21092,4 +21105,8 @@ packages:
 
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
+    dev: false
+
+  /zone.js@0.14.10:
+    resolution: {integrity: sha512-YGAhaO7J5ywOXW6InXNlLmfU194F8lVgu7bRntUF3TiG8Y3nBK0x1UJJuHUP/e8IyihkjCYqhCScpSwnlaSRkQ==}
     dev: false
