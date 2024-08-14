@@ -383,6 +383,10 @@ export const useModuleStore = () => {
               onFail: () => {
                 changeSetsStore.creatingChangeSet = false;
               },
+              onSuccess: () => {
+                // reset installed list
+                this.SYNC();
+              },
             });
           },
 

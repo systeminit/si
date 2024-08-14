@@ -340,6 +340,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetAbandoned",
             callback: async (data) => {
+              const changeSetName = this.selectedChangeSet?.name;
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
                   await this.setActiveChangeset(this.headChangeSetId);
@@ -347,7 +348,7 @@ export function useChangeSetsStore() {
                     component: MovedToHead,
                     props: {
                       icon: "trash",
-                      changeSetName: this.selectedChangeSet?.name,
+                      changeSetName,
                       action: "abandoned",
                     },
                   });
