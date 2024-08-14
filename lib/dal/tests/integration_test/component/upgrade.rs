@@ -7,7 +7,8 @@ use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient};
 use dal::func::FuncAssociations;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, Component, DalContext, Prop};
+use dal::{AttributeValue, Component, ComponentType, DalContext, Prop};
+use dal_test::expected::{ExpectComponent, ExpectSchemaVariant};
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -18,18 +19,13 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn auto_upgrade_component(ctx: &mut DalContext) {
     // Let's create a new asset
-    let asset_name = "paulsTestAsset".to_string();
-    let description = None;
-    let link = None;
-    let category = "Integration Tests".to_string();
-    let color = "#00b0b0".to_string();
     let variant_zero = VariantAuthoringClient::create_schema_and_variant(
         ctx,
-        asset_name.clone(),
-        description.clone(),
-        link.clone(),
-        category.clone(),
-        color.clone(),
+        "paulsTestAsset",
+        None,
+        None,
+        "Integration Tests",
+        "#00b0b0",
     )
     .await
     .expect("Unable to create new asset");
@@ -324,4 +320,180 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         upgraded_component.can_be_upgraded, false,
         "the old asset should not be on the graph anymore, and the current one should be upgraded"
     );
+}
+
+#[test]
+async fn upgrade_component_type(ctx: &mut DalContext) {
+    //
+    // Create a new schema and variant set to component_type: ConfigurationFrameDown
+    //
+    let variant_zero = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant(
+            ctx,
+            "any variant",
+            None,
+            None,
+            "Integration Tests",
+            "#00b0b0",
+        )
+        .await
+        .expect("Unable to create new asset")
+        .id,
+    );
+    let updated = update_schema_variant_component_type(
+        ctx,
+        variant_zero,
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await;
+    assert_eq!(variant_zero, updated);
+    assert_eq!(
+        ComponentType::ConfigurationFrameDown,
+        updated.get_type(ctx).await
+    );
+
+    //
+    // Create a new component from the variant, with child
+    //
+    let component = variant_zero.create_component(ctx).await;
+    let child = ExpectComponent::create(ctx, "Docker Image").await;
+    child.upsert_parent(ctx, component).await;
+
+    assert_eq!(variant_zero, component.schema_variant(ctx).await);
+    assert_eq!(
+        ComponentType::ConfigurationFrameDown,
+        component.get_type(ctx).await
+    );
+
+    //
+    // Update the variant to be a Component that can't have parents
+    //
+    let variant_one =
+        update_schema_variant_component_type(ctx, variant_zero, ComponentType::Component).await;
+    assert_ne!(variant_zero, variant_one);
+    assert_eq!(ComponentType::Component, variant_one.get_type(ctx).await);
+
+    //
+    // Check that the component is upgraded but is still set to ConfigurationFrameDown
+    //
+    assert_eq!(variant_one, component.schema_variant(ctx).await);
+    assert_eq!(
+        ComponentType::ConfigurationFrameDown,
+        component.get_type(ctx).await
+    );
+}
+
+#[test]
+async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
+    //
+    // Create a new schema and variant set to component_type: ConfigurationFrameDown
+    //
+    let variant_zero = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant(
+            ctx,
+            "any variant",
+            None,
+            None,
+            "Integration Tests",
+            "#00b0b0",
+        )
+        .await
+        .expect("Unable to create new asset")
+        .id,
+    );
+    let updated = update_schema_variant_component_type(
+        ctx,
+        variant_zero,
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await;
+    assert_eq!(variant_zero, updated);
+    assert_eq!(
+        ComponentType::ConfigurationFrameDown,
+        updated.get_type(ctx).await
+    );
+
+    //
+    // Create a new component from the variant, and set its type to Component
+    //
+    let component = variant_zero.create_component(ctx).await;
+    component
+        .component(ctx)
+        .await
+        .set_type(ctx, ComponentType::Component)
+        .await
+        .expect("type");
+
+    assert_eq!(variant_zero, component.schema_variant(ctx).await);
+    assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+
+    //
+    // Update the variant (we add a new description)
+    //
+    let variant_one = update_schema_variant_description(ctx, variant_zero, "eek").await;
+    assert_ne!(variant_zero, variant_one);
+    assert_eq!(
+        ComponentType::ConfigurationFrameDown,
+        variant_one.get_type(ctx).await
+    );
+
+    //
+    // Check that the component is upgraded but is still set to ConfigurationFrameDown
+    //
+    assert_eq!(variant_one, component.schema_variant(ctx).await);
+    assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+}
+
+async fn update_schema_variant_component_type(
+    ctx: &mut DalContext,
+    variant: ExpectSchemaVariant,
+    component_type: ComponentType,
+) -> ExpectSchemaVariant {
+    let variant = variant.schema_variant(ctx).await;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant.id(),
+        "test schema",
+        variant.display_name(),
+        variant.category(),
+        variant.description(),
+        variant.link(),
+        variant.color(),
+        component_type,
+        None as Option<String>,
+    )
+    .await
+    .expect("save variant contents");
+
+    VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+        .await
+        .expect("unable to update asset")
+        .into()
+}
+
+async fn update_schema_variant_description(
+    ctx: &mut DalContext,
+    variant: ExpectSchemaVariant,
+    description: impl Into<String>,
+) -> ExpectSchemaVariant {
+    let variant = variant.schema_variant(ctx).await;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant.id(),
+        "test schema",
+        variant.display_name(),
+        variant.category(),
+        Some(description.into()),
+        variant.link(),
+        variant.color(),
+        variant.component_type(),
+        None as Option<String>,
+    )
+    .await
+    .expect("save variant contents");
+
+    VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+        .await
+        .expect("unable to update asset")
+        .into()
 }

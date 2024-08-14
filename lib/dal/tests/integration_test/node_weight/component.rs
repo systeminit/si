@@ -4,8 +4,7 @@ use dal::component::frame::Frame;
 use dal::{Component, ComponentId, DalContext};
 use dal_test::expected::{
     self, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
-    create_component_for_default_schema_name, fork_from_head_change_set,
-    update_visibility_and_snapshot_to_visibility,
+    fork_from_head_change_set, update_visibility_and_snapshot_to_visibility, ExpectComponent,
 };
 use dal_test::helpers::connect_components_with_socket_names;
 use dal_test::test;
@@ -13,14 +12,9 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
-    let child_one =
-        create_component_for_default_schema_name(ctx, "small even lego", "child component").await;
-
-    let frame_one =
-        create_component_for_default_schema_name(ctx, "small odd lego", "frame one").await;
-
-    let frame_two =
-        create_component_for_default_schema_name(ctx, "small odd lego", "frame two").await;
+    let child_one = ExpectComponent::create_named(ctx, "small even lego", "child component").await;
+    let frame_one = ExpectComponent::create_named(ctx, "small odd lego", "frame one").await;
+    let frame_two = ExpectComponent::create_named(ctx, "small odd lego", "frame two").await;
 
     expected::apply_change_set_to_base(ctx).await;
 
@@ -160,16 +154,15 @@ async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
 async fn deleting_a_component_deletes_outgoing_connections_in_other_change_sets(
     ctx: &mut DalContext,
 ) {
-    let docker_image_1 =
-        create_component_for_default_schema_name(ctx, "Docker Image", "docker 1").await;
-    let docker_image_2 =
-        create_component_for_default_schema_name(ctx, "Docker Image", "docker 2").await;
-    let docker_image_3 =
-        create_component_for_default_schema_name(ctx, "Docker Image", "docker 3").await;
-    let docker_image_4 =
-        create_component_for_default_schema_name(ctx, "Docker Image", "docker 4").await;
+    let docker_image_1 = ExpectComponent::create_named(ctx, "Docker Image", "docker 1").await;
+    let docker_image_2 = ExpectComponent::create_named(ctx, "Docker Image", "docker 2").await;
+    let docker_image_3 = ExpectComponent::create_named(ctx, "Docker Image", "docker 3").await;
+    let docker_image_4 = ExpectComponent::create_named(ctx, "Docker Image", "docker 4").await;
 
-    let butane = create_component_for_default_schema_name(ctx, "Butane", "butane").await;
+    let butane = ExpectComponent::create_named(ctx, "Butane", "butane")
+        .await
+        .component(ctx)
+        .await;
 
     expected::apply_change_set_to_base(ctx).await;
 

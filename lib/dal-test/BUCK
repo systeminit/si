@@ -21,6 +21,7 @@ rust_library(
         "//third-party/rust:async-recursion",
         "//third-party/rust:color-eyre",
         "//third-party/rust:derive_builder",
+        "//third-party/rust:derive_more",
         "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",

@@ -15,6 +15,7 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
+derive_more = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }

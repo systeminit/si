@@ -19,11 +19,10 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
     //
     // Make a docker image with two ExposedPorts
     //
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), "root/domain/ExposedPorts").await;
+    let component = ExpectComponent::create(ctx, "Docker Image").await;
+    let exposed_ports = component
+        .prop(ctx, ["root", "domain", "ExposedPorts"])
+        .await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "2").await;
     assert_eq!(json!(["1", "2"]), exposed_ports.get(ctx).await);
@@ -46,11 +45,10 @@ async fn correct_transforms_no_corrections(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_added_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = ExpectComponent::create(ctx, "Docker Image").await;
+    let exposed_ports = component
+        .prop(ctx, ["root", "domain", "ExposedPorts"])
+        .await;
     exposed_ports.push(ctx, "1").await;
     expected::apply_change_set_to_base(ctx).await;
     assert_eq!(json!(["1"]), exposed_ports.get(ctx).await);
@@ -79,11 +77,10 @@ async fn correct_transforms_added_edges(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = ExpectComponent::create(ctx, "Docker Image").await;
+    let exposed_ports = component
+        .prop(ctx, ["root", "domain", "ExposedPorts"])
+        .await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;
@@ -92,13 +89,13 @@ async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
 
     // Fork a change set, remove 22 and add 2
     let change_set_2 = expected::fork_from_head_change_set(ctx).await;
-    exposed_ports.remove_child_at(ctx, 2).await;
+    exposed_ports.children(ctx).await[2].remove(ctx).await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
     assert_eq!(json!(["1", "33"]), exposed_ports.get(ctx).await);
 
     // Fork a separate change set, remove 33 and add 3
     let change_set_3 = expected::fork_from_head_change_set(ctx).await;
-    exposed_ports.remove_child_at(ctx, 1).await;
+    exposed_ports.children(ctx).await[1].remove(ctx).await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
     assert_eq!(json!(["1", "22"]), dbg!(exposed_ports.get(ctx).await));
 
@@ -120,11 +117,10 @@ async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
 #[test]
 async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
     // Make a docker image with ExposedPorts = 1, 22, and 33
-    let component =
-        expected::create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await;
-    let exposed_ports =
-        ExpectComponent::prop(ctx, component.id(), ["root", "domain", "ExposedPorts"]).await;
+    let component = ExpectComponent::create(ctx, "Docker Image").await;
+    let exposed_ports = component
+        .prop(ctx, ["root", "domain", "ExposedPorts"])
+        .await;
     exposed_ports.push(ctx, "1").await;
     exposed_ports.push(ctx, "33").await;
     exposed_ports.push(ctx, "22").await;
@@ -135,7 +131,7 @@ async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
     let change_set_2 = expected::fork_from_head_change_set(ctx).await;
     // Add "2" and remove "22"
     exposed_ports.push(ctx, "2").await;
-    exposed_ports.remove_child_at(ctx, 2).await;
+    exposed_ports.children(ctx).await[2].remove(ctx).await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
     assert_eq!(json!(["1", "33", "2"]), exposed_ports.get(ctx).await);
 
@@ -143,7 +139,7 @@ async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
     let change_set_3 = expected::fork_from_head_change_set(ctx).await;
     // Add "3" and remove "33"
     exposed_ports.push(ctx, "3").await;
-    exposed_ports.remove_child_at(ctx, 1).await;
+    exposed_ports.children(ctx).await[1].remove(ctx).await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
     assert_eq!(json!(["1", "22", "3"]), exposed_ports.get(ctx).await);
 
