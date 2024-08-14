@@ -7,8 +7,8 @@ use crate::{
     WorkspaceSnapshotGraphV2,
 };
 
-mod attribute_value_build_view;
 mod detect_updates;
+mod exclusive_outgoing_edges;
 mod rebase;
 
 #[allow(dead_code)]

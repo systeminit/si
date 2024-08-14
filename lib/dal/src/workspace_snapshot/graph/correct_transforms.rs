@@ -10,6 +10,7 @@ pub fn correct_transforms(
 ) -> CorrectTransformsResult<Vec<Update>> {
     let mut new_nodes = HashMap::new();
     let mut nodes_to_interrogate = HashSet::new();
+
     for update in &updates {
         match update {
             Update::NewEdge {

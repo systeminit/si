@@ -3,6 +3,10 @@ use thiserror::Error;
 
 use super::NodeWeightDiscriminants;
 
+pub mod correct_exclusive_outgoing_edge;
+
+pub use correct_exclusive_outgoing_edge::CorrectExclusiveOutgoingEdge;
+
 #[derive(Debug, Error)]
 pub enum CorrectTransformsError {
     #[error("expected a node weight of kind {0} but got another, or none")]

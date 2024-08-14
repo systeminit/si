@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
-use traits::{CorrectTransforms, CorrectTransformsResult};
+use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
 
 use crate::{
     action::prototype::ActionKind,
@@ -694,7 +694,7 @@ impl CorrectTransforms for NodeWeight {
         workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
         updates: Vec<Update>,
     ) -> CorrectTransformsResult<Vec<Update>> {
-        match self {
+        let updates = match self {
             NodeWeight::Action(weight) => {
                 weight.correct_transforms(workspace_snapshot_graph, updates)
             }
@@ -734,6 +734,29 @@ impl CorrectTransforms for NodeWeight {
             NodeWeight::Secret(weight) => {
                 weight.correct_transforms(workspace_snapshot_graph, updates)
             }
+        }?;
+
+        Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
+    }
+}
+
+impl CorrectExclusiveOutgoingEdge for NodeWeight {
+    fn exclusive_outgoing_edges(&self) -> Vec<EdgeWeightKindDiscriminants> {
+        match self {
+            NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::ActionPrototype(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::AttributeValue(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Category(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Component(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Content(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::DependentValueRoot(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Func(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::FuncArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
         }
+        .to_vec()
     }
 }
