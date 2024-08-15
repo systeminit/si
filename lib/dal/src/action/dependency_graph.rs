@@ -4,6 +4,7 @@ use telemetry::prelude::*;
 
 use crate::{
     action::{Action, ActionId},
+    component::inferred_connection_graph::InferredConnectionGraph,
     dependency_graph::DependencyGraph,
     Component, ComponentId, DalContext,
 };
@@ -65,6 +66,10 @@ impl ActionDependencyGraph {
         // TODO: Account for explicitly defiend dependencies between actions. These should be edges
         //       directly between two Actions, but are not implemented yet.
 
+        // Get all inferred connections up front so we don't build this tree each time
+        let components_to_find = actions_by_component_id.keys().copied().collect_vec();
+        let component_tree =
+            InferredConnectionGraph::assemble_for_components(ctx, components_to_find).await?;
         // Action dependencies are primarily based on the data flow between Components. Things that
         // feed data into other things must have their actions run before the actions for the
         // things they are feeding data into.
@@ -76,15 +81,17 @@ impl ActionDependencyGraph {
                     .or_default()
                     .insert(incoming_connection.from_component_id);
             }
-            for inferred_connection in component.inferred_incoming_connections(ctx).await? {
-                if inferred_connection.to_component_id != component_id {
+            for inferred_connection in
+                component_tree.get_inferred_incoming_connections_to_component(component_id)
+            {
+                if inferred_connection.input_socket.component_id != component_id {
                     continue;
                 }
 
                 component_dependencies
                     .entry(component_id)
                     .or_default()
-                    .insert(inferred_connection.from_component_id);
+                    .insert(inferred_connection.output_socket.component_id);
             }
 
             // Destroy Actions follow the flow of data backwards, so we need the reverse dependency
@@ -95,16 +102,17 @@ impl ActionDependencyGraph {
                     .or_default()
                     .insert(outgoing_connection.to_component_id);
             }
-            for inferred_outgoing_connection in component.inferred_outgoing_connections(ctx).await?
+            for inferred_outgoing_connection in
+                component_tree.get_inferred_outgoing_connections_for_component(component_id)
             {
-                if inferred_outgoing_connection.from_component_id != component_id {
+                if inferred_outgoing_connection.output_socket.component_id != component_id {
                     continue;
                 }
 
                 component_reverse_dependencies
                     .entry(component_id)
                     .or_default()
-                    .insert(inferred_outgoing_connection.to_component_id);
+                    .insert(inferred_outgoing_connection.input_socket.component_id);
             }
         }
 

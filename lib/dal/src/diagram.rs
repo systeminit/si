@@ -12,7 +12,8 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
-use crate::component::{ComponentError, IncomingConnection, InferredIncomingConnection};
+use crate::component::inferred_connection_graph::InferredConnectionGraph;
+use crate::component::{ComponentError, IncomingConnection, InferredConnection};
 use crate::history_event::HistoryEventMetadata;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::connection_annotation::ConnectionAnnotation;
@@ -309,9 +310,7 @@ pub struct SummaryDiagramInferredEdge {
 }
 
 impl SummaryDiagramInferredEdge {
-    pub fn assemble(
-        inferred_incoming_connection: InferredIncomingConnection,
-    ) -> DiagramResult<Self> {
+    pub fn assemble(inferred_incoming_connection: InferredConnection) -> DiagramResult<Self> {
         Ok(SummaryDiagramInferredEdge {
             from_component_id: inferred_incoming_connection.from_component_id,
             from_socket_id: inferred_incoming_connection.from_output_socket_id,
@@ -447,16 +446,27 @@ impl Diagram {
                     edge_change_status,
                 )?);
             }
-            for inferred_incoming_connection in component.inferred_incoming_connections(ctx).await?
-            {
-                diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
-                    inferred_incoming_connection,
-                )?)
-            }
 
             component_views.push(
                 SummaryDiagramComponent::assemble(ctx, component, component_change_status).await?,
             );
+        }
+
+        let component_tree = InferredConnectionGraph::for_workspace(ctx).await?;
+        for incoming_connection in component_tree.get_all_inferred_connections() {
+            let to_delete = Component::should_data_flow_between_components(
+                ctx,
+                incoming_connection.input_socket.component_id,
+                incoming_connection.output_socket.component_id,
+            )
+            .await?;
+            diagram_inferred_edges.push(SummaryDiagramInferredEdge {
+                from_component_id: incoming_connection.output_socket.component_id,
+                from_socket_id: incoming_connection.output_socket.output_socket_id,
+                to_component_id: incoming_connection.input_socket.component_id,
+                to_socket_id: incoming_connection.input_socket.input_socket_id,
+                to_delete,
+            });
         }
 
         // Even though the default change set for a workspace can have a base change set, we don't

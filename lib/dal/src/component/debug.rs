@@ -16,12 +16,9 @@ use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, PropId, SchemaVariantId,
     SecretError, SecretId,
 };
-use crate::{
-    ComponentError, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
-    SchemaVariantError,
-};
+use crate::{ComponentError, FuncError, InputSocket, OutputSocket, SchemaVariantError};
 
-use super::{InputSocketMatch, OutputSocketMatch};
+use super::socket::{ComponentInputSocket, ComponentOutputSocket};
 
 type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
 
@@ -47,8 +44,8 @@ pub struct ComponentDebugData {
     pub name: String,
     pub schema_variant_id: SchemaVariantId,
     pub attribute_tree: HashMap<AttributeValueId, Vec<AttributeValueId>>,
-    pub input_sockets: HashMap<InputSocketId, InputSocketMatch>,
-    pub output_sockets: HashMap<OutputSocketId, OutputSocketMatch>,
+    pub input_sockets: Vec<ComponentInputSocket>,
+    pub output_sockets: Vec<ComponentOutputSocket>,
     pub parent_id: Option<ComponentId>,
 }
 
@@ -132,12 +129,12 @@ impl ComponentDebugView {
         //sort alphabetically by path for the view
         attributes.sort_by_key(|view| view.path.to_lowercase());
 
-        for (_, input_socket_match) in component_debug_data.input_sockets {
-            let avd = SocketDebugView::new_for_input_socket(ctx, input_socket_match).await?;
+        for component_input_socket in component_debug_data.input_sockets {
+            let avd = SocketDebugView::new_for_input_socket(ctx, component_input_socket).await?;
             input_sockets.push(avd);
         }
-        for (_, output_socket_match) in component_debug_data.output_sockets {
-            let avd = SocketDebugView::new_for_output_socket(ctx, output_socket_match).await?;
+        for component_output_socket in component_debug_data.output_sockets {
+            let avd = SocketDebugView::new_for_output_socket(ctx, component_output_socket).await?;
             output_sockets.push(avd);
         }
 
@@ -187,14 +184,14 @@ impl ComponentDebugData {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         component_id: ComponentId,
-    ) -> ComponentDebugViewResult<HashMap<InputSocketId, InputSocketMatch>> {
-        let mut input_sockets = HashMap::new();
+    ) -> ComponentDebugViewResult<Vec<ComponentInputSocket>> {
+        let mut input_sockets = Vec::new();
         let sockets = InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?;
         for socket in sockets {
             if let Some(input_socket_match) =
-                Component::input_socket_match(ctx, component_id, socket).await?
+                ComponentInputSocket::get_by_ids(ctx, component_id, socket).await?
             {
-                input_sockets.insert(socket, input_socket_match);
+                input_sockets.push(input_socket_match);
             }
         }
         Ok(input_sockets)
@@ -205,14 +202,14 @@ impl ComponentDebugData {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         component_id: ComponentId,
-    ) -> ComponentDebugViewResult<HashMap<OutputSocketId, OutputSocketMatch>> {
-        let mut output_sockets = HashMap::new();
+    ) -> ComponentDebugViewResult<Vec<ComponentOutputSocket>> {
+        let mut output_sockets = Vec::new();
         let sockets = OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?;
         for socket in sockets {
             if let Some(output_socket_match) =
-                Component::output_socket_match(ctx, component_id, socket).await?
+                ComponentOutputSocket::get_by_ids(ctx, component_id, socket).await?
             {
-                output_sockets.insert(socket, output_socket_match);
+                output_sockets.push(output_socket_match);
             }
         }
 

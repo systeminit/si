@@ -57,7 +57,7 @@ pub use dependent_value_graph::DependentValueGraph;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
-use crate::component::InputSocketMatch;
+use crate::component::socket::ComponentInputSocket;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
@@ -719,40 +719,38 @@ impl AttributeValue {
         };
 
         let component_id = Self::component_id(ctx, input_attribute_value_id).await?;
-        let input_socket_match = InputSocketMatch {
+
+        let component_input_socket = ComponentInputSocket {
             component_id,
             input_socket_id,
             attribute_value_id: input_attribute_value_id,
         };
         let mut inputs = vec![];
 
-        match Component::find_available_inferred_connections_to_input_socket(
-            ctx,
-            input_socket_match,
-        )
-        .await
-        {
-            Ok(maybe_matches) => {
-                for output_match in maybe_matches {
+        match ComponentInputSocket::find_inferred_connections(ctx, component_input_socket).await {
+            Ok(connections) => {
+                for component_output_socket in connections {
                     // Both deleted and non deleted components can feed data into deleted components.
                     // ** ONLY ** non-deleted components can feed data into non-deleted components
-                    if !Component::should_data_flow_between_components(
+                    if Component::should_data_flow_between_components(
                         ctx,
-                        input_socket_match.component_id,
-                        output_match.component_id,
+                        component_input_socket.component_id,
+                        component_output_socket.component_id,
                     )
                     .await
                     .map_err(Box::new)?
                     {
-                        return Ok(vec![]);
+                        // XXX: We need to properly handle the difference between "there is
+                        // XXX: no value" vs "the value is null", but right now we collapse
+                        // XXX: the two to just be "null" when passing these to a function.
+                        let output_av = Self::get_by_id_or_error(
+                            ctx,
+                            component_output_socket.attribute_value_id,
+                        )
+                        .await?;
+                        let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                        inputs.push(view);
                     }
-                    // XXX: We need to properly handle the difference between "there is
-                    // XXX: no value" vs "the value is null", but right now we collapse
-                    // XXX: the two to just be "null" when passing these to a function.
-                    let output_av =
-                        Self::get_by_id_or_error(ctx, output_match.attribute_value_id).await?;
-                    let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
-                    inputs.push(view);
                 }
             }
             Err(err) => error!(
@@ -763,7 +761,6 @@ impl AttributeValue {
                 "error found while finding available inferred connections to input socket"
             ),
         }
-
         Ok(inputs)
     }
 

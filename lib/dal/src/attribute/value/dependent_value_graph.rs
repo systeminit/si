@@ -5,6 +5,7 @@ use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::{fs::File, io::Write};
 use telemetry::prelude::*;
 
+use crate::component::socket::ComponentOutputSocket;
 use crate::component::ControllingFuncData;
 use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
 use crate::{
@@ -64,7 +65,6 @@ impl DependentValueGraph {
         dependent_value_graph
             .populate_for_values(ctx, values)
             .await?;
-
         Ok(dependent_value_graph)
     }
 
@@ -251,7 +251,7 @@ impl DependentValueGraph {
                 // targets if the source component is set to be deleted
                 ValueIsFor::OutputSocket(_) => {
                     let maybe_values_depend_on =
-                        match Component::find_inferred_values_using_this_output_socket(
+                        match ComponentOutputSocket::find_inferred_connections(
                             ctx,
                             current_attribute_value.id(),
                         )
@@ -267,7 +267,7 @@ impl DependentValueGraph {
                             Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
                         };
 
-                    for input_socket_match in maybe_values_depend_on {
+                    for component_input_socket in maybe_values_depend_on {
                         // Both "deleted" and not deleted Components can feed data into
                         // "deleted" Components. **ONLY** not deleted Components can feed
                         // data into not deleted Components.
@@ -276,16 +276,16 @@ impl DependentValueGraph {
                         if Component::should_data_flow_between_components(
                             ctx,
                             destination_component_id,
-                            input_socket_match.component_id,
+                            component_input_socket.component_id,
                         )
                         .await
                         .map_err(|e| AttributeValueError::Component(Box::new(e)))?
                         {
                             work_queue.push_back(WorkQueueValue::Discovered(
-                                input_socket_match.attribute_value_id,
+                                component_input_socket.attribute_value_id,
                             ));
                             self.value_depends_on(
-                                input_socket_match.attribute_value_id,
+                                component_input_socket.attribute_value_id,
                                 current_attribute_value.id(),
                             );
 
