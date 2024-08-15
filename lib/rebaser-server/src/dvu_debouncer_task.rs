@@ -12,7 +12,10 @@ use si_data_nats::{async_nats::jetstream::kv, Subject};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{sync::mpsc, time};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time,
+};
 use tokio_util::sync::CancellationToken;
 
 /// An error that can be returned when running a "depdendent values update" debouncer task.
@@ -22,18 +25,18 @@ pub enum DvuDebouncerTaskError {
     /// When working with a change set
     #[error("change set: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
-    /// When sending a control operation to an internal child task
-    #[error("keepalive error when sending ctrl op")]
-    KeepaliveCtrlSend,
-    /// When an internal child task is shutting down
-    #[error("keepalive task is shutting down; ctl op rejected")]
-    KeepaliveCtrlShutdown,
+    /// When a debouncer leader attempts to update the key status
+    #[error("keepalive task already failed when attempting to update status")]
+    KeepaliveAlreadyFailed,
     /// When an internal child task fails to shut down cleanly
     #[error("keepalive task join errored")]
     KeepaliveTaskJoin,
     /// When a KV key fails to be created
     #[error("kv create error")]
     KvCreate(#[source] kv::CreateError),
+    /// When a KV key fails to be created
+    #[error("kv entry error")]
+    KvEntry(#[source] kv::EntryError),
     /// When a KV key fails to be purged
     #[error("kv purge error; err={0:?}, revision={1}, key={2}")]
     KvPurge(#[source] kv::PurgeError, u64, String),
@@ -193,13 +196,23 @@ impl DvuDebouncerTask {
             "waiting to become leader",
         );
 
+        // We want to keep the missing key interval to be slightly *longer* than the key
+        // time-to-live
+        let mut check_missing_key_interval = {
+            let max_age = self
+                .kv
+                .status()
+                .await
+                .map_err(DvuDebouncerTaskError::KvStatus)?
+                .max_age();
+            time::interval(Duration::from_secs_f64(max_age.as_secs_f64() * 1.5))
+        };
+
         let mut watch = self
             .kv
             .watch_with_history(self.watch_subject.as_str())
             .await
             .map_err(DvuDebouncerTaskError::KvWatch)?;
-
-        let mut check_missing_key_interval = time::interval(Duration::from_secs(5));
 
         loop {
             tokio::select! {
@@ -249,7 +262,7 @@ impl DvuDebouncerTask {
                 }
                 // Interval for checking for missing key has ticked
                 _ = check_missing_key_interval.tick() => {
-                    if let Some(new_state) = self.attempt_to_acquire_key().await? {
+                    if let Some(new_state) = self.check_missing_key().await? {
                         // State change, return to try_run loop
                         return Ok(new_state);
                     }
@@ -269,12 +282,15 @@ impl DvuDebouncerTask {
             "running as leader",
         );
 
+        let (keepalive_failed_tx, keepalive_failed_rx) = oneshot::channel();
+
         let task_token = CancellationToken::new();
         let task = DvuDebouncerKeepaliveTask::new(
             self.kv.clone(),
             self.watch_subject.clone(),
             kv_state,
             revision,
+            keepalive_failed_tx,
             task_token.clone(),
         )
         .await?;
@@ -285,7 +301,9 @@ impl DvuDebouncerTask {
         let task_handle = tokio::spawn(task.try_run());
 
         // Don't early-return on errors as we want to clean up the keepalive task
-        let inner_result = self.running_as_leader_inner(keepalive).await;
+        let inner_result = self
+            .running_as_leader_inner(keepalive, keepalive_failed_rx)
+            .await;
 
         // Cancel the keepalive task and await its completion. On success it returns the revision
         // of the key
@@ -299,9 +317,7 @@ impl DvuDebouncerTask {
             .await
             .map_err(|_err| DvuDebouncerTaskError::KeepaliveTaskJoin)?
         {
-            Ok(revision) => {
-                self.purge_key(Some(revision)).await?;
-            }
+            Ok(revision) => self.attempt_to_purge_key(revision).await,
             Err(task_err) => {
                 warn!(
                     task = Self::NAME,
@@ -309,7 +325,6 @@ impl DvuDebouncerTask {
                     error = ?task_err,
                     "error found while awaiting keepalive task",
                 );
-                self.purge_key(None).await?;
             }
         };
 
@@ -324,11 +339,14 @@ impl DvuDebouncerTask {
     async fn running_as_leader_inner(
         &self,
         keepalive: DvuDebouncerKeepalive,
+        keepalive_failed_rx: oneshot::Receiver<String>,
     ) -> DvuDebouncerTaskResult<DebouncerState> {
         let mut interval = time::interval_at(
             time::Instant::now() + self.interval_duration,
             self.interval_duration,
         );
+
+        tokio::pin!(keepalive_failed_rx);
 
         loop {
             tokio::select! {
@@ -343,6 +361,29 @@ impl DvuDebouncerTask {
                         "received cancellation",
                     );
                     return Ok(DebouncerState::Cancelled);
+                }
+                // Concurrent "keepalive" task has failed
+                message_result = &mut keepalive_failed_rx => {
+                    match message_result {
+                        Ok(message) => {
+                            warn!(
+                                task = Self::NAME,
+                                key = self.watch_subject.to_string(),
+                                %message,
+                                "error in keepalive task, retiring from leadership",
+                            );
+                            // We've failed to keep the key alive so we should retire from
+                            // leadership and resume trying to become leader
+                            return Ok(DebouncerState::WaitingToBecomeLeader);
+                        }
+                        Err(_cancelled) => {
+                            trace!(
+                                task = Self::NAME,
+                                key = self.watch_subject.to_string(),
+                                "keepalive failed channel was already cancelled",
+                            );
+                        }
+                    }
                 }
                 // Interval for running dependent values update if values are pending has ticked
                 _ = interval.tick() => {
@@ -379,6 +420,26 @@ impl DvuDebouncerTask {
         }
     }
 
+    async fn check_missing_key(&self) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
+        match self
+            .kv
+            .entry(self.watch_subject.as_str())
+            .await
+            .map_err(DvuDebouncerTaskError::KvEntry)?
+        {
+            None => self.attempt_to_acquire_key().await,
+            Some(entry) => {
+                trace!(
+                    task = Self::NAME,
+                    key = self.watch_subject.as_str(),
+                    entry = ?entry,
+                    "failed to process kv watch message",
+                );
+                Ok(None)
+            }
+        }
+    }
+
     async fn attempt_to_acquire_key(&self) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
         let kv_state = KvState {
             instance_id: self.instance_id.clone(),
@@ -393,8 +454,17 @@ impl DvuDebouncerTask {
             .await
         {
             // Success: we should set up to be the leader
-            // State change, return to break out of waiting to become leader loop
-            Ok(revision) => Ok(Some(DebouncerState::RunningAsLeader((kv_state, revision)))),
+            Ok(revision) => {
+                trace!(
+                    task = Self::NAME,
+                    key = self.watch_subject.to_string(),
+                    revision,
+                    "create key succeeded",
+                );
+
+                // State change, return to break out of waiting to become leader loop
+                Ok(Some(DebouncerState::RunningAsLeader((kv_state, revision))))
+            }
             Err(err) => {
                 if !matches!(err.kind(), kv::CreateErrorKind::AlreadyExists) {
                     warn!(
@@ -411,54 +481,21 @@ impl DvuDebouncerTask {
         }
     }
 
-    async fn purge_key(&self, maybe_revision: Option<u64>) -> DvuDebouncerTaskResult<()> {
-        match maybe_revision {
-            Some(revision) => {
-                // Purge the key with the expected revision
-                if let Err(err) = self
-                    .kv
-                    .purge_expect_revision(self.watch_subject.as_str(), Some(revision))
-                    .await
-                {
-                    warn!(
-                        task = Self::NAME,
-                        key = self.watch_subject.to_string(),
-                        expected_revision = revision,
-                        error = ?err,
-                        "failed to purge key with expected revision",
-                    );
-                    // TODO remove. If we failed to purge the key, it could be because someone
-                    // else became leader. The key will age itself out.
-                    // Attempt to purge the key without revision--as we are the leader this is our
-                    // data
-                    self.kv
-                        .purge(self.watch_subject.as_str())
-                        .await
-                        .map_err(|err| {
-                            DvuDebouncerTaskError::KvPurgeNoRevision(
-                                err,
-                                self.watch_subject.to_string(),
-                            )
-                        })?;
-                }
-            }
-            None => {
-                // TODO remove. If we failed to purge the key, it could be because someone
-                // else became leader. The key will age itself out.
-                // Attempt to purge the key--as we are the leader this is our data
-                self.kv
-                    .purge(self.watch_subject.as_str())
-                    .await
-                    .map_err(|err| {
-                        DvuDebouncerTaskError::KvPurgeNoRevision(
-                            err,
-                            self.watch_subject.to_string(),
-                        )
-                    })?;
-            }
-        };
-
-        Ok(())
+    async fn attempt_to_purge_key(&self, revision: u64) {
+        // Purge the key with the expected revision
+        if let Err(err) = self
+            .kv
+            .purge_expect_revision(self.watch_subject.as_str(), Some(revision))
+            .await
+        {
+            warn!(
+                task = Self::NAME,
+                key = self.watch_subject.to_string(),
+                expected_revision = revision,
+                error = ?err,
+                "failed to purge key with expected revision",
+            );
+        }
     }
 
     async fn run_dvu_if_values_pending(
@@ -484,9 +521,6 @@ impl DvuDebouncerTask {
         if let Some(change_set) =
             ChangeSet::find(&ctx, self.change_set_id.into_raw_id().into()).await?
         {
-            // TODO(fnichol): I am suspicious about this check/skip alone being correct. If there
-            // remains outstanding queued rebaser requests then there *may* be more dvu ops to
-            // perform.
             if !matches!(
                 change_set.status,
                 ChangeSetStatus::Open
@@ -511,7 +545,17 @@ impl DvuDebouncerTask {
             .has_dependent_value_roots()
             .await?
         {
-            keepalive.update_status_to_running().await?;
+            if let Err(err) = keepalive.update_status_to_running().await {
+                info!(
+                    task = Self::NAME,
+                    si.workspace.id = %self.workspace_id,
+                    si.change_set.id = %self.change_set_id,
+                    error = ?err,
+                    "failed to update status to running; retiring from leadership",
+                );
+                // Could not successfully write the updated kv status, so retire from leadership
+                return Ok(Some(DebouncerState::WaitingToBecomeLeader));
+            }
 
             info!(
                 task = Self::NAME,
@@ -534,7 +578,7 @@ impl DvuDebouncerTask {
 #[remain::sorted]
 #[derive(Debug)]
 enum KeepaliveOp {
-    UpdateStatusToRunning,
+    UpdateStatusToRunning(oneshot::Sender<DvuDebouncerTaskResult<()>>),
 }
 
 #[derive(Debug)]
@@ -542,20 +586,13 @@ struct DvuDebouncerKeepalive(mpsc::Sender<KeepaliveOp>);
 
 impl DvuDebouncerKeepalive {
     async fn update_status_to_running(&self) -> DvuDebouncerTaskResult<()> {
-        self.send_op(KeepaliveOp::UpdateStatusToRunning)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn send_op(&self, op: KeepaliveOp) -> DvuDebouncerTaskResult<()> {
-        if self.0.is_closed() {
-            return Err(DvuDebouncerTaskError::KeepaliveCtrlShutdown);
-        }
-
+        let (tx, rx) = oneshot::channel();
         self.0
-            .send(op)
+            .send(KeepaliveOp::UpdateStatusToRunning(tx))
             .await
-            .map_err(|_err| DvuDebouncerTaskError::KeepaliveCtrlSend)
+            .map_err(|_| DvuDebouncerTaskError::KeepaliveAlreadyFailed)?;
+        rx.await
+            .map_err(|_| DvuDebouncerTaskError::KeepaliveAlreadyFailed)?
     }
 }
 
@@ -568,6 +605,7 @@ struct DvuDebouncerKeepaliveTask {
     interval_duration: Duration,
     ops_rx: mpsc::Receiver<KeepaliveOp>,
     _ops_tx: mpsc::Sender<KeepaliveOp>,
+    keepalive_failed_tx: oneshot::Sender<String>,
     token: CancellationToken,
 }
 
@@ -579,16 +617,19 @@ impl DvuDebouncerKeepaliveTask {
         key: Subject,
         kv_state: KvState,
         revision: u64,
+        keepalive_failed_tx: oneshot::Sender<String>,
         token: CancellationToken,
     ) -> DvuDebouncerTaskResult<Self> {
         // We want to keep the key from aging out and so want our interval to be *less* than the
         // key time-to-live
-        let max_age = kv
-            .status()
-            .await
-            .map_err(DvuDebouncerTaskError::KvStatus)?
-            .max_age();
-        let interval_duration = Duration::from_secs_f64(max_age.as_secs_f64() * 0.85);
+        let interval_duration = {
+            let max_age = kv
+                .status()
+                .await
+                .map_err(DvuDebouncerTaskError::KvStatus)?
+                .max_age();
+            Duration::from_secs_f64(max_age.as_secs_f64() * 0.5)
+        };
 
         let (_ops_tx, ops_rx) = mpsc::channel(4);
 
@@ -600,6 +641,7 @@ impl DvuDebouncerKeepaliveTask {
             interval_duration,
             ops_rx,
             _ops_tx,
+            keepalive_failed_tx,
             token,
         })
     }
@@ -609,6 +651,18 @@ impl DvuDebouncerKeepaliveTask {
     }
 
     async fn try_run(mut self) -> DvuDebouncerTaskResult<u64> {
+        match self.try_run_inner().await {
+            Ok(revision) => Ok(revision),
+            Err(err) => {
+                if self.keepalive_failed_tx.send(err.to_string()).is_err() {
+                    debug!(error = ?err, "receiver has already closed");
+                }
+                Err(err)
+            }
+        }
+    }
+
+    async fn try_run_inner(&mut self) -> DvuDebouncerTaskResult<u64> {
         let mut interval = time::interval(self.interval_duration);
 
         loop {
@@ -647,9 +701,13 @@ impl DvuDebouncerKeepaliveTask {
     #[inline]
     async fn process_op(&mut self, op: KeepaliveOp) -> DvuDebouncerTaskResult<()> {
         match op {
-            KeepaliveOp::UpdateStatusToRunning => {
+            KeepaliveOp::UpdateStatusToRunning(tx) => {
                 self.state.status = KvStatus::Running;
-                self.update_entry().await
+                let result = self.update_entry().await;
+                if tx.send(result).is_err() {
+                    debug!("the keepalive rx has already closed");
+                }
+                Ok(())
             }
         }
     }
