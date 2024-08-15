@@ -8,10 +8,7 @@ use dal::{
 };
 use futures::StreamExt as _;
 use serde::{Deserialize, Serialize};
-use si_data_nats::{
-    async_nats::jetstream::kv::{self, WatcherError},
-    Subject,
-};
+use si_data_nats::{async_nats::jetstream::kv, Subject};
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -92,7 +89,6 @@ struct KvState {
 
 #[remain::sorted]
 #[derive(Debug)]
-#[allow(clippy::enum_variant_names)] // Variant names are more descriptive with the shared postfix
 enum DebouncerState {
     Cancelled,
     RunningAsLeader((KvState, u64)),
@@ -163,12 +159,6 @@ impl DvuDebouncerTask {
                 }
             }
         }
-
-        debug!(
-            task = Self::NAME,
-            key = self.watch_subject.to_string(),
-            "shutdown complete",
-        );
     }
 
     /// Runs the service to completion, returning its result (i.e. whether it successful or an
@@ -177,24 +167,23 @@ impl DvuDebouncerTask {
         // Set initial state of waiting to become leader
         let mut state = DebouncerState::WaitingToBecomeLeader;
 
-        // Run the loop in each state until it returns and requests to move to a new state
+        // Run the loop in each state until it returns and requests to move to the next state
         loop {
             state = match state {
                 DebouncerState::WaitingToBecomeLeader => self.waiting_to_become_leader().await?,
                 DebouncerState::RunningAsLeader((kv_state, revision)) => {
                     self.running_as_leader(kv_state, revision).await?
                 }
-                DebouncerState::Cancelled => {
-                    debug!(
-                        task = Self::NAME,
-                        key = self.watch_subject.to_string(),
-                        state = ?state,
-                        "received cancellation",
-                    );
-                    return Ok(());
-                }
+                DebouncerState::Cancelled => break,
             };
         }
+
+        debug!(
+            task = Self::NAME,
+            key = self.watch_subject.to_string(),
+            "shutdown complete",
+        );
+        Ok(())
     }
 
     async fn waiting_to_become_leader(&self) -> DvuDebouncerTaskResult<DebouncerState> {
@@ -217,20 +206,51 @@ impl DvuDebouncerTask {
                 biased;
 
                 // Cancellation token has fired, time to shut down
-                _ = self.token.cancelled() => return Ok(DebouncerState::Cancelled),
-
+                _ = self.token.cancelled() => {
+                    debug!(
+                        task = Self::NAME,
+                        key = self.watch_subject.to_string(),
+                        state = "waiting_to_become_leader",
+                        "received cancellation",
+                    );
+                    return Ok(DebouncerState::Cancelled);
+                }
                 // Received next watch item
                 maybe_entry_result = watch.next() => {
-                    if let Some(kv::Operation::Delete | kv::Operation::Purge) = self.entry_operation(maybe_entry_result)? {
-                        if let Some(new_state) = self.attempt_to_acquire_key().await? {
-                            return Ok(new_state)
+                    match maybe_entry_result {
+                        // Next item is an watch entry
+                        Some(Ok(entry)) => match self.process_entry_update(entry).await {
+                            // Processing entry resulted in state change
+                            Ok(Some(next_state)) => return Ok(next_state),
+                            // Processing entry resulted in no state change, continue consuming
+                            Ok(None) => {}
+                            // Failed to process the entry update, log it and continue consuming
+                            Err(err) => {
+                                warn!(
+                                    task = Self::NAME,
+                                    key = self.watch_subject.to_string(),
+                                    error = ?err,
+                                    "failed to process update entry",
+                                );
+                            }
                         }
+                        // Next item is an error, log it and continue consuming
+                        Some(Err(err)) => {
+                            warn!(
+                                task = Self::NAME,
+                                key = self.watch_subject.to_string(),
+                                error = ?err,
+                                "failed to process kv watch message",
+                            );
+                        }
+                        // Watch stream has ended, this is unexpected
+                        None => return Err(DvuDebouncerTaskError::KvWatchWithHistoryEnded),
                     }
                 }
-
                 // Interval for checking for missing key has ticked
                 _ = check_missing_key_interval.tick() => {
                     if let Some(new_state) = self.attempt_to_acquire_key().await? {
+                        // State change, return to try_run loop
                         return Ok(new_state);
                     }
                 }
@@ -315,41 +335,47 @@ impl DvuDebouncerTask {
                 biased;
 
                 // Cancellation token has fired, time to shut down
-                _ = self.token.cancelled() => return Ok(DebouncerState::Cancelled),
-
+                _ = self.token.cancelled() => {
+                    debug!(
+                        task = Self::NAME,
+                        key = self.watch_subject.to_string(),
+                        state = "running_as_leader",
+                        "received cancellation",
+                    );
+                    return Ok(DebouncerState::Cancelled);
+                }
                 // Interval for running dependent values update if values are pending has ticked
                 _ = interval.tick() => {
                     // This will block the next `select` which is intended as we want a depdendent
                     // values update to be allowed to run to completion before checking to see if
                     // the cancellation token has fired in the meantime.
-                    if let Some(new_state) = self.run_dvu_if_values_pending(&keepalive).await? {
-                        // Dependent values update has run, return to continue try_run loop
-                        return Ok(new_state);
+                    if let Some(next_state) = self.run_dvu_if_values_pending(&keepalive).await? {
+                        // Dependent values update has run, return with next state transition
+                        return Ok(next_state);
                     }
                 }
             }
         }
     }
 
-    fn entry_operation(
+    #[inline]
+    async fn process_entry_update(
         &self,
-        entry: Option<Result<kv::Entry, WatcherError>>,
-    ) -> DvuDebouncerTaskResult<Option<kv::Operation>> {
-        match entry {
-            // Next item is an watch entry
-            Some(Ok(kv::Entry { operation, .. })) => Ok(Some(operation)),
-            // Next item is an error
-            Some(Err(err)) => {
-                warn!(
+        entry: kv::Entry,
+    ) -> DvuDebouncerTaskResult<Option<DebouncerState>> {
+        match entry.operation {
+            // The key has been deleted/purged so we should try to become leader
+            kv::Operation::Delete | kv::Operation::Purge => self.attempt_to_acquire_key().await,
+            // Ingore updates to key--an instance is currently leader and keeping the key alive
+            kv::Operation::Put => {
+                trace!(
                     task = Self::NAME,
-                    key = self.watch_subject.to_string(),
-                    error = ?err,
-                    "failed to process message",
+                    key = entry.key.as_str(),
+                    "skipped put entry",
                 );
+                // No leader changes so no state transition
                 Ok(None)
             }
-            // Watch stream has ended
-            None => Err(DvuDebouncerTaskError::KvWatchWithHistoryEnded),
         }
     }
 
@@ -379,9 +405,8 @@ impl DvuDebouncerTask {
                     );
                 }
 
-                // Lost race to become leader, return to continue waiting to become
-                // leader loop
-                Ok(Some(DebouncerState::WaitingToBecomeLeader))
+                // Lost race to become leader, no state transition (i.e. remain in waiting)
+                Ok(None)
             }
         }
     }
@@ -451,7 +476,7 @@ impl DvuDebouncerTask {
         {
             if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
                 debug!("snapshot not yet migrated; not attempting dependent values update");
-                // No depdendent values update to perform, return to continue running as leader loop
+                // No depdendent values update to perform, so no next state transisiton
                 return Ok(None);
             }
         }
@@ -459,6 +484,9 @@ impl DvuDebouncerTask {
         if let Some(change_set) =
             ChangeSet::find(&ctx, self.change_set_id.into_raw_id().into()).await?
         {
+            // TODO(fnichol): I am suspicious about this check/skip alone being correct. If there
+            // remains outstanding queued rebaser requests then there *may* be more dvu ops to
+            // perform.
             if !matches!(
                 change_set.status,
                 ChangeSetStatus::Open
@@ -471,6 +499,7 @@ impl DvuDebouncerTask {
                     si.change_set.id = %self.change_set_id,
                     "change set no longer open, not enqueuing dependent values updates",
                 );
+
                 return Ok(None);
             }
         }
