@@ -2,11 +2,13 @@
 
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::key_pair::KeyPairPk;
 use dal::{
     AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
     OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
 };
+use itertools::Itertools;
 use names::{Generator, Name};
 
 mod change_set;
@@ -154,16 +156,19 @@ pub async fn get_component_input_socket_value(
     input_socket_name: impl AsRef<str>,
 ) -> Result<Option<serde_json::Value>> {
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-    let component = Component::get_by_id(ctx, component_id).await?;
-    let component_input_sockets = component.input_socket_attribute_values(ctx).await?;
+    let component_input_sockets =
+        ComponentInputSocket::list_for_component_id(ctx, component_id).await?;
     let input_socket = InputSocket::find_with_name(ctx, input_socket_name, schema_variant_id)
         .await?
         .ok_or(eyre!("no input socket found"))?;
-    let input_socket_match = component_input_sockets
-        .get(&input_socket.id())
+    let component_input_socket = component_input_sockets
+        .into_iter()
+        .filter(|socket| socket.input_socket_id == input_socket.id())
+        .collect_vec()
+        .pop()
         .ok_or(eyre!("no input socket match found"))?;
     let input_socket_av =
-        AttributeValue::get_by_id_or_error(ctx, input_socket_match.attribute_value_id).await?;
+        AttributeValue::get_by_id_or_error(ctx, component_input_socket.attribute_value_id).await?;
     Ok(input_socket_av.view(ctx).await?)
 }
 
@@ -174,16 +179,19 @@ pub async fn get_component_output_socket_value(
     output_socket_name: impl AsRef<str>,
 ) -> Result<Option<serde_json::Value>> {
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-    let component = Component::get_by_id(ctx, component_id).await?;
-    let component_output_sockets = component.output_socket_attribute_values(ctx).await?;
+    let component_output_sockets =
+        ComponentOutputSocket::list_for_component_id(ctx, component_id).await?;
     let output_socket = OutputSocket::find_with_name(ctx, output_socket_name, schema_variant_id)
         .await?
         .ok_or(eyre!("no output socket found"))?;
-    let output_socket_match = component_output_sockets
-        .get(&output_socket.id())
-        .ok_or(eyre!("no output socket match found"))?;
+    let component_output_socket = component_output_sockets
+        .into_iter()
+        .filter(|socket| socket.output_socket_id == output_socket.id())
+        .collect_vec()
+        .pop()
+        .ok_or(eyre!("no input socket match found"))?;
     let output_socket_av =
-        AttributeValue::get_by_id_or_error(ctx, output_socket_match.attribute_value_id).await?;
+        AttributeValue::get_by_id_or_error(ctx, component_output_socket.attribute_value_id).await?;
     Ok(output_socket_av.view(ctx).await?)
 }
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]

@@ -7,13 +7,10 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
-use crate::component::InputSocketMatch;
 use crate::func::FuncError;
 use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
 
@@ -451,33 +448,6 @@ impl InputSocket {
         };
 
         Ok(maybe_input_socket)
-    }
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn is_manually_configured(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-    ) -> InputSocketResult<bool> {
-        // if the input socket has an explicit connection, then we will not gather any implicit
-        // note we could do some weird logic here when it comes to sockets with arrity of many
-        // but let's punt for now
-        if let Some(maybe_attribute_prototype) =
-            AttributePrototype::find_for_input_socket(ctx, input_socket_match.input_socket_id)
-                .await?
-        {
-            // if this socket has an attribute prototype argument,
-            //that means it has an explicit connection and we should not
-            // look for implicits
-            let maybe_apa = AttributePrototypeArgument::list_ids_for_prototype_and_destination(
-                ctx,
-                maybe_attribute_prototype,
-                input_socket_match.component_id,
-            )
-            .await?;
-            if !maybe_apa.is_empty() {
-                return Ok(true);
-            }
-        }
-        Ok(false)
     }
 
     pub async fn find_equivalent_in_schema_variant(

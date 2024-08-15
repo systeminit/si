@@ -15,9 +15,9 @@ use crate::{
         },
         value::AttributeValueError,
     },
-    component::{InputSocketMatch, OutputSocketMatch},
-    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
-    ComponentError, DalContext, FuncId, InputSocket, OutputSocket,
+    component::socket::{ComponentInputSocket, ComponentOutputSocket},
+    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError,
+    DalContext, FuncId, InputSocket, OutputSocket,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -60,19 +60,21 @@ impl SocketDebugView {
     #[instrument(level = "info", skip_all)]
     pub async fn new_for_output_socket(
         ctx: &DalContext,
-        output_socket_match: OutputSocketMatch,
+        component_output_socket: ComponentOutputSocket,
     ) -> SocketDebugViewResult<SocketDebugView> {
-        let prototype_id =
-            AttributePrototype::find_for_output_socket(ctx, output_socket_match.output_socket_id)
-                .await?;
+        let prototype_id = AttributePrototype::find_for_output_socket(
+            ctx,
+            component_output_socket.output_socket_id,
+        )
+        .await?;
 
-        let attribute_value_id = output_socket_match.attribute_value_id;
+        let attribute_value_id = component_output_socket.attribute_value_id;
 
         let prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, attribute_value_id).await?;
         let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
         let output_socket =
-            OutputSocket::get_by_id(ctx, output_socket_match.output_socket_id).await?;
+            OutputSocket::get_by_id(ctx, component_output_socket.output_socket_id).await?;
         let connection_annotations = output_socket
             .connection_annotations()
             .into_iter()
@@ -94,7 +96,7 @@ impl SocketDebugView {
             func_name: prototype_debug_view.func_name,
             func_args: prototype_debug_view.func_args,
             attribute_value_id,
-            socket_id: output_socket_match.output_socket_id.into(),
+            socket_id: component_output_socket.output_socket_id.into(),
             func_id: prototype_debug_view.func_id,
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,
@@ -108,17 +110,19 @@ impl SocketDebugView {
     #[instrument(level = "info", skip_all)]
     pub async fn new_for_input_socket(
         ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
+        component_input_socket: ComponentInputSocket,
     ) -> SocketDebugViewResult<SocketDebugView> {
         let prototype_id =
-            AttributePrototype::find_for_input_socket(ctx, input_socket_match.input_socket_id)
+            AttributePrototype::find_for_input_socket(ctx, component_input_socket.input_socket_id)
                 .await?;
-        let attribute_value_id = input_socket_match.attribute_value_id;
+        let attribute_value_id = component_input_socket.attribute_value_id;
         let prototype_debug_view =
-            AttributePrototypeDebugView::new(ctx, input_socket_match.attribute_value_id).await?;
+            AttributePrototypeDebugView::new(ctx, component_input_socket.attribute_value_id)
+                .await?;
         info!("prototype_debug_view: {:?}", prototype_debug_view);
         let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
-        let input_socket = InputSocket::get_by_id(ctx, input_socket_match.input_socket_id).await?;
+        let input_socket =
+            InputSocket::get_by_id(ctx, component_input_socket.input_socket_id).await?;
         let connection_annotations = input_socket
             .connection_annotations()
             .into_iter()
@@ -128,7 +132,7 @@ impl SocketDebugView {
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
         let value_view = attribute_value.view(ctx).await?;
         let inferred_connections =
-            Component::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
+            ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
                 .await?
                 .into_iter()
                 .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
@@ -139,7 +143,7 @@ impl SocketDebugView {
             func_name: prototype_debug_view.func_name,
             func_args: prototype_debug_view.func_args,
             attribute_value_id,
-            socket_id: input_socket_match.input_socket_id.into(),
+            socket_id: component_input_socket.input_socket_id.into(),
             func_id: prototype_debug_view.func_id,
             connection_annotations,
             value: attribute_value.unprocessed_value(ctx).await?,

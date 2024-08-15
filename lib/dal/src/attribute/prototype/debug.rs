@@ -5,11 +5,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::attribute::prototype::argument::{
-    static_value::StaticArgumentValue,
-    value_source::{ValueSource, ValueSourceError},
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, ValueIsFor};
 use crate::func::argument::FuncArgument;
@@ -19,6 +14,14 @@ use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    attribute::prototype::argument::{
+        static_value::StaticArgumentValue,
+        value_source::{ValueSource, ValueSourceError},
+        AttributePrototypeArgument, AttributePrototypeArgumentError,
+    },
+    component::socket::ComponentInputSocket,
+};
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
     ComponentError, DalContext, Func, FuncError, FuncId, SecretError,
@@ -275,22 +278,20 @@ impl AttributePrototypeDebugView {
             AttributeValue::is_for(ctx, attribute_value_id).await?
         {
             info!("value is for input socket!");
-            if let Some(input_socket_match) =
-                Component::input_socket_match(ctx, destination_component_id, input_socket_id)
+            if let Some(component_input_socket) =
+                ComponentInputSocket::get_by_ids(ctx, destination_component_id, input_socket_id)
                     .await?
             {
-                info!("Input socket match: {:?}", input_socket_match);
+                info!("Input socket match: {:?}", component_input_socket);
                 // now get inferred func binding args and values!
-                for output_match in Component::find_available_inferred_connections_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await?
+                for output_match in
+                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
+                        .await?
                 {
                     info!("output socket match: {:?}", output_match);
                     let arg_used = Component::should_data_flow_between_components(
                         ctx,
-                        input_socket_match.component_id,
+                        component_input_socket.component_id,
                         output_match.component_id,
                     )
                     .await?;

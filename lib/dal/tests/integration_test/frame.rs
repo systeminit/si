@@ -1,14 +1,17 @@
 use dal::component::frame::{Frame, FrameError};
+use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::diagram::SummaryDiagramInferredEdge;
 use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
+use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
     AttributeValue, Component, ComponentError, DalContext, EdgeWeightKind, Schema, SchemaVariant,
 };
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name,
-    create_component_for_schema_name_with_type, get_component_input_socket_value,
-    get_component_output_socket_value, update_attribute_value_for_component, ChangeSetTestHelpers,
+    create_component_for_schema_name_with_type, create_component_for_schema_variant,
+    get_component_input_socket_value, get_component_output_socket_value,
+    update_attribute_value_for_component, ChangeSetTestHelpers,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -266,13 +269,11 @@ async fn simple_frames(ctx: &mut DalContext) {
             serde_json::from_value(serde_json::Value::String(found_type.to_string()))
                 .expect("could not something something")
         );
-        let input_sockets = Component::input_socket_attribute_values_for_component_id(
-            ctx,
-            new_era_taylor_swift.id(),
-        )
-        .await
-        .expect("couldn't get input sockets");
-        assert_eq!(1, input_sockets.keys().len());
+        let attribute_values =
+            ComponentInputSocket::attribute_values_for_component_id(ctx, new_era_taylor_swift.id())
+                .await
+                .expect("couldn't get input sockets");
+        assert_eq!(1, attribute_values.len());
     }
 
     // Scenario 2: create a kelce frame and attach to swifty component
@@ -326,13 +327,13 @@ async fn simple_frames(ctx: &mut DalContext) {
                 .expect("no parent node id")  // actual
         );
 
-        let output_sockets = Component::output_socket_attribute_values_for_component_id(
+        let attribute_values = ComponentOutputSocket::attribute_values_for_component_id(
             ctx,
             travis_kelce_component.id(),
         )
         .await
         .expect("couldn't get output sockets");
-        assert_eq!(2, output_sockets.keys().len(),);
+        assert_eq!(2, attribute_values.len(),);
 
         // make sure Swifty component matches the travis kelsey frame output sockets
         let swifty_input = InputSocket::find_with_name(ctx, "fallout", swifty_schema_variant_id)
@@ -340,22 +341,16 @@ async fn simple_frames(ctx: &mut DalContext) {
             .expect("could not find input socket by name")
             .expect("is some");
         //let mut maybe_travis_output_socket = None;
-        for (input_socket_id, input_socket_match) in
-            Component::input_socket_attribute_values_for_component_id(
-                ctx,
-                new_era_taylor_swift.id(),
-            )
-            .await
-            .expect("couldn't get input sockets")
+        for component_input_socket in
+            ComponentInputSocket::list_for_component_id(ctx, new_era_taylor_swift.id())
+                .await
+                .expect("couldn't get input sockets")
         {
-            if input_socket_id == swifty_input.id() {
+            if component_input_socket.input_socket_id == swifty_input.id() {
                 let mut possible_match =
-                    Component::find_available_inferred_connections_to_input_socket(
-                        ctx,
-                        input_socket_match,
-                    )
-                    .await
-                    .expect("couldn't find implicit inputs");
+                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
+                        .await
+                        .expect("couldn't find implicit inputs");
                 assert!(!possible_match.is_empty());
                 let travis_output_match = possible_match.pop().expect("has a value");
                 //maybe_travis_output_socket = Some(travis_output);
@@ -366,23 +361,22 @@ async fn simple_frames(ctx: &mut DalContext) {
             }
         }
         //make sure travis output socket can find swifty input socket
-        let outputs = Component::output_socket_attribute_values_for_component_id(
-            ctx,
-            travis_kelce_component.id(),
-        )
-        .await
-        .expect("could not get output socket avs");
+        let outputs =
+            ComponentOutputSocket::list_for_component_id(ctx, travis_kelce_component.id())
+                .await
+                .expect("could not get output socket avs");
         let output_id = OutputSocket::find_with_name(ctx, "fallout", fallout_schema_variant_id)
             .await
             .expect("could not get output socket by name")
             .expect("value exists");
-        let real_id = outputs.get(&output_id.id()).expect("found a value");
-        let maybe_ins = Component::find_inferred_values_using_this_output_socket(
-            ctx,
-            real_id.attribute_value_id,
-        )
-        .await
-        .expect("found one");
+        let real_id = outputs
+            .into_iter()
+            .find(|output| output.output_socket_id == output_id.id())
+            .expect("found a value");
+        let maybe_ins =
+            ComponentOutputSocket::find_inferred_connections(ctx, real_id.attribute_value_id)
+                .await
+                .expect("found one");
         assert!(!maybe_ins.is_empty());
         assert_eq!(maybe_ins.len(), 1);
         assert_eq!(diagram.get_all_inferred_edges().len(), 1);
@@ -421,56 +415,49 @@ async fn simple_frames(ctx: &mut DalContext) {
 
         assert!(new_era_taylor_swift_assembled.0.parent_id.is_none());
 
-        let output_sockets = Component::output_socket_attribute_values_for_component_id(
+        let output_sockets = ComponentOutputSocket::attribute_values_for_component_id(
             ctx,
             travis_kelce_component.id(),
         )
         .await
         .expect("couldn't get output sockets");
-        assert_eq!(2, output_sockets.keys().len(),);
+        assert_eq!(2, output_sockets.len(),);
 
         // make sure Swifty component matches the travis kelsey frame output sockets
         let swifty_input = InputSocket::find_with_name(ctx, "fallout", swifty_schema_variant_id)
             .await
             .expect("could not get input socket by name")
             .expect("value found");
-        for (input_socket_id, input_socket_match) in
-            Component::input_socket_attribute_values_for_component_id(
-                ctx,
-                new_era_taylor_swift.id(),
-            )
-            .await
-            .expect("couldn't get input sockets")
+        for component_input_socket in
+            ComponentInputSocket::list_for_component_id(ctx, new_era_taylor_swift.id())
+                .await
+                .expect("couldn't get input sockets")
         {
-            if input_socket_id == swifty_input.id() {
+            if component_input_socket.input_socket_id == swifty_input.id() {
                 let possible_match =
-                    Component::find_available_inferred_connections_to_input_socket(
-                        ctx,
-                        input_socket_match,
-                    )
-                    .await
-                    .expect("couldn't find implicit inputs");
+                    ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
+                        .await
+                        .expect("couldn't find implicit inputs");
                 assert!(possible_match.is_empty());
             }
         }
         //make sure travis output socket can find swifty input socket
-        let outputs = Component::output_socket_attribute_values_for_component_id(
-            ctx,
-            travis_kelce_component.id(),
-        )
-        .await
-        .expect("values");
+        let outputs =
+            ComponentOutputSocket::list_for_component_id(ctx, travis_kelce_component.id())
+                .await
+                .expect("values");
         let output_id = OutputSocket::find_with_name(ctx, "fallout", fallout_schema_variant_id)
             .await
             .expect("could not get output socket by name")
             .expect("value exists");
-        let real_id = outputs.get(&output_id.id()).expect("found a value");
-        let maybe_ins = Component::find_inferred_values_using_this_output_socket(
-            ctx,
-            real_id.attribute_value_id,
-        )
-        .await
-        .expect("could not find inferred values");
+        let real_id = outputs
+            .into_iter()
+            .find(|output| output.output_socket_id == output_id.id())
+            .expect("found a value");
+        let maybe_ins =
+            ComponentOutputSocket::find_inferred_connections(ctx, real_id.attribute_value_id)
+                .await
+                .expect("could not find inferred values");
         assert!(maybe_ins.is_empty());
         assert_eq!(diagram.get_all_inferred_edges().len(), 0);
     }
@@ -876,6 +863,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     Frame::upsert_parent(ctx, odd_component.id(), even_frame.id())
         .await
         .expect("could not upsert parent");
+
     // Change attribute value for one
     update_attribute_value_for_component(
         ctx,
@@ -889,6 +877,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
+
     // the output socket value is updated with 1
     let output_value = get_component_output_socket_value(ctx, even_frame_component_id, "one")
         .await
@@ -1427,7 +1416,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     let input_value = get_component_input_socket_value(ctx, odd_component.id(), "five")
         .await
         .expect("could not get input socket value")
-        .expect("is some");
+        .expect("value is none");
     assert_eq!(input_value, serde_json::json!("5"));
 
     // now let's update the parent frame to a value that the child also has
@@ -2310,6 +2299,492 @@ async fn orphan_frames_multiple_parents(ctx: &mut DalContext) {
         Component::get_parent_by_id(ctx, child.id())
             .await
             .expect("Unable to get component's parent"),
+    );
+}
+#[test]
+async fn up_frames_multiple_input_sockets_match(ctx: &mut DalContext) {
+    // create new up frame schema with two input sockets that have a connection annotation for 'number'
+
+    let up_frame_name = "up_frames".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        up_frame_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let upframe_asset_def = "function main() {
+        const oneProp = new PropBuilder()
+              .setName(\"one\")
+              .setKind(\"string\")
+              .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+                         
+              .build()).setValueFrom(new ValueFromBuilder()
+            .setKind(\"inputSocket\")
+            .setSocketName(\"one\")
+            .build())
+            .build();
+      const twoProp = new PropBuilder()
+            .setName(\"two\")
+            .setKind(\"string\")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+            .build())
+        .setValueFrom(new ValueFromBuilder()
+            .setKind(\"inputSocket\")
+            .setSocketName(\"two\")
+            .build())
+          .build();
+      const oneSocket = new SocketDefinitionBuilder()
+            .setName(\"one\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"number\")
+            .build();
+      const twoSocket = new SocketDefinitionBuilder()
+            .setName(\"two\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"number\")
+            .build();
+      
+        return new AssetBuilder().addProp(oneProp).addProp(twoProp).addInputSocket(oneSocket).addInputSocket(twoSocket).build()
+    }"
+            .to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant.id(),
+        up_frame_name.clone(),
+        up_frame_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::ConfigurationFrameUp,
+        Some(upframe_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_variant = VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+        .await
+        .expect("could not regenerate variant");
+
+    // create component to go inside of up frame
+    let component_name = "component".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let comp_variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        component_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let component_asset_def = "function main() {
+            const numberProp = new PropBuilder()
+                  .setName(\"number\")
+                  .setKind(\"string\")
+                  .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+                  .build())
+                .build();
+         
+          const oneSocket = new SocketDefinitionBuilder()
+                .setName(\"number\")
+                .setArity(\"one\")
+                .setValueFrom(new ValueFromBuilder()
+          .setKind(\"prop\")
+          .setPropPath([\"root\",\"domain\",\"number\"])
+          .build())
+                .build();
+            return new AssetBuilder().addProp(numberProp).addOutputSocket(oneSocket).build()
+        }"
+    .to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        comp_variant.id(),
+        component_name.clone(),
+        component_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::Component,
+        Some(component_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_comp_variant = VariantAuthoringClient::regenerate_variant(ctx, comp_variant.id())
+        .await
+        .expect("could not regenerate variant");
+
+    // create one of each component
+    let up_frame = create_component_for_schema_variant(ctx, new_variant)
+        .await
+        .expect("could not create component");
+    let component = create_component_for_schema_variant(ctx, new_comp_variant)
+        .await
+        .expect("could not create component");
+
+    // attach component to up frame
+    Frame::upsert_parent(ctx, component.id(), up_frame.id())
+        .await
+        .expect("could not upsert");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // set a value for the component
+
+    update_attribute_value_for_component(
+        ctx,
+        component.id(),
+        &["root", "domain", "number"],
+        serde_json::json!("Number"),
+    )
+    .await
+    .expect("could not udpate attribute value");
+
+    //commit for propagation
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // the output socket value is updated with "3"
+    let output_value = get_component_output_socket_value(ctx, component.id(), "number")
+        .await
+        .expect("could not get output socket value")
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("Number"));
+    // make sure component output socket matches on the up frames input socket
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "one")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    let diagram = DiagramByKey::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+
+    assert_eq!(
+        0,                                      // expected
+        diagram.get_all_inferred_edges().len()  // actual
+    );
+
+    // now let's regenerate and upgrade the component's variant to have the output socket named "one"
+    let component_asset_def = "function main() {
+        const numberProp = new PropBuilder()
+              .setName(\"number\")
+              .setKind(\"string\")
+              .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+              .build())
+            .build();
+     
+      const oneSocket = new SocketDefinitionBuilder()
+            .setName(\"one\")
+            .setArity(\"one\")
+            .setValueFrom(new ValueFromBuilder()
+      .setKind(\"prop\")
+      .setPropPath([\"root\",\"domain\",\"number\"])
+      .build())
+            .build();
+        return new AssetBuilder().addProp(numberProp).addOutputSocket(oneSocket).build()
+    }"
+    .to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        comp_variant.id(),
+        component_name.clone(),
+        component_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::Component,
+        Some(component_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_comp_variant = VariantAuthoringClient::regenerate_variant(ctx, comp_variant.id())
+        .await
+        .expect("could not regenerate variant");
+    let new_component = component
+        .upgrade_to_new_variant(ctx, new_comp_variant)
+        .await
+        .expect("could not upgrade component");
+    //commit for propagation
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // the output socket value is updated with "3"
+    let output_value = get_component_output_socket_value(ctx, new_component.id(), "one")
+        .await
+        .expect("could not get output socket value")
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("Number"));
+    // make sure component output socket matches on the up frames input socket
+    let value = get_component_input_socket_value(ctx, up_frame.id(), "one")
+        .await
+        .expect("could not get input socket value")
+        .expect("has value now");
+    assert_eq!(value, output_value);
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    let diagram = DiagramByKey::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+    assert_eq!(
+        1,                                      // expected
+        diagram.get_all_inferred_edges().len()  // actual
+    );
+}
+
+#[test]
+async fn up_frames_multiple_input_sockets_match_but_one_explicit(ctx: &mut DalContext) {
+    // create new up frame schema with two input sockets that have a connection annotation for 'number'
+
+    let up_frame_name = "up_frames".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        up_frame_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let upframe_asset_def = "function main() {
+        const oneProp = new PropBuilder()
+              .setName(\"one\")
+              .setKind(\"string\")
+              .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+                         
+              .build()).setValueFrom(new ValueFromBuilder()
+            .setKind(\"inputSocket\")
+            .setSocketName(\"one\")
+            .build())
+            .build();
+      const twoProp = new PropBuilder()
+            .setName(\"two\")
+            .setKind(\"string\")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+            .build())
+        .setValueFrom(new ValueFromBuilder()
+            .setKind(\"inputSocket\")
+            .setSocketName(\"two\")
+            .build())
+          .build();
+      const oneSocket = new SocketDefinitionBuilder()
+            .setName(\"one\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"number\")
+            .build();
+      const twoSocket = new SocketDefinitionBuilder()
+            .setName(\"two\")
+            .setArity(\"one\")
+            .setConnectionAnnotation(\"number\")
+            .build();
+      
+        return new AssetBuilder().addProp(oneProp).addProp(twoProp).addInputSocket(oneSocket).addInputSocket(twoSocket).build()
+    }"
+            .to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant.id(),
+        up_frame_name.clone(),
+        up_frame_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::ConfigurationFrameUp,
+        Some(upframe_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_variant = VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+        .await
+        .expect("could not regenerate variant");
+
+    // create component to go inside of up frame
+    let component_name = "component".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let comp_variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        component_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let component_asset_def = "function main() {
+            const numberProp = new PropBuilder()
+                  .setName(\"number\")
+                  .setKind(\"string\")
+                  .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\")
+                  .build())
+                .build();
+         
+          const oneSocket = new SocketDefinitionBuilder()
+                .setName(\"number\")
+                .setArity(\"one\")
+                .setValueFrom(new ValueFromBuilder()
+          .setKind(\"prop\")
+          .setPropPath([\"root\",\"domain\",\"number\"])
+          .build())
+                .build();
+            return new AssetBuilder().addProp(numberProp).addOutputSocket(oneSocket).build()
+        }"
+    .to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        comp_variant.id(),
+        component_name.clone(),
+        component_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::Component,
+        Some(component_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_comp_variant = VariantAuthoringClient::regenerate_variant(ctx, comp_variant.id())
+        .await
+        .expect("could not regenerate variant");
+
+    // create one of each component
+    let up_frame = create_component_for_schema_variant(ctx, new_variant)
+        .await
+        .expect("could not create component");
+    let component = create_component_for_schema_variant(ctx, new_comp_variant)
+        .await
+        .expect("could not create component");
+
+    // attach component to up frame
+    Frame::upsert_parent(ctx, component.id(), up_frame.id())
+        .await
+        .expect("could not upsert");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // set a value for the component
+
+    update_attribute_value_for_component(
+        ctx,
+        component.id(),
+        &["root", "domain", "number"],
+        serde_json::json!("Number"),
+    )
+    .await
+    .expect("could not udpate attribute value");
+
+    //commit for propagation
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // the output socket value is updated with "3"
+    let output_value = get_component_output_socket_value(ctx, component.id(), "number")
+        .await
+        .expect("could not get output socket value")
+        .expect("has value");
+    assert_eq!(output_value, serde_json::json!("Number"));
+    // make sure component output socket matches on the up frames input socket
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "one")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    let diagram = DiagramByKey::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+
+    assert_eq!(
+        0,                                      // expected
+        diagram.get_all_inferred_edges().len()  // actual
+    );
+
+    // now let's create an explicit connection and make sure the other input socket doesn't match that output socket
+    connect_components_with_socket_names(ctx, component.id(), "number", up_frame.id(), "one")
+        .await
+        .expect("could not create connection");
+    //commit for propagation
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // make sure everything looks right
+
+    let input_value = get_component_input_socket_value(ctx, up_frame.id(), "one")
+        .await
+        .expect("could not get output socket value")
+        .expect("has value");
+    assert_eq!(input_value, serde_json::json!("Number"));
+    // other input socket is still empty
+    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
+        .await
+        .expect("could not get input socket value")
+        .is_none());
+    let diagram = DiagramByKey::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    assert_eq!(
+        2,                        // expected
+        diagram.components.len()  // actual
+    );
+    assert_eq!(
+        0,                                      // expected
+        diagram.get_all_inferred_edges().len()  // actual
     );
 }
 

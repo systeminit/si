@@ -1,11 +1,13 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use inferred_connection_graph::InferredConnectionGraph;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
-use std::collections::{hash_map, HashMap, HashSet, VecDeque};
+use socket::{ComponentInputSocket, ComponentOutputSocket};
+use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 use std::num::ParseFloatError;
 use std::sync::Arc;
@@ -58,9 +60,11 @@ pub mod code;
 pub mod debug;
 pub mod diff;
 pub mod frame;
+pub mod inferred_connection_graph;
 pub mod properties;
 pub mod qualification;
 pub mod resource;
+pub mod socket;
 
 pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
@@ -110,6 +114,8 @@ pub enum ComponentError {
     Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("input socket {0} not found for component id {1}")]
+    InputSocketNotFoundForComponentId(InputSocketId, ComponentId),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
     #[error("layer db error: {0}")]
@@ -142,6 +148,8 @@ pub enum ComponentError {
     OutputSocket(#[from] OutputSocketError),
     #[error("output socket has not found for attribute value id {0}")]
     OutputSocketNotFoundForAttributeValueId(AttributeValueId),
+    #[error("output socket {0} not found for component id {1}")]
+    OutputSocketNotFoundForComponentId(OutputSocketId, ComponentId),
     #[error("output socket {0} has more than one attribute value")]
     OutputSocketTooManyAttributeValues(OutputSocketId),
     #[error("parse float error: {0}")]
@@ -171,13 +179,13 @@ pub enum ComponentError {
     #[error(
         "too many inferred connections ({0:?}) for input socket match ({1:?}) with an arity of one"
     )]
-    TooManyInferredConnections(Vec<OutputSocketMatch>, InputSocketMatch),
+    TooManyInferredConnections(Vec<ComponentOutputSocket>, ComponentInputSocket),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
     #[error("unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one")]
-    UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, InputSocketMatch),
+    UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
     #[error("value source for known prop attribute value {0} is not a prop id")]
     ValueSourceForPropValueNotPropId(AttributeValueId),
     #[error("workspace error: {0}")]
@@ -233,26 +241,12 @@ pub struct OutgoingConnection {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct InferredIncomingConnection {
+pub struct InferredConnection {
     pub to_component_id: ComponentId,
     pub to_input_socket_id: InputSocketId,
     pub from_component_id: ComponentId,
     pub from_output_socket_id: OutputSocketId,
     pub to_delete: bool,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct InputSocketMatch {
-    pub component_id: ComponentId,
-    pub input_socket_id: InputSocketId,
-    pub attribute_value_id: AttributeValueId,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct OutputSocketMatch {
-    pub component_id: ComponentId,
-    pub output_socket_id: OutputSocketId,
-    pub attribute_value_id: AttributeValueId,
 }
 
 /// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
@@ -1152,17 +1146,19 @@ impl Component {
         Ok(())
     }
 
-    pub async fn outgoing_connections(
-        &self,
+    pub async fn outgoing_connections_for_id(
         ctx: &DalContext,
+        component_id: ComponentId,
     ) -> ComponentResult<Vec<OutgoingConnection>> {
         let mut outgoing_edges = vec![];
 
-        for (from_output_socket_id, _) in self.output_socket_attribute_values(ctx).await? {
+        for from_output_socket in
+            ComponentOutputSocket::list_for_component_id(ctx, component_id).await?
+        {
             for apa_id in AttributePrototypeArgument::list_ids_for_output_socket_and_source(
                 ctx,
-                from_output_socket_id,
-                self.id,
+                from_output_socket.output_socket_id,
+                component_id,
             )
             .await?
             {
@@ -1197,7 +1193,7 @@ impl Component {
                             to_component_id: destination_component_id,
                             from_component_id: source_component_id,
                             to_input_socket_id: *input_socket,
-                            from_output_socket_id,
+                            from_output_socket_id: from_output_socket.output_socket_id,
                             created_info,
                             deleted_info: None,
                         });
@@ -1207,6 +1203,13 @@ impl Component {
         }
 
         Ok(outgoing_edges)
+    }
+
+    pub async fn outgoing_connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<OutgoingConnection>> {
+        Self::outgoing_connections_for_id(ctx, self.id).await
     }
 
     /// Calls [`Self::incoming_connections_by_id`] by passing in the id from [`self`](Component).
@@ -1225,11 +1228,10 @@ impl Component {
     ) -> ComponentResult<Vec<IncomingConnection>> {
         let mut incoming_edges = vec![];
 
-        for (to_input_socket_id, to_value_id) in
-            Self::input_socket_attribute_values_for_component_id(ctx, id).await?
-        {
+        for component_input_socket in ComponentInputSocket::list_for_component_id(ctx, id).await? {
             let prototype_id =
-                AttributeValue::prototype_id(ctx, to_value_id.attribute_value_id).await?;
+                AttributeValue::prototype_id(ctx, component_input_socket.attribute_value_id)
+                    .await?;
             for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
                 ctx,
                 prototype_id,
@@ -1260,7 +1262,7 @@ impl Component {
                             attribute_prototype_argument_id: apa_id,
                             to_component_id: destination_component_id,
                             from_component_id: source_component_id,
-                            to_input_socket_id,
+                            to_input_socket_id: component_input_socket.input_socket_id,
                             from_output_socket_id,
                             created_info,
                             deleted_info: None,
@@ -1741,45 +1743,17 @@ impl Component {
         maybe_root_attribute_value_id
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
-
-    pub async fn output_socket_attribute_values_for_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<HashMap<OutputSocketId, OutputSocketMatch>> {
-        let mut result = HashMap::new();
-
-        let socket_values = Self::values_for_all_sockets(ctx, component_id).await?;
-
-        for socket_value_id in socket_values {
-            if let Some(output_socket_id) = AttributeValue::is_for(ctx, socket_value_id)
-                .await?
-                .output_socket_id()
-            {
-                match result.entry(output_socket_id) {
-                    hash_map::Entry::Vacant(entry) => {
-                        entry.insert(OutputSocketMatch {
-                            component_id,
-                            attribute_value_id: socket_value_id,
-                            output_socket_id,
-                        });
-                    }
-                    hash_map::Entry::Occupied(_) => {
-                        return Err(ComponentError::OutputSocketTooManyAttributeValues(
-                            output_socket_id,
-                        ));
-                    }
-                }
-            }
-        }
-
-        Ok(result)
-    }
-
     pub async fn output_socket_attribute_values(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<HashMap<OutputSocketId, OutputSocketMatch>> {
-        Self::output_socket_attribute_values_for_component_id(ctx, self.id()).await
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        ComponentOutputSocket::attribute_values_for_component_id(ctx, self.id()).await
+    }
+    pub async fn input_socket_attribute_values(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        ComponentInputSocket::attribute_values_for_component_id(ctx, self.id()).await
     }
 
     /// Find the attribute values for *this* component and a given prop path
@@ -1832,7 +1806,7 @@ impl Component {
             .ok_or(ComponentError::ComponentMissingDomainValue(self.id))
     }
 
-    async fn values_for_all_sockets(
+    async fn attribute_values_for_all_sockets(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
@@ -1857,67 +1831,6 @@ impl Component {
         }
 
         Ok(socket_values)
-    }
-
-    #[instrument(level="debug" skip_all)]
-    pub async fn input_socket_match(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        input_socket_id: InputSocketId,
-    ) -> ComponentResult<Option<InputSocketMatch>> {
-        let all_input_sockets =
-            Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        Ok(all_input_sockets.get(&input_socket_id).cloned())
-    }
-
-    pub async fn output_socket_match(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        output_socket_id: OutputSocketId,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
-        let all_output_sockets =
-            Self::output_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        Ok(all_output_sockets.get(&output_socket_id).copied())
-    }
-
-    pub async fn input_socket_attribute_values_for_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<HashMap<InputSocketId, InputSocketMatch>> {
-        let mut result = HashMap::new();
-
-        let socket_values = Self::values_for_all_sockets(ctx, component_id).await?;
-
-        for socket_value_id in socket_values {
-            if let Some(input_socket_id) = AttributeValue::is_for(ctx, socket_value_id)
-                .await?
-                .input_socket_id()
-            {
-                match result.entry(input_socket_id) {
-                    hash_map::Entry::Vacant(entry) => {
-                        entry.insert(InputSocketMatch {
-                            component_id,
-                            attribute_value_id: socket_value_id,
-                            input_socket_id,
-                        });
-                    }
-                    hash_map::Entry::Occupied(_) => {
-                        return Err(ComponentError::InputSocketTooManyAttributeValues(
-                            input_socket_id,
-                        ));
-                    }
-                }
-            }
-        }
-
-        Ok(result)
-    }
-
-    pub async fn input_socket_attribute_values(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<HashMap<InputSocketId, InputSocketMatch>> {
-        Self::input_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
 
     #[instrument(level = "debug", skip(ctx))]
@@ -2296,39 +2209,6 @@ impl Component {
         ))
     }
 
-    // Returns map of node id -> parent node ids
-    pub async fn build_graph(
-        ctx: &DalContext,
-    ) -> ComponentResult<HashMap<ComponentId, HashSet<ComponentId>>> {
-        let total_start = std::time::Instant::now();
-
-        let components = Self::list(ctx).await?;
-
-        let mut components_map: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
-
-        for component in components {
-            components_map.insert(component.id, HashSet::new());
-
-            for incoming_connection in component.incoming_connections(ctx).await? {
-                components_map
-                    .entry(component.id)
-                    .or_default()
-                    .insert(incoming_connection.from_component_id);
-            }
-            for inferred_incoming_connections in
-                component.inferred_incoming_connections(ctx).await?
-            {
-                components_map
-                    .entry(component.id)
-                    .or_default()
-                    .insert(inferred_incoming_connections.from_component_id);
-            }
-        }
-
-        debug!("build graph took {:?}", total_start.elapsed());
-        Ok(components_map)
-    }
-
     pub async fn list_av_controlling_func_ids_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -2546,10 +2426,10 @@ impl Component {
             )
             .await?;
         }
-        for (output_socket_id, _) in
-            Component::output_socket_attribute_values_for_component_id(ctx, id).await?
+        for component_output_socket in ComponentOutputSocket::list_for_component_id(ctx, id).await?
         {
-            let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+            let output_socket =
+                OutputSocket::get_by_id(ctx, component_output_socket.output_socket_id).await?;
             let apa_ids = output_socket.prototype_arguments_using(ctx).await?;
             for apa_id in apa_ids {
                 let prototype_argument = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
@@ -2661,13 +2541,8 @@ impl Component {
         // This will update more than is strictly necessary, but it will ensure that everything is
         // correct.
 
-        let input_av_ids: Vec<AttributeValueId> = modified
-            .input_socket_attribute_values(ctx)
-            .await?
-            .values()
-            .map(|f| &f.attribute_value_id)
-            .cloned()
-            .collect();
+        let input_av_ids: Vec<AttributeValueId> =
+            modified.input_socket_attribute_values(ctx).await?;
 
         ctx.add_dependent_values_and_enqueue(input_av_ids).await?;
 
@@ -2720,12 +2595,8 @@ impl Component {
     ) -> ComponentResult<Vec<AttributeValueId>> {
         let mut results = Vec::new();
 
-        let output_sockets: Vec<OutputSocketMatch> = self
-            .output_socket_attribute_values(ctx)
-            .await?
-            .values()
-            .copied()
-            .collect();
+        let output_sockets: Vec<ComponentOutputSocket> =
+            ComponentOutputSocket::list_for_component_id(ctx, self.id()).await?;
         for output_socket_match in output_sockets {
             let output_socket =
                 OutputSocket::get_by_id(ctx, output_socket_match.output_socket_id).await?;
@@ -2748,7 +2619,7 @@ impl Component {
                 }
             }
             // also need to make sure inferred sockets are re-ran if there are any
-            let inferred_inputs = Self::find_inferred_values_using_this_output_socket(
+            let inferred_inputs = ComponentOutputSocket::find_inferred_connections(
                 ctx,
                 output_socket_match.attribute_value_id,
             )
@@ -2790,287 +2661,6 @@ impl Component {
         Ok(pasted_comp)
     }
 
-    /// For a given [`ComponentId`], map each input socket to the inferred output sockets
-    /// it is connected to. Inferred socket connections are determined by following
-    /// the ancestry line of FrameContains edges and matching the relevant input to output sockets.
-    #[instrument(level = "debug", skip_all)]
-    pub async fn build_map_for_component_id_inferred_incoming_connections(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<HashMap<InputSocketMatch, Vec<OutputSocketMatch>>> {
-        let mut results = HashMap::new();
-        let input_sockets =
-            Self::input_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        for (_, input_socket_match) in input_sockets {
-            let output_matches =
-                Self::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
-                    .await?;
-            if !output_matches.is_empty() {
-                results.entry(input_socket_match).or_insert(output_matches);
-            }
-        }
-        debug!(
-            "Map of inferred input to output connections for component {:?}: {:?}",
-            component_id, results
-        );
-        Ok(results)
-    }
-
-    /// For a given [`ComponentId`], map each output socket to the inferred input sockets
-    /// it is connected to. Inferred socket connections are determined by following the
-    /// lineage of Frame Contains edges and matching relevant output to input sockets.
-    #[instrument(level = "debug", skip_all)]
-    pub async fn build_map_for_component_id_inferred_outgoing_connections(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<HashMap<OutputSocketMatch, Vec<InputSocketMatch>>> {
-        let mut results = HashMap::new();
-        let output_sockets =
-            Self::output_socket_attribute_values_for_component_id(ctx, component_id).await?;
-        for (_, output_socket_match) in output_sockets {
-            let input_matches = Self::find_inferred_values_using_this_output_socket(
-                ctx,
-                output_socket_match.attribute_value_id,
-            )
-            .await?;
-            if !input_matches.is_empty() {
-                results.entry(output_socket_match).or_insert(input_matches);
-            }
-        }
-        debug!(
-            "Map of inferred input to output connections for component {:?}: {:?}",
-            component_id, results
-        );
-        Ok(results)
-    }
-
-    /// For a given [`InputSocketMatch`], find the inferred [`OutputSocketMatch`]es that are driving it
-    /// if it exists. This walks up or down the component lineage tree depending on the [`ComponentType`]
-    /// and finds the closest matching [`OutputSocket`]
-    ///
-    /// When walking down the lineage tree, we allow multiple output sockets to drive an input socket
-    /// if the input socket has arity many and the matches are all siblings
-    ///
-    /// Note: this does not check for whether data should actually flow between components
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn find_available_inferred_connections_to_input_socket(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-    ) -> ComponentResult<Vec<OutputSocketMatch>> {
-        if InputSocket::is_manually_configured(ctx, input_socket_match).await? {
-            //if the input socket is being manually driven (the user has drawn an edge)
-            // there will be no inferred connections to it
-            return Ok(Vec::new());
-        }
-
-        let destination_sockets =
-            match Component::get_type_by_id(ctx, input_socket_match.component_id).await? {
-                ComponentType::Component | ComponentType::ConfigurationFrameDown => {
-                    //For a component, or a down frame, check my parents and other ancestors
-                    // find the first output socket match that is a down frame and use it!
-
-                    if let Some(output_match) = Self::find_first_output_socket_match_in_ancestors(
-                        ctx,
-                        input_socket_match,
-                        vec![ComponentType::ConfigurationFrameDown],
-                    )
-                    .await?
-                    {
-                        vec![output_match]
-                    } else {
-                        vec![]
-                    }
-                }
-                ComponentType::ConfigurationFrameUp => {
-                    // An up frame's input sockets are sourced from either its children's output sockets
-                    // or an ancestor.  Based on the input socket's arity, we match many (sorted by component ulid)
-                    // or if the arity is single, we return none
-                    let mut matches = vec![];
-                    let descendant_matches =
-                        Self::find_available_output_socket_match_in_descendants(
-                            ctx,
-                            input_socket_match,
-                            vec![
-                                ComponentType::ConfigurationFrameUp,
-                                ComponentType::Component,
-                            ],
-                        )
-                        .await?;
-                    matches.extend(descendant_matches);
-                    if let Some(ascendant_match) =
-                        Self::find_first_output_socket_match_in_ancestors(
-                            ctx,
-                            input_socket_match,
-                            vec![ComponentType::ConfigurationFrameDown],
-                        )
-                        .await?
-                    {
-                        matches.push(ascendant_match);
-                    }
-
-                    let input_socket =
-                        InputSocket::get_by_id(ctx, input_socket_match.input_socket_id).await?;
-                    if input_socket.arity() == SocketArity::One && matches.len() > 1 {
-                        vec![]
-                    } else {
-                        // if there is more than one match, sort by component Ulid so they're
-                        // consistently ordered
-                        matches.sort_by_key(|output_socket| output_socket.component_id);
-                        matches
-                    }
-                }
-                ComponentType::AggregationFrame => vec![],
-            };
-        debug!(
-            "Source socket for input socket {:?} is: {:?}",
-            input_socket_match, destination_sockets
-        );
-
-        Ok(destination_sockets)
-    }
-
-    /// Walk down the component lineage to find all matching input sockets that a given output
-    /// socket is driving
-    ///
-    /// Note: This does not check if data should actually flow between the components
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_all_potential_inferred_input_socket_matches_in_descendants(
-        ctx: &DalContext,
-        output_socket_id: OutputSocketId,
-        component_id: ComponentId,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Vec<InputSocketMatch>> {
-        let mut found_sockets: Vec<InputSocketMatch> = vec![];
-        let mut work_queue = VecDeque::from([component_id]);
-        while let Some(component_id) = work_queue.pop_front() {
-            if component_types.contains(&Component::get_type_by_id(ctx, component_id).await?) {
-                //for each child, gather the input socket map for it
-                // find the input sockets that consider this output socket an input
-                // aggregate them as there might be many (for example a region frame passing values to many children)
-
-                let matchy_matchy =
-                    Component::build_map_for_component_id_inferred_incoming_connections(
-                        ctx,
-                        component_id,
-                    )
-                    .await?;
-                for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_matches)) =
-                        matchy_matchy.get_key_value(key)
-                    {
-                        for output_socket_match in output_socket_matches {
-                            if output_socket_match.output_socket_id == output_socket_id {
-                                found_sockets.push(*input_socket_match);
-                            }
-                        }
-                    }
-                }
-            }
-            // regardless whether the component type matches, we need to continue to descend
-            for child in Self::get_children_for_id(ctx, component_id).await? {
-                work_queue.push_back(child);
-            }
-        }
-
-        Ok(found_sockets)
-    }
-
-    /// For a given [`InputSocketMatch`], see if there are any [`OutputSocketMatch`]es for the provided
-    /// [`ComponentId`]
-    ///
-    ///  Note: this does not check to see whether data should actually flow
-    #[instrument(level = "debug" skip(ctx))]
-    async fn find_potential_inferred_output_socket_matches_in_component(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-        source_component_id: ComponentId,
-    ) -> ComponentResult<Vec<OutputSocketMatch>> {
-        // check for matching output socket names for this input socket
-        let parent_sv_id = Self::schema_variant_id(ctx, source_component_id).await?;
-        let output_socket_ids =
-            OutputSocket::list_ids_for_schema_variant(ctx, parent_sv_id).await?;
-        let mut maybe_matches = vec![];
-
-        for output_socket_id in output_socket_ids {
-            if OutputSocket::fits_input_by_id(
-                ctx,
-                input_socket_match.input_socket_id,
-                output_socket_id,
-            )
-            .await?
-            {
-                if let Some(output_socket_match) =
-                    Self::output_socket_match(ctx, source_component_id, output_socket_id).await?
-                {
-                    maybe_matches.push(OutputSocketMatch {
-                        component_id: source_component_id,
-                        output_socket_id,
-                        attribute_value_id: output_socket_match.attribute_value_id,
-                    });
-                }
-            }
-        }
-
-        Ok(maybe_matches)
-    }
-
-    /// Find all [`InputSocketMatches`](InputSocketMatch) in the ancestry tree for a [`Component`]
-    /// with the provided [`ComponentId`](Component). This searches for matches in the
-    /// [`Component's`] parents and up the entire lineage tree.
-    ///
-    /// Note: this does not check if data should actually flow between the components with matches
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_all_input_socket_matches_in_ascendants(
-        ctx: &DalContext,
-        output_socket_id: OutputSocketId,
-        component_id: ComponentId,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Vec<InputSocketMatch>> {
-        let maybe_parent_id = Self::get_parent_by_id(ctx, component_id).await?;
-
-        let mut found_sockets: Vec<InputSocketMatch> = vec![];
-        let Some(parent_id) = maybe_parent_id else {
-            return Ok(found_sockets);
-        };
-        let mut work_queue = VecDeque::from([parent_id]);
-        while let Some(working_component_id) = work_queue.pop_front() {
-            if component_types
-                .contains(&Component::get_type_by_id(ctx, working_component_id).await?)
-            {
-                //for each parent, gather the input socket map for it
-                // find the input sockets that consider this output socket an input
-                // aggregate them as there might be many
-
-                let matchy_matchy =
-                    Component::build_map_for_component_id_inferred_incoming_connections(
-                        ctx,
-                        working_component_id,
-                    )
-                    .await?;
-                for key in matchy_matchy.keys() {
-                    if let Some((input_socket_match, output_socket_matches)) =
-                        matchy_matchy.get_key_value(key)
-                    {
-                        for output_socket_match in output_socket_matches {
-                            if output_socket_match.output_socket_id == output_socket_id {
-                                debug!(
-                                    "Found matching input socket {:?} for component id {}",
-                                    input_socket_match, working_component_id
-                                );
-                                found_sockets.push(*input_socket_match);
-                            }
-                        }
-                    }
-                }
-                if let Some(parent) = Self::get_parent_by_id(ctx, working_component_id).await? {
-                    work_queue.push_back(parent);
-                }
-            }
-        }
-
-        Ok(found_sockets)
-    }
-
     /// Finds all inferred incoming connections for the [`Component`]
     /// A connection is inferred if it's input socket is being driven
     /// by another component's output socket as a result of lineage
@@ -3079,394 +2669,78 @@ impl Component {
     pub async fn inferred_incoming_connections(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<InferredIncomingConnection>> {
+    ) -> ComponentResult<Vec<InferredConnection>> {
         let to_component_id = self.id();
         let mut connections = vec![];
-        let input_sockets =
-            Self::input_socket_attribute_values_for_component_id(ctx, to_component_id).await?;
-        for (to_input_socket_id, input_socket_match) in input_sockets.into_iter() {
-            for output_socket_match in
-                Self::find_available_inferred_connections_to_input_socket(ctx, input_socket_match)
-                    .await?
-            {
-                // add the check for to_delete on either to or from component
-                // Both "deleted" and not deleted Components can feed data into
-                // "deleted" Components. **ONLY** not deleted Components can feed
-                // data into not deleted Components.
-                let destination_component = Self::get_by_id(ctx, to_component_id).await?;
-                let source_component =
-                    Self::get_by_id(ctx, output_socket_match.component_id).await?;
-                let to_delete = !Self::should_data_flow_between_components(
-                    ctx,
-                    destination_component.id,
-                    source_component.id,
-                )
-                .await?;
+        // assemble tree
+        let tree = InferredConnectionGraph::assemble(ctx, to_component_id).await?;
+        for incoming_connection in
+            tree.get_inferred_incoming_connections_to_component(to_component_id)
+        {
+            // add the check for to_delete on either to or from component
+            // Both "deleted" and not deleted Components can feed data into
+            // "deleted" Components. **ONLY** not deleted Components can feed
+            // data into not deleted Components.
+            let destination_component = Self::get_by_id(ctx, to_component_id).await?;
+            let source_component =
+                Self::get_by_id(ctx, incoming_connection.output_socket.component_id).await?;
+            let to_delete = !Self::should_data_flow_between_components(
+                ctx,
+                destination_component.id,
+                source_component.id,
+            )
+            .await?;
 
-                let implicit_edge = InferredIncomingConnection {
-                    to_component_id,
-                    to_input_socket_id,
-                    from_component_id: output_socket_match.component_id,
-                    from_output_socket_id: output_socket_match.output_socket_id,
-                    to_delete,
-                };
-                debug!("Found inferred edge: {:?}", implicit_edge);
-                connections.push(implicit_edge);
-            }
+            connections.push(InferredConnection {
+                to_component_id,
+                to_input_socket_id: incoming_connection.input_socket.input_socket_id,
+                from_component_id: incoming_connection.output_socket.component_id,
+                from_output_socket_id: incoming_connection.output_socket.output_socket_id,
+                to_delete,
+            });
         }
+
         Ok(connections)
     }
 
     /// Finds all inferred outgoing connections for the [`Component`]. A connection is inferred if
     /// its output sockets are driving another [`Component's`](Component) [`InputSocket`] as a
     /// result of lineage via an [`EdgeWeightKind::FrameContains`] edge.
-    #[instrument(level = "debug", skip(ctx))]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn inferred_outgoing_connections(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<InferredIncomingConnection>> {
+    ) -> ComponentResult<Vec<InferredConnection>> {
         let from_component_id = self.id();
         let mut connections = vec![];
-        let output_sockets =
-            Self::output_socket_attribute_values_for_component_id(ctx, from_component_id).await?;
-        for (from_output_socket_id, output_socket_match) in output_sockets.into_iter() {
-            for input_socket_match in Self::find_inferred_values_using_this_output_socket(
+        // get up to date component tree
+        let component_tree = InferredConnectionGraph::assemble(ctx, from_component_id).await?;
+
+        for outgoing_connection in
+            component_tree.get_inferred_outgoing_connections_for_component(from_component_id)
+        {
+            // add the check for to_delete on either to or from component
+            // Both "deleted" and not deleted Components can feed data into
+            // "deleted" Components. **ONLY** not deleted Components can feed
+            // data into not deleted Components.
+            let destination_component = outgoing_connection.input_socket.component_id;
+            let source_component = self.id();
+
+            let to_delete = !Self::should_data_flow_between_components(
                 ctx,
-                output_socket_match.attribute_value_id,
+                destination_component,
+                source_component,
             )
-            .await?
-            {
-                // add the check for to_delete on either to or from component
-                // Both "deleted" and not deleted Components can feed data into
-                // "deleted" Components. **ONLY** not deleted Components can feed
-                // data into not deleted Components.
-                let destination_component = input_socket_match.component_id;
-                let source_component = self.id();
-
-                let to_delete = !Self::should_data_flow_between_components(
-                    ctx,
-                    destination_component,
-                    source_component,
-                )
-                .await?;
-
-                let implicit_edge = InferredIncomingConnection {
-                    to_component_id: input_socket_match.component_id,
-                    to_input_socket_id: input_socket_match.input_socket_id,
-                    from_component_id,
-                    from_output_socket_id,
-                    to_delete,
-                };
-                debug!("Found inferred edge: {:?}", implicit_edge);
-                connections.push(implicit_edge);
-            }
+            .await?;
+            connections.push(InferredConnection {
+                to_component_id: outgoing_connection.input_socket.component_id,
+                to_input_socket_id: outgoing_connection.input_socket.input_socket_id,
+                from_component_id: outgoing_connection.output_socket.component_id,
+                from_output_socket_id: outgoing_connection.output_socket.output_socket_id,
+                to_delete,
+            });
         }
         Ok(connections)
-    }
-
-    /// For the provided [`InputSocketMatch`], find any matching [`OutputSocketMatch`] that should
-    /// drive this [`InputSocket`] by searching down the descendants of the [`Component`],
-    /// checking children first and walking down until we find any matches.
-    ///
-    /// If the provided [`InputSocketMatch`] has an arity of one, we look for only one
-    /// eligible [`OutputSocket`]. If we find multiple, we won't return any, forcing the
-    /// user to explicity draw the edge.
-    ///
-    /// If it has an arity of many, we will look for multiple matches, but they must
-    /// be at the same 'level' to be considered valid.
-    ///
-    /// Note: this does not check if data should actually flow between the components with matches,
-    /// it only checks if there are available sockets that might be driven
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_available_output_socket_match_in_descendants(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Vec<OutputSocketMatch>> {
-        let mut output_socket_matches: Vec<OutputSocketMatch> = vec![];
-        let component_id = input_socket_match.component_id;
-        let children = Component::get_children_for_id(ctx, component_id).await?;
-        let socket_arrity = InputSocket::get_by_id(ctx, input_socket_match.input_socket_id)
-            .await?
-            .arity();
-        //load up the children and look for matches
-        let mut work_queue: VecDeque<Vec<ComponentId>> = VecDeque::new();
-        work_queue.push_front(children);
-        if socket_arrity == SocketArity::One {
-            while let Some(children) = work_queue.pop_front() {
-                if children.is_empty() {
-                    break;
-                }
-                let (maybe_match, next_children) = Self::find_single_match_in_children(
-                    ctx,
-                    input_socket_match,
-                    &component_types,
-                    children,
-                )
-                .await?;
-                // if there wasn't a match here, load up the next children
-                // if there was, return
-                match maybe_match {
-                    Some(output_match) => {
-                        output_socket_matches.push(output_match);
-                        break;
-                    }
-                    None => work_queue.push_back(next_children),
-                }
-            }
-        } else {
-            while let Some(children) = work_queue.pop_front() {
-                if children.is_empty() {
-                    break;
-                }
-                let (maybe_matches, next_children) = Self::find_all_matches_in_children(
-                    ctx,
-                    input_socket_match,
-                    &component_types,
-                    children,
-                )
-                .await?;
-                // if there are matches found, push them and stop looking
-                // otherwise, load up the next children if there are any
-                if maybe_matches.is_empty() && !next_children.is_empty() {
-                    work_queue.push_back(next_children);
-                } else {
-                    output_socket_matches.extend(maybe_matches);
-                    break;
-                }
-            }
-        }
-        Ok(output_socket_matches)
-    }
-
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_single_match_in_children(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-        component_types: &[ComponentType],
-        children: Vec<ComponentId>,
-    ) -> ComponentResult<(Option<OutputSocketMatch>, Vec<ComponentId>)> {
-        let mut maybe_output_match = None;
-        let mut next_children = vec![];
-        // when the input socket is an arity of one, we need to find one single matching output socket
-        for child_component in children {
-            match maybe_output_match.is_some() {
-                true => {
-                    // we already have a match, but let's see if there are more
-                    // if there are, stop looking and return none, letting the user decide which
-                    // single child to connect to
-                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
-                    {
-                        let maybe_matches =
-                            Self::find_potential_inferred_output_socket_matches_in_component(
-                                ctx,
-                                input_socket_match,
-                                child_component,
-                            )
-                            .await?;
-
-                        if !maybe_matches.is_empty() {
-                            // this component has too many matches,
-                            return Ok((None, vec![]));
-                        }
-                    }
-                }
-                false => {
-                    // no match yet, keep looking!
-                    if component_types
-                        .contains(&Component::get_type_by_id(ctx, child_component).await?)
-                    {
-                        let maybe_matches =
-                            Self::find_potential_inferred_output_socket_matches_in_component(
-                                ctx,
-                                input_socket_match,
-                                child_component,
-                            )
-                            .await?;
-                        if !maybe_matches.is_empty() && maybe_matches.len() == 1 {
-                            // found exactly 1! it just might be the one!
-                            maybe_output_match = maybe_matches.first().cloned();
-                        }
-                    }
-                }
-            }
-
-            let child_components = Component::get_children_for_id(ctx, child_component).await?;
-            next_children.extend(child_components);
-        }
-        Ok((maybe_output_match, next_children))
-    }
-
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_all_matches_in_children(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-        component_types: &[ComponentType],
-        children: Vec<ComponentId>,
-    ) -> ComponentResult<(Vec<OutputSocketMatch>, Vec<ComponentId>)> {
-        let mut maybe_output_matches = vec![];
-        let mut next_children = vec![];
-        for child_component in children {
-            match !maybe_output_matches.is_empty() {
-                true => {
-                    // we already have a match but we need to check siblings
-                    // as there might be more than one match!
-                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
-                    {
-                        let maybe_matches =
-                            Self::find_potential_inferred_output_socket_matches_in_component(
-                                ctx,
-                                input_socket_match,
-                                child_component,
-                            )
-                            .await?;
-                        // if there's only one match in this component, use it! otherwise keep looking in
-                        // the other children
-                        if maybe_matches.len() == 1 {
-                            // found a single match in descendants!
-                            if let Some(output_match) = maybe_matches.first().cloned() {
-                                maybe_output_matches.push(output_match);
-                            }
-                        }
-                    }
-                }
-                false => {
-                    // no match yet, let's find if this child has any matches!
-                    if component_types.contains(&Self::get_type_by_id(ctx, child_component).await?)
-                    {
-                        let maybe_matches =
-                            Self::find_potential_inferred_output_socket_matches_in_component(
-                                ctx,
-                                input_socket_match,
-                                child_component,
-                            )
-                            .await?;
-
-                        if maybe_matches.len() == 1 {
-                            // found one match in this descendant!
-                            if let Some(output_match) = maybe_matches.first().cloned() {
-                                maybe_output_matches.push(output_match);
-                            }
-                        }
-                    }
-                }
-            }
-            let child_components = Component::get_children_for_id(ctx, child_component).await?;
-            next_children.extend(child_components);
-        }
-        Ok((maybe_output_matches, next_children))
-    }
-
-    /// For the provided [`InputSocketMatch`], find the first [`OutputSocketMatch`] in the ancestry tree
-    /// that should drive this [`InputSocket`] (first searching parents and onwards up the ancestry tree)
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn find_first_output_socket_match_in_ancestors(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Option<OutputSocketMatch>> {
-        if let Some(parent_id) =
-            Component::get_parent_by_id(ctx, input_socket_match.component_id).await?
-        {
-            let mut work_queue = VecDeque::from([parent_id]);
-            while let Some(component_id) = work_queue.pop_front() {
-                // see if this component is the right type
-
-                if component_types.contains(&Component::get_type_by_id(ctx, component_id).await?) {
-                    // get all output sockets for this component
-                    let maybe_matches =
-                        Self::find_potential_inferred_output_socket_matches_in_component(
-                            ctx,
-                            input_socket_match,
-                            component_id,
-                        )
-                        .await?;
-                    {
-                        if maybe_matches.len() > 1 {
-                            // this ancestor has more than one match
-                            // stop looking and return None to force
-                            // the user to manually draw an edge to this socket
-                            debug!("More than one match found: {:?}", maybe_matches);
-                            return Ok(None);
-                        }
-                        if maybe_matches.len() == 1 {
-                            // this ancestor has 1 match!
-                            // return and stop looking
-                            return Ok(maybe_matches.first().cloned());
-                        }
-                    }
-                }
-                // didn't find it, so let's queue up the next parent if it exists
-                if let Some(maybe_parent_id) =
-                    Component::get_parent_by_id(ctx, component_id).await?
-                {
-                    work_queue.push_back(maybe_parent_id);
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Find all inferred [`InputSocketMatch`]es that are being driven by the provided
-    /// [`AttributeValueId`] that represents an [`OutputSocket`] for a specific [`Component`]
-    ///
-    /// Output sockets can drive Input Sockets through inference based on the following logic:
-    ///
-    /// Components and Up Frames can drive Input Sockets of their parents if the parent is an
-    /// Up Frame.
-    ///
-    /// Down Frames can drive Input Sockets of their children if the child is a Down Frame
-    /// or a Component or an Up Frame.
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn find_inferred_values_using_this_output_socket(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> ComponentResult<Vec<InputSocketMatch>> {
-        // let's make sure this av is actually for an output socket
-        let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-        let output_socket_id = match value_is_for {
-            ValueIsFor::Prop(_) | ValueIsFor::InputSocket(_) => {
-                return Err(ComponentError::WrongAttributeValueType(
-                    attribute_value_id,
-                    value_is_for,
-                ))
-            }
-            ValueIsFor::OutputSocket(sock) => sock,
-        };
-        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let maybe_target_sockets = match Component::get_type_by_id(ctx, component_id).await? {
-            ComponentType::Component | ComponentType::ConfigurationFrameUp => {
-                // if the type is a component, find all ascendants
-                // who have a matching input socket AND are an up frame
-                Component::find_all_input_socket_matches_in_ascendants(
-                    ctx,
-                    output_socket_id,
-                    component_id,
-                    vec![ComponentType::ConfigurationFrameUp],
-                )
-                .await?
-            }
-            ComponentType::ConfigurationFrameDown => {
-                // if the type is a down frame, find all descendants
-                // who have a matching input socket AND are a Down Frame, Component, or Up Frame
-                Component::find_all_potential_inferred_input_socket_matches_in_descendants(
-                    ctx,
-                    output_socket_id,
-                    component_id,
-                    vec![
-                        ComponentType::ConfigurationFrameDown,
-                        ComponentType::Component,
-                        ComponentType::ConfigurationFrameUp,
-                    ],
-                )
-                .await?
-            }
-            // we are not supporting aggregation frames right now
-            ComponentType::AggregationFrame => vec![],
-        };
-
-        Ok(maybe_target_sockets)
     }
 
     #[instrument(level = "info", skip(ctx))]
@@ -3869,88 +3143,10 @@ impl Component {
 
         let component = Component::get_by_id(ctx, component_id).await?;
 
-        ctx.add_dependent_values_and_enqueue(
-            component
-                .input_socket_attribute_values(ctx)
-                .await?
-                .values()
-                .map(|ism| ism.attribute_value_id)
-                .collect(),
-        )
-        .await?;
+        ctx.add_dependent_values_and_enqueue(component.input_socket_attribute_values(ctx).await?)
+            .await?;
 
         Ok(())
-    }
-
-    /// Finds the source [`Component`] of any [`ComponentType`] for a given [`InputSocketMatch`] where the
-    /// [`InputSocket`] has an [arity](SocketArity) of [one](SocketArity::One).
-    #[instrument(
-        name = "component.source_component_for_arity_one_input_socket_match",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn source_component_for_arity_one_input_socket_match(
-        ctx: &DalContext,
-        input_socket_match: InputSocketMatch,
-    ) -> ComponentResult<Option<ComponentId>> {
-        let maybe_explicit_connection_source = {
-            let explicit_connections =
-                Component::incoming_connections_for_id(ctx, input_socket_match.component_id)
-                    .await?;
-            let filtered_explicit_connection_sources: Vec<ComponentId> = explicit_connections
-                .iter()
-                .filter(|c| c.to_input_socket_id == input_socket_match.input_socket_id)
-                .map(|c| c.from_component_id)
-                .collect();
-            if filtered_explicit_connection_sources.len() > 1 {
-                return Err(ComponentError::TooManyExplicitConnectionSources(
-                    filtered_explicit_connection_sources,
-                    input_socket_match.component_id,
-                    input_socket_match.input_socket_id,
-                ));
-            }
-            filtered_explicit_connection_sources.first().copied()
-        };
-
-        let maybe_inferred_connection_source = {
-            let inferred_connections =
-                match Component::find_available_inferred_connections_to_input_socket(
-                    ctx,
-                    input_socket_match,
-                )
-                .await
-                {
-                    Ok(inferred_connections) => inferred_connections,
-                    Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                        debug!(?input_socket_match, "component type not yet set when finding available inferred connections to input socket");
-                        Vec::new()
-                    }
-                    Err(other_err) => Err(other_err)?,
-                };
-            if inferred_connections.len() > 1 {
-                return Err(ComponentError::TooManyInferredConnections(
-                    inferred_connections,
-                    input_socket_match,
-                ));
-            }
-            inferred_connections.first().map(|c| c.component_id)
-        };
-
-        match (
-            maybe_explicit_connection_source,
-            maybe_inferred_connection_source,
-        ) {
-            (Some(explicit_source), Some(inferred_source)) => {
-                Err(ComponentError::UnexpectedExplicitAndInferredSources(
-                    explicit_source,
-                    inferred_source,
-                    input_socket_match,
-                ))
-            }
-            (Some(explicit_source), None) => Ok(Some(explicit_source)),
-            (None, Some(inferred_source)) => Ok(Some(inferred_source)),
-            (None, None) => Ok(None),
-        }
     }
 }
 

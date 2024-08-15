@@ -1,10 +1,11 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::value::AttributeValueError;
+use crate::component::inferred_connection_graph::InferredConnectionGraph;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
@@ -14,7 +15,7 @@ use crate::{
     WsEventError,
 };
 
-use super::{InputSocketMatch, OutputSocketMatch};
+use super::socket::{ComponentInputSocket, ComponentOutputSocket};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -39,8 +40,8 @@ pub enum FrameError {
 
 #[derive(Debug, Eq, Hash, PartialEq, Copy, Clone)]
 struct SocketAttributeValuePair {
-    input_socket_match: InputSocketMatch,
-    output_socket_match: OutputSocketMatch,
+    component_input_socket: ComponentInputSocket,
+    component_output_socket: ComponentOutputSocket,
 }
 
 pub type FrameResult<T> = Result<T, FrameError>;
@@ -137,7 +138,6 @@ impl Frame {
         // cache current map of input <-> output sockets based on what the parent knows about right now!!!!
         let initial_impacted_values: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
-
         // is the current child already connected to a parent?
         let mut post_edge_removal_impacted_values: HashSet<SocketAttributeValuePair> =
             HashSet::new();
@@ -169,7 +169,6 @@ impl Frame {
         // get the latest state of the component tree
         let current_impacted_values =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
-
         // an edge has been removed if it exists in the state after we've detached the component, and it's not in current state
         values_to_run.extend(
             post_edge_removal_impacted_values
@@ -187,10 +186,10 @@ impl Frame {
         let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         for pair in &values_to_run {
             inferred_edges.push(SummaryDiagramInferredEdge {
-                to_socket_id: pair.input_socket_match.input_socket_id,
-                to_component_id: pair.input_socket_match.component_id,
-                from_socket_id: pair.output_socket_match.output_socket_id,
-                from_component_id: pair.output_socket_match.component_id,
+                to_socket_id: pair.component_input_socket.input_socket_id,
+                to_component_id: pair.component_input_socket.component_id,
+                from_socket_id: pair.component_output_socket.output_socket_id,
+                from_component_id: pair.component_output_socket.component_id,
                 to_delete: false, // irrelevant
             })
         }
@@ -215,12 +214,11 @@ impl Frame {
                     .copied(),
             );
         }
-
         // enqueue those values that we now know need to run
         ctx.add_dependent_values_and_enqueue(
             values_to_run
                 .into_iter()
-                .map(|values| values.input_socket_match.attribute_value_id)
+                .map(|values| values.component_input_socket.attribute_value_id)
                 .collect_vec(),
         )
         .await?;
@@ -258,10 +256,10 @@ impl Frame {
         let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
         for pair in &diff {
             inferred_edges.push(SummaryDiagramInferredEdge {
-                to_socket_id: pair.input_socket_match.input_socket_id,
-                to_component_id: pair.input_socket_match.component_id,
-                from_socket_id: pair.output_socket_match.output_socket_id,
-                from_component_id: pair.output_socket_match.component_id,
+                to_socket_id: pair.component_input_socket.input_socket_id,
+                to_component_id: pair.component_input_socket.component_id,
+                from_socket_id: pair.component_output_socket.output_socket_id,
+                from_component_id: pair.component_output_socket.component_id,
                 to_delete: false, // irrelevant
             })
         }
@@ -280,7 +278,7 @@ impl Frame {
         // enqueue dvu for those values that no longer have an output socket driving them!
         ctx.add_dependent_values_and_enqueue(
             diff.into_iter()
-                .map(|values| values.input_socket_match.attribute_value_id)
+                .map(|values| values.component_input_socket.attribute_value_id)
                 .collect_vec(),
         )
         .await?;
@@ -297,59 +295,16 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
-        let mut input_map: HashMap<InputSocketMatch, Vec<OutputSocketMatch>> = HashMap::new();
-        let mut output_map: HashMap<OutputSocketMatch, Vec<InputSocketMatch>> = HashMap::new();
         let mut impacted_connections = HashSet::new();
-
-        // find the top most parent of each tree (might be the same, but that's fine)
-        let mut first_top_parent = child_id;
-        while let Some(parent) = Component::get_parent_by_id(ctx, first_top_parent).await? {
-            first_top_parent = parent;
-        }
-        let mut second_top_parent = parent_id;
-        while let Some(parent) = Component::get_parent_by_id(ctx, second_top_parent).await? {
-            second_top_parent = parent;
-        }
-
-        // Walk down the tree of descendants and accumulate connections for every input/output socket.
-        let mut work_queue = VecDeque::new();
-        work_queue.push_back(first_top_parent);
-
-        // if we're dealing with two trees, get the children for the other one too
-        if first_top_parent != second_top_parent {
-            work_queue.push_back(second_top_parent);
-        }
-
-        while let Some(child) = work_queue.pop_front() {
-            let input =
-                Component::build_map_for_component_id_inferred_incoming_connections(ctx, child)
-                    .await?;
-            input_map.extend(input);
-            let output =
-                Component::build_map_for_component_id_inferred_outgoing_connections(ctx, child)
-                    .await?;
-            output_map.extend(output);
-
-            let children = Component::get_children_for_id(ctx, child).await?;
-            work_queue.extend(children);
-        }
-
-        // Process everything collecting in the input map and output map.
-        for (input_socket, output_sockets) in input_map.into_iter() {
-            for output_socket in output_sockets {
-                impacted_connections.insert(SocketAttributeValuePair {
-                    input_socket_match: input_socket,
-                    output_socket_match: output_socket,
-                });
-            }
-        }
-        for (output_socket, input_sockets) in output_map.into_iter() {
-            for input_socket in input_sockets {
-                impacted_connections.insert(SocketAttributeValuePair {
-                    input_socket_match: input_socket,
-                    output_socket_match: output_socket,
-                });
-            }
+        let tree =
+            InferredConnectionGraph::assemble_for_components(ctx, [child_id, parent_id].to_vec())
+                .await?;
+        let incoming_connections = tree.get_all_inferred_connections();
+        for incoming_connection in incoming_connections {
+            impacted_connections.insert(SocketAttributeValuePair {
+                component_input_socket: incoming_connection.input_socket,
+                component_output_socket: incoming_connection.output_socket,
+            });
         }
         debug!("imapcted connections: {:?}", impacted_connections);
         Ok(impacted_connections)

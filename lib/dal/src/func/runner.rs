@@ -21,7 +21,7 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
-use crate::component::InputSocketMatch;
+use crate::component::socket::ComponentInputSocket;
 use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::TransactionsError;
@@ -1181,9 +1181,9 @@ impl FuncRunner {
                 ))? {
                     ValueSource::InputSocket(input_socket_id) => {
                         if let Some(source_component_id) =
-                            Component::source_component_for_arity_one_input_socket_match(
+                            ComponentInputSocket::find_connection_arity_one(
                                 ctx,
-                                InputSocketMatch {
+                                ComponentInputSocket {
                                     component_id,
                                     input_socket_id,
                                     attribute_value_id,
