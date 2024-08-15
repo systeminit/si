@@ -4,6 +4,7 @@ use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::key_pair::KeyPairPk;
+use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
     AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
     OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
@@ -56,6 +57,22 @@ pub async fn create_user(ctx: &DalContext) -> Result<User> {
 pub async fn create_schema(ctx: &DalContext) -> Result<Schema> {
     let name = generate_fake_name()?;
     Ok(Schema::new(ctx, &name).await?)
+}
+
+/// Finds the [`Schema`] with the given name, finds the default [`SchemaVariant`], creates an unlocked copy of it, and returns the [`SchemaVariantId`]
+pub async fn create_unlocked_variant_copy_for_schema_name(
+    ctx: &DalContext,
+    schema_name: impl AsRef<str>,
+) -> Result<SchemaVariantId> {
+    let schema = Schema::find_by_name(ctx, schema_name)
+        .await?
+        .ok_or(eyre!("schema not found"))?;
+    let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+    let unlocked_copy_sv =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, schema_variant_id)
+            .await?
+            .id();
+    Ok(unlocked_copy_sv)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided

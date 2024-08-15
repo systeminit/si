@@ -3,8 +3,7 @@ use std::collections::VecDeque;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
 use dal::diagram::Diagram;
-use dal::func::authoring::{CreateFuncOptions, FuncAuthoringClient};
-use dal::func::FuncAssociations;
+use dal::func::authoring::FuncAuthoringClient;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, DalContext, Prop};
@@ -50,35 +49,19 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     let create_action_code = "async function main() {
         return { payload: { \"poop\": true }, status: \"ok\" };
     }";
-    let create_action_opts = CreateFuncOptions::ActionOptions {
-        schema_variant_id: variant_zero.id(),
-        action_kind: ActionKind::Create,
-    };
 
-    let created_func = FuncAuthoringClient::create_func(
+    let created_func = FuncAuthoringClient::create_new_action_func(
         ctx,
-        dal::func::FuncKind::Action,
         Some("create Paul's test asset".to_owned()),
-        Some(create_action_opts),
+        ActionKind::Create,
+        variant_zero.id(),
     )
     .await
-    .expect("could create action func");
-    let create_func_associations = FuncAssociations::Action {
-        kind: ActionKind::Create,
-        schema_variant_ids: vec![variant_zero.id()],
-    };
+    .expect("could not create action func");
 
-    FuncAuthoringClient::save_func(
-        ctx,
-        created_func.id,
-        Some("Test Create Action".to_owned()),
-        "create Paul's test asset".to_owned(),
-        None,
-        Some(create_action_code.to_owned()),
-        Some(create_func_associations),
-    )
-    .await
-    .expect("could save func");
+    FuncAuthoringClient::save_code(ctx, created_func.id, create_action_code.to_owned())
+        .await
+        .expect("could save func");
 
     // Now let's update the variant
     let first_code_update = "function main() {\n

@@ -2,39 +2,35 @@ use std::collections::HashSet;
 
 use crate::integration_test::func::authoring::save_func::save_func_setup;
 use dal::attribute::prototype::argument::value_source::ValueSource;
-use dal::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
+use dal::attribute::prototype::argument::AttributePrototypeArgument;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::FuncView;
-use dal::func::{AttributePrototypeArgumentBag, AttributePrototypeBag};
-use dal::prop::PropPath;
-use dal::{
-    AttributePrototype, AttributePrototypeId, DalContext, Func, Prop, Schema, SchemaVariant,
+use dal::func::binding::attribute::AttributeBinding;
+use dal::func::binding::{
+    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
+    EventualParent, FuncBinding,
 };
+use dal::prop::PropPath;
+use dal::{AttributePrototype, AttributePrototypeId, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 
 #[test]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {
-    let (func_id, saved_func) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
+    let (func_id, _) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
 
-    // Ensure the prototypes look as we expect.
-    let prototypes = saved_func
-        .associations
-        .to_owned()
-        .expect("could not get associations")
-        .get_attribute_internals()
-        .expect("could not get internals");
+    // Ensure the bindings look as we expect.
+    let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, func_id)
+        .await
+        .expect("could not get bindings");
+
     let attribute_prototype_ids = AttributePrototype::list_ids_for_func_id(ctx, func_id)
         .await
         .expect("could not list ids for func id");
     assert_eq!(
         attribute_prototype_ids, // expected
-        prototypes
+        bindings
             .iter()
-            .map(|v| v.id)
+            .map(|v| v.attribute_prototype_id)
             .collect::<Vec<AttributePrototypeId>>()  // actual
     );
 
@@ -64,72 +60,52 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     .expect("could not find prop id by path");
 
     // Get the func view.
-    let func = Func::get_by_id_or_error(ctx, func_id)
-        .await
-        .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
-        .await
-        .expect("could not assemble func view");
-    let prototypes = func_view
-        .associations
-        .clone()
-        .expect("could not get associations")
-        .get_attribute_internals()
-        .expect("could not get internals");
     assert_eq!(
-        1,                // expected
-        prototypes.len()  // actual
+        1,              // expected
+        bindings.len()  // actual
     );
-    let existing_attribute_prototype_id =
-        prototypes.first().expect("empty attribute prototypes").id;
+    let existing_attribute_prototype_id = bindings
+        .first()
+        .expect("empty attribute prototypes")
+        .attribute_prototype_id;
 
     // Add a new prototype with a new prototype argument. Use the existing func argument.
     let func_argument = FuncArgument::find_by_name_for_func(ctx, "entries", func_id)
         .await
         .expect("could not perform find by name for func")
         .expect("func argument not found");
-    let prototype_arguments = vec![AttributePrototypeArgumentBag {
-        func_argument_id: func_argument.id,
-        id: AttributePrototypeArgumentId::NONE,
-        prop_id: Some(input_location_prop_id),
-        input_socket_id: None,
-    }];
 
     // create the new attribute prototype and commit
-    FuncAuthoringClient::create_attribute_prototype(
+
+    AttributeBinding::upsert_attribute_binding(
         ctx,
-        func_view.id,
-        schema_variant_id,
-        None,
-        Some(output_location_prop_id),
-        None,
-        prototype_arguments,
+        func_id,
+        Some(EventualParent::SchemaVariant(schema_variant_id)),
+        AttributeFuncDestination::Prop(output_location_prop_id),
+        vec![AttributeArgumentBinding {
+            func_argument_id: func_argument.id,
+            attribute_prototype_argument_id: None,
+            attribute_func_input_location: AttributeFuncArgumentSource::Prop(
+                input_location_prop_id,
+            ),
+        }],
     )
     .await
-    .expect("could not create attribute prototype");
+    .expect("could not upsert attribute binding");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Ensure that everything looks as we expect with the new prototype and prototype argument.
-    let func = Func::get_by_id_or_error(ctx, func_id)
+
+    let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, func_id)
         .await
-        .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
-        .await
-        .expect("could not assemble func view");
+        .expect("could not get bindings");
+
     assert_eq!(
-        func_id,      // expected
-        func_view.id  // actual
-    );
-    let prototypes = func_view
-        .associations
-        .expect("could not get associations")
-        .get_attribute_internals()
-        .expect("could not get internals");
-    assert_eq!(
-        2,                // expected
-        prototypes.len()  // actual
+        2,              // expected
+        bindings.len()  // actual
     );
     let mut arguments = FuncArgument::list_for_func(ctx, func_id)
         .await
@@ -176,17 +152,17 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
             .await
             .expect("could not find prop id by path");
 
-            expected.insert(AttributePrototypeBag {
-                id: attribute_prototype_id,
-                component_id: None,
-                schema_variant_id: Some(schema_variant_id),
-                prop_id: Some(existing_output_location_prop_id),
-                output_socket_id: None,
-                prototype_arguments: vec![AttributePrototypeArgumentBag {
+            expected.insert(AttributeBinding {
+                func_id,
+                attribute_prototype_id,
+                eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
+                output_location: AttributeFuncDestination::Prop(existing_output_location_prop_id),
+                argument_bindings: vec![AttributeArgumentBinding {
                     func_argument_id: func_argument.id,
-                    id: attribute_prototype_argument_id,
-                    prop_id: None,
-                    input_socket_id: Some(input_socket_id),
+                    attribute_prototype_argument_id: Some(attribute_prototype_argument_id),
+                    attribute_func_input_location: AttributeFuncArgumentSource::InputSocket(
+                        input_socket_id,
+                    ),
                 }],
             });
         } else {
@@ -199,17 +175,15 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
                 input_location_prop_id, // expected
                 prop_id                 // actual
             );
-            expected.insert(AttributePrototypeBag {
-                id: attribute_prototype_id,
-                component_id: None,
-                schema_variant_id: Some(schema_variant_id),
-                prop_id: Some(output_location_prop_id),
-                output_socket_id: None,
-                prototype_arguments: vec![AttributePrototypeArgumentBag {
+            expected.insert(AttributeBinding {
+                func_id,
+                attribute_prototype_id,
+                eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
+                output_location: AttributeFuncDestination::Prop(output_location_prop_id),
+                argument_bindings: vec![AttributeArgumentBinding {
                     func_argument_id: func_argument.id,
-                    id: attribute_prototype_argument_id,
-                    prop_id: Some(prop_id),
-                    input_socket_id: None,
+                    attribute_prototype_argument_id: Some(attribute_prototype_argument_id),
+                    attribute_func_input_location: AttributeFuncArgumentSource::Prop(prop_id),
                 }],
             });
         }
@@ -217,8 +191,8 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
 
     // Now that we have the expected prototypes, we can perform the final assertions.
     assert_eq!(
-        expected,                                   // expected
-        HashSet::from_iter(prototypes.into_iter()), // actual
+        expected,                                 // expected
+        HashSet::from_iter(bindings.into_iter()), // actual
     );
     let argument = arguments.pop().expect("empty func arguments");
     assert_eq!(func_argument.id, argument.id);

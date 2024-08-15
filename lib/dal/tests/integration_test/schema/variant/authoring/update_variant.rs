@@ -2,16 +2,14 @@ use std::collections::HashSet;
 
 use dal::attribute::prototype::AttributePrototypeEventualParent;
 use dal::diagram::Diagram;
-use dal::func::authoring::{AttributeOutputLocation, CreateFuncOptions, FuncAuthoringClient};
-use dal::func::binding::EventualParent;
-use dal::func::view::FuncView;
-use dal::func::{AttributePrototypeBag, FuncAssociations, FuncKind};
+use dal::func::authoring::FuncAuthoringClient;
+use dal::func::binding::{EventualParent, FuncBinding};
 use dal::prop::PropPath;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::LeafKind;
+use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{
-    AttributePrototype, AttributePrototypeId, Component, DalContext, Func, Prop, SchemaVariant,
+    AttributePrototype, AttributePrototypeId, Component, DalContext, Prop, SchemaVariant,
     SchemaVariantId,
 };
 use dal_test::helpers::{
@@ -203,13 +201,12 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     .expect("could not find prop id by path");
 
     // Create a new func and attach it to the new prop.
-    let created_func = FuncAuthoringClient::create_func(
+    let created_func = FuncAuthoringClient::create_new_attribute_func(
         ctx,
-        FuncKind::Attribute,
         Some("zellij".to_string()),
-        Some(CreateFuncOptions::AttributeOptions {
-            output_location: AttributeOutputLocation::Prop { prop_id },
-        }),
+        Some(EventualParent::SchemaVariant(updated_variant_id)),
+        dal::func::binding::AttributeFuncDestination::Prop(prop_id),
+        vec![],
     )
     .await
     .expect("could not create func");
@@ -283,40 +280,35 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
             }
             _ => panic!("unexpected eventual parent: {eventual_parent:?}"),
         };
-        actual_prototype_pairs.insert((id, schema_variant_id));
+        actual_prototype_pairs.insert((id, EventualParent::SchemaVariant(schema_variant_id)));
     }
 
     // Ensure that the associations match the eventual parents.
-    let func = Func::get_by_id_or_error(ctx, created_func.id)
+    let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, created_func.id)
         .await
-        .expect("could not get func");
-    let (associations, _input_type) = FuncAssociations::from_func(ctx, &func)
-        .await
-        .expect("could not get associations");
-    let actual_prototype_pairs_from_associations: HashSet<(AttributePrototypeId, SchemaVariantId)> =
-        match associations.expect("no associations found") {
-            FuncAssociations::Attribute { prototypes } => {
-                assert_eq!(
-                    2,                // expected,
-                    prototypes.len()  // actual
-                );
-                HashSet::from_iter(
-                    prototypes
-                        .iter()
-                        .map(|p| (p.id, p.schema_variant_id.expect("no schema variant id"))),
-                )
-            }
-            associations => panic!("unexpected associations: {associations:?}"),
-        };
+        .expect("could not get bindings");
+
+    assert_eq!(
+        2,              // expected
+        bindings.len()  // actual
+    );
+    let actual_prototype_pairs_from_associations: HashSet<(AttributePrototypeId, EventualParent)> =
+        HashSet::from_iter(
+            bindings
+                .iter()
+                .map(|p| (p.attribute_prototype_id, p.eventual_parent)),
+        );
     assert_eq!(
         actual_prototype_pairs,                   // expected
         actual_prototype_pairs_from_associations  // actual
     );
 
     // Check that the variants of the pairs are we what expect. Check the total number of pairs.
-    let expected_schema_variant_ids_in_pairs: HashSet<SchemaVariantId> =
-        HashSet::from([first_variant.id(), second_updated_variant_id]);
-    let actual_schema_variant_ids_in_pairs: HashSet<SchemaVariantId> =
+    let expected_schema_variant_ids_in_pairs: HashSet<EventualParent> = HashSet::from([
+        EventualParent::SchemaVariant(first_variant.id()),
+        EventualParent::SchemaVariant(second_updated_variant_id),
+    ]);
+    let actual_schema_variant_ids_in_pairs: HashSet<EventualParent> =
         HashSet::from_iter(actual_prototype_pairs.iter().map(|pair| pair.1));
     assert_eq!(
         expected_schema_variant_ids_in_pairs, // expected
@@ -406,13 +398,12 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
 
     // Create a qualification.
     let qualification_one_name = "qualification one";
-    let created_func_one = FuncAuthoringClient::create_func(
+    let created_func_one = FuncAuthoringClient::create_new_leaf_func(
         ctx,
-        FuncKind::Qualification,
         Some(qualification_one_name.to_string()),
-        Some(CreateFuncOptions::QualificationOptions {
-            schema_variant_id: first_update_variant_id,
-        }),
+        LeafKind::Qualification,
+        EventualParent::SchemaVariant(first_update_variant_id),
+        &[LeafInputLocation::Domain],
     )
     .await
     .expect("could not create func");
@@ -440,23 +431,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
             };
 
         }";
-    let func = Func::get_by_id_or_error(ctx, created_func_one.id)
+
+    FuncAuthoringClient::save_code(ctx, created_func_one.id, code.to_string())
         .await
-        .expect("could not get func");
-    let func_view = FuncView::assemble(ctx, &func)
-        .await
-        .expect("could not assemble func view");
-    FuncAuthoringClient::save_func(
-        ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        Some(code.to_string()),
-        func_view.associations,
-    )
-    .await
-    .expect("could not save func");
+        .expect("could not save code");
 
     // Create a second component.
     let component_two = create_component_for_default_schema_name(ctx, &schema.name, "two")
@@ -479,18 +457,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let component_two_qualifications = Component::list_qualifications(ctx, component_two.id())
         .await
         .expect("could not list qualifications");
-    let attribute_prototype_ids =
-        AttributePrototype::list_ids_for_func_id(ctx, created_func_one.id)
-            .await
-            .expect("could not list attribute prototype ids");
-    let mut bags = Vec::new();
-    for id in attribute_prototype_ids {
-        bags.push(
-            AttributePrototypeBag::assemble(ctx, id)
-                .await
-                .expect("could not assemble"),
-        );
-    }
+
+    let bindings = FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_one.id)
+        .await
+        .expect("could not get bindings");
 
     // Check the qualifications.
     assert_eq!(
@@ -526,14 +496,14 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
 
     // Check the prototype bags.
     assert_eq!(
-        1,          // expected
-        bags.len(), // actual
+        1,              // expected
+        bindings.len(), // actual
     );
-    let bag = bags.first().expect("no bags found");
-    let bag_schema_variant_id = bag.schema_variant_id.expect("schema variant id not found");
+    let bag = bindings.first().expect("no bags found");
+    let bag_schema_variant_id = bag.eventual_parent;
     assert_eq!(
-        first_update_variant_id, // expected
-        bag_schema_variant_id    // actual
+        EventualParent::SchemaVariant(first_update_variant_id), // expected
+        bag_schema_variant_id                                   // actual
     );
 
     // Update the variant with a third string prop. Ensure that a new schema variant was created.
@@ -670,52 +640,47 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         component_two_qualification_one_result.status  // actual
     );
 
-    // Check the prototype bag for the first qualification.
-    let attribute_prototype_ids =
-        AttributePrototype::list_ids_for_func_id(ctx, created_func_one.id)
-            .await
-            .expect("could not list attribute prototype ids");
-    let mut bags = Vec::new();
-    for id in attribute_prototype_ids {
-        bags.push(
-            AttributePrototypeBag::assemble(ctx, id)
-                .await
-                .expect("could not assemble"),
-        );
-    }
+    // Check the bindings for the first qualification.
+
+    let bindings = FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_one.id)
+        .await
+        .expect("could not get binding");
+
     assert_eq!(
-        2,          // expected
-        bags.len(), // actual
+        2,              // expected
+        bindings.len(), // actual
     );
-    let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(
-        bags.iter()
-            .map(|b| b.schema_variant_id.expect("schema variant id not found")),
-    );
+    let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
+        if let EventualParent::SchemaVariant(sv) = b.eventual_parent {
+            Some(sv)
+        } else {
+            None
+        }
+        .expect("is a schema variant")
+    }));
     let expected = HashSet::from_iter([first_update_variant_id, second_update_variant_id]);
     assert_eq!(
         expected, // expected
         acutal    // actual
     );
 
-    // Check the prototype bag for the second qualification.
-    let attribute_prototype_ids =
-        AttributePrototype::list_ids_for_func_id(ctx, created_func_two.id)
-            .await
-            .expect("could not list attribute prototype ids");
-    let mut bags = Vec::new();
-    for id in attribute_prototype_ids {
-        bags.push(
-            AttributePrototypeBag::assemble(ctx, id)
-                .await
-                .expect("could not assemble"),
-        );
-    }
+    // Check the bindings for the second qualification.
+
+    let bindings = FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_two.id)
+        .await
+        .expect("could not get bindings");
+
     assert_eq!(
-        1,          // expected
-        bags.len(), // actual
+        1,              // expected
+        bindings.len(), // actual
     );
-    let bag = bags.first().expect("no bags found");
-    let bag_schema_variant_id = bag.schema_variant_id.expect("schema variant id not found");
+    let bag = bindings.first().expect("no bags found");
+    let bag_schema_variant_id = if let EventualParent::SchemaVariant(sv_id) = bag.eventual_parent {
+        Some(sv_id)
+    } else {
+        None
+    }
+    .expect("schema variant is some");
     assert_eq!(
         second_update_variant_id, // expected
         bag_schema_variant_id     // actual
@@ -803,54 +768,51 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         component_three_qualification_two_result.status  // actual
     );
 
-    // Re-check the prototype bags after the third component was created.
+    // Re-check the bindings after the third component was created.
     {
-        // Check the prototype bag for the first qualification.
-        let attribute_prototype_ids =
-            AttributePrototype::list_ids_for_func_id(ctx, created_func_one.id)
+        // Check the bindings for the first qualification.
+
+        let bindings =
+            FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_one.id)
                 .await
-                .expect("could not list attribute prototype ids");
-        let mut bags = Vec::new();
-        for id in attribute_prototype_ids {
-            bags.push(
-                AttributePrototypeBag::assemble(ctx, id)
-                    .await
-                    .expect("could not assemble"),
-            );
-        }
+                .expect("could not create bindings");
+
         assert_eq!(
-            2,          // expected
-            bags.len(), // actual
+            2,              // expected
+            bindings.len(), // actual
         );
-        let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(
-            bags.iter()
-                .map(|b| b.schema_variant_id.expect("schema variant id not found")),
-        );
+        let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
+            if let EventualParent::SchemaVariant(sv) = b.eventual_parent {
+                Some(sv)
+            } else {
+                None
+            }
+            .expect("is a schema variant")
+        }));
         let expected = HashSet::from_iter([first_update_variant_id, second_update_variant_id]);
         assert_eq!(
             expected, // expected
             acutal    // actual
         );
 
-        // Check the prototype bag for the second qualification.
-        let attribute_prototype_ids =
-            AttributePrototype::list_ids_for_func_id(ctx, created_func_two.id)
+        // Check the bindings for the second qualification.
+        let bindings =
+            FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_two.id)
                 .await
-                .expect("could not list attribute prototype ids");
-        let mut bags = Vec::new();
-        for id in attribute_prototype_ids {
-            bags.push(
-                AttributePrototypeBag::assemble(ctx, id)
-                    .await
-                    .expect("could not assemble"),
-            );
-        }
+                .expect("could not create bindings");
+
         assert_eq!(
-            1,          // expected
-            bags.len(), // actual
+            1,              // expected
+            bindings.len(), // actual
         );
-        let bag = bags.first().expect("no bags found");
-        let bag_schema_variant_id = bag.schema_variant_id.expect("schema variant id not found");
+        let bag = bindings.first().expect("no bags found");
+        let bag_schema_variant_id =
+            if let EventualParent::SchemaVariant(sv_id) = bag.eventual_parent {
+                Some(sv_id)
+            } else {
+                None
+            }
+            .expect("schema variant is some");
         assert_eq!(
             second_update_variant_id, // expected
             bag_schema_variant_id     // actual

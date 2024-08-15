@@ -1,7 +1,6 @@
 use dal::func::binding::leaf::LeafBinding;
 use dal::func::binding::{EventualParent, FuncBinding};
-use dal::func::view::FuncView;
-use dal::func::FuncAssociations;
+
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{DalContext, Func};
@@ -26,21 +25,13 @@ async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut D
         .await
         .expect("could not perform find by name")
         .expect("func not found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
+
+    let binding = FuncBinding::get_code_gen_bindings_for_func_id(ctx, func_id)
         .await
-        .expect("could not get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
-        .await
-        .expect("could not get func view");
-    dbg!(&func_view);
-    let (_, _, mut inputs) = match func_view.associations.expect("no associations found") {
-        FuncAssociations::CodeGeneration {
-            schema_variant_ids,
-            component_ids,
-            inputs,
-        } => (schema_variant_ids, component_ids, inputs),
-        associations => panic!("unexpected associations kind: {associations:?}"),
-    };
+        .expect("could not get bindings")
+        .pop()
+        .expect("could not get entry");
+    let mut inputs = binding.inputs;
 
     let bindings = LeafBinding::create_leaf_func_binding(
         ctx,

@@ -1,9 +1,9 @@
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::FuncView;
 use dal::{DalContext, Func, FuncId};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use si_frontend_types::FuncSummary;
 
 mod attribute;
 mod detach;
@@ -34,7 +34,7 @@ async fn qualification(ctx: &mut DalContext) {
 pub async fn save_func_setup(
     ctx: &mut DalContext,
     func_name: impl AsRef<str>,
-) -> (FuncId, FuncView) {
+) -> (FuncId, FuncSummary) {
     let old_func_id = Func::find_id_by_name(ctx, func_name)
         .await
         .expect("could not perform find func by name")
@@ -47,9 +47,10 @@ pub async fn save_func_setup(
     let func = Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
-    let before = FuncView::assemble(ctx, &func)
+    let before = func
+        .into_frontend_type(ctx)
         .await
-        .expect("could not assemble func view");
+        .expect("could not get func view");
 
     FuncAuthoringClient::update_func(ctx, func_id, Some("woo hoo".to_string()), None)
         .await
@@ -63,12 +64,13 @@ pub async fn save_func_setup(
     let func = Func::get_by_id_or_error(ctx, func_id)
         .await
         .expect("could not get func by id");
-    let after = FuncView::assemble(ctx, &func)
+    let after = func
+        .into_frontend_type(ctx)
         .await
         .expect("could not assemble func view");
     assert_eq!(
-        func_id,   // expected
-        before.id  // actual
+        func_id,               // expected
+        before.func_id.into()  // actual
     );
     assert_eq!(
         before.types, // expected

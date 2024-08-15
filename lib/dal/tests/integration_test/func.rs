@@ -1,12 +1,10 @@
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::summary::FuncSummary;
-use dal::func::FuncKind;
 use dal::{DalContext, Func, Prop, Schema, SchemaVariant};
+use dal_test::helpers::create_unlocked_variant_copy_for_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 mod argument;
-mod associations;
 mod authoring;
 mod cancel_execution;
 
@@ -21,12 +19,12 @@ async fn summary(ctx: &mut DalContext) {
         .expect("no schema variant found");
 
     // Ensure that the same func can be found within its schema variant and for all funcs in the workspace.
-    let funcs_for_schema_variant = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs_for_schema_variant = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("could not list func summaries");
-    let all_funcs = FuncSummary::list(ctx)
+        .expect("could not list funcs");
+    let all_funcs = Func::list_for_default_and_editing(ctx)
         .await
-        .expect("could not list func summaries");
+        .expect("could not list all funcs");
 
     let func_name = "test:createActionStarfield".to_string();
     let found_func_for_all = all_funcs
@@ -43,15 +41,14 @@ async fn summary(ctx: &mut DalContext) {
 
 #[test]
 async fn duplicate(ctx: &mut DalContext) {
+    let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "starfield")
+        .await
+        .expect("could not create unlocked copy");
     let func_name = "Paul's Test Func".to_string();
-    let authoring_func = FuncAuthoringClient::create_func(
-        ctx,
-        FuncKind::Qualification,
-        Some(func_name.clone()),
-        None,
-    )
-    .await
-    .expect("unable to create func");
+    let authoring_func =
+        FuncAuthoringClient::create_new_auth_func(ctx, Some(func_name.clone()), schema_variant_id)
+            .await
+            .expect("unable to create func");
 
     let func = Func::get_by_id_or_error(ctx, authoring_func.id)
         .await
