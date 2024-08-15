@@ -286,24 +286,7 @@ impl ApplicationTelemetryClient {
                 let updated = match verbosity.is_max() {
                     true => Verbosity::InfoAll,
                     false => verbosity.increase(),
-                    _ => Verbosity::InfoAll,
                 };
-                drop(guard);
-                self.set_verbosity_inner(updated, wait).await
-            }
-            TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
-        }
-    }
-
-    async fn decrease_verbosity_inner(
-        &mut self,
-        wait: Option<oneshot::Sender<()>>,
-    ) -> Result<(), ClientError> {
-        let guard = self.tracing_level.lock().await;
-
-        match guard.deref() {
-            TracingLevel::Verbosity { verbosity, .. } => {
-                let updated = verbosity.decrease();
                 drop(guard);
                 self.set_verbosity_inner(updated, wait).await
             }
