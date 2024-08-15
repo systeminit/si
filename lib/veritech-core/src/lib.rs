@@ -17,6 +17,10 @@ pub use crypto::{
     decrypt_value_tree, encrypt_value_tree, VeritechValueDecryptError, VeritechValueEncryptError,
 };
 
+// "meta" subjects (those pertaining to veritech management)
+const NATS_CANCEL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.cancelexecution";
+
+// "fn" subjects (those pertaining to function to be execution via cyclone)
 const NATS_ACTION_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.actionrun";
 const NATS_CONCILIATION_DEFAULT_SUBJECT: &str = "veritech.fn.reconciliation";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
@@ -55,6 +59,10 @@ pub fn nats_reconciliation_subject(prefix: Option<&str>) -> String {
 
 pub fn nats_schema_variant_definition_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT)
+}
+
+pub fn nats_cancel_execution_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_CANCEL_EXECUTION_DEFAULT_SUBJECT)
 }
 
 pub fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {

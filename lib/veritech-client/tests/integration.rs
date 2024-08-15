@@ -161,8 +161,10 @@ async fn type_checks_resolve_function() {
             }
         });
 
+        let execution_id = "type_checks_resolve_function";
+
         let request = ResolverFunctionRequest {
-            execution_id: "1234".to_string(),
+            execution_id: execution_id.to_string(),
             handler: "returnInputValue".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
@@ -183,7 +185,7 @@ async fn type_checks_resolve_function() {
 
         match result {
             FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "1234");
+                assert_eq!(success.execution_id, execution_id.to_string());
                 if let serde_json::Value::Object(inner) = value {
                     let value = inner.get("value").expect("value should exist").clone();
                     assert_eq!(value, success.data);
@@ -223,8 +225,9 @@ async fn type_checks_resolve_function() {
             }
         });
 
+        let execution_id = "type_checks_resolve_function";
         let request = ResolverFunctionRequest {
-            execution_id: "1234".to_string(),
+            execution_id: execution_id.to_string(),
             handler: "returnInputValue".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
@@ -249,8 +252,8 @@ async fn type_checks_resolve_function() {
                 panic!("should have failed :(");
             }
             FunctionResult::Failure(failure) => {
-                assert_eq!(failure.error.kind, "InvalidReturnType");
-                assert_eq!(failure.execution_id, "1234");
+                assert_eq!(failure.error().kind, "InvalidReturnType");
+                assert_eq!(failure.execution_id(), execution_id);
             }
         }
     }

@@ -24,7 +24,7 @@ impl FuncDispatch for FuncBackendJsSchemaVariantDefinition {
         _before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = SchemaVariantDefinitionRequest {
-            execution_id: "villanelle".to_string(),
+            execution_id: context.func_run_id.to_string(),
             handler: handler.into(),
             code_base64: code_base64.to_owned(),
         };
@@ -39,9 +39,9 @@ impl FuncDispatch for FuncBackendJsSchemaVariantDefinition {
             .await?;
         let value = match value {
             FunctionResult::Failure(failure) => FunctionResult::Success(Self::Output {
-                execution_id: failure.execution_id,
+                execution_id: failure.execution_id().to_owned(),
                 definition: serde_json::Value::Null,
-                error: Some(failure.error.message.clone()),
+                error: Some(failure.error().message.to_owned()),
             }),
             FunctionResult::Success(value) => FunctionResult::Success(value),
         };

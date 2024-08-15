@@ -1,29 +1,34 @@
+use si_pool_noodle::CancelExecutionRequest;
+use std::collections::HashMap;
+use std::sync::Mutex;
 use std::{io, sync::Arc, time::Duration};
 use telemetry_utils::metric;
 
 use chrono::Utc;
-use futures::{channel::oneshot, join, StreamExt};
+use futures::{join, StreamExt};
 use nats_subscriber::Request;
+use once_cell::sync::Lazy;
 use si_crypto::{VeritechDecryptionKey, VeritechDecryptionKeyError};
 use si_data_nats::NatsClient;
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     ActionRunRequest, ActionRunResultSuccess, CycloneClient, CycloneRequest, FunctionResult,
-    FunctionResultFailure, FunctionResultFailureError, PoolNoodle, ProgressMessage,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings, Spec, ValidationRequest,
-    ValidationResultSuccess,
+    FunctionResultFailure, PoolNoodle, ProgressMessage, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings, Spec,
+    ValidationRequest, ValidationResultSuccess,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::oneshot;
 use tokio::{
     signal::unix,
     sync::{broadcast, mpsc},
-    time::timeout,
+    time,
 };
 use veritech_core::VeritechValueDecryptError;
 
+use crate::subscriber::MetaSubscriber;
 use crate::{
     config::CycloneSpec, request::DecryptRequest, Config, FunctionSubscriber, Publisher,
     PublisherError,
@@ -31,11 +36,18 @@ use crate::{
 
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(35 * 60);
 
+static EXEC_KILL_SENDER_FOR_EXECUTION_ID: Lazy<Mutex<HashMap<String, oneshot::Sender<()>>>> =
+    Lazy::new(Mutex::default);
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("action run error: {0}")]
     ActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
+    #[error("run cancelled externally")]
+    Cancelled,
+    #[error("could not send kill signal for execution id: {0}")]
+    CouldNotSendKillSignal(String),
     #[error("cyclone error: {0}")]
     Cyclone(#[from] si_pool_noodle::ClientError),
     #[error("cyclone pool error: {0}")]
@@ -48,6 +60,10 @@ pub enum ServerError {
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone timed out: {0:?}")]
     CycloneTimeout(Duration),
+    #[error("missing kill sender for execution id: {0}")]
+    MissingKillSender(String),
+    #[error("mutex poison error: {0}")]
+    MutexPoison(String),
     #[error("error connecting to nats: {0}")]
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error("no reply mailbox found")]
@@ -237,6 +253,12 @@ impl Server {
                 self.cyclone_client_execution_timeout,
                 self.shutdown_broadcast_tx.subscribe(),
             ),
+            process_cancel_execution_requests_task(
+                self.metadata.clone(),
+                self.nats.clone(),
+                self.subject_prefix.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
         );
 
         let _ = self.shutdown_rx.await;
@@ -384,14 +406,11 @@ async fn resolver_function_request_task(
     if let Err(err) = publisher.finalize_output().await {
         error!(error = ?err, "failed to finalize output by sending final message");
         let result = si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
-            FunctionResultFailure {
+            FunctionResultFailure::new_for_veritech_server_error(
                 execution_id,
-                error: FunctionResultFailureError {
-                    kind: "veritechServer".to_string(),
-                    message: "failed to finalize output by sending final message".to_string(),
-                },
-                timestamp: timestamp(),
-            },
+                "failed to finalize output by sending final message",
+                timestamp(),
+            ),
         );
         if let Err(err) = publisher.publish_result(&result).await {
             error!(error = ?err, "failed to publish errored result");
@@ -404,14 +423,11 @@ async fn resolver_function_request_task(
         Err(err) => {
             error!(error = ?err, "failure trying to run function to completion");
             si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
-                FunctionResultFailure {
+                FunctionResultFailure::new_for_veritech_server_error(
                     execution_id,
-                    error: FunctionResultFailureError {
-                        kind: "veritechServer".to_string(),
-                        message: err.to_string(),
-                    },
-                    timestamp: timestamp(),
-                },
+                    err.to_string(),
+                    timestamp(),
+                ),
             )
         }
     };
@@ -453,12 +469,21 @@ async fn resolver_function_request(
     // to be redacted
     request.decrypt(&mut sensitive_strings, &decryption_key)?;
 
+    let execution_id = request.execution_id.clone();
     let cyclone_request = CycloneRequest::from_parts(request, sensitive_strings);
 
     let mut client = cyclone_pool.get().await.map_err(|err| {
         metric!(counter.function_run.resolver = -1);
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
+
+    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
+    {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
+            .insert(execution_id.to_owned(), kill_sender);
+    }
 
     let unstarted_progress = client
         .prepare_resolver_execution(cyclone_request)
@@ -504,15 +529,22 @@ async fn resolver_function_request(
         ServerResult::Ok(function_result)
     };
 
-    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
-        Ok(progress_loop_result) => progress_loop_result?,
-        Err(err) => {
-            error!(?err, "hit timeout for communicating with cyclone server");
-            return Err(ServerError::CycloneTimeout(
+    let function_result = tokio::select! {
+        _ = time::sleep(cyclone_client_execution_timeout) => {
+            error!("hit timeout for communicating with cyclone server");
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            Err(ServerError::CycloneTimeout(
                 cyclone_client_execution_timeout,
-            ));
+            ))
+        },
+        _ = kill_receiver => {
+            Err(ServerError::Cancelled)
         }
-    };
+        func_result = progress_loop => {
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            func_result
+        },
+    }?;
 
     metric!(counter.function_run.resolver = -1);
     span.record_ok();
@@ -656,7 +688,16 @@ async fn validation_request(
     // to be redacted
     payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
 
+    let execution_id = payload_request.execution_id.clone();
     let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
+
+    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
+    {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
+            .insert(execution_id.to_owned(), kill_sender);
+    }
 
     let reply_mailbox = request
         .reply
@@ -716,15 +757,22 @@ async fn validation_request(
         ServerResult::Ok(function_result)
     };
 
-    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
-        Ok(progress_loop_result) => progress_loop_result?,
-        Err(err) => {
-            error!(?err, "hit timeout for communicating with cyclone server");
-            return Err(ServerError::CycloneTimeout(
+    let function_result = tokio::select! {
+        _ = time::sleep(cyclone_client_execution_timeout) => {
+            error!("hit timeout for communicating with cyclone server");
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            Err(ServerError::CycloneTimeout(
                 cyclone_client_execution_timeout,
-            ));
+            ))
+        },
+        _ = kill_receiver => {
+            Err(ServerError::Cancelled)
         }
-    };
+        func_result = progress_loop => {
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            func_result
+        },
+    }?;
 
     publisher
         .publish_result(&function_result)
@@ -877,6 +925,7 @@ async fn schema_variant_definition_request(
     // to be redacted
     payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
 
+    let execution_id = payload_request.execution_id.clone();
     let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
 
     let reply_mailbox = request
@@ -892,6 +941,14 @@ async fn schema_variant_definition_request(
         metric!(counter.function_run.schema_variant_definition = 1);
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
+
+    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
+    {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
+            .insert(execution_id.to_owned(), kill_sender);
+    }
 
     let unstarted_progress = client
         .prepare_schema_variant_definition_execution(cyclone_request)
@@ -937,15 +994,22 @@ async fn schema_variant_definition_request(
         ServerResult::Ok(function_result)
     };
 
-    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
-        Ok(progress_loop_result) => progress_loop_result?,
-        Err(err) => {
-            error!(?err, "hit timeout for communicating with cyclone server");
-            return Err(ServerError::CycloneTimeout(
+    let function_result = tokio::select! {
+        _ = time::sleep(cyclone_client_execution_timeout) => {
+            error!("hit timeout for communicating with cyclone server");
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            Err(ServerError::CycloneTimeout(
                 cyclone_client_execution_timeout,
-            ));
+            ))
+        },
+        _ = kill_receiver => {
+            Err(ServerError::Cancelled)
         }
-    };
+        func_result = progress_loop => {
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            func_result
+        },
+    }?;
 
     publisher
         .publish_result(&function_result)
@@ -1097,6 +1161,7 @@ async fn action_run_request(
     // to be redacted
     payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
 
+    let execution_id = payload_request.execution_id.clone();
     let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
 
     let reply_mailbox = request
@@ -1112,6 +1177,14 @@ async fn action_run_request(
         metric!(counter.function_run.action = -1);
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
+
+    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
+    {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
+            .insert(execution_id.to_owned(), kill_sender);
+    }
 
     let unstarted_progress = client
         .prepare_action_run_execution(cyclone_request)
@@ -1157,15 +1230,22 @@ async fn action_run_request(
         ServerResult::Ok(function_result)
     };
 
-    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
-        Ok(progress_loop_result) => progress_loop_result?,
-        Err(err) => {
-            error!(?err, "hit timeout for communicating with cyclone server");
-            return Err(ServerError::CycloneTimeout(
+    let function_result = tokio::select! {
+        _ = time::sleep(cyclone_client_execution_timeout) => {
+            error!("hit timeout for communicating with cyclone server");
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            Err(ServerError::CycloneTimeout(
                 cyclone_client_execution_timeout,
-            ));
+            ))
+        },
+        _ = kill_receiver => {
+            Err(ServerError::Cancelled)
         }
-    };
+        func_result = progress_loop => {
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            func_result
+        },
+    }?;
 
     publisher
         .publish_result(&function_result)
@@ -1317,6 +1397,7 @@ async fn reconciliation_request(
     // to be redacted
     payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
 
+    let execution_id = payload_request.execution_id.clone();
     let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
 
     let reply_mailbox = request
@@ -1333,6 +1414,14 @@ async fn reconciliation_request(
         metric!(counter.function_run.reconciliation = -1);
         span.record_err(ServerError::CyclonePool(Box::new(err)))
     })?;
+
+    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
+    {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
+            .insert(execution_id.to_owned(), kill_sender);
+    }
 
     let unstarted_progress = client
         .prepare_reconciliation_execution(cyclone_request)
@@ -1378,15 +1467,22 @@ async fn reconciliation_request(
         ServerResult::Ok(function_result)
     };
 
-    let function_result = match timeout(cyclone_client_execution_timeout, progress_loop).await {
-        Ok(progress_loop_result) => progress_loop_result?,
-        Err(err) => {
-            error!(?err, "hit timeout for communicating with cyclone server");
-            return Err(ServerError::CycloneTimeout(
+    let function_result = tokio::select! {
+        _ = time::sleep(cyclone_client_execution_timeout) => {
+            error!("hit timeout for communicating with cyclone server");
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            Err(ServerError::CycloneTimeout(
                 cyclone_client_execution_timeout,
-            ));
+            ))
+        },
+        _ = kill_receiver => {
+            Err(ServerError::Cancelled)
         }
-    };
+        func_result = progress_loop => {
+            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
+            func_result
+        },
+    }?;
 
     publisher
         .publish_result(&function_result)
@@ -1399,6 +1495,176 @@ async fn reconciliation_request(
     metric!(counter.function_run.reconciliation = -1);
     span.record_ok();
     Ok(())
+}
+
+async fn process_cancel_execution_requests_task(
+    metadata: Arc<ServerMetadata>,
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
+) {
+    if let Err(err) =
+        process_cancel_execution_requests(metadata, nats, subject_prefix, shutdown_broadcast_rx)
+            .await
+    {
+        warn!(error = ?err, "processing cancel execution requests failed");
+    }
+}
+
+async fn process_cancel_execution_requests(
+    metadata: Arc<ServerMetadata>,
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
+) -> ServerResult<()> {
+    let mut requests = MetaSubscriber::cancel_execution(&nats, subject_prefix.as_deref()).await?;
+
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process cancel execution requests task received shutdown");
+                break;
+            }
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Pool noodle handles logging inbound request, but since cancellation requests stay within
+                        // veritech, we will log the cancellation request here.
+                        info!(func_run_id = %request.payload.execution_id, "received cancel execution request");
+
+                        // Spawn a task and process the request
+                        tokio::spawn(cancel_execution_request_task(
+                            metadata.clone(),
+                            nats.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next cancel execution request had error");
+                    }
+                    None => {
+                        trace!("cancel execution requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
+            }
+        }
+    }
+
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
+
+    Ok(())
+}
+
+async fn cancel_execution_request_task(
+    metadata: Arc<ServerMetadata>,
+    nats: NatsClient,
+    request: Request<CancelExecutionRequest>,
+) {
+    let process_span = request.process_span.clone();
+
+    let reply_mailbox = match request.reply {
+        Some(reply) => reply,
+        None => {
+            error!("no reply mailbox found");
+            return;
+        }
+    };
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+
+    let execution_id = request.payload.execution_id;
+
+    let result = match cancel_execution_request(metadata, execution_id.to_owned(), &process_span) {
+        Ok(()) => FunctionResult::Success(()),
+        Err(err) => FunctionResult::Failure(FunctionResultFailure::new_for_veritech_server_error(
+            execution_id,
+            err.to_string(),
+            timestamp(),
+        )),
+    };
+
+    if let Err(err) = publisher.publish_result(&result).await {
+        error!(?err, "failed to publish result");
+    }
+}
+
+#[instrument(
+    name = "veritech.cancel_execution_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
+fn cancel_execution_request(
+    metadata: Arc<ServerMetadata>,
+    execution_id: String,
+    process_span: &Span,
+) -> ServerResult<()> {
+    let span = Span::current();
+
+    let kill_sender = kill_sender_remove_blocking(metadata, execution_id.to_owned(), process_span)?
+        .ok_or(ServerError::MissingKillSender(execution_id.to_owned()))
+        .map_err(|err| span.record_err(err))?;
+
+    if kill_sender.send(()).is_err() {
+        return Err(span.record_err(ServerError::CouldNotSendKillSignal(execution_id)));
+    }
+
+    span.record_ok();
+    Ok(())
+}
+
+#[instrument(
+    name = "veritech.kill_sender_remove_blocking",
+    parent = process_span,
+    level = "debug",
+    skip_all,
+    fields(
+        job.id = &execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
+fn kill_sender_remove_blocking(
+    metadata: Arc<ServerMetadata>,
+    execution_id: String,
+    process_span: &Span,
+) -> ServerResult<Option<oneshot::Sender<()>>> {
+    let span = Span::current();
+
+    let maybe_kill_sender = {
+        EXEC_KILL_SENDER_FOR_EXECUTION_ID
+            .lock()
+            .map_err(|err| ServerError::MutexPoison(span.record_err(err).to_string()))?
+            .remove(&execution_id)
+    };
+
+    if maybe_kill_sender.is_some() {
+        debug!(%execution_id, "removed kill sender for execution id");
+    } else {
+        debug!(%execution_id, "no kill sender found when removing for execution id");
+    }
+
+    span.record_ok();
+    Ok(maybe_kill_sender)
 }
 
 async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {

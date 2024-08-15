@@ -15,6 +15,7 @@ id!(AttributePrototypeArgumentId);
 
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum FuncRunState {
+    Cancelled,
     Created,
     Dispatched,
     Running,
@@ -225,6 +226,11 @@ impl FuncRun {
     pub fn set_state_to_failure(&mut self) {
         self.updated_at = Utc::now();
         self.state = FuncRunState::Failure;
+    }
+
+    pub fn set_state_to_cancelled(&mut self) {
+        self.updated_at = Utc::now();
+        self.state = FuncRunState::Cancelled;
     }
 
     pub fn id(&self) -> FuncRunId {

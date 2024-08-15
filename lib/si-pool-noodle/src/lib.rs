@@ -21,12 +21,12 @@ pub use crate::pool_noodle::PoolNoodle;
 pub use cyclone_client::{ClientError, CycloneClient, ExecutionError};
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError, OutputStream,
-    ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
-    ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, CancelExecutionRequest,
+    ComponentView, CycloneRequest, FunctionResult, FunctionResultFailure,
+    FunctionResultFailureError, OutputStream, ProgressMessage, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    SensitiveStrings, ValidationRequest, ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.

@@ -14,6 +14,7 @@ chrono = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
+once_cell = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

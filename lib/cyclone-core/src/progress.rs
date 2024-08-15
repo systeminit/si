@@ -1,5 +1,8 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+/// The error kind for function result failures when the error occurs within the veritech server.
+const FUNCTION_RESULT_FAILURE_ERROR_KIND_VERITECH_SERVER: &str = "veritechServer";
+
 /// A line of output, streamed from an executing function.
 ///
 /// An instance of this type typically maps to a single line of output from a process--either on
@@ -97,11 +100,50 @@ pub enum FunctionResult<S> {
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 pub struct FunctionResultFailure {
-    pub execution_id: String,
-    pub error: FunctionResultFailureError,
-    // FIXME(nick,wendy): get the Utc::now() shape as well
-    // (perhaps struct Foo { raw: Utc::now(), timestamp: crate::timestamp() } )
-    pub timestamp: u64,
+    execution_id: String,
+    error: FunctionResultFailureError,
+    timestamp: u64,
+}
+
+impl FunctionResultFailure {
+    /// Creates a [`FunctionResultFailure`].
+    pub fn new(
+        execution_id: impl Into<String>,
+        error: FunctionResultFailureError,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            execution_id: execution_id.into(),
+            error,
+            timestamp,
+        }
+    }
+
+    /// This kind of [`FunctionResultFailure`] occurs when the veritech server encounters an error.
+    pub fn new_for_veritech_server_error(
+        execution_id: impl Into<String>,
+        message: impl Into<String>,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            execution_id: execution_id.into(),
+            error: FunctionResultFailureError {
+                kind: FUNCTION_RESULT_FAILURE_ERROR_KIND_VERITECH_SERVER.to_string(),
+                message: message.into(),
+            },
+            timestamp,
+        }
+    }
+
+    /// Returns a reference to the "execution_id".
+    pub fn execution_id(&self) -> &String {
+        &self.execution_id
+    }
+
+    /// Returns a reference to the "error".
+    pub fn error(&self) -> &FunctionResultFailureError {
+        &self.error
+    }
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]

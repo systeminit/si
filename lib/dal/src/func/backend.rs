@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use si_events::FuncRunId;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -305,15 +306,17 @@ impl ToLabelList for FuncBackendKind {}
 pub struct FuncDispatchContext {
     pub veritech: VeritechClient,
     pub output_tx: mpsc::Sender<OutputStream>,
+    pub func_run_id: FuncRunId,
 }
 
 impl FuncDispatchContext {
-    pub fn new(ctx: &DalContext) -> (Self, mpsc::Receiver<OutputStream>) {
+    pub fn new(ctx: &DalContext, func_run_id: FuncRunId) -> (Self, mpsc::Receiver<OutputStream>) {
         let (output_tx, rx) = mpsc::channel(64);
         (
             Self {
                 veritech: ctx.veritech().clone(),
                 output_tx,
+                func_run_id,
             },
             rx,
         )
@@ -391,9 +394,9 @@ pub trait FuncDispatch: std::fmt::Debug {
             }
             FunctionResult::Failure(failure) => {
                 return Err(span.record_err(FuncBackendError::ResultFailure {
-                    kind: failure.error.kind,
+                    kind: failure.error().kind.to_owned(),
                     backend,
-                    message: failure.error.message,
+                    message: failure.error().message.to_owned(),
                 }));
             }
         };

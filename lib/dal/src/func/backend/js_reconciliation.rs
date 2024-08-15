@@ -46,9 +46,7 @@ impl FuncDispatch for FuncBackendJsReconciliation {
         before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ReconciliationRequest {
-            // Once we start tracking the state of these executions, then this id will be useful,
-            // but for now it's passed along and back, and is opaue
-            execution_id: "freeronaldinhogauchojsreconciliation".to_string(),
+            execution_id: context.func_run_id.to_string(),
             handler: handler.into(),
             code_base64: code_base64.into(),
             args: serde_json::to_value(args)
@@ -68,10 +66,10 @@ impl FuncDispatch for FuncBackendJsReconciliation {
             .await?;
         let value = match value {
             FunctionResult::Failure(failure) => FunctionResult::Success(Self::Output {
-                execution_id: failure.execution_id,
+                execution_id: failure.execution_id().to_owned(),
                 updates: Default::default(),
                 actions: Default::default(),
-                message: Some(failure.error.message.clone()),
+                message: Some(failure.error().message.to_owned()),
             }),
             FunctionResult::Success(value) => FunctionResult::Success(value),
         };
