@@ -548,7 +548,6 @@ struct TelemetrySignalHandlerTask {
     client: ApplicationTelemetryClient,
     shutdown_token: CancellationToken,
     sig_usr1: unix::Signal,
-    sig_usr2: unix::Signal,
 }
 
 impl TelemetrySignalHandlerTask {
@@ -559,13 +558,11 @@ impl TelemetrySignalHandlerTask {
         shutdown_token: CancellationToken,
     ) -> io::Result<Self> {
         let sig_usr1 = unix::signal(SignalKind::user_defined1())?;
-        let sig_usr2 = unix::signal(SignalKind::user_defined2())?;
 
         Ok(Self {
             client,
             shutdown_token,
             sig_usr1,
-            sig_usr2,
         })
     }
 
@@ -577,20 +574,11 @@ impl TelemetrySignalHandlerTask {
                     break;
                 }
                 Some(_) = self.sig_usr1.recv() => {
-                    if let Err(err) = self.client.increase_verbosity().await {
+                    if let Err(err) = self.client.modify_verbosity().await {
                         warn!(
                             task = Self::NAME,
                             error = ?err,
-                            "error while trying to increase verbosity",
-                        );
-                    }
-                }
-                Some(_) = self.sig_usr2.recv() => {
-                    if let Err(err) = self.client.decrease_verbosity().await {
-                        warn!(
-                            task = Self::NAME,
-                            error = ?err,
-                            "error while trying to decrease verbosity",
+                            "error while trying to modify verbosity",
                         );
                     }
                 }
