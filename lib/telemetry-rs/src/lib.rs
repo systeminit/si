@@ -161,8 +161,7 @@ impl SpanExt for tracing::Span {
 #[async_trait]
 pub trait TelemetryClient: Clone + Send + Sync + 'static {
     async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError>;
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError>;
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError>;
+    async fn modify_verbosity(&mut self) -> Result<(), ClientError>;
     async fn set_custom_tracing(
         &mut self,
         directives: impl Into<String> + Send + 'async_trait,
@@ -214,30 +213,15 @@ impl ApplicationTelemetryClient {
         Ok(())
     }
 
-    pub async fn increase_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
+    pub async fn modify_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
 
-        self.increase_verbosity_inner(Some(tx)).await?;
+        self.modify_verbosity_inner(Some(tx)).await?;
 
         if let Err(err) = rx.await {
             warn!(
                 error = ?err,
                 "sender already closed while waiting on verbosity increase change",
-            );
-        }
-
-        Ok(())
-    }
-
-    pub async fn decrease_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
-        let (tx, rx) = oneshot::channel();
-
-        self.decrease_verbosity_inner(Some(tx)).await?;
-
-        if let Err(err) = rx.await {
-            warn!(
-                error = ?err,
-                "sender already closed while waiting on verbosity decrease change",
             );
         }
 
@@ -292,31 +276,17 @@ impl ApplicationTelemetryClient {
         Ok(())
     }
 
-    async fn increase_verbosity_inner(
+    async fn modify_verbosity_inner(
         &mut self,
         wait: Option<oneshot::Sender<()>>,
     ) -> Result<(), ClientError> {
         let guard = self.tracing_level.lock().await;
-
         match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
-                let updated = verbosity.increase();
-                drop(guard);
-                self.set_verbosity_inner(updated, wait).await
-            }
-            TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
-        }
-    }
-
-    async fn decrease_verbosity_inner(
-        &mut self,
-        wait: Option<oneshot::Sender<()>>,
-    ) -> Result<(), ClientError> {
-        let guard = self.tracing_level.lock().await;
-
-        match guard.deref() {
-            TracingLevel::Verbosity { verbosity, .. } => {
-                let updated = verbosity.decrease();
+                let updated = match verbosity.is_max() {
+                    true => Verbosity::InfoAll,
+                    false => verbosity.increase(),
+                };
                 drop(guard);
                 self.set_verbosity_inner(updated, wait).await
             }
@@ -349,12 +319,8 @@ impl TelemetryClient for ApplicationTelemetryClient {
         self.set_verbosity_inner(updated, None).await
     }
 
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
-        self.increase_verbosity_inner(None).await
-    }
-
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
-        self.decrease_verbosity_inner(None).await
+    async fn modify_verbosity(&mut self) -> Result<(), ClientError> {
+        self.modify_verbosity_inner(None).await
     }
 
     async fn set_custom_tracing(
@@ -385,11 +351,7 @@ impl TelemetryClient for NoopClient {
         Ok(())
     }
 
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+    async fn modify_verbosity(&mut self) -> Result<(), ClientError> {
         Ok(())
     }
 
@@ -493,6 +455,10 @@ impl Verbosity {
 
     fn is_debug_or_lower(&self) -> bool {
         !matches!(self, Self::InfoAll)
+    }
+
+    fn is_max(&self) -> bool {
+        matches!(self, Self::TraceAll)
     }
 
     #[inline]
