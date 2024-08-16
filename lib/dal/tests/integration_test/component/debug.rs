@@ -64,9 +64,10 @@ async fn get_debug_view(ctx: &mut DalContext) {
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(ctx, sv_id.id(), &rigid_prop_path)
         .await
         .expect("able to find 'rigid_designator' prop");
-    let rigid_designator_values = Prop::attribute_values_for_prop_id(ctx, rigid_designator_prop_id)
-        .await
-        .expect("able to get attribute value for rigid_designator prop");
+    let rigid_designator_values =
+        Component::attribute_values_for_prop_id(ctx, component.id(), rigid_designator_prop_id)
+            .await
+            .expect("able to get attribute value for rigid_designator prop");
 
     let rigid_designator_value_id = rigid_designator_values
         .first()

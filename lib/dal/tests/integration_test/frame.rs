@@ -2983,12 +2983,15 @@ async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
 
         // check that the secret propagated
 
-        let component_secret_av =
-            Prop::attribute_values_for_prop_id(ctx, component_secret_prop.id())
-                .await
-                .expect("could not get attribute values")
-                .pop()
-                .expect("has a value");
+        let component_secret_av = Component::attribute_values_for_prop_id(
+            ctx,
+            child_component.id(),
+            component_secret_prop.id(),
+        )
+        .await
+        .expect("could not get attribute values")
+        .pop()
+        .expect("has a value");
         let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
             .await
             .expect("could not get attribute value by id")
@@ -3061,12 +3064,15 @@ async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
             .expect("could not commit and update snapshot to visibility");
 
         // check that the value propagates
-        let component_secret_av =
-            Prop::attribute_values_for_prop_id(ctx, component_secret_prop.id())
-                .await
-                .expect("could not get attribute values")
-                .pop()
-                .expect("has a value");
+        let component_secret_av = Component::attribute_values_for_prop_id(
+            ctx,
+            child_component.id(),
+            component_secret_prop.id(),
+        )
+        .await
+        .expect("could not get attribute values")
+        .pop()
+        .expect("has a value");
         let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
             .await
             .expect("could not get attribute value by id")

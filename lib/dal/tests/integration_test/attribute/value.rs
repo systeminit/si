@@ -23,7 +23,7 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) {
     // that the value of "/root/si/name" comes in, as expected. The name is set when creating a
     // component, so we do not need to do additional setup.
     let expected = "you should see this name in the arguments";
-    let _component = Component::new(ctx, expected, schema_variant_id)
+    let component = Component::new(ctx, expected, schema_variant_id)
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -38,9 +38,10 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) {
     )
     .await
     .expect("could not find prop id by path");
-    let mut attribute_value_ids = Prop::attribute_values_for_prop_id(ctx, prop_id)
-        .await
-        .expect("could not list attribute value ids for prop id");
+    let mut attribute_value_ids =
+        Component::attribute_values_for_prop_id(ctx, component.id(), prop_id)
+            .await
+            .expect("could not list attribute value ids for prop id");
     let attribute_value_id = attribute_value_ids
         .pop()
         .expect("empty attribute value ids");

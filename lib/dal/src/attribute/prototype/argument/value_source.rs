@@ -46,12 +46,11 @@ pub enum ValueSource {
 }
 
 impl ValueSource {
-    pub async fn attribute_values(
-        &self,
-        ctx: &DalContext,
-    ) -> ValueSourceResult<Vec<AttributeValueId>> {
+    async fn attribute_values(&self, ctx: &DalContext) -> ValueSourceResult<Vec<AttributeValueId>> {
         Ok(match self {
-            Self::Prop(prop_id) => Prop::attribute_values_for_prop_id(ctx, *prop_id).await?,
+            Self::Prop(prop_id) => {
+                Prop::all_attribute_values_everywhere_for_prop_id(ctx, *prop_id).await?
+            }
             Self::OutputSocket(ep_id) => {
                 OutputSocket::attribute_values_for_output_socket_id(ctx, *ep_id).await?
             }
