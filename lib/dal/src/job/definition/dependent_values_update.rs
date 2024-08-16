@@ -17,6 +17,7 @@ use ulid::Ulid;
 
 use crate::{
     attribute::value::{dependent_value_graph::DependentValueGraph, AttributeValueError},
+    component::inferred_connection_graph::InferredConnectionGraph,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -26,8 +27,8 @@ use crate::{
     },
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
-    AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError, Visibility,
-    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
+    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, DalContext, TransactionsError,
+    Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -35,6 +36,8 @@ use crate::{
 pub enum DependentValueUpdateError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("status update error: {0}")]
@@ -155,7 +158,9 @@ impl DependentValuesUpdate {
         let mut update_join_set = JoinSet::new();
 
         let mut independent_value_ids = dependency_graph.independent_values();
-
+        // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
+        let inferred_connection_graph =
+            Arc::new(Some(InferredConnectionGraph::for_workspace(ctx).await?));
         loop {
             if independent_value_ids.is_empty() && task_id_to_av_id.is_empty() {
                 break;
@@ -172,6 +177,7 @@ impl DependentValuesUpdate {
                             ctx.clone(),
                             attribute_value_id,
                             self.set_value_lock.clone(),
+                            inferred_connection_graph.clone()
                         )
                         .instrument(info_span!(parent: parent_span, "dependent_values_update.values_from_prototype_function_execution",
                             attribute_value.id = %attribute_value_id,
@@ -311,6 +317,7 @@ async fn values_from_prototype_function_execution(
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
+    inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
 ) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
     if let Err(err) = send_update_message(
         &ctx,
@@ -324,7 +331,7 @@ async fn values_from_prototype_function_execution(
     }
     let parent_span = Span::current();
     let result =
-        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
+        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock, inferred_connection_graph)
             .instrument(info_span!(parent:parent_span, "value.execute_prototype_function", attribute_value.id= %attribute_value_id))
             .await
             .map_err(Into::into);
