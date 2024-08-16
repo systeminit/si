@@ -2,10 +2,8 @@ use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::secret::DecryptedSecret;
-use dal::{
-    AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop, Secret,
-    SecretAlgorithm, SecretVersion,
-};
+use dal::{Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm, SecretVersion};
+use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::{
     create_component_for_default_schema_name, encrypt_message, ChangeSetTestHelpers,
 };
@@ -442,37 +440,11 @@ async fn secret_definition_works_with_dummy_qualification(
     nw: &WorkspaceSignup,
 ) {
     // Create a component and commit.
-    let secret_definition_component =
-        create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
-            .await
-            .expect("could not create component");
-    let secret_definition_component_id = secret_definition_component.id();
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    // Cache the name of the secret definition from the test exclusive schema. Afterward, cache
-    // the variables we need throughout the test.
-    let secret_definition_name = "dummy";
-    let secret_definition_schema_variant_id =
-        Component::schema_variant_id(ctx, secret_definition_component.id())
-            .await
-            .expect("could not get schema variant id for component");
-    let output_socket = OutputSocket::find_with_name(
-        ctx,
-        secret_definition_name,
-        secret_definition_schema_variant_id,
-    )
-    .await
-    .expect("could not perform find with name")
-    .expect("output socket not found");
-    let reference_to_secret_prop = Prop::find_prop_by_path(
-        ctx,
-        secret_definition_schema_variant_id,
-        &PropPath::new(["root", "secrets", secret_definition_name]),
-    )
-    .await
-    .expect("could not find prop by path");
+    let component = ExpectComponent::create(ctx, "dummy-secret").await;
+    let secret_name = "dummy";
+    let output_socket = component.output_socket(ctx, secret_name).await;
+    let secret_prop = component.prop(ctx, ["root", "secrets", secret_name]).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     // First scenario: create and use a secret that will fail the qualification.
     {
@@ -487,7 +459,7 @@ async fn secret_definition_works_with_dummy_qualification(
         let secret_that_will_fail_the_qualification = Secret::new(
             ctx,
             "secret that will fail the qualification",
-            secret_definition_name.to_string(),
+            secret_name.to_string(),
             None,
             &encrypted_message_that_will_fail_the_qualification,
             nw.key_pair.pk(),
@@ -496,46 +468,20 @@ async fn secret_definition_works_with_dummy_qualification(
         )
         .await
         .expect("cannot create secret");
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-            .await
-            .expect("could not commit and update snapshot to visibility");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
         // Update the reference to secret prop with the secret it that will fail the qualification
         // and commit.
-        let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
-            .await
-            .expect("unable to list prop values");
-        let reference_to_secret_attribute_value_id = property_values
-            .find_by_prop_id(reference_to_secret_prop.id)
-            .expect("unable to find attribute value");
         Secret::attach_for_attribute_value(
             ctx,
-            reference_to_secret_attribute_value_id,
+            secret_prop.attribute_value(ctx).await.id(),
             Some(secret_that_will_fail_the_qualification.id()),
         )
         .await
         .expect("could not attach secret");
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-            .await
-            .expect("could not commit and update snapshot to visibility");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
         // Check that the output socket value looks correct.
-        let output_socket_attribute_value_id =
-            OutputSocket::component_attribute_value_for_output_socket_id(
-                ctx,
-                output_socket.id(),
-                secret_definition_component.id()
-            )
-            .await
-            .expect("could not get attribute value for output socket id");
-        let output_socket_attribute_value =
-            AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
-                .await
-                .expect("could not get attribute value by id")
-                .value(ctx)
-                .await
-                .expect("could not get value")
-                .expect("no value found");
         assert_eq!(
             Secret::payload_for_prototype_execution(
                 ctx,
@@ -543,11 +489,11 @@ async fn secret_definition_works_with_dummy_qualification(
             )
             .await
             .expect("could not get payload"), // expected
-            output_socket_attribute_value // actual
+            output_socket.get(ctx).await // actual
         );
 
         // Check that the qualification fails.
-        let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)
+        let qualifications = Component::list_qualifications(ctx, component.id())
             .await
             .expect("could not list qualifications");
         let qualification = qualifications
@@ -570,7 +516,7 @@ async fn secret_definition_works_with_dummy_qualification(
         let secret_that_will_pass_the_qualification = Secret::new(
             ctx,
             "secret that will pass the qualification",
-            secret_definition_name.to_string(),
+            secret_name.to_string(),
             None,
             &encrypted_message_that_will_pass_the_qualification,
             nw.key_pair.pk(),
@@ -579,46 +525,20 @@ async fn secret_definition_works_with_dummy_qualification(
         )
         .await
         .expect("cannot create secret");
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-            .await
-            .expect("could not commit and update snapshot to visibility");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
         // Update the reference to secret prop with the secret it that will pass the qualification
         // and commit.
-        let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
-            .await
-            .expect("unable to list prop values");
-        let reference_to_secret_attribute_value_id = property_values
-            .find_by_prop_id(reference_to_secret_prop.id)
-            .expect("could not find attribute value");
         Secret::attach_for_attribute_value(
             ctx,
-            reference_to_secret_attribute_value_id,
+            secret_prop.attribute_value(ctx).await.id(),
             Some(secret_that_will_pass_the_qualification.id()),
         )
         .await
         .expect("could not attach secret");
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-            .await
-            .expect("could not commit and update snapshot to visibility");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
         // Check that the output socket value looks correct.
-        let output_socket_attribute_value_id =
-            OutputSocket::component_attribute_value_for_output_socket_id(
-                ctx,
-                output_socket.id(),
-                secret_definition_component.id()
-            )
-            .await
-            .expect("could not perform attribute values for output socket id");
-        let output_socket_attribute_value =
-            AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
-                .await
-                .expect("could not get attribute value by id")
-                .value(ctx)
-                .await
-                .expect("could not get value")
-                .expect("no value found");
         assert_eq!(
             Secret::payload_for_prototype_execution(
                 ctx,
@@ -626,11 +546,11 @@ async fn secret_definition_works_with_dummy_qualification(
             )
             .await
             .expect("could not get payload"), // expected
-            output_socket_attribute_value // actual
+            output_socket.get(ctx).await // actual
         );
 
         // Check that the qualification passes.
-        let qualifications = Component::list_qualifications(ctx, secret_definition_component_id)
+        let qualifications = Component::list_qualifications(ctx, component.id())
             .await
             .expect("could not list qualifications");
         let qualification = qualifications

@@ -5,12 +5,14 @@ use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
+use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use serde_json::json;
 
 mod debug;
 mod delete;
@@ -571,149 +573,57 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
 
 #[test]
 async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) {
-    let etoiles_name = "À la belle étoile";
-    let etoiles_component = create_component_for_default_schema_name(ctx, "etoiles", etoiles_name)
-        .await
-        .expect("could not create component");
-    let etoiles_variant_id = Component::schema_variant_id(ctx, etoiles_component.id())
-        .await
-        .expect("find variant id for etoiles component");
-    let morningstar_name = "hesperus is phosphorus";
-    let morningstar_component =
-        create_component_for_default_schema_name(ctx, "morningstar", morningstar_name)
-            .await
-            .expect("could not create component");
-    let morningstar_variant_id = Component::schema_variant_id(ctx, morningstar_component.id())
-        .await
-        .expect("find variant id for morningstar component");
+    let etoiles = ExpectComponent::create(ctx, "etoiles").await;
+    let morningstar = ExpectComponent::create(ctx, "morningstar").await;
+    let possible_world_a = etoiles
+        .prop(ctx, ["root", "domain", "possible_world_a"])
+        .await;
+    let possible_world_b = etoiles
+        .prop(ctx, ["root", "domain", "possible_world_b"])
+        .await;
+    let stars = morningstar.prop(ctx, ["root", "domain", "stars"]).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    let possible_world_a_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        etoiles_variant_id,
-        &PropPath::new(["root", "domain", "possible_world_a"]),
-    )
-    .await
-    .expect("able to find 'possible_world_a' prop");
-
-    let possible_world_values = Component::attribute_values_for_prop_id(
-        ctx,
-        etoiles_component.id(),
-        possible_world_a_prop_id,
-    )
-    .await
-    .expect("able to get attribute value for universe prop");
-
-    let possible_world_a_value_id = possible_world_values
-        .first()
-        .copied()
-        .expect("get first value id");
-
-    let possible_world_a = serde_json::json!({
-        "wormhole_1": {
-            "wormhole_2": {
-                "wormhole_3": {
-                    "rigid_designator": "hesperus"
+    possible_world_a
+        .set(
+            ctx,
+            json!({
+                "wormhole_1": {
+                    "wormhole_2": {
+                        "wormhole_3": {
+                            "rigid_designator": "hesperus"
+                        }
+                    }
                 }
-            }
-        }
-    });
-
-    AttributeValue::update(
-        ctx,
-        possible_world_a_value_id,
-        Some(possible_world_a.clone()),
-    )
-    .await
-    .expect("able to set universe value");
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    let possible_world_b_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        etoiles_variant_id,
-        &PropPath::new(["root", "domain", "possible_world_b"]),
-    )
-    .await
-    .expect("able to find 'possible_world_b' prop");
-
-    let possible_world_values = Component::attribute_values_for_prop_id(
-        ctx,
-        etoiles_component.id(),
-        possible_world_b_prop_id,
-    )
-    .await
-    .expect("able to get attribute value for possible world prop");
-
-    let possible_world_b_value_id = possible_world_values
-        .first()
-        .copied()
-        .expect("get first value id");
-
-    let value = AttributeValue::get_by_id_or_error(ctx, possible_world_b_value_id)
-        .await
-        .expect("able to get av by id");
-
-    let possible_world_b = serde_json::json!({
-        "wormhole_1": {
-            "wormhole_2": {
-                "wormhole_3": {
-                    "rigid_designator": "phosphorus"
-                }
-            }
-        }
-    });
+            }),
+        )
+        .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     assert_eq!(
-        Some(possible_world_b),
-        value.view(ctx).await.expect("able to get view")
+        json!({
+            "wormhole_1": {
+                "wormhole_2": {
+                    "wormhole_3": {
+                        "rigid_designator": "phosphorus"
+                    }
+                }
+            }
+        }),
+        possible_world_b.get(ctx).await
     );
 
-    connect_components_with_socket_names(
-        ctx,
-        etoiles_component.id(),
-        "naming_and_necessity",
-        morningstar_component.id(),
-        "naming_and_necessity",
-    )
-    .await
-    .expect("could not connect components with socket names");
+    etoiles
+        .connect(
+            ctx,
+            "naming_and_necessity",
+            morningstar,
+            "naming_and_necessity",
+        )
+        .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    let stars_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        morningstar_variant_id,
-        &PropPath::new(["root", "domain", "stars"]),
-    )
-    .await
-    .expect("able to find 'stars' prop");
-
-    let stars_value_id =
-        Component::attribute_values_for_prop_id(ctx, morningstar_component.id(), stars_prop_id)
-            .await
-            .expect("able to get attribute value for possible world prop")
-            .first()
-            .copied()
-            .expect("get first value id");
-
-    let stars_value = AttributeValue::get_by_id_or_error(ctx, stars_value_id)
-        .await
-        .expect("able to get av by id");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-    assert_eq!(
-        Some(serde_json::to_value("phosphorus").expect("able to make phosphorus value")),
-        stars_value.view(ctx).await.expect("get stars value")
-    );
+    assert_eq!(json!("phosphorus"), stars.get(ctx).await);
 }
 
 #[test]

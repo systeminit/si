@@ -9,7 +9,8 @@ use dal::{
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
     AttributeValue, AttributeValueId, ChangeSetId, Component, ComponentId, ComponentType,
-    DalContext, PropId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, PropId, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId,
 };
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use serde_json::Value;
@@ -17,36 +18,39 @@ use serde_json::Value;
 ///
 /// Things that you can pass as prop paths / ids
 ///
-pub trait ExpectPropId {
+pub trait PropKey {
     ///
     /// Turn this into a proper prop id
     ///
-    async fn expect_prop_id(self, ctx: &DalContext, schema_variant: ExpectSchemaVariant) -> PropId;
+    async fn lookup_prop(self, ctx: &DalContext, schema_variant_id: SchemaVariantId) -> PropId;
 }
-impl ExpectPropId for PropId {
-    async fn expect_prop_id(self, _: &DalContext, _: ExpectSchemaVariant) -> PropId {
+impl PropKey for PropId {
+    async fn lookup_prop(self, _: &DalContext, _: SchemaVariantId) -> PropId {
         self
     }
 }
-impl ExpectPropId for ExpectComponentProp {
-    async fn expect_prop_id(self, _: &DalContext, _: ExpectSchemaVariant) -> PropId {
+impl PropKey for ExpectComponentProp {
+    async fn lookup_prop(self, _: &DalContext, _: SchemaVariantId) -> PropId {
         self.prop().id()
     }
 }
-impl ExpectPropId for ExpectProp {
-    async fn expect_prop_id(self, _: &DalContext, _: ExpectSchemaVariant) -> PropId {
+impl PropKey for ExpectProp {
+    async fn lookup_prop(self, _: &DalContext, _: SchemaVariantId) -> PropId {
         self.id()
     }
 }
-impl ExpectPropId for PropPath {
-    async fn expect_prop_id(self, ctx: &DalContext, schema_variant: ExpectSchemaVariant) -> PropId {
-        schema_variant.find_prop_id_by_path(ctx, &self).await
+impl PropKey for PropPath {
+    async fn lookup_prop(self, ctx: &DalContext, schema_variant_id: SchemaVariantId) -> PropId {
+        ExpectSchemaVariant(schema_variant_id)
+            .prop(ctx, self)
+            .await
+            .id()
     }
 }
-impl<const N: usize> ExpectPropId for [&str; N] {
-    async fn expect_prop_id(self, ctx: &DalContext, schema_variant: ExpectSchemaVariant) -> PropId {
-        self.expect_prop_path()
-            .expect_prop_id(ctx, schema_variant)
+impl<const N: usize> PropKey for [&str; N] {
+    async fn lookup_prop(self, ctx: &DalContext, schema_variant_id: SchemaVariantId) -> PropId {
+        self.into_prop_path()
+            .lookup_prop(ctx, schema_variant_id)
             .await
     }
 }
@@ -54,19 +58,19 @@ impl<const N: usize> ExpectPropId for [&str; N] {
 ///
 /// Things that you can pass as prop paths
 ///
-pub trait ExpectPropPath {
+pub trait IntoPropPath {
     ///
     /// Turn this into a proper prop path
     ///
-    fn expect_prop_path(self) -> PropPath;
+    fn into_prop_path(self) -> PropPath;
 }
-impl ExpectPropPath for PropPath {
-    fn expect_prop_path(self) -> PropPath {
+impl IntoPropPath for PropPath {
+    fn into_prop_path(self) -> PropPath {
         self
     }
 }
-impl<const N: usize> ExpectPropPath for [&str; N] {
-    fn expect_prop_path(self) -> PropPath {
+impl<const N: usize> IntoPropPath for [&str; N] {
+    fn into_prop_path(self) -> PropPath {
         PropPath::new(self)
     }
 }
@@ -74,33 +78,115 @@ impl<const N: usize> ExpectPropPath for [&str; N] {
 ///
 /// Things that you can pass as schema ids
 ///
-pub trait ExpectSchemaId {
+pub trait SchemaKey {
     ///
     /// Turn this into a real SchemaId
     ///
-    async fn expect_schema_id(&self, ctx: &DalContext) -> SchemaId;
+    async fn lookup_schema(&self, ctx: &DalContext) -> SchemaId;
 }
-impl ExpectSchemaId for SchemaId {
-    async fn expect_schema_id(&self, _: &DalContext) -> SchemaId {
+impl SchemaKey for SchemaId {
+    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
         *self
     }
 }
-impl ExpectSchemaId for ExpectSchema {
-    async fn expect_schema_id(&self, _: &DalContext) -> SchemaId {
+impl SchemaKey for ExpectSchema {
+    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
         self.id()
     }
 }
-impl ExpectSchemaId for Schema {
-    async fn expect_schema_id(&self, _: &DalContext) -> SchemaId {
+impl SchemaKey for Schema {
+    async fn lookup_schema(&self, _: &DalContext) -> SchemaId {
         self.id()
     }
 }
-impl ExpectSchemaId for str {
-    async fn expect_schema_id(&self, ctx: &DalContext) -> SchemaId {
+impl SchemaKey for str {
+    async fn lookup_schema(&self, ctx: &DalContext) -> SchemaId {
         Schema::find_by_name(ctx, self)
             .await
             .expect("find schema by name")
             .expect("schema exists")
+            .id()
+    }
+}
+
+///
+/// Things that you can pass as input_socket ids
+///
+pub trait InputSocketKey {
+    ///
+    /// Turn this into a real InputSocketId
+    ///
+    async fn lookup_input_socket(
+        self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> InputSocketId;
+}
+impl InputSocketKey for InputSocketId {
+    async fn lookup_input_socket(self, _: &DalContext, _: SchemaVariantId) -> InputSocketId {
+        self
+    }
+}
+impl InputSocketKey for ExpectInputSocket {
+    async fn lookup_input_socket(self, _: &DalContext, _: SchemaVariantId) -> InputSocketId {
+        self.id()
+    }
+}
+impl InputSocketKey for InputSocket {
+    async fn lookup_input_socket(self, _: &DalContext, _: SchemaVariantId) -> InputSocketId {
+        self.id()
+    }
+}
+impl InputSocketKey for &str {
+    async fn lookup_input_socket(
+        self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> InputSocketId {
+        ExpectSchemaVariant(schema_variant_id)
+            .input_socket(ctx, self)
+            .await
+            .id()
+    }
+}
+
+///
+/// Things that you can pass as output_socket ids
+///
+pub trait OutputSocketKey {
+    ///
+    /// Turn this into a real OutputSocketId
+    ///
+    async fn lookup_output_socket(
+        self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> OutputSocketId;
+}
+impl OutputSocketKey for OutputSocketId {
+    async fn lookup_output_socket(self, _: &DalContext, _: SchemaVariantId) -> OutputSocketId {
+        self
+    }
+}
+impl OutputSocketKey for ExpectOutputSocket {
+    async fn lookup_output_socket(self, _: &DalContext, _: SchemaVariantId) -> OutputSocketId {
+        self.id()
+    }
+}
+impl OutputSocketKey for OutputSocket {
+    async fn lookup_output_socket(self, _: &DalContext, _: SchemaVariantId) -> OutputSocketId {
+        self.id()
+    }
+}
+impl OutputSocketKey for &str {
+    async fn lookup_output_socket(
+        self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> OutputSocketId {
+        ExpectSchemaVariant(schema_variant_id)
+            .output_socket(ctx, self)
+            .await
             .id()
     }
 }
@@ -116,7 +202,7 @@ impl From<Schema> for ExpectSchema {
 
 impl ExpectSchema {
     pub async fn find(ctx: &DalContext, name: impl AsRef<str>) -> ExpectSchema {
-        ExpectSchema(name.as_ref().expect_schema_id(ctx).await)
+        ExpectSchema(name.as_ref().lookup_schema(ctx).await)
     }
 
     pub fn id(self) -> SchemaId {
@@ -192,10 +278,31 @@ impl ExpectSchemaVariant {
             .expect("set type")
     }
 
-    pub async fn find_prop_id_by_path(self, ctx: &DalContext, path: &PropPath) -> PropId {
-        Prop::find_prop_id_by_path(ctx, self.0, path)
+    pub async fn prop(self, ctx: &DalContext, path: impl IntoPropPath) -> ExpectProp {
+        Prop::find_prop_id_by_path(ctx, self.0, &path.into_prop_path())
             .await
             .expect("able to find prop")
+            .into()
+    }
+
+    pub async fn input_socket(self, ctx: &DalContext, name: impl AsRef<str>) -> ExpectInputSocket {
+        InputSocket::find_with_name(ctx, name, self.0)
+            .await
+            .expect("could not perform find with name")
+            .expect("input socket not found")
+            .into()
+    }
+
+    pub async fn output_socket(
+        self,
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> ExpectOutputSocket {
+        OutputSocket::find_with_name(ctx, name, self.0)
+            .await
+            .expect("could not perform find with name")
+            .expect("output socket not found")
+            .into()
     }
 
     pub async fn create_unlocked_copy(self, ctx: &DalContext) -> ExpectSchemaVariant {
@@ -283,10 +390,46 @@ impl ExpectComponent {
         )
     }
 
-    pub async fn prop(self, ctx: &DalContext, prop: impl ExpectPropId) -> ExpectComponentProp {
+    pub async fn prop(self, ctx: &DalContext, prop: impl PropKey) -> ExpectComponentProp {
         let schema_variant = self.schema_variant(ctx).await;
-        let prop_id = prop.expect_prop_id(ctx, schema_variant).await;
+        let prop_id = prop.lookup_prop(ctx, schema_variant.id()).await;
         ExpectComponentProp(self.0, prop_id)
+    }
+
+    pub async fn connect(
+        self,
+        ctx: &DalContext,
+        socket: impl OutputSocketKey,
+        dest_component: ExpectComponent,
+        dest_socket: impl InputSocketKey,
+    ) {
+        let src = self.output_socket(ctx, socket).await;
+        let dest = dest_component.input_socket(ctx, dest_socket).await;
+        src.connect(ctx, dest).await
+    }
+
+    pub async fn input_socket(
+        self,
+        ctx: &DalContext,
+        input_socket_id: impl InputSocketKey,
+    ) -> ExpectComponentInputSocket {
+        let schema_variant = self.schema_variant(ctx).await;
+        let input_socket_id = input_socket_id
+            .lookup_input_socket(ctx, schema_variant.id())
+            .await;
+        ExpectComponentInputSocket(self.0, input_socket_id)
+    }
+
+    pub async fn output_socket(
+        self,
+        ctx: &DalContext,
+        output_socket_id: impl OutputSocketKey,
+    ) -> ExpectComponentOutputSocket {
+        let schema_variant = self.schema_variant(ctx).await;
+        let output_socket_id = output_socket_id
+            .lookup_output_socket(ctx, schema_variant.id())
+            .await;
+        ExpectComponentOutputSocket(self.0, output_socket_id)
     }
 
     pub async fn upsert_parent(self, ctx: &DalContext, parent_id: impl Into<ComponentId>) {
@@ -356,14 +499,133 @@ impl ExpectComponentProp {
             .insert(ctx, value, key)
             .await
     }
+}
 
-    pub async fn attribute_values_for_prop(self, ctx: &DalContext) -> Vec<ExpectAttributeValue> {
-        Component::attribute_values_for_prop_id(ctx, self.0, self.1)
+#[derive(Debug, Copy, Clone)]
+pub struct ExpectComponentInputSocket(ComponentId, InputSocketId);
+
+impl ExpectComponentInputSocket {
+    pub fn component(self) -> ExpectComponent {
+        ExpectComponent(self.0)
+    }
+    pub fn prop(self) -> ExpectInputSocket {
+        ExpectInputSocket(self.1)
+    }
+
+    pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
+        InputSocket::component_attribute_value_for_input_socket_id(ctx, self.1, self.0)
             .await
-            .expect("able to list prop values")
-            .into_iter()
-            .map(ExpectAttributeValue)
-            .collect()
+            .expect("get attribute value for input socket")
+            .into()
+    }
+
+    pub async fn get(self, ctx: &DalContext) -> Value {
+        self.attribute_value(ctx).await.get(ctx).await
+    }
+
+    pub async fn set(self, ctx: &DalContext, value: impl Into<Value>) {
+        self.attribute_value(ctx)
+            .await
+            .update(ctx, Some(value.into()))
+            .await
+    }
+
+    pub async fn push(self, ctx: &DalContext, value: impl Into<Value>) -> AttributeValueId {
+        self.attribute_value(ctx)
+            .await
+            .insert(ctx, Some(value.into()), None)
+            .await
+    }
+
+    pub async fn children(self, ctx: &DalContext) -> Vec<ExpectAttributeValue> {
+        self.attribute_value(ctx).await.children(ctx).await
+    }
+
+    pub async fn view(self, ctx: &DalContext) -> Option<Value> {
+        self.attribute_value(ctx).await.view(ctx).await
+    }
+
+    pub async fn update(self, ctx: &DalContext, value: Option<Value>) {
+        self.attribute_value(ctx).await.update(ctx, value).await
+    }
+
+    pub async fn insert(
+        self,
+        ctx: &DalContext,
+        value: Option<Value>,
+        key: Option<String>,
+    ) -> AttributeValueId {
+        self.attribute_value(ctx)
+            .await
+            .insert(ctx, value, key)
+            .await
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ExpectComponentOutputSocket(ComponentId, OutputSocketId);
+
+impl ExpectComponentOutputSocket {
+    pub fn component(self) -> ExpectComponent {
+        ExpectComponent(self.0)
+    }
+    pub fn prop(self) -> ExpectOutputSocket {
+        ExpectOutputSocket(self.1)
+    }
+
+    pub async fn connect(self, ctx: &DalContext, dest: ExpectComponentInputSocket) {
+        Component::connect(ctx, self.0, self.1, dest.0, dest.1)
+            .await
+            .expect("could not connect components");
+    }
+
+    pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
+        OutputSocket::component_attribute_value_for_output_socket_id(ctx, self.1, self.0)
+            .await
+            .expect("get attribute value for output socket")
+            .into()
+    }
+
+    pub async fn get(self, ctx: &DalContext) -> Value {
+        self.attribute_value(ctx).await.get(ctx).await
+    }
+
+    pub async fn set(self, ctx: &DalContext, value: impl Into<Value>) {
+        self.attribute_value(ctx)
+            .await
+            .update(ctx, Some(value.into()))
+            .await
+    }
+
+    pub async fn push(self, ctx: &DalContext, value: impl Into<Value>) -> AttributeValueId {
+        self.attribute_value(ctx)
+            .await
+            .insert(ctx, Some(value.into()), None)
+            .await
+    }
+
+    pub async fn children(self, ctx: &DalContext) -> Vec<ExpectAttributeValue> {
+        self.attribute_value(ctx).await.children(ctx).await
+    }
+
+    pub async fn view(self, ctx: &DalContext) -> Option<Value> {
+        self.attribute_value(ctx).await.view(ctx).await
+    }
+
+    pub async fn update(self, ctx: &DalContext, value: Option<Value>) {
+        self.attribute_value(ctx).await.update(ctx, value).await
+    }
+
+    pub async fn insert(
+        self,
+        ctx: &DalContext,
+        value: Option<Value>,
+        key: Option<String>,
+    ) -> AttributeValueId {
+        self.attribute_value(ctx)
+            .await
+            .insert(ctx, value, key)
+            .await
     }
 }
 
@@ -456,6 +718,48 @@ impl ExpectProp {
                 .await
                 .expect("able to find element prop"),
         )
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, AsMut, From, Into)]
+pub struct ExpectOutputSocket(pub OutputSocketId);
+
+impl From<OutputSocket> for ExpectOutputSocket {
+    fn from(from: OutputSocket) -> Self {
+        from.id().into()
+    }
+}
+
+impl ExpectOutputSocket {
+    pub fn id(self) -> OutputSocketId {
+        self.0
+    }
+
+    pub async fn output_socket(self, ctx: &DalContext) -> OutputSocket {
+        OutputSocket::get_by_id(ctx, self.0)
+            .await
+            .expect("get output socket by id")
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, AsMut, From, Into)]
+pub struct ExpectInputSocket(pub InputSocketId);
+
+impl From<InputSocket> for ExpectInputSocket {
+    fn from(from: InputSocket) -> Self {
+        from.id().into()
+    }
+}
+
+impl ExpectInputSocket {
+    pub fn id(self) -> InputSocketId {
+        self.0
+    }
+
+    pub async fn output_socket(self, ctx: &DalContext) -> InputSocket {
+        InputSocket::get_by_id(ctx, self.0)
+            .await
+            .expect("get output socket by id")
     }
 }
 

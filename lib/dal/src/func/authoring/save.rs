@@ -498,7 +498,12 @@ pub(crate) async fn create_new_attribute_prototype(
         }
     } else if let Some(output_socket_id) = prototype_bag.output_socket_id {
         if let Some(component_id) = component_id_cannot_be_nil_id {
-            let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(ctx, output_socket_id, component_id).await?;
+            let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                output_socket_id,
+                component_id,
+            )
+            .await?;
             AttributeValue::set_component_prototype_id(
                 ctx,
                 attribute_value_id,

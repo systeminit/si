@@ -315,7 +315,7 @@ impl OutputSocket {
             None => Err(OutputSocketError::MissingAttributeValueForComponent(
                 output_socket_id,
                 component_id,
-            ))
+            )),
         }
     }
 

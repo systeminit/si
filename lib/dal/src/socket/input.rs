@@ -412,8 +412,7 @@ impl InputSocket {
     ) -> InputSocketResult<AttributeValueId> {
         let mut result = None;
         for attribute_value_id in
-            Self::all_attribute_values_everywhere_for_input_socket_id(ctx, input_socket_id)
-                .await?
+            Self::all_attribute_values_everywhere_for_input_socket_id(ctx, input_socket_id).await?
         {
             if AttributeValue::component_id(ctx, attribute_value_id)
                 .await
@@ -434,8 +433,9 @@ impl InputSocket {
             None => Err(InputSocketError::MissingAttributeValueForComponent(
                 input_socket_id,
                 component_id,
-            ))
-        }    }
+            )),
+        }
+    }
 
     pub async fn find_for_attribute_value_id(
         ctx: &DalContext,

@@ -1931,7 +1931,13 @@ impl Component {
         }
 
         // filter the value ids by destination_component_id
-        let destination_attribute_value_id = InputSocket::component_attribute_value_for_input_socket_id(ctx, destination_input_socket_id, destination_component_id).await?;
+        let destination_attribute_value_id =
+            InputSocket::component_attribute_value_for_input_socket_id(
+                ctx,
+                destination_input_socket_id,
+                destination_component_id,
+            )
+            .await?;
 
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
@@ -2795,7 +2801,7 @@ impl Component {
                                     InputSocket::component_attribute_value_for_input_socket_id(
                                         ctx,
                                         destination_input_socket_id,
-                                        destination_component_id
+                                        destination_component_id,
                                     )
                                     .await?;
 

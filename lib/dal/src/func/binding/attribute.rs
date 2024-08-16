@@ -253,7 +253,13 @@ impl AttributeBinding {
                         .await?;
                     }
                     EventualParent::Component(component_id) => {
-                        let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(ctx, output_socket_id, component_id).await?;
+                        let attribute_value_id =
+                            OutputSocket::component_attribute_value_for_output_socket_id(
+                                ctx,
+                                output_socket_id,
+                                component_id,
+                            )
+                            .await?;
                         AttributeValue::set_component_prototype_id(
                             ctx,
                             attribute_value_id,

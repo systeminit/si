@@ -3,7 +3,6 @@ use dal_test::expected::{
     apply_change_set_to_base, commit_and_update_snapshot_to_visibility, fork_from_head_change_set,
     update_visibility_and_snapshot_to_visibility, ExpectComponent,
 };
-use dal_test::helpers::connect_components_with_socket_names;
 use dal_test::test;
 
 #[test]
@@ -14,15 +13,9 @@ async fn change_in_output_component_produces_dvu_root_in_other_change_set(ctx: &
 
     let cs_with_butane = fork_from_head_change_set(ctx).await;
     let butane = ExpectComponent::create(ctx, "Butane").await;
-    connect_components_with_socket_names(
-        ctx,
-        docker_image.id(),
-        "Container Image",
-        butane.id(),
-        "Container Image",
-    )
-    .await
-    .expect("able to connect");
+    docker_image
+        .connect(ctx, "Container Image", butane, "Container Image")
+        .await;
 
     commit_and_update_snapshot_to_visibility(ctx).await;
     fork_from_head_change_set(ctx).await;
