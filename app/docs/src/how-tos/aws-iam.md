@@ -40,17 +40,17 @@ When you are through with this guide, you should have components that look like 
 
 You can learn more about [Customer Managed Identity Policies in the AWS documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html#customer-managed-policies).
 
-Set the components name to `Only EC2 In Ohio`.
+Set the components name to `Only EC2 In North Virginia`.
 
 Set the `Path` to `/si-howto/`.
 
-Set the `PolicyName` to `only-ec2-in-ohio`
+Set the `PolicyName` to `only-ec2-in-north-virginia`
 
 ### Create an AWS IAM Policy Statement component
 
-Add an `AWS IAM Policy Statement` to your `Only EC2 In Ohio` policy frame.
+Add an `AWS IAM Policy Statement` to your `Only EC2 In North Virginia` policy frame.
 
-Set the name to `Only EC2 In Ohio`.
+Set the name to `Only EC2 In North Virginia`.
 
 Set the `Effect` to `Deny`.
 
@@ -58,17 +58,17 @@ Add an item to the `Action` array, and set the value `ec2:*`.
 
 ### Create an AWS IAM Any component
 
-Add an `AWS IAM Any` component inside your `Only EC2 In Ohio` policy frame.
+Add an `AWS IAM Any` component inside your `Only EC2 In North Virginia` policy frame.
 
 Set the name to `Any EC2 Resource`.
 
-Connect the `Resource` output socket to the `Resource` input socket of your `Only EC2 In Ohio` statement.
+Connect the `Resource` output socket to the `Resource` input socket of your `Only EC2 In North Virginia` statement.
 
 ### Create an AWS IAM Condition Operator component
 
-Add an `AWS IAM Condition Operator` component inside your `Only EC2 In Ohio` policy frame.
+Add an `AWS IAM Condition Operator` component inside your `Only EC2 In North Virginia` policy frame.
 
-Set the name to `Only allow us-east-2`.
+Set the name to `Only allow us-east-1`.
 
 Set the `ConditionOperator` to `StringNotEquals`.
 
@@ -76,19 +76,19 @@ Set the `ConditionKey` to `aws:RequestedRegion`.
 
 Change the `ConditionValue` from being set via socket to being set `manually`.
 
-Add an item to the `ConditionValue` array, and set the value to `us-east-2`.
+Add an item to the `ConditionValue` array, and set the value to `us-east-1`.
 
-Connect the `Condition` output socket to the `Condition` input socket of your `Only EC2 In Ohio` statement.
+Connect the `Condition` output socket to the `Condition` input socket of your `Only EC2 In North Virginia` statement.
 
 ### Review your policy
 
-Select your `Only EC2 In Ohio` policy frame.
+Select your `Only EC2 In North Virginia` policy frame.
 
 Navigate to the `Code` sub-panel. You should see JSON that looks like the following:
 
 ```json
 {
-  "PolicyName": "Only EC2 In Ohio",
+  "PolicyName": "Only EC2 In North Virginia",
   "Path": "/si-howto/",
   "PolicyDocument": {
     "Version": "2012-10-17",
@@ -104,7 +104,7 @@ Navigate to the `Code` sub-panel. You should see JSON that looks like the follow
         "Condition": {
           "StringNotEquals": {
             "aws:RequestedRegion": [
-              "us-east-2"
+              "us-east-1"
             ]
           }
         }
@@ -118,7 +118,7 @@ Your components should be passing all their [qualifications](/reference/vocabula
 
 ### Create an AWS IAM User component
 
-Add an `AWS IAM User` to your `Region` frame. (It should be a peer of your `Only EC2 In Ohio` policy.
+Add an `AWS IAM User` to your `Region` frame. (It should be a peer of your `Only EC2 In North Virginia` policy.
 
 Set the name to `bobo`.
 
@@ -134,7 +134,7 @@ Set the name to `bobo EC2 Restrictions`.
 
 Connect the `UserName` output socket of your `bobo` AWS IAM User to the `UserName` input socket of your `bobo EC2 Restrictions` AWS IAM User Policy.
 
-Connect the `ARN` output socket of the `Only EC2 In Ohio` AWS IAM Customer Managed Identity Policy to the `Policy ARN` input socket of your `bobo EC2 Restrictions` AWS IAM User Policy.
+Connect the `ARN` output socket of the `Only EC2 In North Virginia` AWS IAM Customer Managed Identity Policy to the `Policy ARN` input socket of your `bobo EC2 Restrictions` AWS IAM User Policy.
 
 ### Apply your Change Set
 
@@ -154,7 +154,7 @@ Review the completed AWS resources by clicking the `Resource` sub-panel for each
 
 Create a new change set called `Clean up IAM How-to`
 
-Delete your `Only EC2 In Ohio` policy frame.
+Delete your `Only EC2 In North Virginia` policy frame.
 
 Delete your `bobo` AWS IAM User.
 

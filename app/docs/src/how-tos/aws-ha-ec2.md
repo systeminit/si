@@ -239,7 +239,7 @@ Add an `AMI` to your `Application` frame.
 
 Set the component name to be `Amazon Linux 2023`.
 
-Set the `ImageId` to be `ami-0c11a84584d4e09dd`.
+Set the `ImageId` to be `ami-0ba9883b710b05ac6`.
 
 ### Create a Launch Template component
 

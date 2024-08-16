@@ -72,14 +72,14 @@ inside your `tutorial credential` frame.
 
 Resize the region to fill the space inside the `tutorial credential` frame.
 
-Name your region `Ohio`.
+Name your region `North Virginia`.
 
-Set the region property to `us-east-2`.
+Set the region property to `us-east-1`.
 
 ## Add an AWS EC2 Key Pair and set its properties
 
 Click on the `Key Pair` from the AWS EC2 category of the asset pallete, and drop
-it inside your `ohio region` frame.
+it inside your `North Virginia region` frame.
 
 Name your key pair `si-tutorial`.
 
@@ -88,7 +88,7 @@ Set the KeyName property to `si-tutorial`.
 ## Add an AWS EC2 Instance and set its properties
 
 Click on the `EC2 Instance` from the AWS EC2 category of the asset pallete, and
-drop it inside your `ohio region` frame.
+drop it inside your `North Virginia region` frame.
 
 Name your EC2 Instance `si-tutorial`.
 
@@ -103,11 +103,11 @@ the line between them.
 ## Add an AWS EC2 AMI component and set its properties
 
 Click on the `AMI` from the AWS EC2 category of the asset pallete, and drop it
-inside your `Ohio region` frame.
+inside your `North Virginia region` frame.
 
 Name your AMI `Fedora CoreOS`.
 
-Set the ImageId property to `ami-04000bc04ccee958e`.
+Set the ImageId property to `ami-068493ac5013f0936`.
 
 ## Connect the AMI to the EC2 Instance
 
