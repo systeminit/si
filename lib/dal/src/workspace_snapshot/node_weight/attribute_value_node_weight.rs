@@ -1,14 +1,23 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::{deprecated::v1::DeprecatedAttributeValueNodeWeightV1, LineageId},
+        graph::{
+            correct_transforms::add_dependent_value_root_updates,
+            deprecated::v1::DeprecatedAttributeValueNodeWeightV1, detect_updates::Update,
+            LineageId,
+        },
         node_weight::traits::CorrectTransforms,
+        NodeId,
     },
-    EdgeWeightKindDiscriminants,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
+
+use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeWeight};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {
@@ -130,4 +139,61 @@ impl From<DeprecatedAttributeValueNodeWeightV1> for AttributeValueNodeWeight {
     }
 }
 
-impl CorrectTransforms for AttributeValueNodeWeight {}
+impl CorrectTransforms for AttributeValueNodeWeight {
+    fn correct_transforms(
+        &self,
+        graph: &WorkspaceSnapshotGraphV2,
+        mut updates: Vec<Update>,
+        from_different_change_set: bool,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        if !from_different_change_set {
+            return Ok(updates);
+        }
+
+        let dvu_cat_node_id: Option<NodeId> = graph
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)?
+            .map(|(id, _)| id.into());
+
+        let mut should_add = false;
+
+        for update in &updates {
+            match update {
+                Update::NewEdge {
+                    source,
+                    edge_weight,
+                    ..
+                } if source.id == self.id().into()
+                    && EdgeWeightKindDiscriminants::Prototype == edge_weight.kind().into() =>
+                {
+                    should_add = graph.get_node_weight_by_id_opt(source.id).is_some();
+                }
+                Update::RemoveEdge { source, .. } if Some(source.id) == dvu_cat_node_id => {
+                    // If there is a remove edge from the dvu root then we are the result of a DVU
+                    // job finishing and we should *not* re-enqueue any updates or we will
+                    // potentially loop forever
+                    return Ok(updates);
+                }
+                Update::ReplaceNode { node_weight } if node_weight.id() == self.id() => {
+                    should_add = graph
+                        .get_node_weight_by_id_opt(self.id())
+                        .is_some_and(|weight| weight.node_hash() != node_weight.node_hash());
+                }
+                Update::NewNode {
+                    node_weight: NodeWeight::DependentValueRoot(inner),
+                } if inner.value_id() == self.id() => {
+                    return Ok(updates);
+                }
+                _ => {}
+            }
+        }
+
+        if should_add {
+            updates.extend(add_dependent_value_root_updates(
+                graph,
+                &HashSet::from([self.id()]),
+            )?);
+        }
+
+        Ok(updates)
+    }
+}

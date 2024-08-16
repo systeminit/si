@@ -100,7 +100,13 @@ pub async fn perform_rebase(
     debug!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     let corrected_updates = to_rebase_workspace_snapshot
-        .correct_transforms(rebase_batch.updates().to_vec())
+        .correct_transforms(
+            rebase_batch.updates().to_vec(),
+            message
+                .payload
+                .from_change_set_id
+                .is_some_and(|from_id| from_id != to_rebase_change_set.id.into()),
+        )
         .await?;
     debug!("corrected transforms: {:?}", start.elapsed());
 
@@ -158,31 +164,33 @@ pub async fn perform_rebase(
             && *workspace.pk() != WorkspacePk::NONE
         {
             let all_open_change_sets = ChangeSet::list_open(ctx).await?;
-            for change_set in all_open_change_sets.iter().filter(|cs| {
+            for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
                 cs.id != workspace.default_change_set_id() && cs.id != to_rebase_change_set.id
             }) {
-                debug!("sending batch to change set {}", change_set.id);
-                let metadata = LayeredEventMetadata::new(
-                    si_events::Tenancy::new(
-                        ctx.tenancy()
-                            .workspace_pk()
-                            .unwrap_or(WorkspacePk::NONE)
-                            .into(),
-                        change_set.id.into(),
-                    ),
-                    si_events::Actor::System,
-                );
+                let ctx_clone = ctx.clone();
+                let rebase_batch_address = message.payload.rebase_batch_address;
+                tokio::task::spawn(async move {
+                    debug!(
+                        "replaying batch {} onto {} from {}",
+                        rebase_batch_address, target_change_set.id, to_rebase_change_set.id
+                    );
 
-                ctx.layer_db()
-                    .activity()
-                    .rebase()
-                    .rebase_from_change_set(
-                        change_set.id.into(),
-                        message.payload.rebase_batch_address,
-                        to_rebase_change_set.id.into(),
-                        metadata,
+                    if let Err(err) = replay_changes(
+                        &ctx_clone,
+                        to_rebase_change_set.id,
+                        target_change_set.id,
+                        rebase_batch_address,
                     )
-                    .await?;
+                    .await
+                    {
+                        error!(
+                            err = ?err,
+                            "error replaying rebase batch {} changes onto {}",
+                            rebase_batch_address,
+                            target_change_set.id
+                        );
+                    }
+                });
             }
         }
     }
@@ -219,5 +227,36 @@ pub(crate) async fn evict_unused_snapshots(
             )
             .await?;
     }
+    Ok(())
+}
+
+async fn replay_changes(
+    ctx: &DalContext,
+    current_change_set_id: ChangeSetId,
+    target_change_set_id: ChangeSetId,
+    rebase_batch_address: RebaseBatchAddress,
+) -> RebaseResult<()> {
+    let metadata = LayeredEventMetadata::new(
+        si_events::Tenancy::new(
+            ctx.tenancy()
+                .workspace_pk()
+                .unwrap_or(WorkspacePk::NONE)
+                .into(),
+            target_change_set_id.into(),
+        ),
+        si_events::Actor::System,
+    );
+
+    ctx.layer_db()
+        .activity()
+        .rebase()
+        .rebase_from_change_set(
+            target_change_set_id.into(),
+            rebase_batch_address,
+            current_change_set_id.into(),
+            metadata,
+        )
+        .await?;
+
     Ok(())
 }

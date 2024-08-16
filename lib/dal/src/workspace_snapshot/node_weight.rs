@@ -693,47 +693,74 @@ impl CorrectTransforms for NodeWeight {
         &self,
         workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
         updates: Vec<Update>,
+        from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
         let updates = match self {
-            NodeWeight::Action(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::ActionPrototype(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::AttributePrototypeArgument(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::AttributeValue(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Category(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Component(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Content(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::DependentValueRoot(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Func(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::FuncArgument(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Ordering(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Prop(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
-            NodeWeight::Secret(weight) => {
-                weight.correct_transforms(workspace_snapshot_graph, updates)
-            }
+            NodeWeight::Action(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::ActionPrototype(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::AttributeValue(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Category(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Component(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Content(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::DependentValueRoot(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Func(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::FuncArgument(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Ordering(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Prop(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::Secret(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))

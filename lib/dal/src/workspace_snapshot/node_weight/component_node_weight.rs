@@ -8,12 +8,13 @@ use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{
+            correct_transforms::add_dependent_value_root_updates,
             deprecated::v1::DeprecatedComponentNodeWeightV1, detect_updates::Update, LineageId,
         },
         node_weight::traits::CorrectTransforms,
         NodeInformation,
     },
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
 use super::{
@@ -239,27 +240,10 @@ fn remove_hanging_socket_connections(
     }
 
     // The input sockets that have had connections removed need to be recalculated now
-    if let Some((category_node_id, _)) =
-        graph.get_category_node(None, CategoryNodeKind::DependentValueRoots)?
-    {
-        for affected_av_id in affected_attribute_values {
-            let id = graph.generate_ulid()?;
-            let lineage_id = graph.generate_ulid()?;
-            let new_dvu_node = NodeWeight::new_dependent_value_root(id, lineage_id, affected_av_id);
-            let new_dvu_node_information = (&new_dvu_node).into();
-            new_updates.push(Update::NewNode {
-                node_weight: new_dvu_node,
-            });
-            new_updates.push(Update::NewEdge {
-                source: NodeInformation {
-                    id: category_node_id.into(),
-                    node_weight_kind: NodeWeightDiscriminants::Category,
-                },
-                destination: new_dvu_node_information,
-                edge_weight: EdgeWeight::new(EdgeWeightKind::new_use()),
-            });
-        }
-    }
+    new_updates.extend(add_dependent_value_root_updates(
+        graph,
+        &affected_attribute_values,
+    )?);
 
     Ok(new_updates)
 }
@@ -269,6 +253,7 @@ impl CorrectTransforms for ComponentNodeWeight {
         &self,
         graph: &WorkspaceSnapshotGraphV2,
         mut updates: Vec<Update>,
+        _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
         let mut valid_frame_contains_source = None;
         let mut existing_remove_edges = vec![];

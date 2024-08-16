@@ -379,8 +379,17 @@ impl WorkspaceSnapshot {
     pub async fn correct_transforms(
         &self,
         updates: Vec<Update>,
+        from_different_change_set: bool,
     ) -> WorkspaceSnapshotResult<Vec<Update>> {
-        Ok(correct_transforms(&*self.working_copy().await, updates)?)
+        let self_clone = self.clone();
+        Ok(slow_rt::spawn(async move {
+            correct_transforms(
+                &*self_clone.working_copy().await,
+                updates,
+                from_different_change_set,
+            )
+        })?
+        .await??)
     }
 
     #[instrument(
@@ -1301,7 +1310,15 @@ impl WorkspaceSnapshot {
         fields()
     )]
     pub async fn perform_updates(&self, updates: &[Update]) -> WorkspaceSnapshotResult<()> {
-        Ok(self.working_copy_mut().await.perform_updates(updates)?)
+        let self_clone = self.clone();
+        let updates = updates.to_vec();
+        Ok(slow_rt::spawn(async move {
+            self_clone
+                .working_copy_mut()
+                .await
+                .perform_updates(&updates)
+        })?
+        .await??)
     }
 
     /// Mark whether a prop can be used as an input to a function. Props below
