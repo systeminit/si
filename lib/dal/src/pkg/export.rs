@@ -7,9 +7,9 @@ use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AuthenticationFuncSpec,
     ComponentSpec, EdgeSpec, FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec,
     MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind, RootPropFuncSpec, SchemaSpec,
-    SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
-    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
-    SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError,
+    SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecData,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec,
+    SocketSpecData, SocketSpecKind, SpecError,
 };
 use telemetry::prelude::*;
 
@@ -23,10 +23,10 @@ use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
     func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
     prop::PropPath,
-    AttributePrototype, AttributeValue, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariant, SchemaVariantId, Workspace,
+    AttributePrototype, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, Workspace,
 };
-use crate::{AttributePrototypeId, ComponentType, InputSocket, OutputSocket};
+use crate::{AttributePrototypeId, InputSocket, OutputSocket};
 
 use super::{PkgError, PkgResult};
 
@@ -198,7 +198,7 @@ impl PkgExporter {
         }
         data_builder.display_name(variant.display_name());
 
-        data_builder.component_type(Self::get_component_type(ctx, variant).await?);
+        data_builder.component_type(variant.component_type());
         data_builder.description(variant.description());
 
         if let Some(authoring_func_id) =
@@ -1058,26 +1058,5 @@ impl PkgExporter {
         }
 
         Ok(funcs)
-    }
-
-    async fn get_component_type(
-        ctx: &DalContext,
-        variant: &SchemaVariant,
-    ) -> Result<SchemaVariantSpecComponentType, PkgError> {
-        let type_prop =
-            Prop::find_prop_by_path(ctx, variant.id(), &PropPath::new(["root", "si", "type"]))
-                .await?;
-
-        if let Some(av_id) = Prop::attribute_values_for_prop_id(ctx, type_prop.id())
-            .await?
-            .pop()
-        {
-            let av = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
-            if let Some(type_value) = av.view(ctx).await? {
-                let component_type: ComponentType = serde_json::from_value(type_value)?;
-                return Ok(component_type.into());
-            }
-        }
-        Ok(variant.component_type().into())
     }
 }

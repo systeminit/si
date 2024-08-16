@@ -7,6 +7,7 @@ use dal::{
     self,
     prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
+    schema::variant::authoring::VariantAuthoringClient,
     AttributeValue, AttributeValueId, ChangeSetId, Component, ComponentId, ComponentType,
     DalContext, PropId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
@@ -107,6 +108,12 @@ impl ExpectSchemaId for str {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
 pub struct ExpectSchema(pub SchemaId);
 
+impl From<Schema> for ExpectSchema {
+    fn from(schema: Schema) -> Self {
+        ExpectSchema(schema.id())
+    }
+}
+
 impl ExpectSchema {
     pub async fn find(ctx: &DalContext, name: impl AsRef<str>) -> ExpectSchema {
         ExpectSchema(name.as_ref().expect_schema_id(ctx).await)
@@ -151,6 +158,12 @@ impl ExpectSchema {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
 pub struct ExpectSchemaVariant(pub SchemaVariantId);
 
+impl From<SchemaVariant> for ExpectSchemaVariant {
+    fn from(variant: SchemaVariant) -> Self {
+        ExpectSchemaVariant(variant.id())
+    }
+}
+
 impl ExpectSchemaVariant {
     pub fn id(self) -> SchemaVariantId {
         self.0
@@ -171,10 +184,25 @@ impl ExpectSchemaVariant {
             .expect("has type")
     }
 
+    pub async fn set_type(self, ctx: &DalContext, component_type: ComponentType) {
+        self.schema_variant(ctx)
+            .await
+            .set_type(ctx, component_type)
+            .await
+            .expect("set type")
+    }
+
     pub async fn find_prop_id_by_path(self, ctx: &DalContext, path: &PropPath) -> PropId {
         Prop::find_prop_id_by_path(ctx, self.0, path)
             .await
             .expect("able to find prop")
+    }
+
+    pub async fn create_unlocked_copy(self, ctx: &DalContext) -> ExpectSchemaVariant {
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, self.0)
+            .await
+            .expect("create unlocked variant copy")
+            .into()
     }
 
     pub async fn create_component(self, ctx: &DalContext) -> ExpectComponent {
@@ -197,6 +225,12 @@ impl ExpectSchemaVariant {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, From, Into)]
 pub struct ExpectComponent(pub ComponentId);
+
+impl From<Component> for ExpectComponent {
+    fn from(component: Component) -> Self {
+        ExpectComponent(component.id())
+    }
+}
 
 impl ExpectComponent {
     pub async fn create(ctx: &mut DalContext, schema_name: impl AsRef<str>) -> ExpectComponent {
@@ -231,6 +265,14 @@ impl ExpectComponent {
         dal::Component::get_type_by_id(ctx, self.0)
             .await
             .expect("get type by id")
+    }
+
+    pub async fn set_type(self, ctx: &DalContext, component_type: ComponentType) {
+        self.component(ctx)
+            .await
+            .set_type(ctx, component_type)
+            .await
+            .expect("set type")
     }
 
     pub async fn schema_variant(self, ctx: &DalContext) -> ExpectSchemaVariant {
@@ -328,6 +370,12 @@ impl ExpectComponentProp {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, AsMut, From, Into)]
 pub struct ExpectAttributeValue(pub AttributeValueId);
 
+impl From<AttributeValue> for ExpectAttributeValue {
+    fn from(value: AttributeValue) -> Self {
+        ExpectAttributeValue(value.id())
+    }
+}
+
 impl ExpectAttributeValue {
     pub fn id(self) -> AttributeValueId {
         self.0
@@ -384,6 +432,12 @@ impl ExpectAttributeValue {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deref, AsRef, AsMut, From, Into)]
 pub struct ExpectProp(pub PropId);
+
+impl From<Prop> for ExpectProp {
+    fn from(prop: Prop) -> Self {
+        ExpectProp(prop.id())
+    }
+}
 
 impl ExpectProp {
     pub fn id(self) -> PropId {

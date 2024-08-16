@@ -7,7 +7,7 @@ use dal::func::authoring::FuncAuthoringClient;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, ComponentType, DalContext, Prop};
-use dal_test::expected::{ExpectComponent, ExpectSchemaVariant};
+use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -400,12 +400,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     // Create a new component from the variant, and set its type to Component
     //
     let component = variant_zero.create_component(ctx).await;
-    component
-        .component(ctx)
-        .await
-        .set_type(ctx, ComponentType::Component)
-        .await
-        .expect("type");
+    component.set_type(ctx, ComponentType::Component).await;
 
     assert_eq!(variant_zero, component.schema_variant(ctx).await);
     assert_eq!(ComponentType::Component, component.get_type(ctx).await);
@@ -425,6 +420,48 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     //
     assert_eq!(variant_one, component.schema_variant(ctx).await);
     assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+}
+
+#[test]
+async fn create_unlocked_schema_variant_after_component_changes_component_type(
+    ctx: &mut DalContext,
+) {
+    let swifty = ExpectSchema::find(ctx, "swifty")
+        .await
+        .default_variant(ctx)
+        .await;
+    assert_eq!(
+        ComponentType::ConfigurationFrameUp,
+        swifty.get_type(ctx).await
+    );
+
+    //
+    // Create a new component from the variant, and set its type to Component
+    //
+    let component = swifty.create_component(ctx).await;
+    component.set_type(ctx, ComponentType::Component).await;
+
+    assert_eq!(swifty, component.schema_variant(ctx).await);
+    assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+    assert_eq!(
+        ComponentType::ConfigurationFrameUp,
+        swifty.get_type(ctx).await
+    );
+
+    //
+    // Update the variant (we add a new description)
+    //
+    let copy = swifty.create_unlocked_copy(ctx).await;
+
+    assert_ne!(swifty, copy);
+    assert_eq!(
+        ComponentType::ConfigurationFrameUp,
+        swifty.get_type(ctx).await
+    );
+    assert_eq!(
+        ComponentType::ConfigurationFrameUp,
+        copy.get_type(ctx).await
+    );
 }
 
 async fn update_schema_variant_component_type(
