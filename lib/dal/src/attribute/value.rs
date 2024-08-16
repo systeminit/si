@@ -43,6 +43,7 @@ use std::sync::Arc;
 
 use async_recursion::async_recursion;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -57,6 +58,7 @@ pub use dependent_value_graph::DependentValueGraph;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
+use crate::component::inferred_connection_graph::InferredConnectionGraph;
 use crate::component::socket::ComponentInputSocket;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -458,6 +460,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
+        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<FuncRunValue> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
@@ -473,8 +476,12 @@ impl AttributeValue {
         // Prepare arguments for prototype function execution.
         let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
         let (prototype_func_id, prepared_args) =
-            Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
-                .await?;
+            Self::prepare_arguments_for_prototype_function_execution(
+                ctx,
+                attribute_value_id,
+                inferred_connection_graph,
+            )
+            .await?;
 
         let result_channel = FuncRunner::run_attribute_value(
             ctx,
@@ -569,6 +576,7 @@ impl AttributeValue {
     pub async fn prepare_arguments_for_prototype_function_execution(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
+        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<(FuncId, Value)> {
         // Cache the values we need for preparing arguments for execution.
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
@@ -664,7 +672,10 @@ impl AttributeValue {
         // explicitly configured args
 
         if func_binding_args.is_empty() {
-            let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
+            let inferred_inputs =
+                Self::get_inferred_input_values(ctx, attribute_value_id, inferred_connection_graph)
+                    .await?;
+
             if !inferred_inputs.is_empty() {
                 let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
                 if let Some(func_arg) = FuncArgument::list_for_func(ctx, input_func).await?.pop() {
@@ -707,6 +718,7 @@ impl AttributeValue {
     async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
+        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<Vec<Value>> {
         let maybe_input_socket_id =
             match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
@@ -727,40 +739,56 @@ impl AttributeValue {
         };
         let mut inputs = vec![];
 
-        match ComponentInputSocket::find_inferred_connections(ctx, component_input_socket).await {
-            Ok(connections) => {
-                for component_output_socket in connections {
-                    // Both deleted and non deleted components can feed data into deleted components.
-                    // ** ONLY ** non-deleted components can feed data into non-deleted components
-                    if Component::should_data_flow_between_components(
-                        ctx,
-                        component_input_socket.component_id,
-                        component_output_socket.component_id,
-                    )
+        let connections = match inferred_connection_graph.as_ref() {
+            Some(inferred_connection_graph) => {
+                let mut outputs = inferred_connection_graph
+                    .get_component_connections_to_input_socket(component_input_socket)
+                    .into_iter()
+                    .collect_vec();
+                outputs.sort_by_key(|c| c.component_id);
+                outputs
+            }
+            None => {
+                match ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
                     .await
-                    .map_err(Box::new)?
-                    {
-                        // XXX: We need to properly handle the difference between "there is
-                        // XXX: no value" vs "the value is null", but right now we collapse
-                        // XXX: the two to just be "null" when passing these to a function.
-                        let output_av = Self::get_by_id_or_error(
-                            ctx,
-                            component_output_socket.attribute_value_id,
-                        )
-                        .await?;
-                        let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
-                        inputs.push(view);
+                {
+                    Ok(connections) => connections,
+                    Err(err) => {
+                        error!(
+                            ?err,
+                            %component_id,
+                            %input_socket_id,
+                            %input_attribute_value_id,
+                            "error found while finding available inferred connections to input socket"
+                        );
+                        vec![]
                     }
                 }
             }
-            Err(err) => error!(
-                ?err,
-                %component_id,
-                %input_socket_id,
-                %input_attribute_value_id,
-                "error found while finding available inferred connections to input socket"
-            ),
+        };
+
+        for component_output_socket in connections {
+            // Both deleted and non deleted components can feed data into deleted components.
+            // ** ONLY ** non-deleted components can feed data into non-deleted components
+            if Component::should_data_flow_between_components(
+                ctx,
+                component_input_socket.component_id,
+                component_output_socket.component_id,
+            )
+            .await
+            .map_err(Box::new)?
+            {
+                // XXX: We need to properly handle the difference between "there is
+                // XXX: no value" vs "the value is null", but right now we collapse
+                // XXX: the two to just be "null" when passing these to a function.
+                let output_av =
+                    Self::get_by_id_or_error(ctx, component_output_socket.attribute_value_id)
+                        .await?;
+                let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                inputs.push(view);
+            }
         }
+
         Ok(inputs)
     }
 
@@ -836,8 +864,14 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         // this lock is never locked for writing so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
-        let execution_result =
-            AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
+        // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
+        let execution_result = AttributeValue::execute_prototype_function(
+            ctx,
+            attribute_value_id,
+            read_lock,
+            Arc::new(None),
+        )
+        .await?;
 
         AttributeValue::set_values_from_func_run_value(ctx, attribute_value_id, execution_result)
             .await?;
