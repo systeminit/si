@@ -24,7 +24,7 @@ We will cover:
 ## Setup
 
 All activities in this how-to happen within a configured AWS Region and AWS
-Credential. Set the AWS Region to be `us-east-2`.
+Credential. Set the AWS Region to be `us-east-1`.
 
 Start in a change set named `VPC How-to`.
 
@@ -39,7 +39,7 @@ this in your diagram:
 
 ### Create a VPC component
 
-Add a `VPC` to your `us-east-2` region frame.
+Add a `VPC` to your `us-east-1` region frame.
 
 Set the component type to be `Configuration Frame (down)` and expand it to fill
 the region frame.
@@ -59,9 +59,9 @@ components to your VPC frame and configure them as follows:
 
 | Component Name | `CidrBlock`   | `AvailabilityZone` | `IsPublic`  |
 | -------------- | ------------- | ------------------ | ----------- |
-| Public 1       | 10.0.128.0/20 | us-east-2a         | true        |
-| Public 2       | 10.0.144.0/20 | us-east-2b         | true        |
-| Public 3       | 10.0.160.0/20 | us-east-2c         | true        |
+| Public 1       | 10.0.128.0/20 | us-east-1a         | true        |
+| Public 2       | 10.0.144.0/20 | us-east-1b         | true        |
+| Public 3       | 10.0.160.0/20 | us-east-1c         | true        |
 
 Set the component type for each of the public subnet components to be
 `Configuration Frame (down)`.
@@ -119,9 +119,9 @@ Add 3 `Subnet` components to your VPC frame and configure them as follows:
 
 | component name | `CidrBlock`  | `AvailabilityZone` |
 | -------------- | ------------ | ------------------ |
-| Private 1      | 10.0.0.0/19  | us-east-2a         |
-| Private 2      | 10.0.32.0/19 | us-east-2b         |
-| Private 3      | 10.0.64.0/19 | us-east-2c         |
+| Private 1      | 10.0.0.0/19  | us-east-1a         |
+| Private 2      | 10.0.32.0/19 | us-east-1b         |
+| Private 3      | 10.0.64.0/19 | us-east-1c         |
 
 Set the component type for each of the public subnet components to be
 `Configuration Frame (down)`.
