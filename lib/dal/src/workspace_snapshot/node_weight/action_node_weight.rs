@@ -112,6 +112,7 @@ impl CorrectTransforms for ActionNodeWeight {
         &self,
         graph: &WorkspaceSnapshotGraphV2,
         mut updates: Vec<Update>,
+        _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
         // An action's Use edge should be exclusive for both the component and
         // the prototype. The generic exclusive edge logic assumes there can be

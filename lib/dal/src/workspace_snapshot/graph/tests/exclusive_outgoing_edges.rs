@@ -238,7 +238,7 @@ mod test {
             },
         ];
         let new_updates = action
-            .correct_transforms(&graph, updates.clone())
+            .correct_transforms(&graph, updates.clone(), false)
             .expect("correct transforms");
         // There are no exclusive edges here so we should not produce an update
         assert_eq!(
@@ -256,7 +256,7 @@ mod test {
             },
         ];
         let new_updates = action
-            .correct_transforms(&graph, updates.clone())
+            .correct_transforms(&graph, updates.clone(), false)
             .expect("correct transforms");
         let new_remove_edge = Update::RemoveEdge {
             source: (&action).into(),
@@ -282,7 +282,7 @@ mod test {
             },
         ];
         let new_updates = action
-            .correct_transforms(&graph, updates.clone())
+            .correct_transforms(&graph, updates.clone(), false)
             .expect("correct transforms");
         // There are no exclusive edges here so we should not produce an update
         assert_eq!(
@@ -311,7 +311,7 @@ mod test {
         ];
 
         let mut new_updates = action
-            .correct_transforms(&graph, updates.clone())
+            .correct_transforms(&graph, updates.clone(), false)
             .expect("correct transforms");
         let new_remove_edge_prototype = Update::RemoveEdge {
             source: (&action).into(),

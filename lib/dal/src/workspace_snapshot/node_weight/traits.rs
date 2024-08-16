@@ -25,6 +25,7 @@ pub trait CorrectTransforms {
         &self,
         _workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
         updates: Vec<Update>,
+        _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
         Ok(updates)
     }

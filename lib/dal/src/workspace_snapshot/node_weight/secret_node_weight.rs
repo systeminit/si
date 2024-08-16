@@ -1,15 +1,24 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeightV1;
+use crate::workspace_snapshot::graph::detect_updates::Update;
+use crate::workspace_snapshot::NodeId;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
+    graph::correct_transforms::add_dependent_value_root_updates,
     graph::LineageId,
     node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
-use crate::EdgeWeightKindDiscriminants;
+use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+
+use super::category_node_weight::CategoryNodeKind;
+use super::traits::CorrectTransformsResult;
+use super::NodeWeight;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {
@@ -128,4 +137,71 @@ impl From<DeprecatedSecretNodeWeightV1> for SecretNodeWeight {
     }
 }
 
-impl CorrectTransforms for SecretNodeWeight {}
+impl CorrectTransforms for SecretNodeWeight {
+    fn correct_transforms(
+        &self,
+        graph: &WorkspaceSnapshotGraphV2,
+        mut updates: Vec<Update>,
+        from_different_change_set: bool,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        if !from_different_change_set {
+            return Ok(updates);
+        }
+
+        let dvu_cat_node_id: Option<NodeId> = graph
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)?
+            .map(|(id, _)| id.into());
+
+        let mut should_add = false;
+
+        for update in &updates {
+            match update {
+                Update::RemoveEdge { source, .. } if Some(source.id) == dvu_cat_node_id => {
+                    // If there is a remove edge from the dvu root then we are the result of a DVU
+                    // job finishing and we should *not* re-enqueue any updates or we will
+                    // potentially loop forever
+                    return Ok(updates);
+                }
+                Update::ReplaceNode { node_weight } if node_weight.id() == self.id() => {
+                    // Only add the secret here if the secret has actually changed (this may be an
+                    // update that does not change anything)
+                    if let NodeWeight::Secret(updated_secret) = node_weight {
+                        should_add =
+                            graph
+                                .get_node_weight_by_id_opt(self.id())
+                                .is_some_and(|secret| match secret {
+                                    NodeWeight::Secret(inner) => {
+                                        inner.encrypted_secret_key()
+                                            != updated_secret.encrypted_secret_key()
+                                    }
+                                    _ => false,
+                                })
+                    }
+                }
+                Update::NewNode { node_weight } => match node_weight {
+                    NodeWeight::DependentValueRoot(inner) => {
+                        // Are we already going to calculate a dvu for this?
+                        if inner.value_id() == self.id() {
+                            return Ok(updates);
+                        }
+                    }
+                    NodeWeight::Secret(_) if node_weight.id() == self.id() => {
+                        // Only add the secret here if the node is actually new
+                        should_add = graph.get_node_weight_by_id_opt(self.id()).is_none();
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        if should_add {
+            updates.extend(add_dependent_value_root_updates(
+                graph,
+                &HashSet::from([self.id()]),
+            )?);
+        }
+
+        Ok(updates)
+    }
+}
