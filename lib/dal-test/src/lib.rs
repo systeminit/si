@@ -1,6 +1,7 @@
 //! This crate provides a harness for running dal integration tests as well as helpers and resources
 //! when doing so.
 
+#![recursion_limit = "256"]
 #![warn(
     bad_style,
     clippy::expect_used,
