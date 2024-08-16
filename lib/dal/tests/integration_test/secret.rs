@@ -520,14 +520,14 @@ async fn secret_definition_works_with_dummy_qualification(
             .expect("could not commit and update snapshot to visibility");
 
         // Check that the output socket value looks correct.
-        let mut output_socket_attribute_value_ids =
-            OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
-                .await
-                .expect("could not perform attribute values for output socket id");
-        let output_socket_attribute_value_id = output_socket_attribute_value_ids
-            .pop()
-            .expect("no output attribute value found");
-        assert!(output_socket_attribute_value_ids.is_empty());
+        let output_socket_attribute_value_id =
+            OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                output_socket.id(),
+                secret_definition_component.id()
+            )
+            .await
+            .expect("could not get attribute value for output socket id");
         let output_socket_attribute_value =
             AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
                 .await
@@ -603,14 +603,14 @@ async fn secret_definition_works_with_dummy_qualification(
             .expect("could not commit and update snapshot to visibility");
 
         // Check that the output socket value looks correct.
-        let mut output_socket_attribute_value_ids =
-            OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
-                .await
-                .expect("could not perform attribute values for output socket id");
-        let output_socket_attribute_value_id = output_socket_attribute_value_ids
-            .pop()
-            .expect("no output attribute value found");
-        assert!(output_socket_attribute_value_ids.is_empty());
+        let output_socket_attribute_value_id =
+            OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                output_socket.id(),
+                secret_definition_component.id()
+            )
+            .await
+            .expect("could not perform attribute values for output socket id");
         let output_socket_attribute_value =
             AttributeValue::get_by_id_or_error(ctx, output_socket_attribute_value_id)
                 .await

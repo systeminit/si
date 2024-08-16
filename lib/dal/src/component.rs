@@ -1930,26 +1930,8 @@ impl Component {
             }
         }
 
-        let destination_attribute_value_ids =
-            InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
-                .await?;
-
         // filter the value ids by destination_component_id
-        let mut destination_attribute_value_id: Option<AttributeValueId> = None;
-        for value_id in destination_attribute_value_ids {
-            let component_id = AttributeValue::component_id(ctx, value_id).await?;
-            if component_id == destination_component_id {
-                destination_attribute_value_id = Some(value_id);
-                break;
-            }
-        }
-
-        let destination_attribute_value_id = destination_attribute_value_id.ok_or(
-            ComponentError::DestinationComponentMissingAttributeValueForInputSocket(
-                destination_component_id,
-                destination_input_socket_id,
-            ),
-        )?;
+        let destination_attribute_value_id = InputSocket::component_attribute_value_for_input_socket_id(ctx, destination_input_socket_id, destination_component_id).await?;
 
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
@@ -2809,30 +2791,13 @@ impl Component {
                                 )
                                 .await?;
 
-                                let destination_attribute_value_ids =
-                                    InputSocket::attribute_values_for_input_socket_id(
+                                let destination_attribute_value_id =
+                                    InputSocket::component_attribute_value_for_input_socket_id(
                                         ctx,
                                         destination_input_socket_id,
+                                        destination_component_id
                                     )
                                     .await?;
-                                // filter the value ids by destination_component_id
-                                let mut destination_attribute_value_id: Option<AttributeValueId> =
-                                    None;
-                                for value_id in destination_attribute_value_ids {
-                                    let component_id =
-                                        AttributeValue::component_id(ctx, value_id).await?;
-                                    if component_id == destination_component_id {
-                                        destination_attribute_value_id = Some(value_id);
-                                        break;
-                                    }
-                                }
-
-                                let destination_attribute_value_id = destination_attribute_value_id.ok_or(
-                                ComponentError::DestinationComponentMissingAttributeValueForInputSocket(
-                                         destination_component_id,
-                                         destination_input_socket_id,
-                                       ),
-                                   )?;
 
                                 ctx.add_dependent_values_and_enqueue(vec![
                                     destination_attribute_value_id,

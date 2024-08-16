@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
@@ -17,8 +18,8 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, AttributePrototypeId, AttributeValueId, ComponentId, InputSocketId,
-    SchemaVariantId,
+    implement_add_edge_to, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
+    InputSocketId, SchemaVariantId,
 };
 use crate::{
     pk, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
@@ -33,18 +34,22 @@ use super::input::InputSocketError;
 pub enum OutputSocketError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
-    #[error("found too many matches for input and socket: {0}, {1}")]
-    FoundTooManyForInputSocketId(InputSocketId, ComponentId),
+    #[error("found too many matches for output and socket: {0}, {1}")]
+    FoundTooManyForOutputSocketId(OutputSocketId, ComponentId),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     InputSocketError(#[from] InputSocketError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Output Socket ({0}) Missing Attribute Value for Component: {1}")]
+    MissingAttributeValueForComponent(OutputSocketId, ComponentId),
     #[error("found multiple input sockets for attribute value: {0}")]
     MultipleSocketsForAttributeValue(AttributeValueId),
     #[error(
@@ -251,7 +256,13 @@ impl OutputSocket {
         Ok((weight, inner))
     }
 
-    pub async fn attribute_values_for_output_socket_id(
+    ///
+    /// Get all attribute values from all components that are connected to this input socket.
+    ///
+    /// NOTE: call component_attribute_value_for_input_socket_id() if you want the attribute
+    /// value for a specific component.
+    ///
+    pub async fn all_attribute_values_everywhere_for_output_socket_id(
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
     ) -> OutputSocketResult<Vec<AttributeValueId>> {
@@ -273,6 +284,39 @@ impl OutputSocket {
         }
 
         Ok(result)
+    }
+
+    pub async fn component_attribute_value_for_output_socket_id(
+        ctx: &DalContext,
+        output_socket_id: OutputSocketId,
+        component_id: ComponentId,
+    ) -> OutputSocketResult<AttributeValueId> {
+        let mut result = None;
+        for attribute_value_id in
+            Self::all_attribute_values_everywhere_for_output_socket_id(ctx, output_socket_id)
+                .await?
+        {
+            if AttributeValue::component_id(ctx, attribute_value_id)
+                .await
+                .map_err(Box::new)?
+                == component_id
+            {
+                if result.is_some() {
+                    return Err(OutputSocketError::FoundTooManyForOutputSocketId(
+                        output_socket_id,
+                        component_id,
+                    ));
+                }
+                result = Some(attribute_value_id);
+            }
+        }
+        match result {
+            Some(attribute_value_id) => Ok(attribute_value_id),
+            None => Err(OutputSocketError::MissingAttributeValueForComponent(
+                output_socket_id,
+                component_id,
+            ))
+        }
     }
 
     pub async fn list_ids_for_schema_variant(

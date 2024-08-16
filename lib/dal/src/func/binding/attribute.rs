@@ -253,25 +253,14 @@ impl AttributeBinding {
                         .await?;
                     }
                     EventualParent::Component(component_id) => {
-                        let attribute_value_ids =
-                            OutputSocket::attribute_values_for_output_socket_id(
-                                ctx,
-                                output_socket_id,
-                            )
-                            .await?;
-                        for attribute_value_id in attribute_value_ids {
-                            if component_id
-                                == AttributeValue::component_id(ctx, attribute_value_id).await?
-                            {
-                                AttributeValue::set_component_prototype_id(
-                                    ctx,
-                                    attribute_value_id,
-                                    attribute_prototype.id,
-                                    None,
-                                )
-                                .await?;
-                            }
-                        }
+                        let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(ctx, output_socket_id, component_id).await?;
+                        AttributeValue::set_component_prototype_id(
+                            ctx,
+                            attribute_value_id,
+                            attribute_prototype.id,
+                            None,
+                        )
+                        .await?;
                     }
                 }
             }

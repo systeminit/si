@@ -53,7 +53,11 @@ pub async fn get_prototype_arguments(
         }
         (None, Some(output_socket_id)) => {
             let attribute_value_ids =
-                OutputSocket::attribute_values_for_output_socket_id(&ctx, output_socket_id).await?;
+                OutputSocket::all_attribute_values_everywhere_for_output_socket_id(
+                    &ctx,
+                    output_socket_id,
+                )
+                .await?;
             if attribute_value_ids.len() > 1 {
                 return Err(AttributeError::MultipleAttributeValuesForOutputSocket(
                     attribute_value_ids.to_owned(),
