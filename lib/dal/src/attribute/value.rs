@@ -455,7 +455,7 @@ impl AttributeValue {
         .into())
     }
 
-    #[instrument(level = "info" skip(ctx, read_lock))]
+    #[instrument(level = "info" skip(ctx, read_lock,inferred_connection_graph))]
     pub async fn execute_prototype_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -572,7 +572,7 @@ impl AttributeValue {
         Ok(func_values)
     }
 
-    #[instrument(level = "info" skip(ctx))]
+    #[instrument(level = "info" skip(ctx,inferred_connection_graph))]
     pub async fn prepare_arguments_for_prototype_function_execution(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -714,7 +714,7 @@ impl AttributeValue {
         Ok((prototype_func_id, prepared_func_binding_args))
     }
 
-    #[instrument(level = "info", skip(ctx))]
+    #[instrument(level = "info", skip(ctx, inferred_connection_graph))]
     async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
