@@ -4,7 +4,7 @@ if/when we add a redis component anything else, we can delete this and just use 
 */
 
 // for now we'll say everything being cached should be an object... can allow raw strings/etc later if necessary
-import { redis, REDIS_ENABLED } from './redis';
+import { redis, REDIS_ENABLED } from "./redis";
 
 type CacheableInfo = Record<string, any>;
 

@@ -27,6 +27,7 @@ pub use si_crypto::VeritechKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
+const DEFAULT_AUTH_API_URL: &str = "https://auth-api.systeminit.com";
 
 #[derive(
     Debug,
@@ -95,6 +96,9 @@ pub struct Config {
 
     #[builder(default = "default_module_index_url()")]
     module_index_url: String,
+
+    #[builder(default = "default_auth_api_url()")]
+    auth_api_url: String,
 
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
@@ -189,6 +193,12 @@ impl Config {
         &self.module_index_url
     }
 
+    /// URL to the auth API
+    #[must_use]
+    pub fn auth_api_url(&self) -> &str {
+        &self.auth_api_url
+    }
+
     /// Feature flags defined at boot time, via config files or the FEATURES env variable
     #[must_use]
     pub fn boot_feature_flags(&self) -> &HashSet<FeatureFlag> {
@@ -241,6 +251,8 @@ pub struct ConfigFile {
     layer_db_config: LayerDbConfig,
     #[serde(default)]
     pub module_index_url: String,
+    #[serde(default = "default_auth_api_url")]
+    pub auth_api_url: String,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
@@ -263,6 +275,7 @@ impl Default for ConfigFile {
             posthog: Default::default(),
             layer_db_config: default_layer_db_config(),
             module_index_url: default_module_index_url(),
+            auth_api_url: default_auth_api_url(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             boot_feature_flags: Default::default(),
             create_workspace_permissions: Default::default(),
@@ -290,6 +303,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
+        config.auth_api_url(value.auth_api_url);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
         config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
@@ -344,6 +358,10 @@ fn default_module_index_url() -> String {
     DEFAULT_MODULE_INDEX_URL.into()
 }
 
+fn default_auth_api_url() -> String {
+    DEFAULT_AUTH_API_URL.into()
+}
+
 fn default_layer_db_config() -> LayerDbConfig {
     LayerDbConfig::default_for_service("sdf")
 }
@@ -363,10 +381,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
     #[allow(clippy::disallowed_methods)] // Used in development with a local auth services
-    //
-    // TODO(fnichol): this environment variable should be at least prefixed with `SI_` for
-    // consistency and discoverability.
-    let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
+    // Note(victor): If the user has set a custom auth ip url via env variable we assume dev mode
+    let jwt_signing_public_key_path = if env::var("SI_AUTH_API_URL").is_ok() {
         resources
             .get_ends_with("dev.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
@@ -430,10 +446,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
 fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     #[allow(clippy::disallowed_methods)] // Used in development with a local auth services
-    //
-    // TODO(fnichol): this environment variable should be at least prefixed with `SI_` for
-    // consistency and discoverability.
-    let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
+    // Note(victor): If the user has set a custom auth ip url via env variable we assume dev mode
+    let jwt_signing_public_key_path = if env::var("SI_AUTH_API_URL").is_ok() {
         Path::new(&dir)
             .join("../../config/keys/dev.jwt_signing_public_key.pem")
             .to_string_lossy()

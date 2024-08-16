@@ -1,6 +1,8 @@
 use super::{SessionError, SessionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, RawAccessToken};
+use crate::server::state::AppState;
 use crate::service::session::AuthApiErrBody;
+use axum::extract::State;
 use axum::Json;
 use dal::User;
 use serde::{Deserialize, Serialize};
@@ -30,18 +32,15 @@ pub async fn refresh_workspace_members(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
+    State(state): State<AppState>,
     Json(request): Json<RefreshWorkspaceMembersRequest>,
 ) -> SessionResult<Json<RefreshWorkspaceMembersResponse>> {
     let client = reqwest::Client::new();
-    let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
-        Some(_) => "http://localhost:9001",
-        None => "https://auth-api.systeminit.com",
-    };
 
     let res = client
         .get(format!(
             "{}/workspace/{}/members",
-            auth_api_url,
+            state.auth_api_url(),
             request.workspace_id.clone()
         ))
         .bearer_auth(&raw_access_token)

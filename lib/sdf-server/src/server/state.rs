@@ -23,6 +23,7 @@ pub struct AppState {
     broadcast_groups: BroadcastGroups,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    auth_api_url: String, // TODO(victor) store the auth client on state instead of just the URL
     shutdown_broadcast: ShutdownBroadcast,
     for_tests: bool,
     nats_multiplexer_clients: NatsMultiplexerClients,
@@ -42,6 +43,7 @@ impl AppState {
         services_context: impl Into<ServicesContext>,
         jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
         posthog_client: impl Into<PosthogClient>,
+        auth_api_url: impl AsRef<str>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
         for_tests: bool,
@@ -54,11 +56,14 @@ impl AppState {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
             crdt: Arc::new(Mutex::new(crdt_multiplexer_client)),
         };
+
+        let auth_api_url = auth_api_url.as_ref().to_string();
         Self {
             services_context: services_context.into(),
             jwt_public_signing_key: jwt_public_signing_key.into(),
             broadcast_groups: Default::default(),
             posthog_client: posthog_client.into(),
+            auth_api_url,
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             for_tests,
             nats_multiplexer_clients,
@@ -75,6 +80,10 @@ impl AppState {
 
     pub fn posthog_client(&self) -> &PosthogClient {
         &self.posthog_client
+    }
+
+    pub fn auth_api_url(&self) -> &String {
+        &self.auth_api_url
     }
 
     pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
