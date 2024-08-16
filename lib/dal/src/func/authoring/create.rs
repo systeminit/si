@@ -3,16 +3,17 @@ use base64::Engine;
 use telemetry::prelude::*;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::func::authoring::{
-    AttributeOutputLocation, CreateFuncOptions, FuncAuthoringError, FuncAuthoringResult,
-};
-use crate::func::FuncKind;
+use crate::func::binding::action::ActionBinding;
+use crate::func::binding::attribute::AttributeBinding;
+use crate::func::binding::authentication::AuthBinding;
+use crate::func::binding::leaf::LeafBinding;
+use crate::func::binding::{AttributeArgumentBinding, AttributeFuncDestination, EventualParent};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    generate_name, AttributePrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    SchemaVariant, SchemaVariantId,
+    generate_name, DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId,
 };
+
+use super::{FuncAuthoringError, FuncAuthoringResult};
 
 static DEFAULT_CODE_HANDLER: &str = "main";
 static DEFAULT_ATTRIBUTE_CODE: &str = include_str!("data/defaults/attribute.ts");
@@ -24,58 +25,30 @@ static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("data/defaults/authentic
 #[allow(dead_code)]
 static DEFAULT_VALIDATION_CODE: &str = include_str!("data/defaults/validation.ts");
 
-#[instrument(name = "func.authoring.create_func.create", level = "debug", skip(ctx))]
-pub(crate) async fn create(
-    ctx: &DalContext,
-    kind: FuncKind,
-    name: Option<String>,
-    options: Option<CreateFuncOptions>,
-) -> FuncAuthoringResult<Func> {
-    let func = match kind {
-        FuncKind::Action => create_action_func(ctx, name, options).await?,
-        FuncKind::Attribute => {
-            create_attribute_func(ctx, name, FuncKind::Attribute, options).await?
-        }
-        FuncKind::Authentication => create_authentication_func(ctx, name, options).await?,
-        FuncKind::CodeGeneration => {
-            create_attribute_func(ctx, name, FuncKind::CodeGeneration, options).await?
-        }
-        FuncKind::Qualification => {
-            create_attribute_func(ctx, name, FuncKind::Qualification, options).await?
-        }
-        kind => return Err(FuncAuthoringError::InvalidFuncKindForCreation(kind)),
-    };
-
-    Ok(func)
-}
-
 #[instrument(
     name = "func.authoring.create_func.create.action",
     level = "debug",
     skip(ctx)
 )]
-async fn create_action_func(
+pub(crate) async fn create_action_func(
     ctx: &DalContext,
     name: Option<String>,
-    options: Option<CreateFuncOptions>,
+    action_kind: ActionKind,
+    schema_variant_id: SchemaVariantId,
 ) -> FuncAuthoringResult<Func> {
     // need to see if there's already an action func of this particular kind for the schema variant
     // before doing anything else
-    if let Some(CreateFuncOptions::ActionOptions {
-        schema_variant_id,
-        action_kind,
-    }) = options
-    {
-        let exising_actions = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
-        for action in exising_actions {
-            if action.kind == action_kind && action_kind != ActionKind::Manual {
-                return Err(FuncAuthoringError::ActionKindAlreadyExists(
-                    action_kind,
-                    schema_variant_id,
-                ));
-            }
+
+    let exising_actions = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    for action in exising_actions {
+        if action.kind == action_kind && action_kind != ActionKind::Manual {
+            return Err(FuncAuthoringError::ActionKindAlreadyExists(
+                action_kind,
+                schema_variant_id,
+            ));
         }
     }
+
     let func = create_func_stub(
         ctx,
         name.clone(),
@@ -86,23 +59,47 @@ async fn create_action_func(
     )
     .await?;
 
-    if let Some(CreateFuncOptions::ActionOptions {
-        schema_variant_id,
-        action_kind,
-    }) = options
-    {
-        // default to func name if the name is missing for whatever reason...
-        ActionPrototype::new(
-            ctx,
-            action_kind,
-            name.clone().unwrap_or(func.name.clone()),
-            None,
-            schema_variant_id,
-            func.id,
-        )
-        .await?;
-    }
+    ActionBinding::create_action_binding(ctx, func.id, action_kind, schema_variant_id).await?;
 
+    Ok(func)
+}
+
+#[instrument(
+    name = "func.authoring.create_func.create.leaf",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn create_leaf_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    leaf_kind: LeafKind,
+    eventual_parent: EventualParent,
+    inputs: &[LeafInputLocation],
+) -> FuncAuthoringResult<Func> {
+    let (code, handler, backend_kind, backend_response_type) = match leaf_kind {
+        LeafKind::CodeGeneration => (
+            DEFAULT_CODE_GENERATION_CODE,
+            DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::CodeGeneration,
+        ),
+        LeafKind::Qualification => (
+            DEFAULT_QUALIFICATION_CODE,
+            DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::Qualification,
+        ),
+    };
+    let func = create_func_stub(
+        ctx,
+        name,
+        backend_kind,
+        backend_response_type,
+        code,
+        handler,
+    )
+    .await?;
+    LeafBinding::create_leaf_func_binding(ctx, func.id, eventual_parent, leaf_kind, inputs).await?;
     Ok(func)
 }
 
@@ -111,37 +108,19 @@ async fn create_action_func(
     level = "debug",
     skip(ctx)
 )]
-async fn create_attribute_func(
+pub(crate) async fn create_attribute_func(
     ctx: &DalContext,
     name: Option<String>,
-    kind: FuncKind,
-    options: Option<CreateFuncOptions>,
+    eventual_parent: Option<EventualParent>,
+    output_location: AttributeFuncDestination,
+    argument_bindings: Vec<AttributeArgumentBinding>,
 ) -> FuncAuthoringResult<Func> {
-    let (code, handler, backend_kind, backend_response_type) = match kind {
-        FuncKind::Attribute => (
-            DEFAULT_ATTRIBUTE_CODE,
-            DEFAULT_CODE_HANDLER,
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Unset,
-        ),
-        FuncKind::CodeGeneration => (
-            DEFAULT_CODE_GENERATION_CODE,
-            DEFAULT_CODE_HANDLER,
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::CodeGeneration,
-        ),
-        FuncKind::Qualification => (
-            DEFAULT_QUALIFICATION_CODE,
-            DEFAULT_CODE_HANDLER,
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Qualification,
-        ),
-        _ => {
-            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingAttributeFunc(
-                kind,
-            ));
-        }
-    };
+    let (code, handler, backend_kind, backend_response_type) = (
+        DEFAULT_ATTRIBUTE_CODE,
+        DEFAULT_CODE_HANDLER,
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::Unset,
+    );
 
     let func = create_func_stub(
         ctx,
@@ -153,55 +132,14 @@ async fn create_attribute_func(
     )
     .await?;
 
-    if let Some(options) = options {
-        match (kind, options) {
-            (FuncKind::Attribute, CreateFuncOptions::AttributeOptions { output_location }) => {
-                if let Some(attribute_prototype_id) = match output_location {
-                    AttributeOutputLocation::OutputSocket { output_socket_id } => {
-                        AttributePrototype::find_for_output_socket(ctx, output_socket_id).await?
-                    }
-                    AttributeOutputLocation::Prop { prop_id } => {
-                        AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
-                    }
-                } {
-                    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, func.id)
-                        .await?;
-
-                    // Drain all existing attribute prototype arguments.
-                    let attribute_prototype_argument_ids =
-                        AttributePrototypeArgument::list_ids_for_prototype(
-                            ctx,
-                            attribute_prototype_id,
-                        )
-                        .await?;
-                    for attribute_prototype_argument_id in attribute_prototype_argument_ids {
-                        AttributePrototypeArgument::remove(ctx, attribute_prototype_argument_id)
-                            .await?;
-                    }
-
-                    // Enqueue all existing users of the prototype for dependent values update.
-                    let affected_attribute_value_ids =
-                        AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id)
-                            .await?;
-                    ctx.add_dependent_values_and_enqueue(affected_attribute_value_ids)
-                        .await?;
-                }
-            }
-            (
-                FuncKind::CodeGeneration,
-                CreateFuncOptions::CodeGenerationOptions { schema_variant_id },
-            ) => {
-                create_leaf_prototype(ctx, &func, schema_variant_id, kind).await?;
-            }
-            (
-                FuncKind::Qualification,
-                CreateFuncOptions::QualificationOptions { schema_variant_id },
-            ) => {
-                create_leaf_prototype(ctx, &func, schema_variant_id, kind).await?;
-            }
-            (_, _) => return Err(FuncAuthoringError::FuncOptionsAndVariantMismatch),
-        }
-    }
+    AttributeBinding::upsert_attribute_binding(
+        ctx,
+        func.id,
+        eventual_parent,
+        output_location,
+        argument_bindings,
+    )
+    .await?;
 
     Ok(func)
 }
@@ -211,10 +149,10 @@ async fn create_attribute_func(
     level = "debug",
     skip(ctx)
 )]
-async fn create_authentication_func(
+pub(crate) async fn create_authentication_func(
     ctx: &DalContext,
     name: Option<String>,
-    options: Option<CreateFuncOptions>,
+    schema_variant_id: SchemaVariantId,
 ) -> FuncAuthoringResult<Func> {
     let func = create_func_stub(
         ctx,
@@ -226,39 +164,8 @@ async fn create_authentication_func(
     )
     .await?;
 
-    if let Some(CreateFuncOptions::AuthenticationOptions { schema_variant_id }) = options {
-        SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id).await?;
-    }
-
+    AuthBinding::create_auth_binding(ctx, func.id, schema_variant_id).await?;
     Ok(func)
-}
-
-#[instrument(
-    name = "func.authoring.create_func.create.attribute.leaf",
-    level = "debug",
-    skip(ctx)
-)]
-async fn create_leaf_prototype(
-    ctx: &DalContext,
-    func: &Func,
-    schema_variant_id: SchemaVariantId,
-    kind: FuncKind,
-) -> FuncAuthoringResult<()> {
-    let leaf_kind = match kind {
-        FuncKind::CodeGeneration => LeafKind::CodeGeneration,
-        FuncKind::Qualification => LeafKind::Qualification,
-        _ => return Err(FuncAuthoringError::FuncOptionsAndVariantMismatch),
-    };
-
-    let input_locations = match leaf_kind {
-        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
-        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
-    };
-
-    SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, leaf_kind, &input_locations, func)
-        .await?;
-
-    Ok(())
 }
 
 async fn create_func_stub(

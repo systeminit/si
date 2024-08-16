@@ -1,7 +1,5 @@
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::authentication::AuthBinding;
-use dal::func::summary::FuncSummary;
-use dal::func::FuncKind;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
 use dal_test::helpers::ChangeSetTestHelpers;
@@ -18,9 +16,9 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
         .expect("unable to get default schema variant");
 
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     let total_funcs = funcs.len();
 
     // create unlocked copy
@@ -45,35 +43,22 @@ async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {
 
     // Create an auth func to be attached and commit.
     let new_auth_func_name = "shattered space";
-    FuncAuthoringClient::create_func(
+    FuncAuthoringClient::create_new_auth_func(
         ctx,
-        FuncKind::Authentication,
         Some(new_auth_func_name.to_string()),
-        None,
+        schema_variant_id,
     )
     .await
-    .expect("could not create func");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    // Attach a second auth func (the new one) to the same schema variant and commit.
-    let func_id = Func::find_id_by_name(ctx, new_auth_func_name)
-        .await
-        .expect("unable to find the func")
-        .expect("no func found");
-    AuthBinding::create_auth_binding(ctx, func_id, schema_variant_id)
-        .await
-        .expect("could not create auth binding");
+    .expect("could not create auth func");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Now, let's list all funcs and see the two that were attached.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     assert_eq!(
         total_funcs + 2, // expected
         funcs.len()      // actual
@@ -91,9 +76,9 @@ async fn detach_auth_func(ctx: &mut DalContext) {
         .expect("unable to get default schema variant");
 
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     let total_funcs = funcs.len();
 
     // Get the Auth Func
@@ -120,9 +105,9 @@ async fn detach_auth_func(ctx: &mut DalContext) {
         .expect("could not delete auth binding");
 
     // check that there's one less func
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, unlocked_schema_variant)
+    let funcs = SchemaVariant::all_funcs(ctx, unlocked_schema_variant)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     assert_eq!(funcs.len(), total_funcs - 1);
 }
 
@@ -141,9 +126,9 @@ async fn edit_auth_func(ctx: &mut DalContext) {
         .await
         .expect("unable to get default schema variant");
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
 
     // Get the Auth Func
     let fn_name = "test:setDummySecretString";
@@ -173,9 +158,9 @@ async fn edit_auth_func(ctx: &mut DalContext) {
     assert!(!unlocked_schema_variant.is_locked());
 
     // ensure the unlocked variant has the new func attached and not the old one
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, unlocked_schema_variant.id)
+    let funcs = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id)
         .await
-        .expect("could not get func summaries");
+        .expect("could not list funcs for schema variant");
 
     assert!(funcs
         .clone()

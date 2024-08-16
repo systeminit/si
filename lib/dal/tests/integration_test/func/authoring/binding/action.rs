@@ -4,9 +4,6 @@ use dal::action::{Action, ActionId};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::binding::action::ActionBinding;
 use dal::func::binding::FuncBinding;
-use dal::func::summary::FuncSummary;
-use dal::func::view::FuncView;
-use dal::func::{FuncAssociations, FuncKind};
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
 use dal_test::helpers::{create_component_for_unlocked_schema_name, ChangeSetTestHelpers};
@@ -23,9 +20,10 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         .expect("unable to get default schema variant");
 
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
+
     let total_funcs = funcs.len();
 
     // create unlocked copy of schema variant
@@ -63,9 +61,9 @@ async fn attach_multiple_action_funcs(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Now, let's list all funcs and see the two that were attached.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     assert_eq!(
         total_funcs + 2, // expected
         funcs.len()      // actual
@@ -87,42 +85,12 @@ async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
     assert!(func_id.is_some());
 
     let new_action_func_name = "anotherCreate";
-    FuncAuthoringClient::create_func(
-        ctx,
-        FuncKind::Action,
-        Some(new_action_func_name.to_string()),
-        None,
-    )
-    .await
-    .expect("could not create func");
 
-    let func_id = Func::find_id_by_name(ctx, new_action_func_name)
-        .await
-        .expect("unable to find the func")
-        .expect("no func found");
-    let func = Func::get_by_id_or_error(ctx, func_id)
-        .await
-        .expect("unable to get func by id");
-    let func_view = FuncView::assemble(ctx, &func)
-        .await
-        .expect("unable to assemble a func view");
-    let (func_view_kind, mut schema_variant_ids) = func_view
-        .associations
-        .expect("empty associations")
-        .get_action_internals()
-        .expect("could not get internals");
-    schema_variant_ids.push(schema_variant_id);
-    assert!(FuncAuthoringClient::save_func(
+    assert!(FuncAuthoringClient::create_new_action_func(
         ctx,
-        func_view.id,
-        func_view.display_name,
-        func_view.name,
-        func_view.description,
-        func_view.code,
-        Some(FuncAssociations::Action {
-            kind: func_view_kind,
-            schema_variant_ids,
-        }),
+        Some(new_action_func_name.to_owned()),
+        ActionKind::Create,
+        schema_variant_id,
     )
     .await
     .is_err());
@@ -170,9 +138,9 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         .expect("unable to get default schema variant");
 
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, old_schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, old_schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     let initial_total_funcs = funcs.len();
     // create unlocked copy
     let schema_variant_id =
@@ -235,9 +203,9 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
     }
 
     // check the func count for the schema variant is accurate
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     assert_eq!(
         initial_total_funcs - 1, // expected
         funcs.len()              // actual
@@ -266,9 +234,9 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         .expect("could not create action binding");
 
     // ensure it got reattached
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     let total_funcs = funcs.len();
 
     assert_eq!(

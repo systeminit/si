@@ -1,4 +1,3 @@
-use dal::func::summary::FuncSummary;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
 
@@ -20,9 +19,9 @@ async fn regenerate_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to get default schema variant");
     // Cache the total number of funcs before continuing.
-    let funcs = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
 
     // Get the Auth Func
     let fn_name = "test:setDummySecretString";
@@ -41,10 +40,10 @@ async fn regenerate_variant(ctx: &mut DalContext) {
             .expect("could not unlock variant");
 
     // ensure func is attached to new variant
-    let funcs_for_unlocked =
-        FuncSummary::list_for_schema_variant_id(ctx, unlocked_schema_variant.id)
-            .await
-            .expect("unable to get the funcs for a schema variant");
+
+    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id)
+        .await
+        .expect("could not list funcs for schema variant");
 
     // ensure the func is attached
     assert!(funcs_for_unlocked
@@ -52,9 +51,9 @@ async fn regenerate_variant(ctx: &mut DalContext) {
         .any(|func| func.id == func_id));
 
     // get the existing default variant and ensure the auth func is still attached to it
-    let funcs_for_default = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
 
@@ -65,20 +64,18 @@ async fn regenerate_variant(ctx: &mut DalContext) {
 
     // ensure funcs are attached to regenerated AND the existing default
     // ensure func is attached to new variant
-    let funcs_for_unlocked =
-        FuncSummary::list_for_schema_variant_id(ctx, unlocked_schema_variant.id)
-            .await
-            .expect("unable to get the funcs for a schema variant");
-
+    let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id)
+        .await
+        .expect("could not list funcs for schema variant");
     // ensure the func is attached
     assert!(funcs_for_unlocked
         .into_iter()
         .any(|func| func.id == func_id));
 
     // get the existing default variant and ensure the auth func is still attached to it
-    let funcs_for_default = FuncSummary::list_for_schema_variant_id(ctx, schema_variant_id)
+    let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id)
         .await
-        .expect("unable to get the funcs for a schema variant");
+        .expect("could not list funcs for schema variant");
     // ensure the func is attached
     assert!(funcs_for_default.into_iter().any(|func| func.id == func_id));
 }

@@ -5,7 +5,6 @@ use axum::{Json, Router};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::func::summary::FuncSummaryError;
 use dal::pkg::PkgError;
 use dal::schema::variant::authoring::VariantAuthoringError;
 use dal::{
@@ -40,8 +39,6 @@ pub enum SchemaVariantError {
     FuncIsEmpty(FuncId),
     #[error("func not found: {0}")]
     FuncNotFound(FuncId),
-    #[error("func summary error: {0}")]
-    FuncSummary(#[from] FuncSummaryError),
     #[error("hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("no new asset was created")]

@@ -35,17 +35,8 @@ pub mod authoring;
 pub mod backend;
 pub mod binding;
 pub mod intrinsics;
-pub mod runner;
-pub mod summary;
-pub mod view;
-
-mod associations;
 mod kind;
-
-pub use associations::AttributePrototypeArgumentBag;
-pub use associations::AttributePrototypeBag;
-pub use associations::FuncAssociations;
-pub use associations::FuncAssociationsError;
+pub mod runner;
 pub use kind::FuncKind;
 
 #[remain::sorted]
@@ -61,8 +52,6 @@ pub enum FuncError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] Box<FuncArgumentError>),
-    #[error("func associations error: {0}")]
-    FuncAssociations(#[from] Box<FuncAssociationsError>),
     #[error("func authoring client error: {0}")]
     FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
     #[error("func bindings error: {0}")]
@@ -71,8 +60,8 @@ pub enum FuncError {
     FuncLocked(FuncId),
     #[error("func name already in use {0}")]
     FuncNameInUse(String),
-    #[error("func to be deleted has associations: {0}")]
-    FuncToBeDeletedHasAssociations(FuncId),
+    #[error("func to be deleted has bindings: {0}")]
+    FuncToBeDeletedHasBindings(FuncId),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("cannot find intrinsic func {0}")]
@@ -509,37 +498,14 @@ impl Func {
     /// Deletes the [`Func`] and returns the name.
     pub async fn delete_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<String> {
         let func = Self::get_by_id_or_error(ctx, id).await?;
-
         // Check that we can remove the func.
-        let (maybe_associations, _) = FuncAssociations::from_func(ctx, &func)
+        if !FuncBinding::for_func_id(ctx, id)
             .await
-            .map_err(Box::new)?;
-        if let Some(associations) = maybe_associations {
-            let has_associations = match associations {
-                FuncAssociations::Action {
-                    schema_variant_ids,
-                    kind: _,
-                } => !schema_variant_ids.is_empty(),
-                FuncAssociations::Attribute { prototypes } => !prototypes.is_empty(),
-                FuncAssociations::CodeGeneration {
-                    schema_variant_ids,
-                    component_ids,
-                    inputs: _,
-                } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
-                FuncAssociations::Qualification {
-                    schema_variant_ids,
-                    component_ids,
-                    inputs: _,
-                } => !schema_variant_ids.is_empty() || !component_ids.is_empty(),
-                FuncAssociations::Authentication { schema_variant_ids } => {
-                    !schema_variant_ids.is_empty()
-                }
-            };
-
-            if has_associations {
-                return Err(FuncError::FuncToBeDeletedHasAssociations(id));
-            }
-        };
+            .map_err(Box::new)?
+            .is_empty()
+        {
+            return Err(FuncError::FuncToBeDeletedHasBindings(id));
+        }
 
         // Now, we can remove the func.
         let workspace_snapshot = ctx.workspace_snapshot()?;

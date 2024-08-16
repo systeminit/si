@@ -1,15 +1,5 @@
 //! This module contains backend functionality for the [`Func`] authoring experience.
 //!
-//! How does the authoring loop work? While metadata fetching and mutation is self-explanatory, the
-//! [`FuncAssociations`] subsystem is less so. Essentially, [`FuncAssociations`] are a "bag" that
-//! come alongside [`FuncView::assemble`](crate::func::view::FuncView::assemble) and are mutated via
-//! [`FuncAuthoringClient::save_func`].
-//!
-//! The existence, difference or absence of an entity or field within a [`FuncAssociations`] bag
-//! dictates what we must do during mutation. New argument? Create one and send it back up. Removed
-//! argument? Delete it and send it back up. Mutated argument? Change it and send it back up. The
-//! payload is the same on both sides.
-//!
 //! _Note_: all submodules are private since the [`FuncAuthoringClient`] is the primary interface.
 
 #![warn(
@@ -39,22 +29,19 @@
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
 use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
+use crate::action::prototype::{ActionKind, ActionPrototypeError};
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
-use crate::func::associations::{FuncAssociations, FuncAssociationsError};
-use crate::func::view::FuncViewError;
 use crate::func::FuncKind;
 use crate::prop::PropError;
 use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
@@ -62,25 +49,19 @@ use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::socket::output::OutputSocketError;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, OutputSocketId, PropId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
-    WsEvent, WsEventError,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
-use super::binding::action::ActionBinding;
 use super::binding::attribute::AttributeBinding;
-use super::binding::authentication::AuthBinding;
-use super::binding::leaf::LeafBinding;
 use super::binding::{
     AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBinding,
     FuncBindingError,
 };
 use super::runner::{FuncRunner, FuncRunnerError};
-use super::{AttributePrototypeArgumentBag, AttributePrototypeBag};
 
 mod create;
 mod execute;
-mod save;
 mod ts_types;
 
 #[allow(missing_docs)]
@@ -105,12 +86,8 @@ pub enum FuncAuthoringError {
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
-    #[error("func associations error: {0}")]
-    FuncAssociations(#[from] FuncAssociationsError),
     #[error("func bindings error: {0}")]
     FuncBinding(#[from] FuncBindingError),
-    #[error("func ({0}) with kind ({1}) cannot have associations: {2:?}")]
-    FuncCannotHaveAssociations(FuncId, FuncKind, FuncAssociations),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
     #[error("Function options are incompatible with variant")]
@@ -121,10 +98,6 @@ pub enum FuncAuthoringError {
     FuncRunner(#[from] FuncRunnerError),
     #[error("func runner has failed to send a value and exited")]
     FuncRunnerSend,
-    #[error("func view error: {0}")]
-    FuncView(#[from] FuncViewError),
-    #[error("invalid func associations ({0:?}) for func ({1}) of kind: {2}")]
-    InvalidFuncAssociationsForFunc(FuncAssociations, FuncId, FuncKind),
     #[error("invalid func kind for creation: {0}")]
     InvalidFuncKindForCreation(FuncKind),
     #[error("layerdb error: {0}")]
@@ -164,30 +137,12 @@ type FuncAuthoringResult<T> = Result<T, FuncAuthoringError>;
 pub struct FuncAuthoringClient;
 
 impl FuncAuthoringClient {
-    /// Creates a [`Func`] and returns the [result](CreatedFunc).
-    #[instrument(name = "func.authoring.create_func", level = "info", skip(ctx))]
-    pub async fn create_func(
-        ctx: &DalContext,
-        kind: FuncKind,
-        name: Option<String>,
-        options: Option<CreateFuncOptions>,
-    ) -> FuncAuthoringResult<CreatedFunc> {
-        let func = create::create(ctx, kind, name, options).await?;
-        Ok(CreatedFunc {
-            id: func.id,
-            handler: func.handler.as_ref().map(|h| h.to_owned()),
-            kind: func.kind,
-            name: func.name.to_owned(),
-            code: func.code_plaintext()?,
-        })
-    }
     /// Creates a new Attribute Func and returns it
     #[instrument(
         name = "func.authoring.create_new_attribute_func",
         level = "info",
         skip(ctx)
     )]
-
     pub async fn create_new_attribute_func(
         ctx: &DalContext,
         name: Option<String>,
@@ -195,15 +150,18 @@ impl FuncAuthoringClient {
         output_location: AttributeFuncDestination,
         argument_bindings: Vec<AttributeArgumentBinding>,
     ) -> FuncAuthoringResult<Func> {
-        let func = create::create(ctx, FuncKind::Attribute, name, None).await?;
-        AttributeBinding::upsert_attribute_binding(
+        if let Some(eventual_parent) = eventual_parent {
+            eventual_parent.error_if_locked(ctx).await?;
+        }
+        let func = create::create_attribute_func(
             ctx,
-            func.id,
+            name,
             eventual_parent,
             output_location,
             argument_bindings,
         )
         .await?;
+
         Ok(func)
     }
 
@@ -220,8 +178,7 @@ impl FuncAuthoringClient {
         schema_variant_id: SchemaVariantId,
     ) -> FuncAuthoringResult<Func> {
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
-        let func = create::create(ctx, FuncKind::Action, name, None).await?;
-        ActionBinding::create_action_binding(ctx, func.id, action_kind, schema_variant_id).await?;
+        let func = create::create_action_func(ctx, name, action_kind, schema_variant_id).await?;
         Ok(func)
     }
 
@@ -239,32 +196,7 @@ impl FuncAuthoringClient {
         inputs: &[LeafInputLocation],
     ) -> FuncAuthoringResult<Func> {
         eventual_parent.error_if_locked(ctx).await?;
-        let func = match leaf_kind {
-            LeafKind::CodeGeneration => {
-                let func = create::create(ctx, FuncKind::CodeGeneration, name, None).await?;
-                LeafBinding::create_leaf_func_binding(
-                    ctx,
-                    func.id,
-                    eventual_parent,
-                    leaf_kind,
-                    inputs,
-                )
-                .await?;
-                func
-            }
-            LeafKind::Qualification => {
-                let func = create::create(ctx, FuncKind::Qualification, name, None).await?;
-                LeafBinding::create_leaf_func_binding(
-                    ctx,
-                    func.id,
-                    eventual_parent,
-                    leaf_kind,
-                    inputs,
-                )
-                .await?;
-                func
-            }
-        };
+        let func = create::create_leaf_func(ctx, name, leaf_kind, eventual_parent, inputs).await?;
         Ok(func)
     }
 
@@ -280,8 +212,7 @@ impl FuncAuthoringClient {
         schema_variant_id: SchemaVariantId,
     ) -> FuncAuthoringResult<Func> {
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
-        let func = create::create(ctx, FuncKind::Authentication, name, None).await?;
-        AuthBinding::create_auth_binding(ctx, func.id, schema_variant_id).await?;
+        let func = create::create_authentication_func(ctx, name, schema_variant_id).await?;
         Ok(func)
     }
 
@@ -411,105 +342,6 @@ impl FuncAuthoringClient {
         Ok(())
     }
 
-    /// Creates an [`AttributePrototype`]. Used when attaching an existing attribute
-    /// function to a schema variant and/or component
-    /// todo: remove once front end consumes new routes
-    #[instrument(
-        name = "func.authoring.create_attribute_prototype",
-        level = "info",
-        skip_all
-    )]
-    pub async fn create_attribute_prototype(
-        ctx: &DalContext,
-        func_id: FuncId,
-        schema_variant_id: SchemaVariantId,
-        component_id: Option<ComponentId>,
-        prop_id: Option<PropId>,
-        output_socket_id: Option<OutputSocketId>,
-        prototype_arguments: Vec<AttributePrototypeArgumentBag>,
-    ) -> FuncAuthoringResult<AttributePrototypeId> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
-        if func.kind != FuncKind::Attribute {
-            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
-                func.id, func.kind,
-            ));
-        }
-        let prototype_bag = AttributePrototypeBag {
-            id: AttributePrototypeId::NONE,
-            component_id,
-            schema_variant_id: Some(schema_variant_id),
-            prop_id,
-            output_socket_id,
-            prototype_arguments,
-        };
-        let attribute_prototype_id =
-            save::create_new_attribute_prototype(ctx, &prototype_bag, func_id, None).await?;
-        save::save_attr_func_proto_arguments(
-            ctx,
-            attribute_prototype_id,
-            prototype_bag.prototype_arguments.clone(),
-        )
-        .await?;
-        Ok(attribute_prototype_id)
-    }
-
-    /// Updates an [`AttributePrototype`].
-    /// todo: remove once front end consumes new routes
-    #[instrument(
-        name = "func.authoring.update_attribute_prototype",
-        level = "info",
-        skip_all
-    )]
-    pub async fn update_attribute_prototype(
-        ctx: &DalContext,
-        func_id: FuncId,
-        attribute_prototype_id: AttributePrototypeId,
-        prop_id: Option<PropId>,
-        output_socket_id: Option<OutputSocketId>,
-        prototype_arguments: Vec<AttributePrototypeArgumentBag>,
-    ) -> FuncAuthoringResult<AttributePrototypeId> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
-        if func.kind != FuncKind::Attribute {
-            return Err(FuncAuthoringError::UnexpectedFuncKindCreatingFuncArgument(
-                func.id, func.kind,
-            ));
-        }
-        let prototype_bag = AttributePrototypeBag::assemble(ctx, attribute_prototype_id).await?;
-
-        let new_prototype_bag = AttributePrototypeBag {
-            id: attribute_prototype_id,
-            component_id: prototype_bag.component_id,
-            schema_variant_id: prototype_bag.schema_variant_id,
-            prop_id,
-            output_socket_id,
-            prototype_arguments,
-        };
-        let attribute_prototype_id =
-            save::create_new_attribute_prototype(ctx, &new_prototype_bag, func_id, None).await?;
-        save::save_attr_func_proto_arguments(
-            ctx,
-            attribute_prototype_id,
-            new_prototype_bag.prototype_arguments.clone(),
-        )
-        .await?;
-        Ok(attribute_prototype_id)
-    }
-
-    /// Removes an [`AttributePrototype`].
-    /// todo: remove once front end consumes new routes
-    #[instrument(
-        name = "func.authoring.remove_attribute_prototype",
-        level = "info",
-        skip_all
-    )]
-    pub async fn remove_attribute_prototype(
-        ctx: &DalContext,
-        attribute_prototype_id: AttributePrototypeId,
-    ) -> FuncAuthoringResult<()> {
-        save::reset_attribute_prototype(ctx, attribute_prototype_id, true).await?;
-        Ok(())
-    }
-
     /// Deletes a [`FuncArgument`].
     #[instrument(name = "func.authoring.delete_func_argument", level = "info", skip_all)]
     pub async fn delete_func_argument(
@@ -528,44 +360,6 @@ impl FuncAuthoringClient {
         }
 
         FuncArgument::remove(ctx, id).await?;
-
-        Ok(())
-    }
-
-    /// Saves a [`Func`].
-    /// todo: remove once front end consumes new routes
-    #[instrument(name = "func.authoring.save_func", level = "info", skip(ctx))]
-    pub async fn save_func(
-        ctx: &DalContext,
-        id: FuncId,
-        display_name: Option<String>,
-        name: String,
-        description: Option<String>,
-        code: Option<String>,
-        associations: Option<FuncAssociations>,
-    ) -> FuncAuthoringResult<()> {
-        let func = Func::get_by_id_or_error(ctx, id).await?;
-
-        Func::modify_by_id(ctx, func.id, |func| {
-            display_name.clone_into(&mut func.display_name);
-            name.clone_into(&mut func.name);
-            description.clone_into(&mut func.description);
-            func.code_base64 = code
-                .as_ref()
-                .map(|code| general_purpose::STANDARD_NO_PAD.encode(code));
-
-            Ok(())
-        })
-        .await?;
-
-        if let Some(associations) = associations {
-            let update_associations_start = tokio::time::Instant::now();
-            save::update_associations(ctx, &func, associations).await?;
-            debug!(%func.id, %func.kind,
-                "updating associations took {:?}",
-                update_associations_start.elapsed()
-            );
-        }
 
         Ok(())
     }
@@ -718,34 +512,6 @@ impl FuncAuthoringClient {
         Ok(new_func)
     }
 
-    /// For a given [`FuncId`], regardless of what kind of [`Func`] it is, look for all associated bindings and remove
-    /// them from every currently attached [`SchemaVariant`]
-    /// todo: remove once front end consumes new routes
-    pub async fn detach_func_from_everywhere(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> FuncAuthoringResult<()> {
-        // first check for attribute prototypes
-        let maybe_attribute_prototypes =
-            AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
-        for attribute_prototype in maybe_attribute_prototypes {
-            save::reset_attribute_prototype(ctx, attribute_prototype, true).await?;
-        }
-
-        // then check for and remove authentication prototypes
-        for schema_variant_id in
-            SchemaVariant::list_schema_variant_ids_using_auth_func_id(ctx, func_id).await?
-        {
-            SchemaVariant::remove_authentication_prototype(ctx, func_id, schema_variant_id).await?;
-        }
-
-        // then check for and remove action prototypes
-        for action_prototype_id in ActionPrototype::list_for_func_id(ctx, func_id).await? {
-            ActionPrototype::remove(ctx, action_prototype_id).await?;
-        }
-        Ok(())
-    }
-
     #[instrument(level = "info", name = "func.authoring.save_code", skip(ctx))]
     /// Save only the code for the given [`FuncId`]
     /// Returns an error if the [`Func`] is currently locked
@@ -811,53 +577,4 @@ impl FuncAuthoringClient {
     ) -> FuncAuthoringResult<String> {
         Ok(FuncBinding::compile_types(ctx, func_id).await?)
     }
-}
-
-/// The result of creating a [`Func`] via [`FuncAuthoringClient::create_func`].
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreatedFunc {
-    /// The id of the created [`Func`].
-    pub id: FuncId,
-    /// The handler of the created [`Func`].
-    pub handler: Option<String>,
-    /// The [kind](FuncKind) of the created [`Func`].
-    pub kind: FuncKind,
-    /// The name of the created [`Func`].
-    pub name: String,
-    /// The code for the created [`Func`].
-    pub code: Option<String>,
-}
-
-#[allow(missing_docs)]
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum AttributeOutputLocation {
-    #[serde(rename_all = "camelCase")]
-    OutputSocket { output_socket_id: OutputSocketId },
-    #[serde(rename_all = "camelCase")]
-    Prop { prop_id: PropId },
-}
-
-#[allow(missing_docs)]
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum CreateFuncOptions {
-    #[serde(rename_all = "camelCase")]
-    ActionOptions {
-        schema_variant_id: SchemaVariantId,
-        action_kind: ActionKind,
-    },
-    #[serde(rename_all = "camelCase")]
-    AttributeOptions {
-        output_location: AttributeOutputLocation,
-    },
-    #[serde(rename_all = "camelCase")]
-    AuthenticationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
-    CodeGenerationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
-    QualificationOptions { schema_variant_id: SchemaVariantId },
 }

@@ -1,14 +1,26 @@
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::view::FuncView;
-use dal::func::FuncKind;
-use dal::{DalContext, Func};
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal::func::binding::attribute::AttributeBinding;
+use dal::func::binding::{EventualParent, FuncBinding};
+use dal::prop::PropPath;
+use dal::{DalContext, Func, Prop};
+use dal_test::helpers::{create_unlocked_variant_copy_for_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
+    let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
+        .await
+        .expect("could not create unlocked copy");
+
+    let prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        schema_variant_id,
+        &PropPath::new(["root", "si", "name"]),
+    )
+    .await
+    .expect("could not find prop");
     // Declare variables for use throughout the test.
     let func_name = "Chloe or Sam or Sophia or Marcus";
 
@@ -23,14 +35,15 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
     // Create an attribute func and commit. Cache the func id because it will be stable for the
     // entire life of the func.
     let func_id = {
-        let func = FuncAuthoringClient::create_func(
+        let func = FuncAuthoringClient::create_new_attribute_func(
             ctx,
-            FuncKind::Attribute,
             Some(func_name.to_owned()),
-            None,
+            Some(EventualParent::SchemaVariant(schema_variant_id)),
+            dal::func::binding::AttributeFuncDestination::Prop(prop_id),
+            vec![],
         )
         .await
-        .expect("unable to create func");
+        .expect("could not create func");
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
             .await
             .expect("could not commit and update snapshot to visibility");
@@ -43,18 +56,15 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
         let func = Func::get_by_id_or_error(ctx, func_id)
             .await
             .expect("could not get func");
-        let func_view = FuncView::assemble(ctx, &func)
+
+        let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, func.id)
             .await
-            .expect("could not assemble func view");
-        let prototypes = func_view
-            .associations
-            .expect("could not get associations")
-            .get_attribute_internals()
-            .expect("could not get internals");
+            .expect("could not get binding");
+
         let arguments = FuncArgument::list_for_func(ctx, func_id)
             .await
             .expect("could not list func arguments");
-        assert!(prototypes.is_empty());
+        assert!(bindings.len() == 1);
         assert!(arguments.is_empty());
 
         FuncAuthoringClient::create_func_argument(
@@ -89,15 +99,12 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
         let func = Func::get_by_id_or_error(ctx, func_id)
             .await
             .expect("could not get func");
-        let func_view = FuncView::assemble(ctx, &func)
+
+        let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, func.id)
             .await
-            .expect("could not assemble func view");
-        let prototypes = func_view
-            .associations
-            .expect("could not get associations")
-            .get_attribute_internals()
-            .expect("could not get internals");
-        assert!(prototypes.is_empty());
+            .expect("could not get bindings");
+
+        assert!(bindings.len() == 1);
         let arguments = FuncArgument::list_for_func(ctx, func_id)
             .await
             .expect("could not list func arguments");
@@ -133,53 +140,18 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
 
         (found_string_func_argument.id, found_array_func_argument.id)
     };
-    // note from brit: unclear if this test was ever passing, but because this new
-    // func was never actually associated with any schema variants/props/sockets, this deletion did
-    // not fail.
-
-    // // Try to delete the func. The deletion will fail because it has associations, which are the
-    // // two new arguments. Then, check that the two func arguments still exist.
-    // {
-    //     match Func::delete_by_id(ctx, func_id).await {
-    //         Ok(_) => panic!("deletion should fail since func has associations"),
-    //         Err(FuncError::FuncToBeDeletedHasAssociations(_)) => {}
-    //         Err(err) => panic!("unexpected error: {err:?}"),
-    //     }
-
-    //     let found_string_func_argument =
-    //         FuncArgument::find_by_name_for_func(ctx, string_func_argument_name, func_id)
-    //             .await
-    //             .expect("could not perform find by name for func")
-    //             .expect("func argument not found");
-    //     let found_array_func_argument =
-    //         FuncArgument::find_by_name_for_func(ctx, array_func_argument_name, func_id)
-    //             .await
-    //             .expect("could not perform find by name for func")
-    //             .expect("func argument not found");
-    //     assert_eq!(
-    //         cached_string_func_argument_id, // expected
-    //         found_string_func_argument.id   // actual
-    //     );
-    //     assert_eq!(
-    //         cached_array_func_argument_id, // expected
-    //         found_array_func_argument.id   // actual
-    //     );
-    // }
 
     // Fetch the view. Then, delete the two arguments and commit.
     {
         let func = Func::get_by_id_or_error(ctx, func_id)
             .await
             .expect("could not get func");
-        let func_view = FuncView::assemble(ctx, &func)
+
+        let bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, func.id)
             .await
-            .expect("could not assemble func view");
-        let prototypes = func_view
-            .associations
-            .expect("could not get associations")
-            .get_attribute_internals()
-            .expect("could not get internals");
-        assert!(prototypes.is_empty());
+            .expect("could not get bindings");
+
+        assert!(bindings.len() == 1);
         let arguments = FuncArgument::list_for_func(ctx, func_id)
             .await
             .expect("could not list func arguments");
@@ -187,6 +159,18 @@ async fn create_and_delete_attribute_func_with_arguments(ctx: &mut DalContext) {
             2,               // expected
             arguments.len()  // actual
         );
+
+        // remove attribute binding also
+
+        AttributeBinding::reset_attribute_binding(
+            ctx,
+            bindings
+                .first()
+                .expect("has an entry")
+                .attribute_prototype_id,
+        )
+        .await
+        .expect("could not remove attribute binding");
 
         FuncAuthoringClient::delete_func_argument(ctx, cached_string_func_argument_id)
             .await
