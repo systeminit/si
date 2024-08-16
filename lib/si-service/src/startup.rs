@@ -9,7 +9,21 @@ use std::io;
 use std::path::Component;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{
+    fs::File, 
+    io::AsyncReadExt,
+    signal::unix::{self, SignalKind},
+    sync::{mpsc, oneshot},
+};
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
+
+use std::result;
+use tokio::time::Instant;
+pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
+use std::thread;
+use tokio::time::Duration;
+use tokio::time;
 
 /// An error that can be returned when starting the process for the binary
 #[derive(Debug, Error)]
@@ -17,6 +31,213 @@ pub enum StartupError {
     /// When the version could not be established
     #[error("Failed to establish version: {0}")]
     Signal(#[source] io::Error),
+}
+
+/// A management client which holds handles to a processes management
+#[derive(Clone, Debug)]
+pub struct ApplicationManagementClient {
+    update_management_tx: mpsc::UnboundedSender<ManagementCommand>,
+}
+
+impl ApplicationManagementClient {
+    pub fn new(
+        update_management_tx: mpsc::UnboundedSender<ManagementCommand>,
+    ) -> Self { 
+        Self {
+            update_management_tx,
+        }
+    }
+}
+
+pub enum ClientError {
+    SendError(tokio::sync::mpsc::error::SendError<ManagementCommand>),
+    // other variants...
+}
+
+#[derive(Debug, Error)]
+pub enum ManagementSignalError {
+    #[error("Signal error: {0}")]
+    Signal(io::Error),
+}
+
+type ManagementResult<T> = result::Result<T, ManagementSignalError>;
+
+struct ManagementSignalHandlerTask {
+    client: ApplicationManagementClient,
+    shutdown_token: CancellationToken,
+    sig_usr2: unix::Signal,
+}
+
+impl ManagementSignalHandlerTask {
+    const NAME: &'static str = "ManagementSignalHandlerTask";
+
+    fn create(
+        client: ApplicationManagementClient,
+        shutdown_token: CancellationToken,
+    ) -> io::Result<Self> {
+        let sig_usr2 = unix::signal(SignalKind::user_defined2())?;
+
+        Ok(Self {
+            client,
+            shutdown_token,
+            sig_usr2,
+        })
+    }
+
+    async fn run(mut self) {
+        loop {
+            tokio::select! {
+                _ = self.shutdown_token.cancelled() => {
+                    debug!(task = Self::NAME, "received cancellation");
+                    break;
+                }
+                Some(_) = self.sig_usr2.recv() => {
+                    let applicationRuntimeFlag = "FLICKING THE MAINTENANCE MODE SWITCH";
+                    dbg!(&applicationRuntimeFlag);
+                }
+                else => {
+                    // All other arms are closed, nothing let to do but return
+                    trace!(task = Self::NAME, "all signal listeners have closed");
+                    break;
+                }
+            }
+        }
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+}
+
+struct ManagementUpdateTask {
+    update_command_rx: mpsc::UnboundedReceiver<ManagementCommand>,
+    is_shutdown: bool,
+}
+
+impl ManagementUpdateTask {
+    const NAME: &'static str = "ManagementUpdateTask";
+
+    fn new(
+        update_command_rx: mpsc::UnboundedReceiver<ManagementCommand>,
+    ) -> Self {
+        Self {
+            update_command_rx,
+            is_shutdown: false,
+        }
+    }
+
+    async fn run(mut self) {
+        while let Some(command) = self.update_command_rx.recv().await {
+            match command {
+                ManagementCommand::RunTimeMode { wait } => {
+                    dbg!("Hello there friends, from your tracing level management command");
+                    if let Some(tx) = wait {
+                        if let Err(err) = tx.send(()) {
+                            warn!(
+                                error = ?err,
+                                "receiver already closed when waiting on changing application runtime mode",
+                            );
+                        }
+                    }
+                }
+                ManagementCommand::Shutdown(token) => {
+                    if !self.is_shutdown {
+                        Self::shutdown().await;
+                    }
+                    self.is_shutdown = true;
+                    token.cancel();
+                    break;
+                }
+            }
+        }
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+
+    async fn shutdown() {
+
+        let (tx, wait_on_shutdown) = oneshot::channel();
+
+        let started_at = Instant::now();
+        let _ = thread::spawn(move || {
+            // Take some action here to close the management thread down
+            tx.send(()).ok();
+        });
+
+        let timeout = Duration::from_secs(5);
+        match time::timeout(timeout, wait_on_shutdown).await {
+            Ok(Ok(_)) => debug!(
+                time_ns = (Instant::now() - started_at).as_nanos(),
+                "management thread shutdown"
+            ),
+            Ok(Err(_)) => trace!("management thread shutdown sender already closed"),
+            Err(_elapsed) => {
+                warn!(
+                    ?timeout,
+                    "management thread shutdown took too long, not waiting for full shutdown"
+                );
+            }
+        };
+    }
+
+}
+
+// Create Management Client for Service Management
+fn create_client(
+    tracker: &TaskTracker,
+    shutdown_token: CancellationToken,
+
+) -> ManagementResult<(ApplicationManagementClient, ManagementShutdownGuard)> {
+
+    let (update_management_tx, update_management_rx) = mpsc::unbounded_channel();
+
+    let client = ApplicationManagementClient::new(
+        update_management_tx.clone()
+    );
+
+    let guard = ManagementShutdownGuard {
+        update_management_tx,
+    };
+
+    // Spawn this task free of the tracker as we want it to outlive the tracker when shutting down
+    tokio::spawn(ManagementUpdateTask::new(update_management_rx).run());
+
+    // This might need to be behind some kind of if?
+    tracker.spawn(
+        ManagementSignalHandlerTask::create(client.clone(), shutdown_token.clone())
+            .map_err(ManagementSignalError::Signal)?
+            .run(),
+    );
+
+    Ok((client, guard))
+}
+
+pub fn init(
+    tracker: &TaskTracker,
+    shutdown_token: CancellationToken,
+) -> ManagementResult<(ApplicationManagementClient, ManagementShutdownGuard)> {
+    let (client, guard) = create_client(tracker, shutdown_token)?;
+    Ok((client, guard))
+}
+
+pub struct ManagementShutdownGuard {
+    update_management_tx: mpsc::UnboundedSender<ManagementCommand>,
+}
+
+impl ManagementShutdownGuard {
+    pub async fn wait(self) -> result::Result<(), ClientError> {
+        let token = CancellationToken::new();
+        self.update_management_tx
+            .send(ManagementCommand::Shutdown(token.clone()))
+            .map_err(|err| ClientError::SendError(err))?;
+        token.cancelled().await;
+        Ok(())
+    }
+}
+
+pub enum ManagementCommand {
+    Shutdown(CancellationToken),
+    RunTimeMode {
+        wait: Option<oneshot::Sender<()>>,
+    },
 }
 
 /// Gracefully start a service and conduct pre-processing of service handler

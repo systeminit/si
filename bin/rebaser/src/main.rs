@@ -10,8 +10,8 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
-    let tracker = TaskTracker::new();
-    let token = CancellationToken::new();
+    let task_tracker = TaskTracker::new();
+    let shutdown_token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
@@ -37,8 +37,11 @@ async fn async_main() -> Result<()> {
             ])
             .build()?;
 
-        telemetry_application::init(config, &tracker, token.clone())?
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
+
+    // Startup the management service for maintenance mode etc
+    startup::init(&task_tracker, shutdown_token.clone())?;
 
     startup::startup("rebaser").await?;
 
@@ -51,16 +54,16 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    let server = Server::from_config(config, token.clone(), tracker.clone()).await?;
+    let server = Server::from_config(config, shutdown_token.clone(), task_tracker.clone()).await?;
 
-    tracker.spawn(async move {
+    task_tracker.spawn(async move {
         info!("ready to receive messages");
         server.run().await
     });
 
     shutdown::graceful(
-        tracker,
-        token,
+        task_tracker,
+        shutdown_token,
         Some(telemetry_shutdown.into_future()),
         Some(Duration::from_secs(10)),
     )

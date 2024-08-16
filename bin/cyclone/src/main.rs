@@ -32,6 +32,9 @@ async fn main() -> Result<()> {
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };
 
+    // Startup the management service for maintenance mode etc
+    startup::init(&task_tracker, shutdown_token.clone())?;
+
     startup::startup("cyclone").await?;
 
     if args.verbose > 0 {
