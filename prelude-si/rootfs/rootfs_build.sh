@@ -85,12 +85,12 @@ sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 cyclone_args=(
   --bind-vsock 3:52
   --lang-server /usr/local/bin/lang-js
-  --enable-watch
   --limit-requests 1
   --watch-timeout 30
   --enable-ping
-  --enable-resolver
-  --enable-action-run
+  --enable-watch
+  --enable-forwarder
+  --enable-process-gatherer
   -vvvv
 )
 
@@ -130,7 +130,7 @@ rc-update add sshd
 echo "ttyS0::respawn:/sbin/mingetty --autologin root --noclear ttyS0" >> /etc/inittab
 sed -i 's/root:*::0:::::/root:::0:::::/g' /etc/shadow
 
-# mount decryption key volume
+# mount scripts volume
 cat <<EOV >>"/etc/fstab"
 LABEL=scripts     /mnt/scripts    ext4   defaults 0 0
 EOV
@@ -145,7 +145,6 @@ supervisor="supervise-daemon"
 pidfile="/cyclone/agent.pid"
 
 start(){
-  export OTEL_EXPORTER_OTLP_ENDPOINT=http://1.0.0.1:4316
   if [ -f /mnt/scripts/scripts ]; then
       source /mnt/scripts/scripts
   fi
@@ -158,7 +157,6 @@ depend(){
 EOF
 
 chmod +x "/etc/init.d/cyclone"
-
 rc-update add cyclone
 
 # Set up TAP device route/escape

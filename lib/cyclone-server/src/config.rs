@@ -60,6 +60,12 @@ pub struct Config {
 
     #[builder(setter(into), default)]
     limit_requests: Option<u32>,
+
+    #[builder(setter(into), default = "false")]
+    enable_forwarder: bool,
+
+    #[builder(setter(into), default = "false")]
+    enable_process_gatherer: bool,
 }
 
 impl Config {
@@ -139,6 +145,18 @@ impl Config {
     #[must_use]
     pub fn limit_requests(&self) -> Option<u32> {
         self.limit_requests
+    }
+
+    /// Gets a reference to the config's enable forwarder.
+    #[must_use]
+    pub fn enable_forwarder(&self) -> bool {
+        self.enable_forwarder
+    }
+
+    /// Gets a reference to the config's enable process gatherer.
+    #[must_use]
+    pub fn enable_process_gatherer(&self) -> bool {
+        self.enable_process_gatherer
     }
 }
 

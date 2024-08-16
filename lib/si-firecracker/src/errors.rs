@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::stream::StreamForwarderError;
+
 /// Error type for [`PoolNoodle`].
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -26,6 +28,9 @@ pub enum FirecrackerJailError {
     // Failed to spawn firecracker
     #[error("Failed to spawn firecracker: {0}")]
     Spawn(#[source] tokio::io::Error),
+    // StreamForwarderError
+    #[error("StreamForwarderError: {0}")]
+    StreamForwarder(#[from] StreamForwarderError),
     // Failed to terminate firecracker
     #[error("Failed to terminate firecracker: {0}")]
     Terminate(#[from] cyclone_core::process::ShutdownError),

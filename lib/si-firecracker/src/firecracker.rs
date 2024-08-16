@@ -1,6 +1,8 @@
 #[cfg(target_os = "linux")]
 use crate::disk::FirecrackerDisk;
 use crate::errors::FirecrackerJailError;
+#[cfg(target_os = "linux")]
+use crate::stream::UnixStreamForwarder;
 use cyclone_core::process;
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
@@ -81,6 +83,13 @@ impl FirecrackerJail {
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
             ));
         }
+
+        #[cfg(target_os = "linux")]
+        UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
+            .await?
+            .start()
+            .await?;
+
         Ok(())
     }
 

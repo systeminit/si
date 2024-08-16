@@ -3866,6 +3866,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "procfs"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "731e0d9356b0c25f16f33b5be79b1c57b562f141ebfcdb0ad8ac2c13a24293b4"
+dependencies = [
+ "bitflags 2.6.0",
+ "chrono",
+ "flate2",
+ "hex",
+ "lazy_static",
+ "procfs-core",
+ "rustix",
+]
+
+[[package]]
+name = "procfs-core"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
+dependencies = [
+ "bitflags 2.6.0",
+ "chrono",
+ "hex",
+]
+
+[[package]]
 name = "prost"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5650,6 +5676,7 @@ dependencies = [
  "postgres-types",
  "pretty_assertions_sorted",
  "proc-macro2",
+ "procfs",
  "quote",
  "rand 0.8.5",
  "refinery",
@@ -5696,6 +5723,7 @@ dependencies = [
  "ulid",
  "url",
  "uuid",
+ "version_check",
  "vfs 0.12.0",
  "vfs-tar",
  "webpki-roots 0.25.4",

@@ -4,3 +4,4 @@ mod disk;
 pub mod errors;
 /// [`FirecrackerJail`] implementations.
 pub mod firecracker;
+pub mod stream;

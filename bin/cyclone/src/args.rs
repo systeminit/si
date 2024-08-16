@@ -138,6 +138,22 @@ pub(crate) struct Args {
     /// Limits execution requests to the given value before shutting down
     #[arg(long, group = "request_limiting")]
     pub(crate) limit_requests: Option<u32>,
+
+    /// Enables vsock forwarder.
+    #[arg(long, group = "forwarder")]
+    pub(crate) enable_forwarder: bool,
+
+    /// Disables vsock forwarder.
+    #[arg(long, group = "forwarder")]
+    pub(crate) disable_forwarder: bool,
+
+    /// Enables process gatherer.
+    #[arg(long, group = "gatherer")]
+    pub(crate) enable_process_gatherer: bool,
+
+    /// Disables process gatherer.
+    #[arg(long, group = "gatherer")]
+    pub(crate) disable_process_gatherer: bool,
 }
 
 impl TryFrom<Args> for Config {
@@ -192,6 +208,17 @@ impl TryFrom<Args> for Config {
             builder.limit_requests(limit_requests);
         }
 
+        if args.enable_forwarder {
+            builder.enable_forwarder(true);
+        } else if args.disable_forwarder {
+            builder.enable_forwarder(false);
+        }
+
+        if args.enable_process_gatherer {
+            builder.enable_process_gatherer(true);
+        } else if args.disable_process_gatherer {
+            builder.enable_forwarder(false);
+        }
         builder.build().map_err(Into::into)
     }
 }
