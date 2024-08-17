@@ -179,23 +179,36 @@
           </Stack>
         </template>
       </div>
-      <div
-        v-if="
-          featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner && !createMode
-        "
-        class="pt-md"
-      >
-        <VButton
-          iconRight="chevron--right"
-          :disabled="!isWorkspaceOwner"
-          :requestStatus="deleteWorkspaceReqStatus"
-          loadingText="Deleting..."
-          tone="action"
-          variant="solid"
-          @click="() => deleteWorkspace()"
+      <div class="flex justify-between items-center">
+        <div
+          v-if="
+            featureFlagsStore.DELETE_WORKSPACE &&
+            isWorkspaceOwner &&
+            !createMode
+          "
+          class="pt-md"
         >
-          Delete Workspace
-        </VButton>
+          <VButton
+            iconRight="chevron--right"
+            :disabled="!isWorkspaceOwner"
+            :requestStatus="deleteWorkspaceReqStatus"
+            loadingText="Deleting..."
+            tone="action"
+            variant="solid"
+            @click="() => deleteWorkspace()"
+          >
+            Delete Workspace
+          </VButton>
+        </div>
+        <div class="pt-md">
+          <VButton
+            label="Go to workspace"
+            tone="action"
+            variant="solid"
+            @click="() => launchWorkspace()"
+          >
+          </VButton>
+        </div>
       </div>
     </template>
   </div>
@@ -218,6 +231,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { tracker } from "@/lib/posthog";
+import { API_HTTP_URL } from "@/store/api";
 
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
@@ -354,6 +368,13 @@ const deleteWorkspace = async () => {
       name: "workspaces",
       params: {},
     });
+  }
+};
+
+const launchWorkspace = async () => {
+  if (props.workspaceId) {
+    tracker.trackEvent("workspace_launcher_widget_click");
+    window.location.href = `${API_HTTP_URL}/workspaces/${props.workspaceId}/go`;
   }
 };
 
