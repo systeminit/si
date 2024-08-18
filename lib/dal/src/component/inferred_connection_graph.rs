@@ -320,7 +320,9 @@ impl InferredConnectionGraph {
             .output_sockets
             .into_iter()
             .find_map(|(output_socket, input_sockets)| {
-                if output_socket.output_socket_id == output_socket_id {
+                if output_socket.output_socket_id == output_socket_id
+                    && output_socket.component_id == component_id
+                {
                     Some(input_sockets)
                 } else {
                     None

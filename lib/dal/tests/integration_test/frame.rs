@@ -2,18 +2,25 @@ use dal::component::frame::{Frame, FrameError};
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::diagram::SummaryDiagramInferredEdge;
 use dal::diagram::{Diagram, DiagramResult, SummaryDiagramComponent, SummaryDiagramEdge};
+use dal::func::authoring::FuncAuthoringClient;
+use dal::func::binding::EventualParent;
+use dal::prop::PropPath;
+use dal::property_editor::values::PropertyEditorValues;
+use dal::qualification::QualificationSubCheckStatus;
 use dal::schema::variant::authoring::VariantAuthoringClient;
+use dal::schema::variant::leaves::LeafInputLocation;
 use dal::{
-    AttributeValue, Component, ComponentError, DalContext, EdgeWeightKind, Schema, SchemaVariant,
+    AttributeValue, Component, ComponentError, DalContext, EdgeWeightKind, Prop, Schema,
+    SchemaVariant, Secret,
 };
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
     connect_components_with_socket_names, create_component_for_default_schema_name,
     create_component_for_schema_name_with_type, create_component_for_schema_variant,
-    get_component_input_socket_value, get_component_output_socket_value,
+    encrypt_message, get_component_input_socket_value, get_component_output_socket_value,
     update_attribute_value_for_component, ChangeSetTestHelpers,
 };
-use dal_test::test;
+use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
@@ -2786,6 +2793,309 @@ async fn up_frames_multiple_input_sockets_match_but_one_explicit(ctx: &mut DalCo
         0,                                      // expected
         diagram.get_all_inferred_edges().len()  // actual
     );
+}
+
+#[test]
+async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+    // Create a component and commit.
+    let secret_definition_component =
+        create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
+            .await
+            .expect("could not create component");
+    secret_definition_component
+        .set_type(ctx, ComponentType::ConfigurationFrameDown)
+        .await
+        .expect("could not change type to frame");
+    let secret_definition_component_id = secret_definition_component.id();
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // create a component that take this secret and use it
+    let component_name = "component".to_string();
+    let description = None;
+    let link = None;
+    let category = "Integration Tests".to_string();
+    let color = "#00b0b0".to_string();
+    let comp_variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        component_name.clone(),
+        description.clone(),
+        link.clone(),
+        category.clone(),
+        color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+    let component_asset_def = "function main() {
+          const credentialProp = new SecretPropBuilder()
+        .setName(\"dummy\")
+        .setSecretKind(\"dummy\")
+        .build();
+        return new AssetBuilder().addSecretProp(credentialProp).build()
+    }"
+    .to_string();
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        comp_variant.id(),
+        component_name.clone(),
+        component_name.clone(),
+        category.clone(),
+        description.clone(),
+        link.clone(),
+        color.clone(),
+        ComponentType::Component,
+        Some(component_asset_def),
+    )
+    .await
+    .expect("could not save content");
+    let new_comp_variant = VariantAuthoringClient::regenerate_variant(ctx, comp_variant.id())
+        .await
+        .expect("could not regenerate variant");
+    // create a qualification that fails if the secret is not set
+    let qualification_code = "async function main(_component: Input): Promise<Output> {\
+    const authCheck = requestStorage.getItem('dummySecretString');
+    if (authCheck) {
+        if (authCheck === 'todd') {
+            return {
+                result: 'success',
+                message: 'dummy secret string matches expected value'
+            };
+        }
+        return {
+            result: 'failure',
+            message: 'dummy secret string does not match expected value'
+        };
+    } else {
+        return {
+            result: 'failure',
+            message: 'dummy secret string is empty'
+        };
+    }
+}";
+    let qualification_name = "new_qualification";
+
+    let new_qualification = FuncAuthoringClient::create_new_leaf_func(
+        ctx,
+        Some(qualification_name.to_string()),
+        dal::schema::variant::leaves::LeafKind::Qualification,
+        EventualParent::SchemaVariant(new_comp_variant),
+        &[LeafInputLocation::Domain, LeafInputLocation::Secrets],
+    )
+    .await
+    .expect("could not create qualification");
+    FuncAuthoringClient::save_code(ctx, new_qualification.id, qualification_code.to_string())
+        .await
+        .expect("could not save code");
+
+    let child_component = create_component_for_schema_variant(ctx, new_comp_variant)
+        .await
+        .expect("could not create component");
+    Frame::upsert_parent(ctx, child_component.id(), secret_definition_component_id)
+        .await
+        .expect("could not upsert frame");
+    // commit for propagation
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // Cache values for scenarios
+    let secret_definition_name = "dummy";
+    let secret_definition_schema_variant_id =
+        Component::schema_variant_id(ctx, secret_definition_component.id())
+            .await
+            .expect("could not get schema variant id for component");
+    let reference_to_secret_prop = Prop::find_prop_by_path(
+        ctx,
+        secret_definition_schema_variant_id,
+        &PropPath::new(["root", "secrets", secret_definition_name]),
+    )
+    .await
+    .expect("could not find prop by path");
+    let component_secret_prop = Prop::find_prop_by_path(
+        ctx,
+        new_comp_variant,
+        &PropPath::new(["root", "secrets", secret_definition_name]),
+    )
+    .await
+    .expect("could not find prop by path");
+
+    // First Scenario: check that the qualification is failing for the new component
+    {
+        let qualifications = Component::list_qualifications(ctx, child_component.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == qualification_name)
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Failure, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
+    // Scenario 2:
+    // now set the secret value to be something and make sure it flows through
+    // also ensure the qualification is still failing
+    {
+        // Create a secret with a value that will fail the qualification and commit.
+        let encrypted_message_that_will_fail_the_qualification = encrypt_message(
+            ctx,
+            nw.key_pair.pk(),
+            &serde_json::json![{"value": "howard"}],
+        )
+        .await
+        .expect("could not encrypt message");
+        let secret_that_will_fail_the_qualification = Secret::new(
+            ctx,
+            "secret that will fail the qualification",
+            secret_definition_name.to_string(),
+            None,
+            &encrypted_message_that_will_fail_the_qualification,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+            .await
+            .expect("could not commit and update snapshot to visibility");
+
+        // Update the reference to secret prop with the secret it that will fail the qualification
+        // and commit.
+        let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
+            .await
+            .expect("unable to list prop values");
+        let reference_to_secret_attribute_value_id = property_values
+            .find_by_prop_id(reference_to_secret_prop.id)
+            .expect("unable to find attribute value");
+        Secret::attach_for_attribute_value(
+            ctx,
+            reference_to_secret_attribute_value_id,
+            Some(secret_that_will_fail_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+            .await
+            .expect("could not commit and update snapshot to visibility");
+
+        // check that the secret propagated
+
+        let component_secret_av =
+            Prop::attribute_values_for_prop_id(ctx, component_secret_prop.id())
+                .await
+                .expect("could not get attribute values")
+                .pop()
+                .expect("has a value");
+        let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
+            .await
+            .expect("could not get attribute value by id")
+            .value(ctx)
+            .await
+            .expect("could not get value")
+            .expect("no value found");
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                secret_that_will_fail_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            component_secret_value // actual
+        );
+        // check that the qualification fails
+        let qualifications = Component::list_qualifications(ctx, child_component.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == qualification_name)
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Failure, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
+    // Scenario 3: Create and use a secret that will pass the qualification
+    {
+        // Create a secret with a value that will pass the qualification and commit.
+        let encrypted_message_that_will_pass_the_qualification =
+            encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+                .await
+                .expect("could not encrypt message");
+        let secret_that_will_pass_the_qualification = Secret::new(
+            ctx,
+            "secret that will pass the qualification",
+            secret_definition_name.to_string(),
+            None,
+            &encrypted_message_that_will_pass_the_qualification,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+            .await
+            .expect("could not commit and update snapshot to visibility");
+
+        // Update the reference to secret prop with the secret it that will pass the qualification
+        // and commit.
+        let property_values = PropertyEditorValues::assemble(ctx, secret_definition_component_id)
+            .await
+            .expect("unable to list prop values");
+        let reference_to_secret_attribute_value_id = property_values
+            .find_by_prop_id(reference_to_secret_prop.id)
+            .expect("could not find attribute value");
+        Secret::attach_for_attribute_value(
+            ctx,
+            reference_to_secret_attribute_value_id,
+            Some(secret_that_will_pass_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+            .await
+            .expect("could not commit and update snapshot to visibility");
+
+        // check that the value propagates
+        let component_secret_av =
+            Prop::attribute_values_for_prop_id(ctx, component_secret_prop.id())
+                .await
+                .expect("could not get attribute values")
+                .pop()
+                .expect("has a value");
+        let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
+            .await
+            .expect("could not get attribute value by id")
+            .value(ctx)
+            .await
+            .expect("could not get value")
+            .expect("no value found");
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                secret_that_will_pass_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            component_secret_value // actual
+        );
+        // check that the qualification succeeds
+        let qualifications = Component::list_qualifications(ctx, child_component.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == qualification_name)
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Success, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
 }
 
 struct DiagramByKey {
