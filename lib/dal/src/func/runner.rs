@@ -1243,17 +1243,20 @@ impl FuncRunner {
                     attribute_prototype_argument_id,
                 ))? {
                     ValueSource::InputSocket(input_socket_id) => {
+                        let component_input_socket = ComponentInputSocket::get_by_ids_or_error(
+                            ctx,
+                            component_id,
+                            input_socket_id,
+                        )
+                        .await?;
                         if let Some(source_component_id) =
                             ComponentInputSocket::find_connection_arity_one(
                                 ctx,
-                                ComponentInputSocket {
-                                    component_id,
-                                    input_socket_id,
-                                    attribute_value_id,
-                                },
+                                component_input_socket,
                             )
                             .await?
                         {
+                            dbg!("Source component ID: {}", &source_component_id);
                             work_queue.push_back(source_component_id);
                         }
                     }
