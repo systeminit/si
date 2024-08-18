@@ -24,7 +24,7 @@
         <div class="ml-auto flex flex-none gap-xs shrink-0">
           <EditingPill v-if="!a.isLocked" :color="a.color" />
           <Icon
-            v-if="a.canContribute"
+            v-if="canContribute"
             name="cloud-upload"
             size="xs"
             tone="action"
@@ -70,6 +70,13 @@ const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 const canUpdate = computed(
   () => !!moduleStore.upgradeableModules[props.a.schemaVariantId],
 );
+
+const canContribute = computed(() => {
+  return (
+    !!moduleStore.contributableModules.includes(props.a.schemaVariantId) ||
+    props.a.canContribute
+  );
+});
 
 const onClick = (e: MouseEvent) => {
   if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);

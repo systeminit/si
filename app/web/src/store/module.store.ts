@@ -144,6 +144,7 @@ export const useModuleStore = () => {
         state: () => ({
           upgradeableModules: {} as Record<SchemaVariantId, LatestModule>,
           installableModulesById: {} as Record<ModuleId, LatestModule>,
+          contributableModules: [] as SchemaVariantId[],
           localModulesByName: {} as Record<ModuleName, LocalModuleSummary>,
           localModuleDetailsByName: {} as Record<
             ModuleName,
@@ -220,6 +221,7 @@ export const useModuleStore = () => {
               {
                 upgradeable: Record<SchemaVariantId, LatestModule>;
                 installable: LatestModule[];
+                contributable: SchemaVariantId[];
               },
               Visibility
             >({
@@ -227,6 +229,7 @@ export const useModuleStore = () => {
               params: { ...visibility },
               onSuccess: (response) => {
                 this.upgradeableModules = response.upgradeable;
+                this.contributableModules = response.contributable;
                 this.installableModulesById = _.keyBy(
                   response.installable,
                   (m) => m.id,

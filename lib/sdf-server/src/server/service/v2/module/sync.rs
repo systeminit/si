@@ -5,7 +5,6 @@ use axum::{
 use dal::{module::Module, ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
 use si_frontend_types as frontend_types;
-use std::collections::{HashMap, HashSet};
 
 use crate::server::{
     extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
@@ -39,20 +38,7 @@ pub async fn sync(
         )
     };
 
-    let past_hashes_for_module_id = module_details
-        .modules
-        .into_iter()
-        .filter_map(|m| {
-            if let Some(past_hashes) = m.past_hashes {
-                Some((m.id, HashSet::from_iter(past_hashes.into_iter())))
-            } else {
-                None
-            }
-        })
-        .collect::<HashMap<_, _>>();
-
-    let synced_modules =
-        Module::sync(&ctx, latest_modules.modules, past_hashes_for_module_id).await?;
+    let synced_modules = Module::sync(&ctx, latest_modules.modules, module_details.modules).await?;
 
     track(
         &posthog_client,
