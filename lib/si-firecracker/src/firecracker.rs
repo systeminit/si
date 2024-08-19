@@ -1,7 +1,5 @@
-#[cfg(target_os = "linux")]
 use crate::disk::FirecrackerDisk;
 use crate::errors::FirecrackerJailError;
-#[cfg(target_os = "linux")]
 use crate::stream::UnixStreamForwarder;
 use cyclone_core::process;
 use std::fs::Permissions;
@@ -65,7 +63,6 @@ impl FirecrackerJail {
 
     pub async fn clean(id: u32) -> Result<()> {
         let _ = id;
-        #[cfg(target_os = "linux")]
         FirecrackerDisk::clean(id)?;
         Ok(())
     }
@@ -84,7 +81,6 @@ impl FirecrackerJail {
             ));
         }
 
-        #[cfg(target_os = "linux")]
         UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
             .await?
             .start()

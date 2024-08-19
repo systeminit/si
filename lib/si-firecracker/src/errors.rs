@@ -10,7 +10,6 @@ pub enum FirecrackerJailError {
     #[error("Failed to clean a jail: {0}")]
     Clean(#[source] tokio::io::Error),
     // Error from DmSetup
-    #[cfg(target_os = "linux")]
     #[error("dmsetup error: {0}")]
     DmSetup(#[from] devicemapper::DmError),
     // Failed to interact with a mount

@@ -1,4 +1,4 @@
-#[cfg(target_os = "linux")]
+#![cfg(target_os = "linux")]
 mod disk;
 /// [`FirecrackerJailError`] implementations.
 pub mod errors;
