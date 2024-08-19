@@ -1,5 +1,5 @@
 <template>
-  <v-group v-if="shouldDraw && points && centerPoint">
+  <v-group v-if="points && centerPoint">
     <v-line
       :config="{
         visible: isHovered || isSelected,
@@ -196,10 +196,6 @@ function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
 function onMouseDown(_e: KonvaEventObject<MouseEvent>) {
   // e.cancelBubble = true; // stops dragging of parent
 }
-
-const shouldDraw = computed(() =>
-  isDevMode ? true : !props.edge.def.isInferred,
-);
 
 // defineExpose({ recalculatePoints });
 </script>

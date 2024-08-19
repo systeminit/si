@@ -64,6 +64,8 @@ export type FullComponent = RawComponent & {
   matchesFilter: boolean;
   icon: IconNames;
   isGroup: false;
+  numChildren: number;
+  numChildrenResources: number;
 };
 
 export type StatusIconsSet = {
@@ -172,6 +174,16 @@ export type ComponentData = {
   newParent?: ComponentId;
 };
 
+export interface elementPositionAndSize {
+  uniqueKey: DiagramElementUniqueKey;
+  position?: Vector2d;
+  size?: Size2D; // only frames have a size
+}
+
+export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
+export const COLLAPSED_HALFWIDTH = DEFAULT_COLLAPSED_SIZE.width / 2;
+export const COLLAPSED_HALFHEIGHT = DEFAULT_COLLAPSED_SIZE.height / 2;
+
 export const getAssetIcon = (name: string) => {
   const icons = {
     AWS: "logo-aws",
@@ -203,6 +215,21 @@ const edgeFromRawEdge =
     return edge;
   };
 
+export const loadCollapsedData = (
+  prefix: string,
+  key: DiagramElementUniqueKey,
+) => {
+  const _pos = window.localStorage.getItem(`${prefix}-${key}`);
+  if (_pos) {
+    return JSON.parse(_pos);
+  }
+};
+
+export const getCollapsedPrefixes = (workspaceId: string | null) => ({
+  SIZE_PREFIX: `${workspaceId}-collapsed-size`,
+  POS_PREFIX: `${workspaceId}-collapsed-pos`,
+});
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -223,6 +250,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
     visibility_change_set_pk: changeSetId,
     workspaceId,
   };
+
+  const { SIZE_PREFIX, POS_PREFIX } = getCollapsedPrefixes(workspaceId);
 
   return addStoreHooks(
     workspaceId,
@@ -246,6 +275,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
 
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
+          collapsedComponents: new Set() as Set<DiagramElementUniqueKey>,
+          collapsedElementPositions: {} as Record<
+            DiagramElementUniqueKey,
+            Vector2d
+          >,
+          collapsedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
 
           edgesById: {} as Record<EdgeId, Edge>,
           schemaVariantsById: {} as Record<SchemaVariantId, SchemaVariant>,
@@ -271,8 +306,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             DiagramElementUniqueKey,
             Vector2d
           >,
+          // frames, stored
           resizedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
+          // non-frames, measured not stored
           renderedNodeSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
+
+          // size of components when dragged to the stage
           inflightElementSizes: {} as Record<RequestUlid, ComponentId[]>,
           // prevents run away retries, unknown what circumstances could lead to this, but protecting ourselves
           inflightRetryCounter: new DefaultMap<string, number>(() => 0),
@@ -302,7 +341,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             };
 
-            return _.mapValues(this.rawComponentsById, (rc) => {
+            const components = _.mapValues(this.rawComponentsById, (rc) => {
               // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
               // and eventually can just assume the icon is `logo-${name}`
               const typeIcon = getAssetIcon(rc?.schemaCategory);
@@ -323,10 +362,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ancestorIds,
                 parentId: _.last(ancestorIds),
                 childIds,
+                numChildren: 0,
+                numChildrenResources: 0,
                 icon: typeIcon,
                 isGroup: rc.componentType !== ComponentType.Component,
               } as FullComponent;
             });
+
+            const getDeepChildIds = (id: ComponentId): string[] => {
+              const component = components[id];
+              if (!component?.isGroup) return [];
+              return [
+                ...(component.childIds ? component.childIds : []),
+                ...component.childIds.flatMap(getDeepChildIds),
+              ];
+            };
+
+            Object.values(components)
+              .filter((c) => c.isGroup)
+              .forEach((component) => {
+                const childIds = getDeepChildIds(component.id);
+                component.numChildren = childIds.length;
+                component.numChildrenResources = childIds
+                  .map((c) => components[c])
+                  .filter((c) => c?.hasResource).length;
+              });
+
+            return components;
           },
           componentsByParentId(): Record<ComponentId, FullComponent[]> {
             return _.groupBy(this.allComponents, (c) => c.parentId ?? "root");
@@ -586,7 +648,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               let size: Size2D;
               if (c.isGroup) {
                 uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
-                size = this.resizedElementSizes[uniqueKey] ??
+                size = this.combinedElementSizes[uniqueKey] ??
                   c.size ?? {
                     width: GROUP_DEFAULT_WIDTH,
                     height: GROUP_DEFAULT_HEIGHT,
@@ -602,7 +664,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
 
               const position =
-                this.movedElementPositions[uniqueKey] ?? c.position;
+                this.combinedElementPositions[uniqueKey] ?? c.position;
 
               dictionary[c.id] = {
                 ...position,
@@ -664,8 +726,83 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return boxDictionary;
           },
+          combinedElementPositions: (
+            state,
+          ): Record<DiagramElementUniqueKey, Vector2d> => {
+            const pos = _.clone(state.movedElementPositions);
+            for (const [key, p] of Object.entries(
+              state.collapsedElementPositions,
+            )) {
+              pos[key] = p;
+            }
+            return pos;
+          },
+          combinedElementSizes: (
+            state,
+          ): Record<DiagramElementUniqueKey, Size2D> => {
+            const size = _.clone(state.resizedElementSizes);
+            for (const [key, s] of Object.entries(
+              state.collapsedElementSizes,
+            )) {
+              size[key] = s;
+            }
+            return size;
+          },
         },
         actions: {
+          expandComponents(...keys: DiagramElementUniqueKey[]) {
+            keys.forEach((key) => {
+              this.collapsedComponents.delete(key);
+              delete this.collapsedElementPositions[key];
+              delete this.collapsedElementSizes[key];
+            });
+            this.persistCollapsed();
+          },
+
+          persistCollapsed() {
+            window.localStorage.setItem(
+              `${workspaceId}-collapsed-components`,
+              JSON.stringify(Array.from(this.collapsedComponents)),
+            );
+          },
+
+          initMinimzedElementPositionAndSize(key: DiagramElementUniqueKey) {
+            const { SIZE_PREFIX, POS_PREFIX } =
+              getCollapsedPrefixes(workspaceId);
+            let position;
+            let size;
+            position = loadCollapsedData(POS_PREFIX, key) as
+              | Vector2d
+              | undefined;
+            if (!position) position = this.combinedElementPositions[key];
+            size = loadCollapsedData(SIZE_PREFIX, key) as Size2D | undefined;
+            if (!size)
+              size = this.collapsedElementSizes[key] || DEFAULT_COLLAPSED_SIZE;
+            return { position, size };
+          },
+
+          updateMinimzedElementPositionAndSize(
+            ...elms: elementPositionAndSize[]
+          ) {
+            elms.forEach((elm) => {
+              this.collapsedComponents.add(elm.uniqueKey);
+              if (elm.size) {
+                this.collapsedElementSizes[elm.uniqueKey] = elm.size;
+                window.localStorage.setItem(
+                  `${SIZE_PREFIX}-${elm.uniqueKey}`,
+                  JSON.stringify(elm.size),
+                );
+              }
+              if (elm.position) {
+                this.collapsedElementPositions[elm.uniqueKey] = elm.position;
+                window.localStorage.setItem(
+                  `${POS_PREFIX}-${elm.uniqueKey}`,
+                  JSON.stringify(elm.position),
+                );
+              }
+            });
+            this.persistCollapsed();
+          },
           // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
           async FETCH_DIAGRAM_DATA() {
             return new ApiRequest<{
@@ -1526,6 +1663,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         onActivated() {
           if (!changeSetId) return;
+
+          try {
+            const minimzedString = window.localStorage.getItem(
+              `${workspaceId}-collapsed-components`,
+            );
+            if (minimzedString) {
+              const collapsed = JSON.parse(minimzedString);
+              this.collapsedComponents = new Set(collapsed);
+            }
+          } catch (e) {
+            /* empty */
+          }
+
+          this.collapsedComponents.forEach((key) => {
+            this.collapsedElementPositions[key] = loadCollapsedData(
+              POS_PREFIX,
+              key,
+            );
+            this.collapsedElementSizes[key] = loadCollapsedData(
+              SIZE_PREFIX,
+              key,
+            );
+          });
 
           // trigger initial load
           this.FETCH_DIAGRAM_DATA();

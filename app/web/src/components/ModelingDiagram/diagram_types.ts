@@ -86,7 +86,6 @@ export class DiagramSocketData extends DiagramElementData {
     );
   }
 
-  // socket ids are only assumed to be unique within their parent
   static generateUniqueKey(parentKey: string, id: string | number) {
     return `${parentKey}--s-${id}`;
   }
@@ -215,6 +214,9 @@ export type DiagramNodeDef = {
   canBeUpgraded: boolean;
   /** whether the component has a resource  */
   hasResource: boolean;
+  /** stats from recursive children */
+  numChildren: number;
+  numChildrenResources: number;
 };
 
 export type DiagramSocketDef = {

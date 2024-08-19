@@ -15,11 +15,12 @@ import {
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 // import plur from "plur";
-// import { ComponentType } from "@/api/sdf/dal/schema";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { BindingWithDisplayName, useFuncStore } from "@/store/func/funcs.store";
 import { useActionsStore } from "@/store/actions.store";
+import { trackEvent } from "@/utils/tracking";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -118,6 +119,23 @@ const rightClickMenuItems = computed(() => {
       header: true,
     });
 
+    if (selectedComponent.value.componentType !== ComponentType.Component) {
+      const verb = componentsStore.collapsedComponents.has(
+        `g-${selectedComponentId.value}`,
+      )
+        ? "Expand"
+        : "Collapse";
+      items.push({
+        label: verb,
+        icon: componentsStore.collapsedComponents.has(
+          `g-${selectedComponentId.value}`,
+        )
+          ? "chevron--down"
+          : "chevron--right",
+        onSelect: toggleCollapse,
+        disabled,
+      });
+    }
     items.push({
       label: `Copy`,
       shortcut: "⌘C",
@@ -278,6 +296,33 @@ function open(
   if (elementPosition) elementPos.value = elementPosition;
   contextMenuRef.value?.open(e, anchorToMouse);
 }
+
+const toggleCollapse = () => {
+  const uniqueKey = `g-${selectedComponentId.value}`;
+  if (componentsStore.collapsedComponents.has(uniqueKey)) {
+    componentsStore.expandComponents(uniqueKey);
+    trackEvent("expand-components", {
+      source: "context-menu",
+      schemaVariantName: selectedComponent.value?.schemaVariantName,
+      schemaName: selectedComponent.value?.schemaName,
+      hasParent: !!selectedComponent.value?.parentId,
+    });
+  } else {
+    const { position, size } =
+      componentsStore.initMinimzedElementPositionAndSize(uniqueKey);
+    componentsStore.updateMinimzedElementPositionAndSize({
+      uniqueKey,
+      position,
+      size,
+    });
+    trackEvent("collapse-components", {
+      source: "context-menu",
+      schemaVariantName: selectedComponent.value?.schemaVariantName,
+      schemaName: selectedComponent.value?.schemaName,
+      hasParent: !!selectedComponent.value?.parentId,
+    });
+  }
+};
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 

@@ -69,7 +69,7 @@
         <div
           v-if="enableGroupToggle"
           class="absolute left-[0px] cursor-pointer"
-          @click="isOpen = !isOpen"
+          @click="toggleGroup"
         >
           <Icon
             :name="isOpen ? 'chevron--down' : 'chevron--right'"
@@ -176,15 +176,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, ref } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
 import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import { useQualificationsStore } from "@/store/qualifications.store";
 
+import { trackEvent } from "@/utils/tracking";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
@@ -203,11 +205,62 @@ const htmlid = `diagram-outline-node-${props.componentId}`;
 
 const isOpen = ref(true);
 
+const component = computed(
+  () => componentsStore.componentsById[props.componentId],
+);
+
+const uniqueKey = computed<string | null>(() => {
+  const c = component.value;
+  if (!c) return null;
+  if (c.componentType === ComponentType.Component) {
+    return `n-${c.id}`;
+  } else {
+    return `g-${c.id}`;
+  }
+});
+
+const toggleGroup = () => {
+  isOpen.value = !isOpen.value;
+  if (!uniqueKey.value) return;
+  if (isOpen.value) {
+    componentsStore.expandComponents(uniqueKey.value);
+    trackEvent("expand-components", {
+      source: "diagram-outline-node",
+      schemaVariantName: component.value?.schemaVariantName,
+      schemaName: component.value?.schemaName,
+      hasParent: !!component.value?.parentId,
+    });
+  } else {
+    const { position, size } =
+      componentsStore.initMinimzedElementPositionAndSize(uniqueKey.value);
+    componentsStore.updateMinimzedElementPositionAndSize({
+      uniqueKey: uniqueKey.value,
+      position,
+      size,
+    });
+    trackEvent("collapse-components", {
+      source: "diagram-outline-node",
+      schemaVariantName: component.value?.schemaVariantName,
+      schemaName: component.value?.schemaName,
+      hasParent: !!component.value?.parentId,
+    });
+  }
+};
+
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 
-const component = computed(
-  () => componentsStore.componentsById[props.componentId],
+watch(
+  componentsStore.collapsedComponents,
+  () => {
+    if (!uniqueKey.value) return;
+    if (componentsStore.collapsedComponents.has(uniqueKey.value)) {
+      isOpen.value = false;
+    } else {
+      isOpen.value = true;
+    }
+  },
+  { immediate: true },
 );
 
 const refreshRequestStatus = componentsStore.getRequestStatus(
