@@ -20,7 +20,6 @@ futures = { workspace = true }
 hyper = { workspace = true }
 nix = { workspace = true }
 pin-project-lite = { workspace = true }
-procfs = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -38,4 +37,5 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+procfs = { workspace = true }
 tokio-vsock = { workspace = true }

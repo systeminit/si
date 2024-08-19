@@ -7,7 +7,6 @@ use tracing::debug;
 use nix::unistd::{chown, Gid, Uid};
 use std::path::{Path, PathBuf};
 use tokio::net::{TcpListener, TcpStream};
-#[cfg(target_os = "linux")]
 use tokio_vsock::VsockStream;
 
 use tokio::fs;
@@ -104,7 +103,6 @@ impl TcpStreamForwarder {
     }
 
     #[allow(clippy::let_underscore_future)] // These needs to just run in the background forever.
-    #[cfg(target_os = "linux")]
     pub async fn start(self) -> Result<()> {
         debug!(port = %self.port, "starting tcp -> vsock forwarder");
         let _: JoinHandle<Result<()>> = tokio::spawn(async move {
