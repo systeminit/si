@@ -309,7 +309,7 @@ impl ComponentInputSocket {
     /// [`crate::InputSocket`] has [`crate::SocketArity::One`]
     #[instrument(
         name = "component.component_input_socket.find_connection_arity_one",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     pub async fn find_connection_arity_one(
