@@ -162,8 +162,11 @@ impl DependentValuesUpdate {
 
         let mut independent_value_ids = dependency_graph.independent_values();
         // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
-        let inferred_connection_graph =
-            Arc::new(Some(InferredConnectionGraph::for_workspace(ctx).await?));
+        let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
+        ctx.workspace_snapshot()?
+            .set_cached_inferred_connection_graph(Some(inferred_connection_graph))
+            .await;
+
         loop {
             if independent_value_ids.is_empty() && task_id_to_av_id.is_empty() {
                 break;
@@ -180,7 +183,6 @@ impl DependentValuesUpdate {
                             ctx.clone(),
                             attribute_value_id,
                             self.set_value_lock.clone(),
-                            inferred_connection_graph.clone()
                         )
                         .instrument(info_span!(parent: parent_span, "dependent_values_update.values_from_prototype_function_execution",
                             attribute_value.id = %attribute_value_id,
@@ -323,7 +325,6 @@ async fn values_from_prototype_function_execution(
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
-    inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
 ) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
     metric!(counter.dvu.function_execution = 1);
     if let Err(err) = send_update_message(
@@ -338,7 +339,7 @@ async fn values_from_prototype_function_execution(
     }
     let parent_span = Span::current();
     let result =
-        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock, inferred_connection_graph)
+        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
             .instrument(info_span!(parent:parent_span, "value.execute_prototype_function", attribute_value.id= %attribute_value_id))
             .await
             .map_err(Into::into);

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use dal::prop::PropPath;
 use dal::{AttributeValue, Component, DalContext, Prop, Schema};
 use dal_test::helpers::ChangeSetTestHelpers;
@@ -46,13 +44,10 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) {
         .pop()
         .expect("empty attribute value ids");
     assert!(attribute_value_ids.is_empty());
-    let (_, arguments) = AttributeValue::prepare_arguments_for_prototype_function_execution(
-        ctx,
-        attribute_value_id,
-        Arc::new(None),
-    )
-    .await
-    .expect("could not prepare arguments");
+    let (_, arguments) =
+        AttributeValue::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
+            .await
+            .expect("could not prepare arguments");
     assert_eq!(
         serde_json::json![{
             "identity": expected

@@ -58,7 +58,6 @@ pub use dependent_value_graph::DependentValueGraph;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
-use crate::component::inferred_connection_graph::InferredConnectionGraph;
 use crate::component::socket::ComponentInputSocket;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -455,12 +454,11 @@ impl AttributeValue {
         .into())
     }
 
-    #[instrument(level = "info" skip(ctx, read_lock,inferred_connection_graph))]
+    #[instrument(level = "info" skip(ctx, read_lock))]
     pub async fn execute_prototype_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
-        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<FuncRunValue> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
@@ -476,12 +474,8 @@ impl AttributeValue {
         // Prepare arguments for prototype function execution.
         let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
         let (prototype_func_id, prepared_args) =
-            Self::prepare_arguments_for_prototype_function_execution(
-                ctx,
-                attribute_value_id,
-                inferred_connection_graph,
-            )
-            .await?;
+            Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
+                .await?;
 
         let result_channel = FuncRunner::run_attribute_value(
             ctx,
@@ -572,11 +566,10 @@ impl AttributeValue {
         Ok(func_values)
     }
 
-    #[instrument(level = "info" skip(ctx,inferred_connection_graph))]
+    #[instrument(level = "info" skip(ctx))]
     pub async fn prepare_arguments_for_prototype_function_execution(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<(FuncId, Value)> {
         // Cache the values we need for preparing arguments for execution.
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
@@ -672,9 +665,7 @@ impl AttributeValue {
         // explicitly configured args
 
         if func_binding_args.is_empty() {
-            let inferred_inputs =
-                Self::get_inferred_input_values(ctx, attribute_value_id, inferred_connection_graph)
-                    .await?;
+            let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
 
             if !inferred_inputs.is_empty() {
                 let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
@@ -714,11 +705,10 @@ impl AttributeValue {
         Ok((prototype_func_id, prepared_func_binding_args))
     }
 
-    #[instrument(level = "info", skip(ctx, inferred_connection_graph))]
+    #[instrument(level = "info", skip(ctx))]
     async fn get_inferred_input_values(
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
-        inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
     ) -> AttributeValueResult<Vec<Value>> {
         let maybe_input_socket_id =
             match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
@@ -739,8 +729,14 @@ impl AttributeValue {
         };
         let mut inputs = vec![];
 
-        let connections = match inferred_connection_graph.as_ref() {
+        let connections = match ctx
+            .workspace_snapshot()?
+            .get_cached_inferred_connection_graph()
+            .await
+            .as_ref()
+        {
             Some(inferred_connection_graph) => {
+                info!("using cached inferred connection graph");
                 let mut outputs = inferred_connection_graph
                     .get_component_connections_to_input_socket(component_input_socket)
                     .into_iter()
@@ -865,13 +861,8 @@ impl AttributeValue {
         // this lock is never locked for writing so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
         // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
-        let execution_result = AttributeValue::execute_prototype_function(
-            ctx,
-            attribute_value_id,
-            read_lock,
-            Arc::new(None),
-        )
-        .await?;
+        let execution_result =
+            AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
         AttributeValue::set_values_from_func_run_value(ctx, attribute_value_id, execution_result)
             .await?;

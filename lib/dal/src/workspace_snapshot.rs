@@ -56,6 +56,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::change_set::{ChangeSetError, ChangeSetId};
+use crate::component::inferred_connection_graph::InferredConnectionGraph;
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
@@ -204,6 +205,9 @@ pub struct WorkspaceSnapshot {
 
     /// A hashset to prevent adding duplicate roots to the workspace in a single edit session
     dvu_roots: Arc<Mutex<HashSet<Ulid>>>,
+
+    /// A cached version of the inferred connection graph for this snapshot
+    inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
 }
 
 /// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
@@ -310,6 +314,7 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
         };
 
         initial.write(ctx).await?;
@@ -504,6 +509,7 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -875,6 +881,7 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -1946,6 +1953,21 @@ impl WorkspaceSnapshot {
         }
 
         Ok(value_ids)
+    }
+
+    /// There are cases where we want to cache this connection graph to avoid calculating
+    /// it more than once for the workspace. In those cases, the graph will be `Some` here.
+    pub async fn get_cached_inferred_connection_graph(
+        &self,
+    ) -> RwLockReadGuard<Option<InferredConnectionGraph>> {
+        self.inferred_connection_graph.read().await
+    }
+
+    pub async fn set_cached_inferred_connection_graph(
+        &self,
+        maybe_graph: Option<InferredConnectionGraph>,
+    ) {
+        *self.inferred_connection_graph.write().await = maybe_graph;
     }
 
     /// If this node is associated to a single av, return it
