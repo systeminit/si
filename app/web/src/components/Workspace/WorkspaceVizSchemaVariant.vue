@@ -90,10 +90,12 @@ const { theme } = useTheme();
 
 const schemaVariant = ref();
 const schemaVariantOptions = computed(() => {
-  const options = componentStore.schemaVariants.map((sv) => ({
-    label: sv.schemaName,
-    value: sv.schemaVariantId,
-  }));
+  const options = componentStore.schemaVariants
+    .map((sv) => ({
+      label: sv.schemaName,
+      value: sv.schemaVariantId,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   options.unshift({ label: "Full Workspace", value: "all" });
   return options;
 });
