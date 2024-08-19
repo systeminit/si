@@ -366,6 +366,7 @@ async fn receive_job_requests(
     // Forward each request off the stream to a consuming task via an *unbounded* channel so we
     // buffer requests until we run out of memory. Have fun!
     while let Some(job) = requests.next().await {
+        metric!(counter.pinga.waiting_jobs = 1);
         if let Err(_job) = tx.send(job) {
             error!("process_job_requests rx has already closed");
         }
@@ -382,7 +383,7 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
         .for_each_concurrent(concurrency_limit, |job| async move {
             let concurrency_count = CONCURRENT_TASKS.fetch_add(1, atomic::Ordering::Relaxed) + 1;
             metric!(counter.pinga.concurrency_count = 1);
-
+            metric!(counter.pinga.waiting_jobs = -1);
             let span = Span::current();
             span.record("concurrency.count", concurrency_count);
 

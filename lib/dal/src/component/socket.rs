@@ -174,19 +174,22 @@ impl ComponentInputSocket {
     /// If there is ever ambiguity about which [`crate::InputSocket`] they should connect to, we default
     /// to none, forcing the user to explicity configure a connection by drawing an Edge
     #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
-
     pub async fn find_inferred_connections(
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
     ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        let component_graph =
-            InferredConnectionGraph::assemble(ctx, component_input_socket.component_id).await?;
-        let mut connections: Vec<ComponentOutputSocket> = component_graph
-            .get_component_connections_to_input_socket(component_input_socket)
+        let incoming_connections = InferredConnectionGraph::assemble_incoming_only(
+            ctx,
+            component_input_socket.component_id,
+        )
+        .await?;
+        let connections: Vec<ComponentOutputSocket> = incoming_connections
+            .get(&component_input_socket)
+            .unwrap_or(&Vec::new())
+            .clone()
             .into_iter()
-            .collect();
+            .collect_vec();
 
-        connections.sort_by_key(|output| output.component_id);
         Ok(connections)
     }
 
