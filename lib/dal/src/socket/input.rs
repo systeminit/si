@@ -43,6 +43,8 @@ pub enum InputSocketError {
     ComponentError(#[from] Box<ComponentError>),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
+    #[error("found too many matches for input and socket: {0}, {1}")]
+    FoundTooManyForInputSocketId(InputSocketId, ComponentId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("helper error: {0}")]
@@ -372,7 +374,13 @@ impl InputSocket {
         Ok(input_sockets)
     }
 
-    pub async fn attribute_values_for_input_socket_id(
+    ///
+    /// Get all attribute values from all components that are connected to this input socket.
+    ///
+    /// NOTE: call component_attribute_value_for_input_socket_id() if you want the attribute
+    /// value for a specific component.
+    ///
+    pub async fn all_attribute_values_everywhere_for_input_socket_id(
         ctx: &DalContext,
         input_socket_id: InputSocketId,
     ) -> InputSocketResult<Vec<AttributeValueId>> {
@@ -402,21 +410,31 @@ impl InputSocket {
         input_socket_id: InputSocketId,
         component_id: ComponentId,
     ) -> InputSocketResult<AttributeValueId> {
+        let mut result = None;
         for attribute_value_id in
-            Self::attribute_values_for_input_socket_id(ctx, input_socket_id).await?
+            Self::all_attribute_values_everywhere_for_input_socket_id(ctx, input_socket_id).await?
         {
             if AttributeValue::component_id(ctx, attribute_value_id)
                 .await
                 .map_err(Box::new)?
                 == component_id
             {
-                return Ok(attribute_value_id);
+                if result.is_some() {
+                    return Err(InputSocketError::FoundTooManyForInputSocketId(
+                        input_socket_id,
+                        component_id,
+                    ));
+                }
+                result = Some(attribute_value_id);
             }
         }
-        Err(InputSocketError::MissingAttributeValueForComponent(
-            input_socket_id,
-            component_id,
-        ))
+        match result {
+            Some(attribute_value_id) => Ok(attribute_value_id),
+            None => Err(InputSocketError::MissingAttributeValueForComponent(
+                input_socket_id,
+                component_id,
+            )),
+        }
     }
 
     pub async fn find_for_attribute_value_id(

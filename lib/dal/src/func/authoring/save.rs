@@ -498,20 +498,20 @@ pub(crate) async fn create_new_attribute_prototype(
         }
     } else if let Some(output_socket_id) = prototype_bag.output_socket_id {
         if let Some(component_id) = component_id_cannot_be_nil_id {
-            let attribute_value_ids =
-                OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket_id).await?;
-            for attribute_value_id in attribute_value_ids {
-                if component_id == AttributeValue::component_id(ctx, attribute_value_id).await? {
-                    AttributeValue::set_component_prototype_id(
-                        ctx,
-                        attribute_value_id,
-                        attribute_prototype.id,
-                        None,
-                    )
-                    .await?;
-                    affected_attribute_value_ids.push(attribute_value_id);
-                }
-            }
+            let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                output_socket_id,
+                component_id,
+            )
+            .await?;
+            AttributeValue::set_component_prototype_id(
+                ctx,
+                attribute_value_id,
+                attribute_prototype.id,
+                None,
+            )
+            .await?;
+            affected_attribute_value_ids.push(attribute_value_id);
         } else {
             // remove the existing attribute prototype and arguments
             if let Some(existing_proto) =

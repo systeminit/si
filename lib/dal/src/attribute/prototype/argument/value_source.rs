@@ -10,8 +10,8 @@ use crate::{
         input::{InputSocketError, InputSocketId},
         output::OutputSocketError,
     },
-    AttributeValue, AttributeValueId, ComponentId, DalContext, InputSocket, OutputSocket,
-    OutputSocketId, Prop, PropId, SecretId,
+    AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, InputSocket,
+    OutputSocket, OutputSocketId, Prop, PropId, SecretId,
 };
 
 use super::static_value::StaticArgumentValueId;
@@ -21,6 +21,8 @@ use super::static_value::StaticArgumentValueId;
 pub enum ValueSourceError {
     #[error("attribute value error: {0}")]
     AttributeValue(String),
+    #[error("component error: {0}")]
+    Component(#[from] Box<ComponentError>),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("output socket error: {0}")]
@@ -46,16 +48,21 @@ pub enum ValueSource {
 }
 
 impl ValueSource {
-    async fn attribute_values(&self, ctx: &DalContext) -> ValueSourceResult<Vec<AttributeValueId>> {
+    async fn all_attribute_values_everywhere(
+        &self,
+        ctx: &DalContext,
+    ) -> ValueSourceResult<Vec<AttributeValueId>> {
         Ok(match self {
             Self::Prop(prop_id) => {
                 Prop::all_attribute_values_everywhere_for_prop_id(ctx, *prop_id).await?
             }
             Self::OutputSocket(ep_id) => {
-                OutputSocket::attribute_values_for_output_socket_id(ctx, *ep_id).await?
+                OutputSocket::all_attribute_values_everywhere_for_output_socket_id(ctx, *ep_id)
+                    .await?
             }
             Self::InputSocket(ip_id) => {
-                InputSocket::attribute_values_for_input_socket_id(ctx, *ip_id).await?
+                InputSocket::all_attribute_values_everywhere_for_input_socket_id(ctx, *ip_id)
+                    .await?
             }
             Self::Secret(secret_id) => {
                 return Err(ValueSourceError::SecretSourcesNoValues(*secret_id))
@@ -81,9 +88,11 @@ impl ValueSource {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ValueSourceResult<Vec<AttributeValueId>> {
+        // We'd like to use Component::attribute_values_for_prop_id and friends, but the Component
+        // one in particular treats OrphanedAttributeValue as an error.
         let mut result = vec![];
 
-        for value_id in self.attribute_values(ctx).await? {
+        for value_id in self.all_attribute_values_everywhere(ctx).await? {
             let value_component_id = match AttributeValue::component_id(ctx, value_id).await {
                 Ok(component_id) => Some(component_id),
                 // If this is a child value of a value set by a dynamic
