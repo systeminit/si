@@ -21,7 +21,7 @@ use super::{
     state::{AppState, ApplicationRuntimeMode},
 };
 
-async fn my_middleware<B>(
+async fn app_state_middeware<B>(
     State(state): State<AppState>,
     request: Request<B>,
     next: Next<B>,
@@ -30,7 +30,7 @@ async fn my_middleware<B>(
         ApplicationRuntimeMode::Maintenance => {
 
             // Return a 503 when the server is in maintenance/offline
-            (StatusCode::SERVICE_UNAVAILABLE, "Service is now in maintenance mode, please try again later or reach out on Discord for more information").into_response()
+            (StatusCode::SERVICE_UNAVAILABLE, "SI is currently in maintenance mode. Please try again later. Reach out in Discord for more information if this problem persists.").into_response()
 
         }
         ApplicationRuntimeMode::Running => next.run(request).await,
@@ -102,7 +102,7 @@ pub fn routes(state: AppState) -> Router {
                     Method::TRACE,
                 ]),
         )
-        .layer(middleware::from_fn_with_state(state.clone(), my_middleware));
+        .layer(middleware::from_fn_with_state(state.clone(), app_state_middeware));
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);

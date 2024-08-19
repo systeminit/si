@@ -134,7 +134,7 @@ impl Server<(), ()> {
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx, johnwatson_mode_rx, shutdown_broadcast_rx) =
+                let (service, shutdown_rx, application_mode_rx, shutdown_broadcast_rx) =
                     build_service(
                         services_context,
                         jwt_public_signing_key,
@@ -181,7 +181,7 @@ impl Server<(), ()> {
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx, johnwatson_mode_rx, shutdown_broadcast_rx) =
+                let (service, shutdown_rx, application_mode_rx, shutdown_broadcast_rx) =
                     build_service(
                         services_context,
                         jwt_public_signing_key,
@@ -583,13 +583,13 @@ fn build_service_inner(
             .on_response(HttpOnResponse::new().level(Level::DEBUG)),
     );
 
-    let (graceful_shutdown_rx, johnwatson_mode_rx) =
+    let (graceful_shutdown_rx, application_mode_rx) =
         prepare_signal_handlers(shutdown_rx, shutdown_broadcast_tx, mode)?;
 
     Ok((
         routes,
         graceful_shutdown_rx,
-        johnwatson_mode_rx,
+        application_mode_rx,
         shutdown_broadcast_rx,
     ))
 }
@@ -600,7 +600,7 @@ fn prepare_signal_handlers(
     mode: Arc<RwLock<ApplicationRuntimeMode>>,
 ) -> Result<(oneshot::Receiver<()>, oneshot::Receiver<()>)> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
-    let (_johnwatson_mode_tx, johnwatson_mode_rx) = oneshot::channel::<()>();
+    let (_application_mode_tx, application_mode_rx) = oneshot::channel::<()>();
 
     let mut sigterm_watcher =
         signal::unix::signal(signal::unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
@@ -663,7 +663,7 @@ fn prepare_signal_handlers(
 
     });
 
-    Ok((graceful_shutdown_rx, johnwatson_mode_rx))
+    Ok((graceful_shutdown_rx, application_mode_rx))
 }
 
 #[remain::sorted]
