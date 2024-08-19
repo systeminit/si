@@ -126,10 +126,19 @@ execute_configuration_management() {
 
         arch=$(uname -m)
         # Remainder of the binaries
-        # TODO(scott): perform some kind of check to decide if we should
-        # download these or not to avoid long downloads if we can.
         if $DOWNLOAD_ROOTFS; then
-          wget https://artifacts.systeminit.com/cyclone/stable/rootfs/linux/${arch}/cyclone-stable-rootfs-linux-${arch}.ext4 -O ./rootfs.ext4
+          url="https://artifacts.systeminit.com/cyclone/stable/rootfs/linux/${arch}/cyclone-stable-rootfs-linux-${arch}.ext4"
+          # we keep track of the version, so if this is either the first time we
+          # are downloading or if the version is the same we should be good to
+          # skip pulling this again.
+          rootfs_version_file="./rootfs_version"
+          rootfs_version=$(wget -qO- $url.metadata.json | jq -r '.version')
+
+          if [ ! -f "$rootfs_version_file" ] || ! grep -q "^$rootfs_version$" "$rootfs_version_file"; then
+              echo "Pulling version ${rootfs_version}"
+              echo $rootfs_version > $rootfs_version_file
+              wget $url -O ./rootfs.ext4
+          fi
         fi
 
         if $DOWNLOAD_KERNEL; then
