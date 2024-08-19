@@ -26,6 +26,7 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 use telemetry::prelude::*;
 use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::Instant;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -38,7 +39,7 @@ use tower_http::trace::TraceLayer;
 use ulid::Ulid;
 use veritech_client::Client as VeritechClient;
 
-use super::state::AppState;
+use super::state::{AppState, ApplicationRuntimeMode};
 use super::{
     routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError,
     WorkspacePermissions, WorkspacePermissionsMode,
@@ -133,15 +134,16 @@ impl Server<(), ()> {
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
-                    services_context,
-                    jwt_public_signing_key,
-                    posthog_client,
-                    ws_multiplexer_client,
-                    crdt_multiplexer_client,
-                    *config.create_workspace_permissions(),
-                    config.create_workspace_allowlist().to_vec(),
-                )?;
+                let (service, shutdown_rx, johnwatson_mode_rx, shutdown_broadcast_rx) =
+                    build_service(
+                        services_context,
+                        jwt_public_signing_key,
+                        posthog_client,
+                        ws_multiplexer_client,
+                        crdt_multiplexer_client,
+                        *config.create_workspace_permissions(),
+                        config.create_workspace_allowlist().to_vec(),
+                    )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
                 tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -179,15 +181,16 @@ impl Server<(), ()> {
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
-                    services_context,
-                    jwt_public_signing_key,
-                    posthog_client,
-                    ws_multiplexer_client,
-                    crdt_multiplexer_client,
-                    *config.create_workspace_permissions(),
-                    config.create_workspace_allowlist().to_vec(),
-                )?;
+                let (service, shutdown_rx, johnwatson_mode_rx, shutdown_broadcast_rx) =
+                    build_service(
+                        services_context,
+                        jwt_public_signing_key,
+                        posthog_client,
+                        ws_multiplexer_client,
+                        crdt_multiplexer_client,
+                        *config.create_workspace_permissions(),
+                        config.create_workspace_allowlist().to_vec(),
+                    )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
                 tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -486,7 +489,12 @@ pub fn build_service_for_tests(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+) -> Result<(
+    Router,
+    oneshot::Receiver<()>,
+    oneshot::Receiver<()>,
+    broadcast::Receiver<()>,
+)> {
     build_service_inner(
         services_context,
         jwt_public_signing_key,
@@ -507,7 +515,12 @@ pub fn build_service(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+) -> Result<(
+    Router,
+    oneshot::Receiver<()>,
+    oneshot::Receiver<()>,
+    broadcast::Receiver<()>,
+)> {
     build_service_inner(
         services_context,
         jwt_public_signing_key,
@@ -530,7 +543,12 @@ fn build_service_inner(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+) -> Result<(
+    Router,
+    oneshot::Receiver<()>,
+    oneshot::Receiver<()>,
+    broadcast::Receiver<()>,
+)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
@@ -546,6 +564,8 @@ fn build_service_inner(
         create_workspace_permissions,
         create_workspace_allowlist,
     );
+
+    let mode = state.application_runtime_mode.clone();
 
     let path_filter = Box::new(|path: &str| match path {
         "/api/" => Some(Level::TRACE),
@@ -563,18 +583,29 @@ fn build_service_inner(
             .on_response(HttpOnResponse::new().level(Level::DEBUG)),
     );
 
-    let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
+    let (graceful_shutdown_rx, johnwatson_mode_rx) =
+        prepare_signal_handlers(shutdown_rx, shutdown_broadcast_tx, mode)?;
 
-    Ok((routes, graceful_shutdown_rx, shutdown_broadcast_rx))
+    Ok((
+        routes,
+        graceful_shutdown_rx,
+        johnwatson_mode_rx,
+        shutdown_broadcast_rx,
+    ))
 }
 
-fn prepare_graceful_shutdown(
+fn prepare_signal_handlers(
     mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
-) -> Result<oneshot::Receiver<()>> {
+    mode: Arc<RwLock<ApplicationRuntimeMode>>,
+) -> Result<(oneshot::Receiver<()>, oneshot::Receiver<()>)> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
+    let (_johnwatson_mode_tx, johnwatson_mode_rx) = oneshot::channel::<()>();
+
     let mut sigterm_watcher =
         signal::unix::signal(signal::unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
+    let mut sigusr2_watcher = signal::unix::signal(signal::unix::SignalKind::user_defined2())
+        .map_err(ServerError::Signal)?;
 
     tokio::spawn(async move {
         fn send_graceful_shutdown(
@@ -601,6 +632,16 @@ fn prepare_graceful_shutdown(
                 info!("received SIGTERM signal, performing graceful shutdown");
                 send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
             }
+            _ = sigusr2_watcher.recv() => {
+                info!("received SIGUSR2 signal, changing application runtime mode");
+                let mut mode = mode.write().await;
+                info!(?mode, "current application runtime mode (changing it...)");
+                *mode = match *mode {
+                    ApplicationRuntimeMode::Maintenance => ApplicationRuntimeMode::Running,
+                    ApplicationRuntimeMode::Running => ApplicationRuntimeMode::Maintenance,
+                };
+                info!(?mode, "new application runtime mode (changed!)");
+            }
             source = shutdown_rx.recv() => {
                 info!(
                     "received internal shutdown, performing graceful shutdown; source={:?}",
@@ -615,7 +656,7 @@ fn prepare_graceful_shutdown(
         };
     });
 
-    Ok(graceful_shutdown_rx)
+    Ok((graceful_shutdown_rx, johnwatson_mode_rx))
 }
 
 #[remain::sorted]

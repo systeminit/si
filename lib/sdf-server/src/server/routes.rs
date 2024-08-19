@@ -1,12 +1,14 @@
 use axum::{
+    extract::State,
     http::HeaderValue,
+    http::{Request, StatusCode},
+    middleware::{self, Next},
     response::{IntoResponse, Json, Response},
     routing::get,
     Router,
 };
 use hyper::header;
 use hyper::Method;
-use hyper::StatusCode;
 use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -15,7 +17,21 @@ use thiserror::Error;
 use tower_http::cors::CorsLayer;
 use tower_http::{compression::CompressionLayer, cors::AllowOrigin};
 
-use super::{server::ServerError, state::AppState};
+use super::{
+    server::ServerError,
+    state::{AppState, ApplicationRuntimeMode},
+};
+
+async fn my_middleware<B>(
+    State(state): State<AppState>,
+    request: Request<B>,
+    next: Next<B>,
+) -> Response {
+    match *state.application_runtime_mode.read().await {
+        ApplicationRuntimeMode::Maintenance => panic!("this exploded!"),
+        ApplicationRuntimeMode::Running => next.run(request).await,
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
@@ -81,7 +97,8 @@ pub fn routes(state: AppState) -> Router {
                     Method::PATCH,
                     Method::TRACE,
                 ]),
-        );
+        )
+        .layer(middleware::from_fn_with_state(state.clone(), my_middleware));
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);
