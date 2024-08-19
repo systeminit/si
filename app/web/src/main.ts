@@ -30,7 +30,7 @@ let otelEndpoint =
   import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = window.location.host;
 const sdk = new HoneycombWebSDK({
-  endpoint: `${otelEndpoint}:4318/v1/traces`,
+  endpoint: `${otelEndpoint}/v1/traces`,
   serviceName: "si-vue",
   skipOptionsValidation: true,
   instrumentations: [
