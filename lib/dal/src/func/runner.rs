@@ -645,7 +645,6 @@ impl FuncRunner {
             otel.status_code = Empty,
             otel.status_message = Empty,
             si.attribute_value.id = Empty,
-            si.change_set.id = Empty,
             si.component.id = Empty,
             si.func_run.func.args = Empty,
             si.func_run.func.backend_kind = Empty,
@@ -654,7 +653,6 @@ impl FuncRunner {
             si.func_run.func.kind = Empty,
             si.func_run.func.name = Empty,
             si.func_run.id = Empty,
-            si.workspace.id = Empty,
         )
     )]
     pub async fn run_attribute_value(
@@ -766,15 +764,7 @@ impl FuncRunner {
                     "si.attribute_value.id",
                     attribute_value_id.array_to_str(&mut id_buf),
                 );
-                parent_span.record(
-                    "si.change_set.id",
-                    func_run_inner.change_set_id().array_to_str(&mut id_buf),
-                );
                 parent_span.record("si.component.id", component_id.array_to_str(&mut id_buf));
-                parent_span.record(
-                    "si.workspace.id",
-                    func_run_inner.workspace_pk().array_to_str(&mut id_buf),
-                );
             }
 
             let func_run = Arc::new(func_run_inner);
