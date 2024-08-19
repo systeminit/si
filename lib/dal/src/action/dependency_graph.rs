@@ -34,6 +34,11 @@ impl ActionDependencyGraph {
 
     /// Construct an [`ActionDependencyGraph`] of all of the queued [`Action`s][crate::action::Action]
     /// for the current [`WorkspaceSnapshot`][crate::WorkspaceSnapshot].
+    #[instrument(
+        level = "info",
+        name = "action.dependency_graph.for_workspace",
+        skip(ctx)
+    )]
     pub async fn for_workspace(ctx: &DalContext) -> ActionResult<Self> {
         // * Get all ActionId -> ComponentId mappings.
         // * For each of these ComponentIds (A):

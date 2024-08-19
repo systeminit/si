@@ -387,7 +387,7 @@ pub struct Diagram {
 impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
-    #[instrument(level = "debug", skip(ctx))]
+    #[instrument(level = "info", skip(ctx))]
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
         let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
