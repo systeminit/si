@@ -1418,7 +1418,7 @@ impl WorkspaceSnapshot {
 
     #[instrument(
         name = "workspace_snapshot.components_added_relative_to_base",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     pub async fn components_added_relative_to_base(

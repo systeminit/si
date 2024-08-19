@@ -139,6 +139,11 @@ impl DependentValuesUpdate {
         let start = tokio::time::Instant::now();
         let span = Span::current();
         let node_ids = ctx.workspace_snapshot()?.take_dependent_values().await?;
+        // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
+        let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
+        ctx.workspace_snapshot()?
+            .set_cached_inferred_connection_graph(Some(inferred_connection_graph))
+            .await;
 
         let mut dependency_graph = DependentValueGraph::new(ctx, node_ids).await?;
 
@@ -161,11 +166,6 @@ impl DependentValuesUpdate {
         let mut update_join_set = JoinSet::new();
 
         let mut independent_value_ids = dependency_graph.independent_values();
-        // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
-        let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
-        ctx.workspace_snapshot()?
-            .set_cached_inferred_connection_graph(Some(inferred_connection_graph))
-            .await;
 
         loop {
             if independent_value_ids.is_empty() && task_id_to_av_id.is_empty() {
