@@ -3,12 +3,19 @@ use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
 use std::fmt;
 use std::{ops::Deref, sync::Arc};
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
 
 use super::server::ShutdownSource;
 use super::{WorkspacePermissions, WorkspacePermissionsMode};
 use crate::server::nats_multiplexer::NatsMultiplexerClients;
 use crate::server::service::ws::crdt::BroadcastGroups;
+
+#[remain::sorted]
+#[derive(Debug, Clone, Copy)]
+pub enum ApplicationRuntimeMode {
+    Maintenance,
+    Running,
+}
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
@@ -21,6 +28,7 @@ pub struct AppState {
     nats_multiplexer_clients: NatsMultiplexerClients,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
+    pub application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
 
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
     // that will trigger the read side and... shutdown. Cool, no?
@@ -57,6 +65,7 @@ impl AppState {
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
             create_workspace_permissions,
             create_workspace_allowlist,
+            application_runtime_mode: Arc::new(RwLock::new(ApplicationRuntimeMode::Running)),
         }
     }
 

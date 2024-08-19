@@ -379,7 +379,7 @@ impl SdfTestFnSetupExpander {
                         #task_tracker.clone(),
                     )
                     .await;
-                let (service, _, _) = ::sdf_server::build_service_for_tests(
+                let (service, _, _, _) = ::sdf_server::build_service_for_tests(
                     s_ctx,
                     #jwt_public_signing_key.clone(),
                     #posthog_client,
