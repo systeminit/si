@@ -58,13 +58,22 @@ impl ComponentOutputSocket {
             ValueIsFor::OutputSocket(sock) => sock,
         };
         let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        // build the latest component tree for this component
-        let component_tree = InferredConnectionGraph::assemble(ctx, component_id).await?;
-        // get the input sockets using this output socket
-        let mut connections: Vec<ComponentInputSocket> = component_tree
-            .get_component_connections_to_output_socket(component_id, output_socket_id)
-            .into_iter()
-            .collect();
+
+        let mut connections: Vec<ComponentInputSocket> = match ctx
+            .workspace_snapshot()?
+            .get_cached_inferred_connection_graph()
+            .await
+            .as_ref()
+        {
+            Some(cached_graph) => cached_graph
+                .get_component_connections_to_output_socket(component_id, output_socket_id),
+            None => InferredConnectionGraph::assemble(ctx, component_id)
+                .await?
+                .get_component_connections_to_output_socket(component_id, output_socket_id),
+        }
+        .into_iter()
+        .collect();
+
         // sort by component id for consistent ordering
         connections.sort_by_key(|input| input.component_id);
         Ok(connections)
@@ -178,17 +187,29 @@ impl ComponentInputSocket {
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
     ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        let incoming_connections = InferredConnectionGraph::assemble_incoming_only(
-            ctx,
-            component_input_socket.component_id,
-        )
-        .await?;
-        let connections: Vec<ComponentOutputSocket> = incoming_connections
+        let mut connections: Vec<_> = match ctx
+            .workspace_snapshot()?
+            .get_cached_inferred_connection_graph()
+            .await
+            .as_ref()
+        {
+            Some(cached_graph) => cached_graph
+                .get_component_connections_to_input_socket(component_input_socket)
+                .into_iter()
+                .collect(),
+            None => InferredConnectionGraph::assemble_incoming_only(
+                ctx,
+                component_input_socket.component_id,
+            )
+            .await?
             .get(&component_input_socket)
-            .unwrap_or(&Vec::new())
+            .unwrap_or(&vec![])
             .clone()
             .into_iter()
-            .collect_vec();
+            .collect_vec(),
+        };
+
+        connections.sort_by_key(|output| output.component_id);
 
         Ok(connections)
     }

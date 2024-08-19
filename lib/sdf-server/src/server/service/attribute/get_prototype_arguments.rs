@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::{AttributeValue, OutputSocket, OutputSocketId, Prop, PropId, Visibility};
@@ -81,7 +79,6 @@ pub async fn get_prototype_arguments(
         AttributeValue::prepare_arguments_for_prototype_function_execution(
             &ctx,
             attribute_value_id,
-            Arc::new(None),
         )
         .await?;
 

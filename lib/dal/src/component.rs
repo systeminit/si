@@ -2667,11 +2667,22 @@ impl Component {
     ) -> ComponentResult<Vec<InferredConnection>> {
         let to_component_id = self.id();
         let mut connections = vec![];
-        // assemble tree
-        let tree = InferredConnectionGraph::assemble(ctx, to_component_id).await?;
-        for incoming_connection in
-            tree.get_inferred_incoming_connections_to_component(to_component_id)
+
+        let incoming_connections = match ctx
+            .workspace_snapshot()?
+            .get_cached_inferred_connection_graph()
+            .await
+            .as_ref()
         {
+            Some(cached_graph) => {
+                cached_graph.get_inferred_incoming_connections_to_component(to_component_id)
+            }
+            None => InferredConnectionGraph::assemble(ctx, to_component_id)
+                .await?
+                .get_inferred_incoming_connections_to_component(to_component_id),
+        };
+
+        for incoming_connection in incoming_connections {
             // add the check for to_delete on either to or from component
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed
@@ -2708,12 +2719,22 @@ impl Component {
     ) -> ComponentResult<Vec<InferredConnection>> {
         let from_component_id = self.id();
         let mut connections = vec![];
-        // get up to date component tree
-        let component_tree = InferredConnectionGraph::assemble(ctx, from_component_id).await?;
 
-        for outgoing_connection in
-            component_tree.get_inferred_outgoing_connections_for_component(from_component_id)
+        let outgoing_connections = match ctx
+            .workspace_snapshot()?
+            .get_cached_inferred_connection_graph()
+            .await
+            .as_ref()
         {
+            Some(cached_graph) => {
+                cached_graph.get_inferred_outgoing_connections_for_component(from_component_id)
+            }
+            None => InferredConnectionGraph::assemble(ctx, from_component_id)
+                .await?
+                .get_inferred_outgoing_connections_for_component(from_component_id),
+        };
+
+        for outgoing_connection in outgoing_connections {
             // add the check for to_delete on either to or from component
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed

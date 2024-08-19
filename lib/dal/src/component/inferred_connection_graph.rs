@@ -69,7 +69,7 @@ impl InferredConnectionGraph {
             let is_in_tree = components.contains_key(&component_id)
                 || components.values().any(|x| x.contains(&component_id));
 
-            // If this component id isn't already in the hashmap somewhere, skip it
+            // If this component id is already in the hashmap somewhere, skip it
             // since we already have accounted for it!
             if !is_in_tree {
                 // Get the outermost parent of this tree

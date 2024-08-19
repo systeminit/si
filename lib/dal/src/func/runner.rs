@@ -1256,7 +1256,6 @@ impl FuncRunner {
                             )
                             .await?
                         {
-                            dbg!("Source component ID: {}", &source_component_id);
                             work_queue.push_back(source_component_id);
                         }
                     }
