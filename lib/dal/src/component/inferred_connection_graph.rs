@@ -50,7 +50,7 @@ impl InferredConnectionGraph {
     /// Then, find all inferred connections for everything we've found
     #[instrument(
         name = "component.inferred_connection_graph.assemble_for_components",
-        level = "debug",
+        level = "info",
         skip(ctx)
     )]
     pub async fn assemble_for_components(
@@ -113,7 +113,7 @@ impl InferredConnectionGraph {
     /// Create a [`InferredConnectionGraph`] containing all [`Component`]s in this Workspace
     #[instrument(
         name = "component.inferred_connection_graph.for_workspace",
-        level = "debug",
+        level = "info",
         skip(ctx)
     )]
     pub async fn for_workspace(ctx: &DalContext) -> ComponentResult<Self> {
@@ -131,7 +131,7 @@ impl InferredConnectionGraph {
     /// Then, find all inferred connections for everything in the tree
     #[instrument(
         name = "component.inferred_connection_graph.assemble",
-        level = "debug",
+        level = "info",
         skip(ctx)
     )]
     pub async fn assemble(
@@ -139,6 +139,42 @@ impl InferredConnectionGraph {
         with_component_id: ComponentId,
     ) -> ComponentResult<Self> {
         Self::assemble_for_components(ctx, vec![with_component_id]).await
+    }
+
+    /// Assembles the a map of Incoming Connections from the perspective of this single [`ComponentId`]
+    #[instrument(
+        name = "component.inferred_connection_graph.assemble_incoming_only",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn assemble_incoming_only(
+        ctx: &DalContext,
+        for_component_id: ComponentId,
+    ) -> ComponentResult<HashMap<ComponentInputSocket, Vec<ComponentOutputSocket>>> {
+        let mut component_incoming_connections: HashMap<
+            ComponentId,
+            HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
+        > = HashMap::new();
+        let (input_sockets, duplicates) = Self::process_component(ctx, for_component_id).await?;
+        Self::update_incoming_connections(
+            &mut component_incoming_connections,
+            for_component_id,
+            input_sockets,
+            duplicates,
+        );
+        let mut incoming_connections = HashMap::new();
+        for (input_socket, output_sockets) in component_incoming_connections
+            .get(&for_component_id)
+            .unwrap_or(&HashMap::new())
+        {
+            let outputs = output_sockets
+                .iter()
+                .cloned()
+                .sorted_by_key(|output| output.component_id)
+                .collect();
+            incoming_connections.insert(*input_socket, outputs);
+        }
+        Ok(incoming_connections)
     }
 
     /// Walk the frame contains edges to find the top most parent with the given ComponentId beneath it
@@ -361,6 +397,7 @@ impl InferredConnectionGraph {
     }
 
     /// For the provided [`ComponentId`], build a tree of all Components that are a descendant (directly or indirectly)
+    #[instrument(level = "info", skip(ctx))]
     async fn build_tree(
         ctx: &DalContext,
         first_top_parent: ComponentId,

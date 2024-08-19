@@ -3,6 +3,7 @@ use std::{
     convert::TryFrom,
     sync::Arc,
 };
+use telemetry_utils::metric;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -152,7 +153,9 @@ impl DependentValuesUpdate {
                 dependency_graph.remove_value(value);
             }
         }
-
+        let number_of_values = dependency_graph.all_value_ids().len();
+        // count the total number of funcs?
+        metric!(counter.dvu.values_to_run = number_of_values);
         let mut seen_ids = HashSet::new();
         let mut task_id_to_av_id = HashMap::new();
         let mut update_join_set = JoinSet::new();
@@ -191,6 +194,9 @@ impl DependentValuesUpdate {
             // Wait for a task to finish
             if let Some(join_result) = update_join_set.join_next().await {
                 let (task_id, execution_result) = join_result?;
+                metric!(counter.dvu.values_to_run = -1);
+
+                metric!(counter.dvu.function_execution = -1);
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
                         Ok(execution_values) => {
@@ -319,6 +325,7 @@ async fn values_from_prototype_function_execution(
     set_value_lock: Arc<RwLock<()>>,
     inferred_connection_graph: Arc<Option<InferredConnectionGraph>>,
 ) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
+    metric!(counter.dvu.function_execution = 1);
     if let Err(err) = send_update_message(
         &ctx,
         attribute_value_id,

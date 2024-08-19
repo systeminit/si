@@ -1361,6 +1361,7 @@ dependencies = [
  "strum 0.26.3",
  "telemetry",
  "telemetry-nats",
+ "telemetry-utils",
  "tempfile",
  "thiserror",
  "tokio",
