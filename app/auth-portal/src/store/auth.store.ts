@@ -23,6 +23,7 @@ export type User = {
   agreedTosVersion?: string;
   githubUsername?: string;
   discordUsername?: string;
+  quarantinedAt?: ISODateString;
   onboardingDetails?: {
     vroStepsCompletedAt?: Record<string, ISODateString>;
     reviewedProfile?: ISODateString;
@@ -105,6 +106,15 @@ export const useAuthStore = defineStore("auth", {
         params: user,
         onSuccess: (response) => {
           this.user = response.user;
+        },
+      });
+    },
+    async SET_USER_QUARANTINE(userId: string, isQuarantined: boolean) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/users/${userId}/quarantine`,
+        params: {
+          isQuarantined,
         },
       });
     },

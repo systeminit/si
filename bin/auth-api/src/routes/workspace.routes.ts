@@ -26,6 +26,21 @@ import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
 import { router } from ".";
 
+// Routes are now intercepted if user is not logged or quarantined
+// TODO(victor) remove auth checkin on the endpoints. This wasn't done because assuming ctx.state.authUser exist would break lint
+router.use("/workspaces", async (ctx, next) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError("Unauthorized", "You are not logged in");
+  }
+
+  if (ctx.state.authUser.quarantinedAt !== null) {
+    throw new ApiError("Unauthorized", "This account is quarantined. Contact SI support");
+  }
+
+  await next();
+});
+
 router.get("/workspaces", async (ctx) => {
   // user must be logged in
   if (!ctx.state.authUser) {
@@ -373,7 +388,7 @@ router.post("/complete-auth-connect", async (ctx) => {
   const user = await getUserById(connectPayload.userId);
   if (!user) throw new ApiError("Conflict", "User no longer exists");
 
-  const token = await createSdfAuthToken(user.id, workspace.id);
+  const token = createSdfAuthToken(user.id, workspace.id);
 
   ctx.body = {
     user,

@@ -5,6 +5,7 @@ import { nextTick } from "vue";
 import posthog from "posthog-js";
 import storage from "local-storage-fallback";
 import WorkspaceDetailsPage from "@/pages/WorkspaceDetailsPage.vue";
+import QuarantineNoticePage from "@/pages/QuarantineNoticePage.vue";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
@@ -91,6 +92,11 @@ export const routerOptions: RouterOptions = {
         storage.removeItem("SI-LOGIN-REDIRECT");
         return savedPath || { name: "default-workspace" };
       },
+    },
+    {
+      path: "/quarantine-notice",
+      name: "quarantine-notice",
+      component: QuarantineNoticePage,
     },
     { path: "/:catchAll(.*)", name: "404", component: NotFoundPage },
   ],
