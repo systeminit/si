@@ -54,6 +54,8 @@ jobs:
       - name: Build
         if: ${{ inputs.service == 'web' }}
         working-directory: app/web
+        env:
+          VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.VITE_SI_WORKSPACE_URL }}
         run: pnpm run build
 
       - name: Deploy
