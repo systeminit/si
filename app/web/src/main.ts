@@ -141,6 +141,9 @@ const filterToasts = (toasts: any[]) => {
     if (t.content.component?.__name === "Conflict") {
       return [t];
     }
+    if (t.content.component?.__name === "MaintananceMode") {
+      return [t];
+    }
   }
   return toasts;
 };
