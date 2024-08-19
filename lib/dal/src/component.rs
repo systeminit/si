@@ -343,8 +343,7 @@ impl Component {
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
 
-        let root_value_ids = Prop::attribute_values_for_prop_id(ctx, root_prop_id).await?;
-        for value_id in root_value_ids {
+        for value_id in Component::attribute_values_for_prop_id(ctx, id, root_prop_id).await? {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == id {
                 let root_value = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
@@ -1792,7 +1791,9 @@ impl Component {
         prop_id: PropId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
         let mut result = vec![];
-        for attribute_value_id in Prop::attribute_values_for_prop_id(ctx, prop_id).await? {
+        for attribute_value_id in
+            Prop::all_attribute_values_everywhere_for_prop_id(ctx, prop_id).await?
+        {
             let value_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             if value_component_id == component_id {
                 result.push(attribute_value_id)

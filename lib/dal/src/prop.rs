@@ -686,7 +686,13 @@ impl Prop {
         Self::path_by_id(ctx, self.id).await
     }
 
-    pub async fn attribute_values_for_prop_id(
+    ///
+    /// Get all attribute values from all components associated with this prop id.
+    ///
+    /// NOTE: If you want a component's prop value, use
+    /// `Component::attribute_values_for_prop_id()` instead.
+    ///
+    pub async fn all_attribute_values_everywhere_for_prop_id(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<AttributeValueId>> {

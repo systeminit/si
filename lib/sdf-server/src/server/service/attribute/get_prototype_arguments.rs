@@ -39,7 +39,8 @@ pub async fn get_prototype_arguments(
     // prototype. There should only be one.
     let attribute_value_id = match (request.prop_id, request.output_socket_id) {
         (Some(prop_id), None) => {
-            let attribute_value_ids = Prop::attribute_values_for_prop_id(&ctx, prop_id).await?;
+            let attribute_value_ids =
+                Prop::all_attribute_values_everywhere_for_prop_id(&ctx, prop_id).await?;
             if attribute_value_ids.len() > 1 {
                 return Err(AttributeError::MultipleAttributeValuesForProp(
                     attribute_value_ids.to_owned(),

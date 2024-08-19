@@ -254,9 +254,10 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     .await
     .expect("able to find 'rigid_designator' prop");
 
-    let rigid_designator_values = Prop::attribute_values_for_prop_id(ctx, rigid_designator_prop_id)
-        .await
-        .expect("able to get attribute value for universe prop");
+    let rigid_designator_values =
+        Component::attribute_values_for_prop_id(ctx, component.id(), rigid_designator_prop_id)
+            .await
+            .expect("able to get attribute value for universe prop");
 
     assert_eq!(1, rigid_designator_values.len());
 
@@ -289,7 +290,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     .expect("able to find 'naming_and_necessity' prop");
 
     let naming_and_necessity_value_id =
-        Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
+        Component::attribute_values_for_prop_id(ctx, component.id(), naming_and_necessity_prop_id)
             .await
             .expect("able to get values for naming_and_necessity")
             .first()
@@ -353,7 +354,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
         .await
         .expect("able to find root prop");
 
-    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+    let root_value_id = Component::attribute_values_for_prop_id(ctx, component.id(), root_prop_id)
         .await
         .expect("get root prop value id")
         .first()
@@ -424,9 +425,10 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     .await
     .expect("able to find 'possible_world' prop");
 
-    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
-        .await
-        .expect("able to get attribute value for universe prop");
+    let possible_world_values =
+        Component::attribute_values_for_prop_id(ctx, component.id(), possible_world_a_prop_id)
+            .await
+            .expect("able to get attribute value for universe prop");
 
     assert_eq!(1, possible_world_values.len());
 
@@ -459,7 +461,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     .expect("able to find 'naming_and_necessity' prop");
 
     let naming_and_necessity_value_id =
-        Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
+        Component::attribute_values_for_prop_id(ctx, component.id(), naming_and_necessity_prop_id)
             .await
             .expect("able to get values for naming_and_necessity")
             .first()
@@ -526,7 +528,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
         .await
         .expect("able to find root prop");
 
-    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+    let root_value_id = Component::attribute_values_for_prop_id(ctx, component.id(), root_prop_id)
         .await
         .expect("get root prop value id")
         .first()
@@ -597,9 +599,13 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
     .await
     .expect("able to find 'possible_world_a' prop");
 
-    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_a_prop_id)
-        .await
-        .expect("able to get attribute value for universe prop");
+    let possible_world_values = Component::attribute_values_for_prop_id(
+        ctx,
+        etoiles_component.id(),
+        possible_world_a_prop_id,
+    )
+    .await
+    .expect("able to get attribute value for universe prop");
 
     let possible_world_a_value_id = possible_world_values
         .first()
@@ -636,9 +642,13 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
     .await
     .expect("able to find 'possible_world_b' prop");
 
-    let possible_world_values = Prop::attribute_values_for_prop_id(ctx, possible_world_b_prop_id)
-        .await
-        .expect("able to get attribute value for possible world prop");
+    let possible_world_values = Component::attribute_values_for_prop_id(
+        ctx,
+        etoiles_component.id(),
+        possible_world_b_prop_id,
+    )
+    .await
+    .expect("able to get attribute value for possible world prop");
 
     let possible_world_b_value_id = possible_world_values
         .first()
@@ -686,12 +696,13 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
     .await
     .expect("able to find 'stars' prop");
 
-    let stars_value_id = Prop::attribute_values_for_prop_id(ctx, stars_prop_id)
-        .await
-        .expect("able to get attribute value for possible world prop")
-        .first()
-        .copied()
-        .expect("get first value id");
+    let stars_value_id =
+        Component::attribute_values_for_prop_id(ctx, morningstar_component.id(), stars_prop_id)
+            .await
+            .expect("able to get attribute value for possible world prop")
+            .first()
+            .copied()
+            .expect("get first value id");
 
     let stars_value = AttributeValue::get_by_id_or_error(ctx, stars_value_id)
         .await
@@ -723,9 +734,10 @@ async fn set_the_universe(ctx: &mut DalContext) {
     .await
     .expect("able to find 'root/domain/universe' prop");
 
-    let universe_values = Prop::attribute_values_for_prop_id(ctx, universe_prop_id)
-        .await
-        .expect("able to get attribute value for universe prop");
+    let universe_values =
+        Component::attribute_values_for_prop_id(ctx, component.id(), universe_prop_id)
+            .await
+            .expect("able to get attribute value for universe prop");
 
     assert_eq!(1, universe_values.len());
 

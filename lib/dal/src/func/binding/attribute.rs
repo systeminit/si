@@ -219,20 +219,17 @@ impl AttributeBinding {
                     }
                     EventualParent::Component(component_id) => {
                         let attribute_value_ids =
-                            Prop::attribute_values_for_prop_id(ctx, prop_id).await?;
+                            Component::attribute_values_for_prop_id(ctx, component_id, prop_id)
+                                .await?;
 
                         for attribute_value_id in attribute_value_ids {
-                            if component_id
-                                == AttributeValue::component_id(ctx, attribute_value_id).await?
-                            {
-                                AttributeValue::set_component_prototype_id(
-                                    ctx,
-                                    attribute_value_id,
-                                    attribute_prototype.id,
-                                    None,
-                                )
-                                .await?;
-                            }
+                            AttributeValue::set_component_prototype_id(
+                                ctx,
+                                attribute_value_id,
+                                attribute_prototype.id,
+                                None,
+                            )
+                            .await?;
                         }
                     }
                 }
