@@ -15,6 +15,7 @@ nix = { workspace = true }
 remain = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
@@ -22,3 +23,4 @@ tracing = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 devicemapper =  { workspace = true }
 krata-loopdev = { workspace = true }
+tokio-vsock = { workspace = true }

@@ -1,5 +1,9 @@
 use color_eyre::Result;
+#[cfg(target_os = "linux")]
+use cyclone_server::process_gatherer;
 use cyclone_server::{Config, Runnable as _, Server};
+#[cfg(target_os = "linux")]
+use si_firecracker::stream::TcpStreamForwarder;
 use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -45,6 +49,18 @@ async fn main() -> Result<()> {
 
     let telemetry = Box::new(telemetry);
 
+    if config.enable_forwarder() {
+        #[cfg(target_os = "linux")]
+        TcpStreamForwarder::new().await?.start().await?;
+    }
+
+    #[cfg(target_os = "linux")]
+    let gatherer_shutdown = process_gatherer::init(
+        config.enable_process_gatherer(),
+        &task_tracker,
+        shutdown_token.clone(),
+    )?;
+
     task_tracker.close();
 
     Server::from_config(config, telemetry).await?.run().await?;
@@ -55,6 +71,8 @@ async fn main() -> Result<()> {
     // remaining tasks and wait on their graceful shutdowns
     {
         shutdown_token.cancel();
+        #[cfg(target_os = "linux")]
+        gatherer_shutdown.wait().await?;
         task_tracker.wait().await;
         telemetry_shutdown.wait().await?;
     }

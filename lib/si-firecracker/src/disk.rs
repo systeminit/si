@@ -65,7 +65,7 @@ impl FirecrackerDisk {
         Ok(())
     }
 
-    fn jail_dir_from_id(id: u32) -> PathBuf {
+    pub fn jail_dir_from_id(id: u32) -> PathBuf {
         let path = PathBuf::from(JAIL_PATH_PREFIX);
         path.join(id.to_string()).join("root")
     }

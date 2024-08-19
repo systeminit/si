@@ -300,7 +300,7 @@ where
                 }
             } else {
                 retries += 1;
-                debug!(
+                info!(
                     "Failed to get from pool, retry ({} of {})",
                     retries, max_retries
                 );

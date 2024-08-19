@@ -1224,6 +1224,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "cyclone-server",
+ "si-firecracker",
  "si-service",
  "telemetry-application",
  "tokio",
@@ -1288,7 +1289,9 @@ dependencies = [
  "derive_builder",
  "futures",
  "hyper 0.14.30",
+ "nix 0.27.1",
  "pin-project-lite",
+ "procfs",
  "remain",
  "serde",
  "serde_json",
@@ -1297,6 +1300,7 @@ dependencies = [
  "si-std",
  "telemetry",
  "telemetry-http",
+ "telemetry-utils",
  "thiserror",
  "tokio",
  "tokio-serde",
@@ -4002,6 +4006,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "procfs"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "731e0d9356b0c25f16f33b5be79b1c57b562f141ebfcdb0ad8ac2c13a24293b4"
+dependencies = [
+ "bitflags 2.6.0",
+ "chrono",
+ "flate2",
+ "hex",
+ "lazy_static",
+ "procfs-core",
+ "rustix",
+]
+
+[[package]]
+name = "procfs-core"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
+dependencies = [
+ "bitflags 2.6.0",
+ "chrono",
+ "hex",
+]
+
+[[package]]
 name = "prost"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5319,6 +5349,8 @@ dependencies = [
  "remain",
  "thiserror",
  "tokio",
+ "tokio-util",
+ "tokio-vsock",
  "tracing",
 ]
 
