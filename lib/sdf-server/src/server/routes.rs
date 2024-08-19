@@ -1,7 +1,6 @@
 use axum::{
     extract::State,
-    http::HeaderValue,
-    http::{Request, StatusCode},
+    http::{response, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Json, Response},
     routing::get,
@@ -16,7 +15,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tower_http::cors::CorsLayer;
 use tower_http::{compression::CompressionLayer, cors::AllowOrigin};
-
+use axum::response::Redirect;
 use super::{
     server::ServerError,
     state::{AppState, ApplicationRuntimeMode},
@@ -28,7 +27,12 @@ async fn my_middleware<B>(
     next: Next<B>,
 ) -> Response {
     match *state.application_runtime_mode.read().await {
-        ApplicationRuntimeMode::Maintenance => panic!("this exploded!"),
+        ApplicationRuntimeMode::Maintenance => {
+
+            // Return a 503 when the server is in maintenance/offline
+            (StatusCode::SERVICE_UNAVAILABLE, "Service is now in maintenance mode, please try again later or reach out on Discord for more information").into_response()
+
+        }
         ApplicationRuntimeMode::Running => next.run(request).await,
     }
 }

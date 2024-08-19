@@ -623,37 +623,44 @@ fn prepare_signal_handlers(
             }
         }
 
-        tokio::select! {
-            _ = signal::ctrl_c() => {
-                info!("received SIGINT signal, performing graceful shutdown");
-                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
-            }
-            _ = sigterm_watcher.recv() => {
-                info!("received SIGTERM signal, performing graceful shutdown");
-                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
-            }
-            _ = sigusr2_watcher.recv() => {
-                info!("received SIGUSR2 signal, changing application runtime mode");
-                let mut mode = mode.write().await;
-                info!(?mode, "current application runtime mode (changing it...)");
-                *mode = match *mode {
-                    ApplicationRuntimeMode::Maintenance => ApplicationRuntimeMode::Running,
-                    ApplicationRuntimeMode::Running => ApplicationRuntimeMode::Maintenance,
-                };
-                info!(?mode, "new application runtime mode (changed!)");
-            }
-            source = shutdown_rx.recv() => {
-                info!(
-                    "received internal shutdown, performing graceful shutdown; source={:?}",
-                    source,
-                );
-                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
-            }
-            else => {
-                // All other arms are closed, nothing left to do but return
-                trace!("returning from graceful shutdown with all select arms closed");
-            }
-        };
+        loop {
+            tokio::select! {
+                _ = signal::ctrl_c() => {
+                    info!("received SIGINT signal, performing graceful shutdown");
+                    send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+                    break
+                }
+                _ = sigterm_watcher.recv() => {
+                    info!("received SIGTERM signal, performing graceful shutdown");
+                    send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+                    break
+                }
+                _ = sigusr2_watcher.recv() => {
+                    info!("received SIGUSR2 signal, changing application runtime mode");
+                    let mut mode = mode.write().await;
+                    info!(?mode, "current application runtime mode (changing it...)");
+                    *mode = match *mode {
+                        ApplicationRuntimeMode::Maintenance => ApplicationRuntimeMode::Running,
+                        ApplicationRuntimeMode::Running => ApplicationRuntimeMode::Maintenance,
+                    };
+                    info!(?mode, "new application runtime mode (changed!)");
+                }
+                source = shutdown_rx.recv() => {
+                    info!(
+                        "received internal shutdown, performing graceful shutdown; source={:?}",
+                        source,
+                    );
+                    send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+                    break
+                }
+                else => {
+                    // All other arms are closed, nothing left to do but return
+                    trace!("returning from graceful shutdown with all select arms closed");
+                    break
+                }
+            };
+        }
+
     });
 
     Ok((graceful_shutdown_rx, johnwatson_mode_rx))
