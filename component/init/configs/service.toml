@@ -10,7 +10,7 @@ decryption_key_base64 = "$SI_DECRYPTION_KEY_BASE64"
 
 [cyclone]
 connect_timeout = 100
-pool_size = 100
+pool_size = $SI_VERITECH_POOL_SIZE
 runtime_strategy = "LocalFirecracker"
 
 [jwt_signing_public_key]
