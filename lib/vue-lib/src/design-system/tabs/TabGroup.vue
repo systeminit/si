@@ -14,7 +14,7 @@
         ref="tabContainerRef"
         :class="
           clsx(
-            variant !== 'fullsize' &&
+            variant !== 'primary' &&
               {
                 none: '',
                 '2xs': 'mt-2xs',
@@ -30,7 +30,7 @@
           v-if="
             firstTabMarginLeft &&
             firstTabMarginLeft !== 'none' &&
-            variant !== 'fullsize'
+            variant !== 'primary'
           "
           :class="
             clsx(
@@ -67,7 +67,14 @@
             @click="clickedTab($event, tab.props.slug)"
             @auxclick.prevent.stop="closeTab(tab)"
           >
-            <div class="max-w-full truncate">
+            <div
+              :class="
+                clsx(
+                  'max-w-full truncate',
+                  variant === 'primary' && 'uppercase',
+                )
+              "
+            >
               <template v-if="tab.slots.label">
                 <component :is="tab.slots.label" />
               </template>
@@ -90,7 +97,7 @@
             </button>
           </a>
           <div
-            v-if="variant !== 'fullsize' && !growTabs"
+            v-if="variant !== 'primary' && !growTabs"
             class="border-b border-neutral-300 dark:border-neutral-600 w-2xs shrink-0"
           />
         </template>
@@ -183,11 +190,10 @@ import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
 
 // TabGroupVariant is used to determine the styling for a TabGroup
-//      "classic" is the original design for TabGroup used throughout the product up until May 2024
-//      "minimal" is the first variant added for a TabGroup which is a child of another TabGroups to use
-//      "fullsize" is the newest design for TabGroup added in May 2024
+//      "primary" is the newest design for TabGroup added in May 2024
+//      "secondary" is the first variant added for a TabGroup which is a child of another TabGroups to use
 // If you intend to add another style variant, please update this comment accordingly!
-export type TabGroupVariant = "classic" | "minimal" | "fullsize";
+export type TabGroupVariant = "primary" | "secondary";
 
 const unmounting = ref(false);
 const showOverflowDropdown = ref(false);
@@ -209,15 +215,15 @@ const props = defineProps({
     default: "none",
   },
   trackingSlug: String,
-  growTabsToFillWidth: { type: Boolean, default: undefined }, // the "fullsize" variant does this by default
-  variant: { type: String as PropType<TabGroupVariant>, default: "classic" },
+  growTabsToFillWidth: { type: Boolean, default: undefined }, // the primary variant does this by default
+  variant: { type: String as PropType<TabGroupVariant>, default: "primary" },
   disableOverflowDropdown: { type: Boolean },
 });
 
 const growTabs = computed(() => {
   if (
     props.growTabsToFillWidth ||
-    (props.growTabsToFillWidth === undefined && props.variant === "fullsize")
+    (props.growTabsToFillWidth === undefined && props.variant === "primary")
   )
     return true;
   else return false;
@@ -225,14 +231,14 @@ const growTabs = computed(() => {
 
 const variantStyles = (slug: string) => {
   switch (props.variant) {
-    case "minimal":
+    case "secondary":
       return [
         "border-b hover:border-b-2",
         slug === selectedTabSlug.value
           ? "border-current text-action-500 dark:text-action-300 font-bold"
           : "border-neutral-300 dark:border-neutral-600 hover:border-shade-100 dark:hover:border-shade-0",
       ];
-    case "fullsize":
+    default: // PRIMARY
       return [
         "font-bold",
         slug === selectedTabSlug.value && slug !== "closeButton"
@@ -245,16 +251,6 @@ const variantStyles = (slug: string) => {
               "bg-neutral-700 text-neutral-300 hover:text-action-300",
             ),
         slug === "closeButton" && themeClasses("bg-shade-0", "bg-neutral-800"),
-      ];
-    default: // CLASSIC
-      return [
-        "text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0",
-        slug === selectedTabSlug.value
-          ? "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold"
-          : themeClasses(
-              "hover:text-neutral-400 font-medium hover:bg-neutral-100",
-              "hover:text-neutral-300 font-medium hover:bg-neutral-900",
-            ),
       ];
   }
 };

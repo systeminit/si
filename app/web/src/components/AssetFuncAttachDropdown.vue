@@ -2,6 +2,7 @@
   <IconButton
     iconTone="action"
     icon="link"
+    size="sm"
     :requestStatus="requestStatus"
     :selected="menuRef?.isOpen"
     tooltip="Attach Function"

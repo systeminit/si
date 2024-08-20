@@ -20,7 +20,7 @@
               <Icon
                 v-tooltip="{
                   content:
-                    'Drag the assets that you wish to include in your application into the canvas to the right.',
+                    'Drag the assets that you wish to include in your application on to the canvas to the right.',
                   theme: 'w-380',
                 }"
                 class="cursor-pointer hover:text-shade-100 dark:hover:text-shade-0"
@@ -76,7 +76,7 @@
             @click.right.prevent
           >
             <template #label>
-              <TruncateWithTooltip class="text-sm">
+              <TruncateWithTooltip class="text-xs">
                 {{ schemaVariantDisplayName(schemaVariant) }}
               </TruncateWithTooltip>
               <!-- <div
