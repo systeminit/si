@@ -1,7 +1,3 @@
-use super::{
-    server::ServerError,
-    state::{AppState, ApplicationRuntimeMode},
-};
 use axum::{
     extract::State,
     http::{HeaderValue, Request, StatusCode},
@@ -20,6 +16,13 @@ use thiserror::Error;
 use tower_http::cors::CorsLayer;
 use tower_http::{compression::CompressionLayer, cors::AllowOrigin};
 
+use super::{
+    server::ServerError,
+    state::{AppState, ApplicationRuntimeMode},
+};
+
+const MAINTENANCE_MODE_MESSAGE: &str = " SI is currently in maintenance mode. Please try again later. Reach out to support@systeminit.com or in the SI Discord for more information if this problem persists";
+
 async fn app_state_middeware<B>(
     State(state): State<AppState>,
     request: Request<B>,
@@ -28,7 +31,7 @@ async fn app_state_middeware<B>(
     match *state.application_runtime_mode.read().await {
         ApplicationRuntimeMode::Maintenance => {
             // Return a 503 when the server is in maintenance/offline
-            (StatusCode::SERVICE_UNAVAILABLE, " SI is currently in maintenance mode. Please try again later. Reach out to support@systeminit.com or in the SI Discord for more information if this problem persists").into_response()
+            (StatusCode::SERVICE_UNAVAILABLE, MAINTENANCE_MODE_MESSAGE).into_response()
         }
         ApplicationRuntimeMode::Running => next.run(request).await,
     }
