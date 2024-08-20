@@ -9,12 +9,12 @@
       <ErrorMessage :requestStatus="fetchDebugReqStatus" />
     </template>
     <template v-else-if="fetchDebugReqStatus.isSuccess && debugData">
-      <SiSearch
+      <!-- <SiSearch
         ref="searchRef"
         autoSearch
         disableFilters
         @search="onSearchUpdated"
-      />
+      /> -->
       <div ref="debugParent" class="border border-neutral-500 m-xs">
         <!-- Component -->
         <TreeNode
@@ -53,7 +53,7 @@
           <TreeNode
             v-for="attribute in debugData.attributes"
             :key="attribute.path"
-            defaultOpen
+            :defaultOpen="false"
             :label="attribute.path"
             alwaysShowArrow
             enableGroupToggle
@@ -80,7 +80,7 @@
           <TreeNode
             v-for="attribute in debugData.inputSockets"
             :key="attribute.name"
-            defaultOpen
+            :defaultOpen="false"
             :label="attribute.name"
             alwaysShowArrow
             enableGroupToggle
@@ -107,7 +107,7 @@
           <TreeNode
             v-for="attribute in debugData.outputSockets"
             :key="attribute.name"
-            defaultOpen
+            :defaultOpen="false"
             :label="attribute.name"
             alwaysShowArrow
             enableGroupToggle
@@ -133,12 +133,12 @@ import {
 import { PropType, computed, onMounted, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
-import SiSearch from "@/components/SiSearch.vue";
+// import SiSearch from "@/components/SiSearch.vue";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";
 
-const searchRef = ref<InstanceType<typeof SiSearch>>();
+// const searchRef = ref<InstanceType<typeof SiSearch>>();
 const debugParent = ref<InstanceType<typeof Element>>();
 
 const searchString = ref("");
@@ -156,23 +156,23 @@ function _findChildren(elm: Element) {
   for (const child of elm.children) _findChildren(child);
 }
 
-function onSearchUpdated(newFilterString: string) {
-  searchString.value = newFilterString.trim();
-  if (!searchString.value) {
-    for (const elm of document.getElementsByClassName("search-found")) {
-      elm.classList.remove("search-found");
-    }
-  } else {
-    if (debugParent.value) {
-      for (const child of debugParent.value.children) {
-        _findChildren(child);
-      }
-      const found = document.getElementsByClassName("search-found");
-      if (found.length > 0)
-        found[0]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }
-}
+// function onSearchUpdated(newFilterString: string) {
+//   searchString.value = newFilterString.trim();
+//   if (!searchString.value) {
+//     for (const elm of document.getElementsByClassName("search-found")) {
+//       elm.classList.remove("search-found");
+//     }
+//   } else {
+//     if (debugParent.value) {
+//       for (const child of debugParent.value.children) {
+//         _findChildren(child);
+//       }
+//       const found = document.getElementsByClassName("search-found");
+//       if (found.length > 0)
+//         found[0]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+//     }
+//   }
+// }
 
 const componentsStore = useComponentsStore();
 
