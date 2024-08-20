@@ -35,6 +35,7 @@ pub async fn delete_components(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let mut components = HashMap::new();
+    let mut socket_map = HashMap::new();
     for component_id in request.component_ids {
         let component_still_exists = delete_single_component(
             &ctx,
@@ -50,8 +51,13 @@ pub async fn delete_components(
         if component_still_exists {
             // to_delete=True
             let component: Component = Component::get_by_id(&ctx, component_id).await?;
-            let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Deleted).await?;
+            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+                &ctx,
+                &component,
+                ChangeStatus::Deleted,
+                &mut socket_map,
+            )
+            .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)

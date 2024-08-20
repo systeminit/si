@@ -1377,7 +1377,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<Option<(ComponentNodeWeight, ContentHash)>> {
         let id: Ulid = component_id.into();
-        if let Some(node_index) = ctx.workspace_snapshot()?.try_get_node_index_by_id(id).await {
+        if let Some(node_index) = ctx.workspace_snapshot()?.get_node_index_by_id_opt(id).await {
             let node_weight = ctx
                 .workspace_snapshot()?
                 .get_node_weight(node_index)
@@ -2328,7 +2328,7 @@ impl Component {
     ) -> ComponentResult<Option<bool>> {
         match ctx
             .workspace_snapshot()?
-            .try_get_node_index_by_id(component_id)
+            .get_node_index_by_id_opt(component_id)
             .await
         {
             Some(component_idx) => {

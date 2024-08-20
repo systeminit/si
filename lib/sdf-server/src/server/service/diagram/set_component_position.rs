@@ -48,23 +48,32 @@ pub async fn set_component_position(
     let mut components: Vec<Component> = vec![];
     let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
 
+    let mut socket_map = HashMap::new();
     for (id, update) in request.data_by_component_id {
         let mut component = Component::get_by_id(&ctx, id).await?;
 
         if update.detach {
             Frame::orphan_child(&ctx, component.id()).await?;
-            let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
-                    .await?;
+            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+                &ctx,
+                &component,
+                ChangeStatus::Unmodified,
+                &mut socket_map,
+            )
+            .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
         } else if let Some(new_parent) = update.new_parent {
             Frame::upsert_parent(&ctx, component.id(), new_parent).await?;
-            let payload: SummaryDiagramComponent =
-                SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
-                    .await?;
+            let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+                &ctx,
+                &component,
+                ChangeStatus::Unmodified,
+                &mut socket_map,
+            )
+            .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
                 .publish_on_commit(&ctx)

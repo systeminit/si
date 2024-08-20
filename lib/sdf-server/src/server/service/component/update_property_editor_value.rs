@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
@@ -88,8 +90,14 @@ pub async fn update_property_editor_value(
         );
     }
 
-    let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
+    let mut socket_map = HashMap::new();
+    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+        &ctx,
+        &component,
+        ChangeStatus::Unmodified,
+        &mut socket_map,
+    )
+    .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

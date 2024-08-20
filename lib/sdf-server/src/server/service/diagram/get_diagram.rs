@@ -1,10 +1,10 @@
 use axum::extract::{Host, OriginalUri};
 use axum::{extract::Query, Json};
 use dal::diagram::Diagram;
-use dal::Visibility;
+use dal::{slow_rt, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::DiagramResult;
+use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
@@ -26,7 +26,13 @@ pub async fn get_diagram(
     Query(request): Query<GetDiagramRequest>,
 ) -> DiagramResult<Json<GetDiagramResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-    let response = Diagram::assemble(&ctx).await?;
+    let ctx_clone = ctx.clone();
+
+    let response = slow_rt::spawn(async move {
+        let ctx = &ctx_clone;
+        Ok::<Diagram, DiagramError>(Diagram::assemble(ctx).await?)
+    })?
+    .await??;
 
     track(
         &posthog_client,

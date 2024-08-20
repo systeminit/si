@@ -87,7 +87,7 @@ impl DependentValueGraph {
             // job always operates on the current state of the change set's snapshot, not the state
             // at the time the job was created.
             if workspace_snapshot
-                .try_get_node_index_by_id(initial_id)
+                .get_node_index_by_id_opt(initial_id)
                 .await
                 .is_none()
             {

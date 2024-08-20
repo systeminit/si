@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::component::{ComponentError, ComponentResult};
@@ -75,9 +77,14 @@ pub async fn upgrade(
         }),
     );
 
-    let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &upgraded_component, ChangeStatus::Unmodified)
-            .await?;
+    let mut socket_map = HashMap::new();
+    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+        &ctx,
+        &upgraded_component,
+        ChangeStatus::Unmodified,
+        &mut socket_map,
+    )
+    .await?;
     WsEvent::component_upgraded(&ctx, payload, request.component_id)
         .await?
         .publish_on_commit(&ctx)
