@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 
@@ -56,8 +58,14 @@ pub async fn set_type(
     let component = Component::get_by_id(&ctx, component_id).await?;
     // TODO: We'll want to figure out whether this component is Added/Modified, depending on
     // whether it existed in the base change set already or not.
-    let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
+    let mut socket_map = HashMap::new();
+    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+        &ctx,
+        &component,
+        ChangeStatus::Unmodified,
+        &mut socket_map,
+    )
+    .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

@@ -531,8 +531,7 @@ impl Workspace {
             for change_set_data in change_sets {
                 let imported_snapshot = WorkspaceSnapshot::from_bytes(
                     &change_set_data.workspace_snapshot_serialized_data,
-                )
-                .await?;
+                )?;
 
                 // If base_change_set is default_change_set_base, it pointed to the builtin workspace
                 // originally, so this change set needs to be the new default for the workspace - HEAD

@@ -7,6 +7,7 @@ use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
 use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentError;
+use dal::slow_rt::SlowRuntimeError;
 use dal::socket::input::InputSocketError;
 use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
@@ -15,6 +16,7 @@ use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError
 use std::num::ParseFloatError;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 use crate::server::state::AppState;
 
@@ -70,6 +72,8 @@ pub enum DiagramError {
     InvalidRequest,
     #[error("invalid system")]
     InvalidSystem,
+    #[error("tokio join error: {0}")]
+    Join(#[from] JoinError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error("not authorized")]
@@ -88,6 +92,8 @@ pub enum DiagramError {
     SchemaNotFound,
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("socket not found")]
     SocketNotFound,
     #[error(transparent)]

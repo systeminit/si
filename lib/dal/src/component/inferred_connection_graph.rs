@@ -18,7 +18,7 @@ use telemetry::prelude::*;
 
 use super::{
     socket::{ComponentInputSocket, ComponentOutputSocket},
-    ComponentResult,
+    ComponentResult, IncomingConnection,
 };
 use crate::{
     Component, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket, OutputSocketId,
@@ -56,6 +56,7 @@ impl InferredConnectionGraph {
     pub async fn assemble_for_components(
         ctx: &DalContext,
         component_ids: Vec<ComponentId>,
+        precomputed_incoming_connections: Option<&HashMap<ComponentId, Vec<IncomingConnection>>>,
     ) -> ComponentResult<Self> {
         let mut component_incoming_connections: HashMap<
             ComponentId,
@@ -63,6 +64,14 @@ impl InferredConnectionGraph {
         > = HashMap::new();
         let mut top_parents: HashSet<ComponentId> = HashSet::new();
         let mut components: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+
+        let component_ids = if let Some(precomputed_ids) =
+            precomputed_incoming_connections.map(|precomp| precomp.keys().map(ToOwned::to_owned))
+        {
+            precomputed_ids.collect()
+        } else {
+            component_ids
+        };
 
         for component_id in component_ids {
             // Check if the component_id is either a key or a value in the components HashMap
@@ -86,7 +95,19 @@ impl InferredConnectionGraph {
             work_queue.push_back(*parent);
 
             while let Some(component) = work_queue.pop_front() {
-                let (input_sockets, duplicates) = Self::process_component(ctx, component).await?;
+                let (input_sockets, duplicates) = if let Some(precomputed) =
+                    precomputed_incoming_connections.and_then(|precomp| precomp.get(&component))
+                {
+                    Self::process_component(ctx, component, precomputed.as_slice()).await?
+                } else {
+                    Self::process_component(
+                        ctx,
+                        component,
+                        &Component::incoming_connections_for_id(ctx, component).await?,
+                    )
+                    .await?
+                };
+
                 Self::update_incoming_connections(
                     &mut component_incoming_connections,
                     component,
@@ -123,7 +144,19 @@ impl InferredConnectionGraph {
             .into_iter()
             .map(|component| component.id())
             .collect_vec();
-        Self::assemble_for_components(ctx, components).await
+        Self::assemble_for_components(ctx, components, None).await
+    }
+
+    #[instrument(
+        name = "component.inferred_connection_graph.with_precomputed_incoming_connections",
+        level = "info",
+        skip(ctx, precomputed_incoming_connections)
+    )]
+    pub async fn assemble_with_precomputed_incoming_connections(
+        ctx: &DalContext,
+        precomputed_incoming_connections: &HashMap<ComponentId, Vec<IncomingConnection>>,
+    ) -> ComponentResult<Self> {
+        Self::assemble_for_components(ctx, vec![], Some(precomputed_incoming_connections)).await
     }
 
     /// Assembles the [`InferredConnectionGraph`] from the perspective of this single [`ComponentId`] by first creating a
@@ -138,7 +171,7 @@ impl InferredConnectionGraph {
         ctx: &DalContext,
         with_component_id: ComponentId,
     ) -> ComponentResult<Self> {
-        Self::assemble_for_components(ctx, vec![with_component_id]).await
+        Self::assemble_for_components(ctx, vec![with_component_id], None).await
     }
 
     /// Assembles the a map of Incoming Connections from the perspective of this single [`ComponentId`]
@@ -155,7 +188,12 @@ impl InferredConnectionGraph {
             ComponentId,
             HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
         > = HashMap::new();
-        let (input_sockets, duplicates) = Self::process_component(ctx, for_component_id).await?;
+        let (input_sockets, duplicates) = Self::process_component(
+            ctx,
+            for_component_id,
+            &Component::incoming_connections_for_id(ctx, for_component_id).await?,
+        )
+        .await?;
         Self::update_incoming_connections(
             &mut component_incoming_connections,
             for_component_id,
@@ -194,6 +232,7 @@ impl InferredConnectionGraph {
     async fn process_component(
         ctx: &DalContext,
         component_id: ComponentId,
+        existing_incoming_connections: &[IncomingConnection],
     ) -> ComponentResult<(
         HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
         HashSet<ComponentOutputSocket>,
@@ -208,9 +247,8 @@ impl InferredConnectionGraph {
 
         for input_socket in current_component_input_sockets {
             let incoming_connections = Self::find_available_connections(ctx, input_socket).await?;
-            // Get all existing explicit outgoing connections so that we don't create an inferred connection to the same output socket
-            let existing_incoming_connections =
-                Component::incoming_connections_for_id(ctx, component_id).await?;
+
+            // Check all existing explicit outgoing connections so that we don't create an inferred connection to the same output socket
             for incoming_connection in existing_incoming_connections {
                 let component_output_socket = ComponentOutputSocket::get_by_ids_or_error(
                     ctx,

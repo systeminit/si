@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -266,10 +266,12 @@ async fn process_and_record_execution(
                     Component::remove(&ctx, component.id()).await?;
                     to_remove_nodes.push(component.id().into());
                 } else {
+                    let mut diagram_sockets = HashMap::new();
                     let summary = SummaryDiagramComponent::assemble(
                         &ctx,
                         &component,
                         ChangeStatus::Unmodified,
+                        &mut diagram_sockets,
                     )
                     .await?;
                     WsEvent::resource_refreshed(&ctx, summary)
@@ -278,9 +280,14 @@ async fn process_and_record_execution(
                         .await?;
                 }
             } else {
-                let summary =
-                    SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified)
-                        .await?;
+                let mut diagram_sockets = HashMap::new();
+                let summary = SummaryDiagramComponent::assemble(
+                    &ctx,
+                    &component,
+                    ChangeStatus::Unmodified,
+                    &mut diagram_sockets,
+                )
+                .await?;
                 WsEvent::resource_refreshed(&ctx, summary)
                     .await?
                     .publish_on_commit(&ctx)

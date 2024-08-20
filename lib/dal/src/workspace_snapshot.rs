@@ -52,9 +52,7 @@ use tokio::task::JoinError;
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 use crate::action::{Action, ActionError};
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::InferredConnectionGraph;
 use crate::slow_rt::{self, SlowRuntimeError};
@@ -65,9 +63,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::{
-    pk, AttributeValueId, Component, ComponentError, ComponentId, Workspace, WorkspaceError,
-};
+use crate::{pk, AttributeValueId, ComponentError, ComponentId, WorkspaceError};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraphV2,
@@ -505,7 +501,7 @@ impl WorkspaceSnapshot {
         )?)
     }
 
-    pub async fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
         let graph: Arc<WorkspaceSnapshotGraph> = si_layer_cache::db::serialize::from_bytes(bytes)?;
 
         Ok(Self {
@@ -529,23 +525,11 @@ impl WorkspaceSnapshot {
         Ok(new_node_index)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.add_ordered_node",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn add_ordered_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy_mut().await.add_ordered_node(node)?;
         Ok(new_node_index)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.update_content",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn update_content(
         &self,
         id: Ulid,
@@ -591,12 +575,6 @@ impl WorkspaceSnapshot {
     /// Add an edge to the graph, bypassing any cycle checks and using node
     /// indices directly.  Use with care, since node indices are only reliably
     /// if the graph has not yet been modified.
-    #[instrument(
-        name = "workspace_snapshot.add_edge_unchecked",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn add_edge_unchecked(
         &self,
         from_node_index: NodeIndex,
@@ -609,12 +587,6 @@ impl WorkspaceSnapshot {
             .add_edge(from_node_index, edge_weight, to_node_index)?)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.add_ordered_edge",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn add_ordered_edge(
         &self,
         from_node_id: impl Into<Ulid>,
@@ -658,12 +630,6 @@ impl WorkspaceSnapshot {
 
     /// Gives the exact node index endpoints of an edge. Use with care, since
     /// node indexes can't be relied on after modifications to the graph.
-    #[instrument(
-        name = "workspace_snapshot.edge_endpoints",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn edge_endpoints(
         &self,
         edge_index: EdgeIndex,
@@ -688,13 +654,6 @@ impl WorkspaceSnapshot {
             .import_component_subgraph(&other.read_only_graph, component_node_index)?)
     }
 
-    /// Calls [`WorkspaceSnapshotGraph::replace_references()`]
-    #[instrument(
-        name = "workspace_snapshot.replace_references",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn replace_references(
         &self,
         original_node_index: NodeIndex,
@@ -705,12 +664,6 @@ impl WorkspaceSnapshot {
             .replace_references(original_node_index)?)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_node_weight_by_id",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_node_weight_by_id(
         &self,
         id: impl Into<Ulid>,
@@ -723,12 +676,6 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_node_weight",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_node_weight(
         &self,
         node_index: NodeIndex,
@@ -757,12 +704,6 @@ impl WorkspaceSnapshot {
             .find_equivalent_node(id, lineage_id)?)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.cleanup",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn cleanup(&self) -> WorkspaceSnapshotResult<()> {
         self.working_copy_mut().await.cleanup();
         Ok(())
@@ -816,16 +757,11 @@ impl WorkspaceSnapshot {
         self.working_copy().await.write_to_disk(file_suffix);
     }
 
+    /// Write the read only snapshot to disk. *WARNING* can panic! Use only for debugging
     pub fn write_readonly_graph_to_disk(&self, file_suffix: &str) {
         self.read_only_graph.write_to_disk(file_suffix);
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_node_index_by_id",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
@@ -833,22 +769,10 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.get_node_index_by_id(id)?)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.try_get_node_index_by_id",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
-    pub async fn try_get_node_index_by_id(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+    pub async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         self.working_copy().await.get_node_index_by_id_opt(id)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_latest_node_index",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_latest_node_index(
         &self,
         node_index: NodeIndex,
@@ -939,12 +863,6 @@ impl WorkspaceSnapshot {
         Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_category_node",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_category_node_or_err(
         &self,
         source: Option<Ulid>,
@@ -955,12 +873,6 @@ impl WorkspaceSnapshot {
             .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
     }
 
-    #[instrument(
-        name = "workspace_snapshot.get_category_node_opt",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn get_category_node(
         &self,
         source: Option<Ulid>,
@@ -973,12 +885,6 @@ impl WorkspaceSnapshot {
             .map(|(category_node_id, _)| category_node_id))
     }
 
-    #[instrument(
-        name = "workspace_snapshot.edges_directed",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn edges_directed(
         &self,
         id: impl Into<Ulid>,
@@ -999,12 +905,6 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.edges_directed_for_edge_weight_kind",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn edges_directed_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -1019,12 +919,6 @@ impl WorkspaceSnapshot {
             .edges_directed_for_edge_weight_kind(node_index, direction, edge_kind))
     }
 
-    #[instrument(
-        name = "workspace_snapshot.edges_directed_by_index",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn edges_directed_by_index(
         &self,
         node_index: NodeIndex,
@@ -1044,12 +938,6 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.remove_all_edges",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
         let id = id.into();
         for (edge_weight, source, target) in self.edges_directed(id, Direction::Outgoing).await? {
@@ -1063,12 +951,6 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.incoming_sources_for_edge_weight_kind",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn incoming_sources_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -1088,12 +970,6 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.outgoing_targets_for_edge_weight_kind",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn outgoing_targets_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -1114,12 +990,6 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn outgoing_targets_for_edge_weight_kind_by_index(
         &self,
         node_index: NodeIndex,
@@ -1139,12 +1009,6 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.all_outgoing_targets",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn all_outgoing_targets(
         &self,
         id: impl Into<Ulid>,
@@ -1165,12 +1029,6 @@ impl WorkspaceSnapshot {
         Ok(result)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.all_incoming_sources",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn all_incoming_sources(
         &self,
         id: impl Into<Ulid>,
@@ -1191,12 +1049,6 @@ impl WorkspaceSnapshot {
         Ok(result)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.remove_incoming_edges_of_kind",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn remove_incoming_edges_of_kind(
         &self,
         target_id: impl Into<Ulid>,
@@ -1255,12 +1107,6 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.remove_edge",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn remove_edge(
         &self,
         source_node_index: NodeIndex,
@@ -1289,12 +1135,6 @@ impl WorkspaceSnapshot {
             .map(ToOwned::to_owned))
     }
 
-    #[instrument(
-        name = "workspace_snapshot.remove_edge_for_ulids",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn remove_edge_for_ulids(
         &self,
         source_node_id: impl Into<Ulid>,
@@ -1336,12 +1176,6 @@ impl WorkspaceSnapshot {
     /// Mark whether a prop can be used as an input to a function. Props below
     /// Maps and Arrays are not valid inputs. Must only be used when
     /// "finalizing" a schema variant!
-    #[instrument(
-        name = "workspace_snapshot.mark_prop_as_able_to_be_used_as_prototype_arg",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn mark_prop_as_able_to_be_used_as_prototype_arg(
         &self,
         node_index: NodeIndex,
@@ -1359,12 +1193,6 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.ordering_node_for_container",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn ordering_node_for_container(
         &self,
         id: impl Into<Ulid>,
@@ -1373,12 +1201,6 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy().await.ordering_node_for_container(idx)?)
     }
 
-    #[instrument(
-        name = "workspace_snapshot.update_node_id",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn update_node_id(
         &self,
         current_id: impl Into<Ulid>,
@@ -1396,12 +1218,6 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    #[instrument(
-        name = "workspace_snapshot.ordered_children_for_node",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
     pub async fn ordered_children_for_node(
         &self,
         id: impl Into<Ulid>,
@@ -1419,357 +1235,6 @@ impl WorkspaceSnapshot {
                 None
             },
         )
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.components_added_relative_to_base",
-        level = "info",
-        skip_all
-    )]
-    pub async fn components_added_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<ComponentId>> {
-        let mut new_component_ids = Vec::new();
-        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
-            change_set_id
-        } else {
-            return Ok(new_component_ids);
-        };
-
-        // Even though the default change set for a workspace can have a base change set, we don't
-        // want to consider anything as new/modified/removed when looking at the default change
-        // set.
-        let workspace = Workspace::get_by_pk_or_error(
-            ctx,
-            &ctx.tenancy()
-                .workspace_pk()
-                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
-        )
-        .await
-        .map_err(Box::new)?;
-        if workspace.default_change_set_id() == ctx.change_set_id() {
-            return Ok(new_component_ids);
-        }
-
-        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-
-        let updates = base_snapshot
-            .read_only_graph
-            .detect_updates(&self.read_only_graph);
-
-        for update in &updates {
-            match update {
-                Update::RemoveEdge { .. } | Update::ReplaceNode { .. } | Update::NewEdge { .. } => {
-                }
-                Update::NewNode { node_weight } => {
-                    if let NodeWeight::Component(inner) = node_weight {
-                        if base_snapshot
-                            .read_only_graph
-                            .get_node_index_by_id_opt(inner.id)
-                            .is_none()
-                        {
-                            new_component_ids.push(inner.id.into())
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(new_component_ids)
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.components_removed_relative_to_base",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn components_removed_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<ComponentId>> {
-        let mut removed_component_ids = Vec::new();
-        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
-            change_set_id
-        } else {
-            return Ok(removed_component_ids);
-        };
-
-        // Even though the default change set for a workspace can have a base change set, we don't
-        // want to consider anything as new/modified/removed when looking at the default change
-        // set.
-        let workspace = Workspace::get_by_pk_or_error(
-            ctx,
-            &ctx.tenancy()
-                .workspace_pk()
-                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
-        )
-        .await
-        .map_err(Box::new)?;
-        if workspace.default_change_set_id() == ctx.change_set_id() {
-            return Ok(removed_component_ids);
-        }
-
-        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-        let component_category_id = if let Some((category_id, _)) = base_snapshot
-            .read_only_graph
-            .get_category_node(None, CategoryNodeKind::Component)?
-        {
-            category_id
-        } else {
-            // Can't have any new Components if there's no Component category node to put them
-            // under.
-            return Ok(removed_component_ids);
-        };
-
-        let updates = base_snapshot
-            .read_only_graph
-            .detect_updates(&self.read_only_graph);
-
-        let mut added_component_ids = HashSet::new();
-
-        for update in &updates {
-            match update {
-                Update::ReplaceNode { .. } | Update::NewNode { .. } => {
-                    /* Updates unused for determining if a Component is removed in regard to the updates */
-                }
-                Update::NewEdge {
-                    source,
-                    destination,
-                    edge_weight: _,
-                } => {
-                    // get updates that add an edge from the Components category to a component, which implies component creation
-                    if source.id != component_category_id.into()
-                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
-                    {
-                        continue;
-                    }
-
-                    added_component_ids.insert(ComponentId::from(Ulid::from(destination.id)));
-                }
-                Update::RemoveEdge {
-                    source,
-                    destination,
-                    edge_kind: _,
-                } => {
-                    // get updates that remove an edge from the Components category to a component, which implies component deletion
-                    if source.id != component_category_id.into()
-                        || destination.node_weight_kind != NodeWeightDiscriminants::Component
-                    {
-                        continue;
-                    }
-
-                    removed_component_ids.push(ComponentId::from(Ulid::from(destination.id)));
-                }
-            }
-        }
-
-        // Filter out ComponentIds that have both been deleted and created, since that implies an upgrade and not a real deletion
-        Ok(removed_component_ids
-            .into_iter()
-            .filter(|id| !added_component_ids.contains(id))
-            .collect())
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.socket_edges_added_relative_to_base",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn socket_edges_added_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<AttributePrototypeArgumentId>> {
-        let mut new_attribute_prototype_argument_ids = Vec::new();
-        let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
-            change_set_id
-        } else {
-            return Ok(new_attribute_prototype_argument_ids);
-        };
-
-        // Even though the default change set for a workspace can have a base change set, we don't
-        // want to consider anything as new/modified/removed when looking at the default change
-        // set.
-        let workspace = Workspace::get_by_pk_or_error(
-            ctx,
-            &ctx.tenancy()
-                .workspace_pk()
-                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
-        )
-        .await
-        .map_err(Box::new)?;
-        if workspace.default_change_set_id() == ctx.change_set_id() {
-            return Ok(new_attribute_prototype_argument_ids);
-        }
-
-        let base_snapshot = WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
-
-        let updates = base_snapshot
-            .read_only_graph
-            .detect_updates(&self.read_only_graph);
-
-        for update in &updates {
-            match update {
-                Update::NewNode { .. } | Update::RemoveEdge { .. } | Update::ReplaceNode { .. } => {
-                    // Updates unused for determining if a socket to socket connection (in frontend
-                    // terms) is new.
-                }
-                Update::NewEdge {
-                    source: _source,
-                    destination,
-                    edge_weight: _,
-                } => {
-                    if destination.node_weight_kind
-                        != NodeWeightDiscriminants::AttributePrototypeArgument
-                    {
-                        // We're interested in new AttributePrototypeArguments as they represent
-                        // the connection between sockets. (The input socket has the output
-                        // socket as one of its function arguments.)
-                        continue;
-                    }
-
-                    let prototype_argument = AttributePrototypeArgument::get_by_id(
-                        ctx,
-                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
-                    )
-                    .await
-                    .map_err(Box::new)?;
-                    if prototype_argument.targets().is_some() {
-                        new_attribute_prototype_argument_ids.push(prototype_argument.id());
-                    } else {
-                        // If the AttributePrototypeArgument doesn't have targets, then it's
-                        // not for a socket to socket connection.
-                        continue;
-                    }
-                }
-            }
-        }
-
-        Ok(new_attribute_prototype_argument_ids)
-    }
-
-    #[instrument(
-        name = "workspace_snapshot.socket_edges_removed_relative_to_base",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn socket_edges_removed_relative_to_base(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<Vec<AttributePrototypeArgumentId>> {
-        let mut removed_attribute_prototype_argument_ids = Vec::new();
-
-        // Even though the default change set for a workspace can have a base change set, we don't
-        // want to consider anything as new/modified/removed when looking at the default change
-        // set.
-        let workspace = Workspace::get_by_pk_or_error(
-            ctx,
-            &ctx.tenancy()
-                .workspace_pk()
-                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
-        )
-        .await
-        .map_err(Box::new)?;
-        if workspace.default_change_set_id() == ctx.change_set_id() {
-            return Ok(removed_attribute_prototype_argument_ids);
-        }
-
-        let base_change_set_ctx = ctx.clone_with_base().await?;
-        let base_change_set_ctx = &base_change_set_ctx;
-
-        // * For each Component being removed (all edges to/from removed components should also
-        //   show as removed):
-        let removed_component_ids: HashSet<ComponentId> = self
-            .components_removed_relative_to_base(ctx)
-            .await?
-            .iter()
-            .copied()
-            .collect();
-        let remaining_component_ids: HashSet<ComponentId> = Component::list(ctx)
-            .await
-            .map_err(Box::new)?
-            .iter()
-            .map(Component::id)
-            .collect();
-        for removed_component_id in &removed_component_ids {
-            let base_change_set_component =
-                Component::get_by_id(base_change_set_ctx, *removed_component_id)
-                    .await
-                    .map_err(Box::new)?;
-
-            // * Get incoming edges
-            for incoming_connection in base_change_set_component
-                .incoming_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?
-            {
-                //* Interested in:
-                //  * Edge is coming from a Component being removed
-                //  * Edge is coming from a Component that exists in current change set
-                if removed_component_ids.contains(&incoming_connection.from_component_id)
-                    || remaining_component_ids.contains(&incoming_connection.from_component_id)
-                {
-                    removed_attribute_prototype_argument_ids
-                        .push(incoming_connection.attribute_prototype_argument_id);
-                }
-            }
-
-            //* Get outgoing edges
-            for outgoing_connection in base_change_set_component
-                .outgoing_connections(base_change_set_ctx)
-                .await
-                .map_err(Box::new)?
-            {
-                //  * Interested in:
-                //    * Edge is going to a Component being removed
-                //    * Edge is going to a Component that exists in current change set
-                if removed_component_ids.contains(&outgoing_connection.to_component_id)
-                    || remaining_component_ids.contains(&outgoing_connection.to_component_id)
-                {
-                    removed_attribute_prototype_argument_ids
-                        .push(outgoing_connection.attribute_prototype_argument_id);
-                }
-            }
-        }
-
-        // * For each removed AttributePrototypeArgument (removed edge connects two Components
-        //   that have not been removed):
-        let base_snapshot = base_change_set_ctx.workspace_snapshot()?;
-        let updates = base_snapshot
-            .read_only_graph
-            .detect_updates(&self.read_only_graph);
-
-        for update in updates {
-            match update {
-                Update::ReplaceNode { .. } | Update::NewEdge { .. } | Update::NewNode { .. } => {
-                    /* Updates unused for determining if a connection between sockets has been removed */
-                }
-                Update::RemoveEdge {
-                    source: _,
-                    destination,
-                    edge_kind,
-                } => {
-                    if edge_kind != EdgeWeightKindDiscriminants::PrototypeArgument {
-                        continue;
-                    }
-                    let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
-                        base_change_set_ctx,
-                        AttributePrototypeArgumentId::from(Ulid::from(destination.id)),
-                    )
-                    .await
-                    .map_err(Box::new)?;
-
-                    // * Interested in all of them that have targets (connecting two Components
-                    //   via sockets).
-                    if attribute_prototype_argument.targets().is_some() {
-                        removed_attribute_prototype_argument_ids
-                            .push(attribute_prototype_argument.id());
-                    }
-                }
-            }
-        }
-
-        Ok(removed_attribute_prototype_argument_ids)
     }
 
     /// Returns whether or not any Actions were dispatched.

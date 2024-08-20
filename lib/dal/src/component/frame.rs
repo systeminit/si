@@ -235,13 +235,13 @@ impl Frame {
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
+        // get the new state of the tree (from the perspective of both components, now in disjoint trees because they were detached!)
     ) -> FrameResult<()> {
         // cache current state of the tree
         let before_change_impacted_input_sockets: HashSet<SocketAttributeValuePair> =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
         // remove the edge
         Component::remove_edge_from_frame(ctx, parent_id, child_id).await?;
-        // get the new state of the tree (from the perspective of both components, now in disjoint trees because they were detached!)
         let current_impacted_sockets =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
         // find the edges that have been removed due to the detachment
@@ -296,9 +296,12 @@ impl Frame {
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
         let mut impacted_connections = HashSet::new();
-        let tree =
-            InferredConnectionGraph::assemble_for_components(ctx, [child_id, parent_id].to_vec())
-                .await?;
+        let tree = InferredConnectionGraph::assemble_for_components(
+            ctx,
+            [child_id, parent_id].to_vec(),
+            None,
+        )
+        .await?;
         let incoming_connections = tree.get_all_inferred_connections();
         for incoming_connection in incoming_connections {
             impacted_connections.insert(SocketAttributeValuePair {

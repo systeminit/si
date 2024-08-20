@@ -74,7 +74,7 @@ impl ActionDependencyGraph {
         // Get all inferred connections up front so we don't build this tree each time
         let components_to_find = actions_by_component_id.keys().copied().collect_vec();
         let component_tree =
-            InferredConnectionGraph::assemble_for_components(ctx, components_to_find).await?;
+            InferredConnectionGraph::assemble_for_components(ctx, components_to_find, None).await?;
         // Action dependencies are primarily based on the data flow between Components. Things that
         // feed data into other things must have their actions run before the actions for the
         // things they are feeding data into.

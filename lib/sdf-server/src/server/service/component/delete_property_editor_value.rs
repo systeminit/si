@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::component::ComponentResult;
 use axum::response::IntoResponse;
@@ -33,8 +35,14 @@ pub async fn delete_property_editor_value(
     AttributeValue::remove_by_id(&ctx, request.attribute_value_id).await?;
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
-    let payload: SummaryDiagramComponent =
-        SummaryDiagramComponent::assemble(&ctx, &component, ChangeStatus::Unmodified).await?;
+    let mut socket_map = HashMap::new();
+    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
+        &ctx,
+        &component,
+        ChangeStatus::Unmodified,
+        &mut socket_map,
+    )
+    .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
