@@ -138,6 +138,7 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
         let span = Span::current();
+        metric!(counter.dvu_concurrency_count = 1);
         let node_ids = ctx.workspace_snapshot()?.take_dependent_values().await?;
         // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
         let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
@@ -281,7 +282,7 @@ impl DependentValuesUpdate {
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
         ctx.commit().await?;
-
+        metric!(counter.dvu_concurrency_count = -1);
         Ok(JobCompletionState::Done)
     }
 }

@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_events::ActionResultState;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use ulid::Ulid;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
@@ -93,13 +94,14 @@ impl JobConsumer for ActionJob {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
+        metric!(counter.action_concurrency_count = 1);
         if let Err(err) = inner_run(ctx, self.id).await {
             error!(si.error.message = ?err, si.action.id = %self.id, "unable to finish action");
             if let Err(err) = process_failed_action(ctx, self.id).await {
                 error!(si.error.message = ?err, "failed to process action failure");
             }
         }
-
+        metric!(counter.action_concurrency_count = -1);
         Ok(JobCompletionState::Done)
     }
 }

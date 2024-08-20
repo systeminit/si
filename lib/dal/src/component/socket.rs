@@ -41,7 +41,7 @@ impl ComponentOutputSocket {
     ///
     /// Down Frames can drive Input Sockets of their children if the child is a Down Frame
     /// or a Component or an Up Frame.
-    #[instrument(level = "info", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
+    #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
     pub async fn find_inferred_connections(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -182,7 +182,7 @@ impl ComponentInputSocket {
     /// Depending on the [`crate::SocketArity`], Up Frames can connect to ancestors AND descendants.
     /// If there is ever ambiguity about which [`crate::InputSocket`] they should connect to, we default
     /// to none, forcing the user to explicity configure a connection by drawing an Edge
-    #[instrument(level = "info", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
+    #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
     pub async fn find_inferred_connections(
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
@@ -309,7 +309,7 @@ impl ComponentInputSocket {
     /// [`crate::InputSocket`] has [`crate::SocketArity::One`]
     #[instrument(
         name = "component.component_input_socket.find_connection_arity_one",
-        level = "info",
+        level = "debug",
         skip_all
     )]
     pub async fn find_connection_arity_one(

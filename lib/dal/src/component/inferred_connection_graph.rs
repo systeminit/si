@@ -50,7 +50,7 @@ impl InferredConnectionGraph {
     /// Then, find all inferred connections for everything we've found
     #[instrument(
         name = "component.inferred_connection_graph.assemble_for_components",
-        level = "info",
+        level = "debug",
         skip(ctx)
     )]
     pub async fn assemble_for_components(
@@ -397,7 +397,7 @@ impl InferredConnectionGraph {
     }
 
     /// For the provided [`ComponentId`], build a tree of all Components that are a descendant (directly or indirectly)
-    #[instrument(level = "info", skip(ctx))]
+    #[instrument(level = "trace", skip(ctx))]
     async fn build_tree(
         ctx: &DalContext,
         first_top_parent: ComponentId,
