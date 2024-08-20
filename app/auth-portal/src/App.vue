@@ -59,7 +59,7 @@
 
           <template v-if="userIsLoggedIn">
             <!-- REMOVED THE NAV FOR NOW SINCE THERE IS ONLY ONE PAGE -->
-            <!-- 
+            <!--
             <nav class="flex gap-md font-bold items-center">
               <template
                 v-if="
@@ -79,16 +79,16 @@
 
             <nav class="flex gap-sm mr-xs items-center ml-auto">
               <a
+                class="hover:dark:text-action-300 hover:text-action-700"
                 href="https://github.com/systeminit/si"
                 target="_blank"
-                class="hover:dark:text-action-300 hover:text-action-700"
               >
                 <Icon name="logo-github" />
               </a>
               <a
+                class="hover:dark:text-action-300 hover:text-action-700"
                 href="https://discord.gg/system-init"
                 target="_blank"
-                class="hover:dark:text-action-300 hover:text-action-700"
               >
                 <Icon name="logo-discord" />
               </a>
@@ -97,8 +97,8 @@
 
             <VButton
               class="flex items-center gap-sm children:pointer-events-none"
-              variant="transparent"
               tone="shade"
+              variant="transparent"
               @mousedown.prevent
               @click.prevent="profileMenuRef?.open($event) || _.noop"
             >
@@ -120,10 +120,18 @@
             v-if="route.name !== 'review-legal'"
             icon="user-circle"
             linkToNamedRoute="profile"
-            >Profile
+          >
+            Profile
           </DropdownMenuItem>
-          <DropdownMenuItem icon="logout" linkToNamedRoute="logout"
-            >Log out
+          <DropdownMenuItem
+            v-if="featureFlagsStore.ADMIN_PAGE"
+            icon="settings"
+            linkToNamedRoute="workspace-admin"
+          >
+            Admin
+          </DropdownMenuItem>
+          <DropdownMenuItem icon="logout" linkToNamedRoute="logout">
+            Log out
           </DropdownMenuItem>
         </DropdownMenu>
 
@@ -131,10 +139,10 @@
         <div class="fixed left-0 bottom-0 p-sm">
           <VButton
             :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
-            tone="shade"
-            variant="transparent"
             rounded
             size="md"
+            tone="shade"
+            variant="transparent"
             @click="toggleTheme"
           />
         </div>
@@ -146,16 +154,16 @@
             >
               <!-- email verification warning w/ buttons to help resolve -->
               <ErrorMessage v-if="user && !user?.emailVerified" class="mb-lg">
-                <Inline spacing="md" alignY="center">
+                <Inline alignY="center" spacing="md">
                   <p>Please verify your email address</p>
 
                   <VButton
-                    tone="shade"
-                    variant="transparent"
-                    size="sm"
                     :requestStatus="refreshAuth0Req"
                     iconSuccess="x"
+                    size="sm"
                     successText="Not Verified, Try Again"
+                    tone="shade"
+                    variant="transparent"
                     @click="authStore.REFRESH_AUTH0_PROFILE"
                   >
                     Already verified?
@@ -167,10 +175,10 @@
 
                   <VButton
                     v-if="!resendEmailVerificationReq.isSuccess"
+                    :requestStatus="resendEmailVerificationReq"
+                    size="sm"
                     tone="shade"
                     variant="transparent"
-                    size="sm"
-                    :requestStatus="resendEmailVerificationReq"
                     @click="authStore.RESEND_EMAIL_VERIFICATION"
                     >Resend Email</VButton
                   >
@@ -196,8 +204,8 @@
           >
           <span class="opacity-50">|</span>
           <RouterLink
-            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
             :to="{ name: 'legal' }"
+            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
             >Legal
           </RouterLink>
           <span class="opacity-50">|</span>
@@ -210,7 +218,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import { tw } from "@si/vue-lib";
 import {
@@ -233,9 +241,12 @@ import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import storage from "local-storage-fallback";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
 import DeployNotification from "./components/DeployNotification.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
@@ -331,6 +342,20 @@ watch([checkAuthReq, route], () => {
       return router.push({ name: "login" });
     }
     return;
+  }
+  // Check that the user is not quarantined
+  if (user.value.quarantinedAt) {
+    if (!["quarantine-notice"].includes(currentRouteName)) {
+      saveLoginSuccessRedirect();
+      return router.push({ name: "quarantine-notice" });
+    }
+    return;
+  }
+
+  // If the user is not quarantined, do not allow them to go to the quarantine notice
+  if (currentRouteName === "quarantine-notice") {
+    saveLoginSuccessRedirect();
+    return router.push({ name: "workspaces" });
   }
 
   // check user has agreed to TOS

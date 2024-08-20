@@ -9,6 +9,7 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
@@ -39,7 +40,7 @@ model User {
   /// data about where user is in onboarding
   onboardingDetails Json? @map("onboarding_details")
 
-  // When a user signed up
+  /// When a user signed up
   signupAt DateTime? @map("signup_at")
 
   /// array of workspaces the user created
@@ -47,6 +48,9 @@ model User {
   /// array of the workspaces that the user has access to
   WorkspaceMembers  WorkspaceMembers[]
   TosAgreement      TosAgreement[]
+
+  /// Timestamp of the latest account quarantine. `undefined` if not quarantined
+  quarantinedAt DateTime? @map("quarantined_at")
 
   @@index(fields: [email])
   @@map("users")
@@ -78,6 +82,9 @@ model Workspace {
 
   /// Whether the workspace is the default or not
   isDefault Boolean @default(false) @map("is_default")
+
+  /// Timestamp of the latest workspace quarantine. `undefined` if not quarantined
+  quarantinedAt DateTime? @map("quarantined_at")
 
   @@index(fields: [creatorUserId])
   @@map("workspaces")

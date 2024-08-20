@@ -2,14 +2,14 @@
 # configures the system to use the loki docker driver
 # see https://grafana.com/docs/loki/latest/send-data/docker-driver/
 x-loki-logged-service: &loki-logged-service
-    logging:
-      driver: loki
-      options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "1"
-        max-file: "2"
-        max-size: "10m"
+  logging:
+    driver: loki
+    options:
+      loki-url: "http://loki:3100/loki/api/v1/push"
+      loki-batch-size: "400"
+      loki-retries: "1"
+      max-file: "2"
+      max-size: "10m"
 
 services:
   db:
@@ -21,11 +21,11 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_module_index"
+      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index"
     ports:
       - "7432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -66,7 +66,7 @@ services:
     ports:
       - "8432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
       interval: 5s
       timeout: 10s
       retries: 5
