@@ -425,15 +425,51 @@ impl Module {
     pub async fn sync(
         ctx: &DalContext,
         latest_modules: Vec<frontend_types::LatestModule>,
-        past_hashes_by_module_id: HashMap<String, HashSet<String>>,
+        builtin_modules: Vec<frontend_types::ModuleDetails>,
     ) -> ModuleResult<frontend_types::SyncedModules> {
         let start = Instant::now();
+
+        // Initialize result struct
+        let mut synced_modules = frontend_types::SyncedModules::new();
 
         // Collect all user facing schema variants. We need to see what can be upgraded.
         let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
 
-        // Initialize result struct
-        let mut synced_modules = frontend_types::SyncedModules::new();
+        // Check the locally found schema_variant_ids to see if it's contributable
+        // Contributable means that it's not avilable in the module index NOR is it a builtin
+        // we check it's a builtin because it's hash would be in the past_hashes_by_module_id
+        for schema_variant in &schema_variants {
+            let schema_variant_id: SchemaVariantId = schema_variant.schema_variant_id.into();
+            let schema_id: SchemaId = schema_variant.schema_id.into();
+            let is_default = SchemaVariant::is_default_by_id(ctx, schema_variant_id).await?;
+            let is_locked = SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?;
+
+            let module = Module::find_for_module_schema_id(ctx, schema_id.into())
+                .await
+                .map_err(|e| SchemaVariantError::Module(e.to_string()))?;
+            if let Some(m) = module {
+                if is_default
+                    && is_locked
+                    && !builtin_modules
+                        .iter()
+                        .any(|md| md.latest_hash == m.root_hash)
+                {
+                    synced_modules.contributable.push(schema_variant_id.into())
+                }
+            }
+        }
+
+        // Build a list of the past hashes for all of the modules
+        let past_hashes_for_module_id = builtin_modules
+            .into_iter()
+            .filter_map(|m| {
+                if let Some(past_hashes) = m.past_hashes {
+                    Some((m.id, HashSet::from_iter(past_hashes.into_iter())))
+                } else {
+                    None
+                }
+            })
+            .collect::<HashMap<_, _>>();
 
         // For each latest module
         // if not for existing schema, is installable
@@ -469,7 +505,7 @@ impl Module {
             // Due to rust lifetimes, we need to actually create a set here to reference in unwrap.
             // The Alternative would be to clone the existing hashset every loop, which is way worse.
             let empty_set = HashSet::new();
-            let past_hashes = past_hashes_by_module_id
+            let past_hashes = past_hashes_for_module_id
                 .get(&latest_module.id)
                 .unwrap_or(&empty_set);
 
@@ -508,6 +544,7 @@ impl Module {
 
         debug!(?synced_modules.installable, "collected installable modules");
         debug!(?synced_modules.upgradeable, "collected upgradeable modules");
+        debug!(?synced_modules.contributable, "collected contributable modules");
         debug!("syncing modules took: {:?}", start.elapsed());
 
         Ok(synced_modules)

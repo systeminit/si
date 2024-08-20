@@ -31,7 +31,7 @@
         <div class="ml-auto flex flex-none gap-xs">
           <EditingPill v-if="!asset.isLocked" :color="asset.color" />
           <IconButton
-            v-if="asset.canContribute"
+            v-if="canContribute"
             :selected="contributeAssetModalRef?.isOpen || false"
             class="hover:scale-125"
             icon="cloud-upload"
@@ -197,6 +197,14 @@ const asset = computed(
 const canUpdate = computed(
   () => !!moduleStore.upgradeableModules[props.assetId],
 );
+
+const canContribute = computed(() => {
+  return (
+    !!moduleStore.contributableModules.includes(
+      asset.value?.schemaVariantId ?? "",
+    ) || asset.value?.canContribute
+  );
+});
 
 const updateAsset = () => {
   const schemaVariantId = asset.value?.schemaVariantId;

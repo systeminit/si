@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use si_events::SchemaVariantId;
 
+pub use module_index_types::BuiltinsDetailsResponse as BuiltinModules;
 pub use module_index_types::LatestModuleResponse as LatestModule;
+pub use module_index_types::ModuleDetailsResponse as ModuleDetails;
+use si_events::SchemaVariantId;
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncedModules {
     pub upgradeable: HashMap<SchemaVariantId, LatestModule>,
     pub installable: Vec<LatestModule>,
+    pub contributable: Vec<SchemaVariantId>,
 }
 
 impl SyncedModules {

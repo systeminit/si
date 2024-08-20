@@ -5,7 +5,6 @@ use dal::{DalContext, Schema};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use si_pkg::{SocketSpecArity, SocketSpecKind};
-use std::collections::HashMap;
 use ulid::Ulid;
 
 #[test]
@@ -227,7 +226,7 @@ async fn dummy_sync(ctx: &DalContext) {
             dummy_latest_module_upgradeable,
             dummy_latest_module_installable,
         ],
-        HashMap::new(),
+        vec![],
     )
     .await
     .expect("could not sync");
