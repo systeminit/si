@@ -1,7 +1,6 @@
 on:
   push:
     tags:
-      - '.*(sdf|rebaser|pinga|web|veritech).*'
       - 'bin/sdf/image/*'
       - 'bin/rebaser/image/*'
       - 'bin/pinga/image/*'
