@@ -701,7 +701,7 @@ impl TelemetryUpdateTask {
             Err(_elapsed) => {
                 warn!(
                     ?timeout,
-                    "opentelemetry shutown took too long, not waiting for full shutdown"
+                    "opentelemetry shutdown took too long, not waiting for full shutdown"
                 );
             }
         };
