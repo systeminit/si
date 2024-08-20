@@ -26,7 +26,6 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 use telemetry::prelude::*;
 use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
-
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal,
@@ -111,7 +110,7 @@ impl From<PgPoolError> for ServerError {
     }
 }
 
-pub type Result<T, E = ServerError> = std::result::Result<T, E>;
+pub type ServerResult<T, E = ServerError> = std::result::Result<T, E>;
 
 pub struct Server<I, S> {
     config: Config,
@@ -131,19 +130,18 @@ impl Server<(), ()> {
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer: Multiplexer,
         crdt_multiplexer_client: MultiplexerClient,
-    ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
+    ) -> ServerResult<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx, _application_mode_rx, shutdown_broadcast_rx) =
-                    build_service(
-                        services_context,
-                        jwt_public_signing_key,
-                        posthog_client,
-                        ws_multiplexer_client,
-                        crdt_multiplexer_client,
-                        *config.create_workspace_permissions(),
-                        config.create_workspace_allowlist().to_vec(),
-                    )?;
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                    services_context,
+                    jwt_public_signing_key,
+                    posthog_client,
+                    ws_multiplexer_client,
+                    crdt_multiplexer_client,
+                    *config.create_workspace_permissions(),
+                    config.create_workspace_allowlist().to_vec(),
+                )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
                 tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -178,19 +176,18 @@ impl Server<(), ()> {
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer: Multiplexer,
         crdt_multiplexer_client: MultiplexerClient,
-    ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
+    ) -> ServerResult<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx, _application_mode_rx, shutdown_broadcast_rx) =
-                    build_service(
-                        services_context,
-                        jwt_public_signing_key,
-                        posthog_client,
-                        ws_multiplexer_client,
-                        crdt_multiplexer_client,
-                        *config.create_workspace_permissions(),
-                        config.create_workspace_allowlist().to_vec(),
-                    )?;
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                    services_context,
+                    jwt_public_signing_key,
+                    posthog_client,
+                    ws_multiplexer_client,
+                    crdt_multiplexer_client,
+                    *config.create_workspace_permissions(),
+                    config.create_workspace_allowlist().to_vec(),
+                )?;
 
                 tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
                 tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
@@ -216,11 +213,11 @@ impl Server<(), ()> {
         }
     }
 
-    pub fn init() -> Result<()> {
+    pub fn init() -> ServerResult<()> {
         Ok(dal::init()?)
     }
 
-    pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
+    pub async fn start_posthog(config: &PosthogConfig) -> ServerResult<PosthogClient> {
         let (posthog_client, posthog_sender) = si_posthog::from_config(config)?;
 
         drop(tokio::spawn(posthog_sender.run()));
@@ -232,14 +229,14 @@ impl Server<(), ()> {
     pub async fn generate_veritech_key_pair(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
-    ) -> Result<()> {
+    ) -> ServerResult<()> {
         VeritechKeyPair::create_and_write_files(secret_key_path, public_key_path)
             .await
             .map_err(Into::into)
     }
 
     #[instrument(name = "sdf.init.generate_symmetric_key", level = "info", skip_all)]
-    pub async fn generate_symmetric_key(symmetric_key_path: impl AsRef<Path>) -> Result<()> {
+    pub async fn generate_symmetric_key(symmetric_key_path: impl AsRef<Path>) -> ServerResult<()> {
         SymmetricCryptoService::generate_key()
             .save(symmetric_key_path.as_ref())
             .await
@@ -251,7 +248,9 @@ impl Server<(), ()> {
         level = "info",
         skip_all
     )]
-    pub async fn load_jwt_public_signing_key(config: JwtConfig) -> Result<JwtPublicSigningKey> {
+    pub async fn load_jwt_public_signing_key(
+        config: JwtConfig,
+    ) -> ServerResult<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::from_config(config).await?)
     }
 
@@ -260,20 +259,22 @@ impl Server<(), ()> {
         level = "info",
         skip_all
     )]
-    pub async fn decode_jwt_public_signing_key(key_string: String) -> Result<JwtPublicSigningKey> {
+    pub async fn decode_jwt_public_signing_key(
+        key_string: String,
+    ) -> ServerResult<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::decode(key_string).await?)
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", level = "info", skip_all)]
     pub async fn load_encryption_key(
         crypto_config: VeritechCryptoConfig,
-    ) -> Result<Arc<VeritechEncryptionKey>> {
+    ) -> ServerResult<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
             VeritechEncryptionKey::from_config(crypto_config).await?,
         ))
     }
 
-    pub async fn migrate_snapshots(services_context: &ServicesContext) -> Result<()> {
+    pub async fn migrate_snapshots(services_context: &ServicesContext) -> ServerResult<()> {
         let dal_context = services_context.clone().into_builder(true);
         let ctx = dal_context.build_default().await?;
 
@@ -285,7 +286,7 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
-    pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
+    pub async fn migrate_database(services_context: &ServicesContext) -> ServerResult<()> {
         services_context.layer_db().pg_migrate().await?;
         dal::migrate_all_with_progress(services_context).await?;
 
@@ -296,14 +297,14 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
-    pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
+    pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
     #[instrument(name = "sdf.init.connect_to_nats", level = "info", skip_all)]
-    pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
+    pub async fn connect_to_nats(nats_config: &NatsConfig) -> ServerResult<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
@@ -320,7 +321,7 @@ impl Server<(), ()> {
     )]
     pub async fn create_symmetric_crypto_service(
         config: &SymmetricCryptoServiceConfig,
-    ) -> Result<SymmetricCryptoService> {
+    ) -> ServerResult<SymmetricCryptoService> {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
@@ -333,7 +334,7 @@ where
     IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     IE: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self) -> ServerResult<()> {
         let shutdown_rx = self.shutdown_rx;
 
         self.inner
@@ -355,7 +356,9 @@ where
     }
 }
 
-pub async fn migrate_builtins_from_module_index(services_context: &ServicesContext) -> Result<()> {
+pub async fn migrate_builtins_from_module_index(
+    services_context: &ServicesContext,
+) -> ServerResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
 
@@ -402,7 +405,7 @@ async fn install_builtins(
     ctx: DalContext,
     module_list: BuiltinsDetailsResponse,
     module_index_client: ModuleIndexClient,
-) -> Result<()> {
+) -> ServerResult<()> {
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules: Vec<ModuleDetailsResponse> = module_list.modules;
@@ -473,20 +476,13 @@ async fn install_builtins(
 async fn fetch_builtin(
     module: &ModuleDetailsResponse,
     module_index_client: &ModuleIndexClient,
-) -> Result<SiPkg> {
+) -> ServerResult<SiPkg> {
     let module = module_index_client
         .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())
         .await?;
 
     Ok(SiPkg::load_from_bytes(module)?)
 }
-
-type BuildServiceResult = Result<(
-    Router,
-    oneshot::Receiver<()>,
-    oneshot::Receiver<()>,
-    broadcast::Receiver<()>,
-)>;
 
 pub fn build_service_for_tests(
     services_context: ServicesContext,
@@ -496,7 +492,7 @@ pub fn build_service_for_tests(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> BuildServiceResult {
+) -> ServerResult<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
         jwt_public_signing_key,
@@ -517,7 +513,7 @@ pub fn build_service(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> BuildServiceResult {
+) -> ServerResult<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
         jwt_public_signing_key,
@@ -540,7 +536,7 @@ fn build_service_inner(
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: Vec<WorkspacePermissions>,
-) -> BuildServiceResult {
+) -> ServerResult<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
@@ -575,24 +571,17 @@ fn build_service_inner(
             .on_response(HttpOnResponse::new().level(Level::DEBUG)),
     );
 
-    let (graceful_shutdown_rx, application_mode_rx) =
-        prepare_signal_handlers(shutdown_rx, shutdown_broadcast_tx, mode)?;
+    let graceful_shutdown_rx = prepare_signal_handlers(shutdown_rx, shutdown_broadcast_tx, mode)?;
 
-    Ok((
-        routes,
-        graceful_shutdown_rx,
-        application_mode_rx,
-        shutdown_broadcast_rx,
-    ))
+    Ok((routes, graceful_shutdown_rx, shutdown_broadcast_rx))
 }
 
 fn prepare_signal_handlers(
     mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
     mode: Arc<RwLock<ApplicationRuntimeMode>>,
-) -> Result<(oneshot::Receiver<()>, oneshot::Receiver<()>)> {
+) -> ServerResult<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
-    let (_application_mode_tx, application_mode_rx) = oneshot::channel::<()>();
 
     let mut sigterm_watcher =
         signal::unix::signal(signal::unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
@@ -654,7 +643,7 @@ fn prepare_signal_handlers(
         }
     });
 
-    Ok((graceful_shutdown_rx, application_mode_rx))
+    Ok(graceful_shutdown_rx)
 }
 
 #[remain::sorted]
