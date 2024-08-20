@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# shellcheck disable=SC2034
+
+# Define the SSM documents to execute the functions
+upgrade_check_script="si-check-node-upgrade"
+service_maintenance_script="si-service-maintenance"
+service_state_script="si-service-state"
+
 # Function to start SSM session
 start_and_track_ssm_session() {
 

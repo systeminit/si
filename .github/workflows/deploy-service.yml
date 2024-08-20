@@ -154,4 +154,12 @@ jobs:
 
       - name: Deploy service
         if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
-        run: component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}
+        run: |
+          # Push all the SDF replicas into maintenance mode if they're not already in it
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m y -a y
+          # Wait an arbitrary amount of time to allow the back end to settle down with work
+          sleep 30
+          # Upgrade all the associated services
+          component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}
+          # Enable SDF again if it is disabled
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m n -a y
