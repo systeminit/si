@@ -136,6 +136,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    #[cfg(target_os = "linux")]
     async fn chop() {
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)
