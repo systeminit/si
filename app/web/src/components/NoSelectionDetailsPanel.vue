@@ -28,15 +28,14 @@
         startSelectedTabSlug="changes"
         rememberSelectedTabKey="no-selection-details-panel"
         trackingSlug="no-selection-details-panel"
-        variant="fullsize"
       >
-        <TabGroupItem label="CHANGES" slug="changes">
+        <TabGroupItem label="Changes" slug="changes">
           <ChangesPanelProposed />
         </TabGroupItem>
-        <TabGroupItem label="HISTORY" slug="history">
+        <TabGroupItem label="History" slug="history">
           <ChangesPanelHistory />
         </TabGroupItem>
-        <TabGroupItem label="SECRETS" slug="secrets">
+        <TabGroupItem label="Secrets" slug="secrets">
           <SecretsPanel />
         </TabGroupItem>
       </TabGroup>

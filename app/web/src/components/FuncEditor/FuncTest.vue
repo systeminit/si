@@ -82,6 +82,7 @@
       ref="funcTestTabsRef"
       startSelectedTabSlug="input"
       growTabsToFillWidth
+      variant="secondary"
       marginTop="2xs"
     >
       <TabGroupItem label="Input" slug="input">

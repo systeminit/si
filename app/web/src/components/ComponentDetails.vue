@@ -75,7 +75,6 @@
         <TabGroup
           ref="tabsRef"
           trackingSlug="asset_details"
-          variant="fullsize"
           :startSelectedTabSlug="
             componentsStore.detailsTabSlugs[0] || undefined
           "
@@ -84,7 +83,7 @@
           <TabGroupItem slug="component">
             <template #label>
               <Inline noWrap alignY="center">
-                <span>Component</span>
+                <span class="uppercase">Component</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponentQualificationStatus"
                   type="qualification"
@@ -96,7 +95,7 @@
             <TabGroup
               ref="componentSubTabsRef"
               trackingSlug="asset_details/component"
-              variant="minimal"
+              variant="secondary"
               :startSelectedTabSlug="
                 componentsStore.detailsTabSlugs[1] || undefined
               "
@@ -149,7 +148,7 @@
           <TabGroupItem slug="actions">
             <template #label>
               <Inline noWrap alignY="center">
-                <span>Actions</span>
+                <span class="uppercase">Actions</span>
                 <PillCounter
                   :count="selectedComponentActionsCount"
                   hideIfZero
@@ -161,7 +160,7 @@
           <TabGroupItem slug="resource">
             <template #label>
               <Inline noWrap alignY="center">
-                <span>Resource</span>
+                <span class="uppercase">Resource</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponent.hasResource"
                   type="resource"

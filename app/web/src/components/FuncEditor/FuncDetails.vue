@@ -22,6 +22,7 @@
             :class="clsx(!unlocking && 'hover:scale-125')"
             :loading="unlocking"
             icon="sliders-vertical"
+            size="sm"
             tooltip="Edit"
             tooltipPlacement="top"
             variant="simple"
@@ -101,11 +102,7 @@
       </div>
     </div>
     <div class="flex-grow relative">
-      <TabGroup
-        ref="funcDetailsTabGroupRef"
-        growTabsToFillWidth
-        variant="fullsize"
-      >
+      <TabGroup ref="funcDetailsTabGroupRef" growTabsToFillWidth>
         <TabGroupItem label="Properties" slug="properties">
           <div
             class="flex flex-col absolute inset-0 overflow-y-auto overflow-x-hidden border-t border-neutral-200 dark:border-neutral-600"

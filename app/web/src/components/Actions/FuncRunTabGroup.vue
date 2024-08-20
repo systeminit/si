@@ -10,11 +10,7 @@
         v-if="props.selectedAction"
         class="absolute w-[500px] h-full left-[-500px] bg-neutral-800 z-[-10]"
       >
-        <TabGroup
-          ref="tabGroupRef"
-          variant="fullsize"
-          @closeButtonTabClicked="props.close"
-        >
+        <TabGroup ref="tabGroupRef" @closeButtonTabClicked="props.close">
           <TabGroupCloseButton />
           <ChangesPanelHistorySubpanelTab
             label="Arguments"

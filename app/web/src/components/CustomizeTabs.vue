@@ -3,7 +3,6 @@
     ref="group"
     :startSelectedTabSlug="tabContentSlug"
     marginTop="2xs"
-    variant="fullsize"
     @update:selected-tab="onTabChange"
   >
     <TabGroupItem slug="assets" label="ASSETS">
