@@ -40,7 +40,7 @@ usage() {
     echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
     echo "  -a automatic      [Y/N] Run through automatically/no-interact"
     echo "----------------------------------"
-    echo "e.g. ./awsi.sh -p pull-from-env -r us-east-1 -s sdf -a y"
+    echo "e.g. ./awsi.sh upgrade -p pull-from-env -r us-east-1 -s sdf -a y"
     exit 1
 }
 
@@ -78,6 +78,8 @@ done
 # ---------------------------------------------------------------------------------------------------
 # Main script
 # ---------------------------------------------------------------------------------------------------
+echo "$0 being invoked"
+
 # Use the profile if in the invocation
 if [[ "$profile" != "pull-from-env" ]]; then
   profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
@@ -85,10 +87,6 @@ if [[ "$profile" != "pull-from-env" ]]; then
 fi
 region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
 export AWS_REGION="$region"
-
-# Define the SSM documents to execute the functions
-upgrade_check_script="si-check-node-upgrade"
-service_state_script="si-service-state"
 
 # List instances with fixed-width columns and filter for the upgradeable instances
 # Based on the filter provided
