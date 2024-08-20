@@ -93,7 +93,8 @@ struct KvState {
 #[remain::sorted]
 #[derive(Debug)]
 enum DebouncerState {
-    Cancelled,
+    AbandoningLeadership,
+    Cancelling,
     RunningAsLeader((KvState, u64)),
     WaitingToBecomeLeader,
 }
@@ -177,7 +178,8 @@ impl DvuDebouncerTask {
                 DebouncerState::RunningAsLeader((kv_state, revision)) => {
                     self.running_as_leader(kv_state, revision).await?
                 }
-                DebouncerState::Cancelled => break,
+                DebouncerState::AbandoningLeadership => DebouncerState::WaitingToBecomeLeader,
+                DebouncerState::Cancelling => break,
             };
         }
 
@@ -226,7 +228,7 @@ impl DvuDebouncerTask {
                         state = "waiting_to_become_leader",
                         "received cancellation",
                     );
-                    return Ok(DebouncerState::Cancelled);
+                    return Ok(DebouncerState::Cancelling);
                 }
                 // Received next watch item
                 maybe_entry_result = watch.next() => {
@@ -317,7 +319,16 @@ impl DvuDebouncerTask {
             .await
             .map_err(|_err| DvuDebouncerTaskError::KeepaliveTaskJoin)?
         {
-            Ok(revision) => self.attempt_to_purge_key(revision).await,
+            Ok(revision) => {
+                if !matches!(inner_result, Ok(DebouncerState::AbandoningLeadership)) {
+                    self.attempt_to_purge_key(revision).await;
+                    info!(
+                        task = Self::NAME,
+                        key = self.watch_subject.to_string(),
+                        "demoting self as leader",
+                    );
+                }
+            }
             Err(task_err) => {
                 warn!(
                     task = Self::NAME,
@@ -328,11 +339,6 @@ impl DvuDebouncerTask {
             }
         };
 
-        info!(
-            task = Self::NAME,
-            key = self.watch_subject.to_string(),
-            "demoting self as leader",
-        );
         inner_result
     }
 
@@ -360,7 +366,7 @@ impl DvuDebouncerTask {
                         state = "running_as_leader",
                         "received cancellation",
                     );
-                    return Ok(DebouncerState::Cancelled);
+                    return Ok(DebouncerState::Cancelling);
                 }
                 // Concurrent "keepalive" task has failed
                 message_result = &mut keepalive_failed_rx => {
@@ -370,11 +376,11 @@ impl DvuDebouncerTask {
                                 task = Self::NAME,
                                 key = self.watch_subject.to_string(),
                                 %message,
-                                "error in keepalive task, retiring from leadership",
+                                "error in keepalive task, abandoning leadership",
                             );
-                            // We've failed to keep the key alive so we should retire from
-                            // leadership and resume trying to become leader
-                            return Ok(DebouncerState::WaitingToBecomeLeader);
+                            // We've failed to keep the key alive so we should abandon leadership
+                            // and resume trying to become leader
+                            return Ok(DebouncerState::AbandoningLeadership);
                         }
                         Err(_cancelled) => {
                             trace!(
@@ -551,10 +557,10 @@ impl DvuDebouncerTask {
                     si.workspace.id = %self.workspace_id,
                     si.change_set.id = %self.change_set_id,
                     error = ?err,
-                    "failed to update status to running; retiring from leadership",
+                    "failed to update status to running; abandoning leadership",
                 );
-                // Could not successfully write the updated kv status, so retire from leadership
-                return Ok(Some(DebouncerState::WaitingToBecomeLeader));
+                // Could not successfully write the updated kv status, so abandon leadership
+                return Ok(Some(DebouncerState::AbandoningLeadership));
             }
 
             info!(
