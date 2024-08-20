@@ -2,6 +2,17 @@ on:
   push:
     tags:
       - '.*(sdf|rebaser|pinga|web|veritech).*'
+      - 'bin/sdf/image/*'
+      - 'bin/rebaser/image/*'
+      - 'bin/pinga/image/*'
+      - 'bin/veritech/image/*'
+      - 'app/web/image/*'
+        # which directly matches [examples]
+        # bin/sdf/image/20240820.143323.0-sha.982dd5a81, 
+        # bin/rebaser/image/20240820.143323.0-sha.982dd5a81, 
+        # bin/pinga/image/20240820.143323.0-sha.982dd5a81
+        # bin/veritech/image/20240820.031721.0-sha.efea02a6a
+        # app/web/image/20240820.000535.0-sha.13e826961
 
 jobs:
   parse-tag:
@@ -13,23 +24,23 @@ jobs:
         run: |
             echo "service=$(echo "${{ github.ref_name }}" | awk -F'/' '{print $2}')" >> "$GITHUB_OUTPUT"
 
-  deploy-tools-prod:
-    needs: parse-tag
-    uses: ./.github/workflows/deploy-stack.yml
-    with:
-      environment: tools
-      service: ${{ needs.parse-tag.outputs.service }}
-      version: stable
-      deploy-type: binary
-    secrets: inherit
-    continue-on-error: true
-  full-deploy-on-failure:
-    if: failure() 
-    uses: ./.github/workflows/deploy-stack.yml
-    with:
-      environment: tools
-      service: all
-      version: stable
-      deploy-type: instance
-    secrets: inherit
-    needs: deploy-tools-prod
+  #deploy-tools-prod:
+  #  needs: parse-tag
+  #  uses: ./.github/workflows/deploy-stack.yml
+  #  with:
+  #    environment: tools
+  #    service: ${{ needs.parse-tag.outputs.service }}
+  #    version: stable
+  #    deploy-type: binary
+  #  secrets: inherit
+  #  continue-on-error: true
+  #full-deploy-on-failure:
+  #  if: failure() 
+  #  uses: ./.github/workflows/deploy-stack.yml
+  #  with:
+  #    environment: tools
+  #    service: all
+  #    version: stable
+  #    deploy-type: instance
+  #  secrets: inherit
+  #  needs: deploy-tools-prod
