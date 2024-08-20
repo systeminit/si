@@ -127,6 +127,12 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("duplicate key or index {key_or_index} for attribute values {child1} and {child2}")]
+    DuplicateKeyOrIndex {
+        key_or_index: KeyOrIndex,
+        child1: AttributeValueId,
+        child2: AttributeValueId,
+    },
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("func error: {0}")]
@@ -229,6 +235,38 @@ pub struct AttributeValue {
     pub value: Option<ContentAddress>,
     // DEPRECATED, should always be None
     pub func_execution_pk: Option<FuncExecutionPk>,
+}
+
+///
+/// Returned from AttributeValue::get_child_av_id_pairs_in_order(ctx, first, second)
+///
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChildAttributeValuePair {
+    Both(Option<String>, AttributeValueId, AttributeValueId),
+    FirstOnly(Option<String>, AttributeValueId),
+    SecondOnly(Option<String>, AttributeValueId),
+}
+
+impl ChildAttributeValuePair {
+    pub fn key(&self) -> Option<&String> {
+        match self {
+            Self::Both(key, _, _) | Self::FirstOnly(key, _) | Self::SecondOnly(key, _) => {
+                key.into()
+            }
+        }
+    }
+    pub fn first(&self) -> Option<AttributeValueId> {
+        match self {
+            Self::Both(_, first, _) | Self::FirstOnly(_, first) => Some(*first),
+            Self::SecondOnly(_, _) => None,
+        }
+    }
+    pub fn second(&self) -> Option<AttributeValueId> {
+        match self {
+            Self::Both(_, _, second) | Self::SecondOnly(_, second) => Some(*second),
+            Self::FirstOnly(_, _) => None,
+        }
+    }
 }
 
 impl From<AttributeValueNodeWeight> for AttributeValue {
@@ -2209,6 +2247,67 @@ impl AttributeValue {
             // Leaves don't have ordering nodes
             Ok(vec![])
         }
+    }
+
+    ///
+    /// Get matching child attributes, in order.
+    ///
+    pub async fn get_child_av_id_pairs_in_order(
+        ctx: &DalContext,
+        first_parent: AttributeValueId,
+        second_parent: AttributeValueId,
+    ) -> AttributeValueResult<Vec<ChildAttributeValuePair>> {
+        let mut pair_index = HashMap::<KeyOrIndex, usize>::new();
+        let first_children = Self::get_child_av_ids_in_order(ctx, first_parent).await?;
+        let mut pairs: Vec<ChildAttributeValuePair> = Vec::with_capacity(first_children.len());
+        for (index, first_child) in first_children.iter().enumerate() {
+            let key = Self::key_for_id(ctx, *first_child).await?;
+            let key_or_index = match &key {
+                Some(key) => KeyOrIndex::Key(key.clone()),
+                None => KeyOrIndex::Index(index as i64),
+            };
+            if let Some(old_index) = pair_index.get(&key_or_index) {
+                return Err(AttributeValueError::DuplicateKeyOrIndex {
+                    key_or_index,
+                    // It's impossible for get() to fail here, so the or() can't happen
+                    child1: *first_children.get(*old_index).unwrap_or(first_child),
+                    child2: *first_child,
+                });
+            }
+            pair_index.insert(key_or_index, pairs.len());
+            pairs.push(ChildAttributeValuePair::FirstOnly(key, *first_child));
+        }
+
+        let second_children = Self::get_child_av_ids_in_order(ctx, second_parent).await?;
+        for (index, second_child) in second_children.into_iter().enumerate() {
+            let key = Self::key_for_id(ctx, second_child).await?;
+            let key_or_index = match &key {
+                Some(key) => KeyOrIndex::Key(key.clone()),
+                None => KeyOrIndex::Index(index as i64),
+            };
+            match pair_index.get(&key_or_index) {
+                None => {
+                    pair_index.insert(key_or_index, pairs.len());
+                    pairs.push(ChildAttributeValuePair::SecondOnly(key, second_child));
+                }
+                Some(index) => match pairs[*index] {
+                    ChildAttributeValuePair::FirstOnly(_, first_child) => {
+                        pairs[*index] =
+                            ChildAttributeValuePair::Both(key, first_child, second_child);
+                    }
+                    ChildAttributeValuePair::SecondOnly(_, old_second_child)
+                    | ChildAttributeValuePair::Both(_, _, old_second_child) => {
+                        return Err(AttributeValueError::DuplicateKeyOrIndex {
+                            key_or_index,
+                            child1: old_second_child,
+                            child2: second_child,
+                        });
+                    }
+                },
+            }
+        }
+
+        Ok(pairs)
     }
 
     pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {

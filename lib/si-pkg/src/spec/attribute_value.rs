@@ -1,4 +1,5 @@
 use core::fmt;
+use std::hash::Hash;
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ pub enum AttributeValuePath {
     OutputSocket(String),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum KeyOrIndex {
     Key(String),

@@ -418,20 +418,20 @@ impl AttributePrototypeArgument {
     }
 
     pub async fn set_value_source(
-        self,
         ctx: &DalContext,
-        value_id: Ulid,
-    ) -> AttributePrototypeArgumentResult<Self> {
+        apa_id: AttributePrototypeArgumentId,
+        value_source: ValueSource,
+    ) -> AttributePrototypeArgumentResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         for existing_value_source in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
-                self.id,
+                apa_id,
                 EdgeWeightKindDiscriminants::PrototypeArgumentValue,
             )
             .await?
         {
-            let self_node_index = workspace_snapshot.get_node_index_by_id(self.id).await?;
+            let self_node_index = workspace_snapshot.get_node_index_by_id(apa_id).await?;
             workspace_snapshot
                 .remove_edge(
                     self_node_index,
@@ -443,13 +443,13 @@ impl AttributePrototypeArgument {
 
         Self::add_edge_to_value(
             ctx,
-            self.id,
-            value_id,
+            apa_id,
+            value_source.into_inner_id().into(),
             EdgeWeightKind::PrototypeArgumentValue,
         )
         .await?;
 
-        Ok(self)
+        Ok(())
     }
 
     pub async fn prototype_id_for_argument_id(
@@ -496,7 +496,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         input_socket_id: InputSocketId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, input_socket_id.into()).await
+        Self::set_value_source(ctx, self.id, input_socket_id.into())
+            .await
+            .and(Ok(self))
     }
 
     pub async fn set_value_from_output_socket_id(
@@ -504,7 +506,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, output_socket_id.into()).await
+        Self::set_value_source(ctx, self.id, output_socket_id.into())
+            .await
+            .and(Ok(self))
     }
 
     pub async fn set_value_from_prop_id(
@@ -512,7 +516,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, prop_id.into()).await
+        Self::set_value_source(ctx, self.id, prop_id.into())
+            .await
+            .and(Ok(self))
     }
 
     pub async fn set_value_from_secret_id(
@@ -520,7 +526,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         secret_id: SecretId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, secret_id.into()).await
+        Self::set_value_source(ctx, self.id, secret_id.into())
+            .await
+            .and(Ok(self))
     }
 
     pub async fn set_value_from_static_value_id(
@@ -528,7 +536,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         value_id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, value_id.into()).await
+        Self::set_value_source(ctx, self.id, value_id.into())
+            .await
+            .and(Ok(self))
     }
 
     pub async fn set_value_from_static_value(

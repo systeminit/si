@@ -47,6 +47,32 @@ pub enum ValueSource {
     StaticArgumentValue(StaticArgumentValueId),
 }
 
+impl From<InputSocketId> for ValueSource {
+    fn from(id: InputSocketId) -> Self {
+        Self::InputSocket(id)
+    }
+}
+impl From<OutputSocketId> for ValueSource {
+    fn from(id: OutputSocketId) -> Self {
+        Self::OutputSocket(id)
+    }
+}
+impl From<PropId> for ValueSource {
+    fn from(id: PropId) -> Self {
+        Self::Prop(id)
+    }
+}
+impl From<SecretId> for ValueSource {
+    fn from(id: SecretId) -> Self {
+        Self::Secret(id)
+    }
+}
+impl From<StaticArgumentValueId> for ValueSource {
+    fn from(id: StaticArgumentValueId) -> Self {
+        Self::StaticArgumentValue(id)
+    }
+}
+
 impl ValueSource {
     async fn all_attribute_values_everywhere(
         &self,
