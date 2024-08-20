@@ -566,7 +566,7 @@ impl AttributeValue {
         Ok(func_values)
     }
 
-    #[instrument(level = "info" skip(ctx))]
+    #[instrument(level = "debug" skip(ctx))]
     pub async fn prepare_arguments_for_prototype_function_execution(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
