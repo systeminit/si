@@ -536,8 +536,8 @@
       </div>
       <div class="attributes-panel-item__view-value-modal-code-wrap">
         <template v-if="widgetKind === 'textArea'">
-          <pre class="attributes-panel-item__edit-value-modal__view-text">
-          {{ newValueString }}
+          <pre class="attributes-panel-item__edit-value-modal__view-text"
+            >{{ newValueString }}
           </pre>
         </template>
         <template v-else-if="widgetKind === 'codeEditor'">

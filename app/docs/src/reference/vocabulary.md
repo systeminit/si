@@ -6,6 +6,10 @@ This a reference to all of the vocabulary used in System Initiative.
 
 Anything that can be used on the canvas.
 
+## Component
+
+A component is the 'theoretical' half of a Model. It represents the configuration values you *want* something to have, while the Resource represents its real world values.
+
 ## Credential
 
 A credential is a type of component that stores secret data, and has
@@ -49,6 +53,8 @@ The hypergraph of functions, or hypergraph, is the data structure that powers
 System Initiative. It is a graph that represents all of the code, components,
 resources, and functions that are in a workspace. We call it a "hypergraph"
 because it is multi-dimensional through the use of change sets.
+
+We know it's not an actual [hypergraph](https://en.wikipedia.org/wiki/Hypergraph). It's just less of a mouthful than 'multi-dimensional graph'.
 
 ## A Model
 
