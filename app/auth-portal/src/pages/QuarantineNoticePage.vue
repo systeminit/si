@@ -6,8 +6,8 @@
       <Icon class="inline-block" name="alert-circle" />
     </h2>
     <p>
-      The account you are using has been quarantined. It cannot access the SI
-      platform until this has been rescinded.
+      The account you are using has been quarantined. It cannot access System
+      Initiative until this has been rescinded.
       <br />
       <br />
       Contact us at

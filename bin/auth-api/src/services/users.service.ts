@@ -3,7 +3,7 @@ import { ulid } from "ulidx";
 import * as Auth0 from "auth0";
 import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
-import { createWorkspace } from "./workspaces.service";
+import { createWorkspace, LOCAL_WORKSPACE_URL } from "./workspaces.service";
 import { LATEST_TOS_VERSION_ID } from "./tos.service";
 import { tracker } from "../lib/tracker";
 import { fetchAuth0Profile } from "./auth0.service";
@@ -39,6 +39,7 @@ export async function getUserById(id: UserId) {
     needsTosUpdate,
   };
 }
+
 export type User = NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
 export type UserWithTosStatus = NonNullable<Awaited<ReturnType<typeof getUserById>>>;
 
@@ -124,7 +125,7 @@ export async function createOrUpdateUserFromAuth0Details(
     await createWorkspace(
       user,
       InstanceEnvType.LOCAL,
-      "http://localhost:8080",
+      LOCAL_WORKSPACE_URL,
       `${user.nickname}'s  Dev Workspace`,
       false,
     );
@@ -141,6 +142,7 @@ export async function refreshUserAuth0Profile(user: User) {
   setUserDataFromAuth0Details(user, auth0Details);
   await saveUser(user);
 }
+
 function setUserDataFromAuth0Details(
   user: any,
   auth0Details: Auth0.User,

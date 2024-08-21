@@ -14,7 +14,7 @@ import {
   saveUser,
 } from "../services/users.service";
 import { resendAuth0EmailVerification } from "../services/auth0.service";
-import { router } from ".";
+import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/whoami", async (ctx) => {
   // user must be logged in
@@ -27,19 +27,7 @@ router.get("/whoami", async (ctx) => {
   };
 });
 
-/// Return auth user id and fail if not present
-function extractAuthUser(ctx: CustomRouteContext) {
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-
-  if (ctx.state.authUser.quarantinedAt !== null) {
-    throw new ApiError("Unauthorized", "This account is quarantined. Contact SI support");
-  }
-
-  return ctx.state.authUser;
-}
-
+// :userId named param handler - little easier for TS this way than using router.param
 async function extractUserIdParam(ctx: CustomRouteContext) {
   const userId = ctx.params.userId;
   if (!userId) {
@@ -60,7 +48,7 @@ async function extractUserIdParam(ctx: CustomRouteContext) {
   }
 }
 
-// :userId named param handler - little easier for TS this way than using router.param
+// Extract user based on :userId param, fail if not equal to auth user
 async function extractOwnUserIdParam(ctx: CustomRouteContext) {
   if (!ctx.params.userId) {
     throw new Error("Only use this fn with routes containing :userId param");
@@ -69,29 +57,17 @@ async function extractOwnUserIdParam(ctx: CustomRouteContext) {
   // ensure user is logged in
   const authUser = extractAuthUser(ctx);
 
-  // for now you can only edit yourself
-  // eventually we may have SI admins able to edit everyone
-  // or org admins able to edit people within their org...
   if (authUser.id !== ctx.params.userId) {
     throw new ApiError("Forbidden", "You can only edit your own info");
   }
 
-  // we always have the user loaded already since you can only access yourself
-  // but eventually we'd add a lookup by id and 404 handling
+  // we always have the auth user loaded already
   return authUser;
 }
 
 router.patch("/users/:userId/quarantine", async (ctx) => {
   // Fail on bad auth user
-  const authUser = extractAuthUser(ctx);
-
-  // Fail on non SI user
-  if (!authUser.email.endsWith("@systeminit.com")) {
-    throw new ApiError(
-      "Forbidden",
-      "You are not allowed to perform this operation",
-    );
-  }
+  const authUser = extractAdminAuthUser(ctx);
 
   const targetUser = await extractUserIdParam(ctx);
 
@@ -111,6 +87,7 @@ router.patch("/users/:userId/quarantine", async (ctx) => {
 
   ctx.body = { user: targetUser };
 });
+
 router.patch("/users/:userId", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 

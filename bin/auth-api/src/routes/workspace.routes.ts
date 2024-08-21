@@ -18,48 +18,25 @@ import {
   patchWorkspace,
   deleteWorkspace,
   removeUser,
-  userRoleForWorkspace,
+  userRoleForWorkspace, LOCAL_WORKSPACE_URL, SAAS_WORKSPACE_URL,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
-import { router } from ".";
-
-// Routes are now intercepted if user is not logged or quarantined
-// TODO(victor) remove auth checkin on the endpoints. This wasn't done because assuming ctx.state.authUser exist would break lint
-router.use("/workspaces", async (ctx, next) => {
-  // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-
-  if (ctx.state.authUser.quarantinedAt !== null) {
-    throw new ApiError("Unauthorized", "This account is quarantined. Contact SI support");
-  }
-
-  await next();
-});
+import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
-  // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+  const authUser = extractAuthUser(ctx);
+  ctx.body = await getUserWorkspaces(authUser.id);
 });
 
 // :workspaceId named param handler - little easier for TS this way than using router.param
-async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
+async function extractWorkspaceIdParam(ctx: CustomRouteContext) {
   if (!ctx.params.workspaceId) {
     throw new Error(
       "Only use this fn with routes containing :workspaceId param",
     );
-  }
-
-  // ensure user is logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
   }
 
   // find workspace by id
@@ -68,8 +45,16 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
     throw new ApiError("NotFound", "Workspace not found");
   }
 
+  return workspace;
+}
+
+// Get a workspace from the param, error if the auth user does not have permission on it
+async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  const authUser = extractAuthUser(ctx);
   const memberRole = await userRoleForWorkspace(
-    ctx.state.authUser.id,
+    authUser.id,
     workspace.id,
   );
   if (!memberRole) {
@@ -80,16 +65,11 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
-  const workspace = await handleWorkspaceIdParam(ctx);
-  ctx.body = workspace;
+  ctx.body = await extractOwnWorkspaceIdParam(ctx);
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-
-  const workspace = await handleWorkspaceIdParam(ctx);
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   await deleteWorkspace(workspace.id);
 
@@ -97,16 +77,8 @@ router.delete("/workspaces/:workspaceId", async (ctx) => {
 });
 
 router.post("/workspaces/setup-production-workspace", async (ctx) => {
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-
-  if (!ctx.state.authUser.email.includes("@systeminit.com")) {
-    throw new ApiError(
-      "Forbidden",
-      "You are not allowed to perform this operation",
-    );
-  }
+  // Just for authorization, result is discarded
+  extractAdminAuthUser(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -128,7 +100,7 @@ router.post("/workspaces/setup-production-workspace", async (ctx) => {
     const workspaceDetails = await createWorkspace(
       user,
       InstanceEnvType.SI,
-      "https://app.systeminit.com",
+      SAAS_WORKSPACE_URL,
       `${user.nickname}'s Production Workspace`,
       hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
     );
@@ -140,16 +112,8 @@ router.post("/workspaces/setup-production-workspace", async (ctx) => {
 });
 
 router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
-
-  if (!ctx.state.authUser.email.includes("@systeminit.com")) {
-    throw new ApiError(
-      "Forbidden",
-      "You are not allowed to perform this operation",
-    );
-  }
+  // Just for authorization, result is discarded
+  extractAdminAuthUser(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -171,7 +135,7 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
     const workspaceDetails = await createWorkspace(
       user,
       InstanceEnvType.SI,
-      "https://app.systeminit.com",
+      SAAS_WORKSPACE_URL,
       `${user.nickname}'s Production Workspace`,
       hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
     );
@@ -183,10 +147,7 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
 });
 
 router.post("/workspaces/new", async (ctx) => {
-  // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
+  const authUser = extractAuthUser(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -198,16 +159,16 @@ router.post("/workspaces/new", async (ctx) => {
   );
 
   let workspaceEnvType;
-  if (reqBody.instanceUrl === "https://app.systeminit.com") {
+  if (reqBody.instanceUrl === SAAS_WORKSPACE_URL) {
     workspaceEnvType = InstanceEnvType.SI;
-  } else if (reqBody.instanceUrl === "localhost:8080") {
+  } else if (reqBody.instanceUrl === LOCAL_WORKSPACE_URL) {
     workspaceEnvType = InstanceEnvType.LOCAL;
   } else {
     workspaceEnvType = InstanceEnvType.PRIVATE;
   }
 
   const workspaceDetails = await createWorkspace(
-    ctx.state.authUser,
+    authUser,
     workspaceEnvType,
     reqBody.instanceUrl,
     reqBody.displayName,
@@ -215,18 +176,15 @@ router.post("/workspaces/new", async (ctx) => {
   );
 
   ctx.body = {
-    workspaces: await getUserWorkspaces(ctx.state.authUser.id),
+    workspaces: await getUserWorkspaces(authUser.id),
     newWorkspaceId: workspaceDetails.id,
   };
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
-  // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
+  const authUser = extractAuthUser(ctx);
 
-  const workspace = await handleWorkspaceIdParam(ctx);
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -236,9 +194,25 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     }),
   );
 
-  await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName);
+  await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName, workspace.quarantinedAt);
 
-  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+  ctx.body = await getUserWorkspaces(authUser.id);
+});
+
+router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
+  const authUser = extractAdminAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    isQuarantined: z.boolean(),
+  }));
+
+  const quarantinedAt = reqBody.isQuarantined ? new Date() : null;
+
+  await patchWorkspace(workspace.id, workspace.instanceUrl, workspace.displayName, quarantinedAt);
+
+  ctx.body = await getUserWorkspaces(authUser.id);
 });
 
 export type Member = {
@@ -249,12 +223,9 @@ export type Member = {
   signupAt: Date | null;
 };
 router.get("/workspace/:workspaceId/members", async (ctx) => {
-  // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
+  extractAuthUser(ctx);
 
-  const workspace = await handleWorkspaceIdParam(ctx);
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
@@ -274,11 +245,9 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 
 router.post("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
+  extractAuthUser(ctx);
 
-  const workspace = await handleWorkspaceIdParam(ctx);
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -307,11 +276,9 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You are not logged in");
-  }
+  extractAuthUser(ctx);
 
-  const workspace = await handleWorkspaceIdParam(ctx);
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   const reqBody = validate(
     ctx.request.body,
@@ -338,9 +305,13 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
-  const workspace = await handleWorkspaceIdParam(ctx);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const authUser = ctx.state.authUser!;
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
+
+  if (workspace.quarantinedAt !== null) {
+    throw new ApiError("Unauthorized", `This workspace (ID ${workspace.id}) is quarantined. Contact SI support`);
+  }
+
+  const authUser = extractAuthUser(ctx);
 
   // we require the user to have verified their email before they can log into a workspace
   if (!authUser.emailVerified) {
@@ -398,9 +369,7 @@ router.post("/complete-auth-connect", async (ctx) => {
 });
 
 router.get("/auth-reconnect", async (ctx) => {
-  if (!ctx.state.authUser) {
-    throw new ApiError("Unauthorized", "You must be logged in");
-  }
+  const authUser = extractAuthUser(ctx);
   if (!ctx.state.authWorkspace) {
     throw new ApiError(
       "Unauthorized",
@@ -409,7 +378,7 @@ router.get("/auth-reconnect", async (ctx) => {
   }
 
   ctx.body = {
-    user: ctx.state.authUser,
+    user: authUser,
     workspace: ctx.state.authWorkspace,
   };
 });
