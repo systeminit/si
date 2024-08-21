@@ -97,6 +97,10 @@ export default defineConfig({
             text: "AWS HA EC2",
             link: "/how-tos/aws-ha-ec2",
           },
+          {
+            text: "AWS ECS",
+            link: "/how-tos/aws-ecs",
+          },
         ],
       },
       {
