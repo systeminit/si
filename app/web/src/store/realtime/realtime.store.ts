@@ -100,6 +100,72 @@ export const useRealtimeStore = defineStore("realtime", () => {
     }
   });
 
+  // TODO(johnrwatson): Fetching status from a public status page JSON representation
+  // I have a DNS record set up for this but it's giving me grief, I'll come back and amend to
+  // status-data.systeminit.com
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function fetchStatusPage(): Promise<any> {
+    const response = await fetch(
+      "https://nhzefkyp7l.execute-api.us-east-1.amazonaws.com/data/payload.json",
+    );
+    const data = await response.json();
+    return data;
+  }
+
+  // Custom sort function to sort incidents by severity
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function sortIncidentsBySeverity(incidents: any[]): any[] {
+    const severityOrder: { [key: string]: number } = {
+      MAINTENANCE: 4,
+      UNAVAILABLE: 3,
+      DEGRADED: 2,
+      OPERATIONAL: 1,
+    };
+
+    return incidents.sort((a, b) => {
+      const severityA = severityOrder[a.severitySlug?.toUpperCase()] || 5;
+      const severityB = severityOrder[b.severitySlug?.toUpperCase()] || 5;
+      return severityA - severityB;
+    });
+  }
+
+  const applicationStatus = ref<string>("operational");
+
+  // Check whether there is a degraded or outage state against the public statuspage
+  const statusPageState = async () => {
+    applicationStatus.value = "operational";
+
+    try {
+      const statusData = await fetchStatusPage();
+
+      const incidents = sortIncidentsBySeverity(statusData.incidents);
+
+      // Loop through each incident after sorting
+      for (const incident of incidents) {
+        const resolvedTimestamp = incident.timestamps?.resolved;
+
+        if (incident.components) {
+          for (const component of incident.components) {
+            // Check if the incident is unresolved and its severity is relevant
+            if (
+              !resolvedTimestamp &&
+              ["UNAVAILABLE", "DEGRADED", "MAINTENANCE"].includes(
+                component.condition.toUpperCase(),
+              )
+            ) {
+              applicationStatus.value = component.condition.toLowerCase(); // Return the lowercased version of severity and break the loop
+              break;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  setInterval(statusPageState, 30 * 1000);
+
   // track subscriptions w/ topics, subscribers, etc
   let subCounter = 0;
   // const topicSubscriptionCounter = {} as Record<SubscriptionTopic, number>;
@@ -234,6 +300,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   });
 
   return {
+    applicationStatus,
     connectionStatus,
     sendMessage,
     // subscriptions, // can expose here to show in devtools
