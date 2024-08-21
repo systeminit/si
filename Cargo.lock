@@ -3798,7 +3798,6 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
- "naxum",
  "remain",
  "serde",
  "serde_json",
@@ -3815,7 +3814,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
- "tower",
  "ulid",
  "veritech-client",
 ]
