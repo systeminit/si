@@ -1,3 +1,4 @@
+use dal::component::ComponentGeometry;
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
@@ -257,6 +258,80 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
         updated_message,
         actual_updated_message_should_not_have_changed
     );
+}
+
+#[test]
+async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+    // Create a component and commit.
+    let secret_component = ExpectComponent::create(ctx, "dummy-secret").await;
+    let user_component = ExpectComponent::create(ctx, "fallout").await;
+    secret_component
+        .connect(ctx, "dummy", user_component, "dummy")
+        .await;
+    let secret_prop = secret_component
+        .prop(ctx, ["root", "secrets", "dummy"])
+        .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Create a secret with a value that will pass the qualification and commit.
+    let secret_message =
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+            .await
+            .expect("could not encrypt message");
+    let secret = Secret::new(
+        ctx,
+        "secret that will pass the qualification",
+        "dummy",
+        None,
+        &secret_message,
+        nw.key_pair.pk(),
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Set the secret on the component and commit
+    let dummy_secret_attribute_value_id = secret_prop.attribute_value(ctx).await.id();
+    Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
+        .await
+        .expect("could not attach secret");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Copy and paste the secret component
+    secret_component
+        .component(ctx)
+        .await
+        .copy_paste(
+            ctx,
+            ComponentGeometry {
+                x: secret_component.component(ctx).await.x().to_string(),
+                y: secret_component.component(ctx).await.y().to_string(),
+                width: None,
+                height: None,
+            },
+        )
+        .await
+        .expect("paste");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Copy and paste the user component
+    user_component
+        .component(ctx)
+        .await
+        .copy_paste(
+            ctx,
+            ComponentGeometry {
+                x: user_component.component(ctx).await.x().to_string(),
+                y: user_component.component(ctx).await.y().to_string(),
+                width: None,
+                height: None,
+            },
+        )
+        .await
+        .expect("paste");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 }
 
 #[test]
