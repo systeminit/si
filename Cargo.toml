@@ -153,6 +153,7 @@ self-replace = "1.3.7"
 serde = { version = "1.0.197", features = ["derive", "rc"] }
 serde-aux = "4.5.0"
 serde_json = { version = "1.0.115", features = ["preserve_order"] }
+serde_path_to_error = { version = "0.1.16" }
 serde_url_params = "0.2.1"
 serde_with = "3.7.0"
 serde_yaml = "0.9.33" # NOTE(nick): this has been archived upstream

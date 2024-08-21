@@ -2,7 +2,8 @@ use std::{error, fmt};
 
 use crate::{
     response::{IntoResponse, Response},
-    BoxError, Error,
+    BoxError, Error, __composite_rejection as composite_rejection,
+    __define_rejection as define_rejection,
 };
 
 #[derive(Debug)]
@@ -68,5 +69,35 @@ impl error::Error for StringRejection {
         match self {
             Self::InvalidUtf8(inner) => inner.source(),
         }
+    }
+}
+
+define_rejection! {
+    #[status_code = 422]
+    #[body = "Failed to deserialize the JSON body into the target type"]
+    /// Rejection type for [`Json`].
+    ///
+    /// This rejection is used if the message body is syntactically valid JSON but couldn't be
+    /// deserialized into the target type.
+    pub struct JsonDataError(Error);
+}
+
+define_rejection! {
+    #[status_code = 400]
+    #[body = "Failed to parse the message body as JSON"]
+    /// Rejection type for [`Json`].
+    ///
+    /// This rejection is used if the message body didn't contain syntactically valid JSON.
+    pub struct JsonSyntaxError(Error);
+}
+
+composite_rejection! {
+    /// Rejection type for [`Json`].
+    ///
+    /// Contains one vaiant for each way the [`Json`] extractor can fail.
+    pub enum JsonRejection {
+        JsonDataError,
+        JsonSyntaxError,
+        // MissingJsonContentType,
     }
 }

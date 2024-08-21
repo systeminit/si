@@ -6,6 +6,7 @@ mod error;
 pub mod error_handling;
 pub mod extract;
 pub mod handler;
+mod json;
 mod make_service;
 mod message;
 pub mod middleware;
@@ -15,6 +16,7 @@ mod service_ext;
 
 pub use self::cancellation::wait_on_cancelled;
 pub use self::error::Error;
+pub use self::json::Json;
 pub use self::make_service::IntoMakeService;
 pub use self::message::{Head, MessageHead};
 pub use self::serve::serve;
