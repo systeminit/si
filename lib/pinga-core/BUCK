@@ -1,0 +1,11 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "pinga-core",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

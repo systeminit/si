@@ -29,6 +29,10 @@ pub enum BlockingJobError {
     JobExecution(String),
     #[error("JobProducer error: {0}")]
     JobProducer(String),
+    #[error("stream create error: {0}")]
+    JsCreateStreamError(String),
+    #[error("missing required workspace_pk")]
+    MissingWorkspacePk,
     #[error("A nats error occurred: {0}")]
     Nats(String),
     #[error("no access builder found in job info")]

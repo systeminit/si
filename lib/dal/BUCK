@@ -9,6 +9,7 @@ rust_library(
     deps = [
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
+        "//lib/pinga-core:pinga-core",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",

@@ -576,7 +576,10 @@ pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
 
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn pinga_server(services_context: ServicesContext) -> Result<pinga_server::Server> {
+pub async fn pinga_server(
+    services_context: ServicesContext,
+    shutdown_token: CancellationToken,
+) -> Result<pinga_server::Server> {
     let config: pinga_server::Config = {
         let mut config_file = pinga_server::ConfigFile::default();
         pinga_server::detect_and_configure_development(&mut config_file)
@@ -590,7 +593,9 @@ pub fn pinga_server(services_context: ServicesContext) -> Result<pinga_server::S
         config.instance_id(),
         config.concurrency(),
         services_context,
+        shutdown_token,
     )
+    .await
     .wrap_err("failed to create Pinga server")?;
 
     Ok(server)
@@ -722,8 +727,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let srv_services_ctx = test_context
         .create_services_context(token.clone(), tracker.clone())
         .await;
-    let pinga_server = pinga_server(srv_services_ctx)?;
-    let pinga_server_handle = pinga_server.shutdown_handle();
+    let pinga_server = pinga_server(srv_services_ctx, token.clone()).await?;
     tracker.spawn(pinga_server.run());
 
     // Start up a Rebaser server for migrations
@@ -764,11 +768,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
-
-    // Shutdown the Pinga server (each test gets their own server instance with an exclusively
-    // unique subject prefix)
-    info!("shutting down initial migrations Pinga server");
-    pinga_server_handle.shutdown().await;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)

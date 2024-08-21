@@ -27,6 +27,7 @@ members = [
     "lib/nats-subscriber",
     "lib/naxum",
     "lib/object-tree",
+    "lib/pinga-core",
     "lib/pinga-server",
     "lib/rebaser-core",
     "lib/rebaser-server",
