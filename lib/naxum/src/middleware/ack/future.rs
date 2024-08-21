@@ -63,12 +63,12 @@ where
 
                     match result {
                         Ok(response) => {
-                            if response.status().is_server_error() {
-                                // Transition the state to run the failure case
-                                *this.state = State::Failure(Some(response));
-                            } else {
+                            if response.status().is_success() {
                                 // Transition the state to run the success case
                                 *this.state = State::Success(Some(response));
+                            } else {
+                                // Transition the state to run the failure case
+                                *this.state = State::Failure(Some(response));
                             }
                         }
                         Err(err) => {
