@@ -5,7 +5,10 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
-use module_index_types::{ExtraMetadata, FuncMetadata, ModuleDetailsResponse};
+use module_index_types::{
+    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_SCHEMA_VARIANT_ID_FIELD_NAME,
+    MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
+};
 use module_index_types::{
     MODULE_BASED_ON_HASH_FIELD_NAME, MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
 };
@@ -19,7 +22,9 @@ use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
-    models::si_module::{self, make_module_details_response, ModuleId, ModuleKind, SchemaId},
+    models::si_module::{
+        self, make_module_details_response, ModuleId, ModuleKind, SchemaId, SchemaVariantId,
+    },
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -76,6 +81,8 @@ pub async fn upsert_module_route(
     let mut module_data = None;
     let mut module_based_on_hash = None;
     let mut module_schema_id = None;
+    let mut module_schema_variant_id = None;
+    let mut module_schema_variant_version = None;
     while let Some(field) = multipart.next_field().await? {
         match field.name() {
             Some(MODULE_BUNDLE_FIELD_NAME) => {
@@ -86,6 +93,12 @@ pub async fn upsert_module_route(
             }
             Some(MODULE_SCHEMA_ID_FIELD_NAME) => {
                 module_schema_id = Some(field.text().await?);
+            }
+            Some(MODULE_SCHEMA_VARIANT_ID_FIELD_NAME) => {
+                module_schema_variant_id = Some(field.text().await?);
+            }
+            Some(MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME) => {
+                module_schema_variant_version = Some(field.text().await?);
             }
             _ => debug!("Unknown multipart form field on module upload, skipping..."),
         }
@@ -161,6 +174,16 @@ pub async fn upsert_module_route(
         })
         .collect();
 
+    let schema_variant_id = match module_kind {
+        ModuleKind::WorkspaceBackup => None,
+        ModuleKind::Module => match module_schema_variant_id {
+            Some(schema_variant_id_string) => Some(SchemaVariantId(Ulid::from_string(
+                &schema_variant_id_string,
+            )?)),
+            _ => None,
+        },
+    };
+
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),
         description: Set(Some(module_metadata.description().to_owned())),
@@ -179,6 +202,8 @@ pub async fn upsert_module_route(
         })?),
         kind: Set(module_kind),
         schema_id: Set(schema_id),
+        schema_variant_id: Set(schema_variant_id),
+        schema_variant_version: Set(module_schema_variant_version),
         ..Default::default() // all other attributes are `NotSet`
     };
 

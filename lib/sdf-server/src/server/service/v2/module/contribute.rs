@@ -37,14 +37,22 @@ pub async fn contribute(
     };
     let index_client = ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
 
-    let (name, version, based_on_hash, schema_id, payload, created_by_name, created_by_email) =
-        Module::prepare_contribution(
-            &ctx,
-            request.name.as_str(),
-            request.version.as_str(),
-            request.schema_variant_id.into(),
-        )
-        .await?;
+    let (
+        name,
+        version,
+        based_on_hash,
+        schema_id,
+        payload,
+        created_by_name,
+        created_by_email,
+        schema_variant_version,
+    ) = Module::prepare_contribution(
+        &ctx,
+        request.name.as_str(),
+        request.version.as_str(),
+        request.schema_variant_id.into(),
+    )
+    .await?;
 
     let response = index_client
         .upload_module(
@@ -53,6 +61,8 @@ pub async fn contribute(
             based_on_hash.clone(),
             schema_id.map(|id| id.to_string()),
             payload,
+            Some(request.schema_variant_id.to_string()),
+            Some(schema_variant_version),
         )
         .await?;
 

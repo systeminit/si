@@ -426,6 +426,7 @@ impl Module {
         ctx: &DalContext,
         latest_modules: Vec<frontend_types::LatestModule>,
         builtin_modules: Vec<frontend_types::ModuleDetails>,
+        all_modules: Vec<frontend_types::ModuleDetails>,
     ) -> ModuleResult<frontend_types::SyncedModules> {
         let start = Instant::now();
 
@@ -448,13 +449,19 @@ impl Module {
                 .await
                 .map_err(|e| SchemaVariantError::Module(e.to_string()))?;
             if let Some(m) = module {
-                if is_default
-                    && is_locked
-                    && !builtin_modules
+                if is_default && is_locked {
+                    let matches_existing_builtin = builtin_modules
                         .iter()
-                        .any(|md| md.latest_hash == m.root_hash)
-                {
-                    synced_modules.contributable.push(schema_variant_id.into())
+                        .any(|md| md.latest_hash == m.root_hash);
+
+                    let matches_existing_module = all_modules.iter().any(|md| {
+                        md.schema_variant_id.as_ref() == Some(&schema_variant_id.to_string())
+                            && md.schema_variant_version.as_ref() == Some(&schema_variant.version)
+                    });
+
+                    if !matches_existing_module && !matches_existing_builtin {
+                        synced_modules.contributable.push(schema_variant_id.into())
+                    }
                 }
             }
         }
@@ -575,6 +582,7 @@ impl Module {
         Vec<u8>,
         String,
         String,
+        String,
     )> {
         let user = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
@@ -631,6 +639,7 @@ impl Module {
             module_payload,
             created_by_name,
             created_by_email,
+            variant.version().to_string(),
         ))
     }
 }

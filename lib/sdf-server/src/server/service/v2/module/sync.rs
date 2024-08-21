@@ -26,7 +26,7 @@ pub async fn sync(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let (latest_modules, module_details) = {
+    let (latest_modules, module_details, all_modules) = {
         let module_index_url = ctx
             .module_index_url()
             .ok_or(ModulesAPIError::ModuleIndexNotConfigured)?;
@@ -35,10 +35,17 @@ pub async fn sync(
         (
             module_index_client.list_latest_modules().await?,
             module_index_client.list_builtins().await?,
+            module_index_client.list_module_details().await?,
         )
     };
 
-    let synced_modules = Module::sync(&ctx, latest_modules.modules, module_details.modules).await?;
+    let synced_modules = Module::sync(
+        &ctx,
+        latest_modules.modules,
+        module_details.modules,
+        all_modules.modules,
+    )
+    .await?;
 
     track(
         &posthog_client,
