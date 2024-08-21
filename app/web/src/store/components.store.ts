@@ -499,8 +499,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 subtitle: component.schemaName,
                 canBeUpgraded: component.canBeUpgraded,
                 isLoading:
-                  statusStore.getComponentStatus(componentId)?.isUpdating ??
-                  false,
+                  statusStore.activeComponents[componentId] !== undefined,
                 typeIcon: component?.icon || "logo-si",
                 statusIcons,
               };

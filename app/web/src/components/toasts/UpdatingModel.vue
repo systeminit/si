@@ -7,11 +7,7 @@
       )
     "
   >
-    <template v-if="timeout">
-      <Icon name="x" size="xl" tone="destructive" />
-      <p class="text-sm">Model Status Timeout</p>
-    </template>
-    <template v-else-if="updating">
+    <template v-if="updating">
       <Icon name="loader" size="xl" tone="action" />
       <p class="text-sm">Updating Model...</p>
     </template>
@@ -30,8 +26,4 @@ import { useStatusStore } from "@/store/status.store";
 
 const statusStore = useStatusStore();
 const updating = computed(() => statusStore.globalStatus.isUpdating);
-
-defineProps({
-  timeout: Boolean,
-});
 </script>
