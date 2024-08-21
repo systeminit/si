@@ -94,6 +94,7 @@ impl ModuleIndexClient {
         Ok(promote_response.json::<ModulePromotedResponse>().await?)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn upload_module(
         &self,
         module_name: &str,
@@ -101,6 +102,8 @@ impl ModuleIndexClient {
         module_based_on_hash: Option<String>,
         module_schema_id: Option<String>,
         module_bytes: Vec<u8>,
+        module_schema_variant_id: Option<String>,
+        module_schema_variant_version: Option<String>,
     ) -> ModuleIndexClientResult<ModuleDetailsResponse> {
         let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
             .file_name(format!("{module_name}_{module_version}.tar"));
@@ -119,6 +122,20 @@ impl ModuleIndexClient {
             multipart_form = multipart_form.part(
                 MODULE_SCHEMA_ID_FIELD_NAME,
                 reqwest::multipart::Part::text(schema_id),
+            );
+        }
+
+        if let Some(schema_variant_id) = module_schema_variant_id {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_VARIANT_ID_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_variant_id),
+            );
+        }
+
+        if let Some(schema_variant_version) = module_schema_variant_version {
+            multipart_form = multipart_form.part(
+                MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
+                reqwest::multipart::Part::text(schema_variant_version),
             );
         }
 

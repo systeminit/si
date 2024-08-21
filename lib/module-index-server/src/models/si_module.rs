@@ -5,9 +5,11 @@ use std::str::FromStr;
 
 pub mod module_id;
 pub mod schema_id;
+pub mod schema_variant_id;
 
 pub use module_id::ModuleId;
 pub use schema_id::SchemaId;
+pub use schema_variant_id::SchemaVariantId;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +34,9 @@ pub struct Model {
     pub is_builtin_at_by_display_name: Option<String>,
     #[sea_orm(column_type = r##"custom("ident")"##, nullable)]
     pub schema_id: Option<SchemaId>,
+    #[sea_orm(column_type = r##"custom("ident")"##, nullable)]
+    pub schema_variant_id: Option<SchemaVariantId>,
+    pub schema_variant_version: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,6 +147,10 @@ pub fn make_module_details_response(
         latest_hash_created_at: module.latest_hash_created_at.into(),
         created_at: module.created_at.into(),
         schema_id: module.schema_id.map(|schema_id| schema_id.to_string()),
+        schema_variant_id: module
+            .schema_variant_id
+            .map(|schema_variant_id| schema_variant_id.to_string()),
+        schema_variant_version: module.schema_variant_version,
         past_hashes: Some(
             linked_modules
                 .into_iter()

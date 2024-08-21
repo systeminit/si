@@ -5,6 +5,8 @@ use ulid::Ulid;
 pub const MODULE_BUNDLE_FIELD_NAME: &str = "module_bundle";
 pub const MODULE_BASED_ON_HASH_FIELD_NAME: &str = "based_on_hash";
 pub const MODULE_SCHEMA_ID_FIELD_NAME: &str = "schema_id";
+pub const MODULE_SCHEMA_VARIANT_ID_FIELD_NAME: &str = "schema_variant_id";
+pub const MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME: &str = "schema_variant_version";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,6 +42,8 @@ pub struct ModuleDetailsResponse {
     pub created_at: DateTime<Utc>,
     pub schema_id: Option<String>,
     pub past_hashes: Option<Vec<String>>,
+    pub schema_variant_id: Option<String>,
+    pub schema_variant_version: Option<String>,
 }
 
 impl ModuleDetailsResponse {

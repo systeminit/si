@@ -100,6 +100,7 @@ pub async fn promote_builtin_route(
         ))),
         is_builtin_at_by_display_name: Set(Some(data)),
         schema_id: Set(module.schema_id),
+        ..Default::default() // all other attributes are `NotSet`
     };
 
     let updated_module: si_module::Model = active_module.update(&txn).await?;
