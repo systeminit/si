@@ -7,24 +7,13 @@ import { tracker } from "../lib/tracker";
 import { createInvitedUser, getUserByEmail, UserId } from "./users.service";
 
 export type WorkspaceId = string;
-
-// this will become a model when we implement db
-// export type Workspace = {
-//   id: WorkspaceId;
-//   instanceType: 'local' | 'private' | 'si_sass'; // only local used for now...
-//   instanceUrl: string;
-//   displayName: string;
-//   // slug: string;
-//   // currently workspaces are single player, and controlled by this prop
-//   createdByUserId: UserId;
-//   createdAt: ISODateTimeString;
-// };
+export const LOCAL_WORKSPACE_URL = "http://localhost:8080";
+export const SAAS_WORKSPACE_URL = "https://app.systeminit.com";
 
 const prisma = new PrismaClient();
 
-// TODO: replace all this with actual db calls...
 export async function getWorkspaceById(id: WorkspaceId) {
-  return await prisma.workspace.findUnique({ where: { id } });
+  return prisma.workspace.findUnique({ where: { id } });
 }
 
 export async function createWorkspace(
@@ -72,12 +61,18 @@ export async function deleteWorkspace(id: WorkspaceId) {
 
 export async function patchWorkspace(
   id: WorkspaceId,
-  instanceUrl: string,
+  // instanceUrl should never be null, but the prisma type allows it to be so we reproduce this here for now
+  instanceUrl: string | null,
   displayName: string,
+  quarantinedAt: Date | null,
 ) {
-  return await prisma.workspace.update({
+  return prisma.workspace.update({
     where: { id },
-    data: { instanceUrl, displayName },
+    data: {
+      instanceUrl: instanceUrl ?? LOCAL_WORKSPACE_URL,
+      displayName,
+      quarantinedAt,
+    },
   });
 }
 
@@ -85,6 +80,7 @@ export async function getUserWorkspaces(userId: UserId) {
   const workspaces = await prisma.workspace.findMany({
     where: {
       deletedAt: null,
+      quarantinedAt: null,
       UserMemberships: {
         some: {
           userId,

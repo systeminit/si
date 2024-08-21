@@ -1,7 +1,7 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { ApiRequest } from "@si/vue-lib/pinia";
-import { UserId, useAuthStore } from "./auth.store";
+import { UserId, useAuthStore, User } from "./auth.store";
 import { ISODateString } from "./shared-types";
 
 export type WorkspaceId = string;
@@ -22,6 +22,7 @@ export type Workspace = {
   role: string;
   invitedAt: Date;
   isDefault: boolean;
+  quarantinedAt: Date;
 };
 
 export type WorkspaceMember = {
@@ -147,6 +148,19 @@ export const useWorkspacesStore = defineStore("workspaces", {
         params: workspace,
         onSuccess: (response) => {
           this.workspacesById = _.keyBy(response, (w) => w.id);
+        },
+      });
+    },
+
+    async SET_WORKSPACE_QUARANTINE(
+      workspaceId: string,
+      isQuarantined: boolean,
+    ) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/workspaces/${workspaceId}/quarantine`,
+        params: {
+          isQuarantined,
         },
       });
     },
