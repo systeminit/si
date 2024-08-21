@@ -6,12 +6,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    attribute::{
-        prototype::AttributePrototypeError,
-        value::{AttributeValueError, ValueIsFor},
-    },
+    attribute::{prototype::AttributePrototypeError, value::AttributeValueError},
     prop::PropError,
-    AttributeValue, AttributeValueId, ComponentId, DalContext, WsEvent, WsEventResult, WsPayload,
+    ComponentId, DalContext, WsEvent, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -46,9 +43,7 @@ pub enum StatusUpdate {
     #[serde(rename_all = "camelCase")]
     DependentValueUpdate {
         status: StatusMessageState,
-        value_id: AttributeValueId,
         component_id: ComponentId,
-        is_for: ValueIsFor,
         timestamp: DateTime<Utc>,
     },
     /// Updates sent by the rebaser
@@ -62,17 +57,10 @@ pub enum StatusUpdate {
 /// A computed set of metadata relating to an [`AttributeValue`].
 impl StatusUpdate {
     /// Create a status update message for a dependent values update
-    pub fn new_dvu(
-        status: StatusMessageState,
-        value_id: AttributeValueId,
-        component_id: ComponentId,
-        is_for: ValueIsFor,
-    ) -> Self {
+    pub fn new_dvu(status: StatusMessageState, component_id: ComponentId) -> Self {
         Self::DependentValueUpdate {
             status,
-            value_id,
             component_id,
-            is_for,
             timestamp: Utc::now(),
         }
     }
@@ -83,23 +71,6 @@ impl StatusUpdate {
             status,
             timestamp: Utc::now(),
         }
-    }
-
-    pub async fn new_for_attribute_value_id(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        status: StatusMessageState,
-    ) -> StatusUpdateResult<Self> {
-        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-
-        Ok(Self::DependentValueUpdate {
-            status,
-            value_id: attribute_value_id,
-            component_id,
-            is_for,
-            timestamp: Utc::now(),
-        })
     }
 }
 

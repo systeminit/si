@@ -12,14 +12,12 @@
         />
       </ComponentCard>
       <div
-        v-if="currentStatus && currentStatus.isUpdating"
+        v-if="isUpdating"
         class="flex flex-row items-center gap-xs m-xs mt-0"
       >
         <!-- currently updating -->
         <Icon name="loader" size="xs" class="text-action-500 shrink-0" />
-        <div class="grow truncate text-xs italic">
-          {{ currentStatus.statusMessage }}
-        </div>
+        <div class="grow truncate text-xs italic">Updating...</div>
       </div>
       <div v-else class="flex flex-row items-center">
         <DetailsPanelTimestamps
@@ -253,9 +251,9 @@ const selectedComponentActionsCount = computed(() => {
 });
 
 const statusStore = useStatusStore();
-const currentStatus = computed(() =>
+const isUpdating = computed(() =>
   selectedComponentId.value
-    ? statusStore.getComponentStatus(selectedComponentId.value)
+    ? statusStore.activeComponents[selectedComponentId.value]
     : undefined,
 );
 

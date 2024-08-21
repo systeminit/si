@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     convert::TryFrom,
     sync::Arc,
 };
@@ -28,8 +28,8 @@ use crate::{
     },
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
-    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, DalContext, TransactionsError,
-    Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
+    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext,
+    TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -131,6 +131,76 @@ impl JobConsumer for DependentValuesUpdate {
     }
 }
 
+struct StatusUpdateTracker {
+    values_by_component: HashMap<ComponentId, HashSet<AttributeValueId>>,
+    components_by_value: HashMap<AttributeValueId, ComponentId>,
+    started_components: HashSet<ComponentId>,
+}
+
+impl StatusUpdateTracker {
+    async fn new_for_values(
+        ctx: &DalContext,
+        value_ids: Vec<AttributeValueId>,
+    ) -> DependentValueUpdateResult<Self> {
+        let mut tracker = Self {
+            values_by_component: HashMap::new(),
+            components_by_value: HashMap::new(),
+            started_components: HashSet::new(),
+        };
+
+        for value_id in value_ids {
+            let component_id = AttributeValue::component_id(ctx, value_id).await?;
+            tracker
+                .values_by_component
+                .entry(component_id)
+                .and_modify(|values: &mut HashSet<AttributeValueId>| {
+                    values.insert(value_id);
+                })
+                .or_default();
+            tracker.components_by_value.insert(value_id, component_id);
+        }
+
+        Ok(tracker)
+    }
+
+    fn start_value(&mut self, value_id: AttributeValueId) -> Option<ComponentId> {
+        self.components_by_value
+            .get(&value_id)
+            .and_then(|component_id| {
+                self.started_components
+                    .insert(*component_id)
+                    .then_some(*component_id)
+            })
+    }
+
+    fn finish_value(&mut self, value_id: AttributeValueId) -> Option<ComponentId> {
+        self.components_by_value
+            .get(&value_id)
+            .and_then(
+                |component_id| match self.values_by_component.entry(*component_id) {
+                    Entry::Occupied(mut values_entry) => {
+                        let values = values_entry.get_mut();
+                        values.remove(&value_id);
+                        values.is_empty().then_some(*component_id)
+                    }
+                    Entry::Vacant(_) => None,
+                },
+            )
+    }
+
+    fn get_status_update(
+        &mut self,
+        state: StatusMessageState,
+        value_id: AttributeValueId,
+    ) -> Option<StatusUpdate> {
+        match state {
+            StatusMessageState::StatusFinished => self.finish_value(value_id),
+            StatusMessageState::StatusStarted => self.start_value(value_id),
+        }
+        .map(|component_id| StatusUpdate::new_dvu(state, component_id))
+    }
+}
+
 impl DependentValuesUpdate {
     async fn inner_run(
         &self,
@@ -159,13 +229,14 @@ impl DependentValuesUpdate {
                 dependency_graph.remove_value(value);
             }
         }
-        let number_of_values = dependency_graph.all_value_ids().len();
-        // count the total number of funcs?
-        metric!(counter.dvu.values_to_run = number_of_values);
+        let all_value_ids = dependency_graph.all_value_ids();
+        metric!(counter.dvu.values_to_run = all_value_ids.len());
+
+        let mut tracker = StatusUpdateTracker::new_for_values(ctx, all_value_ids).await?;
+
         let mut seen_ids = HashSet::new();
         let mut task_id_to_av_id = HashMap::new();
         let mut update_join_set = JoinSet::new();
-
         let mut independent_value_ids = dependency_graph.independent_values();
 
         loop {
@@ -178,12 +249,17 @@ impl DependentValuesUpdate {
                 let parent_span = span.clone();
                 if !seen_ids.contains(&attribute_value_id) {
                     let id = Ulid::new();
+
+                    let status_update = tracker
+                        .get_status_update(StatusMessageState::StatusStarted, attribute_value_id);
+
                     update_join_set.spawn(
                         values_from_prototype_function_execution(
                             id,
                             ctx.clone(),
                             attribute_value_id,
                             self.set_value_lock.clone(),
+                            status_update,
                         )
                         .instrument(info_span!(parent: parent_span, "dependent_values_update.values_from_prototype_function_execution",
                             attribute_value.id = %attribute_value_id,
@@ -243,7 +319,9 @@ impl DependentValuesUpdate {
                                         dependency_graph.cycle_on_self(finished_value_id);
                                     }
                                 },
-                                Ok(false) => dependency_graph.remove_value(finished_value_id),
+                                Ok(false) => {
+                                    dependency_graph.remove_value(finished_value_id);
+                                }
                                 Err(err) => {
                                     execution_error(ctx, err.to_string(), finished_value_id).await;
                                     dependency_graph.cycle_on_self(finished_value_id);
@@ -263,16 +341,13 @@ impl DependentValuesUpdate {
                         }
                     }
 
-                    if let Err(err) = send_update_message(
-                        ctx,
-                        finished_value_id,
-                        StatusMessageState::StatusFinished,
-                        self.set_value_lock.clone(),
-                    )
-                    .await
+                    if let Some(status_update) = tracker
+                        .get_status_update(StatusMessageState::StatusFinished, finished_value_id)
                     {
-                        error!(si.error.message = ?err, "status update finished event send failed for AttributeValue {finished_value_id}");
-                    };
+                        if let Err(err) = send_status_update(ctx, status_update).await {
+                            error!(si.error.message = ?err, "status update finished event send failed for AttributeValue {finished_value_id}");
+                        }
+                    }
                 }
             }
 
@@ -326,18 +401,16 @@ async fn values_from_prototype_function_execution(
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
+    status_update: Option<StatusUpdate>,
 ) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
     metric!(counter.dvu.function_execution = 1);
-    if let Err(err) = send_update_message(
-        &ctx,
-        attribute_value_id,
-        StatusMessageState::StatusStarted,
-        set_value_lock.clone(),
-    )
-    .await
-    {
-        return (task_id, Err(err));
+
+    if let Some(status_update) = status_update {
+        if let Err(err) = send_status_update(&ctx, status_update).await {
+            return (task_id, Err(err));
+        }
     }
+
     let parent_span = Span::current();
     let result =
         AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
@@ -348,24 +421,14 @@ async fn values_from_prototype_function_execution(
     (task_id, result)
 }
 
-async fn send_update_message(
+async fn send_status_update(
     ctx: &DalContext,
-    attribute_value_id: AttributeValueId,
-    status: StatusMessageState,
-    set_value_lock: Arc<RwLock<()>>,
+    status_update: StatusUpdate,
 ) -> DependentValueUpdateResult<()> {
-    let read_lock = set_value_lock.read().await;
-
-    let status_update =
-        StatusUpdate::new_for_attribute_value_id(ctx, attribute_value_id, status).await?;
-
     WsEvent::status_update(ctx, status_update)
         .await?
         .publish_immediately(ctx)
         .await?;
-
-    // We explicitly drop so that we don't have an unused variable
-    drop(read_lock);
 
     Ok(())
 }

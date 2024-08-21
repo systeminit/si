@@ -774,7 +774,6 @@ impl AttributeValue {
             .as_ref()
         {
             Some(inferred_connection_graph) => {
-                info!("using cached inferred connection graph");
                 let mut outputs = inferred_connection_graph
                     .get_component_connections_to_input_socket(component_input_socket)
                     .into_iter()
