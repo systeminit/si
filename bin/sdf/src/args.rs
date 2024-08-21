@@ -189,7 +189,7 @@ pub(crate) struct Args {
     #[arg(long, env = "SI_CREATE_WORKSPACE_PERMISSIONS", value_parser = PossibleValuesParser::new(WorkspacePermissionsMode::variants()))]
     pub(crate) create_workspace_permissions: Option<String>,
 
-    /// Create Workspace Permissions Allowlist
+    /// List of emails that can create workspaces
     #[arg(
         long,
         env = "SI_CREATE_WORKSPACE_ALLOWLIST",
@@ -197,6 +197,10 @@ pub(crate) struct Args {
         rename_all = "snake_case"
     )]
     pub(crate) create_workspace_allowlist: Vec<WorkspacePermissions>,
+
+    /// Override for the auth api url
+    #[arg(long, env = "SI_AUTH_API_URL")]
+    pub(crate) auth_api_url: Option<String>,
 }
 
 impl TryFrom<Args> for Config {
@@ -294,6 +298,10 @@ impl TryFrom<Args> for Config {
             }
             if let Some(module_index_url) = args.module_index_url {
                 config_map.set("module_index_url", module_index_url);
+            }
+
+            if let Some(auth_api_url) = args.auth_api_url {
+                config_map.set("auth_api_url", auth_api_url);
             }
 
             config_map.set("boot_feature_flags", args.features);

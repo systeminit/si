@@ -383,6 +383,7 @@ impl SdfTestFnSetupExpander {
                     s_ctx,
                     #jwt_public_signing_key.clone(),
                     #posthog_client,
+                    "https://auth-api.systeminit.com".to_string(),
                     #ws_multiplexer_client,
                     #crdt_multiplexer_client,
                     ::sdf_server::server::WorkspacePermissionsMode::Open,

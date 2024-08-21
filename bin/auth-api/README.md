@@ -37,8 +37,8 @@ While working on the auth stack, we still need to run it locally and configure t
     VITE_AUTH_API_URL=http://localhost:9001
     VITE_AUTH_PORTAL_URL=http://localhost:9000
   ```
-- run the backend but using the local auth stack by setting env var `LOCAL_AUTH_STACK=1` (
-  ex: `LOCAL_AUTH_STACK=1 buck2 run dev:up`)
+- run the backend but using the local auth stack by setting env var `SI_AUTH_API_URL=http://localhost:9001` (
+  ex: `SI_AUTH_API_URL=http://localhost:9001 buck2 run dev:up`)
 - run the db migrations (`pnpm run db:reset`) locally after booting your local database
 - run the auth api `pnmp run dev` in this directory or `pnpm dev:auth-api` at the root
 - run the auth portal `pnmp run dev` in `app/auth-portal` or `pnpm dev:auth-portal` at the root
@@ -66,7 +66,8 @@ the `Run Workflow` button and then choose the branch from which to deploy.
 
 This will build and push the image and queue a deployment to ECS.
 
-NOTE - db migrations are not yet automatic, and are being triggered manually before deploying a new version. (This is very infrequent so far...)
+NOTE - db migrations are not yet automatic, and are being triggered manually before deploying a new version. (This is
+very infrequent so far...)
 
 If new environment variables are needed to be passed to the auth-api, then a new task definition needs to be created in
 AWS ECS. When that task definition is created, the task definition can be associated with the service and a deployment

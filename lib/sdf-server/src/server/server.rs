@@ -137,6 +137,7 @@ impl Server<(), ()> {
                     services_context,
                     jwt_public_signing_key,
                     posthog_client,
+                    config.auth_api_url(),
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
                     *config.create_workspace_permissions(),
@@ -183,6 +184,7 @@ impl Server<(), ()> {
                     services_context,
                     jwt_public_signing_key,
                     posthog_client,
+                    config.auth_api_url(),
                     ws_multiplexer_client,
                     crdt_multiplexer_client,
                     *config.create_workspace_permissions(),
@@ -484,10 +486,12 @@ async fn fetch_builtin(
     Ok(SiPkg::load_from_bytes(module)?)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_service_for_tests(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    auth_api_url: impl AsRef<str>,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
@@ -497,6 +501,7 @@ pub fn build_service_for_tests(
         services_context,
         jwt_public_signing_key,
         posthog_client,
+        auth_api_url,
         true,
         ws_multiplexer_client,
         crdt_multiplexer_client,
@@ -505,10 +510,12 @@ pub fn build_service_for_tests(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_service(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    auth_api_url: impl AsRef<str>,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
     create_workspace_permissions: WorkspacePermissionsMode,
@@ -518,6 +525,7 @@ pub fn build_service(
         services_context,
         jwt_public_signing_key,
         posthog_client,
+        auth_api_url,
         false,
         ws_multiplexer_client,
         crdt_multiplexer_client,
@@ -531,6 +539,7 @@ fn build_service_inner(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    auth_api_url: impl AsRef<str>,
     for_tests: bool,
     ws_multiplexer_client: MultiplexerClient,
     crdt_multiplexer_client: MultiplexerClient,
@@ -544,6 +553,7 @@ fn build_service_inner(
         services_context,
         jwt_public_signing_key,
         posthog_client,
+        auth_api_url,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
         for_tests,

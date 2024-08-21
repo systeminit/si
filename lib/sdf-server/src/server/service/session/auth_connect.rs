@@ -157,13 +157,9 @@ pub async fn auth_connect(
     Json(request): Json<AuthConnectRequest>,
 ) -> SessionResult<Json<AuthConnectResponse>> {
     let client = reqwest::Client::new();
-    let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
-        Some(_) => "http://localhost:9001",
-        None => "https://auth-api.systeminit.com",
-    };
 
     let res = client
-        .post(format!("{}/complete-auth-connect", auth_api_url))
+        .post(format!("{}/complete-auth-connect", state.auth_api_url()))
         .json(&json!({"code": request.code }))
         .send()
         .await?;
@@ -202,14 +198,9 @@ pub async fn auth_reconnect(
     RawAccessToken(raw_access_token): RawAccessToken,
     State(state): State<AppState>,
 ) -> SessionResult<Json<AuthReconnectResponse>> {
-    let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
-        Some(_) => "http://localhost:9001",
-        None => "https://auth-api.systeminit.com",
-    };
-
     let client = reqwest::Client::new();
     let res = client
-        .get(format!("{}/auth-reconnect", auth_api_url))
+        .get(format!("{}/auth-reconnect", state.auth_api_url()))
         .bearer_auth(&raw_access_token)
         .send()
         .await?;
