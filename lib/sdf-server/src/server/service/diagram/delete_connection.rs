@@ -1,5 +1,7 @@
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
+use dal::diagram::SummaryDiagramEdge;
 use dal::{
     ChangeSet, Component, ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
     Visibility, WsEvent,
@@ -43,15 +45,66 @@ pub async fn delete_connection(
     )
     .await?;
 
+    let from_component = Component::get_by_id(&ctx, request.from_component_id).await?;
+
+    let to_component = Component::get_by_id(&ctx, request.to_component_id).await?;
+
+    let output_socket = OutputSocket::get_by_id(&ctx, request.from_socket_id).await?;
+    let input_socket = InputSocket::get_by_id(&ctx, request.to_socket_id).await?;
+
+    let base_change_set_ctx = ctx.clone_with_base().await?;
+
+    let base_from_component =
+        Component::try_get_by_id(&base_change_set_ctx, request.from_component_id).await?;
+    let base_to_component =
+        Component::try_get_by_id(&base_change_set_ctx, request.to_component_id).await?;
+
+    let mut payload: Option<SummaryDiagramEdge> = None;
+    if let Some((base_from, base_to)) = base_from_component.zip(base_to_component) {
+        let incoming_edges = base_to
+            .incoming_connections(&base_change_set_ctx)
+            .await
+            .ok();
+        if let Some(edges) = incoming_edges {
+            for incoming in edges {
+                if incoming.from_output_socket_id == request.from_socket_id
+                    && incoming.from_component_id == base_from.id()
+                    && incoming.to_input_socket_id == request.to_socket_id
+                {
+                    payload = Some(SummaryDiagramEdge::assemble(
+                        incoming,
+                        &from_component,
+                        &to_component,
+                        ChangeStatus::Deleted,
+                    )?);
+                }
+            }
+        }
+    }
+
+    if let Some(edge) = payload {
+        WsEvent::connection_upserted(&ctx, edge)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    } else {
+        WsEvent::connection_deleted(
+            &ctx,
+            request.from_component_id,
+            request.to_component_id,
+            request.from_socket_id,
+            request.to_socket_id,
+        )
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+    }
+
     let from_component_schema =
         Component::schema_for_component_id(&ctx, request.from_component_id).await?;
 
     let to_component_schema =
         Component::schema_for_component_id(&ctx, request.to_component_id).await?;
-
-    let output_socket = OutputSocket::get_by_id(&ctx, request.from_socket_id).await?;
-    let input_socket = InputSocket::get_by_id(&ctx, request.to_socket_id).await?;
-
     track(
         &posthog_client,
         &ctx,
@@ -71,17 +124,6 @@ pub async fn delete_connection(
             "change_set_id": ctx.change_set_id(),
         }),
     );
-
-    WsEvent::connection_deleted(
-        &ctx,
-        request.from_component_id,
-        request.to_component_id,
-        request.from_socket_id,
-        request.to_socket_id,
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
 
     ctx.commit().await?;
 

@@ -34,7 +34,7 @@ use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -55,6 +55,7 @@ use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::InferredConnectionGraph;
+use crate::component::IncomingConnection;
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
@@ -63,7 +64,10 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::{pk, AttributeValueId, ComponentError, ComponentId, WorkspaceError};
+use crate::{
+    pk, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
+    Workspace, WorkspaceError,
+};
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraphV2,
@@ -1235,6 +1239,91 @@ impl WorkspaceSnapshot {
                 None
             },
         )
+    }
+
+    #[instrument(
+        name = "workspace_snapshot.socket_edges_removed_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn socket_edges_removed_relative_to_base(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<Vec<IncomingConnection>> {
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk_or_error(
+            ctx,
+            &ctx.tenancy()
+                .workspace_pk()
+                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
+        )
+        .await
+        .map_err(Box::new)?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(Vec::new());
+        }
+
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+        let base_change_set_ctx = &base_change_set_ctx;
+
+        let base_components = Component::list(base_change_set_ctx)
+            .await
+            .map_err(Box::new)?;
+        #[derive(Hash, Clone, PartialEq, Eq)]
+        struct UniqueEdge {
+            to_component_id: ComponentId,
+            from_component_id: ComponentId,
+            from_socket_id: OutputSocketId,
+            to_socket_id: InputSocketId,
+        }
+        let mut base_incoming_edges = HashSet::new();
+        let mut base_incoming = HashMap::new();
+        for base_component in base_components {
+            let incoming_edges = base_component
+                .incoming_connections(base_change_set_ctx)
+                .await
+                .map_err(Box::new)?;
+
+            for conn in incoming_edges {
+                let hash = UniqueEdge {
+                    to_component_id: conn.to_component_id,
+                    from_socket_id: conn.from_output_socket_id,
+                    from_component_id: conn.from_component_id,
+                    to_socket_id: conn.to_input_socket_id,
+                };
+                base_incoming_edges.insert(hash.clone());
+                base_incoming.insert(hash, conn);
+            }
+        }
+
+        let current_components = Component::list(ctx).await.map_err(Box::new)?;
+        let mut current_incoming_edges = HashSet::new();
+        for current_component in current_components {
+            let incoming_edges: Vec<UniqueEdge> = current_component
+                .incoming_connections(ctx)
+                .await
+                .map_err(Box::new)?
+                .into_iter()
+                .map(|conn| UniqueEdge {
+                    to_component_id: conn.to_component_id,
+                    from_socket_id: conn.from_output_socket_id,
+                    from_component_id: conn.from_component_id,
+                    to_socket_id: conn.to_input_socket_id,
+                })
+                .collect();
+            current_incoming_edges.extend(incoming_edges);
+        }
+
+        let difference = base_incoming_edges.difference(&current_incoming_edges);
+        let mut differences = vec![];
+        for diff in difference {
+            if let Some(edge) = base_incoming.get(diff) {
+                differences.push(edge.clone());
+            }
+        }
+        Ok(differences)
     }
 
     /// Returns whether or not any Actions were dispatched.

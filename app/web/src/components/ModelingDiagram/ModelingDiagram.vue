@@ -137,7 +137,7 @@ overflow hidden */
             height: 80,
             cornerRadius: CORNER_RADIUS,
             x: pendingInsert.position!.x - 80,
-            y: pendingInsert.position!.y - 40,
+            y: pendingInsert.position!.y + 20,
             fill: 'rgba(0,0,0,.4)',
             strokeWidth: 1,
             stroke: SELECTION_COLOR,
@@ -147,7 +147,7 @@ overflow hidden */
               :color="getToneColorHex('info')"
               :size="60"
               :x="pendingInsert.position!.x"
-              :y="pendingInsert.position!.y"
+              :y="pendingInsert.position!.y + 60"
               icon="loader"
             />
           </template>
@@ -1320,7 +1320,11 @@ const currentSelectionMovableElements = computed(() => {
     } else return false;
   });
 
-  return filteredElements;
+  // cannot move elements that are actually gone already
+  return filteredElements.filter((e) => {
+    if (e.def.changeStatus === "deleted") return false;
+    return true;
+  });
 });
 
 const draggedElementsPositionsPreDrag = ref<

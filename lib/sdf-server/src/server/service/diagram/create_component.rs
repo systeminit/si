@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
+use dal::change_status::ChangeStatus;
 use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
@@ -50,20 +53,6 @@ pub async fn create_component(
 
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
 
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        &host_name,
-        "create_component",
-        serde_json::json!({
-            "how": "/diagram/create_component",
-            "component_id": component.id(),
-            "component_name": name.clone(),
-            "change_set_id": ctx.change_set_id(),
-        }),
-    );
-
     component
         .set_geometry(
             &ctx,
@@ -94,26 +83,30 @@ pub async fn create_component(
                 "change_set_id": ctx.change_set_id(),
             }),
         );
+    } else {
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            &host_name,
+            "component_created",
+            serde_json::json!({
+                "how": "/diagram/create_component",
+                "component_id": component.id(),
+                "component_name": name.clone(),
+                "change_set_id": ctx.change_set_id(),
+            }),
+        );
     }
 
-    WsEvent::component_created(&ctx, component.id())
+    let mut diagram_sockets = HashMap::new();
+    let payload = component
+        .into_frontend_type(&ctx, ChangeStatus::Added, &mut diagram_sockets)
+        .await?;
+    WsEvent::component_created(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
         .await?;
-
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        &host_name,
-        "component_created",
-        serde_json::json!({
-            "how": "/diagram/create_component",
-            "component_id": component.id(),
-            "component_name": name.clone(),
-            "change_set_id": ctx.change_set_id(),
-        }),
-    );
 
     ctx.commit().await?;
 

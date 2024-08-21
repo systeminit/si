@@ -1,32 +1,31 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
 use std::num::{ParseFloatError, ParseIntError};
 use std::sync::Arc;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
 use crate::component::inferred_connection_graph::InferredConnectionGraph;
-use crate::component::{ComponentError, IncomingConnection, InferredConnection};
-use crate::history_event::HistoryEventMetadata;
+use crate::component::{
+    ComponentError, ComponentResult, IncomingConnection, InferredConnection, OutgoingConnection,
+};
 use crate::schema::variant::SchemaVariantError;
-use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HistoryEventError,
-    InputSocketId, OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
-    StandardModelError, TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
+    InputSocketId, OutputSocketId, SchemaVariantId, StandardModelError, TransactionsError,
+    Workspace, WorkspaceError, WorkspaceSnapshot,
 };
+use si_frontend_types::{DiagramSocket, SummaryDiagramComponent};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -98,172 +97,6 @@ pub type EdgeId = AttributePrototypeArgumentId;
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct GridPoint {
-    pub x: isize,
-    pub y: isize,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Size2D {
-    pub width: isize,
-    pub height: isize,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramComponent {
-    pub id: ComponentId,
-    pub component_id: ComponentId,
-    pub schema_name: String,
-    pub schema_id: SchemaId,
-    pub schema_variant_id: SchemaVariantId,
-    pub schema_variant_name: String,
-    pub schema_category: String,
-    pub sockets: Vec<DiagramSocket>,
-    pub display_name: String,
-    pub position: GridPoint,
-    pub size: Size2D,
-    pub color: String,
-    pub component_type: String,
-    pub change_status: ChangeStatus,
-    pub has_resource: bool,
-    pub parent_id: Option<ComponentId>,
-    pub created_info: serde_json::Value,
-    pub updated_info: serde_json::Value,
-    pub deleted_info: serde_json::Value,
-    pub to_delete: bool,
-    pub can_be_upgraded: bool,
-    pub from_base_change_set: bool,
-}
-
-impl SummaryDiagramComponent {
-    pub async fn assemble(
-        ctx: &DalContext,
-        component: &Component,
-        change_status: ChangeStatus,
-        diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> DiagramResult<Self> {
-        let schema_variant = component.schema_variant(ctx).await?;
-
-        let sockets = match diagram_sockets.entry(schema_variant.id()) {
-            hash_map::Entry::Vacant(entry) => {
-                let (output_sockets, input_sockets) =
-                    SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
-
-                let mut sockets = vec![];
-
-                for socket in input_sockets {
-                    sockets.push(DiagramSocket {
-                        id: socket.id().to_string(),
-                        label: socket.name().to_string(),
-                        connection_annotations: socket.connection_annotations(),
-                        direction: DiagramSocketDirection::Input,
-                        max_connections: match socket.arity() {
-                            SocketArity::Many => None,
-                            SocketArity::One => Some(1),
-                        },
-                        is_required: Some(false),
-                        node_side: DiagramSocketNodeSide::Left,
-                    });
-                }
-
-                for socket in output_sockets {
-                    sockets.push(DiagramSocket {
-                        id: socket.id().to_string(),
-                        label: socket.name().to_string(),
-                        connection_annotations: socket.connection_annotations(),
-                        direction: DiagramSocketDirection::Output,
-                        max_connections: match socket.arity() {
-                            SocketArity::Many => None,
-                            SocketArity::One => Some(1),
-                        },
-                        is_required: Some(false),
-                        node_side: DiagramSocketNodeSide::Right,
-                    });
-                }
-
-                entry.insert(sockets.to_owned());
-
-                sockets
-            }
-            hash_map::Entry::Occupied(entry) => entry.get().to_owned(),
-        };
-        let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
-        let schema_id = schema.id();
-
-        let default_schema_variant = SchemaVariant::get_default_for_schema(ctx, schema_id).await?;
-
-        let position = GridPoint {
-            x: component.x().parse::<f64>()?.round() as isize,
-            y: component.y().parse::<f64>()?.round() as isize,
-        };
-        let size = match (component.width(), component.height()) {
-            (Some(w), Some(h)) => Size2D {
-                height: h.parse()?,
-                width: w.parse()?,
-            },
-            _ => Size2D {
-                height: 500,
-                width: 500,
-            },
-        };
-
-        let updated_info = {
-            let history_actor = ctx.history_actor();
-            let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
-            serde_json::to_value(HistoryEventMetadata {
-                actor,
-                timestamp: component.timestamp().updated_at,
-            })?
-        };
-
-        let created_info = {
-            let history_actor = ctx.history_actor();
-            let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
-            serde_json::to_value(HistoryEventMetadata {
-                actor,
-                timestamp: component.timestamp().created_at,
-            })?
-        };
-
-        let can_be_upgraded = if let Some(unlocked_schema_variant) =
-            SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
-        {
-            unlocked_schema_variant.id() != schema_variant.id()
-        } else {
-            default_schema_variant.id() != schema_variant.id()
-        };
-
-        Ok(SummaryDiagramComponent {
-            id: component.id(),
-            component_id: component.id(),
-            schema_name: schema.name().to_owned(),
-            schema_id,
-            schema_variant_id: schema_variant.id(),
-            schema_variant_name: schema_variant.version().to_owned(),
-            schema_category: schema_variant.category().to_owned(),
-            display_name: component.name(ctx).await?,
-            position,
-            size,
-            component_type: component.get_type(ctx).await?.to_string(),
-            color: component.color(ctx).await?.unwrap_or("#111111".into()),
-            change_status,
-            has_resource: component.resource(ctx).await?.is_some(),
-            sockets,
-            parent_id: component.parent(ctx).await?,
-            updated_info,
-            created_info,
-            deleted_info: serde_json::Value::Null,
-            to_delete: component.to_delete(),
-            can_be_upgraded,
-            from_base_change_set: false,
-        })
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramEdge {
@@ -281,10 +114,10 @@ pub struct SummaryDiagramEdge {
 impl SummaryDiagramEdge {
     pub fn assemble(
         incoming_connection: IncomingConnection,
-        from_component: Component,
+        from_component: &Component,
         to_component: &Component,
         change_status: ChangeStatus,
-    ) -> DiagramResult<Self> {
+    ) -> ComponentResult<Self> {
         Ok(SummaryDiagramEdge {
             from_component_id: incoming_connection.from_component_id,
             from_socket_id: incoming_connection.from_output_socket_id,
@@ -293,6 +126,25 @@ impl SummaryDiagramEdge {
             change_status,
             created_info: serde_json::to_value(incoming_connection.created_info)?,
             deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+            to_delete: from_component.to_delete() || to_component.to_delete(),
+            from_base_change_set: false,
+        })
+    }
+
+    pub fn assemble_outgoing(
+        outgoing_connection: OutgoingConnection,
+        from_component: &Component,
+        to_component: &Component,
+        change_status: ChangeStatus,
+    ) -> ComponentResult<Self> {
+        Ok(SummaryDiagramEdge {
+            from_component_id: outgoing_connection.from_component_id,
+            from_socket_id: outgoing_connection.from_output_socket_id,
+            to_component_id: outgoing_connection.to_component_id,
+            to_socket_id: outgoing_connection.to_input_socket_id,
+            change_status,
+            created_info: serde_json::to_value(outgoing_connection.created_info)?,
+            deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
             to_delete: from_component.to_delete() || to_component.to_delete(),
             from_base_change_set: false,
         })
@@ -319,61 +171,6 @@ impl SummaryDiagramInferredEdge {
             to_delete: inferred_incoming_connection.to_delete,
         })
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagramSocket {
-    pub id: String,
-    pub label: String,
-    pub connection_annotations: Vec<ConnectionAnnotation>,
-    pub direction: DiagramSocketDirection,
-    pub max_connections: Option<usize>,
-    pub is_required: Option<bool>,
-    pub node_side: DiagramSocketNodeSide,
-}
-
-#[remain::sorted]
-#[derive(
-    AsRefStr,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    EnumString,
-    Eq,
-    PartialEq,
-    Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum DiagramSocketDirection {
-    Bidirectional,
-    Input,
-    Output,
-}
-
-#[remain::sorted]
-#[derive(
-    AsRefStr,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    EnumString,
-    Eq,
-    PartialEq,
-    Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum DiagramSocketNodeSide {
-    Left,
-    Right,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -416,7 +213,8 @@ impl Diagram {
             };
 
             component_views.push(
-                SummaryDiagramComponent::assemble(ctx, component, change_status, diagram_sockets)
+                component
+                    .into_frontend_type(ctx, change_status, diagram_sockets)
                     .await?,
             );
         }
@@ -441,7 +239,7 @@ impl Diagram {
 
                     diagram_edges.push(SummaryDiagramEdge::assemble(
                         incoming_connection,
-                        from_component.to_owned(),
+                        from_component,
                         component,
                         edge_status,
                     )?);
@@ -543,13 +341,13 @@ impl Diagram {
                     let deleted_component =
                         Component::get_by_id(base_change_set_ctx, component_id).await?;
 
-                    let mut summary_diagram_component = SummaryDiagramComponent::assemble(
-                        base_change_set_ctx,
-                        &deleted_component,
-                        ChangeStatus::Deleted,
-                        diagram_sockets,
-                    )
-                    .await?;
+                    let mut summary_diagram_component = deleted_component
+                        .into_frontend_type(
+                            base_change_set_ctx,
+                            ChangeStatus::Deleted,
+                            diagram_sockets,
+                        )
+                        .await?;
                     summary_diagram_component.from_base_change_set = true;
 
                     removed_component_summaries.push(summary_diagram_component);
@@ -558,6 +356,29 @@ impl Diagram {
         }
 
         Ok(removed_component_summaries)
+    }
+
+    async fn assemble_removed_edges(ctx: &DalContext) -> DiagramResult<Vec<SummaryDiagramEdge>> {
+        let removed_incoming_connections: Vec<IncomingConnection> = ctx
+            .workspace_snapshot()?
+            .socket_edges_removed_relative_to_base(ctx)
+            .await?;
+        let mut diagram_edges = Vec::with_capacity(removed_incoming_connections.len());
+        for removed_incoming_connection in &removed_incoming_connections {
+            diagram_edges.push(SummaryDiagramEdge {
+                from_component_id: removed_incoming_connection.from_component_id,
+                from_socket_id: removed_incoming_connection.from_output_socket_id,
+                to_component_id: removed_incoming_connection.to_component_id,
+                to_socket_id: removed_incoming_connection.to_input_socket_id,
+                change_status: ChangeStatus::Deleted,
+                created_info: serde_json::to_value(&removed_incoming_connection.created_info)?,
+                deleted_info: serde_json::to_value(&removed_incoming_connection.deleted_info)?,
+                to_delete: true,
+                from_base_change_set: true,
+            });
+        }
+
+        Ok(diagram_edges)
     }
 
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
@@ -571,7 +392,7 @@ impl Diagram {
             components.iter().cloned().map(|c| (c.id(), c)).collect();
 
         let mut diagram_sockets = HashMap::new();
-        let (mut component_views, diagram_edges, precomputed_incoming_connections) =
+        let (mut component_views, mut diagram_edges, precomputed_incoming_connections) =
             Self::assemble_component_views(
                 ctx,
                 &base_snapshot,
@@ -587,10 +408,7 @@ impl Diagram {
         )
         .await?;
 
-        // If we're on head, we don't want to calculate deletions
         if not_on_head {
-            // We also want to display the edges & components that would be actively removed when we
-            // merge this change set into its base change set.
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
                 base_snapshot,
@@ -600,77 +418,8 @@ impl Diagram {
             .await?;
             component_views.extend(removed_component_summaries);
 
-            // We need to bring in any AttributePrototypeArguments for incoming & outgoing
-            // connections that have been removed.
-            // let removed_attribute_prototype_argument_ids: Vec<AttributePrototypeArgumentId> =
-            //     vec![];
-            //  = ctx
-            //     .workspace_snapshot()?
-            //     .socket_edges_removed_relative_to_base(ctx)
-            //     .await?;
-            // let mut incoming_connections_by_component_id: HashMap<
-            //     ComponentId,
-            //     Vec<IncomingConnection>,
-            // > = HashMap::new();
-
-            // for removed_attribute_prototype_argument_id in &removed_attribute_prototype_argument_ids
-            // {
-            //     let attribute_prototype_argument = AttributePrototypeArgument::get_by_id(
-            //         base_change_set_ctx,
-            //         *removed_attribute_prototype_argument_id,
-            //     )
-            //     .await?;
-
-            //     // This should always be Some as
-            //     // `WorkspaceSnapshot::socket_edges_removed_relative_to_base` only returns the
-            //     // IDs of arguments that have targets.
-            //     if let Some(targets) = attribute_prototype_argument.targets() {
-            //         if let hash_map::Entry::Vacant(vacant_entry) =
-            //             incoming_connections_by_component_id.entry(targets.destination_component_id)
-            //         {
-            //             let removed_component = Component::get_by_id(
-            //                 base_change_set_ctx,
-            //                 targets.destination_component_id,
-            //             )
-            //             .await?;
-            //             let mut incoming_connections = removed_component
-            //                 .incoming_connections(base_change_set_ctx)
-            //                 .await?;
-            //             // We only care about connections going to the Component in the base that
-            //             // are *ALSO* ones that we are considered to have removed.
-            //             incoming_connections.retain(|connection| {
-            //                 removed_attribute_prototype_argument_ids
-            //                     .contains(&connection.attribute_prototype_argument_id)
-            //             });
-            //             vacant_entry.insert(incoming_connections);
-            //         }
-            //     }
-            // }
-
-            // for incoming_connections in incoming_connections_by_component_id.values() {
-            //     for incoming_connection in incoming_connections {
-            //         let from_component = virtual_and_real_components_by_id
-            //             .get(&incoming_connection.from_component_id)
-            //             .cloned()
-            //             .ok_or(ComponentError::NotFound(
-            //                 incoming_connection.from_component_id,
-            //             ))?;
-            //         let to_component = virtual_and_real_components_by_id
-            //             .get(&incoming_connection.to_component_id)
-            //             .ok_or(ComponentError::NotFound(
-            //                 incoming_connection.to_component_id,
-            //             ))?;
-            //         let mut summary_diagram_edge = SummaryDiagramEdge::assemble(
-            //             incoming_connection.clone(),
-            //             from_component.to_owned(),
-            //             to_component,
-            //             ChangeStatus::Deleted,
-            //         )?;
-            //         summary_diagram_edge.from_base_change_set = true;
-
-            //         diagram_edges.push(summary_diagram_edge);
-            //     }
-            // }
+            let removed_edges = Self::assemble_removed_edges(ctx).await?;
+            diagram_edges.extend(removed_edges);
         }
 
         Ok(Self {

@@ -1,6 +1,8 @@
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
+use dal::change_status::ChangeStatus;
+use dal::diagram::SummaryDiagramEdge;
 use dal::{
     ChangeSet, Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility, WsEvent,
 };
@@ -67,16 +69,25 @@ pub async fn create_connection(
         }),
     );
 
-    WsEvent::connection_created(
-        &ctx,
-        request.from_component_id,
-        request.to_component_id,
-        request.from_socket_id,
-        request.to_socket_id,
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+    let from_component = Component::get_by_id(&ctx, request.from_component_id).await?;
+    let to_component = Component::get_by_id(&ctx, request.to_component_id).await?;
+    for incoming_connection in to_component.incoming_connections(&ctx).await? {
+        if incoming_connection.to_input_socket_id == request.to_socket_id
+            && incoming_connection.from_component_id == from_component.id()
+            && incoming_connection.to_component_id == to_component.id()
+        {
+            let edge = SummaryDiagramEdge::assemble(
+                incoming_connection,
+                &from_component,
+                &to_component,
+                ChangeStatus::Added,
+            )?;
+            WsEvent::connection_upserted(&ctx, edge)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+    }
 
     ctx.commit().await?;
 

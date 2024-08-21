@@ -166,8 +166,7 @@ export type WsEventPayloadMap = {
   // };
 
   ComponentCreated: {
-    success: boolean;
-    componentId: string;
+    component: RawComponent;
     changeSetId: string;
   };
   ComponentDeleted: {
@@ -191,19 +190,12 @@ export type WsEventPayloadMap = {
     changeSetId: string;
     edges: RawEdge[];
   };
-  ConnectionCreated: {
-    fromComponentId: string;
-    toComponentId: string;
-    fromSocketId: string;
-    toSocketId: string;
-    changeSetId: string;
-  };
+  ConnectionUpserted: RawEdge;
   ConnectionDeleted: {
     fromComponentId: string;
     toComponentId: string;
     fromSocketId: string;
     toSocketId: string;
-    changeSetId: string;
   };
   ModuleImported: SchemaVariant[];
   WorkspaceImportBeginApprovalProcess: {

@@ -499,6 +499,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 subtitle: component.schemaName,
                 canBeUpgraded: component.canBeUpgraded,
                 isLoading:
+                  // NOTE: jobelenus — every single status update causes this component and its edges to re-render
                   statusStore.activeComponents[componentId] !== undefined,
                 typeIcon: component?.icon || "logo-si",
                 statusIcons,
@@ -1050,18 +1051,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 };
               },
               onSuccess: (response) => {
-                // we'll link up our temporary id to the actual ID
-                // so we can hide the spinning temporary insert placeholder when the data is loaded
-                const pendingInsert =
-                  this.pendingInsertedComponents[tempInsertId];
-                if (pendingInsert) {
-                  pendingInsert.componentId = response.componentId;
-                }
-
-                // TODO: ideally here we would set the selected component id, but the component doesn't exist in the store yet
-                // so we'll have to do it in the FETCH_DIAGRAM when we delete the pending insert
-                // in the future, we should probably return at least basic info about the component from the create call
-                // so we can select it right away and at least show a loading screen as more data is fetched
+                delete this.pendingInsertedComponents[tempInsertId];
               },
             });
           },
@@ -1287,54 +1277,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async DELETE_COMPONENT(componentId: ComponentId) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<RawComponent | null>({
-              method: "post",
-              url: "diagram/delete_component",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                if (!response) {
-                  delete this.rawComponentsById[componentId];
-                }
-              },
-              optimistic: () => {
-                const component = this.rawComponentsById[componentId];
-                const originalStatus = component?.changeStatus;
-                if (component) {
-                  this.rawComponentsById[componentId] = {
-                    ...component,
-                    changeStatus: "deleted",
-                    toDelete: true,
-                    deletedInfo: {
-                      timestamp: new Date().toISOString(),
-                      actor: { kind: "user", label: "You" },
-                    },
-                  };
-                }
-
-                return () => {
-                  if (component && originalStatus) {
-                    this.rawComponentsById[componentId] = {
-                      ...component,
-                      toDelete: true,
-                      changeStatus: originalStatus,
-                      deletedInfo: undefined,
-                    };
-                  }
-                };
-              },
-            });
-          },
-
           async PASTE_COMPONENTS(
             components: {
               id: ComponentId;
@@ -1424,13 +1366,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 componentIds,
                 forceErase,
                 ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                for (const [componentId, hasResource] of _.entries(response)) {
-                  if (!hasResource) {
-                    delete this.rawComponentsById[componentId];
-                  }
-                }
               },
               optimistic: () => {
                 for (const componentId of componentIds) {
@@ -1680,25 +1615,32 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
-                  this.FETCH_DIAGRAM_DATA();
+                  this.rawComponentsById[data.component.id] = data.component;
                 },
               },
               {
-                eventType: "ConnectionCreated",
-                callback: (data) => {
+                eventType: "ConnectionUpserted",
+                callback: async (edge, metadata) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
-                  if (data.changeSetId !== changeSetId) return;
-                  this.FETCH_DIAGRAM_DATA();
+                  if (metadata.change_set_id !== changeSetId) return;
+                  const e = edgeFromRawEdge(false)(edge);
+                  this.edgesById[e.id] = e;
                 },
               },
               {
                 eventType: "ConnectionDeleted",
-                callback: (data) => {
-                  // If the component that updated wasn't in this change set,
-                  // don't update
-                  if (data.changeSetId !== changeSetId) return;
-                  this.FETCH_DIAGRAM_DATA();
+                callback: (edge, metadata) => {
+                  if (metadata.change_set_id !== changeSetId) return;
+                  // making TS happy, we don't need this data since we're just deleting
+                  const _edge = edge as RawEdge;
+                  _edge.toDelete = true;
+                  _edge.createdInfo = {
+                    actor: { kind: "system", label: "" },
+                    timestamp: "",
+                  };
+                  const e = edgeFromRawEdge(false)(_edge);
+                  delete this.edgesById[e.id];
                 },
               },
               {
@@ -1717,13 +1659,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               {
                 eventType: "ComponentUpdated",
-                callback: (data) => {
+                callback: (data, metadata) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
-                  if (data.changeSetId !== changeSetId) return;
+                  if (metadata.change_set_id !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
-                  if (this.selectedComponentId === data.component.id)
-                    this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+
+                  if (this.selectedComponentId === data.component.id) {
+                    const component = this.rawComponentsById[data.component.id];
+                    if (component && component.changeStatus !== "deleted")
+                      this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+                    else {
+                      const idx = this.selectedComponentIds.findIndex(
+                        (cId) => cId === data.component.id,
+                      );
+                      if (idx !== -1) this.selectedComponentIds.slice(idx, 1);
+                    }
+                  }
                 },
               },
               {
@@ -1758,9 +1710,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
+                  // the componentIds ought to be the same, but just in case we'll delete first
+                  delete this.rawComponentsById[data.originalComponentId];
                   this.rawComponentsById[data.component.id] = data.component;
                   this.setSelectedComponentId(data.component.id);
-                  delete this.rawComponentsById[data.originalComponentId];
                 },
               },
               {

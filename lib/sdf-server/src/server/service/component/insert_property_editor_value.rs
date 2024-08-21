@@ -4,8 +4,8 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    change_status::ChangeStatus, diagram::SummaryDiagramComponent, AttributeValue,
-    AttributeValueId, ChangeSet, Component, ComponentId, PropId, Visibility, WsEvent,
+    change_status::ChangeStatus, AttributeValue, AttributeValueId, ChangeSet, Component,
+    ComponentId, PropId, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -43,13 +43,9 @@ pub async fn insert_property_editor_value(
 
     let component: Component = Component::get_by_id(&ctx, request.component_id).await?;
     let mut socket_map = HashMap::new();
-    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-        &ctx,
-        &component,
-        ChangeStatus::Unmodified,
-        &mut socket_map,
-    )
-    .await?;
+    let payload = component
+        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+        .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

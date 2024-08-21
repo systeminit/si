@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
-use dal::diagram::SummaryDiagramComponent;
 use dal::{
     AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Secret,
     SecretId, Visibility, WsEvent,
@@ -91,13 +90,9 @@ pub async fn update_property_editor_value(
     }
 
     let mut socket_map = HashMap::new();
-    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-        &ctx,
-        &component,
-        ChangeStatus::Unmodified,
-        &mut socket_map,
-    )
-    .await?;
+    let payload = component
+        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+        .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

@@ -5,7 +5,6 @@ use axum::{response::IntoResponse, Json};
 
 use dal::change_status::ChangeStatus;
 use dal::component::ComponentGeometry;
-use dal::diagram::SummaryDiagramComponent;
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
@@ -59,13 +58,9 @@ pub async fn set_type(
     // TODO: We'll want to figure out whether this component is Added/Modified, depending on
     // whether it existed in the base change set already or not.
     let mut socket_map = HashMap::new();
-    let payload: SummaryDiagramComponent = SummaryDiagramComponent::assemble(
-        &ctx,
-        &component,
-        ChangeStatus::Unmodified,
-        &mut socket_map,
-    )
-    .await?;
+    let payload = component
+        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+        .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)

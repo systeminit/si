@@ -99,7 +99,7 @@ async fn export_import_loop(ctx: &mut DalContext) {
     let name_path = &["root", "domain", "name"];
     assert_eq!(
         original_pirate_name, // expected
-        PropEditorTestView::for_component_id(ctx, component.id) //actual
+        PropEditorTestView::for_component_id(ctx, component.id.into()) //actual
             .await
             .expect("could not get property editor test view")
             .get_value(name_path)
