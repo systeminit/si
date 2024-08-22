@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "SI monorepo",
   "scripts": {
+    "dev:auth": "pnpm run --filter=\"@si/auth-portal\" --filter=\"@si/auth-api\" dev",
+    "dev:auth-api": "pnpm run --filter=\"@si/auth-api\" dev",
+    "dev:auth-portal": "pnpm run --filter=\"@si/auth-portal\" dev",
     "preinstall": "npx only-allow pnpm",
     "nodev": "node -v",
     "whichnode": "which node"
