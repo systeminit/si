@@ -52,11 +52,14 @@ export interface ResultSuccess extends Result {
   error?: string;
 }
 
+// Js sandbox errors that don't get categorized return as a generic UserCodeException to the rust enum
 export interface ResultFailure extends Result {
   status: "failure";
   executionId: string;
   error: {
-    kind: string;
+    kind: string | {
+      "UserCodeException": string
+    };
     message: string;
   };
 }
@@ -76,7 +79,7 @@ export function failureExecution(
     status: "failure",
     executionId,
     error: {
-      kind: err.name,
+      kind: { UserCodeException: err.name },
       message: err.message,
     },
   };
@@ -172,10 +175,17 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
   console.log(JSON.stringify(result));
 }
 
+class TimeoutError extends Error {
+  constructor(seconds: number) {
+    super(`function timed out after ${seconds} seconds`);
+    this.name = "TimeoutError";
+  }
+}
+
 async function timer(seconds: number): Promise<never> {
   const ms = seconds * 1000;
   return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`function timed out after ${seconds} seconds`)), ms);
+    setTimeout(() => reject(new TimeoutError(seconds)), ms);
   });
 }
 
@@ -212,14 +222,11 @@ export async function executor<F extends Func | ActionRunFunc, Result>(
 
   debug({ timeout });
 
-  try {
-    const result = await Promise.race([
-      execute(vm, ctx, func, code),
-      timer(timeout),
-    ]);
-    debug({ result });
-    return result;
-  } catch (error) {
-    throw new Error(`${error}`);
-  }
+  // Following section throws on timeout or execution error
+  const result = await Promise.race([
+    execute(vm, ctx, func, code),
+    timer(timeout),
+  ]);
+  debug({ result });
+  return result;
 }

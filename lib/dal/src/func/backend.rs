@@ -8,8 +8,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{
-    ActionRunResultSuccess, BeforeFunction, Client as VeritechClient, FunctionResult, OutputStream,
-    ResolverFunctionResponseType,
+    ActionRunResultSuccess, BeforeFunction, Client as VeritechClient, FunctionResult,
+    FunctionResultFailureErrorKind, OutputStream, ResolverFunctionResponseType,
 };
 
 use crate::label_list::ToLabelList;
@@ -46,7 +46,7 @@ pub enum FuncBackendError {
     InvalidArrayEntryData(serde_json::Value),
     #[error("result failure: kind={kind}, message={message}, backend={backend}")]
     ResultFailure {
-        kind: String,
+        kind: FunctionResultFailureErrorKind,
         message: String,
         backend: String,
     },

@@ -87,6 +87,9 @@ impl IntoResponse for SchemaVariantError {
                 StatusCode::NOT_MODIFIED,
                 "unexpected return type, expected 'Asset' return type".to_string(),
             ),
+            SchemaVariantError::VariantAuthoring(VariantAuthoringError::FuncExecutionFailure(
+                message,
+            )) => (StatusCode::UNPROCESSABLE_ENTITY, message),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

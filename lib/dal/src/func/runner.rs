@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use ulid::Ulid;
@@ -15,7 +15,8 @@ use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 use veritech_client::{
     encrypt_value_tree, BeforeFunction, FunctionResult, FunctionResultFailure,
-    KillExecutionRequest, OutputStream, ResolverFunctionComponent, VeritechValueEncryptError,
+    FunctionResultFailureErrorKind, KillExecutionRequest, OutputStream, ResolverFunctionComponent,
+    VeritechValueEncryptError,
 };
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -111,7 +112,7 @@ pub enum FuncRunnerError {
     Prop(#[from] PropError),
     #[error("function run result failure: kind={kind}, message={message}, backend={backend}")]
     ResultFailure {
-        kind: String,
+        kind: FunctionResultFailureErrorKind,
         message: String,
         backend: String,
     },
@@ -144,10 +145,11 @@ pub enum FuncRunnerError {
 
 pub type FuncRunnerResult<T> = Result<T, FuncRunnerError>;
 
-pub type FuncRunnerValueChannel = tokio::sync::oneshot::Receiver<FuncRunnerResult<FuncRunValue>>;
+pub type FuncRunnerValueChannel = oneshot::Receiver<FuncRunnerResult<FuncRunValue>>;
 
 pub struct FuncRunner {
     func_run: Arc<FuncRun>,
+
     func: Func,
     args: serde_json::Value,
     before: Vec<BeforeFunction>,
@@ -1286,7 +1288,10 @@ impl FuncRunner {
         Ok(ordered_before_funcs_with_secret_keys)
     }
 
-    async fn inject_workspace_token(ctx: &DalContext, value: &mut Value) -> FuncRunnerResult<()> {
+    async fn inject_workspace_token(
+        ctx: &DalContext,
+        value: &mut serde_json::Value,
+    ) -> FuncRunnerResult<()> {
         if let Some(token) = ctx.get_workspace_token().await? {
             if let serde_json::Value::Object(ref mut obj) = value {
                 obj.insert("WorkspaceToken".to_string(), token.into());

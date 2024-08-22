@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use serde::{Serialize, Serializer};
+use std::fmt::Display;
 use telemetry::prelude::*;
 
 pub mod action;
@@ -35,10 +36,7 @@ struct ApiError {
 impl ApiError {
     const DEFAULT_ERROR_STATUS_CODE: StatusCode = StatusCode::INTERNAL_SERVER_ERROR;
 
-    fn new<E>(status_code: StatusCode, err: E) -> Self
-    where
-        E: std::error::Error,
-    {
+    fn new<E: Display>(status_code: StatusCode, err: E) -> Self {
         Self {
             error: ApiErrorError {
                 message: err.to_string(),

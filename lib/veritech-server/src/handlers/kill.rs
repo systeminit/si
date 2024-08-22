@@ -3,7 +3,10 @@ use naxum::{
     Json,
 };
 use si_data_nats::Subject;
-use si_pool_noodle::{FunctionResult, FunctionResultFailure, KillExecutionRequest};
+use si_pool_noodle::{
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    FunctionResultFailureErrorKind, KillExecutionRequest,
+};
 use telemetry::prelude::*;
 
 use crate::{app_state::KillAppState, Publisher};
@@ -38,9 +41,12 @@ async fn kill_execution_request_task(
 
     let result = match kill_execution_request(state, execution_id.to_owned()).await {
         Ok(()) => FunctionResult::Success(()),
-        Err(err) => FunctionResult::Failure(FunctionResultFailure::new_for_veritech_server_error(
+        Err(err) => FunctionResult::Failure(FunctionResultFailure::new(
             execution_id,
-            err.to_string(),
+            FunctionResultFailureError {
+                kind: FunctionResultFailureErrorKind::KilledExecution,
+                message: err.to_string(),
+            },
             timestamp(),
         )),
     };

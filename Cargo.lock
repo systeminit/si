@@ -1277,6 +1277,7 @@ dependencies = [
  "si-crypto",
  "si-hash",
  "si-std",
+ "strum 0.26.3",
  "telemetry",
  "thiserror",
  "tokio",

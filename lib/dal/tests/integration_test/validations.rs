@@ -29,7 +29,7 @@ async fn validation_format_errors(ctx: &mut DalContext) {
             "value": null,
             "validation": {
                 "status": "Error",
-                "message": "JoiValidationJsonParsingError: Unexpected token ' in JSON at position 0",
+                "message": "UserCodeException: Unexpected token ' in JSON at position 0",
             }
         }),
         extract_value_and_validation(prop_view).expect("could not extract")
@@ -47,7 +47,7 @@ async fn validation_format_errors(ctx: &mut DalContext) {
             "value": null,
             "validation": {
                 "status": "Error",
-                "message": "JoiValidationFormatError: validationFormat must be of type object",
+                "message": "UserCodeException: validationFormat must be of type object",
             }
         }),
         extract_value_and_validation(prop_view).expect("could not extract")
