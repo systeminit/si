@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks } from "@si/vue-lib/pinia";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { POSITION, useToast } from "vue-toastification";
 import { watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -78,11 +78,11 @@ export type Conflict = string;
 
 export interface StatusStoreState {
   activeComponents: Record<ComponentId, DependentValuesUpdateStatusUpdate>;
+  dvuRootsCount: number;
   rebaseStatus: RebaseStatus;
 }
 
 const FIFTEEN_SECONDS_MS = 1000 * 15;
-const TEN_MINUTES_MS = 1000 * 60 * 10;
 
 export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
   // this needs some work... but we'll probably want a way to force using HEAD
@@ -99,6 +99,11 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const toast = useToast();
 
+  const visibilityParams = {
+    visibility_change_set_pk: changeSetId,
+    workspaceId,
+  };
+
   return addStoreHooks(
     workspaceId,
     changeSetId,
@@ -108,21 +113,14 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         state: (): StatusStoreState => ({
           activeComponents: {},
           rebaseStatus: { count: 0 },
+          dvuRootsCount: 0,
         }),
         getters: {
           globalStatus(state): GlobalUpdateStatus {
             const nowMs = Date.now();
-            const isUpdatingDvus = _.some(state.activeComponents, (status) => {
-              const startedAt = Number(status.timestamp);
-              // don't consider an update live after 10 minutes. Instead of this
-              // we should ask the graph whether it still has dependent value
-              // updates...
-              if (nowMs - startedAt > TEN_MINUTES_MS) {
-                return false;
-              }
-
-              return true;
-            });
+            const isUpdatingDvus =
+              Object.keys(this.activeComponents).length > 0 ||
+              this.dvuRootsCount > 0;
 
             const isRebasing =
               !state.rebaseStatus.rebaseFinished &&
@@ -143,13 +141,49 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             return state.activeComponents[id] !== undefined;
           },
         },
+        actions: {
+          async FETCH_DVU_ROOTS() {
+            return new ApiRequest<{ count: number }>({
+              url: "diagram/dvu_roots",
+              params: {
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.dvuRootsCount = response.count;
+                if (response.count < 1) {
+                  this.activeComponents = {};
+                }
+              },
+            });
+          },
+        },
         onActivated() {
           if (!changeSetId) return;
 
           const realtimeStore = useRealtimeStore();
-          let cleanupTimeout: Timeout;
+
+          const debouncedFetchDvuRoots = _.debounce(this.FETCH_DVU_ROOTS, 1000);
+
+          // Just in case we miss a change set written and we still think there
+          // are roots, but we don't know about any active components.
+          const dvuRootCheck = setInterval(() => {
+            if (
+              this.dvuRootsCount > 0 &&
+              Object.keys(this.activeComponents).length < 1
+            ) {
+              debouncedFetchDvuRoots();
+            }
+          }, 3500);
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+            {
+              eventType: "ChangeSetWritten",
+              callback: () => {
+                if (this.dvuRootsCount > 0) {
+                  debouncedFetchDvuRoots();
+                }
+              },
+            },
             {
               eventType: "StatusUpdate",
               callback: (update, _metadata) => {
@@ -227,7 +261,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
           return () => {
             actionUnsub();
-            clearTimeout(cleanupTimeout);
+            clearInterval(dvuRootCheck);
             realtimeStore.unsubscribe(this.$id);
           };
         },

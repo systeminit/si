@@ -74,6 +74,7 @@ import { usePresenceStore } from "@/store/presence.store";
 // import ActionProgressOverlay from "@/components/ActionProgressOverlay.vue";
 import { useSecretsStore } from "@/store/secrets.store";
 import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.vue";
+import { useStatusStore } from "@/store/status.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
@@ -90,6 +91,7 @@ const componentsStore = useComponentsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
+const statusStore = useStatusStore();
 
 const actionsAreRunning = computed(
   () =>
@@ -125,6 +127,7 @@ const onKeyDown = async (e: KeyboardEvent) => {
 
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
+  statusStore.FETCH_DVU_ROOTS();
 });
 
 onBeforeUnmount(() => {
