@@ -266,7 +266,6 @@ where
             .stdout
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
-                    LangServerMessage::Heartbeat => Ok(Message::Heartbeat),
                     LangServerMessage::Output(mut output) => {
                         Self::filter_output(&mut output, &self.sensitive_strings)?;
                         Ok(Message::OutputStream(output.into()))
@@ -427,7 +426,6 @@ where
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "protocol", rename_all = "camelCase")]
 pub enum LangServerMessage<Success> {
-    Heartbeat,
     Output(LangServerOutput),
     Result(LangServerResult<Success>),
 }
