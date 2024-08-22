@@ -188,6 +188,16 @@ impl StatusUpdateTracker {
             )
     }
 
+    fn finish_remaining(&self) -> Vec<StatusUpdate> {
+        self.values_by_component
+            .iter()
+            .filter(|(_, values)| !values.is_empty())
+            .map(|(component_id, _)| {
+                StatusUpdate::new_dvu(StatusMessageState::StatusFinished, *component_id)
+            })
+            .collect()
+    }
+
     fn get_status_update(
         &mut self,
         state: StatusMessageState,
@@ -352,6 +362,15 @@ impl DependentValuesUpdate {
             }
 
             independent_value_ids = dependency_graph.independent_values();
+        }
+
+        // If we encounter a failure in a value above, we may not process the
+        // downstream attributes and thus will fail to send the "finish" update.
+        // This will process any remaining components in the tracker.
+        for status_update in tracker.finish_remaining() {
+            if let Err(err) = send_status_update(ctx, status_update).await {
+                error!(si.error.message = ?err, "status update finished event send for leftover component");
+            }
         }
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
