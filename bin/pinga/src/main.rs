@@ -1,29 +1,19 @@
-use color_eyre::Result;
+use std::time::Duration;
+
 use pinga_server::{Config, Server};
-use si_service::startup;
-use telemetry_application::prelude::*;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
 
 mod args;
 
-const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 fn main() -> Result<()> {
-    let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);
-    let thread_handler = thread_builder.spawn(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-            .thread_name("bin/pinga-tokio::runtime")
-            .enable_all()
-            .build()?
-            .block_on(async_main())
-    })?;
-    thread_handler.join().unwrap()
+    rt::block_on("bin/pinga-tokio::runtime", async_main())
 }
 
 async fn async_main() -> Result<()> {
-    let shutdown_token = CancellationToken::new();
-    let task_tracker = TaskTracker::new();
+    let tracker = TaskTracker::new();
+    let token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
@@ -40,10 +30,16 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["pinga", "pinga_server"])
-            .interesting_modules(vec!["dal", "si_data_nats", "si_data_pg", "si_layer_cache"])
+            .interesting_modules(vec![
+                "dal",
+                "naxum",
+                "si_data_nats",
+                "si_data_pg",
+                "si_layer_cache",
+            ])
             .build()?;
 
-        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+        telemetry_application::init(config, &tracker, token.clone())?
     };
 
     startup::startup("pinga").await?;
@@ -57,23 +53,19 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    task_tracker.close();
+    let server = Server::from_config(config, token.clone(), tracker.clone()).await?;
 
-    Server::from_config(config, shutdown_token.clone(), task_tracker.clone())
-        .await?
-        .run()
-        .await?;
+    tracker.spawn(async move {
+        info!("ready to receive messages");
+        server.run().await
+    });
 
-    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
-    // sdf's case, this is embedded in server library code which is incorrect. At this moment in
-    // the program however, axum has shut down so it's an appropriate time to cancel other
-    // remaining tasks and wait on their graceful shutdowns
-    {
-        shutdown_token.cancel();
-        task_tracker.wait().await;
-        telemetry_shutdown.wait().await?;
-    }
-
-    info!("graceful shutdown complete.");
-    Ok(())
+    shutdown::graceful(
+        tracker,
+        token,
+        Some(telemetry_shutdown.into_future()),
+        Some(GRACEFUL_SHUTDOWN_TIMEOUT),
+    )
+    .await
+    .map_err(Into::into)
 }

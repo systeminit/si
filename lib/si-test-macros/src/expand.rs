@@ -177,9 +177,6 @@ pub(crate) trait FnSetupExpander {
     fn pinga_server(&self) -> Option<&Rc<Ident>>;
     fn set_pinga_server(&mut self, value: Option<Rc<Ident>>);
 
-    fn pinga_shutdown_handle(&self) -> Option<&Rc<Ident>>;
-    fn set_pinga_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
-
     fn start_pinga_server(&self) -> Option<()>;
     fn set_start_pinga_server(&mut self, value: Option<()>);
 
@@ -293,29 +290,15 @@ pub(crate) trait FnSetupExpander {
                         #task_tracker.clone(),
                     )
                     .await;
-                ::dal_test::pinga_server(s_ctx)?
+                ::dal_test::pinga_server(
+                    s_ctx,
+                    #cancellation_token.clone(),
+                ).await?
             };
         });
         self.set_pinga_server(Some(Rc::new(var)));
 
         self.pinga_server().unwrap().clone()
-    }
-
-    fn setup_pinga_shutdown_handle(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.pinga_shutdown_handle() {
-            return ident.clone();
-        }
-
-        let pinga_server = self.setup_pinga_server();
-        let pinga_server = pinga_server.as_ref();
-
-        let var = Ident::new("pinga_shutdown_handle", Span::call_site());
-        self.code_extend(quote! {
-            let #var = #pinga_server.shutdown_handle();
-        });
-        self.set_pinga_shutdown_handle(Some(Rc::new(var)));
-
-        self.pinga_shutdown_handle().unwrap().clone()
     }
 
     fn setup_start_pinga_server(&mut self) {

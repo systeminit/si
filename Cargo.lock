@@ -1345,6 +1345,7 @@ dependencies = [
  "once_cell",
  "paste",
  "petgraph",
+ "pinga-core",
  "postcard",
  "postgres-types",
  "pretty_assertions_sorted",
@@ -3790,6 +3791,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "pinga-core"
+version = "0.1.0"
+dependencies = [
+ "si-data-nats",
+]
+
+[[package]]
 name = "pinga-server"
 version = "0.1.0"
 dependencies = [
@@ -3798,6 +3806,8 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "naxum",
+ "pinga-core",
  "remain",
  "serde",
  "serde_json",
@@ -3814,6 +3824,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
+ "tower",
  "ulid",
  "veritech-client",
 ]

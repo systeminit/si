@@ -90,11 +90,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "PingaShutdownHandle" => {
-                                let var = expander.setup_pinga_shutdown_handle();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -213,7 +208,6 @@ struct SdfTestFnSetupExpander {
     cancellation_token: Option<Rc<Ident>>,
     task_tracker: Option<Rc<Ident>>,
     pinga_server: Option<Rc<Ident>>,
-    pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
     rebaser_server: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
@@ -247,7 +241,6 @@ impl SdfTestFnSetupExpander {
             cancellation_token: None,
             task_tracker: None,
             pinga_server: None,
-            pinga_shutdown_handle: None,
             start_pinga_server: None,
             rebaser_server: None,
             start_rebaser_server: None,
@@ -478,14 +471,6 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_pinga_server(&mut self, value: Option<Rc<Ident>>) {
         self.pinga_server = value;
-    }
-
-    fn pinga_shutdown_handle(&self) -> Option<&Rc<Ident>> {
-        self.pinga_shutdown_handle.as_ref()
-    }
-
-    fn set_pinga_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
-        self.pinga_shutdown_handle = value;
     }
 
     fn start_pinga_server(&self) -> Option<()> {

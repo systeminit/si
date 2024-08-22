@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use dyn_clone::DynClone;
+use si_data_nats::async_nats;
 use thiserror::Error;
 
 use crate::{
@@ -17,6 +18,10 @@ pub enum JobQueueProcessorError {
     BlockingJob(#[from] BlockingJobError),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
+    #[error("stream create error: {0}")]
+    JsCreateStreamError(#[from] async_nats::jetstream::context::CreateStreamError),
+    #[error("missing required workspace_pk")]
+    MissingWorkspacePk,
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]

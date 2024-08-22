@@ -16,7 +16,7 @@ use ulid::Ulid;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
-const DEFAULT_CONCURRENCY_LIMIT: usize = 5;
+const DEFAULT_CONCURRENCY_LIMIT: usize = 64;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

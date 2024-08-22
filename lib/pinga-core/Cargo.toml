@@ -1,0 +1,12 @@
+[package]
+name = "pinga-core"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+si-data-nats = { path = "../../lib/si-data-nats" }
