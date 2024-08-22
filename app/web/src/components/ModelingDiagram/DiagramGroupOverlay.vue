@@ -49,9 +49,11 @@ import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { CORNER_RADIUS } from "@/components/ModelingDiagram/diagram_constants";
 import { useComponentsStore } from "@/store/components.store";
+import { useStatusStore } from "@/store/status.store";
 import { DiagramGroupData } from "./diagram_types";
 
 const componentsStore = useComponentsStore();
+const statusStore = useStatusStore();
 
 const props = defineProps({
   group: {
@@ -107,16 +109,19 @@ const position = computed(
 // );
 
 const overlay = ref();
-watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
-  if (_.isNil(overlay)) return;
-  const node = overlay.value.getNode();
+watch(
+  [() => statusStore.componentIsLoading(props.group.def.id), overlay],
+  ([isLoading]) => {
+    if (_.isNil(overlay)) return;
+    const node = overlay.value.getNode();
 
-  const transition = new Tween({
-    node,
-    duration: 0.1,
-    opacity: isLoading ? 1 : 0,
-  });
+    const transition = new Tween({
+      node,
+      duration: 0.1,
+      opacity: isLoading ? 1 : 0,
+    });
 
-  transition.play();
-});
+    transition.play();
+  },
+);
 </script>

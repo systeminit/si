@@ -98,6 +98,7 @@ overflow hidden */
             :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
             :isHovered="elementIsHovered(node)"
             :isSelected="elementIsSelected(node)"
+            :isLoading="statusStore.componentIsLoading(node.def.id)"
             :node="node"
             @resize="onNodeLayoutOrLocationChange(node)"
           />
@@ -264,6 +265,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
 import { SchemaVariantId, ComponentType } from "@/api/sdf/dal/schema";
+import { useStatusStore } from "@/store/status.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -343,6 +345,7 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const statusStore = useStatusStore();
 const modelingEventBus = componentsStore.eventBus;
 
 const edgeDisplayMode = ref<EdgeDisplayMode>("EDGES_OVER");
