@@ -205,8 +205,6 @@ export type DiagramNodeDef = {
   isGroup: boolean;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
-  /** if true, node shows the `loading` overlay */
-  isLoading: boolean;
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */

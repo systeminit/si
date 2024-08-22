@@ -52,7 +52,6 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { useStatusStore } from "./status.store";
 
 type RequestUlid = string;
 
@@ -464,7 +463,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           diagramNodes(): DiagramNodeDef[] {
             const qualificationsStore = useQualificationsStore();
-            const statusStore = useStatusStore();
 
             // adding logo and qualification info into the nodes
             // TODO: probably want to include logo directly
@@ -498,9 +496,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 title: component.displayName,
                 subtitle: component.schemaName,
                 canBeUpgraded: component.canBeUpgraded,
-                isLoading:
-                  // NOTE: jobelenus — every single status update causes this component and its edges to re-render
-                  statusStore.activeComponents[componentId] !== undefined,
                 typeIcon: component?.icon || "logo-si",
                 statusIcons,
               };

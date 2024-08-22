@@ -139,6 +139,9 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             }
             return "Model is up to date";
           },
+          componentIsLoading: (state) => (id: ComponentId) => {
+            return state.activeComponents[id] !== undefined;
+          },
         },
         onActivated() {
           if (!changeSetId) return;

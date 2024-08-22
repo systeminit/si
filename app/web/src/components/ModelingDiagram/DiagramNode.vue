@@ -298,6 +298,7 @@ const props = defineProps({
     type: Object as PropType<DiagramEdgeData[]>,
     default: () => ({}),
   },
+  isLoading: Boolean,
   isHovered: Boolean,
   isSelected: Boolean,
 });
@@ -475,13 +476,13 @@ const colors = computed(() => {
 });
 
 const overlay = ref();
-watch([() => props.node.def.isLoading, overlay], () => {
+watch([() => props.isLoading, overlay], () => {
   const node = overlay.value?.getNode();
   if (!node) return;
   const transition = new Tween({
     node,
     duration: 0.1,
-    opacity: props.node.def.isLoading ? 1 : 0,
+    opacity: props.isLoading ? 1 : 0,
   });
   transition.play();
 });
