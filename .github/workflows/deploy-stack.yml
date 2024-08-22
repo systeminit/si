@@ -1,9 +1,10 @@
 name: Deploy Services
 
-run-name: Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{ github.actor }}
+run-name:
+  Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{
+  github.actor }}
 
 on:
-
   workflow_call:
     inputs:
       environment:
@@ -76,12 +77,27 @@ jobs:
             echo 'services=["${{ inputs.service }}"]' >> "$GITHUB_OUTPUT"
           fi
 
+  notify-start:
+    name: Start Deployment Notification
+    runs-on: ubuntu-latest
+    if: inputs.environment == 'production'
+    steps:
+      - uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          nodetail: true
+          title: "System Initiative Deployment Starting"
+          description: |
+            "We are making a deployment of System Initiative. The service will be disrupted for the next 10 minutes. We will post when it is complete."
+          color: 0xff91a4
+
   deploy-services:
     needs: "define-deployment-matrix"
     strategy:
-     fail-fast: false
-     matrix:
-      service: ${{ fromJSON(needs.define-deployment-matrix.outputs.services) }}
+      fail-fast: false
+      matrix:
+        service:
+          ${{ fromJSON(needs.define-deployment-matrix.outputs.services) }}
     uses: ./.github/workflows/deploy-service.yml
     with:
       environment: ${{ inputs.environment }}
@@ -101,3 +117,17 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
     secrets: inherit
+
+  notify-end:
+    name: Start Deployment Notification
+    runs-on: ubuntu-latest
+    if: inputs.environment == 'production'
+    steps:
+      - uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          nodetail: true
+          title: "System Initiative Deployment Complete"
+          description: |
+            "Deployment has completed. Thank you for your patience."
+          color: 0xff91a4
