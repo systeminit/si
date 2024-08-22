@@ -80,3 +80,15 @@ Qualifications are functions that are executed to ensure that the component can
 be applied successfully to the workspace. An example is the qualification
 function that checks if the Secret you have passed into your AWS Credential
 component are valid.
+
+# HEAD
+
+HEAD is the change set that represents "the real world". It can only be altered by actions, refreshing resources, or applying change sets.
+
+# Configuration Frame (down)
+
+A "down" frame is one where the output sockets of the frame will automatically connect to any components placed within the frame.
+
+# Configuration Frame (up)
+
+An "up" frame is one where the output sockets of the components within the frame will connect to the input sockets of the frame.
