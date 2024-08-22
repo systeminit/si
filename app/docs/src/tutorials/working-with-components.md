@@ -1,6 +1,6 @@
 # Working with Components
 
-This tutorial will teach you how to work more deeply with [components](/reference/vocabulary/) in System Initiative.
+This tutorial will teach you how to work more deeply with [components](/reference/vocabulary#components) in System Initiative.
 
 To follow along, you should:
 
