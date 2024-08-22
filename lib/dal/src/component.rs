@@ -1219,6 +1219,20 @@ impl Component {
         Ok(children)
     }
 
+    /// Returns all descendants (children of my children and on and on)
+    async fn get_all_descendants_for_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let mut all_descendants = Vec::new();
+        let mut work_queue = VecDeque::from(Self::get_children_for_id(ctx, component_id).await?);
+        while let Some(child_id) = work_queue.pop_front() {
+            all_descendants.push(child_id);
+            work_queue.extend(Self::get_children_for_id(ctx, child_id).await?);
+        }
+        Ok(all_descendants)
+    }
+
     #[instrument(level = "debug" skip(ctx))]
     pub async fn get_parent_by_id(
         ctx: &DalContext,
@@ -2319,7 +2333,14 @@ impl Component {
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
         let component = Self::get_by_id(ctx, id).await?;
 
-        if component.parent(ctx).await?.is_some() {
+        if let Some(parent_id) = component.parent(ctx).await? {
+            // if we are removing a component with children, re-parent them if I have a parent
+            // if this component doesn't have a parent, it's children will be orphaned anyways
+            for child_id in Component::get_children_for_id(ctx, id).await? {
+                Frame::upsert_parent(ctx, child_id, parent_id)
+                    .await
+                    .map_err(Box::new)?;
+            }
             Frame::orphan_child(ctx, id)
                 .await
                 .map_err(|e| ComponentError::Frame(Box::new(e)))?;
@@ -2369,6 +2390,7 @@ impl Component {
     ///
     /// 1. It doesn't have a populated resource.
     /// 2. It is not feeding data to a [`Component`] that has a populated resource.
+    /// 3. It doesn't have descendants with resources
     #[instrument(level = "debug", skip_all)]
     pub async fn allowed_to_be_removed(&self, ctx: &DalContext) -> ComponentResult<bool> {
         if self.resource(ctx).await?.is_some() {
@@ -2389,6 +2411,20 @@ impl Component {
                     "component {:?} cannot be removed because {:?} has resource",
                     self.id,
                     connected_to_component.id()
+                );
+                return Ok(false);
+            }
+        }
+
+        // If I am a frame, and I have descendants with resources, I can't be removed
+        let all_descendants = Self::get_all_descendants_for_id(ctx, self.id).await?;
+        for descendant in all_descendants {
+            let descendant_component = Self::get_by_id(ctx, descendant).await?;
+            if descendant_component.resource(ctx).await?.is_some() {
+                debug!(
+                    "component {:?} cannot be removed because {:?} has resource",
+                    self.id,
+                    descendant_component.id()
                 );
                 return Ok(false);
             }

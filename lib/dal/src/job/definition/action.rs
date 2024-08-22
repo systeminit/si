@@ -1,11 +1,13 @@
-use std::{collections::HashMap, convert::TryFrom};
+use std::{
+    collections::HashMap,
+    {collections::VecDeque, convert::TryFrom},
+};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_events::ActionResultState;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use ulid::Ulid;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
@@ -21,9 +23,7 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Visibility,
-    WorkspaceSnapshotError, WsEvent,
+    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -141,18 +141,16 @@ async fn inner_run(
     // Execute the action function
     let maybe_resource = ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
-    let nodes_to_remove =
-        process_and_record_execution(ctx.clone(), maybe_resource.as_ref(), action_id).await?;
-    ensure_deletes_happened(ctx.clone(), nodes_to_remove).await?;
+    // process the result
+    process_execution(ctx, maybe_resource.as_ref(), action_id).await?;
 
     // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
     if prototype.kind == ActionKind::Destroy {
         // after we commit check for removable components if we just successfully deleted a component
-        ctx.update_snapshot_to_visibility().await?;
         let to_delete_components = Component::list_to_be_deleted(ctx).await?;
-        let mut did_remove = false;
-        for component_to_delete in to_delete_components {
+        let mut work_queue = VecDeque::from(to_delete_components);
+        while let Some(component_to_delete) = work_queue.pop_front() {
             let component = Component::try_get_by_id(ctx, component_to_delete).await?;
             if let Some(component) = component {
                 if component.allowed_to_be_removed(ctx).await? {
@@ -161,47 +159,14 @@ async fn inner_run(
                         .await?
                         .publish_on_commit(ctx)
                         .await?;
-                    did_remove = true;
+                    // refetch to see if new potential candidates can be removed
+                    work_queue.extend(Component::list_to_be_deleted(ctx).await?);
                 }
             }
         }
-        if did_remove {
-            ctx.commit().await.map_err(JobConsumerError::Transactions)?;
-        }
     }
+    ctx.commit().await?;
     Ok(maybe_resource)
-}
-
-#[instrument(name = "action_job.ensure_deletes_happened", level = "info", skip(ctx))]
-async fn ensure_deletes_happened(
-    mut ctx: DalContext,
-    nodes_to_remove: Vec<Ulid>,
-) -> JobConsumerResult<()> {
-    ctx.update_snapshot_to_visibility().await?;
-    let snapshot = ctx.workspace_snapshot()?;
-    let mut removed_at_least_once = false;
-
-    for node_id in nodes_to_remove {
-        match snapshot.get_node_weight_by_id(node_id).await {
-            Ok(_) => {
-                warn!(?node_id, "removing node with edge because it is lingering");
-                snapshot.remove_node_by_id(node_id).await?;
-                removed_at_least_once = true;
-            }
-            Err(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                WorkspaceSnapshotGraphError::NodeWithIdNotFound(_),
-            )) => {
-                trace!(?node_id, "skipping node id: not found");
-            }
-            Err(err) => return Err(err.into()),
-        }
-    }
-
-    if removed_at_least_once {
-        ctx.commit().await?;
-    }
-
-    Ok(())
 }
 
 async fn prepare_for_execution(
@@ -231,89 +196,83 @@ async fn prepare_for_execution(
     Ok((prototype_id, component_id))
 }
 
-#[instrument(name = "action_job.process_and_record_execution",
+#[instrument(name = "action_job.process_execution",
 skip_all, level = "info", fields(
     si.action.id = ?action_id))]
-async fn process_and_record_execution(
-    mut ctx: DalContext,
+async fn process_execution(
+    ctx: &DalContext,
     maybe_resource: Option<&ActionRunResultSuccess>,
     action_id: ActionId,
-) -> JobConsumerResult<Vec<Ulid>> {
-    let mut to_remove_nodes = Vec::new();
-    ctx.update_snapshot_to_visibility().await?;
+) -> JobConsumerResult<()> {
+    let prototype_id = Action::prototype_id(ctx, action_id).await?;
+    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
-    let prototype_id = Action::prototype_id(&ctx, action_id).await?;
-    let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
-
-    let component_id = Action::component_id(&ctx, action_id)
+    let component_id = Action::component_id(ctx, action_id)
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
-    let component = Component::get_by_id(&ctx, component_id).await?;
+    let component = Component::get_by_id(ctx, component_id).await?;
     if let Some(resource) = maybe_resource {
         // Set the resource if we have a payload, regardless of status *and* assemble a
         // summary
         if resource.payload.is_some() {
-            component.set_resource(&ctx, resource.into()).await?;
+            component.set_resource(ctx, resource.into()).await?;
         }
 
         if resource.status == ResourceStatus::Ok {
             // Remove `ActionId` from graph as the execution succeeded
-            Action::remove_by_id(&ctx, action_id).await?;
-            to_remove_nodes.push(action_id.into());
+            Action::remove_by_id(ctx, action_id).await?;
             if resource.payload.is_none() {
                 // Clear the resource if the status is ok and we don't have a payload. This could
                 // be from invoking a delete action directly, rather than deleting the component.
-                component.clear_resource(&ctx).await?;
+                component.clear_resource(ctx).await?;
 
                 if component.to_delete() {
-                    Component::remove(&ctx, component.id()).await?;
-                    WsEvent::component_deleted(&ctx, component.id())
+                    Component::remove(ctx, component.id()).await?;
+                    WsEvent::component_deleted(ctx, component.id())
                         .await?
-                        .publish_on_commit(&ctx)
+                        .publish_on_commit(ctx)
                         .await?;
-                    to_remove_nodes.push(component.id().into());
                 } else {
                     let mut diagram_sockets = HashMap::new();
                     let summary = component
-                        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                        .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
                         .await?;
-                    WsEvent::resource_refreshed(&ctx, summary)
+                    WsEvent::resource_refreshed(ctx, summary)
                         .await?
-                        .publish_on_commit(&ctx)
+                        .publish_on_commit(ctx)
                         .await?;
                 }
             } else {
                 let mut diagram_sockets = HashMap::new();
                 let summary = component
-                    .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                    .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
                     .await?;
-                WsEvent::resource_refreshed(&ctx, summary)
+                WsEvent::resource_refreshed(ctx, summary)
                     .await?
-                    .publish_on_commit(&ctx)
+                    .publish_on_commit(ctx)
                     .await?;
             }
 
             let triggered_prototypes =
-                ActionPrototype::get_prototypes_to_trigger(&ctx, prototype.id()).await?;
+                ActionPrototype::get_prototypes_to_trigger(ctx, prototype.id()).await?;
             for dependency_prototype_id in triggered_prototypes {
-                Action::new(&ctx, dependency_prototype_id, Some(component_id)).await?;
+                Action::new(ctx, dependency_prototype_id, Some(component_id)).await?;
             }
         } else {
             // If status is not ok, set action state to failed
-            Action::set_state(&ctx, action_id, ActionState::Failed).await?;
+            Action::set_state(ctx, action_id, ActionState::Failed).await?;
         }
     } else {
         // If the maybe_resource is none, set action state to failed
-        Action::set_state(&ctx, action_id, ActionState::Failed).await?;
+        Action::set_state(ctx, action_id, ActionState::Failed).await?;
     }
 
-    WsEvent::action_list_updated(&ctx)
+    WsEvent::action_list_updated(ctx)
         .await?
-        .publish_on_commit(&ctx)
+        .publish_on_commit(ctx)
         .await?;
-    ctx.commit().await?;
 
-    Ok(to_remove_nodes)
+    Ok(())
 }
 
 #[instrument(

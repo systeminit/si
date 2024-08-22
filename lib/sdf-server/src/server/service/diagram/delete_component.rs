@@ -2,7 +2,6 @@ use axum::extract::Host;
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::change_status::ChangeStatus;
-use dal::component::frame::Frame;
 use dal::diagram::SummaryDiagramEdge;
 use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -144,12 +143,6 @@ async fn delete_single_component(
     let comp_schema = comp.schema(ctx).await?;
 
     let component_still_exists = if force_erase {
-        if let Some(parent_id) = Component::get_parent_by_id(ctx, id).await? {
-            for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::upsert_parent(ctx, child_id, parent_id).await?;
-            }
-        }
-
         Component::remove(ctx, id).await?;
         false
     } else {
@@ -169,8 +162,6 @@ async fn delete_single_component(
             "change_set_id": ctx.change_set_id(),
         }),
     );
-
-    ctx.commit().await?;
 
     Ok(component_still_exists)
 }

@@ -1,11 +1,14 @@
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
+use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::{AttributeValue, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
-use dal_test::helpers::create_component_for_default_schema_name;
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    create_component_for_default_schema_name, update_attribute_value_for_component,
+};
+use dal_test::helpers::{get_component_input_socket_value, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
@@ -550,4 +553,368 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
     let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(!units_json_string.contains("docker.io/library/oysters in my pocket\\n"));
     assert!(units_json_string.contains("docker.io/library/were saving for lunch\\n"));
+}
+
+#[test]
+async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
+    // Scenario:
+    // 1. Create a 3 level nested frame
+    // 2. Remove only the middle one (which is not really possible via the UI but that's ok)
+    // 3. Make sure the component is re-parented to the outer most frame and that data flows as expected
+    // create a frame
+    let outer_frame = create_component_for_default_schema_name(ctx, "large odd lego", "large odd")
+        .await
+        .expect("could not create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // cache id to use throughout the test
+    let outer_frame_id = outer_frame.id();
+    outer_frame
+        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
+        .await
+        .expect("could not set type");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // set a value on the outer frame that will pass to the component
+    update_attribute_value_for_component(
+        ctx,
+        outer_frame_id,
+        &["root", "domain", "six"],
+        serde_json::json!["6"],
+    )
+    .await
+    .expect("could not set attribute value");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // create another frame that won't pass data
+    let inner_frame = create_component_for_default_schema_name(ctx, "swifty", "swifty")
+        .await
+        .expect("could not create component");
+
+    let inner_frame_id = inner_frame.id();
+    inner_frame
+        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
+        .await
+        .expect("could not set type");
+
+    Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
+        .await
+        .expect("could not upsert frame");
+
+    // create a component that takes input from the top most
+    let component = create_component_for_default_schema_name(ctx, "large even lego", "large even")
+        .await
+        .expect("could not create component");
+
+    let component_id = component.id();
+    component
+        .set_type(ctx, dal::ComponentType::Component)
+        .await
+        .expect("could not set type");
+
+    Frame::upsert_parent(ctx, component.id(), inner_frame.id())
+        .await
+        .expect("could not upsert frame");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // make sure values propagated accordingly
+    let component_av_six = get_component_input_socket_value(ctx, component_id, "six")
+        .await
+        .expect("could not get socket value")
+        .expect("should have a value");
+    assert_eq!(component_av_six, "6");
+
+    // delete inner frame
+    let inner_component = Component::get_by_id(ctx, inner_frame_id)
+        .await
+        .expect("could not get component");
+    let deleted_inner = inner_component.delete(ctx).await.expect("could not delete");
+
+    // component is really removed
+    assert!(deleted_inner.is_none());
+
+    // ensure component is re-parented
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("could not get component");
+    assert_eq!(
+        component
+            .parent(ctx)
+            .await
+            .expect("could not get parent")
+            .expect("is some"),
+        outer_frame_id
+    );
+}
+#[test]
+async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("could not fork head");
+    // create a frame
+    let outer_frame = create_component_for_default_schema_name(ctx, "large odd lego", "large odd")
+        .await
+        .expect("could not create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // cache id to use throughout the test
+    let outer_frame_id = outer_frame.id();
+    outer_frame
+        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
+        .await
+        .expect("could not set type");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // set a value on the outer frame that will pass to the component
+    update_attribute_value_for_component(
+        ctx,
+        outer_frame_id,
+        &["root", "domain", "six"],
+        serde_json::json!["6"],
+    )
+    .await
+    .expect("could not set attribute value");
+
+    let resource_data = ResourceData::new(
+        ResourceStatus::Ok,
+        Some(serde_json::json![{"resource": "something"}]),
+    );
+    outer_frame
+        .set_resource(ctx, resource_data.clone())
+        .await
+        .expect("could not set resource");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+    // create another frame that won't pass data
+    let inner_frame = create_component_for_default_schema_name(ctx, "swifty", "swifty")
+        .await
+        .expect("could not create component");
+
+    let inner_frame_id = inner_frame.id();
+    inner_frame
+        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
+        .await
+        .expect("could not set type");
+
+    Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
+        .await
+        .expect("could not upsert frame");
+
+    // create a component that takes input from the top most
+    let component = create_component_for_default_schema_name(ctx, "large even lego", "large even")
+        .await
+        .expect("could not create component");
+    component
+        .set_resource(ctx, resource_data)
+        .await
+        .expect("could not set resource");
+    let component_id = component.id();
+    component
+        .set_type(ctx, dal::ComponentType::Component)
+        .await
+        .expect("could not set type");
+
+    Frame::upsert_parent(ctx, component.id(), inner_frame.id())
+        .await
+        .expect("could not upsert frame");
+
+    // let's remove all create actions and set the resource manually to simulate create + refresh
+    let all_actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not get actions");
+    for action in all_actions {
+        Action::remove_by_id(ctx, action)
+            .await
+            .expect("could not remove action");
+    }
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    // make sure values propagated accordingly
+    let component_av_six = get_component_input_socket_value(ctx, component_id, "six")
+        .await
+        .expect("could not get socket value")
+        .expect("should have a value");
+    assert_eq!(component_av_six, "6");
+
+    // Apply to the base change set to simulate running actions
+    assert!(ctx
+        .parent_is_head()
+        .await
+        .expect("could not perform parent is head"));
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not apply change set");
+
+    // check that the resource is set for the frame
+    let outer_frame = Component::get_by_id(ctx, outer_frame_id)
+        .await
+        .expect("could not get component");
+    let outer_frame_resource = outer_frame
+        .resource(ctx)
+        .await
+        .expect("could not get resource");
+    assert!(outer_frame_resource.is_some());
+    let resource = outer_frame_resource.expect("is some");
+    assert_eq!(
+        resource.payload,
+        Some(serde_json::json![{"resource": "something"}])
+    );
+    assert_eq!(resource.status, ResourceStatus::Ok);
+
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("could not get component");
+    let component_resource = component
+        .resource(ctx)
+        .await
+        .expect("could not get resource");
+    assert!(component_resource.is_some());
+    let resource = component_resource.expect("is some");
+    assert_eq!(
+        resource.payload,
+        Some(serde_json::json![{"resource": "something"}])
+    );
+    assert_eq!(resource.status, ResourceStatus::Ok);
+
+    // check there's no resource for swifty
+    let inner_frame = Component::get_by_id(ctx, inner_frame_id)
+        .await
+        .expect("coudl not get component");
+    assert!(inner_frame
+        .resource(ctx)
+        .await
+        .expect("could not get resource")
+        .is_none());
+
+    // Fork Head
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("could not fork head");
+
+    // delete all components (as if you deleted the parent in sdf)
+    // ensure everything is set to delete
+    let outer_frame = Component::get_by_id(ctx, outer_frame_id)
+        .await
+        .expect("could not get component");
+    let deleted_outer = outer_frame
+        .delete(ctx)
+        .await
+        .expect("could not delete component");
+    assert!(deleted_outer.is_some());
+
+    let inner_frame = Component::get_by_id(ctx, inner_frame_id)
+        .await
+        .expect("could not get component");
+    let deleted_inner = inner_frame
+        .delete(ctx)
+        .await
+        .expect("could not delete component");
+    assert!(deleted_inner.is_some());
+
+    let component = Component::get_by_id(ctx, component_id)
+        .await
+        .expect("could not get component");
+    let deleted_component = component
+        .delete(ctx)
+        .await
+        .expect("could not delete component")
+        .expect("is some");
+
+    assert!(&deleted_component.to_delete());
+
+    let components_to_delete = Component::list_to_be_deleted(ctx)
+        .await
+        .expect("could not list components to be deleted");
+    assert_eq!(components_to_delete.len(), 3);
+
+    // make sure values propagated accordingly
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let component_av_six = get_component_input_socket_value(ctx, component_id, "six")
+        .await
+        .expect("could not get socket value")
+        .expect("should have a value");
+    assert_eq!(component_av_six, "6");
+
+    // make sure there are 3 components on the diagram
+    let all_components = Component::list(ctx)
+        .await
+        .expect("could not list components");
+    assert_eq!(all_components.len(), 3);
+
+    // now manually remove the resource of the outer_frame (so only one delete action has to run)
+    let outer_frame = Component::get_by_id(ctx, outer_frame_id)
+        .await
+        .expect("could not get component");
+    outer_frame
+        .clear_resource(ctx)
+        .await
+        .expect("could not clear the resource");
+    // dequeue the delete actions for this component
+    let actions_for_outer = Action::find_for_component_id(ctx, outer_frame_id)
+        .await
+        .expect("could not list actions for outer frame");
+    assert_eq!(actions_for_outer.len(), 1);
+    Action::remove_all_for_component_id(ctx, outer_frame_id)
+        .await
+        .expect("could not remove actions");
+    let actions_for_swifty = Action::find_for_component_id(ctx, inner_frame_id)
+        .await
+        .expect("could not find actions for inner frame");
+    assert_eq!(actions_for_swifty.len(), 1);
+    Action::remove_all_for_component_id(ctx, inner_frame_id)
+        .await
+        .expect("could not remove actions for inner");
+
+    // should only be one action left for the component
+    let actions_enqueued = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    assert_eq!(actions_enqueued.len(), 1);
+    let action = Action::find_for_component_id(ctx, component_id)
+        .await
+        .expect("could not find actions for component");
+    assert_eq!(action, actions_enqueued);
+    let action_enqueued = Action::get_by_id(ctx, *actions_enqueued.first().expect("is some"))
+        .await
+        .expect("could not get action");
+    assert_eq!(action_enqueued.is_eligible_to_dispatch(), true);
+
+    // make sure values propagated accordingly
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let component_av_six = get_component_input_socket_value(ctx, component_id, "six")
+        .await
+        .expect("could not get socket value")
+        .expect("should have a value");
+    assert_eq!(component_av_six, "6");
+
+    // apply and let the one delete action run
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("could not apply to head");
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
+        .await
+        .expect("could not run actions");
+    let components = Component::list(ctx)
+        .await
+        .expect("could not list components");
+    // make sure there are no more components left!
+    assert_eq!(components.len(), 0);
 }
