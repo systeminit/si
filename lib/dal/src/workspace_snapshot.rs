@@ -493,8 +493,9 @@ impl WorkspaceSnapshot {
     /// Discard all changes in the working copy and return the graph to the
     /// version fetched from the layer db
     pub async fn revert(&self) {
-        if self.working_copy.read().await.is_some() {
-            *self.working_copy.write().await = None
+        let mut working_copy = self.working_copy.write().await;
+        if working_copy.is_some() {
+            *working_copy = None;
         }
     }
 
