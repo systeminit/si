@@ -283,7 +283,7 @@ where
                 // Try to ensure the item is healthy
                 match &mut instance.ensure_healthy().await {
                     Ok(_) => {
-                        info!(
+                        debug!(
                             "PoolNoodle: got instance for func execution: {}",
                             &instance.id()
                         );
@@ -300,7 +300,7 @@ where
                 }
             } else {
                 retries += 1;
-                info!(
+                debug!(
                     "Failed to get from pool, retry ({} of {})",
                     retries, max_retries
                 );

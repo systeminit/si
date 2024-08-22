@@ -408,7 +408,7 @@ impl Spec for LocalUdsInstanceSpec {
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
-            let mut retries = 30;
+            let mut retries = 300;
             loop {
                 match client.watch().await {
                     Ok(watch) => {
@@ -417,6 +417,7 @@ impl Spec for LocalUdsInstanceSpec {
                     Err(err) => err,
                 };
                 if retries < 1 {
+                    runtime.terminate().await?;
                     return Err(Self::Error::WatchInitTimeout);
                 }
                 retries -= 1;

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use thiserror::Error;
 
 use crate::stream::StreamForwarderError;
@@ -13,8 +15,8 @@ pub enum FirecrackerJailError {
     #[error("dmsetup error: {0}")]
     DmSetup(#[from] devicemapper::DmError),
     // Failed to interact with a mount
-    #[error("Mount error: {0}")]
-    Mount(#[from] nix::Error),
+    #[error("Mount error when working with {1}: {0}")]
+    Mount(#[source] nix::Error, PathBuf),
     // Failed running a script to output
     #[error("Failed to run a script: {0}")]
     Output(String),

@@ -3,6 +3,8 @@ use crate::errors::FirecrackerJailError;
 use crate::stream::UnixStreamForwarder;
 use cyclone_core::process;
 use std::fs::Permissions;
+use std::io::Error;
+use std::io::ErrorKind;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
@@ -62,7 +64,6 @@ impl FirecrackerJail {
     }
 
     pub async fn clean(id: u32) -> Result<()> {
-        let _ = id;
         FirecrackerDisk::clean(id)?;
         Ok(())
     }
@@ -75,10 +76,11 @@ impl FirecrackerJail {
             .map_err(FirecrackerJailError::Prepare)?;
 
         if !output.status.success() {
-            return Err(FirecrackerJailError::Output(
+            return Err(FirecrackerJailError::Prepare(Error::new(
+                ErrorKind::Other,
                 String::from_utf8(output.stderr)
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
-            ));
+            )));
         }
 
         UnixStreamForwarder::new(FirecrackerDisk::jail_dir_from_id(id), id)
@@ -102,10 +104,11 @@ impl FirecrackerJail {
             .await?;
 
         if !output.status.success() {
-            return Err(FirecrackerJailError::Output(
+            return Err(FirecrackerJailError::Setup(Error::new(
+                ErrorKind::Other,
                 String::from_utf8(output.stderr)
                     .unwrap_or_else(|_| "Failed to decode stderr".to_string()),
-            ));
+            )));
         }
 
         Ok(())
