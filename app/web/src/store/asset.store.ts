@@ -1,4 +1,4 @@
-import { watch } from "vue";
+import { watch, nextTick } from "vue";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
@@ -175,32 +175,37 @@ export const useAssetStore = () => {
           }
         },
         setSchemaVariantSelection(id: SchemaVariantId) {
-          this.setFuncSelection(undefined);
-
-          if (
-            this.selectedSchemaVariants.length === 1 &&
-            this.selectedSchemaVariants[0] === id
-          ) {
-            return;
-          }
-          if (!this.selectedSchemaVariants.includes(id)) {
-            this.selectedFuncs = [];
-          }
-          this.selectedSchemaVariants = [id];
-          this.syncSelectionIntoUrl();
-          const variant = this.variantFromListById[id];
-          if (variant?.assetFuncId) funcStore.FETCH_CODE(variant.assetFuncId);
+          // nextTick to attempt to let onblur save run first
+          nextTick(() => {
+            if (
+              this.selectedSchemaVariants.length === 1 &&
+              this.selectedSchemaVariants[0] === id
+            ) {
+              this.setFuncSelection(undefined);
+              return;
+            }
+            if (!this.selectedSchemaVariants.includes(id)) {
+              this.setFuncSelection(undefined);
+            }
+            this.selectedSchemaVariants = [id];
+            this.syncSelectionIntoUrl();
+            const variant = this.variantFromListById[id];
+            if (variant?.assetFuncId) funcStore.FETCH_CODE(variant.assetFuncId);
+          });
         },
         async setFuncSelection(id?: FuncId) {
-          // ignore the old func selections and replace with one func or no funcs
-          funcStore.selectedFuncId = id;
-          if (id) {
-            await funcStore.FETCH_CODE(id);
-            this.selectedFuncs = [id];
-          } else {
-            this.selectedFuncs = [];
-          }
-          this.syncSelectionIntoUrl();
+          // nextTick to attempt to let onblur save run first
+          nextTick(async () => {
+            // ignore the old func selections and replace with one func or no funcs
+            funcStore.selectedFuncId = id;
+            if (id) {
+              await funcStore.FETCH_CODE(id);
+              this.selectedFuncs = [id];
+            } else {
+              this.selectedFuncs = [];
+            }
+            this.syncSelectionIntoUrl();
+          });
         },
         async addFuncSelection(id: FuncId) {
           if (!this.selectedFuncs.includes(id)) this.selectedFuncs.push(id);
