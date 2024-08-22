@@ -31,6 +31,8 @@ pub mod delete_connection;
 pub mod paste_component;
 pub mod remove_delete_intent;
 
+pub mod dvu_roots;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
@@ -156,4 +158,5 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_diagram", get(get_diagram::get_diagram))
         .route("/list_schemas", get(list_schemas::list_schemas))
+        .route("/dvu_roots", get(dvu_roots::dvu_roots))
 }
