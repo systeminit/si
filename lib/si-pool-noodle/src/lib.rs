@@ -21,12 +21,12 @@ pub use crate::pool_noodle::PoolNoodle;
 pub use cyclone_client::{ClientError, CycloneClient, ExecutionError};
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, CancelExecutionRequest,
-    ComponentView, CycloneRequest, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureError, OutputStream, ProgressMessage, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
-    SensitiveStrings, ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, KillExecutionRequest,
+    OutputStream, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
+    ValidationRequest, ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.
@@ -40,7 +40,7 @@ pub mod pool_noodle;
 mod tests {
 
     use cyclone_client::{LivenessStatus, ReadinessStatus};
-    use tokio::sync::broadcast;
+    use tokio_util::sync::CancellationToken;
 
     use super::*;
     use crate::instance::cyclone::{
@@ -48,8 +48,10 @@ mod tests {
     };
 
     #[tokio::test]
-    // #[ignore]
     async fn boom() {
+        // TODO(nick,fletcher): use the cancellation token in the test.
+        let shutdown_token = CancellationToken::new();
+
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)
             .expect("failed to determine test configuration");
@@ -64,9 +66,8 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
         let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
-            PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
+            PoolNoodle::new(10, spec.clone(), shutdown_token);
         pool.start(false).expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
@@ -86,6 +87,9 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn pow() {
+        // TODO(nick,fletcher): use the cancellation token in the test.
+        let shutdown_token = CancellationToken::new();
+
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)
             .expect("failed to determine test configuration");
@@ -102,8 +106,7 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
-        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
+        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_token);
         pool.start(false).expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
@@ -138,6 +141,9 @@ mod tests {
     #[ignore]
     #[cfg(target_os = "linux")]
     async fn chop() {
+        // TODO(nick,fletcher): use the cancellation token in the test.
+        let shutdown_token = CancellationToken::new();
+
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)
             .expect("failed to determine test configuration");
@@ -154,8 +160,7 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
-        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_broadcast_tx.subscribe());
+        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_token);
         pool.start(false).expect("failed to start");
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");

@@ -18,7 +18,7 @@ pub async fn pinga_work_queue(
     let stream = context
         .get_or_create_stream(async_nats::jetstream::stream::Config {
             name: nats_stream_name(prefix, NATS_WORK_QUEUE_STREAM_NAME),
-            description: Some("Pinga work queue of jobs ".to_owned()),
+            description: Some("Pinga work queue of jobs".to_owned()),
             retention: async_nats::jetstream::stream::RetentionPolicy::WorkQueue,
             discard: async_nats::jetstream::stream::DiscardPolicy::New,
             allow_direct: true,

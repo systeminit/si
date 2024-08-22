@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use si_events::ChangeSetId;
 use si_events::FuncRunId;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -12,7 +13,8 @@ use veritech_client::{
 };
 
 use crate::label_list::ToLabelList;
-use crate::{DalContext, Func, FuncId, PropKind};
+use crate::workspace::WorkspaceId;
+use crate::{Func, FuncId, PropKind};
 
 pub mod array;
 pub mod boolean;
@@ -307,23 +309,44 @@ pub struct FuncDispatchContext {
     pub veritech: VeritechClient,
     pub output_tx: mpsc::Sender<OutputStream>,
     pub func_run_id: FuncRunId,
+    pub workspace_id: WorkspaceId,
+    pub change_set_id: ChangeSetId,
 }
 
 impl FuncDispatchContext {
-    pub fn new(ctx: &DalContext, func_run_id: FuncRunId) -> (Self, mpsc::Receiver<OutputStream>) {
+    pub fn new(
+        veritech_client: VeritechClient,
+        func_run_id: FuncRunId,
+        workspace_id: WorkspaceId,
+        change_set_id: ChangeSetId,
+    ) -> (Self, mpsc::Receiver<OutputStream>) {
         let (output_tx, rx) = mpsc::channel(64);
         (
             Self {
-                veritech: ctx.veritech().clone(),
+                veritech: veritech_client,
                 output_tx,
                 func_run_id,
+                workspace_id,
+                change_set_id,
             },
             rx,
         )
     }
 
-    pub fn into_inner(self) -> (VeritechClient, mpsc::Sender<OutputStream>) {
-        (self.veritech, self.output_tx)
+    pub fn into_inner(
+        self,
+    ) -> (
+        VeritechClient,
+        mpsc::Sender<OutputStream>,
+        WorkspaceId,
+        ChangeSetId,
+    ) {
+        (
+            self.veritech,
+            self.output_tx,
+            self.workspace_id,
+            self.change_set_id,
+        )
     }
 }
 

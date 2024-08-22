@@ -40,9 +40,14 @@ impl FuncDispatch for FuncBackendValidation {
     }
 
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
-        let (veritech, output_tx) = self.context.into_inner();
+        let (veritech, output_tx, workspace_id, change_set_id) = self.context.into_inner();
         let value = veritech
-            .execute_validation(output_tx.clone(), &self.request)
+            .execute_validation(
+                output_tx.clone(),
+                &self.request,
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+            )
             .await?;
         Ok(value)
     }

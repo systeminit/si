@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

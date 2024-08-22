@@ -45,9 +45,14 @@ impl FuncDispatch for FuncBackendJsAttribute {
     }
 
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
-        let (veritech, output_tx) = self.context.into_inner();
+        let (veritech, output_tx, workspace_id, change_set_id) = self.context.into_inner();
         let value = veritech
-            .execute_resolver_function(output_tx, &self.request)
+            .execute_resolver_function(
+                output_tx,
+                &self.request,
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+            )
             .await?;
         let value = match value {
             FunctionResult::Failure(failure) => match &self.request.response_type {

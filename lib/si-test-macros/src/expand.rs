@@ -189,9 +189,6 @@ pub(crate) trait FnSetupExpander {
     fn veritech_server(&self) -> Option<&Rc<Ident>>;
     fn set_veritech_server(&mut self, value: Option<Rc<Ident>>);
 
-    fn veritech_shutdown_handle(&self) -> Option<&Rc<Ident>>;
-    fn set_veritech_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
-
     fn start_veritech_server(&self) -> Option<()>;
     fn set_start_veritech_server(&mut self, value: Option<()>);
 
@@ -371,32 +368,19 @@ pub(crate) trait FnSetupExpander {
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
 
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
         let var = Ident::new("veritech_server", Span::call_site());
         self.code_extend(quote! {
             let #var = ::dal_test::veritech_server_for_uds_cyclone(
                 #test_context.nats_config().clone(),
+                #cancellation_token.clone(),
             ).await?;
         });
         self.set_veritech_server(Some(Rc::new(var)));
 
         self.veritech_server().unwrap().clone()
-    }
-
-    fn setup_veritech_shutdown_handle(&mut self) -> Rc<Ident> {
-        if let Some(ident) = self.veritech_shutdown_handle() {
-            return ident.clone();
-        }
-
-        let veritech_server = self.setup_veritech_server();
-        let veritech_server = veritech_server.as_ref();
-
-        let var = Ident::new("veritech_shutdown_handle", Span::call_site());
-        self.code_extend(quote! {
-            let #var = #veritech_server.shutdown_handle();
-        });
-        self.set_veritech_shutdown_handle(Some(Rc::new(var)));
-
-        self.veritech_shutdown_handle().unwrap().clone()
     }
 
     fn setup_start_veritech_server(&mut self) {

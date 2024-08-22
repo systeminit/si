@@ -627,6 +627,7 @@ pub fn rebaser_server(
 /// object-related tests.
 pub async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
+    token: CancellationToken,
 ) -> Result<veritech_server::Server> {
     let config: veritech_server::Config = {
         let mut config_file = veritech_server::ConfigFile::new_for_dal_test(nats_config);
@@ -637,7 +638,7 @@ pub async fn veritech_server_for_uds_cyclone(
             .wrap_err("failed to build Veritech server config")?
     };
 
-    let server = veritech_server::Server::for_cyclone_uds(config)
+    let server = veritech_server::Server::for_cyclone_uds(config, token)
         .await
         .wrap_err("failed to create Veritech server")?;
 
@@ -740,8 +741,8 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
-    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
-    let veritech_server_handle = veritech_server.shutdown_handle();
+    let veritech_server =
+        veritech_server_for_uds_cyclone(test_context.config.nats.clone(), token.clone()).await?;
     tracker.spawn(veritech_server.run());
 
     tracker.close();
@@ -769,15 +770,8 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     .await
     .wrap_err("failed to run builtin migrations")?;
 
-    // Shutdown the Veritech server (each test gets their own server instance with an exclusively
-    // unique subject prefix)
-    info!("shutting down initial migrations Veritech server");
-    veritech_server_handle.shutdown().await;
-
-    // Rebaser shutdown is signaled with the `token` and tracked/awaited with the `tracker`
-    info!("shutting down initial migrations Rebaser server");
-
     // Cancel and wait for all outstanding tasks to complete
+    info!("shutting down dependent services");
     token.cancel();
     tracker.wait().await;
 

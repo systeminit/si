@@ -15,10 +15,10 @@ export const useAdminStore = () => {
     defineStore(`ws${workspaceId || "NONE"}/admin`, {
       state: () => ({}),
       actions: {
-        async CANCEL_EXECUTION(funcRunId: FuncRunId) {
+        async KILL_EXECUTION(funcRunId: FuncRunId) {
           return new ApiRequest<null>({
             method: "put",
-            url: `${API_PREFIX}/func/runs/${funcRunId}/cancel_execution`,
+            url: `${API_PREFIX}/func/runs/${funcRunId}/kill_execution`,
           });
         },
       },

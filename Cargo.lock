@@ -5501,6 +5501,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-test",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -6977,6 +6978,7 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "si-crypto",
+ "si-data-nats",
  "si-std",
  "thiserror",
 ]
@@ -6990,6 +6992,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "naxum",
  "once_cell",
  "remain",
  "serde",
@@ -7004,6 +7007,7 @@ dependencies = [
  "telemetry-utils",
  "thiserror",
  "tokio",
+ "tokio-util",
  "ulid",
  "veritech-core",
 ]

@@ -1,114 +1,170 @@
-use si_pool_noodle::CancelExecutionRequest;
-use std::collections::HashMap;
-use std::sync::Mutex;
-use std::{io, sync::Arc, time::Duration};
-use telemetry_utils::metric;
-
-use chrono::Utc;
-use futures::{join, StreamExt};
-use nats_subscriber::Request;
-use once_cell::sync::Lazy;
+use futures::{join, Future, StreamExt};
+use naxum::handler::Handler as _;
+use naxum::middleware::ack::AckLayer;
+use naxum::middleware::trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer};
+use naxum::ServiceBuilder;
+use naxum::ServiceExt as _;
 use si_crypto::{VeritechDecryptionKey, VeritechDecryptionKeyError};
-use si_data_nats::NatsClient;
+use si_data_nats::{async_nats, jetstream, NatsClient, NatsError, Subject, Subscriber};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
-    ActionRunRequest, ActionRunResultSuccess, CycloneClient, CycloneRequest, FunctionResult,
-    FunctionResultFailure, PoolNoodle, ProgressMessage, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings, Spec,
-    ValidationRequest, ValidationResultSuccess,
+    PoolNoodle, Spec,
 };
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::fmt;
+use std::future::IntoFuture;
+use std::time::Duration;
+use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::oneshot;
-use tokio::{
-    signal::unix,
-    sync::{broadcast, mpsc},
-    time,
-};
-use veritech_core::VeritechValueDecryptError;
+use tokio::sync::Mutex;
+use tokio::task::JoinError;
+use tokio_util::sync::CancellationToken;
+use veritech_core::{subject, veritech_work_queue, ExecutionId};
 
-use crate::subscriber::MetaSubscriber;
-use crate::{
-    config::CycloneSpec, request::DecryptRequest, Config, FunctionSubscriber, Publisher,
-    PublisherError,
-};
+use crate::app_state::{AppState, KillAppState};
+use crate::handlers;
+use crate::{config::CycloneSpec, Config};
 
+const CONSUMER_NAME: &str = "veritech-server";
+
+const DEFAULT_CONCURRENCY_LIMIT: usize = 1000;
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(35 * 60);
-
-static EXEC_KILL_SENDER_FOR_EXECUTION_ID: Lazy<Mutex<HashMap<String, oneshot::Sender<()>>>> =
-    Lazy::new(Mutex::default);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ServerError {
-    #[error("action run error: {0}")]
-    ActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
-    #[error("run cancelled externally")]
-    Cancelled,
-    #[error("could not send kill signal for execution id: {0}")]
-    CouldNotSendKillSignal(String),
-    #[error("cyclone error: {0}")]
-    Cyclone(#[from] si_pool_noodle::ClientError),
     #[error("cyclone pool error: {0}")]
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("cyclone progress error: {0}")]
-    CycloneProgress(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone spec setup error: {0}")]
     CycloneSetupError(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("cyclone spec builder error: {0}")]
-    CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("cyclone timed out: {0:?}")]
-    CycloneTimeout(Duration),
-    #[error("missing kill sender for execution id: {0}")]
-    MissingKillSender(String),
-    #[error("mutex poison error: {0}")]
-    MutexPoison(String),
-    #[error("error connecting to nats: {0}")]
-    NatsConnect(#[source] si_data_nats::NatsError),
-    #[error("no reply mailbox found")]
-    NoReplyMailboxFound,
-    #[error(transparent)]
-    Publisher(#[from] PublisherError),
-    #[error(transparent)]
-    Reconciliation(#[from] si_pool_noodle::ExecutionError<ReconciliationResultSuccess>),
-    #[error(transparent)]
-    ResolverFunction(#[from] si_pool_noodle::ExecutionError<ResolverFunctionResultSuccess>),
-    #[error(transparent)]
-    SchemaVariantDefinition(
-        #[from] si_pool_noodle::ExecutionError<SchemaVariantDefinitionResultSuccess>,
-    ),
-    #[error("failed to setup signal handler")]
-    Signal(#[source] io::Error),
-    #[error(transparent)]
-    Subscriber(#[from] nats_subscriber::SubscriberError),
-    #[error(transparent)]
-    Validation(#[from] si_pool_noodle::ExecutionError<ValidationResultSuccess>),
-    #[error("decryption key error: {0}")]
+    #[error("jetstream consumer error: {0}")]
+    JetStreamConsumer(#[from] async_nats::jetstream::stream::ConsumerError),
+    #[error("jetstream consumer stream error: {0}")]
+    JetStreamConsumerStream(#[from] async_nats::jetstream::consumer::StreamError),
+    #[error("jetstream create stream error: {0}")]
+    JetStreamCreateStreamError(#[from] async_nats::jetstream::context::CreateStreamError),
+    #[error("join error: {0}")]
+    Join(#[from] JoinError),
+    #[error("failed to initialize a nats client: {0}")]
+    NatsClient(#[source] NatsError),
+    #[error("failed to subscribe to nats subject ({0}): {1}")]
+    NatsSubscribe(Subject, #[source] NatsError),
+    #[error("naxum error: {0}")]
+    Naxum(#[source] io::Error),
+    #[error("veritech decryption key error: {0}")]
     VeritechDecryptionKey(#[from] VeritechDecryptionKeyError),
-    #[error("failed to decrypt request")]
-    VeritechValueDecrypt(#[from] VeritechValueDecryptError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, Box<CycloneSpec>),
 }
 
 type ServerResult<T> = Result<T, ServerError>;
 
+/// Server metadata, used with telemetry.
+#[derive(Clone, Debug)]
+pub struct ServerMetadata {
+    #[allow(unused)]
+    instance_id: String,
+    #[allow(unused)]
+    job_invoked_provider: &'static str,
+}
+
+impl ServerMetadata {
+    /// Returns the server's unique instance id.
+    #[allow(unused)]
+    pub fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+
+    /// Returns the job invoked provider.
+    #[allow(unused)]
+    pub fn job_invoked_provider(&self) -> &str {
+        self.job_invoked_provider
+    }
+}
+
 pub struct Server {
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    shutdown_broadcast_tx: broadcast::Sender<()>,
-    shutdown_tx: mpsc::Sender<ShutdownSource>,
-    shutdown_rx: oneshot::Receiver<()>,
     metadata: Arc<ServerMetadata>,
-    cyclone_client_execution_timeout: Duration,
+    inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+    kill_inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+    shutdown_token: CancellationToken,
+}
+
+impl fmt::Debug for Server {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Server")
+            .field("metadata", &self.metadata)
+            .field("shutdown_token", &self.shutdown_token)
+            .finish()
+    }
 }
 
 impl Server {
+    #[instrument(name = "veritech.init.cyclone.uds", level = "info", skip_all)]
+    pub async fn for_cyclone_uds(config: Config, token: CancellationToken) -> ServerResult<Self> {
+        match config.cyclone_spec() {
+            CycloneSpec::LocalUds(spec) => {
+                let nats = Self::connect_to_nats(&config).await?;
+
+                let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
+                    PoolNoodle::new(spec.pool_size.into(), spec.clone(), token.clone());
+
+                spec.clone()
+                    .setup()
+                    .await
+                    .map_err(|e| ServerError::CycloneSetupError(Box::new(e)))?;
+                cyclone_pool
+                    .start(config.healthcheck_pool())
+                    .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
+
+                let metadata = Arc::new(ServerMetadata {
+                    instance_id: config.instance_id().into(),
+                    job_invoked_provider: "si",
+                });
+
+                let decryption_key =
+                    VeritechDecryptionKey::from_config(config.crypto().clone()).await?;
+
+                let cyclone_client_execution_timeout =
+                    match config.cyclone_client_execution_timeout() {
+                        Some(timeout) => Duration::from_secs(timeout),
+                        None => DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT,
+                    };
+
+                let kill_senders = Arc::new(Mutex::new(HashMap::new()));
+
+                let inner_future = Self::build_app(
+                    metadata.clone(),
+                    cyclone_pool,
+                    Arc::new(decryption_key),
+                    cyclone_client_execution_timeout,
+                    nats.clone(),
+                    kill_senders.clone(),
+                    token.clone(),
+                )
+                .await?;
+                let kill_inner_future =
+                    Self::build_kill_app(metadata.clone(), nats, kill_senders, token.clone())
+                        .await?;
+
+                Ok(Server {
+                    metadata,
+                    inner: inner_future,
+                    kill_inner: kill_inner_future,
+                    shutdown_token: token,
+                })
+            }
+            wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
+                "LocalUds",
+                Box::new(wrong.clone()),
+            )),
+        }
+    }
+
     #[instrument(name = "veritech.init.cyclone.http", level = "info", skip_all)]
-    pub async fn for_cyclone_http(config: Config) -> ServerResult<Server> {
+    pub async fn for_cyclone_http(config: Config, _token: CancellationToken) -> ServerResult<Self> {
         match config.cyclone_spec() {
             CycloneSpec::LocalHttp(_spec) => {
                 // TODO(fnichol): Hi there! Ultimately, the Veritech server should be able to work
@@ -134,1603 +190,135 @@ impl Server {
         }
     }
 
-    #[instrument(name = "veritech.init.cyclone.uds", level = "info", skip_all)]
-    pub async fn for_cyclone_uds(config: Config) -> ServerResult<Server> {
-        match config.cyclone_spec() {
-            CycloneSpec::LocalUds(spec) => {
-                let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
-                // Note the channel parameter corresponds to the number of channels that may be
-                // maintained when the sender is guaranteeing delivery. While this number may end
-                // of being related to the number of subscribers, it's not
-                // necessarily the same number.
-                let (shutdown_broadcast_tx, _) = broadcast::channel(16);
-
-                let nats = connect_to_nats(&config).await?;
-
-                let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
-                    PoolNoodle::new(
-                        spec.pool_size.into(),
-                        spec.clone(),
-                        shutdown_broadcast_tx.subscribe(),
-                    );
-
-                spec.clone()
-                    .setup()
-                    .await
-                    .map_err(|e| ServerError::CycloneSetupError(Box::new(e)))?;
-                cyclone_pool
-                    .start(config.healthcheck_pool())
-                    .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
-
-                let metadata = ServerMetadata {
-                    job_instance: config.instance_id().into(),
-                    job_invoked_provider: "si",
-                };
-
-                let graceful_shutdown_rx =
-                    prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx.clone())?;
-
-                let decryption_key =
-                    VeritechDecryptionKey::from_config(config.crypto().clone()).await?;
-
-                Ok(Server {
-                    nats,
-                    subject_prefix: config.subject_prefix().map(|s| s.to_string()),
-                    cyclone_pool,
-                    decryption_key: Arc::new(decryption_key),
-                    shutdown_broadcast_tx,
-                    shutdown_tx,
-                    shutdown_rx: graceful_shutdown_rx,
-                    metadata: Arc::new(metadata),
-                    cyclone_client_execution_timeout: match config
-                        .cyclone_client_execution_timeout()
-                    {
-                        Some(timeout) => Duration::from_secs(timeout),
-                        None => DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT,
-                    },
-                })
-            }
-            wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
-                "LocalUds",
-                Box::new(wrong.clone()),
-            )),
+    #[inline]
+    pub async fn run(self) {
+        if let Err(err) = self.try_run().await {
+            error!(error = ?err, "error while running veritech main loop");
         }
     }
 
-    /// Gets a shutdown handle that can trigger the server's graceful shutdown process.
-    pub fn shutdown_handle(&self) -> VeritechShutdownHandle {
-        VeritechShutdownHandle {
-            shutdown_tx: self.shutdown_tx.clone(),
-        }
-    }
-}
+    pub async fn try_run(self) -> ServerResult<()> {
+        let (inner_result, kill_inner_result) =
+            join!(tokio::spawn(self.inner), tokio::spawn(self.kill_inner));
 
-impl Server {
-    pub async fn run(self) -> ServerResult<()> {
-        let _ = join!(
-            process_resolver_function_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.decryption_key.clone(),
-                self.cyclone_client_execution_timeout,
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_validation_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.decryption_key.clone(),
-                self.cyclone_client_execution_timeout,
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_action_run_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.decryption_key.clone(),
-                self.cyclone_client_execution_timeout,
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_reconciliation_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.decryption_key.clone(),
-                self.cyclone_client_execution_timeout,
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_schema_variant_definition_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.decryption_key.clone(),
-                self.cyclone_client_execution_timeout,
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_cancel_execution_requests_task(
-                self.metadata.clone(),
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-        );
+        inner_result?.map_err(ServerError::Naxum)?;
+        kill_inner_result?.map_err(ServerError::Naxum)?;
 
-        let _ = self.shutdown_rx.await;
-        info!("received graceful shutdown, terminating server instance");
-
+        info!("veritech main loop shutdown complete");
         Ok(())
     }
-}
 
-#[derive(Clone, Debug)]
-pub struct ServerMetadata {
-    job_instance: String,
-    job_invoked_provider: &'static str,
-}
-
-pub struct VeritechShutdownHandle {
-    shutdown_tx: mpsc::Sender<ShutdownSource>,
-}
-
-impl VeritechShutdownHandle {
-    pub async fn shutdown(self) {
-        if let Err(err) = self.shutdown_tx.send(ShutdownSource::Handle).await {
-            warn!(error = ?err, "shutdown tx returned error, receiver is likely already closed");
-        }
-    }
-}
-
-// NOTE(nick): oh no, now's there's five (I didn't add it I promise). We need to delete unused ones anyway.
-// NOTE(fnichol): resolver function, action are parallel and extremely similar, so there
-// is a lurking "unifying" refactor here. It felt like waiting until the third time adding one of
-// these would do the trick, and as a result the first 2 impls are here and not split apart into
-// their own modules.
-
-async fn process_resolver_function_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_resolver_function_requests(
-        metadata,
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing resolver function requests failed");
-    }
-}
-
-async fn process_resolver_function_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests =
-        FunctionSubscriber::resolver_function(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process resolver function requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(resolver_function_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            decryption_key.clone(),
-        cyclone_client_execution_timeout,
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next resolver function request had error");
-                    }
-                    None => {
-                        trace!("resolver function requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn resolver_function_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ResolverFunctionRequest>,
-) {
-    let cyclone_request = request.payload;
-
-    let reply_mailbox = match request.reply {
-        Some(reply) => reply,
-        None => {
-            error!("no reply mailbox found");
-            return;
-        }
-    };
-    let execution_id = cyclone_request.execution_id.clone();
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-
-    let function_result = resolver_function_request(
-        metadata,
-        &publisher,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        cyclone_request,
-        &request.process_span,
-    )
-    .await;
-
-    if let Err(err) = publisher.finalize_output().await {
-        error!(error = ?err, "failed to finalize output by sending final message");
-        let result = si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
-            FunctionResultFailure::new_for_veritech_server_error(
-                execution_id,
-                "failed to finalize output by sending final message",
-                timestamp(),
-            ),
-        );
-        if let Err(err) = publisher.publish_result(&result).await {
-            error!(error = ?err, "failed to publish errored result");
-        }
-        return;
-    }
-
-    let function_result = match function_result {
-        Ok(fr) => fr,
-        Err(err) => {
-            error!(error = ?err, "failure trying to run function to completion");
-            si_pool_noodle::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
-                FunctionResultFailure::new_for_veritech_server_error(
-                    execution_id,
-                    err.to_string(),
-                    timestamp(),
-                ),
-            )
-        }
-    };
-
-    if let Err(err) = publisher.publish_result(&function_result).await {
-        error!(error = ?err, "failed to publish result");
-    };
-}
-
-#[instrument(
-    name = "veritech.resolver_function_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &request.execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_name = &request.handler,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-async fn resolver_function_request(
-    metadata: Arc<ServerMetadata>,
-    publisher: &Publisher<'_>,
-    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut request: ResolverFunctionRequest,
-    process_span: &Span,
-) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
-    let span = Span::current();
-    metric!(counter.function_run.resolver = 1);
-
-    let mut sensitive_strings = SensitiveStrings::default();
-    // Decrypt the relevant contents of the request and track any resulting sensitive strings
-    // to be redacted
-    request.decrypt(&mut sensitive_strings, &decryption_key)?;
-
-    let execution_id = request.execution_id.clone();
-    let cyclone_request = CycloneRequest::from_parts(request, sensitive_strings);
-
-    let mut client = cyclone_pool.get().await.map_err(|err| {
-        metric!(counter.function_run.resolver = -1);
-        span.record_err(ServerError::CyclonePool(Box::new(err)))
-    })?;
-
-    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
-    {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
-            .insert(execution_id.to_owned(), kill_sender);
-    }
-
-    let unstarted_progress = client
-        .prepare_resolver_execution(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.resolver = -1);
-            span.record_err(err)
-        })?;
-
-    let progress_loop = async {
-        let mut progress = unstarted_progress
-            .start()
-            .await
-            .map_err(|err| span.record_err(err))?;
-
-        while let Some(msg) = progress.next().await {
-            match msg {
-                Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        metric!(counter.function_run.resolver = -1);
-                        span.record_err(err)
-                    })?
-                }
-                Ok(ProgressMessage::Heartbeat) => {
-                    trace!("received heartbeat message");
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next progress message was an error, bailing out");
-                    break;
-                }
-            }
-        }
-
-        let function_result = progress.finish().await.map_err(|err| {
-            metric!(counter.function_run.resolver = -1);
-            span.record_err(err)
-        })?;
-
-        ServerResult::Ok(function_result)
-    };
-
-    let function_result = tokio::select! {
-        _ = time::sleep(cyclone_client_execution_timeout) => {
-            error!("hit timeout for communicating with cyclone server");
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            Err(ServerError::CycloneTimeout(
-                cyclone_client_execution_timeout,
-            ))
-        },
-        _ = kill_receiver => {
-            Err(ServerError::Cancelled)
-        }
-        func_result = progress_loop => {
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            func_result
-        },
-    }?;
-
-    metric!(counter.function_run.resolver = -1);
-    span.record_ok();
-    Ok(function_result)
-}
-
-async fn process_validation_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_validation_requests(
-        metadata,
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing validation requests failed");
-    }
-}
-
-async fn process_validation_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests = FunctionSubscriber::validation(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process validation requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(validation_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            decryption_key.clone(),
-        cyclone_client_execution_timeout,
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next validation request had error");
-                    }
-                    None => {
-                        trace!("validation requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn validation_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ValidationRequest>,
-) {
-    let process_span = request.process_span.clone();
-    if let Err(err) = validation_request(
-        metadata,
-        nats,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        request,
-        &process_span,
-    )
-    .await
-    {
-        warn!(error = ?err, "validation execution failed");
-    }
-}
-
-#[instrument(
-    name = "veritech.validation_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &request.payload.execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_name = &request.payload.handler,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-async fn validation_request(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ValidationRequest>,
-    process_span: &Span,
-) -> ServerResult<()> {
-    let span = Span::current();
-    metric!(counter.function_run.validation = 1);
-
-    let mut payload_request = request.payload;
-
-    let mut sensitive_strings = SensitiveStrings::default();
-    // Decrypt the relevant contents of the request and track any resulting sensitive strings
-    // to be redacted
-    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
-
-    let execution_id = payload_request.execution_id.clone();
-    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
-
-    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
-    {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
-            .insert(execution_id.to_owned(), kill_sender);
-    }
-
-    let reply_mailbox = request
-        .reply
-        .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool.get().await.map_err(|err| {
-        metric!(counter.function_run.validation = -1);
-        span.record_err(ServerError::CyclonePool(Box::new(err)))
-    })?;
-
-    let unstarted_progress = client
-        .prepare_validation_execution(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-    let progress_loop = async {
-        let mut progress = unstarted_progress.start().await.map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-        while let Some(msg) = progress.next().await {
-            match msg {
-                Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        metric!(counter.function_run.validation = -1);
-                        span.record_err(err)
-                    })?;
-                }
-                Ok(ProgressMessage::Heartbeat) => {
-                    trace!("received heartbeat message");
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next progress message was an error, bailing out");
-                    break;
-                }
-            }
-        }
-        publisher.finalize_output().await.map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-        let function_result = progress.finish().await.map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-        ServerResult::Ok(function_result)
-    };
-
-    let function_result = tokio::select! {
-        _ = time::sleep(cyclone_client_execution_timeout) => {
-            error!("hit timeout for communicating with cyclone server");
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            Err(ServerError::CycloneTimeout(
-                cyclone_client_execution_timeout,
-            ))
-        },
-        _ = kill_receiver => {
-            Err(ServerError::Cancelled)
-        }
-        func_result = progress_loop => {
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            func_result
-        },
-    }?;
-
-    publisher
-        .publish_result(&function_result)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.validation = -1);
-            span.record_err(err)
-        })?;
-
-    metric!(counter.function_run.validation = -1);
-    span.record_ok();
-    Ok(())
-}
-
-async fn process_schema_variant_definition_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_schema_variant_definition_requests(
-        metadata,
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing schema variant definition requests failed");
-    }
-}
-
-async fn process_schema_variant_definition_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests =
-        FunctionSubscriber::schema_variant_definition(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process schema_variant_definition requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(schema_variant_definition_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            decryption_key.clone(),
-        cyclone_client_execution_timeout,
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next schema variant definition request had error");
-                    }
-                    None => {
-                        trace!("schema variant definition requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn schema_variant_definition_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<SchemaVariantDefinitionRequest>,
-) {
-    let process_span = request.process_span.clone();
-    if let Err(err) = schema_variant_definition_request(
-        metadata,
-        nats,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        request,
-        &process_span,
-    )
-    .await
-    {
-        warn!(error = ?err, "schema variant definition execution failed");
-    }
-}
-
-#[instrument(
-    name = "veritech.schema_variant_definition_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &request.payload.execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_name = &request.payload.handler,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-async fn schema_variant_definition_request(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<SchemaVariantDefinitionRequest>,
-    process_span: &Span,
-) -> ServerResult<()> {
-    let span = Span::current();
-    metric!(counter.function_run.schema_variant_definition = 1);
-
-    let mut payload_request = request.payload;
-
-    let mut sensitive_strings = SensitiveStrings::default();
-    // Decrypt the relevant contents of the request and track any resulting sensitive strings
-    // to be redacted
-    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
-
-    let execution_id = payload_request.execution_id.clone();
-    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
-
-    let reply_mailbox = request
-        .reply
-        .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool.get().await.map_err(|err| {
-        metric!(counter.function_run.schema_variant_definition = 1);
-        span.record_err(ServerError::CyclonePool(Box::new(err)))
-    })?;
-
-    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
-    {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
-            .insert(execution_id.to_owned(), kill_sender);
-    }
-
-    let unstarted_progress = client
-        .prepare_schema_variant_definition_execution(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-    let progress_loop = async {
-        let mut progress = unstarted_progress.start().await.map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-        while let Some(msg) = progress.next().await {
-            match msg {
-                Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        metric!(counter.function_run.schema_variant_definition = -1);
-                        span.record_err(err)
-                    })?;
-                }
-                Ok(ProgressMessage::Heartbeat) => {
-                    trace!("received heartbeat message");
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next progress message was an error, bailing out");
-                    break;
-                }
-            }
-        }
-        publisher.finalize_output().await.map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-        let function_result = progress.finish().await.map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-        ServerResult::Ok(function_result)
-    };
-
-    let function_result = tokio::select! {
-        _ = time::sleep(cyclone_client_execution_timeout) => {
-            error!("hit timeout for communicating with cyclone server");
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            Err(ServerError::CycloneTimeout(
-                cyclone_client_execution_timeout,
-            ))
-        },
-        _ = kill_receiver => {
-            Err(ServerError::Cancelled)
-        }
-        func_result = progress_loop => {
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            func_result
-        },
-    }?;
-
-    publisher
-        .publish_result(&function_result)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.schema_variant_definition = -1);
-            span.record_err(err)
-        })?;
-
-    metric!(counter.function_run.schema_variant_definition = -1);
-    span.record_ok();
-    Ok(())
-}
-
-async fn process_action_run_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_action_run_requests(
-        metadata,
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing action run requests failed");
-    }
-}
-
-async fn process_action_run_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests = FunctionSubscriber::action_run(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process action_run requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(action_run_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            decryption_key.clone(),
-                            cyclone_client_execution_timeout,
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next action run request had error");
-                    }
-                    None => {
-                        trace!("action run requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn action_run_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ActionRunRequest>,
-) {
-    let process_span = request.process_span.clone();
-    if let Err(err) = action_run_request(
-        metadata,
-        nats,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        request,
-        &process_span,
-    )
-    .await
-    {
-        warn!(error = ?err, "action run execution failed");
-    }
-}
-
-#[instrument(
-    name = "veritech.action_run_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &request.payload.execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_name = &request.payload.handler,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-async fn action_run_request(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ActionRunRequest>,
-    process_span: &Span,
-) -> ServerResult<()> {
-    let span = Span::current();
-    metric!(counter.function_run.action = 1);
-
-    let mut payload_request = request.payload;
-
-    let mut sensitive_strings = SensitiveStrings::default();
-    // Decrypt the relevant contents of the request and track any resulting sensitive strings
-    // to be redacted
-    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
-
-    let execution_id = payload_request.execution_id.clone();
-    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
-
-    let reply_mailbox = request
-        .reply
-        .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool.get().await.map_err(|err| {
-        metric!(counter.function_run.action = -1);
-        span.record_err(ServerError::CyclonePool(Box::new(err)))
-    })?;
-
-    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
-    {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
-            .insert(execution_id.to_owned(), kill_sender);
-    }
-
-    let unstarted_progress = client
-        .prepare_action_run_execution(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-    let progress_loop = async {
-        let mut progress = unstarted_progress.start().await.map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-        while let Some(msg) = progress.next().await {
-            match msg {
-                Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        metric!(counter.function_run.action = -1);
-                        span.record_err(err)
-                    })?;
-                }
-                Ok(ProgressMessage::Heartbeat) => {
-                    trace!("received heartbeat message");
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next progress message was an error, bailing out");
-                    break;
-                }
-            }
-        }
-        publisher.finalize_output().await.map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-        let function_result = progress.finish().await.map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-        ServerResult::Ok(function_result)
-    };
-
-    let function_result = tokio::select! {
-        _ = time::sleep(cyclone_client_execution_timeout) => {
-            error!("hit timeout for communicating with cyclone server");
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            Err(ServerError::CycloneTimeout(
-                cyclone_client_execution_timeout,
-            ))
-        },
-        _ = kill_receiver => {
-            Err(ServerError::Cancelled)
-        }
-        func_result = progress_loop => {
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            func_result
-        },
-    }?;
-
-    publisher
-        .publish_result(&function_result)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.action = -1);
-            span.record_err(err)
-        })?;
-
-    metric!(counter.function_run.action = -1);
-    span.record_ok();
-    Ok(())
-}
-
-async fn process_reconciliation_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_reconciliation_requests(
-        metadata,
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing reconciliation requests failed");
-    }
-}
-
-async fn process_reconciliation_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests = FunctionSubscriber::reconciliation(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process reconciliation requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(reconciliation_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            decryption_key.clone(),
-        cyclone_client_execution_timeout,
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next reconciliation request had error");
-                    }
-                    None => {
-                        trace!("reconciliation requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn reconciliation_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ReconciliationRequest>,
-) {
-    let process_span = request.process_span.clone();
-    if let Err(err) = reconciliation_request(
-        metadata,
-        nats,
-        cyclone_pool,
-        decryption_key,
-        cyclone_client_execution_timeout,
-        request,
-        &process_span,
-    )
-    .await
-    {
-        warn!(error = ?err, "reconciliation execution failed");
-    }
-}
-
-#[instrument(
-    name = "veritech.reconciliation_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &request.payload.execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_name = &request.payload.handler,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-async fn reconciliation_request(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
-    decryption_key: Arc<VeritechDecryptionKey>,
-    cyclone_client_execution_timeout: Duration,
-    request: Request<ReconciliationRequest>,
-    process_span: &Span,
-) -> ServerResult<()> {
-    let span = Span::current();
-    metric!(counter.function_run.reconciliation = 1);
-
-    let mut payload_request = request.payload;
-
-    let mut sensitive_strings = SensitiveStrings::default();
-    // Decrypt the relevant contents of the request and track any resulting sensitive strings
-    // to be redacted
-    payload_request.decrypt(&mut sensitive_strings, &decryption_key)?;
-
-    let execution_id = payload_request.execution_id.clone();
-    let cyclone_request = CycloneRequest::from_parts(payload_request, sensitive_strings);
-
-    let reply_mailbox = request
-        .reply
-        .ok_or(ServerError::NoReplyMailboxFound)
-        .map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-
-    let mut client = cyclone_pool.get().await.map_err(|err| {
-        metric!(counter.function_run.reconciliation = -1);
-        span.record_err(ServerError::CyclonePool(Box::new(err)))
-    })?;
-
-    let (kill_sender, kill_receiver) = oneshot::channel::<()>();
-    {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|e| ServerError::MutexPoison(e.to_string()))?
-            .insert(execution_id.to_owned(), kill_sender);
-    }
-
-    let unstarted_progress = client
-        .prepare_reconciliation_execution(cyclone_request)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-    let progress_loop = async {
-        let mut progress = unstarted_progress.start().await.map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-        while let Some(msg) = progress.next().await {
-            match msg {
-                Ok(ProgressMessage::OutputStream(output)) => {
-                    publisher.publish_output(&output).await.map_err(|err| {
-                        metric!(counter.function_run.reconciliation = -1);
-                        span.record_err(err)
-                    })?
-                }
-                Ok(ProgressMessage::Heartbeat) => {
-                    trace!("received heartbeat message");
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next progress message was an error, bailing out");
-                    break;
-                }
-            }
-        }
-        publisher.finalize_output().await.map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-        let function_result = progress.finish().await.map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-        ServerResult::Ok(function_result)
-    };
-
-    let function_result = tokio::select! {
-        _ = time::sleep(cyclone_client_execution_timeout) => {
-            error!("hit timeout for communicating with cyclone server");
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            Err(ServerError::CycloneTimeout(
-                cyclone_client_execution_timeout,
-            ))
-        },
-        _ = kill_receiver => {
-            Err(ServerError::Cancelled)
-        }
-        func_result = progress_loop => {
-            kill_sender_remove_blocking(metadata, execution_id, process_span)?;
-            func_result
-        },
-    }?;
-
-    publisher
-        .publish_result(&function_result)
-        .await
-        .map_err(|err| {
-            metric!(counter.function_run.reconciliation = -1);
-            span.record_err(err)
-        })?;
-
-    metric!(counter.function_run.reconciliation = -1);
-    span.record_ok();
-    Ok(())
-}
-
-async fn process_cancel_execution_requests_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) =
-        process_cancel_execution_requests(metadata, nats, subject_prefix, shutdown_broadcast_rx)
-            .await
-    {
-        warn!(error = ?err, "processing cancel execution requests failed");
-    }
-}
-
-async fn process_cancel_execution_requests(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests = MetaSubscriber::cancel_execution(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process cancel execution requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Pool noodle handles logging inbound request, but since cancellation requests stay within
-                        // veritech, we will log the cancellation request here.
-                        info!(func_run_id = %request.payload.execution_id, "received cancel execution request");
-
-                        // Spawn a task and process the request
-                        tokio::spawn(cancel_execution_request_task(
-                            metadata.clone(),
-                            nats.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next cancel execution request had error");
-                    }
-                    None => {
-                        trace!("cancel execution requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscriber without draining the channel
-    requests.unsubscribe_after(0).await?;
-
-    Ok(())
-}
-
-async fn cancel_execution_request_task(
-    metadata: Arc<ServerMetadata>,
-    nats: NatsClient,
-    request: Request<CancelExecutionRequest>,
-) {
-    let process_span = request.process_span.clone();
-
-    let reply_mailbox = match request.reply {
-        Some(reply) => reply,
-        None => {
-            error!("no reply mailbox found");
-            return;
-        }
-    };
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-
-    let execution_id = request.payload.execution_id;
-
-    let result = match cancel_execution_request(metadata, execution_id.to_owned(), &process_span) {
-        Ok(()) => FunctionResult::Success(()),
-        Err(err) => FunctionResult::Failure(FunctionResultFailure::new_for_veritech_server_error(
-            execution_id,
-            err.to_string(),
-            timestamp(),
-        )),
-    };
-
-    if let Err(err) = publisher.publish_result(&result).await {
-        error!(?err, "failed to publish result");
-    }
-}
-
-#[instrument(
-    name = "veritech.cancel_execution_request",
-    parent = process_span,
-    level = "info",
-    skip_all,
-    fields(
-        job.id = &execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-fn cancel_execution_request(
-    metadata: Arc<ServerMetadata>,
-    execution_id: String,
-    process_span: &Span,
-) -> ServerResult<()> {
-    let span = Span::current();
-
-    let kill_sender = kill_sender_remove_blocking(metadata, execution_id.to_owned(), process_span)?
-        .ok_or(ServerError::MissingKillSender(execution_id.to_owned()))
-        .map_err(|err| span.record_err(err))?;
-
-    if kill_sender.send(()).is_err() {
-        return Err(span.record_err(ServerError::CouldNotSendKillSignal(execution_id)));
-    }
-
-    span.record_ok();
-    Ok(())
-}
-
-#[instrument(
-    name = "veritech.kill_sender_remove_blocking",
-    parent = process_span,
-    level = "debug",
-    skip_all,
-    fields(
-        job.id = &execution_id,
-        job.instance = metadata.job_instance,
-        job.invoked_provider = metadata.job_invoked_provider,
-        otel.kind = SpanKind::Server.as_str(),
-        otel.status_code = Empty,
-        otel.status_message = Empty,
-    )
-)]
-fn kill_sender_remove_blocking(
-    metadata: Arc<ServerMetadata>,
-    execution_id: String,
-    process_span: &Span,
-) -> ServerResult<Option<oneshot::Sender<()>>> {
-    let span = Span::current();
-
-    let maybe_kill_sender = {
-        EXEC_KILL_SENDER_FOR_EXECUTION_ID
-            .lock()
-            .map_err(|err| ServerError::MutexPoison(span.record_err(err).to_string()))?
-            .remove(&execution_id)
-    };
-
-    if maybe_kill_sender.is_some() {
-        debug!(%execution_id, "removed kill sender for execution id");
-    } else {
-        debug!(%execution_id, "no kill sender found when removing for execution id");
-    }
-
-    span.record_ok();
-    Ok(maybe_kill_sender)
-}
-
-async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
-    info!("connecting to NATS; url={}", config.nats().url);
-
-    let nats = NatsClient::new(config.nats())
-        .await
-        .map_err(ServerError::NatsConnect)?;
-
-    Ok(nats)
-}
-
-fn prepare_graceful_shutdown(
-    mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
-    shutdown_broadcast_tx: broadcast::Sender<()>,
-) -> ServerResult<oneshot::Receiver<()>> {
-    let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
-    let mut sigterm_stream =
-        unix::signal(unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
-
-    tokio::spawn(async move {
-        fn send_graceful_shutdown(
-            tx: oneshot::Sender<()>,
-            shutdown_broadcast_tx: broadcast::Sender<()>,
-        ) {
-            // Send shutdown to all long running subscribers, so they can cleanly terminate
-            if shutdown_broadcast_tx.send(()).is_err() {
-                error!("all broadcast shutdown receivers have already been dropped");
-            }
-            // Send graceful shutdown to main server thread which stops it from accepting requests.
-            // We'll do this step last so as to let all subscribers have a chance to shutdown.
-            if tx.send(()).is_err() {
-                error!("the server graceful shutdown receiver has already dropped");
-            }
-        }
-
-        tokio::select! {
-            _ = sigterm_stream.recv() => {
-                trace!("received SIGTERM signal, performing graceful shutdown");
-                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
-            }
-            source = shutdown_rx.recv() => {
-                trace!(
-                    "received internal shutdown, performing graceful shutdown; source={:?}",
-                    source,
-                );
-                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
-            }
-            else => {
-                // All other arms are closed, nothing left to do but return
-                trace!("returning from graceful shutdown with all select arms closed");
-            }
+    async fn build_app(
+        metadata: Arc<ServerMetadata>,
+        cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
+        decryption_key: Arc<VeritechDecryptionKey>,
+        cyclone_client_execution_timeout: Duration,
+        nats: NatsClient,
+        kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+        token: CancellationToken,
+    ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+        let incoming = {
+            // Take the *active* subject prefix from the connected NATS client
+            let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+            let context = jetstream::new(nats.clone());
+            veritech_work_queue(&context, prefix.as_deref())
+                .await?
+                .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
+                .await?
+                .messages()
+                .await?
         };
-    });
 
-    Ok(graceful_shutdown_rx)
-}
+        let state = AppState::new(
+            metadata,
+            cyclone_pool,
+            decryption_key,
+            cyclone_client_execution_timeout,
+            nats,
+            kill_senders,
+        );
 
-pub fn timestamp() -> u64 {
-    u64::try_from(std::cmp::max(Utc::now().timestamp(), 0)).expect("timestamp not be negative")
-}
+        let app = ServiceBuilder::new()
+            .concurrency_limit(DEFAULT_CONCURRENCY_LIMIT)
+            .layer(
+                TraceLayer::new()
+                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
+                    .on_response(
+                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
+                    ),
+            )
+            .layer(AckLayer::new())
+            .service(handlers::process_request.with_state(state));
 
-#[remain::sorted]
-#[derive(Debug, Eq, PartialEq)]
-pub enum ShutdownSource {
-    Handle,
-}
+        let inner = naxum::serve(incoming, app.into_make_service())
+            .with_graceful_shutdown(naxum::wait_on_cancelled(token));
 
-impl Default for ShutdownSource {
-    fn default() -> Self {
-        Self::Handle
+        Ok(Box::new(inner.into_future()))
+    }
+
+    async fn build_kill_app(
+        metadata: Arc<ServerMetadata>,
+        nats: NatsClient,
+        kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
+        token: CancellationToken,
+    ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+        let incoming = {
+            let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+            Self::kill_subscriber(&nats, prefix.as_deref())
+                .await?
+                .map(|msg| msg.into_parts().0)
+                // Core NATS subscriptions are a stream of `Option<Message>` so we convert this into a
+                // stream of `Option<Result<Message, Infallible>>`
+                .map(Ok::<_, Infallible>)
+        };
+
+        let state = KillAppState::new(metadata, nats, kill_senders);
+
+        let app = ServiceBuilder::new()
+            .layer(
+                TraceLayer::new()
+                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
+                    .on_response(
+                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
+                    ),
+            )
+            .service(handlers::process_kill_request.with_state(state));
+
+        let inner = naxum::serve(incoming, app.into_make_service())
+            .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+
+        Ok(Box::new(inner.into_future()))
+    }
+
+    // NOTE(nick,fletcher): it's a little funky that the prefix is taken from the nats client, but we ask for both
+    // here. We don't want users to forget the prefix, so being explicit is helpful, but maybe we can change this
+    // in the future.
+    async fn kill_subscriber(nats: &NatsClient, prefix: Option<&str>) -> ServerResult<Subscriber> {
+        let subject = veritech_core::subject::veritech_kill_request(prefix);
+        nats.subscribe(subject.clone())
+            .await
+            .map_err(|err| ServerError::NatsSubscribe(subject, err))
+    }
+
+    #[instrument(name = "veritech.init.connect_to_nats", level = "info", skip_all)]
+    async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
+        let client = NatsClient::new(config.nats())
+            .await
+            .map_err(ServerError::NatsClient)?;
+        debug!("successfully connected nats client");
+        Ok(client)
+    }
+
+    #[inline]
+    fn incoming_consumer_config(
+        subject_prefix: Option<&str>,
+    ) -> async_nats::jetstream::consumer::pull::Config {
+        async_nats::jetstream::consumer::pull::Config {
+            durable_name: Some(CONSUMER_NAME.to_owned()),
+            filter_subject: subject::incoming(subject_prefix).to_string(),
+            ..Default::default()
+        }
     }
 }

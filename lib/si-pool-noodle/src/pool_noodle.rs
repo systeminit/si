@@ -2,22 +2,18 @@ use crossbeam_queue::ArrayQueue;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use std::result;
 use std::sync::Arc;
 use telemetry_utils::metric;
-use tokio::sync::Mutex;
 use tokio::time::sleep;
-use tracing::info;
-
 use tokio::time::Duration;
-
-use tracing::{debug, warn};
-
-use std::result;
+use tokio_util::sync::CancellationToken;
+use tracing::{debug, error, info, warn};
 
 use crate::errors::PoolNoodleError;
 use crate::{Instance, Spec};
+
+const INTERNAL_WORKERS_COUNT: usize = 10;
 
 /// [`pool_noodle`] implementations.
 
@@ -80,17 +76,16 @@ where
     E: Send + Display + 'static,
 {
     /// Creates a new instance of PoolNoodle
-    pub fn new(pool_size: u32, spec: S, shutdown_rx: tokio::sync::broadcast::Receiver<()>) -> Self {
+    pub fn new(pool_size: u32, spec: S, token: CancellationToken) -> Self {
         // start by cleaning jails just to make sure
-        let to_be_cleaned = ArrayQueue::new(pool_size as usize);
-        let pool = PoolNoodle(Arc::new(PoolNoodleInner {
+        let pool = Self(Arc::new(PoolNoodleInner {
             pool_size,
             spec,
             dropped: ArrayQueue::new(pool_size as usize),
             ready: ArrayQueue::new(pool_size as usize),
-            to_be_cleaned,
+            to_be_cleaned: ArrayQueue::new(pool_size as usize),
             unprepared: ArrayQueue::new(pool_size as usize),
-            shutdown_rx: shutdown_rx.into(),
+            shutdown_token: token,
         }));
         for n in 1..=pool_size {
             let me = Arc::clone(&pool.0);
@@ -113,13 +108,13 @@ where
                 return Err(err);
             }
         }
-        let stop = Arc::new(AtomicBool::new(false));
+
         let me = Arc::clone(&self.0);
 
-        let _ = tokio::spawn(Self::handle_shutdown(me.clone(), stop.clone()));
-
-        for _ in 0..10 {
-            let _ = tokio::spawn(Self::handle_prepare(me.clone(), stop.clone()));
+        // TODO(nick,fletcher,scott): shift towards our tokio select, task tracker and cancellation
+        // token pattern.
+        for _ in 0..INTERNAL_WORKERS_COUNT {
+            let _ = tokio::spawn(Self::handle_prepare(me.clone()));
 
             let _ = tokio::spawn(Self::handle_clean(me.clone()));
 
@@ -128,94 +123,115 @@ where
         Ok(())
     }
 
-    async fn handle_shutdown(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
-        debug!("PoolNoodle: starting shutdown handler...");
-
-        while me.shutdown_rx.lock().await.try_recv().is_err() {
-            sleep(Duration::from_millis(1)).await;
-        }
-
-        debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-        stop.store(true, Ordering::Relaxed);
-    }
-
-    async fn handle_prepare(me: Arc<PoolNoodleInner<I, S>>, stop: Arc<AtomicBool>) {
+    async fn handle_prepare(me: Arc<PoolNoodleInner<I, S>>) {
         debug!("PoolNoodle: starting prepare handler...");
 
-        while !stop.load(Ordering::Relaxed) {
-            // let's make more instances!
-            if let Some(id) = Self::pop_from_unprepared(me.clone()) {
-                debug!("PoolNoodle: readying instance");
-                match PoolNoodleInner::prepare(id, &me.spec).await {
-                    Ok(_) => {
-                        debug!("PoolNoodle: instance readied: {}", id);
-                        match PoolNoodleInner::spawn(id, &me.spec).await {
-                            Ok(instance) => {
-                                debug!("PoolNoodle: instance started: {}", id);
-                                Self::push_to_ready(me.clone(), instance);
-                            }
-                            Err(e) => {
-                                warn!("PoolNoodle: failed to start instance: {}", id);
-                                warn!("{:?}", e);
-                                Self::push_to_clean(me.clone(), id);
+        let inner = async {
+            loop {
+                // let's make more instances!
+                if let Some(id) = Self::pop_from_unprepared(me.clone()) {
+                    debug!("PoolNoodle: readying instance");
+                    match PoolNoodleInner::prepare(id, &me.spec).await {
+                        Ok(_) => {
+                            debug!("PoolNoodle: instance readied: {}", id);
+                            match PoolNoodleInner::spawn(id, &me.spec).await {
+                                Ok(instance) => {
+                                    debug!("PoolNoodle: instance started: {}", id);
+                                    Self::push_to_ready(me.clone(), instance);
+                                }
+                                Err(e) => {
+                                    warn!("PoolNoodle: failed to start instance: {}", id);
+                                    warn!("{:?}", e);
+                                    Self::push_to_clean(me.clone(), id);
+                                }
                             }
                         }
-                    }
-                    Err(e) => {
-                        warn!("PoolNoodle: failed to ready instance: {}", id);
-                        warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id);
+                        Err(e) => {
+                            warn!("PoolNoodle: failed to ready instance: {}", id);
+                            warn!("{:?}", e);
+                            Self::push_to_clean(me.clone(), id);
+                        }
                     }
                 }
+                sleep(Duration::from_millis(1)).await;
             }
-            sleep(Duration::from_millis(1)).await;
+        };
+
+        tokio::select! {
+            _ = me.shutdown_token.cancelled() => {
+                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+            }
+            _ = inner => {
+                error!("PoolNoodle: handle prepare task ended unexpectedly")
+            }
         }
-        debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
     }
 
     async fn handle_clean(me: Arc<PoolNoodleInner<I, S>>) {
         debug!("PoolNoodle: starting clean handler...");
 
-        loop {
-            if let Some(id) = Self::pop_from_clean(me.clone()) {
-                debug!("PoolNoodle: cleaning instance {}", id);
-                match PoolNoodleInner::clean(id, &me.spec).await {
-                    Ok(_) => {
-                        debug!("PoolNoodle: instance cleaned: {}", id);
-                        Self::push_to_unprepared(me.clone(), id)
-                    }
-                    Err(e) => {
-                        warn!("PoolNoodle: failed to clean instance: {}", id);
-                        warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id);
+        let inner = async {
+            loop {
+                if let Some(id) = Self::pop_from_clean(me.clone()) {
+                    debug!("PoolNoodle: cleaning instance {}", id);
+                    match PoolNoodleInner::clean(id, &me.spec).await {
+                        Ok(_) => {
+                            debug!("PoolNoodle: instance cleaned: {}", id);
+                            Self::push_to_unprepared(me.clone(), id)
+                        }
+                        Err(e) => {
+                            warn!("PoolNoodle: failed to clean instance: {}", id);
+                            warn!("{:?}", e);
+                            Self::push_to_clean(me.clone(), id);
+                        }
                     }
                 }
-            }
 
-            tokio::time::sleep(Duration::from_millis(1)).await;
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        };
+
+        tokio::select! {
+            _ = me.shutdown_token.cancelled() => {
+                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+            }
+            _ = inner => {
+                error!("PoolNoodle: handle clean task ended unexpectedly")
+            }
         }
     }
 
     async fn handle_drop(me: Arc<PoolNoodleInner<I, S>>) {
         debug!("PoolNoodle: starting drop handler...");
 
-        loop {
-            if let Some(instance) = me.dropped.pop() {
-                let id = instance.id();
-                debug!("PoolNoodle: dropping: {}", id);
-                match PoolNoodleInner::terminate(instance, &me.spec).await {
-                    Ok(_) => {
-                        debug!("PoolNoodle: instance terminated: {}", id);
-                        Self::push_to_clean(me.clone(), id);
-                    }
-                    Err(e) => {
-                        warn!("PoolNoodle: failed to terminate instance: {}", id);
-                        warn!("{:?}", e);
-                        Self::push_to_clean(me.clone(), id);
+        let inner = async {
+            loop {
+                if let Some(instance) = me.dropped.pop() {
+                    let id = instance.id();
+                    debug!("PoolNoodle: dropping: {}", id);
+                    match PoolNoodleInner::terminate(instance, &me.spec).await {
+                        Ok(_) => {
+                            debug!("PoolNoodle: instance terminated: {}", id);
+                            Self::push_to_clean(me.clone(), id);
+                        }
+                        Err(e) => {
+                            warn!("PoolNoodle: failed to terminate instance: {}", id);
+                            warn!("{:?}", e);
+                            Self::push_to_clean(me.clone(), id);
+                        }
                     }
                 }
+                sleep(Duration::from_millis(1)).await;
             }
-            sleep(Duration::from_millis(1)).await;
+        };
+
+        tokio::select! {
+            _ = me.shutdown_token.cancelled() => {
+                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
+            }
+            _ = inner => {
+                error!("PoolNoodle: handle drop task ended unexpectedly")
+            }
         }
     }
 
@@ -342,7 +358,7 @@ where
     ready: ArrayQueue<I>,
     to_be_cleaned: ArrayQueue<u32>,
     unprepared: ArrayQueue<u32>,
-    shutdown_rx: Mutex<tokio::sync::broadcast::Receiver<()>>,
+    shutdown_token: CancellationToken,
 }
 
 impl<B, I, E, S> PoolNoodleInner<I, S>
@@ -483,10 +499,7 @@ mod tests {
     use crate::instance::SpecBuilder;
     use async_trait::async_trait;
     use derive_builder::Builder;
-    use tokio::{
-        sync::broadcast,
-        time::{sleep, Duration},
-    };
+    use tokio::time::{sleep, Duration};
 
     use super::*;
 
@@ -549,10 +562,12 @@ mod tests {
     }
     #[tokio::test]
     async fn pool_noodle_lifecycle() {
+        // TODO(nick,fletcher): use the cancellation token in the test.
+        let shutdown_token = CancellationToken::new();
+
         let spec = DummyInstanceSpec {};
 
-        let (shutdown_broadcast_tx, _) = broadcast::channel(16);
-        let mut pool = PoolNoodle::new(3, spec, shutdown_broadcast_tx.subscribe());
+        let mut pool = PoolNoodle::new(3, spec, shutdown_token);
         pool.start(false).expect("failed to start");
 
         // give the pool time to create some instances

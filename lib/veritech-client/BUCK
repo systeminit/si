@@ -35,6 +35,7 @@ rust_test(
         "//third-party/rust:serde_json",
         "//third-party/rust:test-log",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
         "//third-party/rust:tracing-subscriber",
         "//third-party/rust:uuid",

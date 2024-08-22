@@ -2,7 +2,8 @@ use color_eyre::Result;
 use si_service::startup;
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use veritech_server::{Config, CycloneSpec, Server};
+use veritech_server::Server;
+use veritech_server::{Config, CycloneSpec};
 
 mod args;
 
@@ -47,10 +48,16 @@ async fn main() -> Result<()> {
 
     match config.cyclone_spec() {
         CycloneSpec::LocalHttp(_) => {
-            Server::for_cyclone_http(config).await?.run().await?;
+            Server::for_cyclone_http(config, shutdown_token.clone())
+                .await?
+                .run()
+                .await;
         }
         CycloneSpec::LocalUds(_) => {
-            Server::for_cyclone_uds(config).await?.run().await?;
+            Server::for_cyclone_uds(config, shutdown_token.clone())
+                .await?
+                .run()
+                .await;
         }
     }
 

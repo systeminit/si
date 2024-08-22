@@ -147,11 +147,7 @@ fn path_as_string(path: &Path) -> String {
 ///    for a visibility which is not in a change set
 /// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>`: a mutable reference to a DAL context
 ///    for a workspace for a visibility which is not in a change set
-/// * `pinga_handle: PingaShutdownHandle`: the shutdown handle for the Pinga server running
-///    alongside each test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
-/// * `veritech_handle: VeritechShutdownHandle`: the shutdown handle for the Veritech server
-///    running alongside each test
 /// * `wid: WorkspacePk: the workspace PK created for this test
 /// * `nw: WorkspaceSignup`: the full "new-workspace" data structure, created for this
 ///   test
@@ -323,11 +319,7 @@ pub fn dal_test(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///    for a visibility which is not in a change set
 /// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>`: a mutable reference to a DAL context
 ///    for a workspace for a visibility which is not in a change set
-/// * `pinga_handle: PingaShutdownHandle`: the shutdown handle for the Pinga server running
-///    alongside each test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
-/// * `veritech_handle: VeritechShutdownHandle`: the shutdown handle for the Veritech server
-///    running alongside each test
 /// * `wid: WorkspacePk: the workspace PK created for this test
 /// * `nw: WorkspaceSignup`: the full "new-workspace" data structure, created for this
 ///   test

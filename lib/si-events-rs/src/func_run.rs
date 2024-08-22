@@ -15,9 +15,11 @@ id!(AttributePrototypeArgumentId);
 
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum FuncRunState {
-    Cancelled,
     Created,
     Dispatched,
+    // NOTE(nick,fletcher): renamed from "cancelled" to "killed", but needed backwards compatibility.
+    #[serde(alias = "cancelled")]
+    Killed,
     Running,
     PostProcessing,
     Failure,
@@ -228,9 +230,9 @@ impl FuncRun {
         self.state = FuncRunState::Failure;
     }
 
-    pub fn set_state_to_cancelled(&mut self) {
+    pub fn set_state_to_killed(&mut self) {
         self.updated_at = Utc::now();
-        self.state = FuncRunState::Cancelled;
+        self.state = FuncRunState::Killed;
     }
 
     pub fn id(&self) -> FuncRunId {
