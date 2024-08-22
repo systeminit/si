@@ -14,8 +14,8 @@ rust_library(
     ] + select({
         "DEFAULT": [],
         "config//os:linux": [
-            "//third-party/rust:krata-loopdev",
             "//third-party/rust:devicemapper",
+            "//third-party/rust:krata-loopdev",
             "//third-party/rust:tokio-vsock",
         ],
     }),

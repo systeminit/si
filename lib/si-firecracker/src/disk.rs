@@ -1,7 +1,9 @@
+use nix::{errno::Errno, mount::umount};
+
 use crate::errors::FirecrackerJailError;
 use devicemapper::{DevId, DmName, DmOptions, DM};
+
 use krataloopdev::LoopDevice;
-use nix::mount::umount;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -30,7 +32,20 @@ impl FirecrackerDisk {
         let device = Self::jail_dir_from_id(id).join(ROOTFS);
         if device.exists() {
             trace!("Unmounting device {}", device.display());
-            umount(&device)?;
+            match umount(&device) {
+                Ok(_) => Ok(()),
+                // it is more expensive to find out if it is not mounted than it is to
+                // just try and swallow the failure
+                Err(Errno::EINVAL) => {
+                    trace!(
+                        "Device not mounted, it has likely already been unmounted: {}",
+                        device.display()
+                    );
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            }
+            .map_err(|err| FirecrackerJailError::Mount(err, device))?
         }
         Ok(())
     }
