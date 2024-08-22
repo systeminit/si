@@ -335,10 +335,7 @@ export const useAssetStore = () => {
           if (changeSetStore.headSelected)
             changeSetStore.creatingChangeSet = true;
 
-          return new ApiRequest<
-            { id: SchemaVariantId; success: boolean },
-            SchemaVariantCloneRequest
-          >({
+          return new ApiRequest<SchemaVariant, SchemaVariantCloneRequest>({
             method: "post",
             keyRequestStatusBy: schemaVariantId,
             url: "/variant/clone_variant",
@@ -346,6 +343,13 @@ export const useAssetStore = () => {
               ...visibility,
               id: schemaVariantId,
               name,
+            },
+            onSuccess: (variant) => {
+              const savedAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === variant.schemaVariantId,
+              );
+              if (savedAssetIdx === -1) this.variantList.push(variant);
+              else this.variantList.splice(savedAssetIdx, 1, variant);
             },
           });
         },
