@@ -68,10 +68,6 @@ async function main() {
   // We don't have the executionId yet, so this field will be empty
   let errorFn = makeConsole(executionId).error;
 
-  const interval = setInterval(() => {
-    console.log(JSON.stringify({ protocol: "heartbeat" }));
-  }, 5000);
-
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
     debug({ request: requestJson });
@@ -97,8 +93,6 @@ async function main() {
   } catch (err) {
     onError(errorFn, err as Error, executionId);
   }
-
-  clearInterval(interval);
 
   // NOTE(nick): hey friends, Nick here. I won't implicate @jobelenus in this comment because I have a solid chance of
   // going off the rails, but I do need to give him attribution here. Thank you for pairing with me to find this.

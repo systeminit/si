@@ -509,10 +509,6 @@ async fn resolver_function_request(
                 }
                 Ok(ProgressMessage::Heartbeat) => {
                     trace!("received heartbeat message");
-                    publisher.publish_keep_alive().await.map_err(|err| {
-                        metric!(counter.function_run.resolver = -1);
-                        span.record_err(err)
-                    })?
                 }
                 Err(err) => {
                     warn!(error = ?err, "next progress message was an error, bailing out");
