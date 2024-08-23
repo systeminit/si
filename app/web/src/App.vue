@@ -16,7 +16,6 @@
     </template>
     <template v-else>
       <CachedAppNotification />
-      <RealtimeConnectionStatus />
       <RouterView :key="selectedWorkspace?.pk" />
       <Teleport to="body">
         <canvas
@@ -42,7 +41,6 @@ import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
 import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
-import RealtimeConnectionStatus from "./components/RealtimeConnectionStatus.vue";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
 
 useCustomFontsLoadedProvider();

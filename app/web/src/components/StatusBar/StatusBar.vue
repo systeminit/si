@@ -9,7 +9,9 @@
   >
     <div class="flex text-sm items-center pl-xs mr-lg w-full">
       System&nbsp;Initiative
+      <RealtimeStatusPageState />
     </div>
+
     <div class="border-l border-shade-100">
       <StatusBarDiffSummary v-if="!changeSetStore.headSelected" />
     </div>
@@ -28,6 +30,7 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 
+import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import StatusBarDiffSummary from "./StatusBarDiffSummary.vue";
 import StatusBarResourceSummary from "./StatusBarResourceSummary.vue";
 import StatusBarQualificationSummary from "./StatusBarQualificationSummary.vue";
