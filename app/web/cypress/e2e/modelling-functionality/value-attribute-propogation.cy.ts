@@ -45,7 +45,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
       // Needs a proper way to select from the updated asset tree panel
       // Find the region asset
-      cy.get('.asset-palette').find('.text-sm', { timeout: 30000 }).contains('Region', { matchCase: false }).as('awsRegion');
+      cy.get('.asset-palette').find('.text-xs', { timeout: 30000 }).contains('Region', { matchCase: false }).as('awsRegion');
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
@@ -62,7 +62,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.wait(1000);
 
       // Needs a proper way to select from the updated asset tree panel
-      cy.get('.asset-palette').find('.text-sm', { timeout: 30000 }).contains('EC2 Instance', { matchCase: false }).as('awsEC2');
+      cy.get('.asset-palette').find('.text-xs', { timeout: 30000 }).contains('EC2 Instance', { matchCase: false }).as('awsEC2');
 
       cy.intercept('POST', '/api/diagram/create_component').as('componentB');
       cy.dragTo('@awsEC2', '@konvaStage', 0, 75);
