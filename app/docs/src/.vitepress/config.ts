@@ -75,6 +75,10 @@ export default defineConfig({
             link: "/tutorials/working-with-components",
           },
           {
+            text: "Actions and Resources",
+            link: "/tutorials/actions-and-resources",
+          },
+          {
             text: "Creating a new Asset",
             link: "/tutorials/creating-new-assets",
           },
