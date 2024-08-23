@@ -12,7 +12,7 @@ Cypress.Commands.add("createComponent", (componentName: string) => {
   log.snapshot("before");
 
   // Find the component in the AssetPalette
-  cy.get('.asset-palette').find('.text-sm', { timeout: 30000 }).contains(componentName, { matchCase: false }).as('component');
+  cy.get('.asset-palette').find('.text-xs', { timeout: 30000 }).contains(componentName, { matchCase: false }).as('component');
 
   // Find the canvas to get a location to drag to
   cy.get('.modeling-diagram .konvajs-content').first().as('konvaStage');
