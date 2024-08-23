@@ -148,6 +148,19 @@ const filterToasts = (toasts: any[]) => {
   return toasts;
 };
 
+const filterBeforeCreate = (toast: any, toasts: any[]): any | false => {
+  if (toast.content.component.__name === "MaintenanceMode") {
+    // Basically only have one maintenanace toast in the toast queue
+    // at once as they time out serially, which is a bit of a pain with
+    // longer timeouts
+    if (toasts.length >= 1) {
+      return false;
+    } else {
+      return toast;
+    }
+  }
+};
+
 const options: PluginOptions = {
   newestOnTop: true,
   containerClassName: "diagram-toast-container",
@@ -159,6 +172,7 @@ const options: PluginOptions = {
   hideProgressBar: true,
   timeout: 1500,
   filterToasts,
+  filterBeforeCreate,
   // container: asyncGetContainer // right now we cannot make the container a div within nested components that get destroyed on route transitions
   // if we could use that div, we get get TOP_RIGHT position cleanly...
 };

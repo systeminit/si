@@ -166,12 +166,15 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
           // Just in case we miss a change set written and we still think there
           // are roots, but we don't know about any active components.
-          const dvuRootCheck = setInterval(() => {
+          const dvuRootCheck = setInterval(async () => {
             if (
               this.dvuRootsCount > 0 &&
               Object.keys(this.activeComponents).length < 1
             ) {
-              debouncedFetchDvuRoots();
+              const resp = await debouncedFetchDvuRoots();
+              if (!resp?.result.success) {
+                clearInterval(dvuRootCheck);
+              }
             }
           }, 3500);
 

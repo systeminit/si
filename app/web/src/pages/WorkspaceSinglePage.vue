@@ -19,8 +19,8 @@
     >
       <div class="flex-grow p-lg flex flex-col items-center">
         <ErrorMessage
-          >Bad workspace id - please select a workspace from the
-          dropdown</ErrorMessage
+          >Invalid Workspace ID or unable to load Workspace - Please select a
+          workspace from the dropdown to try again</ErrorMessage
         >
       </div>
     </template>
