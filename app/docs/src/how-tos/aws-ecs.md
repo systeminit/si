@@ -85,8 +85,8 @@ Add an `IpRange` array item.
 Set the `IP Range [CIDR]` to be `0.0.0.0/0` and the `Description` to be
 `The world`.
 
-Connect the `Security Group ID` output socket of `ALB Security Group` component
-to the `Security Group ID` input socket of this `alb-80-ingress` component.
+Connect the `Security Group ID` output socket of `alb-sg` component to the
+`Security Group ID` input socket of this `alb-80-ingress` component.
 
 ### Create a Listener component
 
@@ -196,9 +196,9 @@ Set the `TrafficPort` to be `80/tcp`.
 Connect the `Security Group ID` output socket of `container-sg` component to the
 `Security Group ID` input socket of this`container-80-ingress` component.
 
-Connect the `Security Group ID` output socket of `ALB Security Group` component
-to the `Source Traffic Security Group ID` input socket of this
-`container-80-ingress` component.
+Connect the `Security Group ID` output socket of `alb-sg` component to the
+`Source Traffic Security Group ID` input socket of this `container-80-ingress`
+component.
 
 ### Create an ECS Cluster
 
@@ -247,9 +247,6 @@ Set `cpu` to be `0.25 vCPU`.
 
 Set `memory` to be `.5 GB`.
 
-Connect the `Task Definition ARN` output socket of this `demo-app` component to
-the `Task Definition ARN` input socket of the `demo-service` component.
-
 Connect the `ARN` output socket of the `ecs-tasks-service` AWS IAM Role to the
 `taskRoleArn` input socket of your `demo-app` ECS Task Definition.
 
@@ -263,9 +260,9 @@ Set `Name` to `hello-world`.
 
 Set `Essential` to be selected.
 
-### Create a Docker Container
+### Create a Docker Image
 
-Add a `Docker Container` to your `demo-app` frame.
+Add a `Docker Image` to your `demo-app` frame.
 
 Set the component name to `tutum/hello-world`.
 
