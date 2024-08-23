@@ -350,7 +350,7 @@ impl AttributeValue {
                 .await?;
         } else {
             ctx.workspace_snapshot()?
-                .add_node(node_weight.clone())
+                .add_or_replace_node(node_weight.clone())
                 .await?;
         };
 
@@ -1943,19 +1943,10 @@ impl AttributeValue {
         func_run_value: FuncRunValue,
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let (av_idx, av_node_weight) = {
-            let av_idx = workspace_snapshot
-                .get_node_index_by_id(attribute_value_id)
-                .await?;
-
-            (
-                av_idx,
-                workspace_snapshot
-                    .get_node_weight(av_idx)
-                    .await?
-                    .get_attribute_value_node_weight()?,
-            )
-        };
+        let av_node_weight = workspace_snapshot
+            .get_node_weight_by_id(attribute_value_id)
+            .await?
+            .get_attribute_value_node_weight()?;
 
         let content_value: Option<si_events::CasValue> =
             func_run_value.value().cloned().map(Into::into);
@@ -2012,9 +2003,8 @@ impl AttributeValue {
             .set_unprocessed_value(unprocessed_value_address.map(ContentAddress::JsonValue));
 
         workspace_snapshot
-            .add_node(NodeWeight::AttributeValue(new_av_node_weight))
+            .add_or_replace_node(NodeWeight::AttributeValue(new_av_node_weight))
             .await?;
-        workspace_snapshot.replace_references(av_idx).await?;
 
         if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value_id)
             .await?

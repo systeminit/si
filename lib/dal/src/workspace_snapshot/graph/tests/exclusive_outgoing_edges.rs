@@ -48,7 +48,7 @@ mod test {
             ContentHash::new(&component_id.inner().to_bytes()),
         );
 
-        let sv_1_idx = graph.add_node(sv_1.clone())?;
+        let sv_1_idx = graph.add_or_replace_node(sv_1.clone())?;
 
         graph.add_edge(
             graph.root(),
@@ -56,7 +56,7 @@ mod test {
             sv_1_idx,
         )?;
 
-        let component_idx = graph.add_node(component.clone())?;
+        let component_idx = graph.add_or_replace_node(component.clone())?;
 
         graph.add_edge(
             graph.root_index,
@@ -181,7 +181,7 @@ mod test {
         let component_2_id = graph.generate_ulid()?;
 
         let action = NodeWeight::new_action(Ulid::new().into(), action_id, action_id);
-        graph.add_node(action.clone())?;
+        graph.add_or_replace_node(action.clone())?;
 
         let prototype_1 = NodeWeight::new_action_prototype(
             prototype_1_id,
@@ -211,7 +211,7 @@ mod test {
             ContentHash::new(&component_2_id.inner().to_bytes()),
         );
 
-        let prototype_1_idx = graph.add_node(prototype_1.clone())?;
+        let prototype_1_idx = graph.add_or_replace_node(prototype_1.clone())?;
 
         graph.add_edge(
             graph.root(),

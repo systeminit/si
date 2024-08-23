@@ -355,18 +355,22 @@ impl WorkspaceSnapshot {
         let self_clone = self.clone();
         let updates = slow_rt::spawn(async move {
             let mut working_copy = self_clone.working_copy_mut().await;
-            working_copy.cleanup();
+            working_copy.cleanup_and_merkle_tree_hash()?;
 
-            self_clone.read_only_graph.detect_updates(&working_copy)
+            Ok::<Vec<Update>, WorkspaceSnapshotGraphError>(
+                self_clone.read_only_graph.detect_updates(&working_copy),
+            )
         })?
-        .await?;
+        .await??;
 
         Ok((!updates.is_empty()).then_some(RebaseBatch::new(updates)))
     }
 
     /// Calculates the set of updates made to `updated_snapshot` against
-    /// `base_snapshot`. For these updates to be correct, `updated_snapshot` must
-    /// have already seen all the changes made to `base_snapshot`
+    /// `base_snapshot`. For these updates to be correct, `updated_snapshot`
+    /// must have already seen all the changes made to `base_snapshot`, and both
+    /// snapshots should have had their merkle tree hashes calculated with
+    /// `Self::cleanup_and_merkle_tree_hash`.
     pub async fn calculate_rebase_batch(
         base_snapshot: Arc<WorkspaceSnapshot>,
         updated_snapshot: Arc<WorkspaceSnapshot>,
@@ -430,7 +434,7 @@ impl WorkspaceSnapshot {
             // listening for requests/processing a nats queue
             let new_address = slow_rt::spawn(async move {
                 let mut working_copy = self_clone.working_copy_mut().await;
-                working_copy.cleanup();
+                working_copy.cleanup_and_merkle_tree_hash()?;
 
                 let (new_address, _) = layer_db
                     .workspace_snapshot()
@@ -527,8 +531,13 @@ impl WorkspaceSnapshot {
         self.working_copy().await.is_acyclic_directed()
     }
 
-    pub async fn add_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self.working_copy_mut().await.add_node(node)?;
+    /// Adds this node to the graph, or replaces it if a node with the same id
+    /// already exists.
+    pub async fn add_or_replace_node(
+        &self,
+        node: NodeWeight,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        let new_node_index = self.working_copy_mut().await.add_or_replace_node(node)?;
         Ok(new_node_index)
     }
 
@@ -580,8 +589,7 @@ impl WorkspaceSnapshot {
     }
 
     /// Add an edge to the graph, bypassing any cycle checks and using node
-    /// indices directly.  Use with care, since node indices are only reliably
-    /// if the graph has not yet been modified.
+    /// indices directly.  
     pub async fn add_edge_unchecked(
         &self,
         from_node_index: NodeIndex,
@@ -610,6 +618,7 @@ impl WorkspaceSnapshot {
             edge_weight,
             to_node_index,
         )?;
+
         Ok(edge_index)
     }
 
@@ -635,8 +644,7 @@ impl WorkspaceSnapshot {
         .await?)
     }
 
-    /// Gives the exact node index endpoints of an edge. Use with care, since
-    /// node indexes can't be relied on after modifications to the graph.
+    /// Gives the exact node index endpoints of an edge.
     pub async fn edge_endpoints(
         &self,
         edge_index: EdgeIndex,
@@ -659,16 +667,6 @@ impl WorkspaceSnapshot {
             .working_copy_mut()
             .await
             .import_component_subgraph(&other.read_only_graph, component_node_index)?)
-    }
-
-    pub async fn replace_references(
-        &self,
-        original_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(self
-            .working_copy_mut()
-            .await
-            .replace_references(original_node_index)?)
     }
 
     pub async fn get_node_weight_by_id(
@@ -711,8 +709,24 @@ impl WorkspaceSnapshot {
             .find_equivalent_node(id, lineage_id)?)
     }
 
+    /// Remove any nodes without incoming edges from the graph, and update the
+    /// index tables. If you are about to persist the graph, or calculate
+    /// updates based on this graph and another one, then you want to call
+    /// `Self::cleanup_and_merkle_tree_hash` instead.
     pub async fn cleanup(&self) -> WorkspaceSnapshotResult<()> {
         self.working_copy_mut().await.cleanup();
+        Ok(())
+    }
+
+    /// Remove any orphaned nodes from the graph, update indexes then
+    /// recalculate the merkle tree hash based on the nodes touched. *ALWAYS*
+    /// call this before persisting a snapshot, or calculating updates (it is
+    /// called already in `Self::write` and `Self::calculate_rebase_batch`)
+    pub async fn cleanup_and_merkle_tree_hash(&self) -> WorkspaceSnapshotResult<()> {
+        let mut working_copy = self.working_copy_mut().await;
+
+        working_copy.cleanup_and_merkle_tree_hash()?;
+
         Ok(())
     }
 
@@ -778,13 +792,6 @@ impl WorkspaceSnapshot {
 
     pub async fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         self.working_copy().await.get_node_index_by_id_opt(id)
-    }
-
-    pub async fn get_latest_node_index(
-        &self,
-        node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy().await.get_latest_node_idx(node_index)?)
     }
 
     #[instrument(name = "workspace_snapshot.find", level = "debug", skip_all, fields())]
@@ -1220,8 +1227,6 @@ impl WorkspaceSnapshot {
             .update_node_id(idx, new_id, new_lineage_id)
             .await?;
 
-        self.replace_references(idx).await?;
-
         Ok(())
     }
 
@@ -1412,7 +1417,7 @@ impl WorkspaceSnapshot {
         let new_dependent_value_node =
             NodeWeight::new_dependent_value_root(id, lineage_id, value_id);
         let new_dv_node_id = new_dependent_value_node.id();
-        self.add_node(new_dependent_value_node).await?;
+        self.add_or_replace_node(new_dependent_value_node).await?;
 
         self.add_edge(
             dv_category_id,

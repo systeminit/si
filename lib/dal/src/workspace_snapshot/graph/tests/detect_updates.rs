@@ -25,7 +25,7 @@ mod test {
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = base_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::from("Schema A")),
@@ -33,7 +33,7 @@ mod test {
             .expect("Unable to add Schema A");
         let schema_variant_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = base_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
@@ -59,11 +59,14 @@ mod test {
 
         base_graph.dot();
 
+        base_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let new_graph = base_graph.clone();
 
         let new_onto_component_id = new_graph.generate_ulid().expect("Unable to generate Ulid");
         let new_onto_component_index = base_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 new_onto_component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::from("Component B")),
@@ -90,6 +93,9 @@ mod test {
 
         base_graph.dot();
 
+        base_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = new_graph.detect_updates(&base_graph);
 
         let _new_onto_component_index = base_graph
@@ -111,7 +117,7 @@ mod test {
 
         let component_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = base_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::from("Component A")),
@@ -125,14 +131,16 @@ mod test {
             )
             .expect("Unable to add root -> component edge");
 
-        base_graph.cleanup();
+        base_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         base_graph.dot();
 
         let mut new_graph = base_graph.clone();
 
         let new_component_id = new_graph.generate_ulid().expect("Unable to generate Ulid");
         let new_component_index = new_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 new_component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::from("Component B")),
@@ -146,7 +154,9 @@ mod test {
             )
             .expect("Unable to add root -> component edge");
 
-        new_graph.cleanup();
+        new_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         new_graph.dot();
 
         let updates = base_graph.detect_updates(&new_graph);
@@ -194,7 +204,7 @@ mod test {
             .generate_ulid()
             .expect("Unable to generate Ulid");
         let ordered_prop_1_index = active_graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_1_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
@@ -210,7 +220,9 @@ mod test {
             )
             .expect("Unable to add prop -> ordered_prop_1 edge");
 
-        active_graph.cleanup();
+        active_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // Get new graph
         let mut new_graph = base_graph.clone();
@@ -224,7 +236,7 @@ mod test {
         );
 
         let ordered_prop_2_index = new_graph
-            .add_node(ordered_prop_node_weight.clone())
+            .add_or_replace_node(ordered_prop_node_weight.clone())
             .expect("Unable to add ordered prop");
         new_graph
             .add_ordered_edge(
@@ -248,6 +260,9 @@ mod test {
                 .expect("Node is not an ordered node")
         );
 
+        new_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = base_graph.detect_updates(new_graph);
 
         let update_1 = updates.first().expect("update exists").to_owned();
@@ -289,6 +304,9 @@ mod test {
         new_graph_2.remove_node(ordered_prop_2_index);
         new_graph_2.remove_node_id(ordered_prop_2_id);
 
+        new_graph_2
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = new_graph.detect_updates(&new_graph_2);
 
         let update_1 = updates.first().expect("update exists").to_owned();
@@ -340,7 +358,9 @@ mod test {
             prop_id
         };
 
-        active_graph.cleanup();
+        active_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // Create two prop nodes children of base prop
         let ordered_prop_1_index = {
@@ -348,7 +368,7 @@ mod test {
                 .generate_ulid()
                 .expect("Unable to generate Ulid");
             let ordered_prop_index = active_graph
-                .add_node(NodeWeight::new_content(
+                .add_or_replace_node(NodeWeight::new_content(
                     ordered_prop_id,
                     Ulid::new(),
                     ContentAddress::Prop(ContentHash::new(ordered_prop_id.to_string().as_bytes())),
@@ -367,14 +387,16 @@ mod test {
             ordered_prop_index
         };
 
-        active_graph.cleanup();
+        active_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         let attribute_prototype_id = {
             let node_id = active_graph
                 .generate_ulid()
                 .expect("Unable to generate Ulid");
             let node_index = active_graph
-                .add_node(NodeWeight::new_content(
+                .add_or_replace_node(NodeWeight::new_content(
                     node_id,
                     Ulid::new(),
                     ContentAddress::AttributePrototype(ContentHash::new(
@@ -394,7 +416,9 @@ mod test {
             node_id
         };
 
-        active_graph.cleanup();
+        active_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // Get new graph
         let mut new_graph = base_graph.clone();
@@ -412,7 +436,9 @@ mod test {
                     .expect("Unable to get prop NodeIndex"),
             )
             .expect("Unable to add sv -> prop edge");
-        new_graph.cleanup();
+        new_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let base_prop_node_index = new_graph
             .get_node_index_by_id(base_prop_id)
             .expect("Unable to get base prop NodeIndex");
@@ -464,7 +490,7 @@ mod test {
                 ContentHash::new(node.as_bytes()),
             );
             base_graph
-                .add_node(prop_node_weight)
+                .add_or_replace_node(prop_node_weight)
                 .expect("Unable to add prop");
 
             node_id_map.insert(node, node_id);
@@ -499,7 +525,9 @@ mod test {
         }
 
         // Clean up the graph before ensuring that it was constructed properly.
-        base_graph.cleanup();
+        base_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // Ensure the graph construction worked.
         for (source, target) in edges {
@@ -576,11 +604,16 @@ mod test {
         new_graph.remove_node(c_idx);
         new_graph.remove_node_id(c_id);
 
-        new_graph.cleanup();
+        new_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // base_graph.tiny_dot_to_file(Some("to_rebase"));
         // new_graph.tiny_dot_to_file(Some("onto"));
 
+        base_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = base_graph.detect_updates(&new_graph);
 
         assert_eq!(
@@ -612,7 +645,7 @@ mod test {
         );
 
         to_rebase_graph
-            .add_node(prototype_node)
+            .add_or_replace_node(prototype_node)
             .expect("unable to add node");
         to_rebase_graph
             .add_edge(
@@ -625,7 +658,9 @@ mod test {
             .expect("unable to add edge");
 
         // "write" the graph
-        to_rebase_graph.cleanup();
+        to_rebase_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // "fork" a working changeset from the current one
         let mut onto_graph = to_rebase_graph.clone();
@@ -640,8 +675,9 @@ mod test {
             )
             .expect("remove_edge");
 
-        onto_graph.cleanup();
-
+        onto_graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = to_rebase_graph.detect_updates(&onto_graph);
 
         assert_eq!(1, updates.len());

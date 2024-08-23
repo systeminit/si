@@ -166,7 +166,7 @@ impl Module {
         let lineage_id = workspace_snapshot.generate_ulid().await?;
         let node_weight = NodeWeight::new_content(id, lineage_id, ContentAddress::Module(hash));
 
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let schema_module_index_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Module)

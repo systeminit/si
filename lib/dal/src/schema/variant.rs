@@ -493,7 +493,7 @@ impl SchemaVariant {
         let lineage_id = workspace_snapshot.generate_ulid().await?;
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::SchemaVariant(hash));
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         // Schema --Use--> SchemaVariant (this)
         Schema::add_edge_to_variant(ctx, schema_id, id.into(), EdgeWeightKind::new_use()).await?;

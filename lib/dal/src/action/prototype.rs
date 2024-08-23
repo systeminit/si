@@ -164,7 +164,9 @@ impl ActionPrototype {
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let node_weight =
             NodeWeight::new_action_prototype(new_id.into(), lineage_id, kind, name, description);
-        ctx.workspace_snapshot()?.add_node(node_weight).await?;
+        ctx.workspace_snapshot()?
+            .add_or_replace_node(node_weight)
+            .await?;
 
         Self::add_edge_to_func(ctx, new_id, func_id, EdgeWeightKind::new_use()).await?;
 

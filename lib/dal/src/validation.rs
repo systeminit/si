@@ -161,9 +161,8 @@ impl ValidationOutputNode {
             new_node_weight.new_content_hash(hash)?;
 
             workspace_snapshot
-                .add_node(NodeWeight::Content(new_node_weight))
+                .add_or_replace_node(NodeWeight::Content(new_node_weight))
                 .await?;
-            workspace_snapshot.replace_references(idx).await?;
 
             id
         } else {
@@ -171,7 +170,7 @@ impl ValidationOutputNode {
             let lineage_id = workspace_snapshot.generate_ulid().await?;
             let node_weight =
                 NodeWeight::new_content(id, lineage_id, ContentAddress::ValidationOutput(hash));
-            workspace_snapshot.add_node(node_weight).await?;
+            workspace_snapshot.add_or_replace_node(node_weight).await?;
 
             workspace_snapshot
                 .add_edge(

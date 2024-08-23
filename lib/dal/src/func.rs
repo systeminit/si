@@ -268,7 +268,9 @@ impl Func {
             NodeWeight::new_func(id, lineage_id, name.clone().into(), func_kind, hash);
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        workspace_snapshot.add_node(node_weight.clone()).await?;
+        workspace_snapshot
+            .add_or_replace_node(node_weight.clone())
+            .await?;
 
         let func_category_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Func)
@@ -462,16 +464,9 @@ impl Func {
         // have changed, this ends up updating the node for the function twice. This could be
         // optimized to do it only once.
         if func.name.as_str() != node_weight.name() {
-            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id).await?;
-
             node_weight.set_name(func.name.as_str());
-
             workspace_snapshot
-                .add_node(NodeWeight::Func(node_weight.clone()))
-                .await?;
-
-            workspace_snapshot
-                .replace_references(original_node_index)
+                .add_or_replace_node(NodeWeight::Func(node_weight.clone()))
                 .await?;
         }
         let updated = FuncContent::from(func.clone());
