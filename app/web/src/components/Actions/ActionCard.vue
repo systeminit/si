@@ -114,7 +114,6 @@
       v-if="!props.noInteraction && actionProposed"
       ref="contextMenuRef"
       :forceAbove="false"
-      compact
       forceAlignRight
     >
       <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>

@@ -33,7 +33,7 @@
       :class="
         clsx(
           themeContainerClasses,
-          'min-h-[24rem] max-h-[80vh] flex flex-col overflow-hidden relative',
+          'min-h-[24rem] max-h-[70vh] flex flex-col overflow-hidden relative',
         )
       "
     >

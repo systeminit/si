@@ -45,13 +45,9 @@
 <script setup lang="ts">
 import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
-
 import { Inline, TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
-
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
-
-import { Action } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import ActionWidget from "@/components/Actions/ActionWidget.vue";
@@ -68,35 +64,7 @@ function onTabSelected(newTabSlug?: string) {
   componentsStore.setComponentDetailsTab(newTabSlug || null);
 }
 
-interface BindingWithDisplayName extends Action {
-  displayName: string;
-}
-
-const bindings = computed(() => {
-  const _bindings = [] as BindingWithDisplayName[];
-  const variant =
-    componentsStore.schemaVariantsById[
-      componentsStore.selectedComponent?.schemaVariantId || ""
-    ];
-  variant?.funcIds.forEach((funcId) => {
-    const summary = funcStore.funcsById[funcId];
-    const actions = funcStore.actionBindings[funcId]?.filter(
-      (b) =>
-        b.schemaVariantId ===
-        componentsStore.selectedComponent?.schemaVariantId,
-    );
-    if (actions && actions.length > 0) {
-      actions.forEach((b) => {
-        const a = _.cloneDeep(b) as BindingWithDisplayName;
-        a.displayName = summary?.displayName || "<Unknown>";
-        _bindings.push(a);
-      });
-    }
-  });
-  return _bindings.sort((_a, _b) =>
-    _a.displayName.localeCompare(_b.displayName),
-  );
-});
+const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 
 watch(
   () => componentsStore.selectedComponentDetailsTab,

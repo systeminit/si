@@ -9,6 +9,7 @@ export { default as Card } from "./general/Card.vue";
 export { default as ErrorMessage } from "./general/ErrorMessage.vue";
 export { default as LoadingMessage } from "./general/LoadingMessage.vue";
 export { default as PillCounter } from "./general/PillCounter.vue";
+export { default as Toggle } from "./general/Toggle.vue";
 
 export { default as RequestStatusMessage } from "./general/RequestStatusMessage.vue";
 export { default as RichText } from "./general/RichText.vue";

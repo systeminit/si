@@ -1,5 +1,9 @@
 <template>
-  <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
+  <DropdownMenu
+    ref="contextMenuRef"
+    :items="rightClickMenuItems"
+    variant="editor"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -10,15 +14,19 @@ import {
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
-import plur from "plur";
+// import plur from "plur";
+// import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentType } from "@/api/sdf/dal/schema";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { BindingWithDisplayName, useFuncStore } from "@/store/func/funcs.store";
+import { useActionsStore } from "@/store/actions.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
+const funcStore = useFuncStore();
+const actionsStore = useActionsStore();
 
 const {
   selectedComponentId,
@@ -32,50 +40,72 @@ const {
   selectedEdge,
 } = storeToRefs(componentsStore);
 
-function typeDisplayName(action = "delete") {
-  if (selectedComponentId.value && selectedComponent.value) {
-    if (selectedComponent.value.componentType === ComponentType.Component)
-      return "Component";
-    else return "Frame";
-  } else if (selectedComponentIds.value.length) {
-    let components;
-    switch (action) {
-      case "delete":
-        components = deletableSelectedComponents.value;
-        break;
-      case "erase":
-        components = erasableSelectedComponents.value;
-        break;
-      case "restore":
-      default:
-        components = restorableSelectedComponents.value;
-    }
+// function typeDisplayName(action = "delete") {
+//   if (selectedComponentId.value && selectedComponent.value) {
+//     if (selectedComponent.value.componentType === ComponentType.Component)
+//       return "Component";
+//     else return "Frame";
+//   } else if (selectedComponentIds.value.length) {
+//     let components;
+//     switch (action) {
+//       case "delete":
+//         components = deletableSelectedComponents.value;
+//         break;
+//       case "erase":
+//         components = erasableSelectedComponents.value;
+//         break;
+//       case "restore":
+//       default:
+//         components = restorableSelectedComponents.value;
+//     }
 
-    for (const c of components) {
-      if (c.componentType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
-    }
+//     for (const c of components) {
+//       if (c.componentType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
+//     }
 
-    return "Frame";
-  } else {
-    return "Component";
-  }
-}
+//     return "Frame";
+//   } else {
+//     return "Component";
+//   }
+// }
+
+const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
+const canRefresh = computed(
+  () =>
+    selectedComponent.value?.hasResource &&
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId,
+);
+const getActionToggleState = (id: string) => {
+  if (!selectedComponentId.value) return false;
+
+  const a = actionsStore.listActionsByComponentId
+    .get(selectedComponentId.value)
+    .find((a) => a.prototypeId === id);
+  return !!a;
+};
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled = false;
+
   if (selectedEdgeId.value) {
     // single selected edge
+    items.push({
+      label: "EDGE",
+      header: true,
+    });
+
     if (selectedEdge.value?.changeStatus === "deleted") {
       items.push({
-        label: "Restore edge",
+        label: "Restore",
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
         disabled,
       });
     } else {
       items.push({
-        label: "Delete edge",
+        label: "Delete",
+        shortcut: "⌫",
         icon: "trash",
         onSelect: triggerDeleteSelection,
         disabled,
@@ -84,27 +114,28 @@ const rightClickMenuItems = computed(() => {
   } else if (selectedComponentId.value && selectedComponent.value) {
     // single selected component
     items.push({
-      label: `Copy ${typeDisplayName()} "${
-        selectedComponent.value.displayName
-      }"`,
+      label: "COMPONENT",
+      header: true,
+    });
+
+    items.push({
+      label: `Copy`,
+      shortcut: "⌘C",
       icon: "clipboard-copy",
       onSelect: triggerCopySelection,
       disabled,
     });
     if (selectedComponent.value.toDelete) {
       items.push({
-        label: `Restore ${typeDisplayName()} "${
-          selectedComponent.value.displayName
-        }"`,
+        label: `Restore`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
         disabled,
       });
     } else {
       items.push({
-        label: `Delete ${typeDisplayName()} "${
-          selectedComponent.value.displayName
-        }"`,
+        label: `Delete`,
+        shortcut: "⌫",
         icon: "trash",
         onSelect: triggerDeleteSelection,
         disabled,
@@ -113,17 +144,21 @@ const rightClickMenuItems = computed(() => {
   } else if (selectedComponentIds.value.length) {
     // multiple selected components
     items.push({
-      label: `Copy ${selectedComponentIds.value.length} Components`,
+      label: ` ${selectedComponentIds.value.length} COMPONENTS`,
+      header: true,
+    });
+
+    items.push({
+      label: `Copy`,
+      shortcut: "⌘C",
       icon: "clipboard-copy",
       onSelect: triggerCopySelection,
       disabled,
     });
     if (deletableSelectedComponents.value.length > 0) {
       items.push({
-        label: `Delete ${deletableSelectedComponents.value.length} ${plur(
-          typeDisplayName("delete"),
-          deletableSelectedComponents.value.length,
-        )}`,
+        label: `Delete`,
+        shortcut: "⌫",
         icon: "trash",
         onSelect: triggerDeleteSelection,
         disabled,
@@ -131,10 +166,7 @@ const rightClickMenuItems = computed(() => {
     }
     if (restorableSelectedComponents.value.length > 0) {
       items.push({
-        label: `Restore ${restorableSelectedComponents.value.length} ${plur(
-          typeDisplayName("restore"),
-          restorableSelectedComponents.value.length,
-        )}`,
+        label: `Restore`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
         disabled,
@@ -147,38 +179,70 @@ const rightClickMenuItems = computed(() => {
     erasableSelectedComponents.value.length ===
       selectedComponentsAndChildren.value.length
   ) {
-    const label =
-      erasableSelectedComponents.value.length === 1
-        ? `Erase ${typeDisplayName("erase")} "${
-            erasableSelectedComponents.value[0]?.displayName
-          }"`
-        : `Erase ${erasableSelectedComponents.value.length} ${plur(
-            typeDisplayName("erase"),
-            erasableSelectedComponents.value.length,
-          )}`;
-
     items.push({
-      label,
+      label: "Erase",
+      shortcut: "⌘E",
       icon: "erase",
       onSelect: triggerWipeFromDiagram,
       disabled,
     });
   }
 
-  if (
-    selectedComponent.value?.hasResource &&
-    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
-  ) {
+  if (bindings.value.length > 0 || canRefresh.value) {
     items.push({
-      label: "Refresh resource",
-      icon: "refresh",
-      onSelect: () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value!.id);
-      },
-      disabled,
+      label: "RESOURCE",
+      header: true,
     });
+
+    if (canRefresh.value) {
+      items.push({
+        label: "Refresh",
+        shortcut: "R",
+        icon: "refresh",
+        onSelect: () => {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value!.id);
+        },
+        disabled,
+      });
+    }
+
+    if (bindings.value.length > 0 && selectedComponentId.value) {
+      const submenuItems: DropdownMenuItemObjectDef[] = [];
+
+      bindings.value.forEach((binding: BindingWithDisplayName) => {
+        const componentId = selectedComponentId.value as string;
+
+        const action = computed(() => {
+          const a = actionsStore.listActionsByComponentId
+            .get(componentId)
+            .find((a) => a.prototypeId === binding.actionPrototypeId);
+          return a;
+        });
+
+        submenuItems.push({
+          label: binding.displayName,
+          toggleIcon: true,
+          checked: binding.actionPrototypeId
+            ? getActionToggleState(binding.actionPrototypeId)
+            : false,
+          onSelect: () => {
+            if (action.value?.id) {
+              actionsStore.CANCEL([action.value.id]);
+            } else if (binding.actionPrototypeId) {
+              actionsStore.ADD_ACTION(componentId, binding.actionPrototypeId);
+            }
+          },
+        });
+      });
+
+      items.push({
+        label: "Actions",
+        submenuItems,
+      });
+    }
   }
+
   return items;
 });
 

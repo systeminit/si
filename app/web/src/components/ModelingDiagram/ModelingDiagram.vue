@@ -747,6 +747,17 @@ async function onKeyDown(e: KeyboardEvent) {
   if (!props.readOnly && (e.key === "Delete" || e.key === "Backspace")) {
     modelingEventBus.emit("deleteSelection");
   }
+  if (!props.readOnly && e.key === "e" && e.metaKey) {
+    modelingEventBus.emit("eraseSelection");
+  }
+  if (
+    !props.readOnly &&
+    e.key === "r" &&
+    componentsStore.selectedComponent?.hasResource &&
+    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
+  ) {
+    componentsStore.REFRESH_RESOURCE_INFO(componentsStore.selectedComponent.id);
+  }
 }
 
 function onKeyUp(e: KeyboardEvent) {

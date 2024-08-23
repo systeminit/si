@@ -6,22 +6,36 @@
     ref="internalRef"
     :class="
       clsx(
-        'flex gap-xs items-center cursor-pointer rounded-sm children:pointer-events-none',
-        menuCtx.compact ? 'p-2xs pr-xs' : 'p-xs pr-sm',
-        isFocused && 'bg-action-500',
-        !menuCtx.isCheckable.value && !icon && !$slots.icon && 'pl-sm',
-        disabled && 'text-gray-500',
+        'flex gap-xs items-center cursor-pointer children:pointer-events-none select-none',
+        noInteract && 'text-gray-500',
+        header
+          ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'
+          : 'rounded-sm',
+        {
+          classic: 'p-xs pr-sm',
+          compact: 'p-2xs pr-xs',
+          editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
+        }[menuCtx.variant],
+        isFocused && !header && 'bg-action-500',
+        !menuCtx.isCheckable.value &&
+          !icon &&
+          !$slots.icon &&
+          !header &&
+          !toggleIcon &&
+          'pl-sm',
       )
     "
     role="menuitem"
-    :tabIndex="disabled === true ? undefined : -1"
-    :aria-disabled="disabled === true ? true : undefined"
+    :tabIndex="noInteract === true ? undefined : -1"
+    :aria-disabled="noInteract === true ? true : undefined"
+    :data-no-close-on-click="noCloseOnClick ? true : ''"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
     @click="onClick"
   >
+    <Toggle v-if="toggleIcon" :selected="checked || false" size="sm" />
     <Icon
-      v-if="menuCtx.isCheckable.value"
+      v-else-if="menuCtx.isCheckable.value"
       :name="checked ? 'check' : 'none'"
       size="xs"
       class="mr-2xs shrink-0 pointer-events-none"
@@ -40,8 +54,20 @@
         <slot>{{ label }}</slot>
       </div>
     </div>
-    <div v-if="shortcut" class="pl-md capsize text-xs ml-auto shrink-0">
-      {{ shortcut }}
+    <div class="pl-md capsize text-xs ml-auto shrink-0">
+      <template v-if="submenuItems && submenuItems.length > 0">
+        <Icon name="chevron--right" size="sm" />
+        <DropdownMenu
+          ref="submenuRef"
+          variant="editor"
+          submenu
+          :anchorTo="{ $el: internalRef, close: menuCtx.close }"
+          :items="submenuItems"
+        />
+      </template>
+      <template v-else-if="shortcut">
+        {{ shortcut }}
+      </template>
     </div>
   </component>
 </template>
@@ -53,34 +79,49 @@ import {
   getCurrentInstance,
   onBeforeUnmount,
   onMounted,
-  PropType,
   ref,
 } from "vue";
 import { RouterLink } from "vue-router";
 import Icon from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
-import { useDropdownMenuContext } from "./DropdownMenu.vue";
+import DropdownMenu, { useDropdownMenuContext } from "./DropdownMenu.vue";
+import Toggle from "../general/Toggle.vue";
+import { useThemeContainer } from "../utils/theme_tools";
 
-const props = defineProps({
-  icon: { type: String as PropType<IconNames> },
-  iconClass: { type: String },
+export interface DropdownMenuItemProps {
+  icon?: IconNames;
+  iconClass?: string;
+  toggleIcon?: boolean;
 
-  label: { type: String },
+  label?: string;
 
   // if the item is really a link
-  href: String,
-  linkToNamedRoute: String,
-  linkTo: [String, Object],
-  target: String,
+  href?: string;
+  linkToNamedRoute?: string;
+  linkTo?: [string, object];
+  target?: string;
 
-  disabled: Boolean,
+  header?: boolean;
+  disabled?: boolean;
 
-  // set to true/false only if it is actually checkable - leave undefined otherwise
-  // (note the default is needed to not automatically cast to false)
-  checked: { type: Boolean, default: undefined },
+  checkable?: boolean;
+  checked?: boolean;
 
-  shortcut: String,
-});
+  doNotCloseMenuOnClick?: boolean;
+
+  shortcut?: string;
+
+  insideSubmenu?: boolean;
+  submenuItems?: DropdownMenuItemProps[];
+}
+
+const props = defineProps<DropdownMenuItemProps>();
+
+const SUBMENU_TIMEOUT_LENGTH = 300;
+
+useThemeContainer("dark");
+
+const noInteract = computed(() => props.disabled || props.header);
 
 const emit = defineEmits<{ (e: "select"): void }>();
 
@@ -90,6 +131,19 @@ const menuCtx = useDropdownMenuContext();
 const labelText = ref();
 const labelRef = ref<HTMLElement>();
 const id = `dropdown-menu-item-${idCounter++}`;
+
+const submenuRef = ref<InstanceType<typeof DropdownMenu> | null>(null);
+const submenuTimeout = ref();
+
+const noCloseOnClick = computed(
+  () =>
+    !!(
+      props.doNotCloseMenuOnClick ||
+      props.header ||
+      props.toggleIcon ||
+      (props.submenuItems && props.submenuItems.length > 0)
+    ),
+);
 
 onMounted(() => {
   // track text in label to be used for typing to jump to an option
@@ -113,19 +167,47 @@ const isFocused = computed(() => {
 });
 
 function onClick(event: MouseEvent) {
-  if (props.disabled) {
+  if (
+    noCloseOnClick.value ||
+    (props.submenuItems && props.submenuItems.length > 0)
+  ) {
     event.preventDefault();
-    return;
+    if (
+      props.submenuItems &&
+      props.submenuItems.length > 0 &&
+      !submenuRef.value?.isOpen
+    ) {
+      openSubmenu();
+    }
+    if (!noInteract.value) {
+      emit("select");
+    }
+  } else {
+    emit("select");
+    menuCtx.close(props.doNotCloseMenuOnClick);
   }
-  emit("select");
-  menuCtx.close();
 }
 function onMouseEnter() {
-  if (props.disabled) return;
+  if (noInteract.value) return;
+  if (props.submenuItems && props.submenuItems.length > 0) {
+    clearTimeout(submenuTimeout.value);
+    openSubmenu();
+  }
   menuCtx.focusOnItem(id);
 }
 function onMouseLeave() {
-  if (props.disabled) return;
+  if (noInteract.value) return;
+  if (
+    props.submenuItems &&
+    props.submenuItems.length > 0 &&
+    !submenuRef.value?.hovered
+  ) {
+    submenuTimeout.value = setTimeout(() => {
+      if (!submenuRef.value?.hovered) {
+        closeSubmenu();
+      }
+    }, SUBMENU_TIMEOUT_LENGTH);
+  }
   if (!isFocused.value) return;
   menuCtx.focusOnItem();
 }
@@ -151,6 +233,17 @@ const dynamicAttrs = computed(() => ({
     target: props.target,
   }),
 }));
+
+const openSubmenu = () => {
+  if (submenuRef.value && props.submenuItems && props.submenuItems.length > 0) {
+    menuCtx.openSubmenu(id);
+    submenuRef.value.open();
+  }
+};
+
+const closeSubmenu = () => {
+  if (submenuRef.value) submenuRef.value.close(false, false);
+};
 
 defineExpose({ domRef: internalRef });
 </script>

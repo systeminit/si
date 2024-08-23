@@ -8,7 +8,7 @@
       "
       :noExit="!canCloseModal"
     >
-      <div class="max-h-[80vh] overflow-hidden flex flex-col">
+      <div class="max-h-[70vh] overflow-hidden flex flex-col">
         <template v-if="currentlyVoting">
           <div :class="clsx('px-sm pb-xs pt-0 flex items-center gap-sm')">
             <UserIcon
