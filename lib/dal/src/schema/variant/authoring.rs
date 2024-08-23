@@ -227,11 +227,12 @@ impl VariantAuthoringClient {
                 .await?;
             let cloned_func_spec = build_asset_func_spec(&cloned_func)?;
             let definition = Self::execute_asset_func(ctx, &cloned_func).await?;
+            let display_name = format!("{}-Clone", variant.display_name());
 
             let metadata = SchemaVariantMetadataJson {
                 schema_name: schema_name.clone(),
                 version: SchemaVariant::generate_version_string(),
-                display_name: variant.display_name().to_string(),
+                display_name,
                 category: variant.category().to_string(),
                 color: variant.get_color(ctx).await?,
                 component_type: variant.component_type(),

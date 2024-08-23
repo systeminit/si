@@ -1,26 +1,19 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::service::variant::SchemaVariantResult;
 use axum::extract::{Host, OriginalUri};
 use axum::{response::IntoResponse, Json};
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, Schema, SchemaId, Visibility, WsEvent};
+use dal::{ChangeSet, Schema, SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CloneVariantRequest {
-    pub id: SchemaId,
+    pub id: SchemaVariantId,
     pub name: String,
     #[serde(flatten)]
     pub visibility: Visibility,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CloneVariantResponse {
-    pub id: SchemaId,
-    pub success: bool,
 }
 
 pub async fn clone_variant(
@@ -32,7 +25,6 @@ pub async fn clone_variant(
     Json(request): Json<CloneVariantRequest>,
 ) -> SchemaVariantResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
     if Schema::is_name_taken(&ctx, &request.name).await? {
         return Ok(axum::response::Response::builder()
             .status(409)
@@ -41,14 +33,9 @@ pub async fn clone_variant(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let schema = Schema::get_by_id(&ctx, request.id).await?;
-    let default_schema_variant_id = schema.get_default_schema_variant_id(&ctx).await?.ok_or(
-        SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(schema.id()),
-    )?;
-
     let (cloned_schema_variant, schema) = VariantAuthoringClient::new_schema_with_cloned_variant(
         &ctx,
-        default_schema_variant_id,
+        request.id,
         request.name.clone(),
     )
     .await?;
@@ -81,8 +68,9 @@ pub async fn clone_variant(
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
 
-    Ok(response.body(serde_json::to_string(&CloneVariantResponse {
-        id: schema.id(),
-        success: true,
-    })?)?)
+    Ok(response.body(serde_json::to_string(
+        &cloned_schema_variant
+            .into_frontend_type(&ctx, schema.id())
+            .await?,
+    )?)?)
 }

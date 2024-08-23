@@ -216,10 +216,6 @@ const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {
 };
 
 const componentTypeOptions = [
-  {
-    label: "Aggregation Frame",
-    value: ComponentType.AggregationFrame,
-  },
   { label: "Component", value: ComponentType.Component },
   {
     label: "Configuration Frame (down)",
@@ -296,9 +292,14 @@ const cloneAsset = async (name: string) => {
       name,
     );
     if (result.result.success) {
+      assetStore.setSchemaVariantSelection(result.result.data.schemaVariantId);
       cloneAssetModalRef.value?.modal?.close();
-      assetStore.setSchemaVariantSelection(result.result.data.id);
+    } else if (result.result.statusCode === 409) {
+      cloneAssetModalRef.value?.setError(
+        "That name is already in use, please choose another",
+      );
     }
+    cloneAssetModalRef.value?.reset();
   }
 };
 </script>
