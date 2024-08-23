@@ -111,7 +111,8 @@ pub enum VariantAuthoringError {
 type VariantAuthoringResult<T> = Result<T, VariantAuthoringError>;
 
 const DEFAULT_ASSET_CODE: &str = r#"function main() {
-  return new AssetBuilder().build()
+  const asset = new AssetBuilder();
+  return asset.build();
 }"#;
 
 #[derive(Debug, Deserialize, Serialize)]
