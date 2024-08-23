@@ -115,7 +115,7 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) symmetric_crypto_active_key_base64: Option<SensitiveString>,
 
-    /// The number of concurrent jobs that can be processed [default: 10]
+    /// The number of concurrent jobs that can be processed [default: 64]
     #[arg(long)]
     pub(crate) concurrency: Option<u32>,
 
