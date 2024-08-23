@@ -98,7 +98,8 @@ async function handleMaintenanceMode(error: AxiosError) {
         component: MaintenanceMode,
       },
       {
-        timeout: 60000,
+        timeout: 15000,
+        hideProgressBar: false,
       },
     );
   }

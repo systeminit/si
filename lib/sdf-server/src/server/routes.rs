@@ -21,7 +21,7 @@ use super::{
     state::{AppState, ApplicationRuntimeMode},
 };
 
-const MAINTENANCE_MODE_MESSAGE: &str = " SI is currently in maintenance mode. Please try again later. Reach out to support@systeminit.com or in the SI Discord for more information if this problem persists";
+const MAINTENANCE_MODE_MESSAGE: &str = " SI is currently in maintenance mode. Please refresh & try again later. Reach out to support@systeminit.com or in the SI Discord for more information if this problem persists";
 
 async fn app_state_middeware<B>(
     State(state): State<AppState>,
