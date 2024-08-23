@@ -24,6 +24,7 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
@@ -59,10 +60,14 @@ pub enum AttributePrototypeError {
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
     MissingFunction(AttributePrototypeId),
+    #[error("no arguments to identity func at {0}")]
+    NoArgumentsToIdentityFunction(AttributePrototypeId),
     #[error("No attribute values for: {0}")]
     NoAttributeValues(AttributePrototypeId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("{0} is not identity func")]
+    NonIdentityFunc(FuncId),
     #[error("Attribute Prototype not found: {0}")]
     NotFound(AttributePrototypeId),
     #[error("attribute prototype has been orphaned: {0}")]
@@ -676,6 +681,28 @@ impl AttributePrototype {
         }
 
         Ok(apas)
+    }
+
+    // Returns the argument to this identity (or unset) function call.
+    // Errors if it is neither identity nor unset.
+    pub async fn identity_or_unset_argument(
+        ctx: &DalContext,
+        ap_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Option<AttributePrototypeArgumentId>> {
+        let func = Self::func(ctx, ap_id).await?;
+        if func.name != IntrinsicFunc::Identity.name() {
+            if func.name == IntrinsicFunc::Unset.name() {
+                return Ok(None);
+            }
+            return Err(AttributePrototypeError::NonIdentityFunc(func.id));
+        }
+        let args = AttributePrototype::list_arguments_for_id(ctx, ap_id).await?;
+        match args.first() {
+            None => Err(AttributePrototypeError::NoArgumentsToIdentityFunction(
+                ap_id,
+            )),
+            Some(apa_id) => Ok(Some(*apa_id)),
+        }
     }
 }
 

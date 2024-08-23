@@ -23,22 +23,24 @@ pub enum ValueSourceError {
     AttributeValue(String),
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("source has more than one attribute values when only one was expected: {0}")]
+    ComponentHasMultipleValues(ComponentId, ValueSource),
+    #[error("source has no attribute values for component {1}: {0}")]
+    ComponentHasNoValues(ComponentId, ValueSource),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("secret sources have no attribute values: {0}")]
-    SecretSourcesNoValues(SecretId),
-    #[error("static argument value sources have no attribute values")]
-    StaticArgumentValueSourcesNoValues,
+    #[error("source has no attribute values: {0}")]
+    SourceHasNoValues(ValueSource),
 }
 
 pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
 
 #[remain::sorted]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ValueSource {
     InputSocket(InputSocketId),
     OutputSocket(OutputSocketId),
@@ -90,11 +92,9 @@ impl ValueSource {
                 InputSocket::all_attribute_values_everywhere_for_input_socket_id(ctx, *ip_id)
                     .await?
             }
-            Self::Secret(secret_id) => {
-                return Err(ValueSourceError::SecretSourcesNoValues(*secret_id))
-            }
+            Self::Secret(_) => return Err(ValueSourceError::SourceHasNoValues(*self)),
             Self::StaticArgumentValue(_) => {
-                return Err(ValueSourceError::StaticArgumentValueSourcesNoValues);
+                return Err(ValueSourceError::SourceHasNoValues(*self));
             }
         })
     }
@@ -135,6 +135,28 @@ impl ValueSource {
         }
 
         Ok(result)
+    }
+
+    pub async fn attribute_value_for_component_id(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ValueSourceResult<AttributeValueId> {
+        // We'd like to use Component::attribute_values_for_prop_id and friends, but the Component
+        // one in particular treats OrphanedAttributeValue as an error.
+        let values = self
+            .attribute_values_for_component_id(ctx, component_id)
+            .await?;
+        if values.len() > 1 {
+            return Err(ValueSourceError::ComponentHasMultipleValues(
+                component_id,
+                *self,
+            ));
+        }
+        match values.first() {
+            Some(value) => Ok(*value),
+            None => Err(ValueSourceError::ComponentHasNoValues(component_id, *self)),
+        }
     }
 }
 

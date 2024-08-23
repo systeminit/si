@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::value_source::ValueSourceError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
@@ -22,6 +25,10 @@ pub mod values;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropertyEditorError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("invalid AttributeReadContext: {0}")]
@@ -30,6 +37,8 @@ pub enum PropertyEditorError {
     Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("cycle detected: {0}")]
+    CycleDetected(AttributeValueId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("pg error: {0}")]
@@ -44,6 +53,8 @@ pub enum PropertyEditorError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
+    #[error("secret prop for {0} leads to static value")]
+    SecretPropLeadsToStaticValue(AttributeValueId, AttributeValueId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
@@ -54,6 +65,8 @@ pub enum PropertyEditorError {
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationError),
+    #[error("value source error: {0}")]
+    ValueSource(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
