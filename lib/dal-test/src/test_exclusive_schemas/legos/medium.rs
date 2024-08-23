@@ -43,11 +43,20 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
     let fn_name = "test:refreshActionMediumLego";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
+    // Build Update Action Func
     let update_action_code = "async function main(component: Input): Promise<Output> {
               return { payload: { \"poonami\": true }, status: \"ok\" };
             }";
     let fn_name = "test:updateActionMediumLego";
     let update_action_func = build_action_func(update_action_code, fn_name)?;
+
+    // Build Delete Action Func
+    let delete_action_code = "async function main() {
+        return { payload: null, status: \"ok\" };
+    }";
+
+    let fn_name = "test:deleteActionMediumLego";
+    let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldMediumLegoAsset";
@@ -106,6 +115,12 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(ActionKind::Destroy)
+                        .func_unique_id(&delete_action_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -115,6 +130,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_odd_lego(
         .func(refresh_action_func)
         .func(create_action_func)
         .func(update_action_func)
+        .func(delete_action_func)
         .func(medium_lego_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .schema(medium_lego_schema)
@@ -160,6 +176,14 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
             }";
     let fn_name = "test:updateActionMediumLego";
     let update_action_func = build_action_func(update_action_code, fn_name)?;
+
+    // Build Delete Action Func
+    let delete_action_code = "async function main() {
+        return { payload: null, status: \"ok\" };
+    }";
+
+    let fn_name = "test:deleteActionMediumLego";
+    let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
     // Create Scaffold Func
     let fn_name = "test:scaffoldMediumLegoAsset";
@@ -218,6 +242,12 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
                         .func_unique_id(&update_action_func.unique_id)
                         .build()?,
                 )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(ActionKind::Destroy)
+                        .func_unique_id(&delete_action_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -227,6 +257,7 @@ pub(crate) async fn migrate_test_exclusive_schema_medium_even_lego(
         .func(refresh_action_func)
         .func(create_action_func)
         .func(update_action_func)
+        .func(delete_action_func)
         .func(medium_lego_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .schema(medium_lego_schema)
