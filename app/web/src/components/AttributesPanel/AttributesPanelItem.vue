@@ -133,6 +133,7 @@
                 :key="source"
               >
                 <DropdownMenuItem
+                  checkable
                   :checked="propSource === source"
                   :label="source"
                   @click="setSource(source)"

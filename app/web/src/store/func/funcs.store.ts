@@ -53,6 +53,10 @@ export interface DeleteFuncResponse {
   name: string;
 }
 
+export interface BindingWithDisplayName extends Action {
+  displayName: string;
+}
+
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetsStore = useChangeSetsStore();
@@ -149,6 +153,32 @@ export const useFuncStore = () => {
           componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
 
         funcList: (state) => _.values(state.funcsById),
+
+        actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
+          const _bindings = [] as BindingWithDisplayName[];
+          const variant =
+            componentsStore.schemaVariantsById[
+              componentsStore.selectedComponent?.schemaVariantId || ""
+            ];
+          variant?.funcIds.forEach((funcId) => {
+            const summary = this.funcsById[funcId];
+            const actions = this.actionBindings[funcId]?.filter(
+              (b) =>
+                b.schemaVariantId ===
+                componentsStore.selectedComponent?.schemaVariantId,
+            );
+            if (actions && actions.length > 0) {
+              actions.forEach((b) => {
+                const a = _.cloneDeep(b) as BindingWithDisplayName;
+                a.displayName = summary?.displayName || "<Unknown>";
+                _bindings.push(a);
+              });
+            }
+          });
+          return _bindings.sort((_a, _b) =>
+            _a.displayName.localeCompare(_b.displayName),
+          );
+        },
       },
 
       actions: {

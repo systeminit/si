@@ -9,7 +9,7 @@
     loadingTooltip="Attaching new function..."
     @click="onClick"
   >
-    <DropdownMenu ref="menuRef" compact forceAlignRight>
+    <DropdownMenu ref="menuRef" forceAlignRight>
       <DropdownMenuItem
         icon="plus"
         :disabled="assetStore.selectedSchemaVariant?.isLocked"

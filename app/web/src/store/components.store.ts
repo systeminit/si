@@ -221,7 +221,6 @@ const edgeFromRawEdge =
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
-
   const changeSetsStore = useChangeSetsStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD

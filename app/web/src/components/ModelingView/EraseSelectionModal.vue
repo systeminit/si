@@ -1,6 +1,6 @@
 <template>
   <Modal ref="modalRef" :title="'Are you sure?'">
-    <div class="max-h-[80vh] overflow-hidden flex flex-col gap-sm">
+    <div class="max-h-[70vh] overflow-hidden flex flex-col gap-sm">
       <div>
         You are about to erase
         {{

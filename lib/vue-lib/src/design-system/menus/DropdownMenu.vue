@@ -6,18 +6,25 @@
       v-bind="dynamicAttrs"
       :class="
         clsx(
-          'z-100 fixed text-sm rounded-md p-2xs shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
-          'bg-black text-white',
-          // 'outline dark:outline-1 dark:focus:outline-2 outline-pink',
-          'outline outline-0 dark:outline-1 outline-offset-0 dark:outline-neutral-300',
+          'z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden text-white bg-black',
+          '',
+          variant === 'editor'
+            ? 'rounded border border-neutral-600 min-w-[164px]'
+            : 'p-2xs outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
           isRepositioning && 'opacity-0',
-          // themeClasses('bg-white text-black', 'bg-black text-white'),
         )
       "
       :style="computedStyle"
+      @mouseenter="setHover"
+      @mouseleave="clearHover"
     >
       <!-- items can be passed in via props -->
-      <DropdownMenuItem v-for="item in items" :key="item.label" v-bind="item" />
+      <DropdownMenuItem
+        v-for="item in items"
+        :key="item.label"
+        v-bind="item"
+        :insideSubmenu="submenu"
+      />
 
       <!-- or use DropdownMenuItem in the default slot -->
       <slot />
@@ -27,7 +34,7 @@
 
 <script lang="ts">
 type DropdownMenuContext = {
-  compact: boolean;
+  variant: DropdownMenuVariant;
   isOpen: Ref<boolean>;
   isCheckable: Ref<boolean>;
   focusedItemId: Ref<string | undefined>;
@@ -36,8 +43,9 @@ type DropdownMenuContext = {
   unregisterItem(id: string): void;
 
   open(e?: MouseEvent, anchorToMouse?: boolean): void;
-  close(): void;
+  close(shouldClose: boolean): void;
   focusOnItem(id?: string): void;
+  openSubmenu(id?: string): void;
 };
 
 export const DropdownMenuContextInjectionKey: InjectionKey<DropdownMenuContext> =
@@ -71,19 +79,35 @@ import {
   unref,
 } from "vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
+import { useThemeContainer } from "../utils/theme_tools";
 
 export type DropdownMenuItemObjectDef = InstanceType<
   typeof DropdownMenuItem
 >["$props"];
 
+export type DropdownMenuVariant = "classic" | "compact" | "editor";
+
+useThemeContainer("dark");
+
+// For Submenus, the anchorTo prop holds an object with this info -
+interface SubmenuParent {
+  $el: Element;
+  close: (shouldNotClose?: boolean, closeRecursively?: boolean) => void;
+}
+
 const props = defineProps({
   anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
   forceAbove: Boolean,
+  forceRight: Boolean,
+  submenu: Boolean, // If this is a submenu, the parent menu element is in the anchorTo prop!
   forceAlignRight: Boolean,
   items: {
     type: Array as PropType<DropdownMenuItemObjectDef[]>,
   },
-  compact: Boolean, // apply more compact styles to this dropdown
+  variant: {
+    type: String as PropType<DropdownMenuVariant>,
+    default: "compact",
+  },
 });
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -131,10 +155,7 @@ function refreshSortedItemIds() {
 // some settings come from the children
 // ex: the menu being "checkable" is based on if any children have checkable set
 function refreshSettingsFromItems() {
-  isCheckable.value = _.some(
-    itemsById,
-    (item) => item.props?.checked !== undefined,
-  );
+  isCheckable.value = _.some(itemsById, (item) => !!item.props?.checkable);
 }
 
 // Focused item management //////////////////////////////////////////////////////////////////////////////
@@ -207,9 +228,18 @@ function finishOpening() {
   startListening();
   readjustMenuPosition();
 }
-function close() {
+function close(shouldNotClose = false, closeRecursively = true) {
+  if (shouldNotClose) return;
   isOpen.value = false;
   stopListening();
+  if (
+    props.submenu &&
+    props.anchorTo &&
+    props.anchorTo.close &&
+    closeRecursively
+  ) {
+    (props.anchorTo as SubmenuParent).close();
+  }
   // TODO: could return focus to the menu button (if one exists)
 }
 
@@ -239,6 +269,9 @@ function readjustMenuPosition() {
   // try positioning the menu aligned left with the anchor, and if goes off screen align right with end of screen
   hAlign.value = "left";
   posX.value = anchorRect.x;
+  if (props.submenu) {
+    posX.value = anchorRect.right;
+  }
   // NOTE - window.innerWidth was including scrollbar width, so throwing off calc
   const windowWidth = document.documentElement.clientWidth;
   if (props.forceAlignRight) {
@@ -252,6 +285,9 @@ function readjustMenuPosition() {
   // try positioning the menu below the anchor, and otherwise position above
   vAlign.value = "below";
   posY.value = anchorRect.bottom + 4;
+  if (props.submenu) {
+    posY.value = anchorRect.top;
+  }
   if (props.forceAbove || posY.value + menuRect.height > window.innerHeight) {
     vAlign.value = "above";
     posY.value = window.innerHeight - (anchorRect.top - 4);
@@ -272,11 +308,29 @@ function startListening() {
   window.addEventListener("mousedown", onWindowMousedown);
 }
 function onWindowMousedown(e: MouseEvent) {
-  // we normally close on mousedown, but if the thing being clicked is an item in this menu
-  // we want to let the click through to enable the normal behaviour and then close after the click fires (mouseup)
-  if (e.target instanceof Element && internalRef.value?.contains(e.target)) {
-    window.addEventListener("click", close, { once: true });
-  } else {
+  if (
+    e.target instanceof Element &&
+    e.target.getAttribute("role") === "menuitem"
+  ) {
+    // do not close if the item clicked is in a submenu, allow the submenu to handle the click and whether or not to close
+    return;
+  } else if (
+    e.target instanceof Element &&
+    internalRef.value?.contains(e.target)
+  ) {
+    // then detect clicks on one of this menu's children and respond accordingly
+    const noCloseOnClick = Boolean(
+      e.target.getAttribute("data-no-close-on-click"),
+    );
+    window.addEventListener(
+      "click",
+      () => {
+        close(noCloseOnClick);
+      },
+      { once: true },
+    );
+  } else if (!(props.submenu && e.target === props.anchorTo?.$el)) {
+    // finally, close this menu unless it is a submenu and the element being clicked is the parent
     close();
   }
 }
@@ -302,7 +356,7 @@ function onKeyboardEvent(e: KeyboardEvent) {
 }
 function stopListening() {
   window.removeEventListener("keydown", onKeyboardEvent);
-  window.removeEventListener("click", onWindowMousedown);
+  window.removeEventListener("mousedown", onWindowMousedown);
 }
 
 // additional attributes bound onto the root node - used for accessibility attributes
@@ -313,6 +367,15 @@ const dynamicAttrs = computed(() => ({
   // 'aria-labelledby': dom(api.buttonRef)?.id,
 }));
 
+// handling submenus
+function openSubmenu(id?: string) {
+  Object.values(itemsById).forEach((item) => {
+    if (item.refs.submenuRef) {
+      (item.refs.submenuRef as SubmenuParent).close(false, false);
+    }
+  });
+}
+
 // Externally exposed info /////////////////////////////////////////////////////////////////////////////////////////
 
 // this object gets provided to the child DropDownMenuItems
@@ -320,20 +383,31 @@ const context = {
   isOpen: readOnlyIsOpen,
   isCheckable,
   focusedItemId,
-  compact: props.compact,
+  variant: props.variant,
   open,
   close,
   registerItem,
   unregisterItem,
   focusOnItem,
+  openSubmenu,
 };
 provide(DropdownMenuContextInjectionKey, context);
+
+const hovered = ref(false);
+
+const setHover = () => {
+  hovered.value = true;
+};
+const clearHover = () => {
+  hovered.value = false;
+};
 
 // this is what is exposed to the component usign this component (via template ref)
 defineExpose({
   isOpen: readOnlyIsOpen,
   open,
   close,
+  hovered,
 });
 </script>
 

@@ -10,9 +10,14 @@
     "
     @click="clickHandler"
   >
-    <Toggle :selected="!!action" :click="() => {}" />
-    <StatusIndicatorIcon type="action" :status="binding.kind" tone="inherit" />
-    <div class="font-bold">{{ binding.displayName }}</div>
+    <Toggle :selected="!!action" class="flex-none" />
+    <StatusIndicatorIcon
+      type="action"
+      :status="binding.kind"
+      tone="inherit"
+      class="flex-none"
+    />
+    <div class="font-bold leading-normal">{{ binding.displayName }}</div>
 
     <Icon
       v-if="addRequestStatus.isPending || removeRequestStatus.isPending"
@@ -27,12 +32,11 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Icon, themeClasses, Toggle } from "@si/vue-lib/design-system";
 import { useActionsStore } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { Action } from "@/api/sdf/dal/func";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
-import Toggle from "./Toggle.vue";
 
 interface BindingWithDisplayName extends Action {
   displayName: string;

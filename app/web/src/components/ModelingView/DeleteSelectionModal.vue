@@ -1,6 +1,6 @@
 <template>
   <Modal ref="modalRef" :title="'Are you sure?'">
-    <div class="max-h-[80vh] overflow-hidden flex flex-col">
+    <div class="max-h-[70vh] overflow-hidden flex flex-col">
       <template v-if="selectedEdge">
         <p>You're about to delete the following edge:</p>
         <EdgeCard :edgeId="selectedEdge.id" />

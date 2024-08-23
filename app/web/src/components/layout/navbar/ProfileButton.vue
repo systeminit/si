@@ -48,6 +48,7 @@
     </template>
     <template #dropdownContentSecondary>
       <DropdownMenuItem
+        checkable
         :checked="!userOverrideTheme"
         icon="bolt"
         @select="userOverrideTheme = null"
@@ -55,6 +56,7 @@
         System theme
       </DropdownMenuItem>
       <DropdownMenuItem
+        checkable
         :checked="userOverrideTheme === 'light'"
         icon="sun"
         @select="userOverrideTheme = 'light'"
@@ -62,6 +64,7 @@
         Light theme
       </DropdownMenuItem>
       <DropdownMenuItem
+        checkable
         :checked="userOverrideTheme === 'dark'"
         icon="moon"
         @select="userOverrideTheme = 'dark'"
