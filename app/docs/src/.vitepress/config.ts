@@ -79,8 +79,8 @@ export default defineConfig({
             link: "/tutorials/actions-and-resources",
           },
           {
-            text: "Creating a new Asset",
-            link: "/tutorials/creating-new-assets",
+            text: "Creating Components",
+            link: "/tutorials/creating-components",
           },
         ],
       },
@@ -113,12 +113,20 @@ export default defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Vocabulary",
-            link: "/reference/vocabulary",
+            text: "Asset Schema",
+            link: "/reference/asset/schema",
+          },
+          {
+            text: "Asset Functions",
+            link: "/reference/asset/function",
           },
           {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
+          },
+          {
+            text: "Vocabulary",
+            link: "/reference/vocabulary",
           },
         ],
       },
