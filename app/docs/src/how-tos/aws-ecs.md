@@ -224,9 +224,6 @@ Set the `desiredCount` to be `1`.
 
 Set the `description` to be `Service to run my demo application`.
 
-Connect the `ARN` output socket of the `application-cluster` component to the
-`Cluster ARN` input socket of this `demo-service` component.
-
 Connect the `Subnet ID` output socket of each of the private subnet components
 to the `Subnet ID` input socket of this `demo-service` component.
 
