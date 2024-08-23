@@ -69,7 +69,10 @@ async fn save_variant(ctx: &mut DalContext) {
     );
     assert_eq!(Some("main".to_string()), func.handler);
     assert_eq!(
-        Some("function main() {\n  return new AssetBuilder().build()\n}".to_string()),
+        Some(
+            "function main() {\n  const asset = new AssetBuilder();\n  return asset.build();\n}"
+                .to_string()
+        ),
         func.code_plaintext().expect("Unable to get code plaintext")
     );
 
