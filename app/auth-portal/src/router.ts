@@ -6,6 +6,7 @@ import posthog from "posthog-js";
 import storage from "local-storage-fallback";
 import WorkspaceDetailsPage from "@/pages/WorkspaceDetailsPage.vue";
 import QuarantineNoticePage from "@/pages/QuarantineNoticePage.vue";
+import SuspendedNoticePage from "@/pages/SuspendedNoticePage.vue";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
@@ -97,6 +98,11 @@ export const routerOptions: RouterOptions = {
       path: "/quarantine-notice",
       name: "quarantine-notice",
       component: QuarantineNoticePage,
+    },
+    {
+      path: "/suspension-notice",
+      name: "suspension-notice",
+      component: SuspendedNoticePage,
     },
     { path: "/:catchAll(.*)", name: "404", component: NotFoundPage },
   ],

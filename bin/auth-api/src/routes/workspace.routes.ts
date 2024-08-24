@@ -18,7 +18,9 @@ import {
   patchWorkspace,
   deleteWorkspace,
   removeUser,
-  userRoleForWorkspace, LOCAL_WORKSPACE_URL, SAAS_WORKSPACE_URL,
+  userRoleForWorkspace,
+  LOCAL_WORKSPACE_URL,
+  SAAS_WORKSPACE_URL,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -53,10 +55,7 @@ async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
   const workspace = await extractWorkspaceIdParam(ctx);
 
   const authUser = extractAuthUser(ctx);
-  const memberRole = await userRoleForWorkspace(
-    authUser.id,
-    workspace.id,
-  );
+  const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
   if (!memberRole) {
     throw new ApiError("Forbidden", "You do not have access to that workspace");
   }
@@ -194,7 +193,12 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     }),
   );
 
-  await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName, workspace.quarantinedAt);
+  await patchWorkspace(
+    workspace.id,
+    reqBody.instanceUrl,
+    reqBody.displayName,
+    workspace.quarantinedAt,
+  );
 
   ctx.body = await getUserWorkspaces(authUser.id);
 });
@@ -204,13 +208,21 @@ router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
 
   const workspace = await extractWorkspaceIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    isQuarantined: z.boolean(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isQuarantined: z.boolean(),
+    }),
+  );
 
   const quarantinedAt = reqBody.isQuarantined ? new Date() : null;
 
-  await patchWorkspace(workspace.id, workspace.instanceUrl, workspace.displayName, quarantinedAt);
+  await patchWorkspace(
+    workspace.id,
+    workspace.instanceUrl,
+    workspace.displayName,
+    quarantinedAt,
+  );
 
   ctx.body = await getUserWorkspaces(authUser.id);
 });
@@ -308,7 +320,10 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   if (workspace.quarantinedAt !== null) {
-    throw new ApiError("Unauthorized", `This workspace (ID ${workspace.id}) is quarantined. Contact SI support`);
+    throw new ApiError(
+      "Unauthorized",
+      `This workspace (ID ${workspace.id}) is quarantined. Contact SI support`,
+    );
   }
 
   const authUser = extractAuthUser(ctx);

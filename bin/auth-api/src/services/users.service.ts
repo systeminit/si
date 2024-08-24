@@ -60,6 +60,30 @@ export async function createInvitedUser(email: string) {
   });
 }
 
+export async function getSuspendedUsers() {
+  const suspendedUsers = await prisma.user.findMany({
+    where: {
+      suspendedAt: {
+        not: null,
+      },
+    },
+  });
+
+  return suspendedUsers;
+}
+
+export async function getQuarantinedUsers() {
+  const quarantinedUsers = await prisma.user.findMany({
+    where: {
+      quarantinedAt: {
+        not: null,
+      },
+    },
+  });
+
+  return quarantinedUsers;
+}
+
 export async function createOrUpdateUserFromAuth0Details(
   auth0UserData: Auth0.User,
 ) {

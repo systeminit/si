@@ -9,6 +9,8 @@ import {
 
 import { CustomRouteContext } from "../custom-state";
 import {
+  getQuarantinedUsers,
+  getSuspendedUsers,
   getUserById,
   refreshUserAuth0Profile,
   saveUser,
@@ -72,15 +74,15 @@ router.patch("/users/:userId/quarantine", async (ctx) => {
   const targetUser = await extractUserIdParam(ctx);
 
   if (targetUser.id === authUser.id) {
-    throw new ApiError(
-      "Forbidden",
-      "An account cannot quarantine itself",
-    );
+    throw new ApiError("Forbidden", "An account cannot quarantine itself");
   }
 
-  const reqBody = validate(ctx.request.body, z.object({
-    isQuarantined: z.boolean(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isQuarantined: z.boolean(),
+    }),
+  );
   targetUser.quarantinedAt = reqBody.isQuarantined ? new Date() : null;
 
   await saveUser(targetUser);
@@ -88,20 +90,92 @@ router.patch("/users/:userId/quarantine", async (ctx) => {
   ctx.body = { user: targetUser };
 });
 
+router.patch("/users/:userId/suspend", async (ctx) => {
+  // Fail on bad auth user
+  const authUser = extractAdminAuthUser(ctx);
+
+  const targetUser = await extractUserIdParam(ctx);
+
+  if (targetUser.id === authUser.id) {
+    throw new ApiError("Forbidden", "An account cannot suspend itself");
+  }
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isSuspended: z.boolean(),
+    }),
+  );
+  targetUser.suspendedAt = reqBody.isSuspended ? new Date() : null;
+
+  await saveUser(targetUser);
+
+  ctx.body = { user: targetUser };
+});
+
+export type SuspendedUser = {
+  userId: string;
+  email: string;
+  suspendedAt: Date | null;
+};
+router.get("/users/suspended", async (ctx) => {
+  extractAuthUser(ctx);
+
+  const suspended: SuspendedUser[] = [];
+  const suspendedUsers = await getSuspendedUsers();
+
+  suspendedUsers.forEach((sm) => {
+    suspended.push({
+      userId: sm.id,
+      email: sm.email,
+      suspendedAt: sm.suspendedAt,
+    });
+  });
+
+  ctx.body = suspended;
+});
+
+export type QuarantinedUsuer = {
+  userId: string;
+  email: string;
+  quarantinedAt: Date | null;
+};
+router.get("/users/quarantined", async (ctx) => {
+  extractAuthUser(ctx);
+
+  const quarantined: QuarantinedUsuer[] = [];
+  const quarantinedUsers = await getQuarantinedUsers();
+
+  quarantinedUsers.forEach((qm) => {
+    quarantined.push({
+      userId: qm.id,
+      email: qm.email,
+      quarantinedAt: qm.quarantinedAt,
+    });
+  });
+
+  ctx.body = quarantined;
+});
+
 router.patch("/users/:userId", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    // TODO: add checks on usernames looking right
-    // TODO: figure out way to avoid marking everything as nullable
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
-    nickname: z.string(),
-    email: z.string().email(),
-    pictureUrl: z.string().url().nullable(),
-    discordUsername: z.string().nullable(),
-    githubUsername: z.string().nullable(),
-  }).partial());
+  const reqBody = validate(
+    ctx.request.body,
+    z
+      .object({
+        // TODO: add checks on usernames looking right
+        // TODO: figure out way to avoid marking everything as nullable
+        firstName: z.string().nullable(),
+        lastName: z.string().nullable(),
+        nickname: z.string(),
+        email: z.string().email(),
+        pictureUrl: z.string().url().nullable(),
+        discordUsername: z.string().nullable(),
+        githubUsername: z.string().nullable(),
+      })
+      .partial(),
+  );
 
   _.assign(user, reqBody);
   await saveUser(user);
@@ -112,12 +186,19 @@ router.patch("/users/:userId", async (ctx) => {
 router.post("/users/:userId/complete-tutorial-step", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
-  const reqBody = validate(ctx.request.body, z.object({
-    step: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      step: z.string(),
+    }),
+  );
 
   // using _.set fills in missing wrapper objects if necessary...
-  _.set(user, ["onboardingDetails", "vroStepsCompletedAt", reqBody.step], new Date());
+  _.set(
+    user,
+    ["onboardingDetails", "vroStepsCompletedAt", reqBody.step],
+    new Date(),
+  );
 
   await saveUser(user);
 
@@ -152,11 +233,19 @@ router.post("/users/:userId/resend-email-verification", async (ctx) => {
     throw new ApiError("Conflict", "User has no auth0 id");
   }
   if (user.emailVerified) {
-    throw new ApiError("Conflict", "EmailAlreadyVerified", "Email is already verified");
+    throw new ApiError(
+      "Conflict",
+      "EmailAlreadyVerified",
+      "Email is already verified",
+    );
   }
   await refreshUserAuth0Profile(user);
   if (user.emailVerified) {
-    throw new ApiError("Conflict", "EmailAlreadyVerified", "Email is already verified");
+    throw new ApiError(
+      "Conflict",
+      "EmailAlreadyVerified",
+      "Email is already verified",
+    );
   }
 
   await resendAuth0EmailVerification(user.auth0Id);
@@ -177,23 +266,32 @@ router.post("/tos-agreement", async (ctx) => {
     throw new ApiError("Unauthorized", "You are not logged in");
   }
 
-  const reqBody = validate(ctx.request.body, z.object({
-    // TODO: validate the version is a real one... need to decide on format and how it will be stored
-    tosVersionId: z.string(),
-  }));
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      // TODO: validate the version is a real one... need to decide on format and how it will be stored
+      tosVersionId: z.string(),
+    }),
+  );
 
   const userAgreedVersion = ctx.state.authUser.agreedTosVersion;
   if (userAgreedVersion && userAgreedVersion > reqBody.tosVersionId) {
     throw new ApiError("Conflict", "Cannot agree to earlier version of TOS");
   }
-  const agreement = await saveTosAgreement(ctx.state.authUser, reqBody.tosVersionId, ctx.state.clientIp);
+  const agreement = await saveTosAgreement(
+    ctx.state.authUser,
+    reqBody.tosVersionId,
+    ctx.state.clientIp,
+  );
   ctx.body = agreement;
 });
 
 router.get("/users/:userId/firstTimeModal", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
-  ctx.body = { firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal };
+  ctx.body = {
+    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+  };
 });
 
 router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
@@ -203,5 +301,7 @@ router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
 
   await saveUser(user);
 
-  ctx.body = { firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal };
+  ctx.body = {
+    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+  };
 });
