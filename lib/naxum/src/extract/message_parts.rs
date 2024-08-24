@@ -10,7 +10,10 @@ use crate::{
     MessageHead,
 };
 
-use super::{rejection::StringRejection, FromMessage, FromMessageHead};
+use super::{
+    rejection::{NoReplyRejection, StringRejection},
+    FromMessage, FromMessageHead,
+};
 
 #[async_trait]
 impl<S, R> FromMessage<S, R> for R
@@ -42,6 +45,17 @@ impl<S> FromMessageHead<S> for Reply {
 
     async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(Self(head.reply.clone()))
+    }
+}
+
+pub struct RequiredReply(pub Subject);
+
+#[async_trait]
+impl<S> FromMessageHead<S> for RequiredReply {
+    type Rejection = NoReplyRejection;
+
+    async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self(head.reply.clone().ok_or(NoReplyRejection)?))
     }
 }
 
