@@ -106,7 +106,7 @@
         }"
       >
         <DiagramIcon
-          v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
+          v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
           :key="`status-icon-${i}`"
           :color="
             statusIcon.color || statusIcon.tone
@@ -268,6 +268,10 @@ import { Tween } from "konva/lib/Tween";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import {
+  QualificationStatus,
+  statusIconsForComponent,
+} from "@/store/qualifications.store";
+import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
   DiagramNodeData,
@@ -301,6 +305,9 @@ const props = defineProps({
   isLoading: Boolean,
   isHovered: Boolean,
   isSelected: Boolean,
+  qualificationStatus: {
+    type: String as PropType<QualificationStatus>,
+  },
 });
 
 const emit = defineEmits<{
@@ -310,9 +317,16 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const componentId = computed(() => props.node.def.componentId);
 
+const statusIcons = computed(() =>
+  statusIconsForComponent(
+    props.qualificationStatus,
+    props.node.def.hasResource,
+  ),
+);
+
 const diffIconHover = ref(false);
 const statusIconHovers = ref(
-  new Array(props.node.def.statusIcons?.length || 0).fill(false),
+  new Array(statusIcons.value.length || 0).fill(false),
 );
 
 const { theme } = useTheme();
@@ -424,7 +438,7 @@ const nodeBodyHeight = computed(() => {
     SOCKET_SIZE / 2 +
     // TODO: this isn't right yet!
     NODE_PADDING_BOTTOM +
-    (props.node.def.statusIcons?.length ? 30 : 0)
+    (statusIcons?.value.length ? 30 : 0)
   );
 });
 const nodeHeight = computed(

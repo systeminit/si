@@ -47,10 +47,6 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import {
-  QualificationStatus,
-  useQualificationsStore,
-} from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 
 type RequestUlid = string;
@@ -86,17 +82,6 @@ export type Categories = {
   displayName: string;
   schemaVariants: SchemaVariant[];
 }[];
-
-const qualificationStatusToIconMap: Record<
-  QualificationStatus | "notexists",
-  DiagramStatusIcon
-> = {
-  success: { icon: "check-hex-outline", tone: "success" },
-  warning: { icon: "check-hex-outline", tone: "warning" },
-  failure: { icon: "x-hex-outline", tone: "error" },
-  running: { icon: "loader", tone: "info" },
-  notexists: { icon: "none" },
-};
 
 export interface AttributeDebugView {
   path: string;
@@ -462,31 +447,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           diagramNodes(): DiagramNodeDef[] {
-            const qualificationsStore = useQualificationsStore();
-
-            // adding logo and qualification info into the nodes
-            // TODO: probably want to include logo directly
             return _.map(this.allComponents, (component) => {
-              const componentId = component.id;
-
-              const qualificationStatus =
-                qualificationsStore.qualificationStatusByComponentId[
-                  componentId
-                ];
-
-              // TODO: probably dont need this generic status icon setup anymore...
-              const statusIcons: DiagramStatusIcon[] = _.compact([
-                {
-                  ...qualificationStatusToIconMap[
-                    qualificationStatus ?? "notexists"
-                  ],
-                  tabSlug: "qualifications",
-                },
-                component.hasResource
-                  ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
-                  : { icon: "none" },
-              ]);
-
               return {
                 ...component,
                 // swapping "id" to be node id and passing along component id separately for the diagram
@@ -497,7 +458,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 subtitle: component.schemaName,
                 canBeUpgraded: component.canBeUpgraded,
                 typeIcon: component?.icon || "logo-si",
-                statusIcons,
               };
             });
           },
