@@ -73,6 +73,15 @@ impl error::Error for StringRejection {
 }
 
 define_rejection! {
+    #[status_code = 400]
+    #[body = "Reply was required for message but none was found"]
+    /// Rejection type for [`RequiredReply`].
+    ///
+    /// This rejection is used if a reply was expected on a message but one was not provided.
+    pub struct NoReplyRejection;
+}
+
+define_rejection! {
     #[status_code = 422]
     #[body = "Failed to deserialize the JSON body into the target type"]
     /// Rejection type for [`Json`].
