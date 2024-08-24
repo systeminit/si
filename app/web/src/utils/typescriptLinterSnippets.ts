@@ -3,12 +3,11 @@ import { snippetCompletion } from "@codemirror/autocomplete";
 export const snippets = [
   // new prop
   snippetCompletion(
-    `const \${propName} = new PropBuilder()
+    `new PropBuilder()
       .setName("\${name}")
       .setKind("\${string}")
-      .setWidget(new PropWidgetDefinitionBuilder().setKind("\${text}")
-      .build())
-    .build();`,
+      .setWidget(new PropWidgetDefinitionBuilder().setKind("\${text}").build())
+      .build();`,
     {
       label: "New Prop Snippet",
       type: "function",
@@ -17,7 +16,7 @@ export const snippets = [
 
   // new secret prop
   snippetCompletion(
-    `const \${secretPropName} = new SecretPropBuilder()
+    `new SecretPropBuilder()
         .setName("\${name}")
         .setSecretKind("\${Secret Kind}")
         .build();`,
@@ -29,17 +28,14 @@ export const snippets = [
 
   // new secret definition
   snippetCompletion(
-    `const \${secretDefinition} = new SecretDefinitionBuilder()
+    `new SecretDefinitionBuilder()
         .setName("\${name}")
         .addProp(
             new PropBuilder()
             .setName("\${value}")
             .setKind("\${string}")
-            .setWidget(
-                new PropWidgetDefinitionBuilder()
-                .setKind("password")
-                .build()
-            ).build()
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("password").build())
+            .build()
         ).build();`,
     {
       label: "New Secret Definition",
@@ -49,7 +45,7 @@ export const snippets = [
 
   // basic socket
   snippetCompletion(
-    `const \${socketName} = new SocketDefinitionBuilder()
+    `new SocketDefinitionBuilder()
       .setName("\${name}")
       .setArity("\${arity}")
       .build();`,
@@ -96,16 +92,22 @@ export const snippets = [
     },
   ),
 
+  // add prop widget definition
+  snippetCompletion(
+    `new PropWidgetDefinitionBuilder().setKind("\${text}").build()`,
+    {
+      label: "New PropertyWidget Snippet",
+      type: "function",
+    },
+  ),
+
   // aws region prop
   snippetCompletion(
     `const regionProp = new PropBuilder()
         .setKind("string")
         .setName("region")
         .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
-        .setValueFrom(new ValueFromBuilder()
-            .setKind("inputSocket")
-            .setSocketName("Region")
-            .build())
+        .setValueFrom(new ValueFromBuilder().setKind("inputSocket").setSocketName("Region").build())
         .build();
 
     const regionSocket = new SocketDefinitionBuilder()
@@ -127,10 +129,7 @@ export const snippets = [
         .setWidget(new PropWidgetDefinitionBuilder().setKind("array").build())
         .addMapKeyFunc(new MapKeyFuncBuilder()
             .setKey("Name")
-            .setValueFrom(new ValueFromBuilder()
-              .setKind("prop")
-              .setPropPath(["root", "si", "name"])
-              .build())
+            .setValueFrom(new ValueFromBuilder().setKind("prop").setPropPath(["root", "si", "name"]).build())
         .build())
         .setEntry(new PropBuilder()
             .setKind("string")
