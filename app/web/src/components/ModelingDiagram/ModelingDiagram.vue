@@ -1,4 +1,4 @@
-Modeling diagram component * NOTE - uses a resize observer to react to size
+/* Modeling diagram component * NOTE - uses a resize observer to react to size
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
@@ -79,6 +79,9 @@ overflow hidden */
             :group="group"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
+            :qualificationStatus="
+              qualificationStore.qualificationStatusForComponentId(group.def.id)
+            "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
           <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -100,6 +103,9 @@ overflow hidden */
             :isSelected="elementIsSelected(node)"
             :isLoading="statusStore.componentIsLoading(node.def.id)"
             :node="node"
+            :qualificationStatus="
+              qualificationStore.qualificationStatusForComponentId(node.def.id)
+            "
             @resize="onNodeLayoutOrLocationChange(node)"
           />
           <DiagramCursor
@@ -266,6 +272,7 @@ import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
 import { SchemaVariantId, ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
+import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -327,6 +334,7 @@ const toast = useToast();
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
 const authStore = useAuthStore();
+const qualificationStore = useQualificationsStore();
 
 // scroll pan multiplied by this and zoom level when panning
 const ZOOM_PAN_FACTOR = 0.5;

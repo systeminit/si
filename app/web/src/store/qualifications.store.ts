@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { DiagramStatusIcon } from "@/components/ModelingDiagram/diagram_types";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useComponentsStore } from "./components.store";
@@ -18,6 +19,34 @@ type QualificationStats = {
   warned: number;
   failed: number;
   running: number;
+};
+
+export const qualificationStatusToIconMap: Record<
+  QualificationStatus | "notexists",
+  DiagramStatusIcon
+> = {
+  success: { icon: "check-hex-outline", tone: "success" },
+  warning: { icon: "check-hex-outline", tone: "warning" },
+  failure: { icon: "x-hex-outline", tone: "error" },
+  running: { icon: "loader", tone: "info" },
+  notexists: { icon: "none" },
+};
+
+export const statusIconsForComponent = (
+  qualificationStatus?: QualificationStatus,
+  hasResource?: boolean,
+) => {
+  const statusIcons: DiagramStatusIcon[] = _.compact([
+    {
+      ...qualificationStatusToIconMap[qualificationStatus ?? "notexists"],
+      tabSlug: "qualifications",
+    },
+    hasResource
+      ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
+      : { icon: "none" },
+  ]);
+
+  return statusIcons;
 };
 
 export const useQualificationsStore = () => {
@@ -59,6 +88,24 @@ export const useQualificationsStore = () => {
               return "success";
             });
           },
+          qualificationStatusForComponentId:
+            (state) =>
+            (componentId: ComponentId): QualificationStatus => {
+              const stats = state.qualificationStatsByComponentId[componentId];
+              if (stats) {
+                if (stats.running) {
+                  return "running";
+                }
+                if (stats.failed > 0) {
+                  return "failure";
+                }
+                if (stats.warned > 0) {
+                  return "warning";
+                }
+              }
+
+              return "success";
+            },
           qualificationStatusWithRollupsByComponentId(): Record<
             ComponentId,
             QualificationStatus | undefined

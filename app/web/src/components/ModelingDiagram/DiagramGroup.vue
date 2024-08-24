@@ -291,14 +291,14 @@
 
     <!-- status icons -->
     <v-group
-      v-if="group.def.statusIcons?.length"
+      v-if="statusIcons?.length"
       :config="{
         x: halfWidth - 2,
         y: 0,
       }"
     >
       <DiagramIcon
-        v-for="(statusIcon, i) in _.reverse(_.slice(group.def.statusIcons))"
+        v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
         :key="`status-icon-${i}`"
         :icon="statusIcon.icon"
         :color="
@@ -399,6 +399,10 @@ import {
   SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
+  QualificationStatus,
+  statusIconsForComponent,
+} from "@/store/qualifications.store";
+import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -424,6 +428,10 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+  qualificationStatus: {
+    type: String as PropType<QualificationStatus>,
+    required: false,
+  },
 });
 
 const diagramContext = useDiagramContext();
@@ -431,9 +439,16 @@ const diagramContext = useDiagramContext();
 const componentId = computed(() => props.group.def.componentId);
 const parentComponentId = computed(() => props.group.def.parentId);
 
+const statusIcons = computed(() =>
+  statusIconsForComponent(
+    props.qualificationStatus,
+    props.group.def.hasResource,
+  ),
+);
+
 const diffIconHover = ref(false);
 const statusIconHovers = ref(
-  new Array(props.group.def.statusIcons?.length || 0).fill(false),
+  new Array(statusIcons?.value.length || 0).fill(false),
 );
 
 const emit = defineEmits<{

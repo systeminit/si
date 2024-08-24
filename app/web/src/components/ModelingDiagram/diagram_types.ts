@@ -203,8 +203,6 @@ export type DiagramNodeDef = {
   componentType: ComponentType;
   /** type of node - define if this is a simple component or a type of frame */
   isGroup: boolean;
-  /** array of icons (slug and colors) to show statuses */
-  statusIcons?: DiagramStatusIcon[];
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */
@@ -215,6 +213,8 @@ export type DiagramNodeDef = {
   fromBaseChangeSet: boolean;
   /** can the component be upgraded */
   canBeUpgraded: boolean;
+  /** whether the component has a resource  */
+  hasResource: boolean;
 };
 
 export type DiagramSocketDef = {
