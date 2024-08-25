@@ -24,6 +24,7 @@
 pub mod content_address;
 pub mod edge_weight;
 pub mod graph;
+pub mod graphy;
 pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
@@ -47,7 +48,7 @@ use si_layer_cache::LayerDbError;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{Mutex, OwnedRwLockReadGuard, OwnedRwLockWriteGuard, RwLock, RwLockReadGuard};
 use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
@@ -236,17 +237,17 @@ impl std::ops::Drop for CycleCheckGuard {
 }
 
 #[must_use = "if unused the lock will be released immediately"]
-struct SnapshotReadGuard<'a> {
+struct SnapshotReadGuard {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
-    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
+    working_copy_read_guard: OwnedRwLockReadGuard<Option<WorkspaceSnapshotGraphV2>>,
 }
 
 #[must_use = "if unused the lock will be released immediately"]
-struct SnapshotWriteGuard<'a> {
-    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
+struct SnapshotWriteGuard {
+    working_copy_write_guard: OwnedRwLockWriteGuard<Option<WorkspaceSnapshotGraphV2>>,
 }
 
-impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
+impl std::ops::Deref for SnapshotReadGuard {
     type Target = WorkspaceSnapshotGraphV2;
 
     fn deref(&self) -> &Self::Target {
@@ -259,7 +260,7 @@ impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
+impl std::ops::Deref for SnapshotWriteGuard {
     type Target = WorkspaceSnapshotGraphV2;
 
     fn deref(&self) -> &Self::Target {
@@ -270,7 +271,7 @@ impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
     }
 }
 
-impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
+impl std::ops::DerefMut for SnapshotWriteGuard {
     fn deref_mut(&mut self) -> &mut Self::Target {
         let option: &mut Option<WorkspaceSnapshotGraphV2> = &mut self.working_copy_write_guard;
         &mut *option.as_mut().expect("attempted to DerefMut a snapshot without copying contents into the mutable working copy")
@@ -469,10 +470,10 @@ impl WorkspaceSnapshot {
     }
 
     #[instrument(name = "workspace_snapshot.working_copy", level = "trace", skip_all)]
-    async fn working_copy(&self) -> SnapshotReadGuard<'_> {
+    async fn working_copy(&self) -> SnapshotReadGuard {
         SnapshotReadGuard {
             read_only_graph: self.read_only_graph.clone(),
-            working_copy_read_guard: self.working_copy.read().await,
+            working_copy_read_guard: self.working_copy.clone().read_owned().await,
         }
     }
 
@@ -481,8 +482,8 @@ impl WorkspaceSnapshot {
         level = "trace",
         skip_all
     )]
-    async fn working_copy_mut(&self) -> SnapshotWriteGuard<'_> {
-        let mut working_copy = self.working_copy.write().await;
+    async fn working_copy_mut(&self) -> SnapshotWriteGuard {
+        let mut working_copy = self.working_copy.clone().write_owned().await;
         if working_copy.is_none() {
             // Make a copy of the read only graph as our new working copy
             *working_copy = Some(self.read_only_graph.inner().clone());
@@ -721,7 +722,7 @@ impl WorkspaceSnapshot {
         Ok(self
             .working_copy()
             .await
-            .nodes()
+            .all_nodes()
             .map(|(weight, index)| (weight.to_owned(), index))
             .collect())
     }
@@ -731,7 +732,7 @@ impl WorkspaceSnapshot {
         Ok(self
             .working_copy()
             .await
-            .edges()
+            .all_edges()
             .map(|(weight, from, to)| (weight.to_owned(), from, to))
             .collect())
     }

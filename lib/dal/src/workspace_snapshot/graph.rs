@@ -413,6 +413,10 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(None)
     }
 
+    pub fn edges(&self, node_index: NodeIndex) -> Edges<EdgeWeight, Directed, u32> {
+        self.graph.edges(node_index)
+    }
+
     pub fn edges_directed(
         &self,
         node_index: NodeIndex,
@@ -449,14 +453,14 @@ impl WorkspaceSnapshotGraphV2 {
             .collect()
     }
 
-    pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
+    pub fn all_nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
         self.graph.node_indices().filter_map(|node_idx| {
             self.get_node_weight_opt(node_idx)
                 .map(|weight| (weight, node_idx))
         })
     }
 
-    pub fn edges(&self) -> impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)> {
+    pub fn all_edges(&self) -> impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)> {
         self.graph.edge_indices().filter_map(|edge_idx| {
             self.get_edge_weight_opt(edge_idx)
                 .ok()
