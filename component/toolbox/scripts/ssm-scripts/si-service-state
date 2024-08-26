@@ -1,0 +1,36 @@
+---
+schemaVersion: "2.2"
+description: "Run an binary service action, either stop, start or upgrade"
+parameters:
+  Service:
+    type: "String"
+    description: "Service to Run on Node"
+    default: "N/A"
+  InstanceId:
+    type: "String"
+    description: "InstanceId of the executing Node"
+    default: "N/A"
+  Action:
+    type: "String"
+    description: "Action to execute on the Node"
+    default: "N/A"
+mainSteps:
+- action: "aws:runShellScript"
+  name: "example"
+  inputs:
+    runCommand:
+    - |
+        case {{ Action }} in
+            "upgrade")
+                service {{ Service }} stop
+                wget https://artifacts.systeminit.com/{{ Service }}/stable/omnibus/linux/$(arch)/{{ Service }}-stable-omnibus-linux-$(arch).tar.gz -O - | tar -xzf - -C /
+                service {{ Service }} start
+                STABLE_VERSION=$(curl -Ls https://artifacts.systeminit.com/{{ Service }}/stable/omnibus/linux/$(arch)/{{ Service }}-stable-omnibus-linux-$(arch).tar.gz.metadata.json | jq -r '.version')
+                RUNNING_VERSION=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq -r '.version')
+                echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"service\": \"{{ Service }}\", \"running\": \"$RUNNING_VERSION\", \"stable\": \"$STABLE_VERSION\" }"
+                ;;
+            *)
+                echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"error\", \"message\": \"Failed to execute action {{ Action }}, not supported.\"}"
+                ;;
+        esac
+

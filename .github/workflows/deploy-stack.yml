@@ -67,17 +67,34 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.services.outputs.services }}
+      run-sdf: ${{ steps.services.outputs.run-sdf }}
     steps:
       - id: services
         run: |
           if [ "${{ inputs.service }}" = "all" ]; then
-            echo 'services=["pinga", "rebaser", "sdf", "veritech", "web"]' >> "$GITHUB_OUTPUT"
+            echo 'services=["pinga", "rebaser", "veritech", "web"]' >> "$GITHUB_OUTPUT"
           else
             echo 'services=["${{ inputs.service }}"]' >> "$GITHUB_OUTPUT"
           fi
 
+          if [ "${{ inputs.service }}" = "all" || "${{ inputs.service }}" = "sdf" ]; then
+            echo 'run-sdf=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-sdf:
+    needs: define-deployment-matrix
+    if: ${{ needs.define-deployment-matrix.outputs.run-sdf == 'true' }}
+    uses: ./.github/workflows/deploy-service.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: sdf
+      version: ${{ inputs.version }}
+      deploy-type: ${{ inputs.deploy-type }}
+    secrets: inherit
+
   deploy-services:
-    needs: "define-deployment-matrix"
+    needs: [ "define-deployment-matrix", "deploy-sdf" ]
+    if: ${{ needs.define-deployment-matrix.outputs.run-sdf == 'true' || always() }}
     strategy:
      fail-fast: false
      matrix:

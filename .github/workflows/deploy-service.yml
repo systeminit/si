@@ -152,14 +152,22 @@ jobs:
         if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
         uses: actions/checkout@v4
 
-      - name: Deploy service
-        if: ${{ inputs.service != 'web' && inputs.deploy-type == 'binary' }}
+      - name: Deploy SDF
+        if: ${{ inputs.service == 'sdf' && inputs.deploy-type == 'binary' }}
         run: |
           # Push all the SDF replicas into maintenance mode if they're not already in it
           component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m y -a y
           # Wait an arbitrary amount of time to allow the back end to settle down with work
           sleep 30
+          # Run the migration script on one of the sdf nodes
+          component/toolbox/awsi.sh migrate -p pull-from-env -r us-east-1 -a y
           # Upgrade all the associated services
           component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}
           # Enable SDF again if it is disabled
           component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m n -a y
+
+      - name: Deploy services
+        if: ${{ inputs.service != 'web' && inputs.service != 'sdf' && inputs.deploy-type == 'binary' }}
+        run: |
+          # Upgrade all the associated services
+          component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }}

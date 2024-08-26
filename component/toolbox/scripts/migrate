@@ -1,0 +1,118 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------------------
+# Find an SDF node and run a one-shot instance to perform migrations.
+# ---------------------------------------------------------------------------------------------------
+
+set -eo pipefail
+
+# Find & Import all the supporting functions from the supporting folder
+# Get the directory of the current script to figure out where the
+# Supporting funcs are
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
+
+# Usage for this script
+usage() {
+    echo
+    echo "migrate"
+    echo "----------------------------------"
+    echo "This script will open an SSM session to the first SDF"
+    echo "instance it finds to run SDF with migration mode set to"
+    echo "RunAndQuit."
+    echo "----------------------------------"
+    echo "Usage: migrate [-p profile] [-r region] [-a automatic]"
+    echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
+    echo "  -r region         AWS region to use"
+    echo "  -a automatic      [Y/N] Run through automatically/no-interact"
+    echo "----------------------------------"
+    echo "e.g. ./awsi.sh migrate -p pull-from-env -r us-east-1 -a y"
+    exit 1
+}
+
+# Add a check to see if the script is being sourced or executed
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    usage
+fi
+
+# Parse flags
+while getopts ":p:r:a:s:m:" opt; do
+    case ${opt} in
+        p)
+            profile=$OPTARG
+            ;;
+        r)
+            region=$OPTARG
+            ;;
+        a)
+            automatic=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------------------------------
+# Main script
+# ---------------------------------------------------------------------------------------------------
+echo "$0 being invoked"
+
+# Use the profile if in the invocation
+if [[ "$profile" != "pull-from-env" ]]; then
+  profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+  export AWS_PROFILE="$profile"
+fi
+region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
+export AWS_REGION="$region"
+
+instances=$(list_instances "sdf" )
+if [ -z "$instances" ]; then
+    echo "No running instances found."
+    exit 1
+fi
+
+echo "----------------------------------------"
+echo "Running instances of sdf in the region $region:"
+printf "%-5s %-20s %-20s %-20s %-20s\n" "Index" "Name" "InstanceId" "InstanceType" "PrivateIpAddress"
+i=1
+while read -r line; do
+    name=$(echo "$line" | awk '{print $1}')
+    instance_id=$(echo "$line" | awk '{print $2}')
+    instance_type=$(echo "$line" | awk '{print $3}')
+    private_ip=$(echo "$line" | awk '{print $4}')
+    printf "%-5s %-20s %-20s %-20s %-20s\n" "$i" "$name" "$instance_id" "$instance_type" "$private_ip"
+    ((i++))
+done <<< "$instances"
+echo "----------------------------------------"
+
+[[ "${automatic,,}" == "y" ]] || read -p "Would you like to run migrations on one of these hosts? (Y/N) [takes ~60 seconds] " selection
+[[ "${automatic,,}" == "y" ]] || sassy_selection_check $selection
+
+# Setup somewhere unique to push the results of the check into if they chose to continue
+# Reset this results_directory variable between each execution run.
+results_directory="./results/$(date +"%Y-%m-%d_%H-%M-%S")"
+check_results_file=check_results.json
+start_results_file=start_results.json
+stop_results_file=stop_results.json
+upgrade_results_file=upgrade_results.json
+mkdir -p "$results_directory/"
+
+# get the first SDF and go do the thing
+while read -r line; do
+    instance_id=$(echo "$line" | awk '{print $2}')
+    start_and_track_ssm_session "$instance_id" "$sdf_migrate_script" "sdf" "migrate" "$results_directory" &
+    break
+done <<< "$instances"
+
+await_file_results "$results_directory" 2
+concat_and_output_json "$results_directory" "$check_results_file"

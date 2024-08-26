@@ -1,3 +1,4 @@
+migration_mode = "skip"
 pkgs_path = "/tmp"
 create_workspace_permissions = "$SI_WORKSPACE_PERMISSIONS"
 create_workspace_allowlist = [ "$SI_WORKSPACE_ALLOW_LIST" ]
