@@ -36,7 +36,6 @@ pub mod func;
 pub mod history_event;
 pub mod input_sources;
 pub mod job;
-pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
@@ -89,7 +88,6 @@ pub use func::{
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
-pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};

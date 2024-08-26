@@ -24,8 +24,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, pk, ChangeSetId, DalContext, HelperError, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload,
+    id, implement_add_edge_to, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
+    WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -131,7 +131,7 @@ impl From<FuncId> for si_events::FuncId {
 }
 
 // NOTE: This is here only for backward compatibility
-pk!(FuncExecutionPk);
+id!(FuncExecutionPk);
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).

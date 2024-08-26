@@ -74,7 +74,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, Component, ComponentError,
+    id, implement_add_edge_to, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
     OutputSocket, OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
 };
@@ -215,7 +215,7 @@ pub enum AttributeValueError {
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
 
-pk!(AttributeValueId);
+id!(AttributeValueId);
 
 impl From<AttributeValueId> for si_events::AttributeValueId {
     fn from(value: AttributeValueId) -> Self {

@@ -12,7 +12,7 @@ use crate::validation::ValidationError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
+    id, AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
     StandardModelError, TransactionsError,
 };
 
@@ -61,8 +61,8 @@ pub enum PropertyEditorError {
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 
 // Property editor ids used across submodules.
-pk!(PropertyEditorValueId);
-pk!(PropertyEditorPropId);
+id!(PropertyEditorValueId);
+id!(PropertyEditorPropId);
 
 impl From<AttributeValueId> for PropertyEditorValueId {
     fn from(id: AttributeValueId) -> Self {

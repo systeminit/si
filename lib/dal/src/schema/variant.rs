@@ -9,15 +9,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::ParseError;
 
-pub use json::SchemaVariantJson;
-pub use json::SchemaVariantMetadataJson;
-pub use metadata_view::SchemaVariantMetadataView;
 use si_events::{ulid::Ulid, ContentHash};
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
-pub use value_from::ValueFrom;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
 use crate::attribute::prototype::argument::{
@@ -54,6 +50,11 @@ use crate::{
 use crate::{AttributeValue, Component, ComponentError, FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
+
+pub use json::SchemaVariantJson;
+pub use json::SchemaVariantMetadataJson;
+pub use metadata_view::SchemaVariantMetadataView;
+pub use value_from::ValueFrom;
 
 pub mod authoring;
 mod json;
@@ -167,6 +168,7 @@ pub enum SchemaVariantError {
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
+// TODO(nick): replace this with "id!" once "nilId" explodes and dies.
 pk!(SchemaVariantId);
 
 impl From<si_events::SchemaVariantId> for SchemaVariantId {

@@ -18,12 +18,12 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
-    InputSocketId, SchemaVariantId,
+    id, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
+    SchemaVariantError, Timestamp, TransactionsError,
 };
 use crate::{
-    pk, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
-    SchemaVariantError, Timestamp, TransactionsError,
+    implement_add_edge_to, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
+    InputSocketId, SchemaVariantId,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
@@ -72,7 +72,7 @@ pub enum OutputSocketError {
 
 pub type OutputSocketResult<T> = Result<T, OutputSocketError>;
 
-pk!(OutputSocketId);
+id!(OutputSocketId);
 
 impl From<si_events::OutputSocketId> for OutputSocketId {
     fn from(value: si_events::OutputSocketId) -> Self {

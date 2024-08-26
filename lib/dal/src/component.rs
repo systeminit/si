@@ -56,7 +56,7 @@ use si_frontend_types::{
 };
 
 use crate::{
-    implement_add_edge_to, pk, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
+    id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
     StandardModelError, Timestamp, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
@@ -213,7 +213,7 @@ pub enum ComponentError {
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
-pk!(ComponentId);
+id!(ComponentId);
 
 impl From<ComponentId> for si_events::ComponentId {
     fn from(value: ComponentId) -> Self {
