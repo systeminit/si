@@ -47,6 +47,7 @@ pub enum KeyPairError {
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;
 
+// TODO(nick): use "id!" once "nilId" explodes and dies.
 pk!(KeyPairPk);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

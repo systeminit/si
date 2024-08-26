@@ -50,7 +50,6 @@ use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
@@ -65,7 +64,7 @@ use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    pk, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
+    id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
     Workspace, WorkspaceError,
 };
 use crate::{
@@ -73,7 +72,10 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraphV2,
 };
 
-pk!(NodeId);
+use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+
+id!(NodeId);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
     pub node_weight_kind: NodeWeightDiscriminants,

@@ -16,7 +16,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumDiscriminants};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -32,7 +32,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to, pk,
+    attribute::prototype::argument::AttributePrototypeArgumentId, id, implement_add_edge_to,
     AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
@@ -97,9 +97,7 @@ pub enum AttributePrototypeEventualParent {
     SchemaVariantFromProp(SchemaVariantId, PropId),
 }
 
-// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
-// that the argument is a new one.
-pk!(AttributePrototypeId);
+id!(AttributePrototypeId);
 
 impl From<AttributePrototypeId> for si_events::AttributePrototypeId {
     fn from(value: AttributePrototypeId) -> Self {
@@ -682,9 +680,7 @@ impl AttributePrototype {
 }
 
 #[remain::sorted]
-#[derive(
-    AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
-)]
+#[derive(AsRefStr, Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum AttributePrototypeSource {

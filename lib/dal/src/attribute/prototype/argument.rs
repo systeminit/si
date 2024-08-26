@@ -14,7 +14,7 @@ use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
-    implement_add_edge_to, pk,
+    id, implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -40,9 +40,7 @@ pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_nod
 pub mod static_value;
 pub mod value_source;
 
-// TODO(nick): switch to the "id!" macro once the frontend doesn't use the old nil id to indicate
-// that the argument is a new one.
-pk!(AttributePrototypeArgumentId);
+id!(AttributePrototypeArgumentId);
 
 impl From<si_events::AttributePrototypeArgumentId> for AttributePrototypeArgumentId {
     fn from(value: si_events::AttributePrototypeArgumentId) -> Self {

@@ -24,7 +24,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
+    id, ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
     SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, User,
     UserError,
 };
@@ -64,7 +64,7 @@ pub enum ModuleError {
 
 pub type ModuleResult<T> = Result<T, ModuleError>;
 
-pk!(ModuleId);
+id!(ModuleId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Module {

@@ -557,6 +557,7 @@ async fn set_default_schema_variant_id(
         }
         (Some(variant_unique_id), Some(spec_default_unique_id)) => {
             if variant_unique_id == spec_default_unique_id {
+                // TODO(nick): make this not rely on "nilId" since those should explode and die.
                 let current_default_variant_id = schema
                     .get_default_schema_variant_id(ctx)
                     .await?

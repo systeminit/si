@@ -19,7 +19,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, pk, DalContext, Func, FuncError, FuncId, HelperError,
+    id, implement_add_edge_to, DalContext, Func, FuncError, FuncId, HelperError,
     SchemaVariantError, Timestamp, TransactionsError,
 };
 
@@ -55,7 +55,7 @@ pub enum SchemaError {
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
-pk!(SchemaId);
+id!(SchemaId);
 
 impl From<si_events::SchemaId> for SchemaId {
     fn from(value: si_events::SchemaId) -> Self {

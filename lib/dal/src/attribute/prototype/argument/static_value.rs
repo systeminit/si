@@ -3,8 +3,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    id,
     layer_db_types::{StaticArgumentValueContent, StaticArgumentValueContentV1},
-    pk,
     workspace_snapshot::{
         content_address::ContentAddress, node_weight::NodeWeight, WorkspaceSnapshotError,
     },
@@ -13,7 +13,7 @@ use crate::{
 
 use super::AttributePrototypeArgumentResult;
 
-pk!(StaticArgumentValueId);
+id!(StaticArgumentValueId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct StaticArgumentValue {

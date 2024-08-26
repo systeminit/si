@@ -25,7 +25,7 @@ use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, label_list::ToLabelList, pk, property_editor::schema::WidgetKind,
+    id, implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
     AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
     HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
@@ -88,7 +88,7 @@ pub type PropResult<T> = Result<T, PropError>;
 
 pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
 
-pk!(PropId);
+id!(PropId);
 
 impl From<si_events::PropId> for PropId {
     fn from(value: si_events::PropId) -> Self {

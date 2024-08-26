@@ -20,7 +20,7 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, pk, AttributePrototype, AttributePrototypeId, AttributeValue,
+    id, implement_add_edge_to, AttributePrototype, AttributePrototypeId, AttributeValue,
     AttributeValueId, ComponentError, ComponentId, DalContext, FuncId, HelperError, SchemaVariant,
     SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
@@ -75,7 +75,7 @@ pub enum InputSocketError {
 
 pub type InputSocketResult<T> = Result<T, InputSocketError>;
 
-pk!(InputSocketId);
+id!(InputSocketId);
 
 impl From<si_events::InputSocketId> for InputSocketId {
     fn from(value: si_events::InputSocketId) -> Self {

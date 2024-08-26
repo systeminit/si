@@ -80,7 +80,10 @@ pub enum WorkspaceError {
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 
+// TODO(nick): switch to "id!" once "nilId" dies and explodes.
 pk!(WorkspacePk);
+
+// TODO(nick): switch to "id!" once "nilId" dies and explodes.
 pk!(WorkspaceId);
 
 impl From<WorkspacePk> for si_events::WorkspacePk {
