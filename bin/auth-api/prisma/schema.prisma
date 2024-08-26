@@ -6,9 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -51,6 +51,9 @@ model User {
 
   /// Timestamp of the latest account quarantine. `undefined` if not quarantined
   quarantinedAt DateTime? @map("quarantined_at")
+
+  /// Timestamp of the latest account suspension. `undefined` if not suspended
+  suspendedAt DateTime? @map("suspended_at")
 
   @@index(fields: [email])
   @@map("users")

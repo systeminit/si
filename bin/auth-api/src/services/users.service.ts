@@ -60,6 +60,30 @@ export async function createInvitedUser(email: string) {
   });
 }
 
+export async function getSuspendedUsers() {
+  const suspendedUsers = await prisma.user.findMany({
+    where: {
+      suspendedAt: {
+        not: null,
+      },
+    },
+  });
+
+  return suspendedUsers;
+}
+
+export async function getQuarantinedUsers() {
+  const quarantinedUsers = await prisma.user.findMany({
+    where: {
+      quarantinedAt: {
+        not: null,
+      },
+    },
+  });
+
+  return quarantinedUsers;
+}
+
 export async function createOrUpdateUserFromAuth0Details(
   auth0UserData: Auth0.User,
 ) {
@@ -175,6 +199,28 @@ function setUserDataFromAuth0Details(
     },
   );
   return user;
+}
+
+export async function getUserSignupReport(startDate: Date, endDate: Date) {
+  const signups = await prisma.user.findMany({
+    where: {
+      signupAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      firstName: true,
+      email: true,
+      discordUsername: true,
+      githubUsername: true,
+      lastName: true,
+      auth0Id: true,
+      signupAt: true,
+    },
+  });
+
+  return signups;
 }
 
 export async function saveUser(user: User) {

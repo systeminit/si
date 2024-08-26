@@ -343,7 +343,7 @@ watch([checkAuthReq, route], () => {
     }
     return;
   }
-  // Check that the user is not quarantined
+  // Check that the user is not quarantined or suspended
   if (user.value.quarantinedAt) {
     if (!["quarantine-notice"].includes(currentRouteName)) {
       saveLoginSuccessRedirect();
@@ -351,9 +351,20 @@ watch([checkAuthReq, route], () => {
     }
     return;
   }
+  if (user.value.suspendedAt) {
+    if (!["suspension-notice"].includes(currentRouteName)) {
+      saveLoginSuccessRedirect();
+      return router.push({ name: "suspension-notice" });
+    }
+    return;
+  }
 
-  // If the user is not quarantined, do not allow them to go to the quarantine notice
+  // If the user is not quarantined or suspended, do not allow them to go to the quarantine notice
   if (currentRouteName === "quarantine-notice") {
+    saveLoginSuccessRedirect();
+    return router.push({ name: "workspaces" });
+  }
+  if (currentRouteName === "suspension-notice") {
     saveLoginSuccessRedirect();
     return router.push({ name: "workspaces" });
   }

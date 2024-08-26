@@ -1,3 +1,4 @@
+import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { ApiRequest } from "@si/vue-lib/pinia";
@@ -24,6 +25,7 @@ export type User = {
   githubUsername?: string;
   discordUsername?: string;
   quarantinedAt?: ISODateString;
+  suspendedAt?: ISODateString;
   onboardingDetails?: {
     vroStepsCompletedAt?: Record<string, ISODateString>;
     reviewedProfile?: ISODateString;
@@ -34,10 +36,35 @@ export type User = {
   };
 };
 
+export type SuspendedUser = {
+  userId: UserId;
+  email: string;
+  suspendedAt: ISODateString;
+};
+
+export type QuarantinedUser = {
+  userId: UserId;
+  email: string;
+  quarantinedAt: ISODateString;
+};
+
+export type SignupUsersReport = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  signupMethod: string;
+  discordUsername?: string | null;
+  githubUsername?: string | null;
+  signupAt: Date | null;
+};
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
     waitingForAccess: false,
+    suspendedUsersState: [] as SuspendedUser[] | null,
+    quarantinedUsersState: [] as QuarantinedUser[] | null,
+    userSignupsState: [] as SignupUsersReport[] | null,
   }),
   getters: {
     // userIsLoggedIn: (state) => !!state.token,
@@ -57,6 +84,15 @@ export const useAuthStore = defineStore("auth", {
     },
     // useful to keep this logic in one place
     needsProfileUpdate: () => false, // if we need to force a profile update, change the logic here
+    suspendedUsers(state): SuspendedUser[] {
+      return _.values(state.suspendedUsersState);
+    },
+    quarantinedUsers(state): QuarantinedUser[] {
+      return _.values(state.quarantinedUsersState);
+    },
+    userSignups(state): SignupUsersReport[] {
+      return _.values(state.userSignupsState);
+    },
   },
   actions: {
     // fetches user + billing account info - called on page refresh
@@ -115,6 +151,54 @@ export const useAuthStore = defineStore("auth", {
         url: `/users/${userId}/quarantine`,
         params: {
           isQuarantined,
+        },
+        onSuccess: () => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          this.GET_SUSPENDED_USERS();
+        },
+      });
+    },
+    async SET_USER_SUSPENSION(userId: string, isSuspended: boolean) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/users/${userId}/suspend`,
+        params: {
+          isSuspended,
+        },
+        onSuccess: () => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          this.GET_SUSPENDED_USERS();
+        },
+      });
+    },
+
+    async GET_SUSPENDED_USERS() {
+      return new ApiRequest<SuspendedUser[]>({
+        url: `/users/suspended`,
+        onSuccess: (response) => {
+          this.suspendedUsersState = response;
+        },
+      });
+    },
+
+    async GET_QUARANTINED_USERS() {
+      return new ApiRequest<QuarantinedUser[]>({
+        url: `/users/quarantined`,
+        onSuccess: (response) => {
+          this.quarantinedUsersState = response;
+        },
+      });
+    },
+
+    async GET_USER_SIGNUP_REPORT(startDate: Date, endDate: Date) {
+      return new ApiRequest<SignupUsersReport[]>({
+        url: `/users/report`,
+        params: {
+          startDate,
+          endDate,
+        },
+        onSuccess: (response) => {
+          this.userSignupsState = response;
         },
       });
     },
