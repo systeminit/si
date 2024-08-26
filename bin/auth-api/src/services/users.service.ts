@@ -202,14 +202,20 @@ function setUserDataFromAuth0Details(
 }
 
 export async function getUserSignupReport(startDate: Date, endDate: Date) {
+  const startOfDay = new Date(startDate.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(endDate.setHours(23, 59, 59, 999));
   const signups = await prisma.user.findMany({
     where: {
       signupAt: {
-        gte: startDate,
-        lte: endDate,
+        lte: endOfDay,
+        gt: startOfDay,
+      },
+      NOT: {
+        signupAt: null,
       },
     },
     select: {
+      id: true,
       firstName: true,
       email: true,
       discordUsername: true,
@@ -217,6 +223,9 @@ export async function getUserSignupReport(startDate: Date, endDate: Date) {
       lastName: true,
       auth0Id: true,
       signupAt: true,
+    },
+    orderBy: {
+      signupAt: "desc",
     },
   });
 

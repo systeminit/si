@@ -171,19 +171,17 @@ router.get("/users/report", async (ctx) => {
   extractAdminAuthUser(ctx);
 
   const reqBody = validate(
-    ctx.request.body,
-    z
-      .object({
-        startDate: z.date(),
-        endDate: z.date(),
-      })
-      .partial(),
+    ctx.request.query,
+    z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }),
   );
 
   const reportUsers: SignupUsersReport[] = [];
   const signups = await getUserSignupReport(
-    reqBody.startDate!,
-    reqBody.endDate!,
+    new Date(reqBody.startDate),
+    new Date(reqBody.endDate),
   );
 
   signups.forEach((u) => {
@@ -194,12 +192,19 @@ router.get("/users/report", async (ctx) => {
       discordUsername: u.discordUsername,
       githubUsername: u.githubUsername,
       signupAt: u.signupAt,
-      signupMethod: u.auth0Id || "unknown",
+      signupMethod: extractAuthProvider(u.auth0Id),
     });
   });
 
   ctx.body = reportUsers;
 });
+
+function extractAuthProvider(authId: string | null): string {
+  if (!authId) return "unknown";
+
+  const parts = authId.split("|");
+  return parts[0] || authId;
+}
 
 router.patch("/users/:userId", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
