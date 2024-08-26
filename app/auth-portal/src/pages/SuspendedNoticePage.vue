@@ -2,17 +2,18 @@
   <RichText class="text-center">
     <h2 class="inline-flex items-center gap-4">
       <Icon class="inline-block" name="alert-circle" />
-      Account Suspended
+      Account Paused
       <Icon class="inline-block" name="alert-circle" />
     </h2>
     <p>
-      The account you are using has been suspended pending payment. It cannot
-      access System Initiative until this has been rescinded.
+      Your account has been paused pending payment or establishing your payment
+      information. You can not access System Initiative until this has been
+      resolved.
       <br />
       <br />
-      Contact us at
+      Contact
       <a href="mailto:support@systeminit.com">support@systeminit.com</a> if you
-      think this was a mistake.
+      need assistance.
     </p>
   </RichText>
 </template>
