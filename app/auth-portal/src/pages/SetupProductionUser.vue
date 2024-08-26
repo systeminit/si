@@ -294,7 +294,7 @@
               variant="solid"
               @click="getUserSignupsReport()"
             >
-              Generate User Signups Report
+              Generate Report
             </VButton>
           </div>
         </Stack>
@@ -344,7 +344,7 @@
                   <td class="normal-case">
                     {{ user.email }}
                   </td>
-                  <td class="normal-case">NOTHING HERE ;)</td>
+                  <td class="normal-case">{{ user.signupMethod }}</td>
                   <td class="normal-case">
                     {{ user.discordUsername }}
                   </td>
