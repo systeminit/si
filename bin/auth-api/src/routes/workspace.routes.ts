@@ -26,6 +26,7 @@ import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
+import { tracker } from "../lib/tracker";
 import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
@@ -215,7 +216,22 @@ router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
     }),
   );
 
-  const quarantinedAt = reqBody.isQuarantined ? new Date() : null;
+  const quarantineDate = new Date();
+  if (reqBody.isQuarantined) {
+    tracker.trackEvent(authUser, "quarantine_workspace", {
+      quarantinedBy: authUser.email,
+      quarantinedAt: quarantineDate,
+      workspaceId: workspace.id,
+    });
+  } else {
+    tracker.trackEvent(authUser, "unquarantine_workspace", {
+      unQuarantinedBy: authUser.email,
+      unQuarantinedAt: quarantineDate,
+      workspaceId: workspace.id,
+    });
+  }
+
+  const quarantinedAt = reqBody.isQuarantined ? quarantineDate : null;
 
   await patchWorkspace(
     workspace.id,
