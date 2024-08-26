@@ -17,6 +17,7 @@ import {
   saveUser,
 } from "../services/users.service";
 import { resendAuth0EmailVerification } from "../services/auth0.service";
+import { tracker } from "../lib/tracker";
 import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/whoami", async (ctx) => {
@@ -84,7 +85,21 @@ router.patch("/users/:userId/quarantine", async (ctx) => {
       isQuarantined: z.boolean(),
     }),
   );
-  targetUser.quarantinedAt = reqBody.isQuarantined ? new Date() : null;
+
+  const quarantineDate = new Date();
+  if (reqBody.isQuarantined) {
+    tracker.trackEvent(targetUser, "quarantine_user", {
+      quarantinedBy: authUser.email,
+      quarantinedAt: quarantineDate,
+    });
+  } else {
+    tracker.trackEvent(targetUser, "unquarantine_user", {
+      unQuarantinedBy: authUser.email,
+      unQuarantinedAt: quarantineDate,
+    });
+  }
+
+  targetUser.quarantinedAt = reqBody.isQuarantined ? quarantineDate : null;
 
   await saveUser(targetUser);
 
@@ -107,7 +122,21 @@ router.patch("/users/:userId/suspend", async (ctx) => {
       isSuspended: z.boolean(),
     }),
   );
-  targetUser.suspendedAt = reqBody.isSuspended ? new Date() : null;
+
+  const suspensionDate = new Date();
+  if (reqBody.isSuspended) {
+    tracker.trackEvent(targetUser, "suspend_user", {
+      suspendedBy: authUser.email,
+      suspendedAt: suspensionDate,
+    });
+  } else {
+    tracker.trackEvent(targetUser, "unsuspend_user", {
+      unSuspendedBy: authUser.email,
+      unSuspendedAt: suspensionDate,
+    });
+  }
+
+  targetUser.suspendedAt = reqBody.isSuspended ? suspensionDate : null;
 
   await saveUser(targetUser);
 
