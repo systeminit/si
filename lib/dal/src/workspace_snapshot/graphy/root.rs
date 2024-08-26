@@ -1,23 +1,40 @@
+use super::{
+    Action, AnyCategory, Category, Component, DependentValueRoot, Func, GraphyCategoryElement,
+    GraphyContentNode, GraphyError, GraphyNode, GraphyNodeRef, GraphyResult, Module, Schema,
+    Secret,
+};
+use crate::{
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        node_weight::{ContentNodeWeight, NodeWeight},
+    },
+    EdgeWeightKindDiscriminants,
+};
 use si_events::ulid::Ulid;
-use crate::EdgeWeightKindDiscriminants;
-use super::*;
-use super::super::content_address::ContentAddressDiscriminants;
 
-#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef)]
-pub struct Root<'a>(pub(super) GraphyNode<'a>);
+///
+/// The root node of the graph. There can be only one.
+///
+/// Everything must be reachable from here.
+///
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct Root<'a>(GraphyNodeRef<'a>);
 
-impl<'a> GraphyNodeType<'a> for Root<'a> {
+impl<'a> GraphyNode<'a> for Root<'a> {
     type Id = Ulid;
     type Weight = ContentNodeWeight;
-    fn node_kind() -> NodeWeightDiscriminants { NodeWeightDiscriminants::Content }
-    fn construct(node: GraphyNode<'a>) -> Self { Self(node) }
+    fn as_node(node: impl Into<GraphyNodeRef<'a>> + Copy) -> Self {
+        Self(node.into())
+    }
     fn weight_as(weight: &NodeWeight) -> GraphyResult<&Self::Weight> {
         Self::content_weight_as(weight)
     }
 }
 
-impl<'a> GraphyContentNodeType<'a> for Root<'a> {
-    fn content_kind() -> ContentAddressDiscriminants { ContentAddressDiscriminants::Root }
+impl<'a> GraphyContentNode<'a> for Root<'a> {
+    fn content_kind() -> ContentAddressDiscriminants {
+        ContentAddressDiscriminants::Root
+    }
 }
 
 impl<'a> Root<'a> {
@@ -25,56 +42,34 @@ impl<'a> Root<'a> {
     // Children
     //
     pub fn categories(self) -> impl Iterator<Item = AnyCategory<'a>> {
-        self.0.target_nodes(EdgeWeightKindDiscriminants::Use).map(AnyCategory)
+        self.targets(EdgeWeightKindDiscriminants::Use)
     }
 
-    pub fn components(self) -> GraphyResult<impl Iterator<Item = Component<'a>>> {
-        Ok(self.component_category()?.all())
-    }
-    pub fn schemas(self) -> GraphyResult<impl Iterator<Item = Schema<'a>>> {
-        Ok(self.schema_category()?.all())
-    }
-    pub fn funcs(self) -> GraphyResult<impl Iterator<Item = Func<'a>>> {
-        Ok(self.func_category()?.all())
-    }
-    pub fn modules(self) -> GraphyResult<impl Iterator<Item = Module<'a>>> {
-        Ok(self.module_category()?.all())
-    }
-    pub fn actions(self) -> GraphyResult<impl Iterator<Item = Action<'a>>> {
-        Ok(self.action_category()?.all())
-    }
-    pub fn dependent_value_roots(self) -> GraphyResult<impl Iterator<Item = DependentValueRoot<'a>>> {
-        Ok(self.dependent_value_root_category()?.all())
-    }
-    pub fn secrets(self) -> GraphyResult<impl Iterator<Item = Secret<'a>>> {
-        Ok(self.secret_category()?.all())
-    }
-
-    pub fn component_category(self) -> GraphyResult<Category<'a, Component<'a>>> {
+    pub fn components(self) -> GraphyResult<Category<'a, Component<'a>>> {
         self.category()
     }
-    pub fn schema_category(self) -> GraphyResult<Category<'a, Schema<'a>>> {
+    pub fn schemas(self) -> GraphyResult<Category<'a, Schema<'a>>> {
         self.category()
     }
-    pub fn func_category(self) -> GraphyResult<Category<'a, Func<'a>>> {
+    pub fn funcs(self) -> GraphyResult<Category<'a, Func<'a>>> {
         self.category()
     }
-    pub fn module_category(self) -> GraphyResult<Category<'a, Module<'a>>> {
+    pub fn modules(self) -> GraphyResult<Category<'a, Module<'a>>> {
         self.category()
     }
-    pub fn action_category(self) -> GraphyResult<Category<'a, Action<'a>>> {
+    pub fn actions(self) -> GraphyResult<Category<'a, Action<'a>>> {
         self.category()
     }
-    pub fn dependent_value_root_category(self) -> GraphyResult<Category<'a, DependentValueRoot<'a>>> {
+    pub fn dependent_value_roots(self) -> GraphyResult<Category<'a, DependentValueRoot<'a>>> {
         self.category()
     }
-    pub fn secret_category(self) -> GraphyResult<Category<'a, Secret<'a>>> {
+    pub fn secrets(self) -> GraphyResult<Category<'a, Secret<'a>>> {
         self.category()
     }
 
-    pub fn category<T: GraphyCategoryNodeType<'a>>(self) -> GraphyResult<Category<'a, T>> {
+    pub fn category<T: GraphyCategoryElement<'a>>(self) -> GraphyResult<Category<'a, T>> {
         for category in self.categories() {
-            if let Ok(category) = category.try_into() {
+            if let Ok(category) = Category::try_as_node(category) {
                 return Ok(category);
             }
         }

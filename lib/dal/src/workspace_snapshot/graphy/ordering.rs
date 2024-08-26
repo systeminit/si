@@ -1,16 +1,24 @@
+use si_events::ulid::Ulid;
 use std::marker::PhantomData;
-use crate::workspace_snapshot::node_weight::{NodeWeight, OrderingNodeWeight};
-use crate::EdgeWeightKindDiscriminants;
-use super::*;
 
-#[derive(Copy, Clone)]
-pub struct Ordering<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>+'a>(pub(super) GraphyNode<'a>, PhantomData<(T, P)>);
+use super::{GraphyError, GraphyNode, GraphyNodeRef, GraphyResult, GraphyItertools as _};
+use crate::{
+    workspace_snapshot::node_weight::{NodeWeight, OrderingNodeWeight},
+    EdgeWeightKind,
+};
 
-impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>> GraphyNodeType<'a> for Ordering<'a, T, P> {
+#[derive(Copy, Clone, derive_more::AsRef, derive_more::Deref)]
+pub struct Ordering<'a, T: GraphyNode<'a> + 'a, P: GraphyNode<'a> + 'a = T>(
+    #[deref] GraphyNodeRef<'a>,
+    PhantomData<(T, P)>,
+);
+
+impl<'a, T: GraphyNode<'a> + 'a, P: GraphyNode<'a>> GraphyNode<'a> for Ordering<'a, T, P> {
     type Id = Ulid;
     type Weight = OrderingNodeWeight;
-    fn node_kind() -> NodeWeightDiscriminants { NodeWeightDiscriminants::Ordering }
-    fn construct(node: GraphyNode<'a>) -> Self { Self(node, PhantomData::default()) }
+    fn as_node(node: impl Into<GraphyNodeRef<'a>> + Copy) -> Self {
+        Self(node.into(), PhantomData)
+    }
     fn weight_as(weight: &NodeWeight) -> GraphyResult<&Self::Weight> {
         match weight {
             NodeWeight::Ordering(weight) => Ok(weight),
@@ -19,39 +27,36 @@ impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>> GraphyNodeType<'a> for
     }
 }
 
-impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>+'a> Ordering<'a, T, P> {
+impl<'a, T: GraphyNode<'a> + 'a, P: GraphyNode<'a> + 'a> Ordering<'a, T, P> {
+    /// Children in order
+    pub fn children(self) -> GraphyResult<impl Iterator<Item = GraphyResult<T>> + 'a> {
+        let order = self.ordered_child_ids()?.into_iter();
+        Ok(order.map(move |id| self.graph.node_ref_by_id(*id).map(T::as_node)))
+    }
+    /// Unordered children
+    pub fn unordered_children(self) -> impl Iterator<Item = T> + 'a {
+        self.targets(EdgeWeightKind::Ordinal)
+    }
+
     //
-    // Children
+    // Weight properties
     //
-    pub fn children(self) -> impl Iterator<Item = T>+'a {
-        self.0.target_nodes(EdgeWeightKindDiscriminants::Ordinal).map(T::construct)
+    pub fn ordered_child_ids(self) -> GraphyResult<&'a Vec<Ulid>> {
+        Ok(&self.weight()?.order())
     }
 
     //
     // Backreferences
     //
     pub fn parent(self) -> GraphyResult<P> {
-        self.0.source_node(EdgeWeightKindDiscriminants::Ordering).map(P::construct)
+        self.sources(EdgeWeightKind::Ordering).single()
     }
 }
 
-impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>+'a> From<Ordering<'a, T, P>> for GraphyNode<'a> {
+impl<'a, T: GraphyNode<'a> + 'a, P: GraphyNode<'a> + 'a> From<Ordering<'a, T, P>>
+    for GraphyNodeRef<'a>
+{
     fn from(ordering: Ordering<'a, T, P>) -> Self {
         ordering.0
-    }
-}
-
-impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>+'a> AsRef<GraphyNode<'a>> for Ordering<'a, T, P> {
-    fn as_ref(&self) -> &GraphyNode<'a> {
-        &self.0
-    }
-}
-
-impl<'a, T: GraphyNodeType<'a>+'a, P: GraphyNodeType<'a>+'a> TryFrom<GraphyNode<'a>> for Ordering<'a, T, P> {
-    type Error = GraphyError;
-    fn try_from(node: GraphyNode<'a>) -> Result<Self, Self::Error> {
-        let result = Self::construct(node);
-        result.weight()?;
-        Ok(result)
     }
 }

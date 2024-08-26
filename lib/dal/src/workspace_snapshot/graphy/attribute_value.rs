@@ -1,21 +1,24 @@
-use crate::workspace_snapshot::node_weight::{NodeWeight, PropNodeWeight};
-use crate::{AttributePrototypeId, EdgeWeightKind, EdgeWeightKindDiscriminants, PropId, SchemaId, SchemaVariantId};
-use super::*;
-use super::super::{content_address::ContentAddressDiscriminants, node_weight::{category_node_weight::CategoryNodeKind, ContentNodeWeight}};
+use super::{
+    impl_inherited_graphy_node, AnySocket, AnyAttributePrototype, Component, GraphyError, GraphyNode,
+    GraphyNodeRef, GraphyResult, Ordering, GraphyItertools as _, Prop,
+};
+use crate::{
+    workspace_snapshot::node_weight::{AttributeValueNodeWeight, NodeWeight},
+    AttributeValueId, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 
-#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef)]
-pub struct AttributeValue<'a>(pub(super) GraphyNode<'a>);
+///
+/// Value of a prop, input socket, or output socket.
+///
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct AttributeValue<'a>(GraphyNodeRef<'a>);
 
-pub enum AttributeValueParent<'a> {
-    AttributeValue(AttributeValue<'a>),
-    SchemaVariant(SchemaVariant<'a>),
-}
-
-impl<'a> GraphyNodeType<'a> for AttributeValue<'a> {
+impl<'a> GraphyNode<'a> for AttributeValue<'a> {
     type Id = AttributeValueId;
     type Weight = AttributeValueNodeWeight;
-    fn node_kind() -> NodeWeightDiscriminants { NodeWeightDiscriminants::AttributeValue }
-    fn construct(node: GraphyNode<'a>) -> Self { Self(node) }
+    fn as_node(node: impl Into<GraphyNodeRef<'a>> + Copy) -> Self {
+        Self(node.into())
+    }
     fn weight_as(weight: &NodeWeight) -> GraphyResult<&Self::Weight> {
         match weight {
             NodeWeight::AttributeValue(weight) => Ok(weight),
@@ -25,55 +28,144 @@ impl<'a> GraphyNodeType<'a> for AttributeValue<'a> {
 }
 
 impl<'a> AttributeValue<'a> {
-    //
-    // Children
-    //
-    pub fn children(self) -> GraphyResult<OptionIter<impl Iterator<Item = AttributeValue<'a>>>> {
-        let ordering = self.ordering()?;
-        if ordering.is_none() && self.0.outgoing_edges(EdgeWeightKindDiscriminants::Contain).next().is_some() {
-            return Err(GraphyError::MissingOrdering(self.0.index))
-        }
-        Ok(OptionIter(ordering.map(Ordering::children)))
+    /// Component-specific value
+    ///
+    /// If not specified, the default value from the corresponding Prop /
+    /// InputSocket / OutputSocket on the SchemaVariant is used.
+    ///
+    /// For an InputSocket, component-specific values are always links, and the
+    /// matching value can be found in the PrototypeArguments for the
+    /// corresponding InputSocket.
+    pub fn value(self) -> GraphyResult<Option<AnyAttributePrototype<'a>>> {
+        self.targets(EdgeWeightKindDiscriminants::Prototype)
+            .optional()
+    }
+}
+
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct PropAttributeValue<'a>(AttributeValue<'a>);
+
+impl<'a> PropAttributeValue<'a> {
+    /// Child values in order
+    pub fn children(
+        self,
+    ) -> GraphyResult<impl Iterator<Item = GraphyResult<ChildPropAttributeValue<'a>>>> {
+        let optional_children = match self.ordering_node()? {
+            Some(ordering) => Some(ordering.children()?),
+            // If there are Contains children, an ordering is presently required
+            None => match self.unordered_children().next() {
+                Some(_) => return Err(GraphyError::MissingOrdering(self.index)),
+                None => None,
+            },
+        };
+        Ok(optional_children.into_iter().flatten())
+    }
+    /// Child values
+    pub fn unordered_children(self) -> impl Iterator<Item = ChildPropAttributeValue<'a>> {
+        self.targets(EdgeWeightKindDiscriminants::Contain)
+    }
+    /// Order of child values
+    pub fn ordering_node(
+        self,
+    ) -> GraphyResult<Option<Ordering<'a, ChildPropAttributeValue<'a>, Self>>> {
+        self.targets(EdgeWeightKind::Ordering).optional()
     }
 
-    pub fn unordered_children_with_keys(self) -> impl Iterator<Item = (Option<&'a String>, AttributeValue<'a>)> {
-        self.0
-            .all_outgoing_edges()
-            .filter_map(|e| match e.weight().kind() {
-                EdgeWeightKind::Contain(key) => Some((
-                    key.as_ref(),
-                    AttributeValue(self.0.graph.node(e.target()))
-                )),
-                _ => None,
-            })
-    }
-
-    pub fn ordering(self) -> GraphyResult<Option<Ordering<'a, Self, Self>>> {
-        Ok(self.0.target_node_opt(EdgeWeightKindDiscriminants::Ordering)?.map(Ordering::construct))
+    /// Prop this is a value for
+    pub fn prop(self) -> GraphyResult<Prop<'a>> {
+        self.targets(EdgeWeightKind::Prop).single()
     }
 
     //
     // Backreferences
     //
-    pub fn parent(self) -> GraphyResult<AttributeValueParent<'a>> {
-        let parent = self.0.source_node(EdgeWeightKindDiscriminants::Use)?;
-        match AttributeValue::try_from(parent) {
-            Ok(parent) => Ok(AttributeValueParent::AttributeValue(parent)),
-            Err(_) => Ok(AttributeValueParent::SchemaVariant(SchemaVariant(self.0))),
-        }
+    pub fn parent_component(self) -> GraphyResult<Option<Component<'a>>> {
+        self.sources(EdgeWeightKind::Root).optional()
     }
-
-    pub fn parent_prop(self) -> GraphyResult<Option<AttributeValue<'a>>> {
-        Ok(self.0.source_node(EdgeWeightKindDiscriminants::Use)?.try_into().ok())
+    pub fn parent_value(self) -> GraphyResult<Option<PropAttributeValue<'a>>> {
+        self.sources(EdgeWeightKindDiscriminants::Contain)
+            .optional()
     }
-}
-
-impl<'a> TryFrom<GraphyNode<'a>> for AttributeValue<'a> {
-    type Error = GraphyError;
-    fn try_from(node: GraphyNode<'a>) -> Result<Self, Self::Error> {
-        let result = Self(node);
-        result.weight()?;
-        Ok(result)
+    pub fn parent_ordering(self) -> GraphyResult<Ordering<'a, Self, PropAttributeValue<'a>>> {
+        self.sources(EdgeWeightKind::Ordering).single()
     }
 }
 
+impl_inherited_graphy_node! {
+    impl * for PropAttributeValue { AttributeValue }
+}
+
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct RootPropAttributeValue<'a>(PropAttributeValue<'a>);
+
+impl<'a> RootPropAttributeValue<'a> {
+    //
+    // Children
+    //
+    pub fn ordering(self) -> GraphyResult<Option<Ordering<'a, ChildPropAttributeValue<'a>, Self>>> {
+        self.targets(EdgeWeightKind::Ordering).optional()
+    }
+
+    //
+    // Backreferences
+    //
+    pub fn parent_component(self) -> GraphyResult<Component<'a>> {
+        self.sources(EdgeWeightKind::Root).single()
+    }
+    pub fn parent_ordering(self) -> GraphyResult<Ordering<'a, Self, PropAttributeValue<'a>>> {
+        self.sources(EdgeWeightKind::Ordering).single()
+    }
+}
+
+impl_inherited_graphy_node! {
+    impl * for RootPropAttributeValue { PropAttributeValue }
+}
+
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct ChildPropAttributeValue<'a>(PropAttributeValue<'a>);
+
+impl<'a> ChildPropAttributeValue<'a> {
+    //
+    // Children
+    //
+    pub fn ordering(self) -> GraphyResult<Option<Ordering<'a, ChildPropAttributeValue<'a>, Self>>> {
+        self.targets(EdgeWeightKind::Ordering).optional()
+    }
+
+    //
+    // Backreferences
+    //
+    pub fn parent_value(self) -> GraphyResult<PropAttributeValue<'a>> {
+        self.sources(EdgeWeightKindDiscriminants::Contain).single()
+    }
+    pub fn parent_ordering(self) -> GraphyResult<Ordering<'a, Self, PropAttributeValue<'a>>> {
+        self.sources(EdgeWeightKind::Ordering).single()
+    }
+}
+
+impl_inherited_graphy_node! {
+    impl * for ChildPropAttributeValue { PropAttributeValue }
+}
+
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct SocketAttributeValue<'a>(AttributeValue<'a>);
+
+impl<'a> SocketAttributeValue<'a> {
+    //
+    // Properties
+    //
+    pub fn socket(self) -> GraphyResult<AnySocket<'a>> {
+        self.targets(EdgeWeightKind::Socket).single()
+    }
+
+    //
+    // Backreferences
+    //
+    pub fn parent_component(self) -> GraphyResult<Component<'a>> {
+        self.sources(EdgeWeightKind::SocketValue).single()
+    }
+}
+
+impl_inherited_graphy_node! {
+    impl * for SocketAttributeValue { AttributeValue }
+}

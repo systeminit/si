@@ -1,15 +1,25 @@
+use super::{GraphyCategoryElement, GraphyError, GraphyNode, GraphyNodeRef, GraphyResult};
+use crate::workspace_snapshot::node_weight::{
+    category_node_weight::CategoryNodeKind, DependentValueRootNodeWeight, NodeWeight,
+};
 use si_events::ulid::Ulid;
-use super::*;
-use super::super::node_weight::{category_node_weight::CategoryNodeKind, DependentValueRootNodeWeight, NodeWeight};
 
-#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef)]
-pub struct DependentValueRoot<'a>(pub(super) GraphyNode<'a>);
+///
+/// Dependent value that is "dirty"--has been updated.
+///
+/// JS functions will be run to ensure any downstream values are changed.
+///
+#[derive(Copy, Clone, derive_more::Into, derive_more::AsRef, derive_more::Deref)]
+pub struct DependentValueRoot<'a>(GraphyNodeRef<'a>);
 
-impl<'a> GraphyNodeType<'a> for DependentValueRoot<'a> {
+impl<'a> DependentValueRoot<'a> {}
+
+impl<'a> GraphyNode<'a> for DependentValueRoot<'a> {
     type Id = Ulid;
     type Weight = DependentValueRootNodeWeight;
-    fn node_kind() -> NodeWeightDiscriminants { NodeWeightDiscriminants::DependentValueRoot }
-    fn construct(node: GraphyNode<'a>) -> Self { Self(node) }
+    fn as_node(node: impl Into<GraphyNodeRef<'a>> + Copy) -> Self {
+        Self(node.into())
+    }
     fn weight_as(weight: &NodeWeight) -> GraphyResult<&Self::Weight> {
         match weight {
             NodeWeight::DependentValueRoot(weight) => Ok(weight),
@@ -18,9 +28,8 @@ impl<'a> GraphyNodeType<'a> for DependentValueRoot<'a> {
     }
 }
 
-impl<'a> GraphyCategoryNodeType<'a> for DependentValueRoot<'a> {
-    fn category_kind() -> CategoryNodeKind { CategoryNodeKind::DependentValueRoots }
-}
-
-impl<'a> DependentValueRoot<'a> {
+impl<'a> GraphyCategoryElement<'a> for DependentValueRoot<'a> {
+    fn category_kind() -> CategoryNodeKind {
+        CategoryNodeKind::DependentValueRoots
+    }
 }
