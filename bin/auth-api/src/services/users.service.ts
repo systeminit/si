@@ -201,6 +201,28 @@ function setUserDataFromAuth0Details(
   return user;
 }
 
+export async function getUserSignupReport(startDate: Date, endDate: Date) {
+  const signups = await prisma.user.findMany({
+    where: {
+      signupAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      firstName: true,
+      email: true,
+      discordUsername: true,
+      githubUsername: true,
+      lastName: true,
+      auth0Id: true,
+      signupAt: true,
+    },
+  });
+
+  return signups;
+}
+
 export async function saveUser(user: User) {
   await prisma.user.update({
     where: { id: user.id },

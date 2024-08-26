@@ -12,6 +12,7 @@ import {
   getQuarantinedUsers,
   getSuspendedUsers,
   getUserById,
+  getUserSignupReport,
   refreshUserAuth0Profile,
   saveUser,
 } from "../services/users.service";
@@ -119,7 +120,7 @@ export type SuspendedUser = {
   suspendedAt: Date | null;
 };
 router.get("/users/suspended", async (ctx) => {
-  extractAuthUser(ctx);
+  extractAdminAuthUser(ctx);
 
   const suspended: SuspendedUser[] = [];
   const suspendedUsers = await getSuspendedUsers();
@@ -135,15 +136,15 @@ router.get("/users/suspended", async (ctx) => {
   ctx.body = suspended;
 });
 
-export type QuarantinedUsuer = {
+export type QuarantinedUser = {
   userId: string;
   email: string;
   quarantinedAt: Date | null;
 };
 router.get("/users/quarantined", async (ctx) => {
-  extractAuthUser(ctx);
+  extractAdminAuthUser(ctx);
 
-  const quarantined: QuarantinedUsuer[] = [];
+  const quarantined: QuarantinedUser[] = [];
   const quarantinedUsers = await getQuarantinedUsers();
 
   quarantinedUsers.forEach((qm) => {
@@ -155,6 +156,49 @@ router.get("/users/quarantined", async (ctx) => {
   });
 
   ctx.body = quarantined;
+});
+
+export type SignupUsersReport = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  signupMethod: string;
+  discordUsername?: string | null;
+  githubUsername?: string | null;
+  signupAt: Date | null;
+};
+router.get("/users/report", async (ctx) => {
+  extractAdminAuthUser(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z
+      .object({
+        startDate: z.date(),
+        endDate: z.date(),
+      })
+      .partial(),
+  );
+
+  const reportUsers: SignupUsersReport[] = [];
+  const signups = await getUserSignupReport(
+    reqBody.startDate!,
+    reqBody.endDate!,
+  );
+
+  signups.forEach((u) => {
+    reportUsers.push({
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      discordUsername: u.discordUsername,
+      githubUsername: u.githubUsername,
+      signupAt: u.signupAt,
+      signupMethod: u.auth0Id || "unknown",
+    });
+  });
+
+  ctx.body = reportUsers;
 });
 
 router.patch("/users/:userId", async (ctx) => {

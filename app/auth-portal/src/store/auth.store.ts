@@ -48,12 +48,23 @@ export type QuarantinedUser = {
   quarantinedAt: ISODateString;
 };
 
+export type SignupUsersReport = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  signupMethod: string;
+  discordUsername?: string | null;
+  githubUsername?: string | null;
+  signupAt: Date | null;
+};
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
     waitingForAccess: false,
     suspendedUsersState: [] as SuspendedUser[] | null,
     quarantinedUsersState: [] as QuarantinedUser[] | null,
+    userSignupsState: [] as SignupUsersReport[] | null,
   }),
   getters: {
     // userIsLoggedIn: (state) => !!state.token,
@@ -78,6 +89,9 @@ export const useAuthStore = defineStore("auth", {
     },
     quarantinedUsers(state): QuarantinedUser[] {
       return _.values(state.quarantinedUsersState);
+    },
+    userSignups(state): SignupUsersReport[] {
+      return _.values(state.userSignupsState);
     },
   },
   actions: {
@@ -172,6 +186,19 @@ export const useAuthStore = defineStore("auth", {
         url: `/users/quarantined`,
         onSuccess: (response) => {
           this.quarantinedUsersState = response;
+        },
+      });
+    },
+
+    async GET_USER_SIGNUP_REPORT(startDate: Date, endDate: Date) {
+      return new ApiRequest<SignupUsersReport[]>({
+        url: `/users/report`,
+        params: {
+          startDate,
+          endDate,
+        },
+        onSuccess: (response) => {
+          this.userSignupsState = response;
         },
       });
     },

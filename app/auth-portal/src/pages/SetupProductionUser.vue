@@ -268,6 +268,98 @@
           </div>
         </template>
       </div>
+      <divider class="my-4" />
+      <div>
+        <h3 class="pb-md font-bold">Generate Weekly Signup Report</h3>
+        <Stack>
+          <VormInput
+            v-model="reportStartDate"
+            label="Start Date"
+            placeholder="The start date for the user signups report e.g. 2024-08-14"
+            required
+          />
+          <VormInput
+            v-model="reportEndDate"
+            label="End Date"
+            placeholder="The end date for the user signups reporte.g. 2024-08-21"
+            required
+          />
+          <div class="flex gap-2">
+            <VButton
+              :disabled="_.isEmpty(reportStartDate) || _.isEmpty(reportEndDate)"
+              :requestStatus="setUserSignupsReqStatus"
+              iconRight="chevron--right"
+              loadingText="Generating Report..."
+              tone="action"
+              variant="solid"
+              @click="getUserSignupsReport()"
+            >
+              Generate User Signups Report
+            </VButton>
+          </div>
+        </Stack>
+        <template v-if="setUserSignupsReqStatus.isPending">
+          <Icon name="loader" />
+        </template>
+        <template v-else-if="setUserSignupsReqStatus.isError">
+          <ErrorMessage :requestStatus="setUserSignupsReqStatus" />
+        </template>
+        <template v-else-if="setUserSignupsReqStatus.isSuccess">
+          <div class="relative">
+            <div class="text-lg font-bold">Signups:</div>
+            <table
+              class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
+            >
+              <thead>
+                <tr
+                  class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                >
+                  <th scope="col">First Name</th>
+                  <th scope="col">Last Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">SignUp Method</th>
+                  <th scope="col">Discord</th>
+                  <th scope="col">GitHub</th>
+                  <th scope="col">Signup At</th>
+                </tr>
+              </thead>
+              <tbody
+                class="divide-y divide-neutral-300 dark:divide-neutral-700"
+              >
+                <tr
+                  v-for="user in userSignups"
+                  :key="user.email"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                >
+                  <td class="">
+                    <div
+                      class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
+                    >
+                      {{ user.firstName }}
+                    </div>
+                  </td>
+                  <td class="normal-case">
+                    {{ user.lastName }}
+                  </td>
+                  <td class="normal-case">
+                    {{ user.email }}
+                  </td>
+                  <td class="normal-case">NOTHING HERE ;)</td>
+                  <td class="normal-case">
+                    {{ user.discordUsername }}
+                  </td>
+                  <td class="normal-case">
+                    {{ user.githubUsername }}
+                  </td>
+                  <td class="normal-case">
+                    {{ formatDate(user.signupAt) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div></template
+        >
+      </div>
     </template>
     <template v-else> Feature not Enabled for account </template>
   </div>
@@ -371,6 +463,28 @@ onMounted(async () => {
     });
   }
 });
+
+function formatDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString();
+}
+
+const reportStartDate = ref("");
+const reportEndDate = ref("");
+
+const setUserSignupsReqStatus = authStore.getRequestStatus(
+  "GET_USER_SIGNUP_REPORT",
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const userSignups = ref<any[]>([]);
+async function getUserSignupsReport() {
+  if (!reportStartDate.value || !reportEndDate.value) return;
+
+  const formattedStartDate = new Date(reportStartDate.value);
+  const formattedEndDate = new Date(reportEndDate.value);
+
+  await authStore.GET_USER_SIGNUP_REPORT(formattedStartDate, formattedEndDate);
+  userSignups.value = authStore.userSignups;
+}
 
 onBeforeMount(async () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
