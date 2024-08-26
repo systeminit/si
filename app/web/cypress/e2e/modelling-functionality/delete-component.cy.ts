@@ -43,7 +43,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         .rightclick();
 
       // Click the second dropdown menu item
-      cy.get('[class="truncate"]').contains("Delete Frame").parent().parent().click();
+      cy.get('[class="truncate"]').contains("Delete").parent().parent().click();
 
       // Click the destroy button
       cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')
