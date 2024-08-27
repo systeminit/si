@@ -1757,7 +1757,7 @@ impl SchemaVariant {
     }
 
     /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
-    /// [intrinsics](IntrinsicFunc).
+    /// [intrinsics](IntrinsicFunc) that are not [`IntrinsicFunc::Unset`] and [`IntrinsicFunc::Identity`].
     pub async fn all_funcs(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -1766,7 +1766,40 @@ impl SchemaVariant {
         let func_ids = Vec::from_iter(func_id_set.into_iter());
         let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
 
-        // Filter out intrinsic funcs. kkep this here
+        // Filter out most intrinsic funcs - return si:unset and si:identity to start. kkep this here
+        let mut filtered_funcs = Vec::new();
+        for func in &funcs {
+            match IntrinsicFunc::maybe_from_str(&func.name) {
+                None => filtered_funcs.push(func.to_owned()),
+                Some(intrinsic) => match intrinsic {
+                    IntrinsicFunc::Identity | IntrinsicFunc::Unset => {
+                        filtered_funcs.push(func.to_owned())
+                    }
+                    IntrinsicFunc::SetArray
+                    | IntrinsicFunc::SetBoolean
+                    | IntrinsicFunc::SetInteger
+                    | IntrinsicFunc::SetJson
+                    | IntrinsicFunc::SetMap
+                    | IntrinsicFunc::SetObject
+                    | IntrinsicFunc::SetString
+                    | IntrinsicFunc::Validation => {} //not returning these at the moment!
+                },
+            }
+        }
+        Ok(filtered_funcs)
+    }
+
+    /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
+    /// [intrinsics](IntrinsicFunc) .
+    pub async fn all_funcs_without_intrinsics(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let func_id_set = Self::all_func_ids(ctx, schema_variant_id).await?;
+        let func_ids = Vec::from_iter(func_id_set.into_iter());
+        let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
+
+        // Filter out intrinsic funcs.
         let mut filtered_funcs = Vec::new();
         for func in &funcs {
             if IntrinsicFunc::maybe_from_str(&func.name).is_none() {

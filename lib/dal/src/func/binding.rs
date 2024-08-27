@@ -6,7 +6,7 @@ use authentication::AuthBinding;
 use itertools::Itertools;
 use leaf::LeafBinding;
 use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
+use strum::{Display, EnumDiscriminants};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -27,7 +27,8 @@ use crate::{
     FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
 };
 use crate::{
-    ComponentId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError, WsEventError,
+    ComponentId, InputSocketId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError,
+    WsEventError,
 };
 pub use attribute_argument::AttributeArgumentBinding;
 pub use attribute_argument::AttributeFuncArgumentSource;
@@ -59,6 +60,8 @@ pub enum FuncBindingError {
     AttributeValue(#[from] AttributeValueError),
     #[error("cannot compile types for func: {0}")]
     CannotCompileTypes(FuncId),
+    #[error("cannot set intrinsic func for component: {0}")]
+    CannotSetIntrinsicForComponent(ComponentId),
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
     #[error("func error: {0}")]
@@ -69,6 +72,12 @@ pub enum FuncBindingError {
     FuncArgumentMissing(FuncArgumentId, String),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("invalid attribute prototype argument source: {0}")]
+    InvalidAttributePrototypeArgumentSource(AttributeFuncArgumentSource),
+    #[error("invalid attribute prototype destination: {0}")]
+    InvalidAttributePrototypeDestination(AttributeFuncDestination),
+    #[error("invalid intrinsic binding")]
+    InvalidIntrinsicBinding,
     #[error("malformed input for binding: {0}")]
     MalformedInput(String),
     #[error("missing value source for attribute prototype argument id {0}")]
@@ -101,10 +110,11 @@ type FuncBindingResult<T> = Result<T, FuncBindingError>;
 /// Represents the location where the function ultimately writes to
 /// We currently only allow Attribute Funcs to be attached to Props
 /// (or the attribute value in the case of a component) and Output Sockets
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum AttributeFuncDestination {
     Prop(PropId),
     OutputSocket(OutputSocketId),
+    InputSocket(InputSocketId),
 }
 
 impl AttributeFuncDestination {
@@ -118,6 +128,9 @@ impl AttributeFuncDestination {
             }
             AttributeFuncDestination::OutputSocket(output_socket_id) => {
                 SchemaVariant::find_for_output_socket_id(ctx, *output_socket_id).await?
+            }
+            AttributeFuncDestination::InputSocket(input_socket_id) => {
+                SchemaVariant::find_for_input_socket_id(ctx, *input_socket_id).await?
             }
         };
         Ok(schema_variant_id)
@@ -360,7 +373,10 @@ impl FuncBinding {
                 LeafBinding::assemble_leaf_func_bindings(ctx, func_id, LeafKind::Qualification)
                     .await?
             }
-            FuncKind::SchemaVariantDefinition | FuncKind::Intrinsic | FuncKind::Unknown => vec![],
+            FuncKind::Intrinsic => {
+                AttributeBinding::assemble_intrinsic_bindings(ctx, func_id).await?
+            }
+            FuncKind::SchemaVariantDefinition | FuncKind::Unknown => vec![],
         };
         Ok(bindings)
     }

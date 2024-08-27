@@ -201,7 +201,9 @@ async fn all_funcs(ctx: &DalContext) {
 
     let (expected, actual) = prepare_for_assertion(
         &[
+            "si:identity",
             "si:resourcePayloadToValue",
+            "si:unset",
             "test:createActionSwifty",
             "test:deleteActionSwifty",
             "test:generateCode",
@@ -229,7 +231,9 @@ async fn all_funcs(ctx: &DalContext) {
     let (expected, actual) = prepare_for_assertion(
         &[
             "hesperus_is_phosphorus",
+            "si:identity",
             "si:resourcePayloadToValue",
+            "si:unset",
             "test:createActionStarfield",
             "test:falloutEntriesToGalaxies",
             "test:refreshActionStarfield",

@@ -1033,7 +1033,8 @@ impl PkgExporter {
         schema_variant_id: SchemaVariantId,
         overridden_asset_func_id: Option<FuncId>,
     ) -> PkgResult<Vec<FuncSpec>> {
-        let related_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
+        let related_funcs =
+            SchemaVariant::all_funcs_without_intrinsics(ctx, schema_variant_id).await?;
         let mut funcs = vec![];
 
         for func in &related_funcs {

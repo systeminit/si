@@ -319,6 +319,26 @@ impl Func {
         Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
     }
 
+    /// If you know the func_id is supposed to be for an [`IntrinsicFunc`], get which one or error
+    pub async fn get_intrinsic_kind_by_id_or_error(
+        ctx: &DalContext,
+        id: FuncId,
+    ) -> FuncResult<IntrinsicFunc> {
+        let func = Self::get_by_id_or_error(ctx, id).await?;
+
+        Self::get_intrinsic_kind_by_id(ctx, id)
+            .await?
+            .ok_or(FuncError::IntrinsicFuncNotFound(func.name))
+    }
+
+    pub async fn get_intrinsic_kind_by_id(
+        ctx: &DalContext,
+        id: FuncId,
+    ) -> FuncResult<Option<IntrinsicFunc>> {
+        let func = Self::get_by_id_or_error(ctx, id).await?;
+        Ok(IntrinsicFunc::maybe_from_str(func.name.clone()))
+    }
+
     async fn get_by_id_inner(
         ctx: &DalContext,
         hash: &ContentHash,
@@ -702,6 +722,7 @@ impl Func {
             func_id: self.id.into(),
             kind: self.kind.into(),
             name: self.name.clone(),
+            backend_kind: self.backend_kind.into(),
             display_name: self.display_name.clone(),
             description: self.description.clone(),
             is_locked: self.is_locked,

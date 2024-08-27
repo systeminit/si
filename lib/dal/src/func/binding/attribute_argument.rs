@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use strum::Display;
 
 use crate::{
     attribute::prototype::argument::{
@@ -6,16 +8,18 @@ use crate::{
         AttributePrototypeArgumentId,
     },
     func::argument::FuncArgumentId,
-    DalContext, InputSocketId, PropId,
+    DalContext, InputSocketId, OutputSocketId, PropId, SecretId,
 };
 
 use super::{FuncBindingError, FuncBindingResult};
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum AttributeFuncArgumentSource {
     Prop(PropId),
     InputSocket(InputSocketId),
-    StaticArgument(String),
+    StaticArgument(Value),
+    OutputSocket(OutputSocketId),
+    Secret(SecretId),
 }
 
 impl From<AttributeFuncArgumentSource> for Option<si_events::PropId> {
@@ -26,6 +30,8 @@ impl From<AttributeFuncArgumentSource> for Option<si_events::PropId> {
             }
             AttributeFuncArgumentSource::InputSocket(_) => None,
             AttributeFuncArgumentSource::StaticArgument(_) => None,
+            AttributeFuncArgumentSource::OutputSocket(_) => None,
+            AttributeFuncArgumentSource::Secret(_) => None,
         }
     }
 }
@@ -37,6 +43,20 @@ impl From<AttributeFuncArgumentSource> for Option<si_events::InputSocketId> {
                 ::si_events::InputSocketId::from_raw_id(input_socket_id.into()),
             ),
             AttributeFuncArgumentSource::StaticArgument(_) => None,
+            AttributeFuncArgumentSource::OutputSocket(_) => None,
+            AttributeFuncArgumentSource::Secret(_) => None,
+        }
+    }
+}
+
+impl From<AttributeFuncArgumentSource> for Option<Value> {
+    fn from(value: AttributeFuncArgumentSource) -> Self {
+        match value {
+            AttributeFuncArgumentSource::Prop(_) => None,
+            AttributeFuncArgumentSource::InputSocket(_) => None,
+            AttributeFuncArgumentSource::StaticArgument(val) => Some(val),
+            AttributeFuncArgumentSource::OutputSocket(_) => None,
+            AttributeFuncArgumentSource::Secret(_) => None,
         }
     }
 }
@@ -55,6 +75,7 @@ impl AttributeArgumentBinding {
             attribute_prototype_argument_id: self.attribute_prototype_argument_id.map(Into::into),
             prop_id: self.attribute_func_input_location.clone().into(),
             input_socket_id: self.attribute_func_input_location.clone().into(),
+            static_value: self.attribute_func_input_location.clone().into(),
         }
     }
     pub async fn assemble(
@@ -74,7 +95,7 @@ impl AttributeArgumentBinding {
                     ValueSource::StaticArgumentValue(static_argument_id) => {
                         let static_value =
                             StaticArgumentValue::get_by_id(ctx, static_argument_id).await?;
-                        AttributeFuncArgumentSource::StaticArgument(static_value.value.to_string())
+                        AttributeFuncArgumentSource::StaticArgument(static_value.value)
                     }
                     value_source => {
                         return Err(FuncBindingError::UnexpectedValueSource(
@@ -105,13 +126,17 @@ impl AttributeArgumentBinding {
     pub fn assemble_attribute_input_location(
         prop_id: Option<si_events::PropId>,
         input_socket_id: Option<si_events::InputSocketId>,
+        value: Option<serde_json::Value>,
     ) -> FuncBindingResult<AttributeFuncArgumentSource> {
-        let input_location = match (prop_id, input_socket_id) {
-            (None, Some(input_socket_id)) => {
+        let input_location = match (prop_id, input_socket_id, value) {
+            (None, Some(input_socket_id), None) => {
                 AttributeFuncArgumentSource::InputSocket(input_socket_id.into())
             }
 
-            (Some(prop_id), None) => AttributeFuncArgumentSource::Prop(prop_id.into()),
+            (Some(prop_id), None, None) => AttributeFuncArgumentSource::Prop(prop_id.into()),
+            (None, None, Some(json_value)) => {
+                AttributeFuncArgumentSource::StaticArgument(json_value)
+            }
             _ => {
                 return Err(FuncBindingError::MalformedInput(
                     "cannot set more than one output location".to_owned(),

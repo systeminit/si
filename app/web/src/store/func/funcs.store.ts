@@ -16,6 +16,7 @@ import {
   CodeGeneration,
   Authentication,
   Qualification,
+  FuncBackendKind,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -24,6 +25,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -56,6 +58,12 @@ export interface DeleteFuncResponse {
 export interface BindingWithDisplayName extends Action {
   displayName: string;
 }
+
+export interface BindingWithBackendKind extends Attribute {
+  backendKind: FuncBackendKind;
+}
+
+const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -178,6 +186,29 @@ export const useFuncStore = () => {
           return _bindings.sort((_a, _b) =>
             _a.displayName.localeCompare(_b.displayName),
           );
+        },
+
+        intrinsicBindingsByVariant(
+          state,
+        ): Map<SchemaVariantId, BindingWithBackendKind[]> {
+          const _bindings = new DefaultMap<
+            SchemaVariantId,
+            BindingWithBackendKind[]
+          >(() => []);
+          Object.values(state.funcsById)
+            .filter((func) => INTRINSICS_DISPLAYED.includes(func.backendKind))
+            .forEach((func) => {
+              func.bindings.forEach((binding) => {
+                if (binding.schemaVariantId) {
+                  const _curr = _bindings.get(binding.schemaVariantId);
+                  const b = binding as BindingWithBackendKind;
+                  b.backendKind = func.backendKind;
+                  _curr.push(b);
+                  _bindings.set(binding.schemaVariantId, _curr);
+                }
+              });
+            });
+          return _bindings;
         },
       },
 

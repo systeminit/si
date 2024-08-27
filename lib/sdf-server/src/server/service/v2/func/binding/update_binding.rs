@@ -38,7 +38,7 @@ pub async fn update_binding(
     // add cycle check so we don't end up with a cycle as a result of updating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
     match func.kind {
-        dal::func::FuncKind::Attribute => {
+        dal::func::FuncKind::Attribute | dal::func::FuncKind::Intrinsic => {
             for binding in request.bindings {
                 if let frontend_types::FuncBinding::Attribute {
                     argument_bindings,
@@ -54,6 +54,7 @@ pub async fn update_binding(
                                     AttributeArgumentBinding::assemble_attribute_input_location(
                                         arg_binding.prop_id,
                                         arg_binding.input_socket_id,
+                                        arg_binding.static_value,
                                     )?;
                                 arguments.push(AttributeArgumentBinding {
                                     func_argument_id: arg_binding

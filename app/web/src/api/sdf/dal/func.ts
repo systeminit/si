@@ -95,6 +95,24 @@ export interface FuncArgument {
   updated_at: IsoDateString;
 }
 
+export enum FuncBackendKind {
+  Array = "Array",
+  Boolean = "Boolean",
+  Diff = "Diff",
+  Identity = "Identity",
+  Integer = "Integer",
+  JsAction = "JsAction",
+  JsAttribute = "JsAction",
+  JsAuthentication = "JsAuthentication",
+  Json = "Json",
+  JsReconciliation = "JsReconciliation",
+  JsSchemaVariantDefinition = "JsSchemaVariantDefinition",
+  Map = "Map",
+  Object = "Object",
+  String = "String",
+  Unset = "Unset",
+  Validation = "Validation",
+}
 export interface FuncSummary {
   funcId: FuncId;
   kind: FuncKind;
@@ -103,6 +121,7 @@ export interface FuncSummary {
   description: string | null;
   isLocked: boolean;
   arguments: FuncArgument[];
+  backendKind: FuncBackendKind;
   bindings: FuncBinding[];
   types?: string | null;
 }
