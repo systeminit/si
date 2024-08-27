@@ -5,14 +5,6 @@
     </h2>
     <div class="flex flex-col gap-2xs py-xs">
       <VormInput
-        v-model="codeSelected"
-        noLabel
-        :disabled="$props.disabled"
-        type="checkbox"
-      >
-        Code</VormInput
-      >
-      <VormInput
         v-model="deletedAtSelected"
         noLabel
         :disabled="$props.disabled"
