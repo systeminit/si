@@ -5,6 +5,15 @@
     </h2>
     <div class="flex flex-col gap-2xs py-xs">
       <VormInput
+        v-if="kind === FuncBindingKind.Qualification"
+        v-model="codeSelected"
+        noLabel
+        :disabled="$props.disabled"
+        type="checkbox"
+      >
+        Code</VormInput
+      >
+      <VormInput
         v-model="deletedAtSelected"
         noLabel
         :disabled="$props.disabled"
@@ -47,11 +56,12 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { VormInput } from "@si/vue-lib/design-system";
-import { LeafInputLocation } from "@/api/sdf/dal/func";
+import { LeafInputLocation, FuncBindingKind } from "@/api/sdf/dal/func";
 
 const props = defineProps<{
   modelValue: LeafInputLocation[];
   disabled?: boolean;
+  kind: FuncBindingKind.CodeGeneration | FuncBindingKind.Qualification;
 }>();
 
 const codeSelected = ref(props.modelValue.includes("code"));
