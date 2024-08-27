@@ -200,7 +200,7 @@ async fn prepare_for_execution(
 skip_all, level = "info", fields(
     si.action.id = ?action_id))]
 async fn process_execution(
-    ctx: &DalContext,
+    ctx: &mut DalContext,
     maybe_resource: Option<&ActionRunResultSuccess>,
     action_id: ActionId,
 ) -> JobConsumerResult<()> {
@@ -272,6 +272,9 @@ async fn process_execution(
         .publish_on_commit(ctx)
         .await?;
 
+    // Send the rebase request with the resource updated (if applicable)
+    ctx.commit().await?;
+    ctx.update_snapshot_to_visibility().await?;
     Ok(())
 }
 
