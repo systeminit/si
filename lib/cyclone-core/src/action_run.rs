@@ -1,5 +1,6 @@
-use crate::BeforeFunction;
 use serde::{Deserialize, Serialize};
+
+use crate::BeforeFunction;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

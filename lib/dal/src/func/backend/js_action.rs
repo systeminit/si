@@ -46,9 +46,14 @@ impl FuncDispatch for FuncBackendJsAction {
     /// This private function dispatches the assembled request to veritech for execution.
     /// This is the "last hop" function in the dal before using the veritech client directly.
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
-        let (veritech, output_tx) = self.context.into_inner();
+        let (veritech, output_tx, workspace_id, change_set_id) = self.context.into_inner();
         let value = veritech
-            .execute_action_run(output_tx.clone(), &self.request)
+            .execute_action_run(
+                output_tx.clone(),
+                &self.request,
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+            )
             .await?;
         let value = match value {
             FunctionResult::Success(value) => {

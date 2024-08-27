@@ -21,7 +21,9 @@ pub use self::make_service::IntoMakeService;
 pub use self::message::{Head, MessageHead};
 pub use self::serve::serve;
 pub use self::service_ext::ServiceExt;
+
 pub use async_trait::async_trait;
+pub use tower::ServiceBuilder;
 
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

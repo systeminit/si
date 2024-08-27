@@ -11,7 +11,7 @@ use crate::server::error;
 use crate::server::state::AppState;
 use crate::service::ApiError;
 
-mod cancel_execution;
+mod kill_execution;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -28,7 +28,7 @@ impl IntoResponse for AdminAPIError {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
                 StatusCode::FORBIDDEN
             }
-            AdminAPIError::FuncRunner(FuncRunnerError::DoNotHavePermissionToCancelExecution) => {
+            AdminAPIError::FuncRunner(FuncRunnerError::DoNotHavePermissionToKillExecution) => {
                 StatusCode::UNAUTHORIZED
             }
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
@@ -43,7 +43,7 @@ pub type AdminAPIResult<T> = Result<T, AdminAPIError>;
 
 pub fn v2_routes() -> Router<AppState> {
     Router::new().route(
-        "/func/runs/:func_run_id/cancel_execution",
-        put(cancel_execution::cancel_execution),
+        "/func/runs/:func_run_id/kill_execution",
+        put(kill_execution::kill_execution),
     )
 }

@@ -12,7 +12,7 @@ use pretty_assertions_sorted::assert_eq;
 use si_events::FuncRunState;
 
 #[test]
-async fn cancel_execution_works(ctx: &mut DalContext) {
+async fn kill_execution_works(ctx: &mut DalContext) {
     let variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
         "DOOM ETERNAL",
@@ -90,10 +90,10 @@ async fn cancel_execution_works(ctx: &mut DalContext) {
     }
     let func_run_id = maybe_func_run_id.expect("no func run found");
 
-    // Cancel the active func run and observe that it worked.
-    FuncRunner::cancel_execution(ctx, func_run_id)
+    // Kill the active func run and observe that it worked.
+    FuncRunner::kill_execution(ctx, func_run_id)
         .await
-        .expect("could not cancel execution");
+        .expect("could not kill execution");
     let func_run_state = ctx
         .layer_db()
         .func_run()
@@ -103,7 +103,7 @@ async fn cancel_execution_works(ctx: &mut DalContext) {
         .expect("no func run found")
         .state();
     assert_eq!(
-        FuncRunState::Cancelled, // expected
-        func_run_state           // actual
+        FuncRunState::Killed, // expected
+        func_run_state        // actual
     );
 }

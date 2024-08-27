@@ -9,12 +9,14 @@ use cyclone_core::{
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
 use tokio::{sync::mpsc, task::JoinHandle};
+use tokio_util::sync::CancellationToken;
 use tracing::info;
 use uuid::Uuid;
 use veritech_client::Client;
-use veritech_server::{
-    Config, CycloneSpec, Instance, LocalUdsInstance, Server, ServerError, StandardConfig,
-};
+use veritech_server::{Config, CycloneSpec, Instance, LocalUdsInstance, Server, StandardConfig};
+
+const WORKSPACE_ID: &str = "workspace";
+const CHANGE_SET_ID: &str = "changeset";
 
 fn nats_config(subject_prefix: String) -> NatsConfig {
     let mut config = NatsConfig::default();
@@ -36,7 +38,10 @@ fn nats_prefix() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
-async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
+async fn veritech_server_for_uds_cyclone(
+    subject_prefix: String,
+    shutdown_token: CancellationToken,
+) -> Server {
     let mut config_file = veritech_server::ConfigFile::default_local_uds();
     veritech_server::detect_and_configure_development(&mut config_file)
         .expect("failed to determine test configuration");
@@ -58,7 +63,7 @@ async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
         .healthcheck_pool(false)
         .build()
         .expect("failed to build spec");
-    Server::for_cyclone_uds(config)
+    Server::for_cyclone_uds(config, shutdown_token)
         .await
         .expect("failed to create server")
 }
@@ -67,10 +72,15 @@ async fn client(subject_prefix: String) -> Client {
     Client::new(nats(subject_prefix).await)
 }
 
-async fn run_veritech_server_for_uds_cyclone(
-    subject_prefix: String,
-) -> JoinHandle<Result<(), ServerError>> {
-    tokio::spawn(veritech_server_for_uds_cyclone(subject_prefix).await.run())
+async fn run_veritech_server_for_uds_cyclone(subject_prefix: String) -> JoinHandle<()> {
+    // NOTE(nick,fletcher): thread through the cancellation token for tests. For now, we don't use
+    // it all, but it may be useful in the future.
+    let shutdown_token = CancellationToken::new();
+    tokio::spawn(
+        veritech_server_for_uds_cyclone(subject_prefix, shutdown_token)
+            .await
+            .run(),
+    )
 }
 
 fn base64_encode(input: impl AsRef<[u8]>) -> String {
@@ -110,7 +120,7 @@ async fn executes_simple_resolver_function() {
     };
 
     let result = client
-        .execute_resolver_function(tx, &request)
+        .execute_resolver_function(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
         .await
         .expect("failed to execute resolver function");
 
@@ -179,7 +189,7 @@ async fn type_checks_resolve_function() {
         };
 
         let result = client
-            .execute_resolver_function(tx, &request)
+            .execute_resolver_function(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
             .await
             .expect("failed to execute resolver function");
 
@@ -242,7 +252,7 @@ async fn type_checks_resolve_function() {
         };
 
         let result = client
-            .execute_resolver_function(tx, &request)
+            .execute_resolver_function(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
             .await
             .expect("failed to execute resolver function");
 
@@ -284,7 +294,7 @@ async fn executes_simple_validation() {
     };
 
     let result = client
-        .execute_validation(tx, &request)
+        .execute_validation(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
         .await
         .expect("failed to execute validation");
 
@@ -328,7 +338,7 @@ async fn executes_simple_schema_variant_definition() {
     };
 
     let result = client
-        .execute_schema_variant_definition(tx, &request)
+        .execute_schema_variant_definition(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
         .await
         .expect("failed to execute schema variant definition");
 

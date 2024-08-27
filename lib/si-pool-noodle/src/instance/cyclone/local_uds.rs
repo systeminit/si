@@ -124,6 +124,13 @@ pub struct LocalUdsInstance {
     watch_shutdown_tx: oneshot::Sender<()>,
 }
 
+// TODO(nick): make this more useful.
+impl std::fmt::Debug for LocalUdsInstance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalUdsInstance").finish()
+    }
+}
+
 #[async_trait]
 impl Instance for LocalUdsInstance {
     type SpecBuilder = LocalUdsInstanceSpecBuilder;

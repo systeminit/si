@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/si-crypto:si-crypto",
         "//third-party/rust:serde_json",
+        "//lib/si-data-nats:si-data-nats",
         "//third-party/rust:thiserror",
     ],
     test_unit_deps = [

@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/nats-subscriber:nats-subscriber",
+        "//lib/naxum:naxum",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-pool-noodle:si-pool-noodle",
@@ -23,6 +24,7 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:ulid",
     ],
     srcs = glob(["src/**/*.rs"]),

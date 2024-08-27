@@ -15,13 +15,13 @@
         <div class="flex flex-row-reverse gap-sm">
           <VButton
             :disabled="!funcRunId"
-            :requestStatus="cancelExecutionReqStatus"
+            :requestStatus="killExecutionReqStatus"
             class="flex-grow"
             icon="plus-circle"
             label="Kill function execution"
             loadingText="Killing function execution"
             tone="success"
-            @click="cancelExecution"
+            @click="killExecution"
           />
         </div>
       </Stack>
@@ -46,14 +46,13 @@ onBeforeMount(async () => {
   }
 });
 
-const cancelExecutionReqStatus =
-  adminStore.getRequestStatus("CANCEL_EXECUTION");
+const killExecutionReqStatus = adminStore.getRequestStatus("KILL_EXECUTION");
 
 const funcRunId = ref<string | null>(null);
 
-const cancelExecution = () => {
+const killExecution = () => {
   if (funcRunId.value) {
-    adminStore.CANCEL_EXECUTION(funcRunId.value);
+    adminStore.KILL_EXECUTION(funcRunId.value);
   }
 };
 </script>

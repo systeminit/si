@@ -95,11 +95,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "VeritechShutdownHandle" => {
-                                let var = expander.setup_veritech_shutdown_handle();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "WorkspacePk" => {
                                 let var = expander.setup_workspace_pk();
                                 let var = var.as_ref();
@@ -212,7 +207,6 @@ struct SdfTestFnSetupExpander {
     rebaser_server: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
-    veritech_shutdown_handle: Option<Rc<Ident>>,
     start_veritech_server: Option<()>,
     services_context: Option<Rc<Ident>>,
     dal_context_builder: Option<Rc<Ident>>,
@@ -245,7 +239,6 @@ impl SdfTestFnSetupExpander {
             rebaser_server: None,
             start_rebaser_server: None,
             veritech_server: None,
-            veritech_shutdown_handle: None,
             start_veritech_server: None,
             services_context: None,
             dal_context_builder: None,
@@ -503,14 +496,6 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_veritech_server(&mut self, value: Option<Rc<Ident>>) {
         self.veritech_server = value;
-    }
-
-    fn veritech_shutdown_handle(&self) -> Option<&Rc<Ident>> {
-        self.veritech_shutdown_handle.as_ref()
-    }
-
-    fn set_veritech_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
-        self.veritech_shutdown_handle = value;
     }
 
     fn start_veritech_server(&self) -> Option<()> {

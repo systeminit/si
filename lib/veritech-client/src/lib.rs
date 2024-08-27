@@ -1,22 +1,22 @@
 use futures::{StreamExt, TryStreamExt};
 use nats_subscriber::{Subscriber, SubscriberError};
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::NatsClient;
+use si_data_nats::{jetstream, NatsClient, Subject};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{
-    nats_action_run_subject, nats_cancel_execution_subject, nats_reconciliation_subject,
-    nats_resolver_function_subject, nats_schema_variant_definition_subject,
-    nats_validation_subject, reply_mailbox_for_output, reply_mailbox_for_result,
-    FINAL_MESSAGE_HEADER_KEY,
+    reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
+    NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX, NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX,
+    NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX, NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX,
+    REPLY_INBOX_HEADER_NAME,
 };
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, CancelExecutionRequest,
-    ComponentKind, ComponentView, FunctionResult, FunctionResultFailure, OutputStream,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
+    FunctionResult, FunctionResultFailure, KillExecutionRequest, OutputStream,
     ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
     ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
     ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
@@ -35,26 +35,77 @@ pub enum ClientError {
     NoResult,
     #[error("unable to publish message: {0:?}")]
     PublishingFailed(si_data_nats::Message),
+    #[error("reconciliation functions no longer supported")]
+    ReconciliationFunctionsNoLongerSupported,
     #[error("root connection closed")]
     RootConnectionClosed,
-    #[error(transparent)]
+    #[error("subscriber error: {0}")]
     Subscriber(#[from] SubscriberError),
+    #[error(transparent)]
+    Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
 }
 
 pub type ClientResult<T> = Result<T, ClientError>;
 
+/// This _private_ enum helps dictate what NATS technology should be used in communicating with veritech.
+enum RequestMode {
+    /// Publish messages using core NATS to communicate with veritech.
+    Core,
+    /// Publish messages using NATS Jetstream to communicate with veritech.
+    Jetstream,
+}
+
 #[derive(Clone, Debug)]
 pub struct Client {
     nats: NatsClient,
+    context: jetstream::Context,
 }
 
 impl Client {
     pub fn new(nats: NatsClient) -> Self {
-        Self { nats }
+        let context = jetstream::new(nats.clone());
+        Self { nats, context }
     }
 
     fn nats_subject_prefix(&self) -> Option<&str> {
         self.nats.metadata().subject_prefix()
+    }
+
+    #[instrument(name = "client.execute_action_run", level = "info", skip_all)]
+    pub async fn execute_action_run(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ActionRunRequest,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
+        self.execute_request(
+            veritech_core::subject::veritech_request(
+                self.nats_subject_prefix(),
+                workspace_id,
+                change_set_id,
+                NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX,
+            ),
+            Some(output_tx),
+            request,
+            RequestMode::Jetstream,
+        )
+        .await
+    }
+
+    // TODO(nick,fletcher): remove reconcilation from both sides. As of the time of writing, we
+    // removed it from the veritech layer since we moved everything to jetstream for production
+    // hardening. As a result, reconciliation did not make the great journey. We landed on the
+    // landmine of dead code here, but we all collectively need to take the time to clean this up.
+    #[instrument(name = "client.execute_reconciliation", level = "info", skip_all)]
+    pub async fn execute_reconciliation(
+        &self,
+        _output_tx: mpsc::Sender<OutputStream>,
+        _request: &ReconciliationRequest,
+        _workspace_id: &str,
+        _change_set_id: &str,
+    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
+        Err(ClientError::ReconciliationFunctionsNoLongerSupported)
     }
 
     #[instrument(name = "client.execute_resolver_function", level = "info", skip_all)]
@@ -62,11 +113,45 @@ impl Client {
         &self,
         output_tx: mpsc::Sender<OutputStream>,
         request: &ResolverFunctionRequest,
+        workspace_id: &str,
+        change_set_id: &str,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
         self.execute_request(
-            nats_resolver_function_subject(self.nats_subject_prefix()),
+            veritech_core::subject::veritech_request(
+                self.nats_subject_prefix(),
+                workspace_id,
+                change_set_id,
+                NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX,
+            ),
             Some(output_tx),
             request,
+            RequestMode::Jetstream,
+        )
+        .await
+    }
+
+    #[instrument(
+        name = "client.execute_schema_variant_definition",
+        level = "info",
+        skip_all
+    )]
+    pub async fn execute_schema_variant_definition(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &SchemaVariantDefinitionRequest,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<SchemaVariantDefinitionResultSuccess>> {
+        self.execute_request(
+            veritech_core::subject::veritech_request(
+                self.nats_subject_prefix(),
+                workspace_id,
+                change_set_id,
+                NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX,
+            ),
+            Some(output_tx),
+            request,
+            RequestMode::Jetstream,
         )
         .await
     }
@@ -76,75 +161,43 @@ impl Client {
         &self,
         output_tx: mpsc::Sender<OutputStream>,
         request: &ValidationRequest,
+        workspace_id: &str,
+        change_set_id: &str,
     ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
         self.execute_request(
-            nats_validation_subject(self.nats_subject_prefix()),
+            veritech_core::subject::veritech_request(
+                self.nats_subject_prefix(),
+                workspace_id,
+                change_set_id,
+                NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX,
+            ),
             Some(output_tx),
             request,
+            RequestMode::Jetstream,
         )
         .await
     }
 
-    #[instrument(name = "client.execute_action_run", level = "info", skip_all)]
-    pub async fn execute_action_run(
+    #[instrument(name = "client.kill_execution", level = "info", skip_all)]
+    pub async fn kill_execution(
         &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ActionRunRequest,
-    ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
-        self.execute_request(
-            nats_action_run_subject(self.nats_subject_prefix()),
-            Some(output_tx),
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_reconciliation", level = "info" skip_all)]
-    pub async fn execute_reconciliation(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ReconciliationRequest,
-    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
-        self.execute_request(
-            nats_reconciliation_subject(self.nats_subject_prefix()),
-            Some(output_tx),
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_reconciliation", level = "info", skip_all)]
-    pub async fn execute_schema_variant_definition(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &SchemaVariantDefinitionRequest,
-    ) -> ClientResult<FunctionResult<SchemaVariantDefinitionResultSuccess>> {
-        self.execute_request(
-            nats_schema_variant_definition_subject(self.nats_subject_prefix()),
-            Some(output_tx),
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.cancel_execution", level = "info", skip_all)]
-    pub async fn cancel_execution(
-        &self,
-        request: &CancelExecutionRequest,
+        request: &KillExecutionRequest,
     ) -> ClientResult<FunctionResult<()>> {
         self.execute_request(
-            nats_cancel_execution_subject(self.nats_subject_prefix()),
+            veritech_core::subject::veritech_kill_request(self.nats_subject_prefix()),
             None,
             request,
+            RequestMode::Core,
         )
         .await
     }
 
     async fn execute_request<R, S>(
         &self,
-        subject: impl Into<String>,
+        subject: Subject,
         output_tx: Option<mpsc::Sender<OutputStream>>,
         request: &R,
+        request_mode: RequestMode,
     ) -> ClientResult<FunctionResult<S>>
     where
         R: Serialize,
@@ -191,7 +244,6 @@ impl Client {
         }
 
         // Submit the request message
-        let subject = subject.into();
         trace!(
             messaging.destination = &subject.as_str(),
             "publishing message"
@@ -200,14 +252,34 @@ impl Client {
         // Root reply mailbox will receive a reply if nobody is listening to the channel `subject`
         let mut root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
-        self.nats
-            .publish_with_reply_and_headers(
-                subject,
-                reply_mailbox_root.clone(),
-                propagation::empty_injected_headers(),
-                msg.into(),
-            )
-            .await?;
+        // NOTE(nick,fletcher): based on the provided request mode, we will either communicate user core nats or
+        // jetstream. We neither like nor endorse this behavior. This method should probably be broken up in the
+        // future to cleanly separate core nats and jetstream use.
+        match request_mode {
+            RequestMode::Core => {
+                self.nats
+                    .publish_with_reply_and_headers(
+                        subject,
+                        reply_mailbox_root.clone(),
+                        propagation::empty_injected_headers(),
+                        msg.into(),
+                    )
+                    .await?
+            }
+            RequestMode::Jetstream => {
+                let mut headers = propagation::empty_injected_headers();
+                headers.insert(REPLY_INBOX_HEADER_NAME, reply_mailbox_root.clone());
+
+                self.context
+                    .publish_with_headers(subject, headers, msg.into())
+                    .await
+                    // If `Err` then message failed to publish
+                    .map_err(|err| ClientError::Transport(Box::new(err)))?
+                    .await
+                    // If `Err` then NATS server failed to ack
+                    .map_err(|err| ClientError::Transport(Box::new(err)))?;
+            }
+        }
 
         let span = Span::current();
 
