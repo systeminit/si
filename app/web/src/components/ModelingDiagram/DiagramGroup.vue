@@ -79,6 +79,7 @@
     <!-- resize handles -->
     <!--  left side handle  -->
     <v-line
+      v-if="!collapsed"
       :config="{
         points: [
           -nodeWidth / 2,
@@ -93,6 +94,7 @@
     />
     <!-- right side handle   -->
     <v-line
+      v-if="!collapsed"
       :config="{
         points: [
           nodeWidth / 2,
@@ -107,6 +109,7 @@
     />
     <!-- Bottom Handle -->
     <v-line
+      v-if="!collapsed"
       :config="{
         points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
         hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
@@ -116,6 +119,7 @@
     />
     <!-- Bottom Left Handle -->
     <v-circle
+      v-if="!collapsed"
       :config="{
         width: GROUP_RESIZE_HANDLE_SIZE,
         height: GROUP_RESIZE_HANDLE_SIZE,
@@ -126,6 +130,7 @@
       @mouseout="onMouseOut"
     />
     <!-- Bottom Right Handle -->
+    v-if="!collapsed"
     <v-circle
       :config="{
         width: GROUP_RESIZE_HANDLE_SIZE,
@@ -138,6 +143,7 @@
     />
     <!-- Top Handle -->
     <v-line
+      v-if="!collapsed"
       :config="{
         points: [
           -nodeWidth / 2,
@@ -152,6 +158,7 @@
     />
     <!-- Top Left Handle -->
     <v-circle
+      v-if="!collapsed"
       :config="{
         width: GROUP_RESIZE_HANDLE_SIZE,
         height: GROUP_RESIZE_HANDLE_SIZE,
@@ -163,6 +170,7 @@
     />
     <!-- Top Right Handle -->
     <v-circle
+      v-if="!collapsed"
       :config="{
         width: GROUP_RESIZE_HANDLE_SIZE,
         height: GROUP_RESIZE_HANDLE_SIZE,
@@ -175,6 +183,7 @@
 
     <!-- sockets -->
     <v-group
+      v-if="!collapsed"
       :config="{
         x: -halfWidth - 1,
         y: nodeHeaderHeight + SOCKET_MARGIN_TOP,
@@ -193,6 +202,7 @@
     </v-group>
 
     <v-group
+      v-if="!collapsed"
       :config="{
         x: halfWidth + 1,
         y:
@@ -233,11 +243,22 @@
         }"
       />
 
+      <DiagramIcon
+        icon="chevron"
+        origin="top-left"
+        :rotation="collapsed ? 90 : 180"
+        :size="40"
+        :x="38"
+        :y="collapsed ? 2 : 42"
+        :color="colors.headerText"
+        @click="toggleChevron"
+      />
+
       <!-- header text -->
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 2,
+          x: 30,
           y: 2,
           verticalAlign: 'top',
           align: 'left',
@@ -258,7 +279,7 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 2,
+          x: 30,
           y: 20,
           verticalAlign: 'top',
           align: 'left',
@@ -289,9 +310,69 @@
       @mouseout="onMouseOut"
     />
 
+    <!-- status icons for collapsed children-->
+    <v-group
+      v-if="collapsed"
+      :config="{
+        x: halfWidth - 2,
+        y: 0,
+      }"
+    >
+      <v-text
+        :config="{
+          x: -58,
+          y: nodeBodyHeight - 25,
+          verticalAlign: 'top',
+          align: 'right',
+          width: 32,
+          text: `${group.def.numChildrenResources}`,
+          fill: colors.labelText,
+          fontSize: 16,
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'none',
+          ellipsis: false,
+        }"
+      ></v-text>
+      <DiagramIcon
+        icon="check-hex"
+        :color="getToneColorHex('success')"
+        :size="24"
+        :x="0"
+        :y="nodeBodyHeight - 5"
+        origin="bottom-right"
+      />
+      <v-text
+        :config="{
+          x: -112,
+          y: nodeBodyHeight - 25,
+          verticalAlign: 'top',
+          align: 'right',
+          width: 32,
+          text: `${group.def.numChildren}`,
+          fill: colors.labelText,
+          fontSize: 16,
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'none',
+          ellipsis: false,
+        }"
+      />
+      <DiagramIcon
+        icon="check-hex-outline"
+        :color="getToneColorHex('success')"
+        :size="24"
+        :x="-55"
+        :y="nodeBodyHeight - 5"
+        origin="bottom-right"
+      />
+    </v-group>
+
     <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length"
+      v-if="statusIcons?.length && !collapsed"
       :config="{
         x: halfWidth - 2,
         y: 0,
@@ -398,6 +479,7 @@ import {
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
+import { trackEvent } from "@/utils/tracking";
 import {
   QualificationStatus,
   statusIconsForComponent,
@@ -432,6 +514,7 @@ const props = defineProps({
     type: String as PropType<QualificationStatus>,
     required: false,
   },
+  collapsed: Boolean,
 });
 
 const diagramContext = useDiagramContext();
@@ -460,9 +543,11 @@ const { theme } = useTheme();
 const titleTextRef = ref();
 const groupRef = ref();
 
+const componentsStore = useComponentsStore();
+
 const size = computed(
   () =>
-    componentsStore.resizedElementSizes[props.group.uniqueKey] ||
+    componentsStore.combinedElementSizes[props.group.uniqueKey] ||
     props.group.def.size || { width: 500, height: 500 },
 );
 
@@ -486,8 +571,6 @@ const topRightIconColor = computed(() => {
   else return getToneColorHex("warning");
 });
 
-const componentsStore = useComponentsStore();
-
 const childCount = computed(() => {
   const mappedChildren = _.map(
     props.group.def.childIds,
@@ -502,7 +585,9 @@ const childCount = computed(() => {
 });
 
 const nodeWidth = computed(() =>
-  Math.max(size.value.width, MIN_NODE_DIMENSION),
+  !props.collapsed
+    ? Math.max(size.value.width, MIN_NODE_DIMENSION)
+    : size.value.width,
 );
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
@@ -554,7 +639,9 @@ function recalcHeaderHeight() {
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
 const nodeBodyHeight = computed(() =>
-  Math.max(size.value.height, MIN_NODE_DIMENSION),
+  !props.collapsed
+    ? Math.max(size.value.height, MIN_NODE_DIMENSION)
+    : size.value.height,
 );
 const nodeHeight = computed(
   () =>
@@ -563,7 +650,7 @@ const nodeHeight = computed(
 
 const position = computed(
   () =>
-    componentsStore.movedElementPositions[props.group.uniqueKey] ||
+    componentsStore.combinedElementPositions[props.group.uniqueKey] ||
     props.group.def.position,
 );
 
@@ -593,6 +680,7 @@ const colors = computed(() => {
     icon: "#000",
     headerText,
     bodyBg: bodyBg.toRgbString(),
+    labelText: theme.value === "dark" ? "#FFF" : "#000",
     bodyText,
     parentColor:
       componentsStore.componentsById[parentComponentId.value || ""]?.color ||
@@ -656,4 +744,34 @@ const highlightAsNewParent = computed(() => {
       props.group.uniqueKey
   );
 });
+
+const component = computed(
+  () => componentsStore.rawComponentsById[props.group.def.id],
+);
+
+const toggleChevron = () => {
+  if (componentsStore.collapsedComponents.has(props.group.uniqueKey)) {
+    componentsStore.expandComponents(props.group.uniqueKey);
+    trackEvent("expand-components", {
+      source: "diagram-group",
+      schemaVariantName: component.value?.schemaVariantName,
+      schemaName: component.value?.schemaName,
+      hasParent: !!component.value?.parentId,
+    });
+  } else {
+    const { position, size } =
+      componentsStore.initMinimzedElementPositionAndSize(props.group.uniqueKey);
+    componentsStore.updateMinimzedElementPositionAndSize({
+      uniqueKey: props.group.uniqueKey,
+      position,
+      size,
+    });
+    trackEvent("collapse-components", {
+      source: "diagram-group",
+      schemaVariantName: component.value?.schemaVariantName,
+      schemaName: component.value?.schemaName,
+      hasParent: !!component.value?.parentId,
+    });
+  }
+};
 </script>

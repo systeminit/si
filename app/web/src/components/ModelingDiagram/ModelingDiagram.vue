@@ -82,6 +82,9 @@ overflow hidden */
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
+            :collapsed="
+              componentsStore.collapsedComponents.has(group.uniqueKey)
+            "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
           <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -89,10 +92,10 @@ overflow hidden */
               v-for="edge in edges"
               :key="edge.uniqueKey"
               :edge="edge"
-              :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+              :fromPoint="getSocketLocationInfo('from', edge)?.center"
               :isHovered="elementIsHovered(edge)"
               :isSelected="elementIsSelected(edge)"
-              :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+              :toPoint="getSocketLocationInfo('to', edge)?.center"
             />
           </template>
           <DiagramNode
@@ -118,16 +121,19 @@ overflow hidden */
               v-for="edge in edges"
               :key="edge.uniqueKey"
               :edge="edge"
-              :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+              :fromPoint="getSocketLocationInfo('from', edge)?.center"
               :isHovered="elementIsHovered(edge)"
               :isSelected="elementIsSelected(edge)"
-              :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+              :toPoint="getSocketLocationInfo('to', edge)?.center"
             />
           </template>
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
             :group="group"
+            :collapsed="
+              componentsStore.collapsedComponents.has(group.uniqueKey)
+            "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
 
@@ -177,10 +183,13 @@ overflow hidden */
           <!-- new edge being drawn -->
           <DiagramNewEdge
             v-if="drawEdgeActive"
-            :fromPoint="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
+            :fromPoint="
+              getSocketLocationInfo(undefined, undefined, drawEdgeFromSocketKey)
+                ?.center
+            "
             :toPoint="
-              getSocketLocationInfo(drawEdgeToSocketKey)?.center ||
-              gridPointerPos
+              getSocketLocationInfo(undefined, undefined, drawEdgeToSocketKey)
+                ?.center || gridPointerPos
             "
           />
         </v-layer>
@@ -246,6 +255,7 @@ import {
   Ref,
   provide,
   inject,
+  toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import * as _ from "lodash-es";
@@ -263,6 +273,9 @@ import {
   useComponentsStore,
   FullComponent,
   ComponentData,
+  elementPositionAndSize,
+  COLLAPSED_HALFWIDTH,
+  COLLAPSED_HALFHEIGHT,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
@@ -1354,12 +1367,6 @@ const draggedElementsPositionsPreDrag = ref<
 >({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
-interface elementPositionAndSize {
-  uniqueKey: DiagramElementUniqueKey;
-  position?: Vector2d;
-  size?: Size2D; // only frames have a size
-}
-
 interface updateElementPositionAndSizeArgs {
   elements: elementPositionAndSize[];
   writeToChangeSet?: boolean;
@@ -1437,7 +1444,7 @@ function beginDragElements() {
   draggedElementsPositionsPreDrag.value = _.mapValues(
     allElementsByKey.value,
     (el) =>
-      componentsStore.movedElementPositions[el.uniqueKey] ||
+      componentsStore.combinedElementPositions[el.uniqueKey] ||
       _.get(el.def, "position"),
   );
 }
@@ -1465,6 +1472,8 @@ function endDragElements() {
     currentSelectionMovableElements.value.length === 1;
 
   _.each(currentSelectionMovableElements.value, (el) => {
+    if (componentsStore.collapsedComponents.has(el.uniqueKey)) return;
+
     if (!componentsStore.movedElementPositions[el.uniqueKey]) return;
     componentData.push({
       key: el.uniqueKey,
@@ -1545,6 +1554,7 @@ const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
 function onDragElementsMove() {
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
+
   const delta: Vector2d = {
     x: Math.round(
       (containerPointerPos.value.x -
@@ -1571,6 +1581,7 @@ function onDragElementsMove() {
     cursorWithinGroupKey.value || ""
   ] as DiagramGroupData;
 
+  const collapsedElements: elementPositionAndSize[] = [];
   const elements: elementPositionAndSize[] = [];
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
@@ -1581,7 +1592,10 @@ function onDragElementsMove() {
 
     // if we are going to move the element within a new parent we may need to adjust
     // the position to stay inside of it
-    if (parentOrCandidate) {
+    if (
+      parentOrCandidate &&
+      !componentsStore.collapsedComponents.has(el.uniqueKey)
+    ) {
       const parentRect = nodesLocationInfo[parentOrCandidate.uniqueKey];
       const elRect = nodesLocationInfo[el.uniqueKey];
       if (!parentRect || !elRect) return;
@@ -1612,7 +1626,58 @@ function onDragElementsMove() {
       }
     }
 
-    if (el instanceof DiagramGroupData) {
+    // keep the collapsed component within its parent bounding box
+    if (
+      componentsStore.collapsedComponents.has(el.uniqueKey) &&
+      el.def.parentId
+    ) {
+      const parent = componentsStore.rawComponentsById[el.def.parentId];
+      if (parent) {
+        const parentKey =
+          parent.componentType === ComponentType.Component
+            ? `n-${parent.id}`
+            : `g-${parent.id}`;
+        const parentRect = nodesLocationInfo[parentKey];
+        if (parentRect) {
+          // enforce left side
+          if (
+            newPosition.x <
+            parentRect.x + COLLAPSED_HALFWIDTH + GROUP_INTERNAL_PADDING
+          )
+            newPosition.x =
+              parentRect.x + COLLAPSED_HALFWIDTH + GROUP_INTERNAL_PADDING;
+
+          // enforce top
+          if (
+            newPosition.y <
+            parentRect.y + HEADER_SIZE + GROUP_INTERNAL_PADDING
+          )
+            newPosition.y = parentRect.y + HEADER_SIZE + GROUP_INTERNAL_PADDING;
+
+          // enforce right
+          const rightBound =
+            parentRect.x +
+            parentRect.width -
+            COLLAPSED_HALFWIDTH -
+            GROUP_INTERNAL_PADDING;
+          if (newPosition.x > rightBound) newPosition.x = rightBound;
+
+          // enforce bottom
+          const bottomBound =
+            parentRect.y +
+            parentRect.height -
+            COLLAPSED_HALFHEIGHT -
+            GROUP_INTERNAL_PADDING -
+            GROUP_BOTTOM_INTERNAL_PADDING * 2;
+          if (newPosition.y > bottomBound) newPosition.y = bottomBound;
+        }
+      }
+    }
+
+    if (
+      el instanceof DiagramGroupData &&
+      !componentsStore.collapsedComponents.has(el.uniqueKey)
+    ) {
       const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
       const cycleCheck = new Set();
       const queue = [el];
@@ -1655,13 +1720,23 @@ function onDragElementsMove() {
     }
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
-    elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
+    if (componentsStore.collapsedComponents.has(el.uniqueKey)) {
+      collapsedElements.push({
+        uniqueKey: el.uniqueKey,
+        position: newPosition,
+      });
+    } else {
+      elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
+    }
   });
-  updateElementPositionAndSize({
-    elements,
-    writeToChangeSet: false,
-    broadcastToClients: true,
-  });
+  if (elements.length > 0)
+    updateElementPositionAndSize({
+      elements,
+      writeToChangeSet: false,
+      broadcastToClients: true,
+    });
+  if (collapsedElements.length > 0)
+    componentsStore.updateMinimzedElementPositionAndSize(...collapsedElements);
 
   // check if dragging to the edge of the screen, which will trigger scrolling
   const pointerX = containerPointerPos.value.x;
@@ -1882,6 +1957,9 @@ function beginResizeElement() {
   if (!(lastMouseDownElement.value instanceof DiagramGroupData)) return;
 
   resizeElement.value = lastMouseDownElement.value;
+  if (componentsStore.collapsedComponents.has(resizeElement.value.uniqueKey))
+    return;
+
   resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
   const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
@@ -1897,6 +1975,7 @@ function endResizeElement() {
   if (!el) return;
   // currently only groups can be resized... this is mostly for TS
   if (!(el instanceof DiagramGroupData)) return;
+  if (componentsStore.collapsedComponents.has(el.uniqueKey)) return;
 
   const size = componentsStore.resizedElementSizes[el.uniqueKey];
   const position = componentsStore.movedElementPositions[el.uniqueKey];
@@ -1913,6 +1992,7 @@ function endResizeElement() {
 
 function onResizeMove() {
   if (!resizeElement.value || !resizeElementDirection.value) return;
+
   const resizeTargetKey = resizeElement.value.uniqueKey;
   const resizeTargetId = resizeElement.value.def.id;
 
@@ -2540,12 +2620,12 @@ const insertElementActive = computed(
   () => !!componentsStore.selectedInsertSchemaVariantId,
 );
 
+const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
 function fitChildInsideParentFrame(
   position: Vector2d,
   size: Size2D,
 ): [Vector2d, Size2D] {
   // position the component within its parent cleanly
-  const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
   // there is headerTextHeight.value, but we don't have it because the component doesn't exist yet
   const DEFAULT_GUTTER_SIZE = 10; // leaving room for sockets
   const createAtPosition = { ...position };
@@ -2632,7 +2712,43 @@ type SocketLocationInfo = { center: Vector2d };
 const nodesLocationInfo = reactive<Record<string, IRect>>({});
 const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
 
-function getSocketLocationInfo(socketKey?: DiagramElementUniqueKey) {
+type DIRECTION = "to" | "from";
+function getSocketLocationInfo(
+  direction?: DIRECTION,
+  edge?: DiagramEdgeData,
+  socketKey?: DiagramElementUniqueKey,
+) {
+  if (edge) {
+    // if from component is collapsed, return the position of its center
+    const componentId =
+      direction === "from" ? edge.def.fromComponentId : edge.def.toComponentId;
+    const component = componentsStore.diagramNodesById[componentId];
+    if (component) {
+      let def;
+      if (component?.componentType === ComponentType.Component)
+        def = new DiagramNodeData(component);
+      else def = new DiagramGroupData(component);
+      const collapsedKey = componentsStore.collapsedComponents.has(
+        def.uniqueKey,
+      )
+        ? def.uniqueKey
+        : areMyAncestorsCollapsed(def);
+      if (collapsedKey) {
+        const position = structuredClone(
+          toRaw(componentsStore.collapsedElementPositions[collapsedKey]),
+        );
+        const size = componentsStore.collapsedElementSizes[collapsedKey];
+        if (position && size) {
+          position.y += size.height / 2;
+          return { center: position };
+        }
+      }
+    }
+
+    const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
+    return socketsLocationInfo[key];
+  }
+
   if (!socketKey) return undefined;
   return socketsLocationInfo[socketKey];
 }
@@ -2673,26 +2789,35 @@ function diagramDataFromNodeDef(
   return new Cls(nodeDef as DiagramNodeDef);
 }
 
+const areMyAncestorsCollapsed = (
+  component: DiagramNodeData | DiagramGroupData,
+): DiagramElementUniqueKey | null => {
+  if (component.def.ancestorIds)
+    for (const cId of component.def.ancestorIds) {
+      const c = componentsStore.rawComponentsById[cId];
+      if (c) {
+        const key =
+          c.componentType === ComponentType.Component
+            ? `n-${c.id}`
+            : `g-${c.id}`;
+        if (componentsStore.collapsedComponents.has(key)) return key;
+      }
+    }
+  return null;
+};
+
 const nodes = computed(() =>
-  _.map(
-    _.filter(
-      componentsStore.diagramNodes,
-      (n) => n.componentType === ComponentType.Component,
-    ),
-    (nodeDef) => new DiagramNodeData(nodeDef),
-  ),
+  componentsStore.diagramNodes
+    .filter((n) => n.componentType === ComponentType.Component)
+    .map((nodeDef) => new DiagramNodeData(nodeDef))
+    .filter((n) => !areMyAncestorsCollapsed(n)),
 );
 const groups = computed(() => {
-  const allGroups = _.map(
-    _.filter(
-      componentsStore.diagramNodes,
-      (n) => n.componentType !== ComponentType.Component,
-    ),
-    (groupDef) => {
-      const g = new DiagramGroupData(groupDef);
-      return g;
-    },
-  );
+  const allGroups = componentsStore.diagramNodes
+    .filter((n) => n.componentType !== ComponentType.Component)
+    .map((groupDef) => new DiagramGroupData(groupDef))
+    .filter((g) => !areMyAncestorsCollapsed(g));
+
   const orderedGroups = _.orderBy(allGroups, (g) => {
     // order by "depth" in frames
     let zIndex = g.def.ancestorIds?.length || 0;
@@ -2718,10 +2843,9 @@ const sockets = computed(() =>
   _.compact(_.flatMap(elements.value, (i) => i.sockets)),
 );
 const edges = computed(() =>
-  _.map(
-    componentsStore.diagramEdges,
-    (edgeDef) => new DiagramEdgeData(edgeDef),
-  ),
+  componentsStore.diagramEdges
+    .filter((e) => !e.isInferred)
+    .map((edgeDef) => new DiagramEdgeData(edgeDef)),
 );
 
 // quick ways to look up specific element data from a unique key
@@ -2802,15 +2926,13 @@ const connectedEdgesByElementKey = computed(() => {
 // }
 function getCenterPointOfElement(el: DiagramElementData) {
   if (el instanceof DiagramEdgeData) {
-    // TODO: this logic should live on DiagramEdge class
-    const fromPoint = getSocketLocationInfo(el.fromSocketKey)?.center;
-    const toPoint = getSocketLocationInfo(el.toSocketKey)?.center;
+    const fromPoint = getSocketLocationInfo("from", el)?.center;
+    const toPoint = getSocketLocationInfo("to", el)?.center;
     if (!fromPoint || !toPoint) return;
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-    // TODO: probably want nodes/groups to be able to return their correct center point
     const position = _.clone(
-      componentsStore.movedElementPositions[el.uniqueKey] || el.def.position,
+      componentsStore.combinedElementPositions[el.uniqueKey] || el.def.position,
     );
     if (el.def.size) {
       position.y += el.def.size.height / 2;

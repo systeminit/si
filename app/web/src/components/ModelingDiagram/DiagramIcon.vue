@@ -30,6 +30,7 @@ it from the diagram config's registry of icons */
       :color="color"
       :config="{ width, height }"
       :spin="icon === 'loader' || spin"
+      :rotation="rotation"
     />
   </v-group>
 </template>
@@ -57,6 +58,7 @@ const props = defineProps({
   shadeBg: { type: Boolean },
   circleBg: { type: Boolean },
   config: { type: Object },
+  rotation: { type: Number },
   origin: {
     type: String as PropType<
       "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right"

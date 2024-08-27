@@ -60,6 +60,7 @@ const props = defineProps({
     type: Object as PropType<DiagramGroupData>,
     required: true,
   },
+  collapsed: Boolean,
   isHovered: Boolean,
   isSelected: Boolean,
 });
@@ -69,7 +70,7 @@ const groupRef = ref();
 
 const size = computed(
   () =>
-    componentsStore.resizedElementSizes[props.group.uniqueKey] ||
+    componentsStore.combinedElementSizes[props.group.uniqueKey] ||
     props.group.def.size || { width: 500, height: 500 },
 );
 
@@ -100,7 +101,7 @@ const nodeBodyHeight = computed(() => size.value.height);
 
 const position = computed(
   () =>
-    componentsStore.movedElementPositions[props.group.uniqueKey] ||
+    componentsStore.combinedElementPositions[props.group.uniqueKey] ||
     props.group.def.position,
 );
 // const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
