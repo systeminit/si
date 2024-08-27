@@ -80,6 +80,8 @@ pub enum FuncAPIError {
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshotError(#[from] dal::WorkspaceSnapshotError),
     #[error("wrong function kind for binding")]
     WrongFunctionKindForBinding,
     #[error("ws event error: {0}")]
@@ -135,6 +137,17 @@ impl IntoResponse for FuncAPIError {
             Self::FuncNotFound(_) |
             // When a graph node cannot be found for a schema variant, it is not found
             Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => (StatusCode::NOT_FOUND, None),
+
+            // When the authoring changes requested would result in a cycle
+            Self::FuncBinding(FuncBindingError::SchemaVariant(
+                dal::SchemaVariantError::AttributePrototypeArgument(
+                    dal::attribute::prototype::argument::AttributePrototypeArgumentError::WorkspaceSnapshot(
+                        dal::WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                            dal::workspace_snapshot::graph::WorkspaceSnapshotGraphError::CreateGraphCycle,
+                        ),
+                    ),
+                ),
+            )) => (StatusCode::UNPROCESSABLE_ENTITY, None),
 
             // Return 422 if the error is related to the user code being invalid
             Self::FuncAuthoring(FuncAuthoringError::AttributeValue(AttributeValueError::FuncRunner(err))) =>

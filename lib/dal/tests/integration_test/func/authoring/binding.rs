@@ -1,13 +1,13 @@
 use dal::{
     action::prototype::ActionKind,
-    attribute::prototype::argument::AttributePrototypeArgument,
+    attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::{
         argument::{FuncArgument, FuncArgumentKind},
         authoring::FuncAuthoringClient,
         binding::{
             action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
             leaf::LeafBinding, AttributeArgumentBinding, AttributeFuncArgumentSource,
-            AttributeFuncDestination, EventualParent, FuncBinding,
+            AttributeFuncDestination, EventualParent, FuncBinding, FuncBindingError,
         },
     },
     prop::PropPath,
@@ -15,9 +15,11 @@ use dal::{
         authoring::VariantAuthoringClient,
         leaves::{LeafInputLocation, LeafKind},
     },
-    AttributePrototype, DalContext, Func, Prop, Schema, SchemaVariant,
+    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
+    AttributePrototype, DalContext, Func, Prop, Schema, SchemaVariant, SchemaVariantError,
+    WorkspaceSnapshotError,
 };
-use dal_test::test;
+use dal_test::{helpers::create_unlocked_variant_copy_for_schema_name, test};
 use pretty_assertions_sorted::assert_eq;
 
 mod action;
@@ -468,4 +470,58 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
     assert_eq!("entries", func_argument.name.as_str());
     assert_eq!(FuncArgumentKind::Array, func_argument.kind);
     assert_eq!(Some(FuncArgumentKind::Object), func_argument.element_kind);
+}
+
+#[test]
+async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
+    let _schema = Schema::find_by_name(ctx, "katy perry")
+        .await
+        .expect("could not perform find by name")
+        .expect("no schema found");
+    let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
+        .await
+        .expect("could not ");
+
+    let func_id = Func::find_id_by_name(ctx, "test:generateStringCode")
+        .await
+        .expect("could not perform find func by name")
+        .expect("func not found");
+    let binding = FuncBinding::get_code_gen_bindings_for_func_id(ctx, func_id)
+        .await
+        .expect("could not get leaf binding")
+        .into_iter()
+        .find(|binding| binding.eventual_parent == EventualParent::SchemaVariant(schema_variant_id))
+        .expect("bang");
+    assert_eq!(
+        LeafBinding {
+            func_id,
+            attribute_prototype_id: binding.attribute_prototype_id,
+            eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
+            inputs: vec![LeafInputLocation::Domain],
+            leaf_kind: LeafKind::CodeGeneration
+        },
+        binding
+    );
+    let _cycle_check_guard = ctx
+        .workspace_snapshot()
+        .expect("got snap")
+        .enable_cycle_check()
+        .await;
+    let result = LeafBinding::update_leaf_func_binding(
+        ctx,
+        binding.attribute_prototype_id,
+        &[LeafInputLocation::Domain, LeafInputLocation::Code],
+    )
+    .await;
+
+    match result {
+        Err(FuncBindingError::SchemaVariant(SchemaVariantError::AttributePrototypeArgument(
+            AttributePrototypeArgumentError::WorkspaceSnapshot(
+                WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                    WorkspaceSnapshotGraphError::CreateGraphCycle,
+                ),
+            ),
+        ))) => {}
+        _ => panic!("Test should fail if we don't get this error"),
+    }
 }
