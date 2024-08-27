@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
 use dal::component::frame::Frame;
@@ -912,6 +914,24 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
         .await
         .expect("could not run actions");
+    // loop until the other components are removed
+    let total_count = 50;
+    let mut count = 0;
+
+    while count < total_count {
+        ctx.update_snapshot_to_visibility()
+            .await
+            .expect("could not update snapshot");
+        let components = Component::list(ctx)
+            .await
+            .expect("could not list components");
+        if components.is_empty() {
+            break;
+        }
+        count += 1;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
     let components = Component::list(ctx)
         .await
         .expect("could not list components");
