@@ -934,10 +934,6 @@ impl WorkspaceSnapshotGraphV3 {
         Ok(self.graph.edge_weight(edge_index))
     }
 
-    pub fn has_path_to_root(&self, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, self.root_index, node, None)
-    }
-
     pub fn import_component_subgraph(
         &mut self,
         other: &WorkspaceSnapshotGraphV3,
@@ -1097,12 +1093,6 @@ impl WorkspaceSnapshotGraphV3 {
     pub fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
-    }
-
-    #[allow(dead_code)]
-    fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, start, node, None)
-            && algo::has_path_connecting(&self.graph, node, end, None)
     }
 
     pub fn node_count(&self) -> usize {
