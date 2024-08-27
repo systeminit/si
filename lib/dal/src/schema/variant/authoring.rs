@@ -117,7 +117,7 @@ const DEFAULT_ASSET_CODE: &str = r#"function main() {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct SchemaVariantJsonWrapper {
-    definition: SchemaVariantJson,
+    definition: Option<SchemaVariantJson>,
     error: Option<String>,
 }
 
@@ -792,6 +792,12 @@ impl VariantAuthoringClient {
             ));
         }
 
+        let Some(definition) = wrapper.definition else {
+            return Err(VariantAuthoringError::FuncExecutionFailure(
+                "definition cannot be undefined or null".to_string(),
+            ));
+        };
+
         ctx.layer_db()
             .func_run()
             .set_state_to_success(
@@ -801,7 +807,7 @@ impl VariantAuthoringClient {
             )
             .await?;
 
-        Ok(wrapper.definition)
+        Ok(definition)
     }
 }
 

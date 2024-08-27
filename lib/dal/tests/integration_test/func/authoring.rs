@@ -74,7 +74,6 @@ async fn create_unlocked_copy_code_gen_func(ctx: &mut DalContext) {
 
     let code_gen_binding = new_bindings.pop().expect("has one binding");
 
-    dbg!(&code_gen_binding);
     assert_eq!(
         LeafKind::CodeGeneration,   // expected
         code_gen_binding.leaf_kind  // actual

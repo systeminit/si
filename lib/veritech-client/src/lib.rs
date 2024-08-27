@@ -16,8 +16,8 @@ use veritech_core::{
 
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
-    FunctionResult, FunctionResultFailure, KillExecutionRequest, OutputStream,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind, KillExecutionRequest,
+    OutputStream, ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
     ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
     ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
     SensitiveContainer, ValidationRequest, ValidationResultSuccess,

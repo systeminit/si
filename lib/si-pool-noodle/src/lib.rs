@@ -22,11 +22,12 @@ pub use cyclone_client::{ClientError, CycloneClient, ExecutionError};
 
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError, KillExecutionRequest,
-    OutputStream, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
-    ValidationRequest, ValidationResultSuccess,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    FunctionResultFailureErrorKind, KillExecutionRequest, OutputStream, ProgressMessage,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
+    ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.

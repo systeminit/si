@@ -36,8 +36,8 @@ pub use component_view::{ComponentKind, ComponentView};
 pub use kill_execution::KillExecutionRequest;
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
-    ProgressMessage,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    FunctionResultFailureErrorKind, Message, OutputStream, ProgressMessage,
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use reconciliation::{ReconciliationRequest, ReconciliationResultSuccess};

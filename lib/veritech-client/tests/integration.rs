@@ -2,9 +2,9 @@ use std::env;
 
 use base64::{engine::general_purpose, Engine};
 use cyclone_core::{
-    ComponentKind, ComponentView, FunctionResult, ResolverFunctionComponent,
-    ResolverFunctionRequest, ResolverFunctionResponseType, SchemaVariantDefinitionRequest,
-    ValidationRequest,
+    ComponentKind, ComponentView, FunctionResult, FunctionResultFailureErrorKind,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    SchemaVariantDefinitionRequest, ValidationRequest,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
@@ -262,7 +262,10 @@ async fn type_checks_resolve_function() {
                 panic!("should have failed :(");
             }
             FunctionResult::Failure(failure) => {
-                assert_eq!(failure.error().kind, "InvalidReturnType");
+                assert_eq!(
+                    failure.error().kind,
+                    FunctionResultFailureErrorKind::InvalidReturnType
+                );
                 assert_eq!(failure.execution_id(), execution_id);
             }
         }

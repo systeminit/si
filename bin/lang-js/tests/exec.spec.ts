@@ -59,6 +59,7 @@ describe("exec", () => {
           return elapsed > waitUntil;
         },
       });
+
       expect(r.result.exitCode).toBe(0);
       expect(r.failed).toBe("deadlineExceeded");
     });

@@ -5,6 +5,8 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
+use dal::attribute::value::AttributeValueError;
+use dal::func::runner::FuncRunnerError;
 use dal::{
     func::{argument::FuncArgumentError, authoring::FuncAuthoringError, binding::FuncBindingError},
     ChangeSetError, DalContext, Func, FuncError, FuncId, WsEventError,
@@ -13,6 +15,7 @@ use si_frontend_types::FuncCode;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::FunctionResultFailureErrorKind;
 
 pub mod argument;
 pub mod binding;
@@ -82,13 +85,38 @@ pub enum FuncAPIError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
-pub type FuncAPIResult<T> = std::result::Result<T, FuncAPIError>;
+pub type FuncAPIResult<T> = Result<T, FuncAPIError>;
 
 impl IntoResponse for FuncAPIError {
     fn into_response(self) -> Response {
-        let status_code = match &self {
+        let err_string = self.to_string();
+
+        fn func_runner_err_to_status_and_message(
+            err: FuncRunnerError,
+        ) -> (StatusCode, Option<String>) {
+            match err {
+                FuncRunnerError::ResultFailure { kind, message, .. } => match kind {
+                    FunctionResultFailureErrorKind::VeritechServer => {
+                        (ApiError::DEFAULT_ERROR_STATUS_CODE, None)
+                    }
+                    FunctionResultFailureErrorKind::InvalidReturnType
+                    | FunctionResultFailureErrorKind::KilledExecution
+                    | FunctionResultFailureErrorKind::ReconciliationFieldWrongType
+                    | FunctionResultFailureErrorKind::ActionFieldWrongType => {
+                        (StatusCode::UNPROCESSABLE_ENTITY, Some(message))
+                    }
+                    FunctionResultFailureErrorKind::UserCodeException(lang_server_error_kind) => {
+                        let err = format!("{lang_server_error_kind}: {message}");
+                        (StatusCode::UNPROCESSABLE_ENTITY, Some(err))
+                    }
+                },
+                _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None),
+            }
+        }
+
+        let (status_code, maybe_message) = match self {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
-                StatusCode::FORBIDDEN
+                (StatusCode::FORBIDDEN, None)
             }
             // these errors represent problems with the shape of the request
             Self::MissingActionKindForActionFunc
@@ -98,20 +126,28 @@ impl IntoResponse for FuncAPIError {
             | Self::MissingOutputLocationForAttributeFunc
             | Self::MissingPrototypeId
             | Self::MissingSchemaVariantAndFunc
-            | Self::Func(dal::FuncError::FuncLocked(_))
+            | Self::Func(FuncError::FuncLocked(_))
             | Self::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
-                StatusCode::BAD_REQUEST
+                (StatusCode::BAD_REQUEST, None)
             }
 
             // Return 404 when the func is not found
-            Self::FuncNotFound(_) => StatusCode::NOT_FOUND,
+            Self::FuncNotFound(_) |
             // When a graph node cannot be found for a schema variant, it is not found
-            Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => StatusCode::NOT_FOUND,
-            _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
-        };
-        error!(si.error.message = ?self.to_string());
+            Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => (StatusCode::NOT_FOUND, None),
 
-        ApiError::new(status_code, self).into_response()
+            // Return 422 if the error is related to the user code being invalid
+            Self::FuncAuthoring(FuncAuthoringError::AttributeValue(AttributeValueError::FuncRunner(err))) =>
+                func_runner_err_to_status_and_message(*err),
+            Self::FuncAuthoring(FuncAuthoringError::FuncRunner(err)) => func_runner_err_to_status_and_message(err),
+
+
+            _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None)
+        };
+
+        error!(si.error.message = ?err_string);
+
+        ApiError::new(status_code, maybe_message.unwrap_or(err_string)).into_response()
     }
 }
 

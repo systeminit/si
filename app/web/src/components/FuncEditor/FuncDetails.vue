@@ -60,8 +60,8 @@
         real-world resources!
       </ErrorMessage>
       <ErrorMessage
-        v-if="execFuncReqStatus.isError"
-        :requestStatus="execFuncReqStatus"
+        v-if="latestFuncExecutionReqStatus?.isError"
+        :requestStatus="latestFuncExecutionReqStatus"
         variant="block"
       />
       <div
@@ -253,6 +253,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import {
   FuncKind,
   FuncId,
@@ -389,10 +390,19 @@ const isConnectedToOtherSchemas = computed<boolean>(() => {
   return true;
 });
 
+const testFuncReqStatus = funcStore.getRequestStatus("TEST_EXECUTE");
 const execFuncReqStatus = funcStore.getRequestStatus(
   "SAVE_AND_EXEC_FUNC",
   funcId,
 );
+
+const latestFuncExecutionReqStatus = ref<ApiRequestStatus | undefined>();
+const storeLatestReqStatus = (value: ApiRequestStatus) => {
+  latestFuncExecutionReqStatus.value = value;
+};
+watch(testFuncReqStatus, storeLatestReqStatus);
+watch(execFuncReqStatus, storeLatestReqStatus);
+
 const execFunc = () => {
   if (!funcId.value) return;
   funcStore.SAVE_AND_EXEC_FUNC(funcId.value);

@@ -12,8 +12,8 @@ use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
     process::{self, ShutdownError},
-    CycloneRequest, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message,
-    OutputStream,
+    CycloneRequest, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    FunctionResultFailureErrorKind, Message, OutputStream,
 };
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -492,6 +492,6 @@ pub struct LangServerFailure {
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LangServerFailureError {
-    kind: String,
+    kind: FunctionResultFailureErrorKind,
     message: String,
 }

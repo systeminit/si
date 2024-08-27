@@ -4,6 +4,7 @@ use naxum::middleware::ack::AckLayer;
 use naxum::middleware::trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer};
 use naxum::ServiceBuilder;
 use naxum::ServiceExt as _;
+
 use si_crypto::{VeritechDecryptionKey, VeritechDecryptionKeyError};
 use si_data_nats::{async_nats, jetstream, NatsClient, NatsError, Subject, Subscriber};
 use si_pool_noodle::{
@@ -18,8 +19,7 @@ use std::time::Duration;
 use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::oneshot;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 use tokio::task::JoinError;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{subject, veritech_work_queue, ExecutionId};

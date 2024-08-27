@@ -1,7 +1,5 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
-/// The error kind for function result failures when the error occurs within the veritech server.
-const FUNCTION_RESULT_FAILURE_ERROR_KIND_VERITECH_SERVER: &str = "veritechServer";
+use strum::Display;
 
 /// A line of output, streamed from an executing function.
 ///
@@ -128,7 +126,7 @@ impl FunctionResultFailure {
         Self {
             execution_id: execution_id.into(),
             error: FunctionResultFailureError {
-                kind: FUNCTION_RESULT_FAILURE_ERROR_KIND_VERITECH_SERVER.to_string(),
+                kind: FunctionResultFailureErrorKind::VeritechServer,
                 message: message.into(),
             },
             timestamp,
@@ -146,9 +144,20 @@ impl FunctionResultFailure {
     }
 }
 
+#[remain::sorted]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Display)]
+pub enum FunctionResultFailureErrorKind {
+    ActionFieldWrongType,
+    InvalidReturnType,
+    KilledExecution,
+    ReconciliationFieldWrongType,
+    UserCodeException(String),
+    VeritechServer,
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 pub struct FunctionResultFailureError {
-    pub kind: String,
+    pub kind: FunctionResultFailureErrorKind,
     pub message: String,
 }
 

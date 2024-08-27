@@ -145,7 +145,11 @@ const scenarios: FuncScenario[] = [
     result: {
       protocol: "result",
       status: "failure",
-      error: { kind: "JoiValidationJsonParsingError" },
+      error: {
+        kind: {
+          UserCodeException: "JoiValidationJsonParsingError",
+        },
+      },
     },
   },
   {
@@ -160,7 +164,12 @@ const scenarios: FuncScenario[] = [
     result: {
       protocol: "result",
       status: "failure",
-      error: { kind: "JoiValidationFormatError" },
+      error: {
+        kind: {
+          UserCodeException: "JoiValidationFormatError",
+        },
+        message: "validationFormat must be of type object",
+      },
     },
   },
   {
@@ -244,7 +253,7 @@ describe("executeFunction", () => {
           }, scenario.timeout);
           fail("expected function to hit timeout, but no error was thrown");
         } catch (error) {
-          expect(error.message).toBe(`Error: function timed out after ${scenario.timeout} seconds`);
+          expect(error.message).toBe(`function timed out after ${scenario.timeout} seconds`);
         }
       } else {
         await executeFunction(scenario.kind, {

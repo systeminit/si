@@ -42,8 +42,6 @@ pub async fn test_execute(
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
-    // should we force a changeset to test execute?
-    // let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
     let func_run_id = FuncAuthoringClient::test_execute_func(
