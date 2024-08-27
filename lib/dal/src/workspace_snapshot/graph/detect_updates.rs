@@ -65,7 +65,7 @@ impl<'a, 'b> Detector<'a, 'b> {
             .get_node_weight_opt(updated_graph_node_index)
             .and_then(|updated_graph_node_weight| {
                 let mut base_graph_node_indexes = HashSet::new();
-                if updated_graph_node_index == self.updated_graph.root_index {
+                if updated_graph_node_index == self.updated_graph.root() {
                     // There can only be one (valid/current) `ContentAddress::Root` at any
                     // given moment, and the `lineage_id` isn't really relevant as it's not
                     // globally stable (even though it is locally stable). This matters as we
@@ -190,7 +190,7 @@ impl<'a, 'b> Detector<'a, 'b> {
 
                     let update_graph_edges: HashMap<UniqueEdgeInfo, EdgeInfo> = self
                         .updated_graph
-                        .graph
+                        .graph()
                         .edges_directed(updated_graph_node_index, Outgoing)
                         .filter_map(|edge_ref| {
                             self.updated_graph

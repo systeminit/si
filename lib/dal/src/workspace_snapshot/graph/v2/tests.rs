@@ -53,7 +53,7 @@ fn add_edges(
 ) {
     for (source, target) in edges {
         let source = match source {
-            None => graph.root_index,
+            None => graph.root(),
             Some(node) => graph
                 .get_node_index_by_id(
                     node_id_map
