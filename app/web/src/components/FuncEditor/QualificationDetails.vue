@@ -1,6 +1,11 @@
 <template>
   <div class="p-3 flex flex-col gap-xs">
-    <LeafInputs v-model="inputs" :disabled="func?.isLocked" @change="update" />
+    <LeafInputs
+      v-model="inputs"
+      :disabled="func?.isLocked"
+      :kind="FuncBindingKind.Qualification"
+      @change="update"
+    />
   </div>
 </template>
 
@@ -8,6 +13,7 @@
 import { ref, computed } from "vue";
 import * as _ from "lodash-es";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { FuncBindingKind } from "@/api/sdf/dal/func";
 import LeafInputs from "./LeafInputs.vue";
 
 const funcStore = useFuncStore();
