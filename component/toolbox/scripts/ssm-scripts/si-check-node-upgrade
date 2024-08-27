@@ -1,0 +1,43 @@
+---
+schemaVersion: "2.2"
+description: "Run an upgrade check/status check on an EC2 Node"
+parameters:
+  Service:
+    type: "String"
+    description: "Service to Run on Node"
+    default: "N/A"
+  InstanceId:
+    type: "String"
+    description: "InstanceId of the executing node"
+    default: "N/A"
+  Action:
+    type: "String"
+    description: "Action to execute [not yet used]"
+    default: "N/A"
+  Environment:
+    type: "String"
+    description: "Environment to run in"
+    default: "N/A"
+
+mainSteps:
+- action: "aws:runShellScript"
+  name: "example"
+  inputs:
+    runCommand:
+    - |
+        # JW: This assessment blindly assumes that there are no additional configuration changes to the binaries or runtimes and that they are a direct application code replacement
+        # this is a little naive but we can check the deployment specs/ymls if we wish to conduct this check too.
+
+        export SI_SERVICE={{ Service }}
+        export SI_HOSTENV={{ Environment }}
+        export SI_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-$SI_SERVICE")
+        NEW_VERSION=$(curl -Ls https://artifacts.systeminit.com/{{ Service }}/${SI_VERSION}/omnibus/linux/$(arch)/{{ Service }}-${SI_VERSION}-omnibus-linux-$(arch).tar.gz.metadata.json | jq -r '.version')
+        RUNNING_VERSION=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq -r '.version')
+
+        # Check if both versions are set to non-empty values
+        if [ -z "$NEW_VERSION" ] || [ -z "$RUNNING_VERSION" ]; then
+          echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"error\", \"message\": \"Failed to retrieve versions\"}"
+        else
+          [[ "$NEW_VERSION" != "$RUNNING_VERSION" ]] && UPGRADEABLE="true" || UPGRADEABLE="false"
+          echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"service\": \"{{ Service }}\", \"running\": \"$RUNNING_VERSION\", \"new_version\": \"$NEW_VERSION\", \"upgradeable\": \"$UPGRADEABLE\" }"
+        fi

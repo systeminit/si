@@ -1,0 +1,18 @@
+---
+schemaVersion: "2.2"
+description: "Run a oneshot SDF with MigrationMode=RunAndQuit"
+parameters:
+  InstanceId:
+    type: "String"
+    description: "InstanceId of the executing node"
+    default: "N/A"
+mainSteps:
+- action: "aws:runShellScript"
+  name: "example"
+  inputs:
+    runCommand:
+    - |
+        sdf --migration-mode runAndQuit | systemd-cat \
+        && echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"message\": \"SDF Migration succeeded\"}" \
+        || echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"error\", \"message\": \"SDF Migration has failed\"}"
+

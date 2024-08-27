@@ -1,0 +1,29 @@
+name: Set maintenance mode
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+
+jobs:
+  down:
+    environment: ${{ inputs.environment }}
+    name: Set maintenance mode
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Down service
+        run: |
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m n -a y

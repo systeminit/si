@@ -1,0 +1,53 @@
+name: Set Service Version
+
+run-name: Setting ${{ inputs.service }} to version {{ inputs.version }} for {{ inputs.environment }}
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+      service:
+        type: string
+        required: true
+        description: "service to deploy"
+      version:
+        type: string
+        required: true
+        description: "version to deploy"
+
+jobs:
+  deploy:
+    name: Set service version
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Set service version
+        run: |
+            check_version_exists() {
+                local version
+                local service
+                local URL
+                local check
+                version="$1"
+                service="$2"
+                URL="https://artifacts.systeminit.com/${service}/${version}/omnibus/linux/x86_64/${service}-${version}-omnibus-linux-x86_64.tar.gz"
+                check=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+                [[ "$check" -eq 200 || "$check" -eq 301 ]]
+            }
+
+            ENVIRONMENT="${{ inputs.environment }}"
+            VERSION="${{ inputs.version }}"
+            SERVICE="${{ inputs.service }}"
+            if check_version_exists "$VERSION" "$SERVICE"; then
+              aws ssm put-parameter --name "${ENVIRONMENT}-si-version-${SERVICE}" --value "${VERSION}" --type "String" --overwrite
+            fi

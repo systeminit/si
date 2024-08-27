@@ -3,9 +3,9 @@
 # Identify all the machines specifically which are upgrade-able via this method
 # SSM/Shells onto all the boxes to check if there is an upgrade available, then offer the user to upgrade
 # All the endpoints to the latest version of stable if there is an update available.
-# Everytime an SSM command is executed against a host a record of it is pushed into a 
+# Everytime an SSM command is executed against a host a record of it is pushed into a
 # ./results/<uuid>/<result>.json file + once all the commands are completed an aggregated file will be
-# created in that directory too. If the json output from the SSM executions is not enough to debug 
+# created in that directory too. If the json output from the SSM executions is not enough to debug
 # just look in AWS and you'll see the whole execution history in SSM Command Execution History.
 # ---------------------------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@
 set -eo pipefail
 
 # Find & Import all the supporting functions from the supporting folder
-# Get the directory of the current script to figure out where the 
+# Get the directory of the current script to figure out where the
 # Supporting funcs are
 IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
@@ -38,9 +38,10 @@ usage() {
     echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
     echo "  -r region         AWS region to use"
     echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
+    echo "  -e environment    [tools,produciton] Where the services are running"
     echo "  -a automatic      [Y/N] Run through automatically/no-interact"
     echo "----------------------------------"
-    echo "e.g. ./awsi.sh upgrade -p pull-from-env -r us-east-1 -s sdf -a y"
+    echo "e.g. ./awsi.sh upgrade -p pull-from-env -r us-east-1 -s sdf -e tools -a y"
     exit 1
 }
 
@@ -50,7 +51,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
 fi
 
 # Parse flags
-while getopts ":p:r:a:s:" opt; do
+while getopts ":p:r:a:s:e:" opt; do
     case ${opt} in
         p)
             profile=$OPTARG
@@ -63,6 +64,9 @@ while getopts ":p:r:a:s:" opt; do
             ;;
         s)
             service=$OPTARG
+            ;;
+        e)
+            environment=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -126,7 +130,7 @@ i=1
 while read -r line; do
     instance_id=$(echo "$line" | awk '{print $2}')
     service_name=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
-    start_and_track_ssm_session "$instance_id" "$upgrade_check_script" "$service_name" "check" "$results_directory" &
+    start_and_track_ssm_session "$instance_id" "$upgrade_check_script" "$results_directory" "InstanceId=$instance_id,Service=$service_name,Environment=$environment" &
     ((i++))
 done <<< "$instances"
 
@@ -158,7 +162,7 @@ upgrade_hosts_num=$(jq 'map(select(.service == "veritech")) | .[]' <<< $upgrade_
 jq 'map(select(.service == "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | while read -r line; do
   instance_id=$(echo "$line" | jq -r '.instance_id')
   service_name=$(echo "$line" | jq -r '.service')
-  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service_name" "upgrade" "$results_directory" # Serially
+  start_and_track_ssm_session "$instance_id" "$service_state_script" "$results_directory" "InstanceId=$instance_id,Service=$service_name,Action=upgrade,Environment=$environment"
 done
 
 # Wait until all the results arrive
@@ -169,7 +173,7 @@ upgrade_hosts_num=$(jq 'map(select(.service != "veritech")) | .[]' <<< $upgrade_
 jq 'map(select(.service != "veritech")) | .[]' <<< $upgrade_candidates_json | jq -c '.' | while read -r line; do
   instance_id=$(echo "$line" | jq -r '.instance_id')
   service_name=$(echo "$line" | jq -r '.service')
-  start_and_track_ssm_session "$instance_id" "$service_state_script" "$service_name" "upgrade" "$results_directory" & # In Parallel
+  start_and_track_ssm_session "$instance_id" "$service_state_script" "$results_directory" "InstanceId=$instance_id,Service=$service_name,Action=upgrade,Environment=$environment" &
   ((i++))
 done
 
@@ -183,6 +187,6 @@ echo "*******WEB IS NOT UPDATED VIA THIS TOOLING**************"
 echo "If you are running in CI, this will be ran automatically for you. If you"
 echo "executed this manually/locally, you need to run the below pipeline, with"
 echo "either tools or production, depending which environment you're executing"
-echo "this tool against with service set to web and version as stable." 
+echo "this tool against with service set to web and version as stable."
 echo "https://github.com/systeminit/si/actions/workflows/deploy-stack.yml"
 echo "----------------------------------------"

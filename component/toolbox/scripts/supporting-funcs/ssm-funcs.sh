@@ -6,22 +6,22 @@
 upgrade_check_script="si-check-node-upgrade"
 service_maintenance_script="si-service-maintenance"
 service_state_script="si-service-state"
+sdf_migrate_script="si-migrate-sdf"
 
 # Function to start SSM session
 start_and_track_ssm_session() {
 
   instance_id=$1
   script=$2
-  service=$3
-  action=$4
-  results_directory=$5
+  results_directory=$3
+  params=$4
 
-  output=$(aws ssm send-command --instance-ids "$instance_id" --document-name "$script" --parameters "Service=$service,InstanceId=$instance_id,Action=$action" 2>&1)
+  output=$(aws ssm send-command --instance-ids "$instance_id" --document-name "$script" --parameters "$params" 2>&1)
 
   status=$?
 
   if [ $status -ne 0 ]; then
-    output="{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"service\": \"$service\", \"message\": \"$output\"}"
+    output="{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"message\": \"$output\"}"
     echo "$output" >"$results_directory/$instance_id.json"
     return
   fi

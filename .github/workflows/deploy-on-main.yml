@@ -1,29 +1,12 @@
 on:
   push:
-    tags:
-      # These fairly explicitly directly matches the tags we push [examples]
-      - 'bin/sdf/image/*'      # bin/sdf/image/20240820.143323.0-sha.982dd5a81
-      - 'bin/rebaser/image/*'  # bin/rebaser/image/20240820.143323.0-sha.982dd5a81
-      - 'bin/pinga/image/*'    # bin/pinga/image/20240820.143323.0-sha.982dd5a81
-      - 'bin/veritech/image/*' # bin/veritech/image/20240820.031721.0-sha.efea02a6a
-      - 'app/web/image/*'      # app/web/image/20240820.000535.0-sha.13e826961
+    branches:
+      - main
 
 jobs:
-  parse-tag:
-    runs-on: ubuntu-latest
-    outputs:
-      service: ${{ steps.service.outputs.service }}
-    steps:
-      - id: service
-        run: |
-            echo "service=$(echo "${{ github.ref_name }}" | awk -F'/' '{print $2}')" >> "$GITHUB_OUTPUT"
-
   deploy-tools-prod:
-    needs: parse-tag
     uses: ./.github/workflows/deploy-stack.yml
     with:
       environment: tools
-      service: ${{ needs.parse-tag.outputs.service }}
       version: stable
-      deploy-type: binary
     secrets: inherit

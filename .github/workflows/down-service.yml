@@ -1,0 +1,44 @@
+name: Bring Down Service
+
+run-name: Bringing ${{ inputs.service }} down
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+      service:
+        type: string
+        required: true
+        description: "service to deploy"
+
+jobs:
+  down:
+    environment: ${{ inputs.environment }}
+    name: ${{ inputs.service }} Down
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Down service
+        run: |
+          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -S down
+
+  on-failure:
+    uses: ./.github/workflows/instance-refresh.yml
+    needs: down
+    if: failure()
+    with:
+      environment: ${{ inputs.environment }}
+      service: ${{ inputs.service }}
+    secrets: inherit
