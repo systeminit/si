@@ -56,7 +56,7 @@ use tokio::sync::{RwLock, TryLockError};
 
 pub use dependent_value_graph::DependentValueGraph;
 
-use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSource};
 use crate::change_set::ChangeSetError;
 use crate::component::socket::ComponentInputSocket;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
@@ -157,6 +157,8 @@ pub enum AttributeValueError {
     InsertionForInvalidPropKind(PropKind),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("missing attribute prototype argument source: {0}")]
+    MissingAttributePrototypeArgumentSource(AttributePrototypeArgumentId),
     #[error("missing attribute value with id: {0}")]
     MissingForId(AttributeValueId),
     #[error("attribute value {0} missing prop edge when one was expected")]
@@ -2044,6 +2046,114 @@ impl AttributeValue {
             }
         }
         */
+
+        Ok(())
+    }
+
+    async fn clone_node_weight_values_from(
+        ctx: &DalContext,
+        dest_av_id: AttributeValueId,
+        from_av_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let mut dest_node_weight = workspace_snapshot
+            .get_node_weight_by_id(dest_av_id)
+            .await?
+            .get_attribute_value_node_weight()?;
+        let from_node_weight = workspace_snapshot
+            .get_node_weight_by_id(from_av_id)
+            .await?
+            .get_attribute_value_node_weight()?;
+        dest_node_weight.set_unprocessed_value(from_node_weight.unprocessed_value());
+        dest_node_weight.set_value(from_node_weight.value());
+        workspace_snapshot
+            .add_or_replace_node(NodeWeight::AttributeValue(dest_node_weight))
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn clone_value_from(
+        ctx: &DalContext,
+        dest_av_id: AttributeValueId,
+        from_av_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        // If the old component has a non-link value (prototype), copy it over
+        if let Some(from_prototype_id) =
+            AttributeValue::component_prototype_id(ctx, from_av_id).await?
+        {
+            let from_func_id = AttributePrototype::func_id(ctx, from_prototype_id).await?;
+            let dest_prototype = AttributePrototype::new(ctx, from_func_id).await?;
+
+            for from_apa_id in
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, from_prototype_id).await?
+            {
+                let from_func_arg_id =
+                    AttributePrototypeArgument::func_argument_id_by_id(ctx, from_apa_id).await?;
+                let from_value_source =
+                    AttributePrototypeArgument::value_source_by_id(ctx, from_apa_id)
+                        .await?
+                        .ok_or(
+                            AttributeValueError::MissingAttributePrototypeArgumentSource(
+                                from_apa_id,
+                            ),
+                        )?;
+
+                let dest_apa =
+                    AttributePrototypeArgument::new(ctx, dest_prototype.id(), from_func_arg_id)
+                        .await?;
+                AttributePrototypeArgument::set_value_source(ctx, dest_apa.id(), from_value_source)
+                    .await?;
+            }
+
+            AttributeValue::set_component_prototype_id(ctx, dest_av_id, dest_prototype.id, None)
+                .await?;
+
+            let sources = AttributePrototype::input_sources(ctx, dest_prototype.id).await?;
+            for source in sources {
+                match source {
+                    AttributePrototypeSource::AttributeValue(_, _) => {
+                        continue;
+                    }
+                    AttributePrototypeSource::Prop(prop_id, key) => {
+                        Prop::add_edge_to_attribute_prototype(
+                            ctx,
+                            prop_id,
+                            dest_prototype.id,
+                            EdgeWeightKind::Prototype(key),
+                        )
+                        .await?;
+                    }
+                    AttributePrototypeSource::InputSocket(socket_id, key) => {
+                        InputSocket::add_edge_to_attribute_prototype(
+                            ctx,
+                            socket_id,
+                            dest_prototype.id,
+                            EdgeWeightKind::Prototype(key),
+                        )
+                        .await?;
+                    }
+                    AttributePrototypeSource::OutputSocket(socket_id, key) => {
+                        OutputSocket::add_edge_to_attribute_prototype(
+                            ctx,
+                            socket_id,
+                            dest_prototype.id,
+                            EdgeWeightKind::Prototype(key),
+                        )
+                        .await?;
+                    }
+                }
+            }
+        } else if let Some(existing_prototype_id) =
+            AttributeValue::component_prototype_id(ctx, dest_av_id).await?
+        {
+            AttributePrototype::remove(ctx, existing_prototype_id).await?;
+        }
+
+        if !Self::is_set_by_dependent_function(ctx, dest_av_id).await? {
+            Self::clone_node_weight_values_from(ctx, dest_av_id, from_av_id).await?;
+        }
 
         Ok(())
     }

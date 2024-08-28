@@ -1,15 +1,13 @@
 use dal::attribute::value::DependentValueGraph;
-use dal::component::{ComponentGeometry, DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
+use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
+use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name,
-};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -701,73 +699,98 @@ async fn set_the_universe(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn paste_component(ctx: &mut DalContext) {
-    let pirate_name = "Long John Silver";
-    let parrot_name = "Captain Flint";
-    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", pirate_name)
-        .await
-        .expect("could not create component");
+async fn paste_component_with_value(ctx: &mut DalContext) {
+    let component = ExpectComponent::create_named(ctx, "pirate", "Long John Silver").await;
+    let parrots = component
+        .prop(ctx, ["root", "domain", "parrot_names"])
+        .await;
 
-    let parrots_path = &["root", "domain", "parrot_names"];
+    // set value on pet shop component
+    parrots.push(ctx, "Captain Flint").await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    let pet_shop_component = create_component_for_default_schema_name(ctx, "pet_shop", "Petopia")
-        .await
-        .expect("could not create component");
+    assert!(parrots.has_value(ctx).await);
+
+    // Copy/paste the pirate component
+    let component_copy = ExpectComponent(
+        component
+            .component(ctx)
+            .await
+            .copy_paste(ctx, component.geometry(ctx).await)
+            .await
+            .expect("unable to paste component")
+            .id(),
+    );
+    let parrots_copy = component_copy.prop(ctx, parrots).await;
+
+    assert_ne!(component.id(), component_copy.id());
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Validate that component_copy has the new value
+    assert!(parrots_copy.has_value(ctx).await);
+    assert_eq!(json!(["Captain Flint"]), parrots_copy.get(ctx).await);
+
+    assert!(parrots.has_value(ctx).await);
+}
+
+#[test]
+async fn paste_component_with_dependent_value(ctx: &mut DalContext) {
+    let source = ExpectComponent::create_named(ctx, "pet_shop", "Petopia").await;
+    let downstream = ExpectComponent::create_named(ctx, "pirate", "Long John Silver").await;
+    let source_parrots = source.prop(ctx, ["root", "domain", "parrot_names"]).await;
+    let downstream_parrots = downstream
+        .prop(ctx, ["root", "domain", "parrot_names"])
+        .await;
 
     // set value on source component
-    {
-        let pet_shop_parrot_av_id = pet_shop_component
-            .attribute_values_for_prop(ctx, parrots_path)
+    source_parrots.push(ctx, "Captain Flint").await;
+    source
+        .connect(ctx, "parrot_names", downstream, "parrot_names")
+        .await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Check that downstream has the parrots value, and that it is not explicitly set
+    assert!(downstream_parrots.has_value(ctx).await);
+    assert_eq!(
+        Some(json!(["Captain Flint"])),
+        downstream_parrots.view(ctx).await
+    );
+
+    // Copy/paste the downstream component
+    let downstream_copy = ExpectComponent(
+        downstream
+            .component(ctx)
             .await
-            .expect("find value ids for prop parrot_names")
-            .pop()
-            .expect("there should only be one value id");
-
-        AttributeValue::insert(ctx, pet_shop_parrot_av_id, Some(parrot_name.into()), None)
+            .copy_paste(ctx, downstream.geometry(ctx).await)
             .await
-            .expect("insert value in pet_shop parrot_names array");
-    }
+            .expect("unable to paste component")
+            .id(),
+    );
+    let downstream_copy_parrots = downstream_copy.prop(ctx, downstream_parrots).await;
 
-    connect_components_with_socket_names(
-        ctx,
-        pet_shop_component.id(),
-        "parrot_names",
-        pirate_component.id(),
-        "parrot_names",
-    )
-    .await
-    .expect("could not connect components with socket names");
+    assert_ne!(downstream.id(), downstream_copy.id());
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    // Check that the copy does *not* have the parrots value, because it is not explicitly set
+    // (because it has no link)
+    assert!(!downstream_copy_parrots.has_value(ctx).await);
+    assert_eq!(None, downstream_copy_parrots.view(ctx).await);
 
-    let pasted_pirate_component = pirate_component
-        .copy_paste(
-            ctx,
-            ComponentGeometry {
-                x: pirate_component.x().to_string(),
-                y: pirate_component.y().to_string(),
-                width: None,
-                height: None,
-            },
-        )
-        .await
-        .expect("unable to paste component");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    // Check that the copy does *not* have the parrots value, because it is not explicitly set
+    // (because it has no link)
+    assert!(!downstream_copy_parrots.has_value(ctx).await);
+    assert_eq!(None, downstream_copy_parrots.view(ctx).await);
 
-    let view = pasted_pirate_component
-        .view(ctx)
-        .await
-        .expect("unable to get materialized view of component")
-        .expect("no view found");
+    assert!(downstream_parrots.has_value(ctx).await);
+    assert_eq!(
+        Some(json!(["Captain Flint"])),
+        downstream_parrots.view(ctx).await
+    );
 
     assert_eq!(
-        view,
-        serde_json::json!({
+        Some(json!({
             "domain": {
                 // Propagated from /si/name, which means the attribute prototype has been copied
                 // from the copied component (since we manually set all values, which removes the
@@ -786,6 +809,7 @@ async fn paste_component(ctx: &mut DalContext) {
                 "name": "Long John Silver - Copy",
                 "type": "component",
             },
-        })
+        })),
+        downstream_copy.view(ctx).await,
     );
 }
