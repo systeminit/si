@@ -5,6 +5,7 @@
 use crate::helpers::ChangeSetTestHelpers;
 use dal::{
     self,
+    component::ComponentGeometry,
     prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
@@ -368,6 +369,18 @@ impl ExpectComponent {
             .expect("get component by id")
     }
 
+    pub async fn geometry(self, ctx: &DalContext) -> ComponentGeometry {
+        self.component(ctx).await.geometry()
+    }
+
+    pub async fn view(self, ctx: &DalContext) -> Option<serde_json::Value> {
+        self.component(ctx)
+            .await
+            .view(ctx)
+            .await
+            .expect("get component value")
+    }
+
     pub async fn get_type(self, ctx: &DalContext) -> ComponentType {
         dal::Component::get_type_by_id(ctx, self.0)
             .await
@@ -480,8 +493,14 @@ impl ExpectComponentProp {
         self.attribute_value(ctx).await.children(ctx).await
     }
 
+    // The value of the prop, or its default value.
     pub async fn view(self, ctx: &DalContext) -> Option<Value> {
         self.attribute_value(ctx).await.view(ctx).await
+    }
+
+    // Whether this attribute has a value explicitly set
+    pub async fn has_value(self, ctx: &DalContext) -> bool {
+        self.attribute_value(ctx).await.has_value(ctx).await
     }
 
     pub async fn update(self, ctx: &DalContext, value: Option<Value>) {
@@ -655,6 +674,16 @@ impl ExpectAttributeValue {
             .view(ctx)
             .await
             .expect("attribute value view")
+    }
+
+    // Whether this attribute has a value explicitly set
+    pub async fn has_value(self, ctx: &DalContext) -> bool {
+        self.attribute_value(ctx)
+            .await
+            .value(ctx)
+            .await
+            .expect("get attribute value")
+            .is_some()
     }
 
     pub async fn get(self, ctx: &DalContext) -> Value {

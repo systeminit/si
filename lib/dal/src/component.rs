@@ -32,6 +32,7 @@ use crate::change_set::ChangeSetError;
 use crate::change_status::ChangeStatus;
 use crate::code_view::CodeViewError;
 use crate::diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge};
+use crate::func::argument::FuncArgumentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
@@ -119,6 +120,8 @@ pub enum ComponentError {
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgumentError(#[from] FuncArgumentError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
@@ -129,8 +132,6 @@ pub enum ComponentError {
     InputSocketTooManyAttributeValues(InputSocketId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
-    #[error("missing attribute prototype argument source: {0}")]
-    MissingAttributePrototypeArgumentSource(AttributePrototypeArgumentId),
     #[error("component {0} missing attribute value for code")]
     MissingCodeValue(ComponentId),
     #[error("missing controlling func data for parent attribute value id: {0}")]
@@ -332,6 +333,15 @@ impl Component {
 
     pub fn height(&self) -> Option<&str> {
         self.height.as_deref()
+    }
+
+    pub fn geometry(&self) -> ComponentGeometry {
+        ComponentGeometry {
+            x: self.x.to_owned(),
+            y: self.y.to_owned(),
+            width: self.width.to_owned(),
+            height: self.height.to_owned(),
+        }
     }
 
     pub fn timestamp(&self) -> &Timestamp {
@@ -940,117 +950,48 @@ impl Component {
     pub async fn clone_attributes_from(
         &self,
         ctx: &DalContext,
-        old_component_id: ComponentId,
+        from_component_id: ComponentId,
     ) -> ComponentResult<()> {
-        let old_sv_id = Component::schema_variant_id(ctx, old_component_id).await?;
-        let new_sv_id = Component::schema_variant_id(ctx, self.id).await?;
+        let from_sv_id = Component::schema_variant_id(ctx, from_component_id).await?;
+        let dest_sv_id = Component::schema_variant_id(ctx, self.id).await?;
 
-        if old_sv_id != new_sv_id {
+        if from_sv_id != dest_sv_id {
             return Err(ComponentError::CannotCloneFromDifferentVariants);
         }
 
         // Paste attribute value "values" from original component (or create them for maps/arrays)
         //
         // We could make this more efficient by skipping everything set by non builtins (si:setString, si:setObject, etc), since everything that is propagated will be re-propagated
-        let old_root_id = Component::root_attribute_value_id(ctx, old_component_id).await?;
-        let new_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
-        let mut work_queue = VecDeque::from([(old_root_id, new_root_id)]);
+        let from_root_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+        let dest_root_id = Component::root_attribute_value_id(ctx, self.id).await?;
+        let mut work_queue = VecDeque::from([(from_root_id, dest_root_id)]);
         // Paste attribute prototypes
         // - either updates component prototype to a copy of the original component
         // - or removes component prototype, restoring the schema one (needed because of manual update from the block above)        while
-        while let Some((old_av_id, new_av_id)) = work_queue.pop_front() {
-            // If the old component has a value (prototype), copy it over
-            if let Some(old_prototype_id) =
-                AttributeValue::component_prototype_id(ctx, old_av_id).await?
-            {
-                let old_func_id = AttributePrototype::func_id(ctx, old_prototype_id).await?;
-                let new_prototype = AttributePrototype::new(ctx, old_func_id).await?;
-
-                for old_apa_id in
-                    AttributePrototypeArgument::list_ids_for_prototype(ctx, old_prototype_id)
-                        .await?
-                {
-                    let old_func_arg_id =
-                        AttributePrototypeArgument::func_argument_id_by_id(ctx, old_apa_id).await?;
-                    let old_value_source =
-                        AttributePrototypeArgument::value_source_by_id(ctx, old_apa_id)
-                            .await?
-                            .ok_or(ComponentError::MissingAttributePrototypeArgumentSource(
-                                old_apa_id,
-                            ))?;
-
-                    let apa =
-                        AttributePrototypeArgument::new(ctx, new_prototype.id(), old_func_arg_id)
-                            .await?;
-                    AttributePrototypeArgument::set_value_source(ctx, apa.id(), old_value_source)
-                        .await?;
-                }
-
-                AttributeValue::set_component_prototype_id(ctx, new_av_id, new_prototype.id, None)
-                    .await?;
-
-                let sources = AttributePrototype::input_sources(ctx, new_prototype.id).await?;
-                for source in sources {
-                    match source {
-                        AttributePrototypeSource::AttributeValue(_, _) => {
-                            continue;
-                        }
-                        AttributePrototypeSource::Prop(prop_id, key) => {
-                            Prop::add_edge_to_attribute_prototype(
-                                ctx,
-                                prop_id,
-                                new_prototype.id,
-                                EdgeWeightKind::Prototype(key),
-                            )
-                            .await?;
-                        }
-                        AttributePrototypeSource::InputSocket(socket_id, key) => {
-                            InputSocket::add_edge_to_attribute_prototype(
-                                ctx,
-                                socket_id,
-                                new_prototype.id,
-                                EdgeWeightKind::Prototype(key),
-                            )
-                            .await?;
-                        }
-                        AttributePrototypeSource::OutputSocket(socket_id, key) => {
-                            OutputSocket::add_edge_to_attribute_prototype(
-                                ctx,
-                                socket_id,
-                                new_prototype.id,
-                                EdgeWeightKind::Prototype(key),
-                            )
-                            .await?;
-                        }
-                    }
-                }
-            } else if let Some(existing_prototype_id) =
-                AttributeValue::component_prototype_id(ctx, new_av_id).await?
-            {
-                AttributePrototype::remove(ctx, existing_prototype_id).await?;
-            }
+        while let Some((from_av_id, dest_av_id)) = work_queue.pop_front() {
+            AttributeValue::clone_value_from(ctx, dest_av_id, from_av_id).await?;
 
             // Get children, possibly creating new ones if we don't have them yet
             for child_pair in
-                AttributeValue::get_child_av_id_pairs_in_order(ctx, old_av_id, new_av_id).await?
+                AttributeValue::get_child_av_id_pairs_in_order(ctx, from_av_id, dest_av_id).await?
             {
                 match child_pair {
-                    ChildAttributeValuePair::Both(_, old_child_av_id, new_child_av_id) => {
-                        work_queue.push_back((old_child_av_id, new_child_av_id));
+                    ChildAttributeValuePair::Both(_, from_child_av_id, dest_child_av_id) => {
+                        work_queue.push_back((from_child_av_id, dest_child_av_id));
                     }
                     // If the child is only in the copied component, we create a new one for
                     // ourselves
-                    ChildAttributeValuePair::FirstOnly(key, old_child_av_id) => {
-                        let new_child_av_id = AttributeValue::new(
+                    ChildAttributeValuePair::FirstOnly(key, from_child_av_id) => {
+                        let dest_child_av_id = AttributeValue::new(
                             ctx,
-                            AttributeValue::is_for(ctx, old_child_av_id).await?,
+                            AttributeValue::is_for(ctx, from_child_av_id).await?,
                             Some(self.id),
-                            Some(new_av_id),
+                            Some(dest_av_id),
                             key,
                         )
                         .await?
                         .id;
-                        work_queue.push_back((old_child_av_id, new_child_av_id));
+                        work_queue.push_back((from_child_av_id, dest_child_av_id));
                     }
                     // TODO this case wasn't handled before, and shouldn't really be possible ...
                     ChildAttributeValuePair::SecondOnly(..) => {
