@@ -10,6 +10,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { trackEvent } from "@/utils/tracking";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 import MaintenanceMode from "@/components/toasts/MaintenanceMode.vue";
+import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -90,12 +91,26 @@ async function handle500(error: AxiosError) {
   return Promise.reject(error);
 }
 
-async function handleMaintenanceMode(error: AxiosError) {
+async function handleOutageModes(error: AxiosError) {
   if (error?.response?.status === 503) {
     const toast = useToast();
     toast(
       {
         component: MaintenanceMode,
+      },
+      {
+        timeout: 15000,
+        hideProgressBar: false,
+      },
+    );
+  } else if (
+    error?.response?.status === 502 ||
+    error?.response?.status === 504
+  ) {
+    const toast = useToast();
+    toast(
+      {
+        component: UnscheduledDowntime,
       },
       {
         timeout: 15000,
@@ -109,7 +124,7 @@ async function handleMaintenanceMode(error: AxiosError) {
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts, handle500);
 sdfApiInstance.interceptors.response.use(
   handleForcedChangesetRedirection,
-  handleMaintenanceMode,
+  handleOutageModes,
 );
 
 export const authApiInstance = Axios.create({

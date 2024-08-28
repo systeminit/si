@@ -159,6 +159,7 @@ const filterBeforeCreate = (toast: any, toasts: any[]): any | false => {
       return toast;
     }
   }
+  return toast;
 };
 
 const options: PluginOptions = {
