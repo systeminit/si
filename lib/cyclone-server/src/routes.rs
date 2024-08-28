@@ -93,12 +93,6 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         router =
             router.merge(Router::new().route("/command", get(handlers::ws_execute_action_run)));
     }
-    if config.enable_reconciliation() {
-        debug!("enabling reconciliation endpoint");
-        router = router.merge(
-            Router::new().route("/reconciliation", get(handlers::ws_execute_reconciliation)),
-        );
-    }
     if config.enable_schema_variant_definition() {
         debug!("enabling schema variant definition endpoint");
         router = router.merge(Router::new().route(

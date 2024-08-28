@@ -22,8 +22,7 @@ use cyclone_client::{
 use cyclone_core::{
     process::{self, ShutdownError},
     ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, CycloneRequest,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use derive_builder::Builder;
@@ -231,23 +230,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn prepare_reconciliation_execution(
-        &mut self,
-        request: CycloneRequest<ReconciliationRequest>,
-    ) -> result::Result<
-        Execution<UnixStream, ReconciliationRequest, ReconciliationResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-        // Use the websocket client for cyclone to execute reconciliation.
-        let result = self.client.prepare_reconciliation_execution(request).await;
-        self.count_request();
-
-        result
-    }
-
     async fn prepare_schema_variant_definition_execution(
         &mut self,
         request: CycloneRequest<SchemaVariantDefinitionRequest>,
@@ -258,7 +240,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        // Use the websocket client for cyclone to execute reconciliation.
         let result = self
             .client
             .prepare_schema_variant_definition_execution(request)

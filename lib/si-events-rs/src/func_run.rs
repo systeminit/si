@@ -40,7 +40,8 @@ pub enum FuncKind {
     Unknown,
 }
 
-#[remain::sorted]
+// NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
+// retained.
 #[derive(
     Deserialize,
     Serialize,
@@ -66,6 +67,7 @@ pub enum FuncBackendKind {
     JsAttribute,
     JsAuthentication,
     Json,
+    // NOTE(nick): this has been deprecated. Not adding serde deprecated tag in case it affects the type.
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,
@@ -76,7 +78,8 @@ pub enum FuncBackendKind {
     Validation,
 }
 
-#[remain::sorted]
+// NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
+// retained.
 #[derive(
     Deserialize,
     Serialize,
@@ -102,6 +105,7 @@ pub enum FuncBackendResponseType {
     Map,
     Object,
     Qualification,
+    // NOTE(nick): this has been deprecated. Not adding serde deprecated tag in case it affects the type.
     Reconciliation,
     SchemaVariantDefinition,
     String,

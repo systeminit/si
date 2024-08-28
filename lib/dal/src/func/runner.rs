@@ -49,7 +49,6 @@ use super::backend::{
     integer::FuncBackendInteger,
     js_action::FuncBackendJsAction,
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_reconciliation::FuncBackendJsReconciliation,
     js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
     json::FuncBackendJson,
     map::FuncBackendMap,
@@ -110,6 +109,8 @@ pub enum FuncRunnerError {
     NoWidgetOptionsForSecretProp(PropId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("reconciliation funcs are no longer supported (found: {0})")]
+    ReconciliationFuncsNoLongerSupported(FuncId),
     #[error("function run result failure: kind={kind}, message={message}, backend={backend}")]
     ResultFailure {
         kind: FunctionResultFailureErrorKind,
@@ -1499,15 +1500,6 @@ impl FuncRunnerExecutionTask {
                 )
                 .await
             }
-            FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(
-                    self.func_dispatch_context,
-                    &self.func,
-                    &self.args,
-                    self.before,
-                )
-                .await
-            }
             FuncBackendKind::JsAttribute => {
                 let args = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
@@ -1554,6 +1546,11 @@ impl FuncRunnerExecutionTask {
                     self.before,
                 )
                 .await
+            }
+            FuncBackendKind::JsReconciliation => {
+                return Err(FuncRunnerError::ReconciliationFuncsNoLongerSupported(
+                    self.func.id,
+                ))
             }
             FuncBackendKind::JsValidation => {
                 return Err(FuncRunnerError::DirectValidationFuncsNoLongerSupported(
