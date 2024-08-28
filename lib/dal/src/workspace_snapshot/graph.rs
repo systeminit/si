@@ -126,6 +126,8 @@ pub struct WorkspaceSnapshotGraphV2 {
 
     #[serde(skip)]
     ulid_generator: Arc<Mutex<Generator>>,
+    #[serde(skip)]
+    touched_node_indices: HashSet<NodeIndex>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -140,6 +142,21 @@ impl RebaseBatch {
 
     pub fn updates(&self) -> &[Update] {
         &self.updates
+    }
+
+    /// Write the rebase batch to disk. This *MAY PANIC*. Use only for
+    /// debugging.
+    #[allow(clippy::disallowed_methods)]
+    pub fn write_to_disk(&self, file_suffix: &str) {
+        let serialized = serialize::to_vec(self).expect("unable to serialize");
+        let filename = format!("{}-{}", Ulid::new(), file_suffix);
+
+        let home_env = std::env::var("HOME").expect("No HOME environment variable set");
+        let home = std::path::Path::new(&home_env);
+        let mut file = File::create(home.join(&filename)).expect("could not create file");
+        file.write_all(&serialized).expect("could not write file");
+
+        println!("Wrote rebase batch to {}", home.join(&filename).display());
     }
 }
 
@@ -181,6 +198,15 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(result)
     }
 
+    /// Add a node to the list of touched nodes, so that it is taken into
+    /// account when recalculating the merkle tree hash for this graph. If a
+    /// node weight is modified, or if a an outgoing edge is added or removed
+    /// to/from this node, you must touch the node, or the merkel tree hash will
+    /// not be updated correctly.
+    pub fn touch_node(&mut self, node_index: NodeIndex) {
+        self.touched_node_indices.insert(node_index);
+    }
+
     pub fn new_from_parts(
         graph: StableDiGraph<NodeWeight, EdgeWeight>,
         node_index_by_id: HashMap<Ulid, NodeIndex>,
@@ -193,6 +219,7 @@ impl WorkspaceSnapshotGraphV2 {
             node_indices_by_lineage_id,
             root_index,
             ulid_generator: Arc::new(Mutex::new(Generator::new())),
+            touched_node_indices: HashSet::new(),
         }
     }
 
@@ -232,17 +259,6 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(())
     }
 
-    pub fn get_latest_node_idx_opt(
-        &self,
-        node_idx: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
-        if !self.graph.contains_node(node_idx) {
-            return Ok(None);
-        }
-
-        Ok(Some(self.get_latest_node_idx(node_idx)?))
-    }
-
     #[inline(always)]
     pub fn get_latest_node_idx(
         &self,
@@ -262,21 +278,15 @@ impl WorkspaceSnapshotGraphV2 {
         if cycle_check {
             self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
         }
-        // Because outgoing edges are part of a node's identity, we create a new "from" node
-        // as we are effectively writing to that node (we'll need to update the merkle tree
-        // hash), and everything in the graph should be treated as copy-on-write.
-        let new_from_node_index = self.copy_node_by_index(from_node_index)?;
+
+        self.touch_node(from_node_index);
 
         // Add the new edge to the new version of the "from" node.
-        let new_edge_index =
-            self.graph
-                .update_edge(new_from_node_index, to_node_index, edge_weight);
-        self.update_merkle_tree_hash(new_from_node_index)?;
+        let edge_index = self
+            .graph
+            .update_edge(from_node_index, to_node_index, edge_weight);
 
-        // Update the rest of the graph to reflect the new node/edge.
-        self.replace_references(from_node_index)?;
-
-        Ok(new_edge_index)
+        Ok(edge_index)
     }
 
     fn add_temp_edge_cycle_check(
@@ -343,7 +353,7 @@ impl WorkspaceSnapshotGraphV2 {
         self.add_edge_inner(from_node_index, edge_weight, to_node_index, false)
     }
 
-    pub(crate) fn remove_node_id(&mut self, id: impl Into<Ulid>) {
+    pub fn remove_node_id(&mut self, id: impl Into<Ulid>) {
         self.node_index_by_id.remove(&id.into());
     }
 
@@ -362,18 +372,37 @@ impl WorkspaceSnapshotGraphV2 {
             })
             .or_insert_with(|| HashSet::from([node_idx]));
         self.update_merkle_tree_hash(node_idx)?;
+        self.touch_node(node_idx);
 
         Ok(())
     }
 
-    pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+    /// Adds this node to the graph, or replaces it if a node with the same id
+    /// already exists.  Then, adds it to the list of touched nodes so that the
+    /// merkle tree hash for it, and any parents, is recalculated.
+    pub fn add_or_replace_node(
+        &mut self,
+        node: NodeWeight,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let node_id = node.id();
         let lineage_id = node.lineage_id();
-        let new_node_index = self.graph.add_node(node);
+        let node_idx = self
+            .get_node_index_by_id_opt(node_id)
+            .and_then(|current_index| {
+                self.graph.node_weight_mut(current_index).map(|weight_mut| {
+                    node.clone_into(weight_mut);
+                    current_index
+                })
+            });
 
-        self.add_node_finalize(node_id, lineage_id, new_node_index)?;
+        let node_idx = match node_idx {
+            Some(swapped_node_idx) => swapped_node_idx,
+            None => self.graph.add_node(node),
+        };
 
-        Ok(new_node_index)
+        self.add_node_finalize(node_id, lineage_id, node_idx)?;
+
+        Ok(node_idx)
     }
 
     pub fn add_category_node(
@@ -383,7 +412,7 @@ impl WorkspaceSnapshotGraphV2 {
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let inner_weight = CategoryNodeWeight::new(id, lineage_id, kind);
-        let new_node_index = self.add_node(NodeWeight::Category(inner_weight))?;
+        let new_node_index = self.add_or_replace_node(NodeWeight::Category(inner_weight))?;
         Ok(new_node_index)
     }
 
@@ -469,25 +498,19 @@ impl WorkspaceSnapshotGraphV2 {
         })
     }
 
-    // TODO(nick): fix this clippy error.
-    #[allow(clippy::type_complexity)]
     pub fn add_ordered_edge(
         &mut self,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<(EdgeIndex, Option<(EdgeIndex, NodeIndex, NodeIndex)>)> {
-        let _start = std::time::Instant::now();
+    ) -> WorkspaceSnapshotGraphResult<(EdgeIndex, Option<EdgeIndex>)> {
         let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
-
-        let from_node_index = self.get_latest_node_idx(from_node_index)?;
-        let to_node_index = self.get_latest_node_idx(to_node_index)?;
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
         // by the `to_node_index` to the ordering. Also point the ordering node at the thing with
         // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
         // in a depth first search
-        let maybe_ordinal_edge_information = if let Some(container_ordering_node_index) =
+        let maybe_ordinal_edge_index = if let Some(container_ordering_node_index) =
             self.ordering_node_index_for_container(from_node_index)?
         {
             let ordinal_edge_index = self.add_edge(
@@ -496,47 +519,36 @@ impl WorkspaceSnapshotGraphV2 {
                 to_node_index,
             )?;
 
-            let container_ordering_node_index =
-                self.get_latest_node_idx(container_ordering_node_index)?;
+            let element_id = self
+                .node_index_to_id(to_node_index)
+                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
-            if let NodeWeight::Ordering(previous_container_ordering_node_weight) =
-                self.get_node_weight(container_ordering_node_index)?
+            if let NodeWeight::Ordering(ordering_node_weight) =
+                self.get_node_weight_mut(container_ordering_node_index)?
             {
-                let element_id = self
-                    .node_index_to_id(to_node_index)
-                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-
-                let mut new_container_ordering_node_weight =
-                    previous_container_ordering_node_weight.clone();
-                new_container_ordering_node_weight.push_to_order(element_id);
-                self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-                self.replace_references(container_ordering_node_index)?;
+                ordering_node_weight.push_to_order(element_id);
+                self.touch_node(container_ordering_node_index);
             }
 
-            Some((
-                ordinal_edge_index,
-                container_ordering_node_index,
-                to_node_index,
-            ))
+            Some(ordinal_edge_index)
         } else {
             None
         };
 
-        Ok((new_edge_index, maybe_ordinal_edge_information))
+        Ok((new_edge_index, maybe_ordinal_edge_index))
     }
 
     pub fn add_ordered_node(
         &mut self,
         node: NodeWeight,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let new_node_index = self.add_node(node)?;
+        let new_node_index = self.add_or_replace_node(node)?;
 
         let ordering_node_id = self.generate_ulid()?;
         let ordering_node_lineage_id = self.generate_ulid()?;
-        let ordering_node_index = self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(
-            ordering_node_id,
-            ordering_node_lineage_id,
-        )))?;
+        let ordering_node_index = self.add_or_replace_node(NodeWeight::Ordering(
+            OrderingNodeWeight::new(ordering_node_id, ordering_node_lineage_id),
+        ))?;
 
         let edge_index = self.add_edge(
             new_node_index,
@@ -547,6 +559,19 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(source)
     }
 
+    /// Remove any orphaned nodes from the graph, then recalculate the merkle
+    /// tree hash based on the nodes touched. *ALWAYS* call this before
+    /// persisting a snapshot
+    pub fn cleanup_and_merkle_tree_hash(&mut self) -> WorkspaceSnapshotGraphResult<()> {
+        self.cleanup();
+        self.recalculate_entire_merkle_tree_hash_based_on_touched_nodes()?;
+
+        Ok(())
+    }
+
+    /// Remove any orphaned nodes from the graph. If you are about to persist
+    /// the graph, or calculate updates based on this graph and another one, then
+    /// you want to call `Self::cleanup_and_merkle_tree_hash` instead.
     pub fn cleanup(&mut self) {
         let start = tokio::time::Instant::now();
 
@@ -628,13 +653,6 @@ impl WorkspaceSnapshotGraphV2 {
             Err(e) => return Err(e),
         };
         Ok(maybe_equivalent_node)
-    }
-
-    fn copy_node_by_index(
-        &mut self,
-        node_index_to_copy: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        self.add_node(self.get_node_weight(node_index_to_copy)?.clone())
     }
 
     pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
@@ -999,6 +1017,10 @@ impl WorkspaceSnapshotGraphV2 {
             .and_then(|index| self.get_node_weight_opt(index))
     }
 
+    /// Gets a mutable reference to the node weight at `node_index`. If you
+    /// modify this node, you must also touch it by calling `Self::touch_node`
+    /// so that its merkle tree hash and the merkle tree hash of its parents are
+    /// both updated.
     fn get_node_weight_mut(
         &mut self,
         node_index: NodeIndex,
@@ -1103,7 +1125,7 @@ impl WorkspaceSnapshotGraphV2 {
                     }
 
                     // Import the node.
-                    self.add_node(other_node_weight.clone())?;
+                    self.add_or_replace_node(other_node_weight.clone())?;
 
                     // Create all edges with this node as the tail.
                     if let Entry::Occupied(edges) = edges_by_tail.entry(other_node_index) {
@@ -1263,83 +1285,57 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(prop_node_indexes.first().copied())
     }
 
+    /// Removes the node from the graph. Edges to this node will be
+    /// automatically removed by petgraph. Be sure to remove the node id from
+    /// the mappings with `Self::remove_node_id`
     pub fn remove_node(&mut self, node_index: NodeIndex) {
+        let incoming_sources: Vec<_> = self
+            .graph
+            .neighbors_directed(node_index, Incoming)
+            .collect();
+
+        // We have to be sure that we recalculate the merkle tree hash for every
+        // node that had an outgoing edge to this node
+        for incoming in incoming_sources {
+            self.touch_node(incoming);
+        }
+
         self.graph.remove_node(node_index);
     }
 
-    /// [`StableGraph`] guarantees the stability of [`NodeIndex`] across removals, however there
-    /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
-    /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
-    /// [`Self::cleanup()`] has run should be considered invalid.
+    /// Removes an edge of the specified kind between `source_node_index` and
+    /// `target_node_index`.
+    ///
+    /// If the source node has an associated ordering node, the function also
+    /// removes the edge from the ordering node to the target node, updating the
+    /// ordering node's order
     pub fn remove_edge(
         &mut self,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        self.remove_edge_inner(source_node_index, target_node_index, edge_kind)
-    }
-
-    /// Removes an edge from `source_node_index` to `target_node_index`, and
-    /// also handles removing an edge from the Ordering node if one exists for
-    /// the node at `source_node_index`.
-    fn remove_edge_inner(
-        &mut self,
-        source_node_index: NodeIndex,
-        target_node_index: NodeIndex,
-        edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let source_node_index = self.get_latest_node_idx(source_node_index)?;
-        let target_node_index = self.get_latest_node_idx(target_node_index)?;
-
-        self.copy_node_by_index(source_node_index)?;
-        self.replace_references(source_node_index)?;
-        // replace references may copy the node again to a new index
-        let source_node_index = self.get_latest_node_idx(source_node_index)?;
-
         self.remove_edge_of_kind(source_node_index, target_node_index, edge_kind);
+        self.touch_node(source_node_index);
 
-        if let Some(previous_container_ordering_node_index) =
+        if let Some(container_ordering_node_idx) =
             self.ordering_node_index_for_container(source_node_index)?
         {
             let element_id = self
                 .node_index_to_id(target_node_index)
                 .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
-            if let NodeWeight::Ordering(previous_container_ordering_node_weight) =
-                self.get_node_weight(previous_container_ordering_node_index)?
+            if let NodeWeight::Ordering(container_ordering_node_weight) =
+                self.get_node_weight_mut(container_ordering_node_idx)?
             {
-                let mut new_container_ordering_node_weight =
-                    previous_container_ordering_node_weight.clone();
-
-                // We only want to update the ordering of the container if we removed an edge to
-                // one of the ordered relationships.
-                if new_container_ordering_node_weight.remove_from_order(element_id) {
+                if container_ordering_node_weight.remove_from_order(element_id) {
                     self.remove_edge_of_kind(
-                        previous_container_ordering_node_index,
+                        container_ordering_node_idx,
                         target_node_index,
                         EdgeWeightKindDiscriminants::Ordinal,
                     );
-
-                    self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-                    self.replace_references(previous_container_ordering_node_index)?;
+                    self.touch_node(container_ordering_node_idx);
                 }
-            }
-        }
-
-        let source_node_index = self.get_latest_node_idx(source_node_index)?;
-        let mut work_queue = VecDeque::from([source_node_index]);
-
-        while let Some(node_index) = work_queue.pop_front() {
-            self.update_merkle_tree_hash(
-                // If we updated the ordering node, that means we've invalidated the container's
-                // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
-                // to update the container's merkle tree hash.
-                node_index,
-            )?;
-
-            for edge_ref in self.graph.edges_directed(node_index, Incoming) {
-                work_queue.push_back(edge_ref.source());
             }
         }
 
@@ -1377,83 +1373,15 @@ impl WorkspaceSnapshotGraphV2 {
         Ok((source, destination))
     }
 
-    /// Replace references should be called when a node has been changed and copied into the graph.
-    /// It will use the original_node_index to find the most up to date version of the new node,
-    /// and replace all edges that point to that old node with edges pointing to the new node.
-    /// Because the graph is treated as an immutable, copy-on-write structure, this means walking
-    /// up the graph to the root and copying all nodes that have edges that point to the
-    /// original_node_index, and all nodes that have edges that point to *those* parent nodes,
-    /// etc, until we've processed the entire parent tree of the original node.
-    pub fn replace_references(
-        &mut self,
-        original_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut work_q = VecDeque::from([original_node_index]);
-        let mut seen_list = HashSet::new();
-
-        while let Some(old_node_index) = work_q.pop_front() {
-            if seen_list.contains(&old_node_index) {
-                continue;
-            }
-            seen_list.insert(old_node_index);
-
-            for edge_ref in self.edges_directed(old_node_index, Direction::Incoming) {
-                work_q.push_back(edge_ref.source())
-            }
-
-            let latest_node_idx = self.get_latest_node_idx(old_node_index)?;
-            let new_node_index = if latest_node_idx != old_node_index {
-                latest_node_idx
-            } else {
-                self.copy_node_by_index(old_node_index)?
-            };
-
-            // Find all outgoing edges weights and find the edge targets.
-            let mut edges_to_create = Vec::new();
-            for edge_ref in self.graph.edges_directed(old_node_index, Outgoing) {
-                edges_to_create.push((edge_ref.weight().clone(), edge_ref.target(), edge_ref.id()));
-            }
-
-            // Make copies of these edges where the source is the new node index and the
-            // destination is one of the following...
-            // - If an entry exists in `old_to_new_node_indices` for the destination node index,
-            //   use the value of the entry (the destination was affected by the replacement,
-            //   and needs to use the new node index to reflect this).
-            // - There is no entry in `old_to_new_node_indices`; use the same destination node
-            //   index as the old edge (the destination was *NOT* affected by the replacement,
-            //   and does not have any new information to reflect).
-            for (edge_weight, destination_node_index, edge_idx) in edges_to_create {
-                // Need to directly add the edge, without going through `self.add_edge` to avoid
-                // infinite recursion, and because we're the place doing all the book keeping
-                // that we'd be interested in happening from `self.add_edge`.
-                let destination_node_index = self.get_latest_node_idx(destination_node_index)?;
-
-                self.graph.remove_edge(edge_idx);
-
-                self.graph
-                    .update_edge(new_node_index, destination_node_index, edge_weight);
-            }
-
-            self.update_merkle_tree_hash(new_node_index)?;
-        }
-
-        // Use the new version of the old root node as our root node.
-        self.root_index = self.get_latest_node_idx(self.root_index)?;
-
-        Ok(())
-    }
-
     pub fn update_content(
         &mut self,
         id: Ulid,
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let original_node_index = self.get_node_index_by_id(id)?;
-        let new_node_index = self.copy_node_by_index(original_node_index)?;
-        let node_weight = self.get_node_weight_mut(new_node_index)?;
+        let node_index = self.get_node_index_by_id(id)?;
+        let node_weight = self.get_node_weight_mut(node_index)?;
         node_weight.new_content_hash(new_content_hash)?;
-
-        self.replace_references(original_node_index)?;
+        self.touch_node(node_index);
         Ok(())
     }
 
@@ -1462,14 +1390,13 @@ impl WorkspaceSnapshotGraphV2 {
         container_id: Ulid,
         new_order: Vec<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let original_node_index = self
+        let node_index = self
             .ordering_node_index_for_container(self.get_node_index_by_id(container_id)?)?
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-        let new_node_index = self.copy_node_by_index(original_node_index)?;
-        let node_weight = self.get_node_weight_mut(new_node_index)?;
+        let node_weight = self.get_node_weight_mut(node_index)?;
         node_weight.set_order(new_order)?;
+        self.touch_node(node_index);
 
-        self.replace_references(original_node_index)?;
         Ok(())
     }
 
@@ -1500,8 +1427,9 @@ impl WorkspaceSnapshotGraphV2 {
         {
             // Only add the neighbor if it's not one of the ones with an explicit ordering.
             if !explicitly_ordered_children.contains(&neighbor_node) {
-                let neighbor_id = self.get_node_weight(neighbor_node)?.id();
-                unordered_neighbors.push((neighbor_id, neighbor_node));
+                if let Some(neighbor_id) = self.node_index_to_id(neighbor_node) {
+                    unordered_neighbors.push((neighbor_id, neighbor_node));
+                }
             }
         }
         // We'll sort the neighbors by the ID in the NodeWeight, as that will result in more stable
@@ -1590,6 +1518,36 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(())
     }
 
+    /// Does a dfs post-order walk of the DAG, recalculating the merkle tree
+    /// hash for any nodes we have touched while working on the graph. Should be
+    /// more efficient than recalculating the entire merkle tree hash, since we
+    /// will only update the hash for the branches of the graph that have been
+    /// touched and thus need to be recalculated.
+    pub fn recalculate_entire_merkle_tree_hash_based_on_touched_nodes(
+        &mut self,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
+
+        let mut discovered_nodes = HashSet::new();
+
+        while let Some(node_index) = dfs.next(&self.graph) {
+            if self.touched_node_indices.contains(&node_index)
+                || discovered_nodes.contains(&node_index)
+            {
+                self.update_merkle_tree_hash(node_index)?;
+                self.graph
+                    .neighbors_directed(node_index, Incoming)
+                    .for_each(|node_idx| {
+                        discovered_nodes.insert(node_idx);
+                    });
+            }
+        }
+
+        self.touched_node_indices.clear();
+
+        Ok(())
+    }
+
     /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
     /// and a provided graph as the "onto" graph.
     pub fn perform_updates(&mut self, updates: &[Update]) -> WorkspaceSnapshotGraphResult<()> {
@@ -1600,12 +1558,17 @@ impl WorkspaceSnapshotGraphV2 {
                     destination,
                     edge_weight,
                 } => {
-                    let updated_source = self.get_node_index_by_id_opt(source.id);
-                    let destination = self.get_node_index_by_id_opt(destination.id);
+                    let source_idx = self.get_node_index_by_id_opt(source.id);
+                    let destination_idx = self.get_node_index_by_id_opt(destination.id);
 
-                    if let (Some(updated_source), Some(destination)) = (updated_source, destination)
+                    if let (Some(source_idx), Some(destination_idx)) = (source_idx, destination_idx)
                     {
-                        self.add_edge(updated_source, edge_weight.clone(), destination)?;
+                        self.add_edge_inner(
+                            source_idx,
+                            edge_weight.clone(),
+                            destination_idx,
+                            false,
+                        )?;
                     }
                 }
                 Update::RemoveEdge {
@@ -1613,28 +1576,27 @@ impl WorkspaceSnapshotGraphV2 {
                     destination,
                     edge_kind,
                 } => {
-                    let updated_source = self.get_node_index_by_id_opt(source.id);
-                    let destination = self.get_node_index_by_id_opt(destination.id);
+                    let source_idx = self.get_node_index_by_id_opt(source.id);
+                    let destination_idx = self.get_node_index_by_id_opt(destination.id);
 
-                    if let (Some(updated_source), Some(destination)) = (updated_source, destination)
+                    if let (Some(source_idx), Some(destination_idx)) = (source_idx, destination_idx)
                     {
-                        self.remove_edge_inner(updated_source, destination, *edge_kind)?;
+                        self.remove_edge(source_idx, destination_idx, *edge_kind)?;
                     }
                 }
                 Update::NewNode { node_weight } => {
                     if self.get_node_index_by_id_opt(node_weight.id()).is_none() {
-                        self.add_node(node_weight.to_owned())?;
+                        self.add_or_replace_node(node_weight.to_owned())?;
                     }
                 }
                 Update::ReplaceNode { node_weight } => {
-                    let updated_to_rebase = self.get_node_index_by_id_opt(node_weight.id());
-                    if let Some(updated_to_rebase) = updated_to_rebase {
-                        self.add_node(node_weight.to_owned())?;
-                        self.replace_references(updated_to_rebase)?;
+                    if self.get_node_index_by_id_opt(node_weight.id()).is_some() {
+                        self.add_or_replace_node(node_weight.to_owned())?;
                     }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -1656,6 +1618,7 @@ impl WorkspaceSnapshotGraphV2 {
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
         lambda(node_weight)?;
+        self.touch_node(node_idx);
 
         Ok(())
     }

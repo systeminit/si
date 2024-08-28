@@ -61,7 +61,9 @@ impl StaticArgumentValue {
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::StaticArgumentValue(hash));
 
-        ctx.workspace_snapshot()?.add_node(node_weight).await?;
+        ctx.workspace_snapshot()?
+            .add_or_replace_node(node_weight)
+            .await?;
 
         Ok(StaticArgumentValue::assemble(id.into(), content))
     }

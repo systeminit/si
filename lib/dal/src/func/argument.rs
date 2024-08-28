@@ -247,7 +247,9 @@ impl FuncArgument {
         let lineage_id = workspace_snapshot.generate_ulid().await?;
         let node_weight = NodeWeight::new_func_argument(id, lineage_id, name, hash);
 
-        workspace_snapshot.add_node(node_weight.clone()).await?;
+        workspace_snapshot
+            .add_or_replace_node(node_weight.clone())
+            .await?;
         Func::add_edge_to_argument(ctx, func_id, id.into(), EdgeWeightKind::new_use()).await?;
 
         let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
@@ -441,18 +443,10 @@ impl FuncArgument {
         // have changed, this ends up updating the node for the function twice. This could be
         // optimized to do it only once.
         if func_argument.name.as_str() != node_weight.name() {
-            let original_node_index = workspace_snapshot
-                .get_node_index_by_id(func_argument.id)
-                .await?;
-
             node_weight.set_name(func_argument.name.as_str());
 
             workspace_snapshot
-                .add_node(NodeWeight::FuncArgument(node_weight.clone()))
-                .await?;
-
-            workspace_snapshot
-                .replace_references(original_node_index)
+                .add_or_replace_node(NodeWeight::FuncArgument(node_weight.clone()))
                 .await?;
         }
         let updated = FuncArgumentContentV1::from(func_argument.clone());

@@ -54,7 +54,7 @@ mod test {
         );
 
         let func_node_index = onto
-            .add_node(NodeWeight::Func(func_node_weight))
+            .add_or_replace_node(NodeWeight::Func(func_node_weight))
             .expect("could not add node");
         onto.add_edge(
             func_category_node_index,
@@ -71,7 +71,7 @@ mod test {
         );
 
         let schema_node_index = onto
-            .add_node(NodeWeight::Content(schema_node_weight))
+            .add_or_replace_node(NodeWeight::Content(schema_node_weight))
             .expect("could not add node");
         onto.add_edge(
             schema_category_node_index,
@@ -88,7 +88,7 @@ mod test {
         );
 
         let schema_variant_node_index = onto
-            .add_node(NodeWeight::Content(schema_variant_node_weight))
+            .add_or_replace_node(NodeWeight::Content(schema_variant_node_weight))
             .expect("could not add node");
         onto.add_edge(
             schema_node_index,
@@ -108,12 +108,11 @@ mod test {
         )
         .expect("could not add edge");
 
-        // Before cleanup, detect conflicts and updates.
-        let before_cleanup_updates = to_rebase.detect_updates(&onto);
-
         // Cleanup and check node count.
-        onto.cleanup();
-        to_rebase.cleanup();
+        onto.cleanup_and_merkle_tree_hash().expect("merkle it!");
+        to_rebase
+            .cleanup_and_merkle_tree_hash()
+            .expect("merkle it!");
         assert_eq!(
             6,                 // expected
             onto.node_count()  // actual
@@ -124,10 +123,6 @@ mod test {
         assert_eq!(
             7,             // expected
             updates.len()  // actual
-        );
-        assert_eq!(
-            before_cleanup_updates, // expected
-            updates                 // actual
         );
 
         // Ensure that we do not have duplicate updates.

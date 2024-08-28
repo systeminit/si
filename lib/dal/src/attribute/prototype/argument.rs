@@ -213,7 +213,9 @@ impl AttributePrototypeArgument {
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        workspace_snapshot.add_node(node_weight.clone()).await?;
+        workspace_snapshot
+            .add_or_replace_node(node_weight.clone())
+            .await?;
 
         AttributePrototype::add_edge_to_argument(
             ctx,
@@ -268,7 +270,9 @@ impl AttributePrototypeArgument {
         let prototype_arg: Self = {
             let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            workspace_snapshot.add_node(node_weight.clone()).await?;
+            workspace_snapshot
+                .add_or_replace_node(node_weight.clone())
+                .await?;
 
             AttributePrototype::add_edge_to_argument(
                 ctx,

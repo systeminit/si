@@ -249,7 +249,7 @@ impl Secret {
         let secret_node_weight = node_weight.get_secret_node_weight()?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         // Root --> Secret Category --> Secret (this)
         let secret_category_id = workspace_snapshot
@@ -641,16 +641,10 @@ impl Secret {
         // we always update the actor and timestamp data if anything has changed. This could be
         // optimized to do it only once.
         if secret.encrypted_secret_key() != secret_node_weight.encrypted_secret_key() {
-            let original_node_index = workspace_snapshot.get_node_index_by_id(secret.id).await?;
-
             secret_node_weight.set_encrypted_secret_key(secret.encrypted_secret_key);
 
             workspace_snapshot
-                .add_node(NodeWeight::Secret(secret_node_weight.clone()))
-                .await?;
-
-            workspace_snapshot
-                .replace_references(original_node_index)
+                .add_or_replace_node(NodeWeight::Secret(secret_node_weight.clone()))
                 .await?;
         }
         let updated = SecretContentV1::from(secret.clone());

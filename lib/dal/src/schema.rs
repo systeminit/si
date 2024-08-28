@@ -157,7 +157,7 @@ impl Schema {
         let node_weight =
             NodeWeight::new_content(id.into(), lineage_id, ContentAddress::Schema(hash));
 
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let schema_category_index_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Schema)

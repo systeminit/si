@@ -36,7 +36,7 @@ fn add_prop_nodes_to_graph<'a, 'b>(
                 .expect("Unable to add prop");
         } else {
             graph
-                .add_node(prop_node_weight)
+                .add_or_replace_node(prop_node_weight)
                 .expect("Unable to add prop");
         }
 
@@ -181,7 +181,9 @@ mod test {
         let node_id_map = add_prop_nodes_to_graph(&mut graph, &nodes, false);
         add_edges(&mut graph, &node_id_map, &edges);
 
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         for (source, target) in edges {
             let source_idx = match source {
@@ -236,7 +238,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -246,7 +248,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -256,7 +258,7 @@ mod test {
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::new(
@@ -302,7 +304,7 @@ mod test {
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 func_id,
                 Ulid::new(),
                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
@@ -310,7 +312,7 @@ mod test {
             .expect("Unable to add func");
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 prop_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
@@ -355,7 +357,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_schema_node_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -365,7 +367,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_schema_variant_node_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -375,7 +377,7 @@ mod test {
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_component_node_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::new(
@@ -444,7 +446,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::from("Constellation")),
@@ -452,7 +454,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new("Freestar Collective".as_bytes())),
@@ -460,7 +462,7 @@ mod test {
             .expect("Unable to add schema variant");
         let component_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 component_id,
                 Ulid::new(),
                 ContentAddress::Component(ContentHash::from("Crimson Fleet")),
@@ -503,6 +505,9 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         // Ensure that the root node merkle tree hash looks as we expect before the update.
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let pre_update_root_node_merkle_tree_hash: MerkleTreeHash =
             MerkleTreeHash::from_str("49a6baef5d1c29f43653e0b7c02dfb73")
                 .expect("able to create hash from hex string");
@@ -518,6 +523,9 @@ mod test {
         graph
             .update_content(component_id, updated_content_hash)
             .expect("Unable to update Component content hash");
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         let post_update_root_node_merkle_tree_hash: MerkleTreeHash =
             MerkleTreeHash::from_str("75febafba241026c63e27ab5b129cb26")
@@ -541,7 +549,9 @@ mod test {
                 .content_hash(), // actual
         );
 
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
 
         // Ensure that there are not more nodes than the ones that should be in use.
         assert_eq!(4, graph.node_count());
@@ -574,7 +584,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -584,7 +594,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -612,7 +622,7 @@ mod test {
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 func_id,
                 Ulid::new(),
                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
@@ -654,12 +664,14 @@ mod test {
                     .expect("Unable to get NodeIndex"),
             )
             .expect("Unable to add prop -> func edge");
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_1_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
@@ -677,7 +689,7 @@ mod test {
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_2_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
@@ -695,7 +707,7 @@ mod test {
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_3_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
@@ -710,7 +722,9 @@ mod test {
                 ordered_prop_3_index,
             )
             .expect("Unable to add prop -> ordered_prop_3 edge");
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         assert_eq!(
@@ -752,7 +766,9 @@ mod test {
             )
             .expect("Unable to add root -> prop edge");
 
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         assert_eq!(
             Vec::<NodeIndex>::new(),
             graph
@@ -773,7 +789,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -783,7 +799,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -811,7 +827,7 @@ mod test {
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 func_id,
                 Ulid::new(),
                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
@@ -853,12 +869,14 @@ mod test {
                     .expect("Unable to get NodeIndex"),
             )
             .expect("Unable to add prop -> func edge");
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_1_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
@@ -876,7 +894,7 @@ mod test {
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_2_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
@@ -894,7 +912,7 @@ mod test {
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_3_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
@@ -912,7 +930,7 @@ mod test {
 
         let ordered_prop_4_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_4_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_4_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
@@ -928,7 +946,9 @@ mod test {
             )
             .expect("Unable to add prop -> ordered_prop_4 edge");
 
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         assert_eq!(
@@ -984,7 +1004,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -994,7 +1014,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -1022,7 +1042,7 @@ mod test {
 
         let schema_variant_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_2_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_2_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -1090,6 +1110,9 @@ mod test {
             "confirm edges after deletion"
         );
 
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         let updates = graph.detect_updates(&graph_with_deleted_edge);
 
         assert_eq!(1, updates.len());
@@ -1107,7 +1130,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -1117,7 +1140,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 Ulid::new(),
                 schema_variant_id,
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -1145,7 +1168,7 @@ mod test {
 
         let schema_variant_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_2_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_2_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -1215,7 +1238,7 @@ mod test {
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_id,
                 Ulid::new(),
                 ContentAddress::Schema(ContentHash::new(
@@ -1225,7 +1248,7 @@ mod test {
             .expect("Unable to add schema");
         let schema_variant_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_variant_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 schema_variant_id,
                 Ulid::new(),
                 ContentAddress::SchemaVariant(ContentHash::new(
@@ -1253,7 +1276,7 @@ mod test {
 
         let func_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let func_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 func_id,
                 Ulid::new(),
                 ContentAddress::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
@@ -1295,12 +1318,14 @@ mod test {
                     .expect("Unable to get NodeIndex"),
             )
             .expect("Unable to add prop -> func edge");
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         let ordered_prop_1_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_1_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_1_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_1_id.to_string().as_bytes())),
@@ -1318,7 +1343,7 @@ mod test {
 
         let ordered_prop_2_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_2_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_2_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_2_id.to_string().as_bytes())),
@@ -1336,7 +1361,7 @@ mod test {
 
         let ordered_prop_3_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_3_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_3_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_3_id.to_string().as_bytes())),
@@ -1354,7 +1379,7 @@ mod test {
 
         let ordered_prop_4_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let ordered_prop_4_index = graph
-            .add_node(NodeWeight::new_content(
+            .add_or_replace_node(NodeWeight::new_content(
                 ordered_prop_4_id,
                 Ulid::new(),
                 ContentAddress::Prop(ContentHash::new(ordered_prop_4_id.to_string().as_bytes())),
@@ -1370,7 +1395,9 @@ mod test {
             )
             .expect("Unable to add prop -> ordered_prop_4 edge");
 
-        graph.cleanup();
+        graph
+            .cleanup_and_merkle_tree_hash()
+            .expect("cleanup and merkle");
         graph.dot();
 
         assert_eq!(

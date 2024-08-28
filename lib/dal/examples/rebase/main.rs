@@ -1,14 +1,18 @@
 use std::{env, fs::File, io::prelude::*};
 
+use serde::de::DeserializeOwned;
 use si_layer_cache::db::serialize;
 
-use dal::WorkspaceSnapshotGraphV2;
+use dal::{
+    workspace_snapshot::graph::{correct_transforms::correct_transforms, RebaseBatch},
+    WorkspaceSnapshotGraphV2,
+};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
-const USAGE: &str = "usage: cargo run --example rebase <TO_REBASE_FILE_PATH> <ONTO_FILE_PATH>";
+const USAGE: &str = "usage: cargo run --example rebase <TO_REBASE_FILE_PATH> <REBASE_BATCH_PATH>";
 
-fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraphV2> {
+fn load_snapshot_graph<T: DeserializeOwned>(path: &str) -> Result<T> {
     let mut file = File::open(path)?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
@@ -19,16 +23,17 @@ fn load_snapshot_graph(path: &str) -> Result<WorkspaceSnapshotGraphV2> {
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().take(3).map(Into::into).collect();
     let to_rebase_path = args.get(1).expect(USAGE);
-    let onto_path = args.get(2).expect(USAGE);
+    let rebase_batch_path = args.get(2).expect(USAGE);
 
-    let to_rebase_graph = load_snapshot_graph(to_rebase_path)?;
-    let onto_graph = load_snapshot_graph(onto_path)?;
+    let mut to_rebase_graph: WorkspaceSnapshotGraphV2 = load_snapshot_graph(to_rebase_path)?;
+    let rebase_batch: RebaseBatch = load_snapshot_graph(rebase_batch_path)?;
 
-    let updates = to_rebase_graph.detect_updates(&onto_graph);
+    let corrected_transforms =
+        correct_transforms(&to_rebase_graph, rebase_batch.updates().to_vec(), false)?;
 
-    for update in &updates {
-        dbg!(update);
-    }
+    to_rebase_graph.perform_updates(&corrected_transforms)?;
+
+    dbg!(to_rebase_graph.node_count());
 
     Ok(())
 }

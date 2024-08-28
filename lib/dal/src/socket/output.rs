@@ -199,7 +199,7 @@ impl OutputSocket {
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::OutputSocket(hash));
 
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         SchemaVariant::add_edge_to_output_socket(
             ctx,

@@ -273,7 +273,7 @@ impl InputSocket {
 
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::InputSocket(hash));
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
         SchemaVariant::add_edge_to_input_socket(
             ctx,
             schema_variant_id,

@@ -315,9 +315,8 @@ impl Action {
         let mut new_node_weight = node_weight.clone();
         new_node_weight.set_state(state);
         ctx.workspace_snapshot()?
-            .add_node(NodeWeight::Action(new_node_weight))
+            .add_or_replace_node(NodeWeight::Action(new_node_weight))
             .await?;
-        ctx.workspace_snapshot()?.replace_references(idx).await?;
         Ok(())
     }
 
@@ -342,7 +341,9 @@ impl Action {
         let originating_change_set_id = ctx.change_set_id();
         let node_weight =
             NodeWeight::new_action(originating_change_set_id, new_id.into(), lineage_id);
-        ctx.workspace_snapshot()?.add_node(node_weight).await?;
+        ctx.workspace_snapshot()?
+            .add_or_replace_node(node_weight)
+            .await?;
 
         let action_category_id = ctx
             .workspace_snapshot()?

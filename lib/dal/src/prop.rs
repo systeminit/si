@@ -551,7 +551,7 @@ impl Prop {
         if ordered {
             workspace_snapshot.add_ordered_node(node_weight).await?;
         } else {
-            workspace_snapshot.add_node(node_weight).await?;
+            workspace_snapshot.add_or_replace_node(node_weight).await?;
         }
 
         Ok(Self::assemble(prop_node_weight, content))

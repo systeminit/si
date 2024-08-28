@@ -442,7 +442,7 @@ impl Component {
         let node_weight = NodeWeight::new_component(id, lineage_id, content_address);
 
         // Attach component to category and add use edge to schema variant
-        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         // Root --> Component Category --> Component (this)
         let component_category_id = workspace_snapshot
@@ -2100,7 +2100,7 @@ impl Component {
         // We only need to import the AttributePrototypeArgument node, as all of the other relevant
         // nodes should already exist.
         ctx.workspace_snapshot()?
-            .add_node(base_attribute_prototype_argument_node_weight.clone())
+            .add_or_replace_node(base_attribute_prototype_argument_node_weight.clone())
             .await?;
         ctx.workspace_snapshot()?
             .add_edge(
@@ -2296,10 +2296,7 @@ impl Component {
             let mut new_component_node_weight = component_node_weight.clone();
             new_component_node_weight.set_to_delete(component.to_delete);
             ctx.workspace_snapshot()?
-                .add_node(NodeWeight::Component(new_component_node_weight))
-                .await?;
-            ctx.workspace_snapshot()?
-                .replace_references(component_idx)
+                .add_or_replace_node(NodeWeight::Component(new_component_node_weight))
                 .await?;
         }
 

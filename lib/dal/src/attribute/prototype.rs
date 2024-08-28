@@ -159,7 +159,7 @@ impl AttributePrototype {
         let lineage_id = workspace_snapshot.generate_ulid().await?;
         let node_weight =
             NodeWeight::new_content(id, lineage_id, ContentAddress::AttributePrototype(hash));
-        let _node_index = workspace_snapshot.add_node(node_weight).await?;
+        let _node_index = workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let prototype = AttributePrototype::assemble(id.into(), &content);
 
