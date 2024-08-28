@@ -29,11 +29,6 @@
       </div>
 
       <div v-if="showDetails && !displayDetailsInModal">
-        <div v-if="qualification.description" class="my-2">
-          <b>Description: </b>
-          <p>{{ qualification.description }}</p>
-        </div>
-
         <div
           v-if="failedSubchecks.length"
           class="flex flex-col my-2 p-xs border border-destructive-600 text-destructive-500 rounded"
@@ -45,12 +40,12 @@
               :key="idx"
               class="p-2 break-words"
             >
-              <pre
-                trim
-                class="break-all"
-                style="word-wrap: break-word; white-space: pre-wrap"
-                >{{ subCheck.description }}
-              </pre>
+              <CodeViewer
+                :allowCopy="false"
+                :code="subCheck.description"
+                :showTitle="false"
+              >
+              </CodeViewer>
             </li>
           </ul>
         </div>
@@ -60,13 +55,13 @@
           class="flex flex-col my-xs p-xs border border-warning-600 text-warning-500 rounded"
         >
           <b>Raw Output:</b>
-          <p
-            v-for="(output, index) in qualification.output"
-            :key="index"
-            class="text-sm break-all"
+
+          <CodeViewer
+            :code="qualification.output.map((o) => o.line).join('\n')"
+            :showTitle="false"
+            :allowCopy="false"
           >
-            {{ output.line }}
-          </p>
+          </CodeViewer>
         </div>
       </div>
 
@@ -119,13 +114,12 @@
         class="flex flex-col my-xs p-xs border border-warning-600 text-warning-500 rounded"
       >
         <b>Raw Output:</b>
-        <p
-          v-for="(output, index) in qualification.output"
-          :key="index"
-          class="text-sm break-all"
+        <CodeViewer
+          :code="qualification.output.map((o) => o.line).join('\n')"
+          :showTitle="false"
+          :allowCopy="false"
         >
-          {{ output.line }}
-        </p>
+        </CodeViewer>
       </div>
     </Modal>
   </div>
@@ -137,6 +131,7 @@ import * as _ from "lodash-es";
 import { Modal } from "@si/vue-lib/design-system";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
+import CodeViewer from "@/components/CodeViewer.vue";
 import { trackEvent } from "@/utils/tracking";
 
 const props = defineProps<{
