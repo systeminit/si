@@ -97,12 +97,12 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
+    #[error("component {0} has more than one value for the {1} prop")]
+    ComponentHasTooManyValues(ComponentId, PropId),
     #[error("component {0} has an unexpected schema variant id")]
     ComponentIncorrectSchemaVariant(ComponentId),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
-    #[error("component {0} has no attribute value for the root/domain prop")]
-    ComponentMissingDomainValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
     ComponentMissingNameValue(ComponentId),
     #[error("component {0} has no attribute value for the root/resource prop")]
@@ -111,6 +111,8 @@ pub enum ComponentError {
     ComponentMissingTypeValue(ComponentId),
     #[error("component {0} has no materialized view for the root/si/type prop")]
     ComponentMissingTypeValueMaterializedView(ComponentId),
+    #[error("component {0} has no attribute value for the {1} prop")]
+    ComponentMissingValue(ComponentId, PropId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("frame error: {0}")]
@@ -1506,12 +1508,7 @@ impl Component {
             return Ok(());
         }
 
-        let av_for_name = self
-            .attribute_values_for_prop(ctx, &path)
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+        let av_for_name = Self::attribute_value_for_prop_id(ctx, self.id(), name_prop_id).await?;
 
         AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
 
@@ -1524,11 +1521,8 @@ impl Component {
         resource: ResourceData,
     ) -> ComponentResult<()> {
         let av_for_resource = self
-            .attribute_values_for_prop(ctx, &["root", "resource"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+            .attribute_value_for_prop(ctx, &["root", "resource"])
+            .await?;
 
         AttributeValue::update(ctx, av_for_resource, Some(serde_json::to_value(resource)?)).await?;
 
@@ -1537,11 +1531,8 @@ impl Component {
 
     pub async fn clear_resource(&self, ctx: &DalContext) -> ComponentResult<()> {
         let av_for_resource = self
-            .attribute_values_for_prop(ctx, &["root", "resource"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+            .attribute_value_for_prop(ctx, &["root", "resource"])
+            .await?;
 
         AttributeValue::update(ctx, av_for_resource, Some(serde_json::json!({}))).await?;
 
@@ -1550,11 +1541,8 @@ impl Component {
 
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Option<ResourceData>> {
         let value_id = self
-            .attribute_values_for_prop(ctx, &["root", "resource"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+            .attribute_value_for_prop(ctx, &["root", "resource"])
+            .await?;
 
         let av = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
 
@@ -1577,11 +1565,8 @@ impl Component {
 
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         let name_value_id = self
-            .attribute_values_for_prop(ctx, &["root", "si", "name"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+            .attribute_value_for_prop(ctx, &["root", "si", "name"])
+            .await?;
 
         let name_av = AttributeValue::get_by_id_or_error(ctx, name_value_id).await?;
 
@@ -1593,12 +1578,8 @@ impl Component {
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
         let color_value_id = self
-            .attribute_values_for_prop(ctx, &["root", "si", "color"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingColorValue(self.id()))?;
-
+            .attribute_value_for_prop(ctx, &["root", "si", "color"])
+            .await?;
         let color_av = AttributeValue::get_by_id_or_error(ctx, color_value_id).await?;
 
         Ok(match color_av.view(ctx).await? {
@@ -1613,11 +1594,8 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<ComponentType> {
         let type_value_id =
-            Self::attribute_values_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
-                .await?
-                .into_iter()
-                .next()
-                .ok_or(ComponentError::ComponentMissingTypeValue(component_id))?;
+            Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
+                .await?;
         let type_value = AttributeValue::get_by_id_or_error(ctx, type_value_id)
             .await?
             .view(ctx)
@@ -1635,11 +1613,8 @@ impl Component {
 
     pub async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
         let type_value_id = self
-            .attribute_values_for_prop(ctx, &["root", "si", "type"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingTypeValue(self.id()))?;
+            .attribute_value_for_prop(ctx, &["root", "si", "type"])
+            .await?;
 
         let value = serde_json::to_value(new_type)?;
 
@@ -1730,15 +1705,55 @@ impl Component {
         Ok(result)
     }
 
+    // Get a single attribute value for this component and a given prop path
+    // Errors if there is no value, or if more than one value exists.
+    pub async fn attribute_value_for_prop_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        prop_id: PropId,
+    ) -> ComponentResult<AttributeValueId> {
+        let values = Self::attribute_values_for_prop_id(ctx, component_id, prop_id).await?;
+        if values.len() > 1 {
+            return Err(ComponentError::ComponentHasTooManyValues(
+                component_id,
+                prop_id,
+            ));
+        }
+        match values.first() {
+            Some(value) => Ok(*value),
+            None => Err(ComponentError::ComponentMissingValue(component_id, prop_id)),
+        }
+    }
+
+    // Get a single attribute value for this component and a given prop path
+    // Errors if there is no value, or if more than one value exists.
+    pub async fn attribute_value_for_prop_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        prop_path: &[&str],
+    ) -> ComponentResult<AttributeValueId> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        let prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(prop_path)).await?;
+        Self::attribute_value_for_prop_id(ctx, component_id, prop_id).await
+    }
+
+    // Get a single attribute value for this component and a given prop path.
+    // Errors if there is no value, or if more than one value exists.
+    pub async fn attribute_value_for_prop(
+        &self,
+        ctx: &DalContext,
+        prop_path: &[&str],
+    ) -> ComponentResult<AttributeValueId> {
+        Self::attribute_value_for_prop_by_id(ctx, self.id(), prop_path).await
+    }
+
     pub async fn domain_prop_attribute_value(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<AttributeValueId> {
-        self.attribute_values_for_prop(ctx, &["root", "domain"])
-            .await?
-            .first()
-            .cloned()
-            .ok_or(ComponentError::ComponentMissingDomainValue(self.id))
+        self.attribute_value_for_prop(ctx, &["root", "domain"])
+            .await
     }
 
     async fn attribute_values_for_all_sockets(

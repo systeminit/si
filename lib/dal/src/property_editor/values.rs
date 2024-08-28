@@ -3,20 +3,14 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use petgraph::prelude::NodeIndex;
-use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use telemetry::prelude::*;
 
-use crate::attribute::value::AttributeValueError;
-use crate::component::ControllingFuncData;
-use crate::prop::PropPath;
-use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
-use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::validation::{ValidationOutput, ValidationOutputNode};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::{
+    attribute::value::AttributeValueError,
+    property_editor::{PropertyEditorPropId, PropertyEditorResult, PropertyEditorValueId},
+    validation::{ValidationOutput, ValidationOutputNode},
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
     PropId, Secret,
 };
@@ -36,17 +30,18 @@ impl PropertyEditorValues {
     ) -> PropertyEditorResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
 
-        let connected_sockets_on_component: HashSet<InputSocketId> = component
+        let sockets_on_component: HashSet<InputSocketId> = component
             .incoming_connections(ctx)
             .await?
             .iter()
             .map(|c| c.to_input_socket_id)
-            .collect();
-        let inferred_sockets_on_components: HashSet<InputSocketId> = component
-            .inferred_incoming_connections(ctx)
-            .await?
-            .iter()
-            .map(|c| c.to_input_socket_id)
+            .chain(
+                component
+                    .inferred_incoming_connections(ctx)
+                    .await?
+                    .iter()
+                    .map(|c| c.to_input_socket_id),
+            )
             .collect();
 
         let controlling_ancestors_for_av_id =
@@ -56,27 +51,35 @@ impl PropertyEditorValues {
         let mut child_values = HashMap::new();
 
         // Get the root attribute value and load it into the work queue.
-        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
-        let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
-        let root_prop_id =
-            AttributeValue::prop_id_for_id_or_error(ctx, root_attribute_value_id).await?;
-        let root_attribute_value =
-            AttributeValue::get_by_id_or_error(ctx, root_attribute_value_id).await?;
+        let root_av_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        let root_value_id = PropertyEditorValueId::from(root_av_id);
+        let root_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, root_av_id).await?;
+        let root_av = AttributeValue::get_by_id_or_error(ctx, root_av_id).await?;
 
-        let validation =
-            ValidationOutputNode::find_for_attribute_value_id(ctx, root_attribute_value_id)
-                .await?
-                .map(|node| node.validation);
+        let validation = ValidationOutputNode::find_for_attribute_value_id(ctx, root_av_id)
+            .await?
+            .map(|node| node.validation);
 
+        // Collect a map of all secret ids by key in the graph. In the future, we may want to cache
+        // this or search while iterating. For now, the "list_ids_by_key_bench" test ensures that we
+        // meet a baseline performance target.
+        let secret_ids_by_key = {
+            let start = tokio::time::Instant::now();
+            let secret_ids_by_key = Secret::list_ids_by_key(ctx).await?;
+            debug!(%component_id, "listing secret ids by key took {:?}", start.elapsed());
+            secret_ids_by_key
+        };
+
+        let secrets_av_id = component
+            .attribute_value_for_prop(ctx, &["root", "secrets"])
+            .await?;
         values.insert(
-            root_property_editor_value_id,
+            root_value_id,
             PropertyEditorValue {
-                id: root_property_editor_value_id,
+                id: root_value_id,
                 prop_id: root_prop_id.into(),
                 key: None,
-                value: root_attribute_value
-                    .value_or_default(ctx, root_prop_id)
-                    .await?,
+                value: root_av.value_or_default(ctx, root_prop_id).await?,
                 validation,
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
@@ -86,88 +89,29 @@ impl PropertyEditorValues {
             },
         );
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut work_queue =
-            VecDeque::from([(root_attribute_value_id, root_property_editor_value_id)]);
+        let mut work_queue = VecDeque::from([(root_av_id, root_value_id)]);
 
-        while let Some((attribute_value_id, property_editor_value_id)) = work_queue.pop_front() {
-            // Collect all child attribute values.
-            let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
-            {
-                let mut child_attribute_values_with_keys_by_id: HashMap<
-                    AttributeValueId,
-                    (NodeIndex, Option<String>),
-                > = HashMap::new();
-
-                for (edge_weight, _, target_idx) in workspace_snapshot
-                    .edges_directed(attribute_value_id, Direction::Outgoing)
-                    .await?
-                {
-                    if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                        let child_id = workspace_snapshot
-                            .get_node_weight(target_idx)
-                            .await?
-                            .id()
-                            .into();
-
-                        child_attribute_values_with_keys_by_id
-                            .insert(child_id, (target_idx, key.to_owned()));
-                    }
-                }
-
-                let maybe_ordering =
-                    AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                        .await
-                        .ok();
-
-                // Ideally every attribute value with children is connected via an ordering node
-                // We don't error out on ordering not existing here because we don't have that
-                // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
-                for av_id in maybe_ordering.unwrap_or_else(|| {
-                    child_attribute_values_with_keys_by_id
-                        .keys()
-                        .cloned()
-                        .collect()
-                }) {
-                    let (child_attribute_value_node_index, key) =
-                        &child_attribute_values_with_keys_by_id[&av_id];
-                    let child_attribute_value_node_weight = workspace_snapshot
-                        .get_node_weight(*child_attribute_value_node_index)
-                        .await?;
-                    let content =
-                        child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                    cache.push((content.id().into(), key.clone()));
-                }
-            }
-
+        while let Some((parent_av_id, parent_value_id)) = work_queue.pop_front() {
             // Now that we have the child props, prepare the property editor props and load the work queue.
-            let mut child_property_editor_value_ids = Vec::new();
-            for (child_av_id, key) in cache {
+            let mut child_value_ids = Vec::new();
+            for av_id in AttributeValue::get_child_av_ids_in_order(ctx, parent_av_id).await? {
+                let key = AttributeValue::key_for_id(ctx, av_id).await?;
+
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let child_attribute_value =
-                    AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
-                let prop_id_for_child_attribute_value =
-                    AttributeValue::prop_id_for_id_or_error(ctx, child_av_id).await?;
-                let child_property_editor_value_id = PropertyEditorValueId::from(child_av_id);
+                let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id).await?;
+                let value_id = PropertyEditorValueId::from(av_id);
 
                 let sockets_for_av =
-                    AttributeValue::list_input_socket_sources_for_id(ctx, child_av_id).await?;
-
+                    AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
+                let can_be_set_by_socket = !sockets_for_av.is_empty();
                 let is_from_external_source = sockets_for_av
                     .iter()
-                    .any(|s| connected_sockets_on_component.contains(s))
-                    || sockets_for_av
-                        .iter()
-                        .any(|s| inferred_sockets_on_components.contains(s));
+                    .any(|s| sockets_on_component.contains(s));
 
-                let ControllingFuncData {
-                    av_id: this_controlling_attribute_value_id,
-                    is_dynamic_func: this_controlling_func_is_dynamic,
-                    ..
-                } = *controlling_ancestors_for_av_id
-                    .get(&child_av_id)
-                    .ok_or(AttributeValueError::MissingForId(child_av_id))?;
+                let controlling_func = *controlling_ancestors_for_av_id
+                    .get(&av_id)
+                    .ok_or(AttributeValueError::MissingForId(av_id))?;
 
                 // Note (victor): An attribute value is overridden if there is an attribute
                 // prototype for this specific AV, which means it's set for the component,
@@ -176,99 +120,78 @@ impl PropertyEditorValues {
                 // This could be standalone func for AV, but we'd have to implement a
                 // controlling_ancestors_for_av_id for av, instead of for the whole component.
                 // Not a complicated task, but the PR that adds this has enough code as it is.
-                let overridden = AttributeValue::component_prototype_id(
-                    ctx,
-                    this_controlling_attribute_value_id,
-                )
-                .await?
-                .is_some();
-
-                let validation =
-                    ValidationOutputNode::find_for_attribute_value_id(ctx, child_av_id)
+                let overridden =
+                    AttributeValue::component_prototype_id(ctx, controlling_func.av_id)
                         .await?
-                        .map(|node| node.validation);
+                        .is_some();
 
-                let child_property_editor_value = PropertyEditorValue {
-                    id: child_property_editor_value_id,
-                    prop_id: prop_id_for_child_attribute_value.into(),
+                let validation = ValidationOutputNode::find_for_attribute_value_id(ctx, av_id)
+                    .await?
+                    .map(|node| node.validation);
+
+                // Get the value
+                let mut value = AttributeValue::get_by_id_or_error(ctx, av_id)
+                    .await?
+                    .value_or_default(ctx, prop_id)
+                    .await?;
+
+                // If this is a secret, the JSON value has the secret key, not the secret id.
+                // The editor needs the secret id, so we look in our mapto find which Secret in
+                // the current graph has that key.
+                if parent_av_id == secrets_av_id && value != Value::Null {
+                    let secret_key = Secret::key_from_value_in_attribute_value(value)?;
+                    value = match secret_ids_by_key.get(&secret_key) {
+                        Some(secret_id) => serde_json::to_value(secret_id)?,
+                        None => {
+                            // If none of the secrets in the workspace have this key, we assume
+                            // that dependent values haven't updated yet and will be fixed
+                            // shortly. Thus we treat the property as missing for now and
+                            // return null.
+                            //
+                            // This is an expected issue, so we don't warn--but it could trigger
+                            // if something more serious is going on that is making the lookup
+                            // fail more persistently, so we may want to measure how often it
+                            // happens and figure out how to alert in that case.
+                            warn!(
+                                name: "Secret key does not match",
+                                av_id = %av_id,
+                                "Secret key in dependent value does not match any secret key; assuming that dependent values are not up to date and treating the property temporarily as missing",
+                            );
+                            Value::Null
+                        }
+                    }
+                }
+
+                let value = PropertyEditorValue {
+                    id: value_id,
+                    prop_id: prop_id.into(),
                     key,
-                    value: child_attribute_value
-                        .value_or_default(ctx, prop_id_for_child_attribute_value)
-                        .await?,
+                    value,
                     validation,
-                    can_be_set_by_socket: !sockets_for_av.is_empty(),
+                    can_be_set_by_socket,
                     is_from_external_source,
-                    is_controlled_by_ancestor: this_controlling_attribute_value_id != child_av_id,
-                    is_controlled_by_dynamic_func: this_controlling_func_is_dynamic,
+                    is_controlled_by_ancestor: controlling_func.av_id != av_id,
+                    is_controlled_by_dynamic_func: controlling_func.is_dynamic_func,
                     overridden,
                 };
 
                 // Load the work queue with the child attribute value.
-                work_queue.push_back((child_av_id, child_property_editor_value.id));
+                work_queue.push_back((av_id, value.id));
 
                 // Cache the child property editor values to eventually insert into the child property editor values map.
-                child_property_editor_value_ids.push(child_property_editor_value.id);
+                child_value_ids.push(value.id);
 
                 // Insert the child property editor value into the values map.
-                values.insert(child_property_editor_value.id, child_property_editor_value);
+                values.insert(value.id, value);
             }
-            child_values.insert(property_editor_value_id, child_property_editor_value_ids);
+            child_values.insert(parent_value_id, child_value_ids);
         }
 
-        let mut property_editor_values = Self {
-            root_value_id: root_property_editor_value_id,
+        Ok(Self {
+            root_value_id,
             child_values,
             values,
-        };
-
-        // Before returning the resulting property editor values, we want to ensure we do not send
-        // up the encrypted secret key for values corresponding to secrets.
-        property_editor_values
-            .prepare_values_for_secrets_tree(ctx, component_id)
-            .await?;
-
-        Ok(property_editor_values)
-    }
-
-    async fn prepare_values_for_secrets_tree(
-        &mut self,
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> PropertyEditorResult<()> {
-        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-
-        let secret_object_prop_id =
-            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root", "secrets"]))
-                .await?;
-
-        // Collect a map of all secret ids by key in the graph. In the future, we may want to cache
-        // this or search while iterating. For now, the "list_ids_by_key_bench" test ensures that we
-        // meet a baseline performance target.
-        let ids_by_key = {
-            let start = tokio::time::Instant::now();
-            let ids_by_key = Secret::list_ids_by_key(ctx).await?;
-            debug!(%component_id, "listing secret ids by key took {:?}", start.elapsed());
-            ids_by_key
-        };
-
-        for secret_prop_id in
-            Prop::direct_child_prop_ids_unordered(ctx, secret_object_prop_id).await?
-        {
-            let attribute_value_id = self.find_by_prop_id(secret_prop_id).ok_or(
-                PropertyEditorError::PropertyEditorValueNotFoundByPropId(secret_object_prop_id),
-            )?;
-
-            if let Some(property_editor_value) = self.values.get_mut(&attribute_value_id.into()) {
-                if Value::Null != property_editor_value.value {
-                    property_editor_value.value = Secret::prepare_property_editor_value(
-                        &ids_by_key,
-                        property_editor_value.value.clone(),
-                    )?;
-                }
-            }
-        }
-
-        Ok(())
+        })
     }
 
     /// Finds the [`AttributeValueId`](AttributeValue) for a given [`PropId`](Prop).

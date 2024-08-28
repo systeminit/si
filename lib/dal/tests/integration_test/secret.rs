@@ -12,7 +12,6 @@ use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 
-mod bench;
 mod with_actions;
 mod with_schema_variant_authoring;
 
@@ -332,6 +331,130 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
         .await
         .expect("paste");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
+}
+
+#[test]
+async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+    // Create a secret and consumer component.
+    let secret_component = ExpectComponent::create(ctx, "dummy-secret").await;
+    let user_component = ExpectComponent::create(ctx, "fallout").await;
+    secret_component
+        .connect(ctx, "dummy", user_component, "dummy")
+        .await;
+    let secret_prop = secret_component
+        .prop(ctx, ["root", "secrets", "dummy"])
+        .await;
+    let user_secret_prop = user_component.prop(ctx, ["root", "secrets", "dummy"]).await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Create a secret with a value and commit.
+    let secret_message =
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+            .await
+            .expect("could not encrypt message");
+    let secret = Secret::new(
+        ctx,
+        "secret",
+        "dummy",
+        None,
+        &secret_message,
+        nw.key_pair.pk(),
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret");
+    let secret_message = secret.encrypted_secret_key();
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Set the secret on the component and commit
+    let dummy_secret_attribute_value_id = secret_prop.attribute_value(ctx).await.id();
+    Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
+        .await
+        .expect("could not attach secret");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+        .await
+        .expect("could not perform get by id or secret not found");
+    assert_eq!(secret_message, found_secret.encrypted_secret_key());
+
+    // Check the property editor values.
+    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::from(secret.id().to_string()), value);
+
+    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(user_secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::from(secret.id().to_string()), value);
+
+    // Update the secret.
+    let updated_secret_message = encrypt_message(
+        ctx,
+        nw.key_pair.pk(),
+        &serde_json::json![{"value": "sweeney"}],
+    )
+    .await
+    .expect("could not encrypt message");
+    let updated_secret = Secret::get_by_id_or_error(ctx, secret.id())
+        .await
+        .expect("no secret")
+        .update_encrypted_contents(
+            ctx,
+            updated_secret_message.as_slice(),
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("could not update encrypted contents");
+    let updated_secret_message = updated_secret.encrypted_secret_key();
+
+    // Validate that the secret has the new value.
+    let found_secret = Secret::get_by_id_or_error(ctx, secret.id())
+        .await
+        .expect("could not perform get by id or secret not found");
+    assert_eq!(updated_secret_message, found_secret.encrypted_secret_key());
+
+    // Check the property editor values. Since the DVU is not up to date, we expect the value
+    // yielded to be null.
+    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::Null, value);
+
+    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(user_secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::Null, value);
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // Check the property editor values again after committing.
+    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::from(secret.id().to_string()), value);
+
+    // Check the property editor values.
+    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
+        .await
+        .expect("able to list prop values")
+        .find_with_value_by_prop_id(user_secret_prop.prop().id())
+        .expect("secret prop");
+    assert_eq!(Value::from(secret.id().to_string()), value);
 }
 
 #[test]
