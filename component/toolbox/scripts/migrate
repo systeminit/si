@@ -1,12 +1,8 @@
 #!/bin/bash
 # ---------------------------------------------------------------------------------------------------
-# Identify all the service replicas/machines and permits you to toggle maintenance mode on or off via
-# an SSM document execution on the host. If the json output from the SSM executions is not enough to
-# debug just look in AWS and you'll see the whole execution history in SSM Command Execution History.
+# Find an SDF node and run a one-shot instance to perform migrations.
 # ---------------------------------------------------------------------------------------------------
 
-# Stop immediately if anything goes wrong, let's not create too much
-# mess if John's shell is poor
 set -eo pipefail
 
 # Find & Import all the supporting functions from the supporting folder
@@ -23,20 +19,18 @@ done
 # Usage for this script
 usage() {
     echo
-    echo "toggle-maintenance"
+    echo "migrate"
     echo "----------------------------------"
-    echo "This script will open an SSM session to all available"
-    echo "service nodes in the region and will attempt to toggle on"
-    echo "or off the maintenance mode via a USR2 linux signal"
+    echo "This script will open an SSM session to the first SDF"
+    echo "instance it finds to run SDF with migration mode set to"
+    echo "RunAndQuit."
     echo "----------------------------------"
-    echo "Usage: toggle-maintenance [-p profile] [-r region] [-a automatic] [-s service] [-m maintenance]"
+    echo "Usage: migrate [-p profile] [-r region] [-a automatic]"
     echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
     echo "  -r region         AWS region to use"
-    echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
     echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-    echo "  -m maintenance    [Y/N] Whether maintenance should be on"
     echo "----------------------------------"
-    echo "e.g. ./awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -a y -m y"
+    echo "e.g. ./awsi.sh migrate -p pull-from-env -r us-east-1 -a y"
     exit 1
 }
 
@@ -56,12 +50,6 @@ while getopts ":p:r:a:s:m:" opt; do
             ;;
         a)
             automatic=$OPTARG
-            ;;
-        s)
-            service=$OPTARG
-            ;;
-        m)
-            maintenance=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -87,16 +75,14 @@ fi
 region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
 export AWS_REGION="$region"
 
-# List instances with fixed-width columns and filter for the upgradeable instances
-# Based on the filter provided, always include SDF for the maintenance mode enable/disable
-instances=$(list_instances "${service,,}" )
+instances=$(list_instances "sdf" )
 if [ -z "$instances" ]; then
     echo "No running instances found."
     exit 1
 fi
 
 echo "----------------------------------------"
-echo "Running instances of service $service in the region $region:"
+echo "Running instances of sdf in the region $region:"
 printf "%-5s %-20s %-20s %-20s %-20s\n" "Index" "Name" "InstanceId" "InstanceType" "PrivateIpAddress"
 i=1
 while read -r line; do
@@ -109,7 +95,7 @@ while read -r line; do
 done <<< "$instances"
 echo "----------------------------------------"
 
-[[ "${automatic,,}" == "y" ]] || read -p "Would you like to toggle maintenance mode to $maintenance on these hosts? (Y/N) [takes ~10 seconds] " selection
+[[ "${automatic,,}" == "y" ]] || read -p "Would you like to run migrations on one of these hosts? (Y/N) [takes ~60 seconds] " selection
 [[ "${automatic,,}" == "y" ]] || sassy_selection_check $selection
 
 # Setup somewhere unique to push the results of the check into if they chose to continue
@@ -121,21 +107,18 @@ stop_results_file=stop_results.json
 upgrade_results_file=upgrade_results.json
 mkdir -p "$results_directory/"
 
-i=1
+# get the first SDF and go do the thing
 while read -r line; do
     instance_id=$(echo "$line" | awk '{print $2}')
-    service_name=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
-    start_and_track_ssm_session "$instance_id" "$service_maintenance_script" "$service_name" "$maintenance" "$results_directory" &
-    start_and_track_ssm_session "$instance_id" "$service_maintenance_script" "$results_directory" "InstanceId=$instance_id,Action=$maintenance" &
-    ((i++))
+    start_and_track_ssm_session "$instance_id" "$sdf_migrate_script" "$results_directory" "InstanceId=$instance_id"
+    break
 done <<< "$instances"
 
-await_file_results "$results_directory" $((i - 1))
-
+await_file_results "$results_directory" 1
 concat_and_output_json "$results_directory" "$check_results_file"
 
-if jq --arg maintenance="$maintenance" -e 'all(.[]; .status == "success") and all(.[]; .maintenance == "$maintenance")' "$results_directory/$check_results_file" > /dev/null; then
-  echo "All running service nodes of ${service} have had maintenance mode set to $maintenance"
+if jq -e 'all(.[]; .status == "success")' "$results_directory/$check_results_file" > /dev/null; then
+  echo "SDF database has been migrated"
   echo "----------------------------------------"
   exit 0
 else

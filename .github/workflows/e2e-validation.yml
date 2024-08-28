@@ -39,33 +39,10 @@ jobs:
             echo "$test_array"
             echo "tests=$test_array" >> "$GITHUB_OUTPUT"
 
-  sdf-healthcheck:
-    runs-on: ubuntu-latest
-    steps:
-      # we should make sure that SDF is even up before we try
-    - name: Calculate URL
-      id: url
-      run: |
-        if [ "${{ inputs.environment }}" = "tools" ]; then
-          echo "url=https://tools.systeminit.com/api/" >> $GITHUB_OUTPUT
-        else
-          echo "url=https://app.systeminit.com/api/" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Check to make sure SDF is up
-      uses: jtalk/url-health-check-action@v4
-      with:
-        url: ${{ steps.url.outputs.url }}
-        follow-redirect: true
-        max-attempts: 30
-        retry-delay: 10s
-        retry-all: true
-
-
   cypress-tests:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    needs: ["define-test-matrix", "sdf-healthcheck"]
+    needs: define-test-matrix
     strategy:
       # don't fail the entire matrix on failure
       fail-fast: false
@@ -99,15 +76,25 @@ jobs:
 
       - run: |
             cd app/web
-            export VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}
-            export VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}
-            export VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_SI_CYPRESS_MULTIPLIER }}
-            export VITE_SI_WORKSPACE_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
-            export VITE_HOST_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
-            export VITE_SI_WORKSPACE_ID=${{ vars.VITE_SI_WORKSPACE_ID }}
-            export VITE_UUID=$(uuid)
-            export VITE_AUTH_API_URL=https://auth-api.systeminit.com
-            export VITE_AUTH_PORTAL_URL=https://auth.systeminit.com
+            VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}
+            VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}
+            VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_SI_CYPRESS_MULTIPLIER }}
+            VITE_SI_WORKSPACE_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
+            VITE_HOST_URL=${{ vars.VITE_SI_WORKSPACE_URL }}
+            VITE_SI_WORKSPACE_ID=${{ vars.VITE_SI_WORKSPACE_ID }}
+            VITE_UUID=$(uuid)
+            VITE_AUTH_API_URL=https://auth-api.systeminit.com
+            VITE_AUTH_PORTAL_URL=https://auth.systeminit.com
+
+            export VITE_AUTH0_USERNAME
+            export VITE_AUTH0_PASSWORD
+            export VITE_SI_CYPRESS_MULTIPLIER
+            export VITE_SI_WORKSPACE_URL
+            export VITE_HOST_URL
+            export VITE_SI_WORKSPACE_ID
+            export VITE_UUID
+            export VITE_AUTH_API_URL
+            export VITE_AUTH_PORTAL_URL
 
             npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**"
 

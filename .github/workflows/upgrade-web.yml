@@ -1,0 +1,58 @@
+name: Upgrade web
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+
+jobs:
+  down:
+    environment: ${{ inputs.environment }}
+    name: Deploy Service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.18.2'
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: app/web
+        run: pnpm install
+
+      - name: Build
+        working-directory: app/web
+        env:
+          VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.VITE_SI_WORKSPACE_URL }}
+        run: pnpm run build
+
+      - name: Deploy
+        uses: islishude/spa-deploy-action@v1
+        with:
+          dir-path: app/web/dist
+          s3-bucket: ${{ vars.WEB_HOSTING_BUCKET }}
+
+      - name: Invalidate web cache
+        run: |
+          DIST_ID="${{ secrets.CLOUDFRONT_DIST_ID }}"
+          # Create a CloudFront invalidation for all objects (/*)
+          invalidation_id="$(aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*" --query 'Invalidation.Id' --output text)"
+          # Check the status of the invalidation until it's completed
+          while [[ "$(aws cloudfront get-invalidation --distribution-id "$DIST_ID" --id "$invalidation_id" --query 'Invalidation.Status' --output text)" != "Completed" ]]; do
+              echo "Invalidation is still in progress. Waiting..."
+              sleep 5
+          done
+          echo "Invalidation is complete."

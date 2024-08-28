@@ -1,0 +1,88 @@
+name: Instance refresh
+
+run-name: Replacing instances for ${{ inputs.service }}
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to deploy"
+      service:
+        type: string
+        required: true
+        description: "service to deploy"
+
+jobs:
+  replace:
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: instance-refresh-${{ inputs.environment }}-${{ inputs.service }}
+      cancel-in-progress: true
+    name: Instance refresh
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+      - name: Instance refresh
+        run: |
+            poll_instance_refresh() {
+                local environment
+                local service
+                local id
+                environment="$1"
+                service="$2"
+                id="$3"
+                while true; do
+                  status=$(aws autoscaling describe-instance-refreshes \
+                    --auto-scaling-group-name "${environment}-${service}" \
+                    --query "InstanceRefreshes[?InstanceRefreshId=='${id}'].Status" \
+                    --output text)
+
+                  if [ -z "$status" ]; then
+                    echo "No instance refresh found with ID ${id} for ${environment}-${service}."
+                    break
+                  fi
+
+                  echo "Instance refresh status: $status"
+
+                  if [[ "$status" == "Successful" ]]; then
+                    echo "Instance refresh completed successfully."
+                    break
+                  elif [[ "$status" == "Failed" || "$status" == "Cancelled" ]]; then
+                    echo "Instance refresh failed or was cancelled."
+                    exit 1
+                  else
+                    echo "Instance refresh is still in progress. Waiting..."
+                    sleep 15
+                  fi
+                done
+            }
+
+            check_existing_refresh() {
+                local environment
+                local service
+                environment="$1"
+                service="$2"
+                id=$(aws autoscaling describe-instance-refreshes \
+                  --auto-scaling-group-name "${environment}-${service}"\
+                  --query "InstanceRefreshes[?Status=='InProgress'].[InstanceRefreshId]"\
+                  --output text)
+                poll_instance_refresh "$environment" "$service" "$id"
+            }
+
+            ENVIRONMENT="${{ inputs.environment }}"
+            SERVICE="${{ inputs.service }}"
+
+            echo "Checking if an instance refresh is already underway..."
+            check_existing_refresh "$ENVIRONMENT" "$SERVICE"
+
+            id=$(aws autoscaling start-instance-refresh \
+              --auto-scaling-group-name "${ENVIRONMENT}-${SERVICE}" \
+              --query 'InstanceRefreshId' --output text)
+            poll_instance_refresh "$ENVIRONMENT" "$SERVICE" "$id"

@@ -1,23 +1,16 @@
 name: Deploy Services
 
-run-name: Deploy of ${{ inputs.service }} to ${{ inputs.environment }} by @${{ github.actor }}
+run-name: Deploy to ${{ inputs.environment }} by @${{ github.actor }}
 
 on:
-
   workflow_call:
     inputs:
       environment:
         type: string
         default: "tools"
-      service:
-        type: string
-        default: "all"
       version:
         type: string
         default: "stable"
-      deploy-type:
-        type: string
-        default: "instance"
 
   workflow_dispatch:
     inputs:
@@ -29,65 +22,85 @@ on:
         options:
           - tools
           - production
-      service:
-        type: choice
-        required: true
-        description: "service to deploy"
-        options:
-          - all
-          - pinga
-          - rebaser
-          - sdf
-          - veritech
-          - web
       version:
         type: string
         required: true
         description: "version to deploy"
         default: "stable"
-      deploy-type:
-        type: choice
-        required: true
-        description: "deployment variant"
-        default: "instance"
-        options:
-          - binary
-          - instance
 
 jobs:
-  set-init:
-    uses: ./.github/workflows/set-init-version.yml
-    with:
-      environment: ${{ inputs.environment }}
-      service: ${{ inputs.service }}
-      version: ${{ inputs.version }}
-    secrets: inherit
-
-  define-deployment-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      services: ${{ steps.services.outputs.services }}
-    steps:
-      - id: services
-        run: |
-          if [ "${{ inputs.service }}" = "all" ]; then
-            echo 'services=["pinga", "rebaser", "sdf", "veritech", "web"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'services=["${{ inputs.service }}"]' >> "$GITHUB_OUTPUT"
-          fi
-
-  deploy-services:
-    needs: "define-deployment-matrix"
+  set-service-versions:
+    uses: ./.github/workflows/set-service-version.yml
     strategy:
      fail-fast: false
      matrix:
-      service: ${{ fromJSON(needs.define-deployment-matrix.outputs.services) }}
-    uses: ./.github/workflows/deploy-service.yml
+      service: [ "pinga", "rebaser", "sdf", "veritech" ]
     with:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ inputs.version }}
-      deploy-type: ${{ inputs.deploy-type }}
+    secrets: inherit
+
+  set-maintenance-mode:
+    uses: ./.github/workflows/set-maintenance-mode.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
+
+  down: # the backend services
+    needs:
+      - set-maintenance-mode
+    strategy:
+     fail-fast: false
+     matrix:
+      service: [ "pinga", "rebaser", "sdf" ]
+    uses: ./.github/workflows/down-service.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: ${{ matrix.service }}
+    secrets: inherit
+
+  upgrade-web:
+    needs:
+      - set-maintenance-mode
+    uses: ./.github/workflows/upgrade-web.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
+
+  upgrade: # the backend services
+    needs:
+      - set-service-versions
+      - down
+    strategy:
+     fail-fast: false
+     matrix:
+       service: [ "pinga", "rebaser", "sdf", "veritech" ]
+    uses: ./.github/workflows/upgrade-service.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: ${{ matrix.service }}
+    secrets: inherit
+
+  up: # the backend services
+    needs:
+      - upgrade
+    strategy:
+     fail-fast: false
+     matrix:
+      service: [ "pinga", "rebaser", "veritech" ]
+    uses: ./.github/workflows/up-service.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: ${{ matrix.service }}
+    secrets: inherit
+
+  migrate-and-up-sdf:
+    needs:
+      - up
+    uses: ./.github/workflows/migrate-sdf.yml
+    with:
+      environment: ${{ inputs.environment }}
     secrets: inherit
 
   e2e-validation:
@@ -96,7 +109,10 @@ jobs:
     concurrency:
       group: e2e-${{ inputs.environment }}
       cancel-in-progress: true
-    needs: deploy-services
+    needs:
+      - upgrade-web
+      - migrate-and-up-sdf
+    if: always()
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}
