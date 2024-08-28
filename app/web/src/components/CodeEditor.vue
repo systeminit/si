@@ -387,10 +387,7 @@ const mountEditor = async () => {
       parent: editorMount.value,
     });
 
-    view.contentDOM.onblur = () => {
-      emit("change", props.recordId, view.state.doc.toString(), false);
-      emit("blur", view.state.doc.toString());
-    };
+    // we don't need to fire anything on blur because the updates are debounced as users type
   };
 
   extensions.push(keymap.of([...yUndoManagerKeymap]));
