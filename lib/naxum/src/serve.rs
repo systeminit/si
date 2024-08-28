@@ -169,16 +169,8 @@ where
                     .await
                     .unwrap_or_else(|err| match err {});
 
-                let graceful_token = graceful_token.clone();
                 tracker.spawn(async move {
-                    tokio::select! {
-                        _result = tower_svc.oneshot(msg) => {
-                            // huh
-                        }
-                        _ = graceful_token.cancelled() => {
-                            trace!("signal received in task, starting graceful shutdown");
-                        }
-                    }
+                    let _result = tower_svc.oneshot(msg).await;
                 });
             }
 
