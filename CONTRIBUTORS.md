@@ -33,3 +33,4 @@ We contributors to System Initiative:
 * John Obelenus (@jobelenus)
 * Meg Watson (@MegaWatt01)
 * John Keiser (@jkeiser)
+* Sergey Pozdnyakov (@umag)
