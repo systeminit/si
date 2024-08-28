@@ -69,7 +69,8 @@ impl Server {
     pub async fn from_config(
         config: Config,
         shutdown_token: CancellationToken,
-        tracker: TaskTracker,
+        layer_db_tracker: &TaskTracker,
+        layer_db_token: CancellationToken,
     ) -> ServerResult<Self> {
         dal::init()?;
 
@@ -82,9 +83,9 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
         let (layer_db, layer_db_graceful_shutdown) =
-            DalLayerDb::from_config(config.layer_db_config().clone(), shutdown_token.clone())
+            DalLayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone())
                 .await?;
-        tracker.spawn(layer_db_graceful_shutdown.into_future());
+        layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         let services_context = ServicesContext::new(
             pg_pool,

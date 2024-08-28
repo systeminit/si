@@ -12,8 +12,10 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
-    let tracker = TaskTracker::new();
-    let token = CancellationToken::new();
+    let main_tracker = TaskTracker::new();
+    let main_token = CancellationToken::new();
+    let telemetry_tracker = TaskTracker::new();
+    let telemetry_token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
@@ -33,7 +35,7 @@ async fn async_main() -> Result<()> {
             .interesting_modules(vec!["naxum", "si_data_nats"])
             .build()?;
 
-        telemetry_application::init(config, &tracker, token.clone())?
+        telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
 
     startup::startup("veritech").await?;
@@ -47,16 +49,18 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    let server = Server::from_config(config, token.clone()).await?;
+    let server = Server::from_config(config, main_token.clone()).await?;
 
-    tracker.spawn(async move {
+    main_tracker.spawn(async move {
         info!("ready to receive messages");
         server.run().await
     });
 
     shutdown::graceful(
-        tracker,
-        token,
+        [
+            (main_tracker, main_token),
+            (telemetry_tracker, telemetry_token),
+        ],
         Some(telemetry_shutdown.into_future()),
         Some(GRACEFUL_SHUTDOWN_TIMEOUT),
     )

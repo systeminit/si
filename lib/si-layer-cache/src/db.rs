@@ -270,7 +270,7 @@ impl IntoFuture for LayerDbGracefulShutdown {
 
             // Close the tracker so no further tasks are spawned
             tracker.close();
-            trace!("received graceful shutdown signal, waiting for tasks to shutdown");
+            info!("received graceful shutdown signal, waiting for tasks to shutdown");
             // Wait for all outstanding tasks to complete
             tracker.wait().await;
 

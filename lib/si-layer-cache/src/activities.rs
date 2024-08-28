@@ -272,7 +272,7 @@ impl ActivityMultiplexerTask {
                 debug!("activity multiplexer task has ended; likely a bug");
             },
             () = token.cancelled() => {
-                debug!("activity multiplexer has been cancelled; shutting down");
+                info!("activity multiplexer has been cancelled; shutting down");
             },
         }
         Ok(())

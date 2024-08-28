@@ -42,15 +42,15 @@ impl ShutdownError {
 ///
 /// This function sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so usage
 /// of this function with other code intercepting these signals is *highly* discouraged.
-pub async fn graceful<Fut, E>(
-    tracker: TaskTracker,
-    token: CancellationToken,
+pub async fn graceful<Fut, E, I>(
+    trackers_with_tokens: I,
     telemetry_guard: Option<Fut>,
     shutdown_timeout: Option<Duration>,
 ) -> Result<(), ShutdownError>
 where
     Fut: Future<Output = Result<(), E>>,
     E: error::Error + Send + Sync + 'static,
+    I: IntoIterator<Item = (TaskTracker, CancellationToken)>,
 {
     let mut sig_int = unix::signal(SignalKind::interrupt()).map_err(ShutdownError::Signal)?;
     let mut sig_term = unix::signal(SignalKind::terminate()).map_err(ShutdownError::Signal)?;
@@ -58,20 +58,26 @@ where
     tokio::select! {
         _ = sig_int.recv() => {
             info!("received SIGINT, performing graceful shutdown");
-            tracker.close();
-            token.cancel();
         }
         _ = sig_term.recv() => {
             info!("received SIGTERM, performing graceful shutdown");
-            tracker.close();
-            token.cancel();
         }
     }
+
+    // Create a future for draining each task group
+    let drain_future = async {
+        for (tracker, token) in trackers_with_tokens {
+            info!("performing graceful shutdown for task group");
+            tracker.close();
+            token.cancel();
+            tracker.wait().await;
+        }
+    };
 
     // Wait for all tasks to finish
     match shutdown_timeout {
         Some(duration) => {
-            if let Err(_elapsed) = timeout(duration, tracker.wait()).await {
+            if let Err(_elapsed) = timeout(duration, drain_future).await {
                 warn!("graceful shutdown timeout exceeded; completing shutdown anyway");
                 if let Some(telemetry_guard) = telemetry_guard {
                     // Wait for telemetry to shutdown
@@ -81,7 +87,7 @@ where
             }
         }
         None => {
-            tracker.wait().await;
+            drain_future.await;
         }
     }
 
