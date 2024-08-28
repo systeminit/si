@@ -76,7 +76,6 @@ impl ChangeSetRequestsTask {
         let state = AppState::new(workspace_id, change_set_id, ctx_builder);
 
         let app = ServiceBuilder::new()
-            .concurrency_limit(1)
             .layer(
                 TraceLayer::new()
                     .make_span_with(DefaultMakeSpan::new().level(Level::TRACE))
@@ -86,7 +85,7 @@ impl ChangeSetRequestsTask {
             .layer(AckLayer::new())
             .service(handlers::process_request.with_state(state));
 
-        let inner = naxum::serve(incoming, app.into_make_service())
+        let inner = naxum::serve_with_incoming_limit(incoming, app.into_make_service(), 1)
             .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()));
 
         Ok(Self {
