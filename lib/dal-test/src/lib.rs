@@ -591,7 +591,7 @@ pub async fn pinga_server(
 
     let server = pinga_server::Server::from_services(
         config.instance_id(),
-        config.concurrency(),
+        config.concurrency_limit(),
         services_context,
         shutdown_token,
     )
@@ -630,7 +630,8 @@ pub async fn veritech_server_for_uds_cyclone(
     token: CancellationToken,
 ) -> Result<veritech_server::Server> {
     let config: veritech_server::Config = {
-        let mut config_file = veritech_server::ConfigFile::new_for_dal_test(nats_config);
+        let mut config_file = veritech_server::ConfigFile::default_local_uds();
+        config_file.nats = nats_config;
         veritech_server::detect_and_configure_development(&mut config_file)
             .wrap_err("failed to detect and configure Veritech ConfigFile")?;
         config_file
@@ -638,7 +639,7 @@ pub async fn veritech_server_for_uds_cyclone(
             .wrap_err("failed to build Veritech server config")?
     };
 
-    let server = veritech_server::Server::for_cyclone_uds(config, token)
+    let server = veritech_server::Server::from_config(config, token)
         .await
         .wrap_err("failed to create Veritech server")?;
 

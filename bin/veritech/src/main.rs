@@ -1,16 +1,19 @@
-use color_eyre::Result;
-use si_service::startup;
-use telemetry_application::prelude::*;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use veritech_server::Server;
-use veritech_server::{Config, CycloneSpec};
+use std::time::Duration;
+
+use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
+use veritech_server::{Config, Server};
 
 mod args;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let shutdown_token = CancellationToken::new();
-    let task_tracker = TaskTracker::new();
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60 * 6);
+
+fn main() -> Result<()> {
+    rt::block_on("bin/veritch-tokio::runtime", async_main())
+}
+
+async fn async_main() -> Result<()> {
+    let tracker = TaskTracker::new();
+    let token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
@@ -27,10 +30,10 @@ async fn main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["veritech", "veritech_server"])
-            .interesting_modules(vec!["si_data_nats"])
+            .interesting_modules(vec!["naxum", "si_data_nats"])
             .build()?;
 
-        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+        telemetry_application::init(config, &tracker, token.clone())?
     };
 
     startup::startup("veritech").await?;
@@ -44,33 +47,19 @@ async fn main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    task_tracker.close();
+    let server = Server::from_config(config, token.clone()).await?;
 
-    match config.cyclone_spec() {
-        CycloneSpec::LocalHttp(_) => {
-            Server::for_cyclone_http(config, shutdown_token.clone())
-                .await?
-                .run()
-                .await;
-        }
-        CycloneSpec::LocalUds(_) => {
-            Server::for_cyclone_uds(config, shutdown_token.clone())
-                .await?
-                .run()
-                .await;
-        }
-    }
+    tracker.spawn(async move {
+        info!("ready to receive messages");
+        server.run().await
+    });
 
-    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
-    // veritech's case, this is embedded in server library code which is incorrect. At this moment
-    // in the program however, the server has shut down so it's an appropriate time to cancel other
-    // remaining tasks and wait on their graceful shutdowns
-    {
-        shutdown_token.cancel();
-        task_tracker.wait().await;
-        telemetry_shutdown.wait().await?;
-    }
-
-    info!("graceful shutdown complete.");
-    Ok(())
+    shutdown::graceful(
+        tracker,
+        token,
+        Some(telemetry_shutdown.into_future()),
+        Some(GRACEFUL_SHUTDOWN_TIMEOUT),
+    )
+    .await
+    .map_err(Into::into)
 }

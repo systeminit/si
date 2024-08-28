@@ -53,7 +53,7 @@ pub struct Config {
     crypto: VeritechCryptoConfig,
 
     #[builder(default = "default_concurrency_limit()")]
-    concurrency: usize,
+    concurrency_limit: usize,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -98,8 +98,8 @@ impl Config {
     }
 
     /// Gets the config's concurrency limit.
-    pub fn concurrency(&self) -> usize {
-        self.concurrency
+    pub fn concurrency_limit(&self) -> usize {
+        self.concurrency_limit
     }
 
     /// Gets the config's instance ID.
@@ -159,7 +159,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.crypto(value.crypto);
-        config.concurrency(value.concurrency_limit);
+        config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);

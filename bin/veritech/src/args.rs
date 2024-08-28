@@ -91,9 +91,20 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) decryption_key: Option<PathBuf>,
 
-    /// Execution timeout when communicating with a cyclone instance executing a function, in seconds
+    /// Execution timeout when communicating with a cyclone instance executing a function
     #[arg(long)]
-    pub(crate) cyclone_client_execution_timeout: Option<u64>,
+    pub(crate) cyclone_client_execution_timeout_secs: Option<u64>,
+
+    /// The number of concurrent functions that can be executed [default: 1000]
+    #[arg(long)]
+    pub(crate) concurrency: Option<u32>,
+
+    /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
+    ///
+    /// And instance ID is used when tracking the execution of jobs in a way that can be traced
+    /// back to an instance of a Pinga service.
+    #[arg(long)]
+    pub(crate) instance_id: Option<String>,
 }
 
 impl TryFrom<Args> for Config {
@@ -132,8 +143,14 @@ impl TryFrom<Args> for Config {
                 );
             }
             config_map.set("nats.connection_name", NAME);
-            if let Some(timeout) = args.cyclone_client_execution_timeout {
-                config_map.set("cyclone_client_execution_timeout", timeout);
+            if let Some(timeout) = args.cyclone_client_execution_timeout_secs {
+                config_map.set("cyclone_client_execution_timeout_secs", timeout);
+            }
+            if let Some(concurrency) = args.concurrency {
+                config_map.set("concurrency_limit", i64::from(concurrency));
+            }
+            if let Some(instance_id) = args.instance_id {
+                config_map.set("instance_id", instance_id);
             }
         })?
         .try_into()
