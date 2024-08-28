@@ -63,7 +63,7 @@ async fn veritech_server_for_uds_cyclone(
         .healthcheck_pool(false)
         .build()
         .expect("failed to build spec");
-    Server::for_cyclone_uds(config, shutdown_token)
+    Server::from_config(config, shutdown_token)
         .await
         .expect("failed to create server")
 }

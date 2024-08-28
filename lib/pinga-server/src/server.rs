@@ -105,7 +105,7 @@ impl Server {
 
         Self::from_services(
             config.instance_id().to_string(),
-            config.concurrency(),
+            config.concurrency_limit(),
             services_context,
             token,
         )

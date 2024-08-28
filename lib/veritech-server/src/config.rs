@@ -24,6 +24,12 @@ use thiserror::Error;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
+const DEFAULT_CONCURRENCY_LIMIT: usize = 1000;
+
+const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS: u64 = 60 * 35;
+const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration =
+    Duration::from_secs(DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS);
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -59,82 +65,21 @@ pub struct Config {
     #[builder(default = "VeritechCryptoConfig::default()")]
     crypto: VeritechCryptoConfig,
 
-    #[builder(default = "random_instance_id()")]
-    instance_id: String,
-
-    #[builder(default = "healthcheck_pool_default()")]
+    #[builder(default = "default_healthcheck_pool()")]
     healthcheck_pool: bool,
 
-    #[builder(default)]
-    cyclone_client_execution_timeout: Option<u64>,
-}
+    #[builder(default = "default_cyclone_client_execution_timeout()")]
+    cyclone_client_execution_timeout: Duration,
 
-#[remain::sorted]
-#[derive(Clone, Debug)]
-pub enum CycloneSpec {
-    LocalHttp(LocalHttpInstanceSpec),
-    LocalUds(LocalUdsInstanceSpec),
+    #[builder(default = "default_concurrency_limit()")]
+    concurrency_limit: usize,
+
+    #[builder(default = "random_instance_id()")]
+    instance_id: String,
 }
 
 impl StandardConfig for Config {
     type Builder = ConfigBuilder;
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct ConfigFile {
-    pub nats: NatsConfig,
-    pub cyclone: CycloneConfig,
-    pub crypto: VeritechCryptoConfig,
-    pub healthcheck_pool: bool,
-    pub cyclone_client_execution_timeout: Option<u64>,
-}
-
-impl ConfigFile {
-    pub fn default_local_http() -> Self {
-        Self {
-            nats: Default::default(),
-            cyclone: CycloneConfig::default_local_http(),
-            crypto: Default::default(),
-            healthcheck_pool: healthcheck_pool_default(),
-            cyclone_client_execution_timeout: None,
-        }
-    }
-
-    pub fn default_local_uds() -> Self {
-        Self {
-            nats: Default::default(),
-            cyclone: CycloneConfig::default_local_uds(),
-            crypto: Default::default(),
-            healthcheck_pool: healthcheck_pool_default(),
-            cyclone_client_execution_timeout: None,
-        }
-    }
-
-    pub fn new_for_dal_test(nats: NatsConfig) -> Self {
-        Self {
-            nats,
-            ..Default::default()
-        }
-    }
-}
-
-impl StandardConfigFile for ConfigFile {
-    type Error = ConfigError;
-}
-
-impl TryFrom<ConfigFile> for Config {
-    type Error = ConfigError;
-
-    fn try_from(mut value: ConfigFile) -> Result<Self> {
-        detect_and_configure_development(&mut value)?;
-
-        let mut config = Config::builder();
-        config.nats(value.nats);
-        config.cyclone_spec(value.cyclone.try_into()?);
-        config.crypto(value.crypto);
-        config.cyclone_client_execution_timeout(value.cyclone_client_execution_timeout);
-        config.build().map_err(Into::into)
-    }
 }
 
 impl Config {
@@ -159,11 +104,6 @@ impl Config {
         &self.crypto
     }
 
-    /// Gets the config's instance ID.
-    pub fn instance_id(&self) -> &str {
-        self.instance_id.as_ref()
-    }
-
     /// Gets the config's healthcheck value.
     pub fn healthcheck_pool(&self) -> bool {
         self.healthcheck_pool
@@ -174,10 +114,99 @@ impl Config {
         self.cyclone_spec
     }
 
-    /// Gets the config's option override cyclone client execution timeout, in seconds.
-    pub fn cyclone_client_execution_timeout(&self) -> Option<u64> {
+    /// Gets the config's cyclone client execution timeout.
+    pub fn cyclone_client_execution_timeout(&self) -> Duration {
         self.cyclone_client_execution_timeout
     }
+
+    /// Gets the config's concurrency limit.
+    pub fn concurrency_limit(&self) -> usize {
+        self.concurrency_limit
+    }
+
+    /// Gets the config's instance ID.
+    pub fn instance_id(&self) -> &str {
+        self.instance_id.as_ref()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ConfigFile {
+    #[serde(default)]
+    pub nats: NatsConfig,
+    pub cyclone: CycloneConfig,
+    #[serde(default)]
+    pub crypto: VeritechCryptoConfig,
+    #[serde(default = "default_healthcheck_pool")]
+    healthcheck_pool: bool,
+    #[serde(default = "default_cyclone_client_execution_timeout_secs")]
+    cyclone_client_execution_timeout_secs: u64,
+    #[serde(default = "default_concurrency_limit")]
+    concurrency_limit: usize,
+    #[serde(default = "random_instance_id")]
+    instance_id: String,
+}
+
+impl Default for ConfigFile {
+    fn default() -> Self {
+        Self::default_local_uds()
+    }
+}
+
+impl ConfigFile {
+    pub fn default_local_http() -> Self {
+        Self {
+            nats: Default::default(),
+            cyclone: CycloneConfig::default_local_http(),
+            crypto: Default::default(),
+            healthcheck_pool: default_healthcheck_pool(),
+            cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
+            concurrency_limit: default_concurrency_limit(),
+            instance_id: random_instance_id(),
+        }
+    }
+
+    pub fn default_local_uds() -> Self {
+        Self {
+            nats: Default::default(),
+            cyclone: CycloneConfig::default_local_uds(),
+            crypto: Default::default(),
+            healthcheck_pool: default_healthcheck_pool(),
+            cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
+            concurrency_limit: default_concurrency_limit(),
+            instance_id: random_instance_id(),
+        }
+    }
+}
+
+impl StandardConfigFile for ConfigFile {
+    type Error = ConfigError;
+}
+
+impl TryFrom<ConfigFile> for Config {
+    type Error = ConfigError;
+
+    fn try_from(mut value: ConfigFile) -> Result<Self> {
+        detect_and_configure_development(&mut value)?;
+
+        let mut config = Config::builder();
+        config.nats(value.nats);
+        config.cyclone_spec(value.cyclone.try_into()?);
+        config.crypto(value.crypto);
+        config.cyclone_client_execution_timeout(Duration::from_secs(
+            value.cyclone_client_execution_timeout_secs,
+        ));
+        config.concurrency_limit(value.concurrency_limit);
+        config.instance_id(value.instance_id);
+        config.build().map_err(Into::into)
+    }
+}
+
+#[remain::sorted]
+#[derive(Clone, Debug)]
+pub enum CycloneSpec {
+    LocalHttp(LocalHttpInstanceSpec),
+    LocalUds(LocalUdsInstanceSpec),
 }
 
 #[remain::sorted]
@@ -474,6 +503,10 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
     }
 }
 
+fn random_instance_id() -> String {
+    Ulid::new().to_string()
+}
+
 fn default_cyclone_cmd_path() -> String {
     "/usr/local/bin/cyclone".to_string()
 }
@@ -502,12 +535,20 @@ fn default_connect_timeout() -> u64 {
     10
 }
 
-fn random_instance_id() -> String {
-    Ulid::new().to_string()
+fn default_healthcheck_pool() -> bool {
+    true
 }
 
-fn healthcheck_pool_default() -> bool {
-    true
+fn default_cyclone_client_execution_timeout() -> Duration {
+    DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT
+}
+
+fn default_cyclone_client_execution_timeout_secs() -> u64 {
+    DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS
+}
+
+fn default_concurrency_limit() -> usize {
+    DEFAULT_CONCURRENCY_LIMIT
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
