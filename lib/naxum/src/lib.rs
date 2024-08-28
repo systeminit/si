@@ -19,7 +19,7 @@ pub use self::error::Error;
 pub use self::json::Json;
 pub use self::make_service::IntoMakeService;
 pub use self::message::{Head, MessageHead};
-pub use self::serve::serve;
+pub use self::serve::{serve, serve_with_incoming_limit};
 pub use self::service_ext::ServiceExt;
 
 pub use async_trait::async_trait;

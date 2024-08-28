@@ -5,12 +5,18 @@ use std::{
     io,
     marker::PhantomData,
     ops,
+    sync::Arc,
+    time::Duration,
 };
 
 use futures::{Stream, TryStreamExt};
+use tokio::{
+    sync::{OwnedSemaphorePermit, Semaphore},
+    time,
+};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::{Service, ServiceExt};
-use tracing::{trace, warn};
+use tracing::{debug, trace, warn};
 
 use crate::{message::MessageHead, response::Response};
 
@@ -25,9 +31,26 @@ where
     E: error::Error,
     R: MessageHead,
 {
+    serve_with_incoming_limit(stream, make_service, None)
+}
+
+pub fn serve_with_incoming_limit<M, S, T, E, R>(
+    stream: T,
+    make_service: M,
+    limit: impl Into<Option<usize>>,
+) -> Serve<M, S, T, E, R>
+where
+    M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
+    S: Service<R, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    T: Stream<Item = Result<R, E>>,
+    E: error::Error,
+    R: MessageHead,
+{
     Serve {
         stream,
         make_service,
+        limit: limit.into(),
         _service_marker: PhantomData,
         _stream_error_marker: PhantomData,
         _request_marker: PhantomData,
@@ -38,6 +61,7 @@ where
 pub struct Serve<M, S, T, E, R> {
     stream: T,
     make_service: M,
+    limit: Option<usize>,
     _service_marker: PhantomData<S>,
     _stream_error_marker: PhantomData<E>,
     _request_marker: PhantomData<R>,
@@ -62,6 +86,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
         WithGracefulShutdown {
             stream: self.stream,
             make_service: self.make_service,
+            limit: self.limit,
             signal,
             _service_marker: PhantomData,
             _stream_error_marker: PhantomData,
@@ -75,6 +100,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
 pub struct WithGracefulShutdown<M, S, T, E, R, F> {
     stream: T,
     make_service: M,
+    limit: Option<usize>,
     signal: F,
     _service_marker: PhantomData<S>,
     _stream_error_marker: PhantomData<E>,
@@ -113,6 +139,7 @@ where
         let Self {
             mut stream,
             mut make_service,
+            limit,
             signal,
             ..
         } = self;
@@ -129,14 +156,23 @@ where
 
         let mut failed_count = 0;
 
+        let semaphore = limit.map(|limit| Arc::new(Semaphore::new(limit)));
+
         private::ServeFuture(Box::pin(async move {
             loop {
-                let msg = tokio::select! {
-                    msg = next_message(&mut stream, failed_count) => {
+                let (msg, permit) = tokio::select! {
+                    biased;
+
+                    _ = graceful_token.cancelled() => {
+                        trace!("signal received, not accepting new messages");
+                        tracker.close();
+                        break;
+                    }
+                    (msg, permit) = next_message(&mut stream, semaphore.clone(), failed_count) => {
                         match msg {
                             Some(Ok(msg)) => {
                                 failed_count = 0;
-                                msg
+                                (msg, permit)
                             },
                             Some(Err(err)) => {
                                 // TODO(fnichol): this level might need to be `trace!()`, just
@@ -151,11 +187,6 @@ where
                             },
                         }
                     }
-                    _ = graceful_token.cancelled() => {
-                        trace!("signal received, not accepting new messages");
-                        tracker.close();
-                        break;
-                    }
                 };
 
                 trace!(subject = msg.subject().as_str(), "message received");
@@ -169,34 +200,64 @@ where
                     .await
                     .unwrap_or_else(|err| match err {});
 
-                let graceful_token = graceful_token.clone();
                 tracker.spawn(async move {
-                    tokio::select! {
-                        _result = tower_svc.oneshot(msg) => {
-                            // huh
-                        }
-                        _ = graceful_token.cancelled() => {
-                            trace!("signal received in task, starting graceful shutdown");
-                        }
-                    }
+                    let _result = tower_svc.oneshot(msg).await;
+
+                    trace!("message processed");
+
+                    drop(permit);
                 });
             }
 
-            tracker.wait().await;
+            trace!("waiting for {} task(s) to finish", tracker.len());
+            let mut progress_interval = time::interval_at(
+                time::Instant::now() + Duration::from_secs(5),
+                Duration::from_secs(5),
+            );
+            loop {
+                tokio::select! {
+                    _ = tracker.wait() => {
+                        break;
+                    }
+                    _ = progress_interval.tick() => {
+                        debug!("waiting for {} task(s) to finish", tracker.len());
+                    }
+                }
+            }
 
             Ok(())
         }))
     }
 }
 
-async fn next_message<T, E, R>(stream: &mut T, failed_count: usize) -> Option<Result<R, E>>
+async fn next_message<T, E, R>(
+    stream: &mut T,
+    semaphore: Option<Arc<Semaphore>>,
+    failed_count: usize,
+) -> (Option<Result<R, E>>, Option<OwnedSemaphorePermit>)
 where
     T: Stream<Item = Result<R, E>> + Unpin + Send + 'static,
     E: error::Error,
     R: MessageHead + Send + 'static,
 {
+    let permit = match semaphore {
+        Some(semaphore) => {
+            // Acquire permit before awaitng next message on stream, thereby limiting the number of
+            // spawned processing requests
+            Some(
+                #[allow(clippy::expect_used)]
+                // errors only if semaphore is closed (we never close)
+                semaphore
+                    .acquire_owned()
+                    .await
+                    .expect("semaphore will not be closed"),
+            )
+        }
+        None => None,
+    };
+
     match stream.try_next().await {
-        Ok(maybe) => Ok(maybe).transpose(),
+        Ok(maybe) => (Ok(maybe).transpose(), permit),
         Err(err) => {
             if failed_count > MAX_FAILED_MESSAGES {
                 warn!(
@@ -204,9 +265,9 @@ where
                     "failed to read message in after {} consecutive failures; closing stream",
                     failed_count,
                 );
-                None
+                (None, permit)
             } else {
-                Some(Err(err))
+                (Some(Err(err)), permit)
             }
         }
     }
