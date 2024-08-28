@@ -4,7 +4,7 @@
     class="cursor-pointer"
     :class="
       clsx(
-        'flex gap-xs p-2xs border-x border-b',
+        'flex flex-row items-center gap-xs p-2xs border-x border-b',
         themeClasses('border-neutral-200', 'border-neutral-600'),
       )
     "
@@ -25,6 +25,18 @@
       class="ml-auto"
       size="sm"
     />
+    <div
+      v-else
+      :class="
+        clsx(
+          'ml-auto mr-2xs hover:underline font-bold select-none',
+          themeClasses('text-action-500', 'text-action-300'),
+        )
+      "
+      @click.stop="onClickView"
+    >
+      view
+    </div>
   </div>
 </template>
 
@@ -33,9 +45,12 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
 import { Icon, themeClasses, Toggle } from "@si/vue-lib/design-system";
+import { useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
 import { useActionsStore } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { Action } from "@/api/sdf/dal/func";
+import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 interface BindingWithDisplayName extends Action {
@@ -47,7 +62,10 @@ const props = defineProps({
   binding: { type: Object as PropType<BindingWithDisplayName> },
 });
 
+const componentsStore = useComponentsStore();
+const { selectedComponent } = storeToRefs(componentsStore);
 const actionsStore = useActionsStore();
+const router = useRouter();
 
 const action = computed(() => {
   const a = actionsStore.listActionsByComponentId
@@ -64,6 +82,17 @@ function clickHandler() {
       props.componentId,
       props.binding?.actionPrototypeId,
     );
+  }
+}
+
+function onClickView() {
+  if (props.binding) {
+    router.push({
+      name: "workspace-lab-assets",
+      query: {
+        s: `a_${selectedComponent.value?.schemaVariantId}|f_${props.binding.funcId}`,
+      },
+    });
   }
 }
 

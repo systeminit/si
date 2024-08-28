@@ -15,6 +15,7 @@ import {
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 // import plur from "plur";
+import { RouteLocationRaw } from "vue-router";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -136,6 +137,31 @@ const rightClickMenuItems = computed(() => {
         disabled,
       });
     }
+
+    // TODO(Wendy) - do we want this here or no? this is just a mock, needs to be hooked up to work!
+    // {
+    //   const submenuItems: DropdownMenuItemObjectDef[] = [];
+    //   submenuItems.push({
+    //     label: "Component",
+    //     checkable: true,
+    //   });
+    //   submenuItems.push({
+    //     label: "Configuration Frame (Up)",
+    //     checkable: true,
+    //   });
+    //   submenuItems.push({
+    //     label: "Configuration Frame (Down)",
+    //     checkable: true,
+    //     checked: true,
+    //   });
+
+    //   items.push({
+    //     label: "Kind",
+    //     icon: "component",
+    //     submenuItems,
+    //   });
+    // }
+
     items.push({
       label: `Copy`,
       shortcut: "⌘C",
@@ -251,6 +277,13 @@ const rightClickMenuItems = computed(() => {
               actionsStore.ADD_ACTION(componentId, binding.actionPrototypeId);
             }
           },
+          endLinkTo: {
+            name: "workspace-lab-assets",
+            query: {
+              s: `a_${selectedComponent.value?.schemaVariantId}|f_${binding.funcId}`,
+            },
+          } as RouteLocationRaw,
+          endLinkLabel: "view",
         });
       });
 
