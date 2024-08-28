@@ -28,6 +28,7 @@ use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::detect_updates::Update;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
@@ -334,6 +335,16 @@ impl DalContext {
             .map_err(|err| TransactionsError::Workspace(err.to_string()))?
             .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
         Ok(workspace.token())
+    }
+
+    pub async fn get_workspace(&self) -> Result<Workspace, TransactionsError> {
+        let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+        let workspace = Workspace::get_by_pk(self, &workspace_pk)
+            .await
+            .map_err(|err| TransactionsError::Workspace(err.to_string()))?
+            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+
+        Ok(workspace)
     }
 
     /// Update the context to use the most recent snapshot pointed to by the current `ChangeSetId`.
@@ -684,7 +695,7 @@ impl DalContext {
     ) -> Result<(), WorkspaceSnapshotError> {
         for id in ids {
             self.workspace_snapshot()?
-                .add_dependent_value_root(id)
+                .add_dependent_value_root(DependentValueRoot::Unfinished(id.into()))
                 .await?;
         }
 

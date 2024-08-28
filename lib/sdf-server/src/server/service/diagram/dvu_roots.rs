@@ -26,7 +26,7 @@ pub async fn dvu_roots(
 
     let count = ctx
         .workspace_snapshot()?
-        .list_dependent_value_value_ids()
+        .get_dependent_value_roots()
         .await?
         .len();
 

@@ -34,6 +34,7 @@ const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_u
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
 const DEFAULT_BUILTIN_WORKSPACE_TOKEN: &str = "builtin";
 const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
+const DEFAULT_COMPONENT_CONCURRENCY_LIMIT: i32 = 256;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -103,6 +104,7 @@ pub struct Workspace {
     timestamp: Timestamp,
     token: Option<String>,
     snapshot_version: WorkspaceSnapshotGraphDiscriminants,
+    component_concurrency_limit: Option<i32>,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -120,6 +122,7 @@ impl TryFrom<PgRow> for Workspace {
             timestamp: Timestamp::assemble(created_at, updated_at),
             token: row.try_get("token")?,
             snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
+            component_concurrency_limit: row.try_get("component_concurrency_limit")?,
         })
     }
 }
@@ -624,6 +627,34 @@ impl Workspace {
                 &[&version_string],
             )
             .await?;
+
+        Ok(())
+    }
+
+    pub fn component_concurrency_limit(&self) -> i32 {
+        self.component_concurrency_limit
+            .unwrap_or(DEFAULT_COMPONENT_CONCURRENCY_LIMIT)
+    }
+
+    pub async fn set_component_concurrency_limit(
+        &mut self,
+        ctx: &DalContext,
+        mut limit: i32,
+    ) -> WorkspaceResult<()> {
+        if limit < 0 {
+            limit = DEFAULT_COMPONENT_CONCURRENCY_LIMIT;
+        }
+
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE workspaces SET component_concurrency_limit = $2 WHERE pk = $1",
+                &[&self.pk, &limit],
+            )
+            .await?;
+
+        self.component_concurrency_limit = Some(limit);
 
         Ok(())
     }

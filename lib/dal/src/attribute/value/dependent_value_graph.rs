@@ -8,6 +8,7 @@ use telemetry::prelude::*;
 use crate::component::socket::ComponentOutputSocket;
 use crate::component::ControllingFuncData;
 use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
+use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
     attribute::{
         prototype::{argument::AttributePrototypeArgument, AttributePrototype},
@@ -52,16 +53,14 @@ impl DependentValueGraph {
     /// dependent on the initial ids provided as well as all descending dependencies.
     pub async fn new(
         ctx: &DalContext,
-        initial_ids: Vec<impl Into<Ulid>>,
+        roots: Vec<DependentValueRoot>,
     ) -> AttributeValueResult<Self> {
         let mut dependent_value_graph = Self {
             inner: DependencyGraph::new(),
             values_that_need_to_execute_from_prototype_function: HashSet::new(),
         };
 
-        let values = dependent_value_graph
-            .parse_initial_ids(ctx, initial_ids)
-            .await?;
+        let values = dependent_value_graph.parse_initial_ids(ctx, roots).await?;
         dependent_value_graph
             .populate_for_values(ctx, values)
             .await?;
@@ -72,14 +71,14 @@ impl DependentValueGraph {
     async fn parse_initial_ids(
         &mut self,
         ctx: &DalContext,
-        initial_ids: Vec<impl Into<Ulid>>,
+        roots: Vec<DependentValueRoot>,
     ) -> AttributeValueResult<Vec<WorkQueueValue>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut values = Vec::new();
-        for initial_id in initial_ids {
-            let initial_id = initial_id.into();
-
+        for root in roots {
+            let unfinished = !root.is_finished();
+            let root_ulid: Ulid = root.into();
             // It's possible that one or more of the initial ids provided by the enqueued
             // DependentValuesUpdate job may have been removed from the snapshot between when the
             // DVU job was created and when we're processing things now. This could happen if there
@@ -87,20 +86,25 @@ impl DependentValueGraph {
             // job always operates on the current state of the change set's snapshot, not the state
             // at the time the job was created.
             if workspace_snapshot
-                .get_node_index_by_id_opt(initial_id)
+                .get_node_index_by_id_opt(root_ulid)
                 .await
                 .is_none()
             {
-                debug!(%initial_id, "missing node, skipping it in DependentValueGraph");
+                debug!(%root_ulid, "missing node, skipping it in DependentValueGraph");
                 continue;
             }
 
-            let node_weight = workspace_snapshot.get_node_weight_by_id(initial_id).await?;
+            let node_weight = workspace_snapshot.get_node_weight_by_id(root_ulid).await?;
 
             match node_weight.into() {
                 NodeWeightDiscriminants::AttributeValue => {
-                    let initial_attribute_value_id: AttributeValueId = initial_id.into();
-                    if AttributeValue::is_set_by_dependent_function(ctx, initial_attribute_value_id)
+                    let initial_attribute_value_id: AttributeValueId = root_ulid.into();
+
+                    if unfinished
+                        && AttributeValue::is_set_by_dependent_function(
+                            ctx,
+                            initial_attribute_value_id,
+                        )
                         .await?
                     {
                         self.values_that_need_to_execute_from_prototype_function
@@ -117,7 +121,7 @@ impl DependentValueGraph {
                     // However, since the first set of independent values all have a secret as their
                     // parent and not an attribute value, they need to be processed in DVU.
                     let direct_dependents =
-                        Secret::direct_dependent_attribute_values(ctx, initial_id.into())
+                        Secret::direct_dependent_attribute_values(ctx, root_ulid.into())
                             .await
                             .map_err(Box::new)?;
                     self.values_that_need_to_execute_from_prototype_function
@@ -129,7 +133,7 @@ impl DependentValueGraph {
                     );
                 }
                 discrim => {
-                    warn!(%discrim, %initial_id, "skipping dependent value graph generation for unsupported node weight");
+                    warn!(%discrim, %root_ulid, "skipping dependent value graph generation for unsupported node weight");
                 }
             };
         }

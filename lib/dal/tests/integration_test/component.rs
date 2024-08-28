@@ -3,6 +3,7 @@ use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
+use dal::workspace_snapshot::DependentValueRoot;
 use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
@@ -297,9 +298,14 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = DependentValueGraph::new(ctx, vec![rigid_designator_value_id])
-        .await
-        .expect("able to generate update graph");
+    let update_graph = DependentValueGraph::new(
+        ctx,
+        vec![DependentValueRoot::Unfinished(
+            rigid_designator_value_id.into(),
+        )],
+    )
+    .await
+    .expect("able to generate update graph");
 
     assert!(
         update_graph.contains_value(naming_and_necessity_value_id),
@@ -468,9 +474,14 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = DependentValueGraph::new(ctx, vec![possible_world_a_value_id])
-        .await
-        .expect("able to generate update graph");
+    let update_graph = DependentValueGraph::new(
+        ctx,
+        vec![DependentValueRoot::Unfinished(
+            possible_world_a_value_id.into(),
+        )],
+    )
+    .await
+    .expect("able to generate update graph");
 
     assert!(
         update_graph.contains_value(naming_and_necessity_value_id),

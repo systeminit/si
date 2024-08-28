@@ -2,8 +2,10 @@ use dal::component::resource::ResourceData;
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
+use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
+use serde_json::json;
 use veritech_client::ResourceStatus;
 
 #[test]
@@ -393,4 +395,118 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .expect("units has a view");
     let units_json_string = serde_json::to_string(&view).expect("Unable to stringify JSON");
     assert!(units_json_string.contains("docker.io/library/oysters on the floor\\n"));
+}
+
+#[test]
+async fn component_concurrency_limit(ctx: &mut DalContext) {
+    // Give us a massive component concurrency level
+    let mut workspace = ctx.get_workspace().await.expect("get workspace");
+    workspace
+        .set_component_concurrency_limit(ctx, 10000)
+        .await
+        .expect("set concurrency limit");
+    ctx.commit_no_rebase().await.expect("commit");
+
+    // create 1 etoile, and 16 morningstars
+    let etoiles = ExpectComponent::create(ctx, "etoiles").await;
+
+    let mut morningstars = vec![];
+    for i in 0..16 {
+        let name: String = (i + 1).to_string();
+        let morningstar = ExpectComponent::create_named(ctx, "morningstar", name).await;
+
+        etoiles
+            .connect(
+                ctx,
+                "naming_and_necessity",
+                morningstar,
+                "naming_and_necessity",
+            )
+            .await;
+        morningstars.push(morningstar);
+    }
+
+    assert!(
+        ctx.workspace_snapshot()
+            .expect("workspace_snapshot")
+            .has_dependent_value_roots()
+            .await
+            .expect("has dependent value roots"),
+        "should have dvu roots to be processed"
+    );
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert!(
+        !ctx.workspace_snapshot()
+            .expect("workspace_snapshot")
+            .has_dependent_value_roots()
+            .await
+            .expect("has dependent value roots"),
+        "all dvu roots should be processed and removed"
+    );
+
+    let mut workspace = ctx.get_workspace().await.expect("get workspace");
+    workspace
+        .set_component_concurrency_limit(ctx, 4)
+        .await
+        .expect("set concurrency limit");
+    ctx.commit_no_rebase().await.expect("commit");
+
+    let rigid_designator = etoiles
+        .prop(
+            ctx,
+            [
+                "root",
+                "domain",
+                "possible_world_a",
+                "wormhole_1",
+                "wormhole_2",
+                "wormhole_3",
+                "rigid_designator",
+            ],
+        )
+        .await;
+    rigid_designator.set(ctx, "hesperus").await;
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    assert!(
+        ctx.workspace_snapshot()
+            .expect("workspace_snapshot")
+            .has_dependent_value_roots()
+            .await
+            .expect("has dependent value roots"),
+        "not all dvu roots should be processed and removed"
+    );
+
+    // 16 / 4 = 4
+    for _ in 0..4 {
+        ctx.enqueue_dependent_values_update()
+            .await
+            .expect("enqueue dvu job");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    }
+
+    assert!(
+        !ctx.workspace_snapshot()
+            .expect("workspace_snapshot")
+            .has_dependent_value_roots()
+            .await
+            .expect("call has dvu roots"),
+        "all roots should be processed and off the graph"
+    );
+
+    assert!(
+        !morningstars.is_empty(),
+        "ensure we will do the checks below"
+    );
+    for morningstar in morningstars {
+        let stars = morningstar.prop(ctx, ["root", "domain", "stars"]).await;
+        assert_eq!(
+            json!("phosphorus"),
+            stars.get(ctx).await,
+            "ensure values have flowed through to the morningstar components"
+        )
+    }
 }
