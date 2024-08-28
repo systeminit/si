@@ -679,6 +679,7 @@ onBeforeUnmount(() => {
 // global keyboard and mouse handlers, which reroute to the correct functionality
 
 const spaceKeyIsDown = ref(false);
+const vKeyIsDown = ref(false);
 const shiftKeyIsDown = ref(false);
 
 async function onKeyDown(e: KeyboardEvent) {
@@ -753,6 +754,7 @@ async function onKeyDown(e: KeyboardEvent) {
 
   // handle recording modifier keys globally, which can be useful elsewhere
   if (e.key === " ") spaceKeyIsDown.value = true;
+  if (e.key.toLowerCase() === "v") vKeyIsDown.value = true;
   if (e.key === "Shift") shiftKeyIsDown.value = true;
 
   // TODO: probably want to consider repeat keydown events for using arrows to move stuff
@@ -783,6 +785,7 @@ async function onKeyDown(e: KeyboardEvent) {
 
 function onKeyUp(e: KeyboardEvent) {
   if (e.key === " ") spaceKeyIsDown.value = false;
+  if (e.key.toLowerCase() === "v") vKeyIsDown.value = false;
   if (e.key === "Shift") {
     shiftKeyIsDown.value = false;
     // shift constrains to vertical or horizontal drag, so letting go snaps things back to the mouse position
@@ -824,7 +827,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // track the hover meta at the time of mousedown (ex: resize, socket, etc)
   lastMouseDownHoverMeta.value = hoveredElementMeta.value;
 
-  // for drag to pan, we start dragging right away since the user has enabled it by holding the space bar
+  // for drag to pan, we start dragging right away since the user has enabled it by holding the space bar or 'v' key
   // for all other interactions, we watch to see if the user drags past some small threshold to begin the "drag"
   // in order to ignore clicks with a tiny bit of movement
   if (dragToPanArmed.value || e.button === 1) beginDragToPan();
@@ -1061,8 +1064,8 @@ const disableHoverEvents = computed(() => {
   return false;
 });
 
-// DRAG TO PAN (pan using click and drag while space bar is held down) ////////////////////////////////////
-const dragToPanArmed = computed(() => spaceKeyIsDown.value); // hold space to enable
+// DRAG TO PAN (pan using click and drag while space bar or 'v' key is held down) ////////////////////////////////////
+const dragToPanArmed = computed(() => spaceKeyIsDown.value || vKeyIsDown.value); // hold space or 'v' to enable
 const dragToPanActive = ref(false); // then click to start dragging
 
 const beginDragOrigin = ref<Vector2d | null>(null);
