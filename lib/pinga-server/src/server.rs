@@ -145,7 +145,6 @@ impl Server {
         let state = AppState::new(metadata.clone(), concurrency_limit, ctx_builder);
 
         let app = ServiceBuilder::new()
-            .concurrency_limit(concurrency_limit)
             .layer(
                 TraceLayer::new()
                     .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
@@ -157,8 +156,9 @@ impl Server {
             .layer(AckLayer::new())
             .service(handlers::process_request.with_state(state));
 
-        let inner = naxum::serve(incoming, app.into_make_service())
-            .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()));
+        let inner =
+            naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
+                .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()));
 
         metric!(monotonic_counter.pinga.concurrency.limit = concurrency_limit);
         Ok(Self {
