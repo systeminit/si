@@ -29,6 +29,13 @@ on:
         default: "stable"
 
 jobs:
+
+  invoke-and-check-cdn:
+    uses: ./.github/workflows/invoke-and-check-invalidations.yml
+    with:
+      environment: shared
+    secrets: inherit
+
   set-service-versions:
     uses: ./.github/workflows/set-service-version.yml
     strategy:
@@ -39,12 +46,16 @@ jobs:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ inputs.version }}
+    needs:
+      - invoke-and-check-cdn
     secrets: inherit
 
   set-maintenance-mode:
     uses: ./.github/workflows/set-maintenance-mode.yml
     with:
       environment: ${{ inputs.environment }}
+    needs:
+      - invoke-and-check-cdn
     secrets: inherit
 
   down: # the backend services

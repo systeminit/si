@@ -1,0 +1,119 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------------------
+# Checks a  cloudfront distribution and allows you to check for active invalidations & wait until
+# they are complete
+# ---------------------------------------------------------------------------------------------------
+
+set -eo pipefail
+
+# Find & Import all the supporting functions from the supporting folder
+# Get the directory of the current script to figure out where the
+# Supporting funcs are
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+	if [[ -f "$script" ]]; then
+		source "$script"
+	fi
+done
+
+# Usage for this script
+usage() {
+	echo
+	echo "check-invalidation"
+	echo "----------------------------------"
+	echo "This script will check for an active invalidation against a cloudfront"
+	echo "distribution and wait for n seconds for it to finish"
+	echo "----------------------------------"
+	echo "Usage: migrate [-p profile] [-r region] [-a automatic]"
+	echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
+	echo "  -r region         AWS region to use"
+	echo "  -a automatic      [Y/N] Run through automatically/no-interact"
+	echo "  -t time           Time to wait for active invalidations to pass"
+	echo "  -d distribution   ID of the distribution to check/use"
+	echo "----------------------------------"
+	echo "e.g. ./awsi.sh migrate -p pull-from-env -r us-east-1 -a y"
+	exit 1
+}
+
+# Add a check to see if the script is being sourced or executed
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+	usage
+fi
+
+# Parse flags
+while getopts ":p:r:a:t:d:" opt; do
+	case ${opt} in
+	p)
+		profile=$OPTARG
+		;;
+	r)
+		region=$OPTARG
+		;;
+	a)
+		automatic=$OPTARG
+		;;
+	t)
+		time=$OPTARG
+		;;
+	d)
+		distribution=$OPTARG
+		;;
+	\?)
+		echo "Invalid option: -$OPTARG" >&2
+		usage
+		;;
+	:)
+		echo "Option -$OPTARG requires an argument." >&2
+		usage
+		;;
+	esac
+done
+
+# ---------------------------------------------------------------------------------------------------
+# Main script
+# ---------------------------------------------------------------------------------------------------
+echo "$0 being invoked"
+
+# Use the profile if in the invocation
+if [[ "$profile" != "pull-from-env" ]]; then
+	profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+	export AWS_PROFILE="$profile"
+fi
+region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
+export AWS_REGION="$region"
+
+distributions=$(list_distributions "$distribution")
+if [ -z "$distributions" ]; then
+	echo "No Cloudfront Distributions found."
+	exit 1
+fi
+
+echo "----------------------------------------"
+echo "Cloudfront Distributions in the region $region:"
+printf "%-5s %-20s %-20s         %-20s %-20s\n" "Index" "Id" "DomainName" "Status" "Comment"
+i=1
+while read -r line; do
+	name=$(echo "$line" | awk '{print $1}')
+	distribution_id=$(echo "$line" | awk '{print $2}')
+	domain_name=$(echo "$line" | awk '{print $3}')
+	status=$(echo "$line" | awk '{print $4}')
+	printf "%-5s %-20s %-20s %-20s %-20s\n" "$i" "$name" "$distribution_id" "$domain_name" "$status"
+	((i++))
+done <<<"$distributions"
+echo "----------------------------------------"
+
+[[ "${automatic,,}" == "y" ]] || read -p "Would you like to check for invalidations on one of these distributions? (Y/N) [takes ~5 seconds] " selection
+[[ "${automatic,,}" == "y" ]] || sassy_selection_check $selection
+
+echo "----------------------------------------"
+
+while read -r line; do
+	distribution_id=$(echo "$line" | awk '{print $1}')
+	track_invalidations "$distribution_id" "$time"
+done <<<"$distributions"
+
+echo "----------------------------------------"
+echo "All Invalidations on the selected Cloudfront Distribution IDs have completed"
+echo "----------------------------------------"
+exit 0
