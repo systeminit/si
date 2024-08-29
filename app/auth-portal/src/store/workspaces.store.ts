@@ -33,10 +33,19 @@ export type WorkspaceMember = {
   signupAt: Date;
 };
 
+export type WorkspaceLookup = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  displayName: string;
+  instanceUrl: string | null;
+};
+
 export const useWorkspacesStore = defineStore("workspaces", {
   state: () => ({
     workspacesById: {} as Record<WorkspaceId, Workspace>,
     selectedWorkspaceMembersById: {} as Record<UserId, WorkspaceMember>,
+    workspaceForOwner: null as WorkspaceLookup | null,
   }),
   getters: {
     workspaces: (state) => _.values(state.workspacesById),
@@ -91,6 +100,15 @@ export const useWorkspacesStore = defineStore("workspaces", {
             response,
             (u) => u.userId,
           );
+        },
+      });
+    },
+    async GET_WORKSPACE_OWNER(workspaceId: WorkspaceId) {
+      return new ApiRequest<WorkspaceLookup>({
+        url: `/workspaces/admin-lookup/${workspaceId}`,
+        method: "get",
+        onSuccess: (response) => {
+          this.workspaceForOwner = response;
         },
       });
     },

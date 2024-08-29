@@ -270,6 +270,85 @@
       </div>
       <divider class="my-4" />
       <div>
+        <h3 class="pb-md font-bold">Who owns this workspace?</h3>
+        <Stack>
+          <VormInput
+            v-model="workspaceIdQuery"
+            label="Workspace Id"
+            placeholder="The workspace ID to lookup"
+            required
+          />
+          <div class="flex gap-2">
+            <VButton
+              :disabled="_.isEmpty(workspaceIdQuery)"
+              :requestStatus="getWorkspaceOwnerReqStatus"
+              iconRight="chevron--right"
+              loadingText="Querying..."
+              tone="action"
+              variant="solid"
+              @click="getWorkspaceOwner()"
+            >
+              Get Workspace Owner
+            </VButton>
+          </div>
+        </Stack>
+        <template v-if="getWorkspaceOwnerReqStatus.isPending">
+          <Icon name="loader" />
+        </template>
+        <template v-else-if="getWorkspaceOwnerReqStatus.isError">
+          <ErrorMessage :requestStatus="getWorkspaceOwnerReqStatus" />
+        </template>
+        <template v-else-if="getWorkspaceOwnerReqStatus.isSuccess">
+          <div class="relative">
+            <div class="text-lg font-bold">Owner Details</div>
+            <table
+              v-if="workspaceOwner"
+              class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
+            >
+              <thead>
+                <tr
+                  class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                >
+                  <th scope="col">First Name</th>
+                  <th scope="col">Last Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Display Name</th>
+                  <th scope="col">Instance Url</th>
+                </tr>
+              </thead>
+              <tbody
+                class="divide-y divide-neutral-300 dark:divide-neutral-700"
+              >
+                <tr
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                >
+                  <td class="">
+                    <div
+                      class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
+                    >
+                      {{ workspaceOwner.firstName || "" }}
+                    </div>
+                  </td>
+                  <td class="normal-case">
+                    {{ workspaceOwner.lastName || "" }}
+                  </td>
+                  <td class="normal-case">
+                    {{ workspaceOwner.email }}
+                  </td>
+                  <td class="normal-case">
+                    {{ workspaceOwner.displayName || "" }}
+                  </td>
+                  <td class="normal-case">
+                    {{ workspaceOwner.instanceUrl }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </div>
+      <divider class="my-4" />
+      <div>
         <h3 class="pb-md font-bold">Generate Weekly Signup Report</h3>
         <Stack>
           <VormInput
@@ -357,8 +436,8 @@
                 </tr>
               </tbody>
             </table>
-          </div></template
-        >
+          </div>
+        </template>
       </div>
     </template>
     <template v-else> Feature not Enabled for account </template>
@@ -485,6 +564,18 @@ async function getUserSignupsReport() {
   await authStore.GET_USER_SIGNUP_REPORT(formattedStartDate, formattedEndDate);
   userSignups.value = authStore.userSignups;
 }
+
+const workspaceIdQuery = ref("");
+const workspaceOwner = computed(() => workspacesStore.workspaceForOwner);
+async function getWorkspaceOwner() {
+  if (!workspaceIdQuery.value) return;
+
+  await workspacesStore.GET_WORKSPACE_OWNER(workspaceIdQuery.value);
+}
+
+const getWorkspaceOwnerReqStatus = workspacesStore.getRequestStatus(
+  "GET_WORKSPACE_OWNER",
+);
 
 onBeforeMount(async () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
