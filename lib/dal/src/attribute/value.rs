@@ -845,6 +845,15 @@ impl AttributeValue {
             .is_dynamic())
     }
 
+    pub async fn is_set_by_intrinsic(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(Self::prototype_func(ctx, attribute_value_id)
+            .await?
+            .is_intrinsic())
+    }
+
     pub async fn is_set_by_unset(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -2415,10 +2424,6 @@ impl AttributeValue {
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
-        ctx.workspace_snapshot()?
-            .remove_dependent_value_root(id)
-            .await?;
-
         ctx.add_dependent_values_and_enqueue(vec![parent_av_id])
             .await?;
         Ok(())

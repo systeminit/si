@@ -4,12 +4,12 @@ use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::prop::PropPath;
 use dal::{BuiltinsResult, DalContext, PropKind};
-use si_pkg::SchemaSpecData;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
+use si_pkg::{SchemaSpecData, SocketSpecArity};
 
 use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
@@ -516,6 +516,7 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
                         .name("naming_and_necessity")
                         .data(
                             SocketSpecData::builder()
+                                .arity(SocketSpecArity::Many)
                                 .name("naming_and_necessity")
                                 .connection_annotations(serde_json::to_string(&vec![
                                     "naming_and_necessity",

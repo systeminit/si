@@ -375,6 +375,10 @@ impl Func {
         Self::is_dynamic_for_name_string(&self.name)
     }
 
+    pub fn is_intrinsic(&self) -> bool {
+        IntrinsicFunc::maybe_from_str(&self.name).is_some()
+    }
+
     /// A non-dynamic Func is an Intrinsic func that returns a fixed value, set by a StaticArgumentValue in the graph
     /// opposingly, a dynamic Func is a func that returns a non statically predictable value, possibly user defined.
     ///

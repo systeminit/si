@@ -206,7 +206,7 @@ pub struct WorkspaceSnapshot {
     cycle_check: Arc<AtomicBool>,
 
     /// A hashset to prevent adding duplicate roots to the workspace in a single edit session
-    dvu_roots: Arc<Mutex<HashSet<Ulid>>>,
+    dvu_roots: Arc<Mutex<HashSet<DependentValueRoot>>>,
 
     /// A cached version of the inferred connection graph for this snapshot
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
@@ -288,6 +288,26 @@ pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
         serde_json::Value::String(_) => "string",
     }
     .into()
+}
+
+#[derive(Copy, Clone, Hash, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DependentValueRoot {
+    Finished(Ulid),
+    Unfinished(Ulid),
+}
+
+impl DependentValueRoot {
+    pub fn is_finished(&self) -> bool {
+        matches!(self, DependentValueRoot::Unfinished(_))
+    }
+}
+
+impl From<DependentValueRoot> for Ulid {
+    fn from(value: DependentValueRoot) -> Self {
+        match value {
+            DependentValueRoot::Finished(id) | DependentValueRoot::Unfinished(id) => id,
+        }
+    }
 }
 
 impl WorkspaceSnapshot {
@@ -1347,97 +1367,44 @@ impl WorkspaceSnapshot {
         Ok(did_dispatch)
     }
 
-    async fn find_existing_dependent_value_root(
-        &self,
-        value_id: Ulid,
-    ) -> WorkspaceSnapshotResult<(Ulid, Option<Ulid>)> {
-        let dv_category_id = match self
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
-            .await?
-        {
-            Some(dv_category_id) => dv_category_id,
-            None => {
-                let mut working_copy = self.working_copy_mut().await;
-                let root_idx = working_copy.root();
-                let id = working_copy.generate_ulid()?;
-                let lineage_id = working_copy.generate_ulid()?;
-                let category_node_idx = working_copy.add_category_node(
-                    id,
-                    lineage_id,
-                    CategoryNodeKind::DependentValueRoots,
-                )?;
-                working_copy.add_edge(
-                    root_idx,
-                    EdgeWeight::new(EdgeWeightKind::new_use()),
-                    category_node_idx,
-                )?;
-
-                working_copy.get_node_weight(category_node_idx)?.id()
-            }
-        };
-
-        for dv_node_idx in self
-            .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
-            let dv_value_node_weight = self
-                .get_node_weight(dv_node_idx)
-                .await?
-                .get_dependent_value_root_node_weight()?;
-
-            if value_id == dv_value_node_weight.value_id() {
-                return Ok((dv_category_id, Some(dv_value_node_weight.id())));
-            }
-        }
-
-        Ok((dv_category_id, None))
-    }
-
     pub async fn add_dependent_value_root(
         &self,
-        value_id: impl Into<Ulid>,
+        root: DependentValueRoot,
     ) -> WorkspaceSnapshotResult<()> {
-        let value_id = value_id.into();
-
         // ensure we don't grow the graph unnecessarily by adding the same value
         // in a single edit session
         {
             let mut dvu_roots = self.dvu_roots.lock().await;
-            if dvu_roots.contains(&value_id) {
+            if dvu_roots.contains(&root) {
                 return Ok(());
             }
-            dvu_roots.insert(value_id);
+            dvu_roots.insert(root);
         }
 
-        let (dv_category_id, _) = self.find_existing_dependent_value_root(value_id).await?;
+        if let Some(dv_category_id) = self
+            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .await?
+        {
+            let id = self.generate_ulid().await?;
+            let lineage_id = self.generate_ulid().await?;
 
-        let id = self.generate_ulid().await?;
-        let lineage_id = self.generate_ulid().await?;
+            let node_weight = match root {
+                DependentValueRoot::Finished(value_id) => {
+                    NodeWeight::new_finished_dependent_value_root(id, lineage_id, value_id)
+                }
+                DependentValueRoot::Unfinished(value_id) => {
+                    NodeWeight::new_finished_dependent_value_root(id, lineage_id, value_id)
+                }
+            };
 
-        let new_dependent_value_node =
-            NodeWeight::new_dependent_value_root(id, lineage_id, value_id);
-        let new_dv_node_id = new_dependent_value_node.id();
-        self.add_or_replace_node(new_dependent_value_node).await?;
+            self.add_or_replace_node(node_weight).await?;
 
-        self.add_edge(
-            dv_category_id,
-            EdgeWeight::new(EdgeWeightKind::new_use()),
-            new_dv_node_id,
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn remove_dependent_value_root(
-        &self,
-        value_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<()> {
-        let value_id = value_id.into();
-        let (_, existing_value_id) = self.find_existing_dependent_value_root(value_id).await?;
-
-        if let Some(existing_id) = existing_value_id {
-            self.remove_node_by_id(existing_id).await?;
+            self.add_edge(
+                dv_category_id,
+                EdgeWeight::new(EdgeWeightKind::new_use()),
+                id,
+            )
+            .await?;
         }
 
         Ok(())
@@ -1462,7 +1429,7 @@ impl WorkspaceSnapshot {
     }
 
     /// Removes all the dependent value nodes from the category and returns the value_ids
-    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<Ulid>> {
+    pub async fn take_dependent_values(&self) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
         let dv_category_id = match self
             .get_category_node(None, CategoryNodeKind::DependentValueRoots)
             .await?
@@ -1480,12 +1447,22 @@ impl WorkspaceSnapshot {
             .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
             .await?
         {
-            let dv_value_node_weight = self
-                .get_node_weight(dv_node_idx)
-                .await?
-                .get_dependent_value_root_node_weight()?;
-            value_ids.push(dv_value_node_weight.value_id());
-            pending_removes.push(dv_value_node_weight.id());
+            let root = match self.get_node_weight(dv_node_idx).await? {
+                NodeWeight::DependentValueRoot(unfinished) => Some((
+                    DependentValueRoot::Unfinished(unfinished.value_id()),
+                    unfinished.id(),
+                )),
+                NodeWeight::FinishedDependentValueRoot(finished) => Some((
+                    DependentValueRoot::Finished(finished.value_id()),
+                    finished.id(),
+                )),
+                _ => None,
+            };
+
+            if let Some((root, node_weight_id)) = root {
+                value_ids.push(root);
+                pending_removes.push(node_weight_id);
+            }
         }
 
         for to_remove_id in pending_removes {
@@ -1496,7 +1473,9 @@ impl WorkspaceSnapshot {
     }
 
     /// List all the `value_ids` from the dependent value nodes in the category.
-    pub async fn list_dependent_value_value_ids(&self) -> WorkspaceSnapshotResult<Vec<Ulid>> {
+    pub async fn get_dependent_value_roots(
+        &self,
+    ) -> WorkspaceSnapshotResult<Vec<DependentValueRoot>> {
         let dv_category_id = match self
             .get_category_node(None, CategoryNodeKind::DependentValueRoots)
             .await?
@@ -1507,19 +1486,23 @@ impl WorkspaceSnapshot {
             }
         };
 
-        let mut value_ids = vec![];
+        let mut roots = vec![];
         for dv_node_idx in self
             .outgoing_targets_for_edge_weight_kind(dv_category_id, EdgeWeightKindDiscriminants::Use)
             .await?
         {
-            let dv_value_node_weight = self
-                .get_node_weight(dv_node_idx)
-                .await?
-                .get_dependent_value_root_node_weight()?;
-            value_ids.push(dv_value_node_weight.value_id());
+            match self.get_node_weight(dv_node_idx).await? {
+                NodeWeight::DependentValueRoot(unfinished) => {
+                    roots.push(DependentValueRoot::Unfinished(unfinished.value_id()));
+                }
+                NodeWeight::FinishedDependentValueRoot(finished) => {
+                    roots.push(DependentValueRoot::Finished(finished.value_id()));
+                }
+                _ => {}
+            }
         }
 
-        Ok(value_ids)
+        Ok(roots)
     }
 
     /// There are cases where we want to cache this connection graph to avoid calculating
@@ -1585,6 +1568,7 @@ impl WorkspaceSnapshot {
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Prop(_)

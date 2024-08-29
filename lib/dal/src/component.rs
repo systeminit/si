@@ -47,7 +47,7 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
@@ -468,7 +468,7 @@ impl Component {
         )
         .await?;
 
-        let mut attribute_values = vec![];
+        let mut dvu_roots = vec![];
 
         // Create attribute values for all socket corresponding to input and output sockets.
         for input_socket_id in
@@ -477,7 +477,7 @@ impl Component {
             let attribute_value =
                 AttributeValue::new(ctx, input_socket_id, Some(id.into()), None, None).await?;
 
-            attribute_values.push(attribute_value.id());
+            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
         }
         for output_socket_id in
             OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
@@ -485,7 +485,7 @@ impl Component {
             let attribute_value =
                 AttributeValue::new(ctx, output_socket_id, Some(id.into()), None, None).await?;
 
-            attribute_values.push(attribute_value.id());
+            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
         }
 
         // Walk all the props for the schema variant and create attribute values for all of them
@@ -514,7 +514,7 @@ impl Component {
             )
             .await?;
 
-            attribute_values.push(attribute_value.id());
+            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
             ctx.enqueue_compute_validations(attribute_value.id())
                 .await?;
 
@@ -567,7 +567,7 @@ impl Component {
 
         component.set_name(ctx, &name).await?;
 
-        let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
+        let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
         let leaf_value_ids = component_graph.independent_values();
         ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
 
@@ -599,7 +599,7 @@ impl Component {
     ) -> ComponentResult<()> {
         let old_root_id = Component::root_attribute_value_id(ctx, old_component_id).await?;
         let self_schema_variant_id = Component::schema_variant_id(ctx, self.id).await?;
-        let mut attribute_values = vec![];
+        let mut dvu_roots = vec![];
 
         // Gather up a bunch of data about the current schema variant
         let mut new_input_sockets = HashMap::new();
@@ -687,7 +687,7 @@ impl Component {
                 match new_av_id {
                     // The value exists in both old and new (thought it might be defaulted)
                     Some(new_av_id) => {
-                        attribute_values.push(new_av_id);
+                        dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
                         match old_component_prototype_id {
                             // The old component has an explicit value set rather than using
                             // the default: set the value in the new component as well.
@@ -821,7 +821,9 @@ impl Component {
                                             old_value,
                                         )
                                         .await?;
-                                        attribute_values.push(inserted_value.id);
+                                        dvu_roots.push(DependentValueRoot::Unfinished(
+                                            inserted_value.id.into(),
+                                        ));
                                     }
                                 }
                             }
@@ -840,7 +842,7 @@ impl Component {
             }
         }
 
-        let component_graph = DependentValueGraph::new(ctx, attribute_values).await?;
+        let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
         let leaf_value_ids = component_graph.independent_values();
         ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
 

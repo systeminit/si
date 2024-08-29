@@ -562,7 +562,7 @@ impl Action {
         let dependent_value_graph = DependentValueGraph::new(
             ctx,
             ctx.workspace_snapshot()?
-                .list_dependent_value_value_ids()
+                .get_dependent_value_roots()
                 .await?,
         )
         .await?;
