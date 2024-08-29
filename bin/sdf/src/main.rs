@@ -34,8 +34,10 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
-    let shutdown_token = CancellationToken::new();
-    let task_tracker = TaskTracker::new();
+    let layer_db_tracker = TaskTracker::new();
+    let layer_db_token = CancellationToken::new();
+    let telemetry_tracker = TaskTracker::new();
+    let telemetry_token = CancellationToken::new();
 
     color_eyre::install()?;
     let args = args::parse();
@@ -55,7 +57,7 @@ async fn async_main() -> Result<()> {
             .interesting_modules(vec!["dal", "si_data_nats", "si_data_pg", "si_layer_cache"])
             .build()?;
 
-        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+        telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
 
     startup::startup("sdf").await?;
@@ -120,8 +122,8 @@ async fn async_main() -> Result<()> {
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
     let (layer_db, layer_db_graceful_shutdown) =
-        LayerDb::from_config(config.layer_db_config().clone(), shutdown_token.clone()).await?;
-    task_tracker.spawn(layer_db_graceful_shutdown.into_future());
+        LayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone()).await?;
+    layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
     let feature_flags_service = FeatureFlagService::new(config.boot_feature_flags().clone());
 
@@ -153,7 +155,8 @@ async fn async_main() -> Result<()> {
 
     let posthog_client = Server::start_posthog(config.posthog()).await?;
 
-    task_tracker.close();
+    layer_db_tracker.close();
+    telemetry_tracker.close();
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
@@ -168,14 +171,6 @@ async fn async_main() -> Result<()> {
                 crdt_multiplexer_client,
             )?;
             let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
-
-            // Server::start_resource_refresh_scheduler(
-            //     services_context.clone(),
-            //     initial_shutdown_broadcast_rx,
-            // )
-            // .await;
-
-            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }
@@ -193,14 +188,6 @@ async fn async_main() -> Result<()> {
             .await?;
             let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
-            // Server::start_resource_refresh_scheduler(
-            //     services_context.clone(),
-            //     initial_shutdown_broadcast_rx,
-            // )
-            // .await;
-
-            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
-
             server.run().await?;
         }
     }
@@ -210,8 +197,18 @@ async fn async_main() -> Result<()> {
     // the program however, axum has shut down so it's an appropriate time to cancel other
     // remaining tasks and wait on their graceful shutdowns
     {
-        shutdown_token.cancel();
-        task_tracker.wait().await;
+        // TODO(nick): Fletcher's comment above still stands, but now we shutdown for multiple task groups.
+        for (tracker, token) in [
+            (layer_db_tracker, layer_db_token),
+            (telemetry_tracker, telemetry_token),
+        ] {
+            info!("performing graceful shutdown for task group");
+            tracker.close();
+            token.cancel();
+            tracker.wait().await;
+        }
+
+        // TODO(nick): we need to handle telemetry shutdown properly as well.
         telemetry_shutdown.wait().await?;
     }
 
