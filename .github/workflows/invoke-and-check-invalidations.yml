@@ -1,0 +1,37 @@
+name: Instigate & Check CDN State
+
+run-name: Instigate & Check CDN State for ${{ inputs.environment }} 
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "Where to check"
+
+jobs:
+  check-cdn:
+    name: Instigate & Check CDN Invalidation
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials for ${{ inputs.environment }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Invalidate web cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DIST_ID }} \
+          --paths "/cyclone/stable/*" "/sdf/stable/*" "/rebaser/stable/*" "/pinga/stable/*" "/veritech/stable/*" \
+          --query 'Invalidation.Id' --output text
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check & wait for any active invalidations
+        run: |
+          component/toolbox/awsi.sh check-invalidation -r us-east-1 -p pull-from-env -t 300 -d all -a y
