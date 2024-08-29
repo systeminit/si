@@ -80,7 +80,7 @@ impl KeyPair {
                 "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     &name,
-                    &ctx.tenancy().workspace_pk(),
+                    &ctx.tenancy().workspace_pk_opt(),
                     &base64_encode_bytes(public_key.as_ref()),
                     &base64_encode_bytes(secret_key_crypted.as_slice()),
                     &base64_encode_bytes(secret_key_nonce.as_ref()),
@@ -175,7 +175,7 @@ impl PublicKey {
             .txns()
             .await?
             .pg()
-            .query_one(PUBLIC_KEY_GET_CURRENT, &[&ctx.tenancy().workspace_pk()])
+            .query_one(PUBLIC_KEY_GET_CURRENT, &[&ctx.tenancy().workspace_pk_opt()])
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         Ok(serde_json::from_value(json)?)

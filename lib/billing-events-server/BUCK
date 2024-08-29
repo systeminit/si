@@ -1,0 +1,17 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "billing-events-server",
+    deps = [
+        "//lib/billing-events:billing-events",
+        "//lib/naxum:naxum",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio-util",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

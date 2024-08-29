@@ -39,8 +39,6 @@ pub enum AdminAPIError {
     Transactions(#[from] dal::TransactionsError),
     #[error("workspaces error: {0}")]
     Workspace(#[from] dal::WorkspaceError),
-    #[error("change set {0} does not have a workspace snapshot address")]
-    WorkspaceSnapshotAddressNotFound(ChangeSetId),
     #[error("workspace snapshot {0} for change set {1} could not be found in durable storage")]
     WorkspaceSnapshotNotFound(WorkspaceSnapshotAddress, ChangeSetId),
 }
@@ -80,7 +78,7 @@ pub struct AdminChangeSet {
     pub name: String,
     pub status: ChangeSetStatus,
     pub base_change_set_id: Option<ChangeSetId>,
-    pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
+    pub workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub workspace_id: Option<WorkspacePk>,
     pub merge_requested_by_user_id: Option<UserPk>,
 }

@@ -76,10 +76,7 @@ pub async fn perform_rebase(
             .ok_or(RebaseError::MissingChangeSet(
                 message.payload.to_rebase_change_set_id.into(),
             ))?;
-    let to_rebase_workspace_snapshot_address =
-        to_rebase_change_set.workspace_snapshot_address.ok_or(
-            RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
-        )?;
+    let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
@@ -155,7 +152,7 @@ pub async fn perform_rebase(
     if let Some(workspace) = Workspace::get_by_pk(
         ctx,
         &ctx.tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .ok_or(RebaseError::WorkspacePkExpected)?,
     )
     .await?
@@ -239,7 +236,7 @@ async fn replay_changes(
     let metadata = LayeredEventMetadata::new(
         si_events::Tenancy::new(
             ctx.tenancy()
-                .workspace_pk()
+                .workspace_pk_opt()
                 .unwrap_or(WorkspacePk::NONE)
                 .into(),
             target_change_set_id.into(),

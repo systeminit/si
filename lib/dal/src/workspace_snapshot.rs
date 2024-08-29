@@ -65,7 +65,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    Workspace, WorkspaceError,
+    TenancyError, Workspace, WorkspaceError,
 };
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
@@ -132,6 +132,8 @@ pub enum WorkspaceSnapshotError {
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -1286,14 +1288,9 @@ impl WorkspaceSnapshot {
         // Even though the default change set for a workspace can have a base change set, we don't
         // want to consider anything as new/modified/removed when looking at the default change
         // set.
-        let workspace = Workspace::get_by_pk_or_error(
-            ctx,
-            &ctx.tenancy()
-                .workspace_pk()
-                .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
-        )
-        .await
-        .map_err(Box::new)?;
+        let workspace = Workspace::get_by_pk_or_error(ctx, ctx.tenancy().workspace_pk()?)
+            .await
+            .map_err(Box::new)?;
         if workspace.default_change_set_id() == ctx.change_set_id() {
             return Ok(Vec::new());
         }

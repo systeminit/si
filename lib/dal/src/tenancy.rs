@@ -8,6 +8,8 @@ use crate::WorkspacePk;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum TenancyError {
+    #[error("no workspace")]
+    NoWorkspace,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
 }
@@ -43,7 +45,11 @@ impl Tenancy {
         Ok(result)
     }
 
-    pub fn workspace_pk(&self) -> Option<WorkspacePk> {
+    pub fn workspace_pk(&self) -> TenancyResult<WorkspacePk> {
+        self.workspace_pk.ok_or(TenancyError::NoWorkspace)
+    }
+
+    pub fn workspace_pk_opt(&self) -> Option<WorkspacePk> {
         self.workspace_pk
     }
 

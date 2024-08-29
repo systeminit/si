@@ -25,6 +25,7 @@ Above all, for any and all questions related to either using or developing the s
 - [Preparing Your Pull Request](#preparing-your-pull-request)
 - [Core Services](#core-services)
 - [Repository Structure](#repository-structure)
+- [Adding a New Rust Library](#adding-a-new-rust-library)
 
 # How to Read This Document
 
@@ -717,3 +718,29 @@ While there are other directories in the project, these are primarily where most
 | `bin/`       | Backend programs, CLIs, servers, etc.                          |
 | `component/` | Docker container images and other ancillary tooling            |
 | `lib/`       | Supporting libraries and packages for services or applications |
+
+# Adding a New Rust Library
+
+To add a new Rust library, there are a few steps:
+
+1. Create `lib/MY-LIBRARY` and put a `Cargo.toml` there like this:
+
+```toml
+[package]
+name = "MY-LIBRARY"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+```
+
+2. Put `src/lib.rs` with your code.
+3. Add your library to the top-level `Cargo.toml` inside `[workspace] members = ...`.
+4. Run `cargo check --all-targets --all-features` to get your library added to the top level `Cargo.lock`.
+
+> [!NOTE]
+> If your library adds, removes or modifies a third party crate, you may need to sync `buck2` deps.
+> See the [support/buck2](support/buck2) directory for more information.

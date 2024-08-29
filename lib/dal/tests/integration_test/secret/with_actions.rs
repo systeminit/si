@@ -139,7 +139,7 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     Workspace::get_by_pk(
         ctx,
         &ctx.tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .expect("could not get workspace pk"),
     )
     .await

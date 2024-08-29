@@ -108,7 +108,7 @@ async fn execute_job(
     let workspace_id_str = job_info
         .access_builder
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .map(|id| id.to_string())
         .unwrap_or_default();
     let otel_name = {

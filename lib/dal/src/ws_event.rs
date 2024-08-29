@@ -147,7 +147,7 @@ impl WsEvent {
         })
     }
     pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
-        let workspace_pk = match ctx.tenancy().workspace_pk() {
+        let workspace_pk = match ctx.tenancy().workspace_pk_opt() {
             Some(pk) => pk,
             None => {
                 return Err(WsEventError::NoWorkspaceInTenancy);
@@ -158,7 +158,7 @@ impl WsEvent {
     }
 
     pub async fn new_for_workspace(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
-        let workspace_pk = match ctx.tenancy().workspace_pk() {
+        let workspace_pk = match ctx.tenancy().workspace_pk_opt() {
             Some(pk) => pk,
             None => {
                 return Err(WsEventError::NoWorkspaceInTenancy);

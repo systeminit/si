@@ -484,6 +484,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "billing-events"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "thiserror",
+]
+
+[[package]]
+name = "billing-events-server"
+version = "0.1.0"
+dependencies = [
+ "billing-events",
+ "naxum",
+ "remain",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio-util",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.68.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1323,6 +1348,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "base64 0.22.1",
+ "billing-events",
  "blake3",
  "buck2-resources",
  "chrono",
@@ -4881,6 +4907,7 @@ dependencies = [
 name = "sdf"
 version = "0.1.0"
 dependencies = [
+ "billing-events-server",
  "clap",
  "color-eyre",
  "nats-multiplexer",

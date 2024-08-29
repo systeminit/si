@@ -1,5 +1,6 @@
 use axum::routing::IntoMakeService;
 use axum::Router;
+use dal::context::NatsStreams;
 use dal::jwt_key::JwtConfig;
 use dal::pkg::PkgError;
 use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
@@ -310,6 +311,13 @@ impl Server<(), ()> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
+    }
+
+    #[instrument(name = "sdf.init.get_or_create_nats_streams", level = "info", skip_all)]
+    pub async fn get_or_create_nats_streams(client: &NatsClient) -> ServerResult<NatsStreams> {
+        let streams = NatsStreams::get_or_create(client).await?;
+        debug!("successfully connected nats streams");
+        Ok(streams)
     }
 
     pub fn create_veritech_client(nats: NatsClient) -> VeritechClient {

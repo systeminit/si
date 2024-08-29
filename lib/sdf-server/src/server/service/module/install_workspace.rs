@@ -42,7 +42,7 @@ pub async fn install_workspace(
     let workspace = {
         let workspace_pk = ctx
             .tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
         Workspace::get_by_pk(&ctx, &workspace_pk)
             .await?
