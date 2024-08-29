@@ -1738,7 +1738,12 @@ function onDragElementsMove() {
   if (collapsedElements.length > 0)
     componentsStore.updateMinimzedElementPositionAndSize(...collapsedElements);
 
+  checkDiagramEdgeForScroll();
+}
+
+function checkDiagramEdgeForScroll() {
   // check if dragging to the edge of the screen, which will trigger scrolling
+  if (!containerPointerPos.value) return;
   const pointerX = containerPointerPos.value.x;
   const pointerY = containerPointerPos.value.y;
   if (
@@ -2404,6 +2409,8 @@ function onDrawEdgeMove() {
   } else {
     drawEdgeToSocketKey.value = undefined;
   }
+
+  checkDiagramEdgeForScroll();
 }
 
 async function endDrawEdge() {
