@@ -39,7 +39,6 @@ import {
   ChangeSetDetail,
   useActionsStore,
 } from "@/store/actions.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import EmptyStateCard from "./EmptyStateCard.vue";
@@ -47,7 +46,6 @@ import ActionsList from "./Actions/ActionsList.vue";
 import FuncRunTabGroup from "./Actions/FuncRunTabGroup.vue";
 
 const actionsStore = useActionsStore();
-const changeSetsStore = useChangeSetsStore();
 const funcRunsStore = useFuncRunsStore();
 
 const mainDivRef = ref();
@@ -68,19 +66,13 @@ const selectedAction = computed(() => {
 });
 
 const getChangeSet = (detail: ChangeSetDetail) => {
-  const changeSet = changeSetsStore.changeSetsById[detail.changeSetId];
-
-  if (changeSet) return changeSet;
-  else {
-    // NOTE: change sets that have been applied will not be in the change set store
-    return {
-      id: detail.changeSetId,
-      name: detail.changeSetName,
-      status: ChangeSetStatus.Applied,
-      appliedAt: detail.timestamp && detail.timestamp.toISOString(),
-      baseChangeSetId: "we dont need it",
-    } as ChangeSet;
-  }
+  return {
+    id: detail.changeSetId,
+    name: detail.changeSetName,
+    status: ChangeSetStatus.Applied,
+    appliedAt: detail.timestamp && detail.timestamp.toISOString(),
+    baseChangeSetId: "we dont need it",
+  } as ChangeSet;
 };
 
 async function getFuncRun(funcRunId: FuncRunId | undefined) {
