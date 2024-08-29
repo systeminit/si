@@ -76,6 +76,31 @@ router.delete("/workspaces/:workspaceId", async (ctx) => {
   ctx.body = "";
 });
 
+export type WorkspaceLookup = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  displayName: string;
+  instanceUrl: string | null;
+};
+router.get("/workspaces/admin-lookup/:workspaceId", async (ctx) => {
+  // Just for authorization, result is discarded
+  extractAdminAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+  const user = await getUserById(workspace.creatorUserId);
+
+  const workspaceDetails: WorkspaceLookup = {
+    firstName: user?.firstName,
+    lastName: user?.lastName,
+    email: user?.email,
+    displayName: workspace.displayName,
+    instanceUrl: workspace.instanceUrl,
+  };
+
+  ctx.body = workspaceDetails;
+});
+
 router.post("/workspaces/setup-production-workspace", async (ctx) => {
   // Just for authorization, result is discarded
   extractAdminAuthUser(ctx);
