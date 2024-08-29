@@ -1,5 +1,6 @@
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
+import { Vector2d } from "konva/lib/types";
 import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -91,7 +92,13 @@ export class DiagramSocketData extends DiagramElementData {
   }
 }
 
+export type SocketLocationInfo = { center: Vector2d };
+
 export class DiagramEdgeData extends DiagramElementData {
+  // populated from the diagram
+  fromPoint: SocketLocationInfo | undefined;
+  toPoint: SocketLocationInfo | undefined;
+
   constructor(readonly def: DiagramEdgeDef) {
     super();
   }

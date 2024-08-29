@@ -92,10 +92,10 @@ overflow hidden */
               v-for="edge in edges"
               :key="edge.uniqueKey"
               :edge="edge"
-              :fromPoint="getSocketLocationInfo('from', edge)?.center"
+              :fromPoint="edge.fromPoint?.center"
               :isHovered="elementIsHovered(edge)"
               :isSelected="elementIsSelected(edge)"
-              :toPoint="getSocketLocationInfo('to', edge)?.center"
+              :toPoint="edge.toPoint?.center"
             />
           </template>
           <DiagramNode
@@ -303,6 +303,7 @@ import {
   ElementHoverMeta,
   EdgeDisplayMode,
   MoveElementsState,
+  SocketLocationInfo,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -1365,6 +1366,9 @@ const currentSelectionMovableElements = computed(() => {
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
+const draggedCollapsedElementsPositionsPreDrag = ref<
+  Record<DiagramElementUniqueKey, Vector2d | undefined>
+>({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 interface updateElementPositionAndSizeArgs {
@@ -1441,12 +1445,36 @@ function beginDragElements() {
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
+  const allComponents = {} as Record<
+    string,
+    DiagramNodeData | DiagramGroupData
+  >;
+  componentsStore.diagramNodes.forEach((n) => {
+    const el =
+      n.componentType !== ComponentType.Component
+        ? new DiagramGroupData(n)
+        : new DiagramNodeData(n);
+    allComponents[el.uniqueKey] = el;
+  });
   draggedElementsPositionsPreDrag.value = _.mapValues(
-    allElementsByKey.value,
+    allComponents,
     (el) =>
-      componentsStore.combinedElementPositions[el.uniqueKey] ||
+      componentsStore.movedElementPositions[el.uniqueKey] ||
       _.get(el.def, "position"),
   );
+
+  const collapsedByKeys = {} as Record<string, DiagramGroupData>;
+  for (const [uniqueKey, el] of Object.entries(allElementsByKey.value)) {
+    if (componentsStore.collapsedComponents.has(uniqueKey)) {
+      collapsedByKeys[uniqueKey] = el as DiagramGroupData;
+    }
+  }
+  if (Object.keys(collapsedByKeys).length > 0)
+    draggedCollapsedElementsPositionsPreDrag.value = _.mapValues(
+      collapsedByKeys,
+      (el) => componentsStore.collapsedElementPositions[el.uniqueKey]!,
+    );
+  else draggedCollapsedElementsPositionsPreDrag.value = {};
 }
 
 function endDragElements() {
@@ -1539,13 +1567,25 @@ let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
 // This needs to be recursive to find child components at all depths
 const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
   const children: DiagramElementData[] = [];
-  _.map(el.def.childIds, (childId) => {
-    const c = nodes.value.find((n) => n.def.id === childId);
-    if (c) children.push(c);
-    const g = groups.value.find((n) => n.def.id === childId);
-    if (g) {
-      children.push(g);
-      children.push(...allChildren(g));
+  el.def.childIds?.forEach((childId) => {
+    const c = componentsStore.diagramNodes.find((n) => n.id === childId);
+    const isGroup = c?.componentType !== ComponentType.Component;
+    if (c) {
+      const _el = isGroup ? new DiagramGroupData(c) : new DiagramNodeData(c);
+      children.push(_el);
+      if (isGroup) children.push(...allChildren(_el));
+    }
+  });
+  return children;
+};
+
+const allChildrenInGroup = (el: FullComponent): ComponentId[] => {
+  const children: ComponentId[] = [];
+  _.map(el?.childIds, (childId) => {
+    const c = componentsStore.componentsById[childId];
+    if (c && c.componentType !== ComponentType.Component) {
+      children.push(c.id);
+      children.push(...allChildrenInGroup(c));
     }
   });
   return children;
@@ -1586,7 +1626,9 @@ function onDragElementsMove() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
-      draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
+      componentsStore.collapsedComponents.has(el.uniqueKey)
+        ? draggedCollapsedElementsPositionsPreDrag.value[el.uniqueKey]!
+        : draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
       delta,
     );
 
@@ -1678,24 +1720,6 @@ function onDragElementsMove() {
       el instanceof DiagramGroupData &&
       !componentsStore.collapsedComponents.has(el.uniqueKey)
     ) {
-      const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
-      const cycleCheck = new Set();
-      const queue = [el];
-      while (queue.length > 0) {
-        cycleCheck.add(el.def.id);
-
-        const parent = queue.shift();
-        const x = _.filter(
-          groups.value,
-          (n) => n.def.parentId === parent?.def.id,
-        );
-        _.each(x, (childGroup) => {
-          if (cycleCheck.has(childGroup.def.id)) return;
-          queue.push(childGroup);
-          includedGroups.push(childGroup);
-        });
-      }
-
       const childEls = allChildren(el);
 
       const actualParentDelta = vectorBetween(
@@ -1704,18 +1728,29 @@ function onDragElementsMove() {
       );
 
       _.each(childEls, (childEl) => {
-        if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
-
         const newChildPosition = vectorAdd(
           draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
           actualParentDelta,
         );
 
-        // track the position locally, so we don't need to rely on parent to store the temporary position
         elements.push({
           uniqueKey: childEl.uniqueKey,
           position: newChildPosition,
         });
+
+        if (componentsStore.collapsedComponents.has(childEl.uniqueKey)) {
+          const newUnCollapsedPosition = vectorAdd(
+            draggedCollapsedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
+            actualParentDelta,
+          );
+          collapsedElements.push({
+            uniqueKey: childEl.uniqueKey,
+            position: newUnCollapsedPosition,
+          });
+        } else {
+          // clear out the collaposed position data of children if its no longer collapsed and its parent has moved
+          componentsStore.removeCollapsedData(childEl.uniqueKey);
+        }
       });
     }
 
@@ -2027,8 +2062,11 @@ function onResizeMove() {
   };
 
   const presentSize = resizedElementSizesPreResize[resizeTargetKey];
-  const presentPosition =
-    draggedElementsPositionsPreDrag.value[resizeTargetKey];
+  const presentPosition = componentsStore.collapsedComponents.has(
+    resizeTargetKey,
+  )
+    ? draggedCollapsedElementsPositionsPreDrag.value[resizeTargetKey]
+    : draggedElementsPositionsPreDrag.value[resizeTargetKey];
 
   if (!presentSize || !presentPosition) {
     return;
@@ -2715,7 +2753,6 @@ async function triggerInsertElement() {
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
-type SocketLocationInfo = { center: Vector2d };
 const nodesLocationInfo = reactive<Record<string, IRect>>({});
 const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
 
@@ -2849,11 +2886,55 @@ const elements = computed(() => _.concat(nodes.value, groups.value));
 const sockets = computed(() =>
   _.compact(_.flatMap(elements.value, (i) => i.sockets)),
 );
-const edges = computed(() =>
-  componentsStore.diagramEdges
+
+type ToFrom = { to: Vector2d; from: Vector2d };
+const edges = computed(() => {
+  const points: ToFrom[] = [];
+  return componentsStore.diagramEdges
     .filter((e) => !e.isInferred)
-    .map((edgeDef) => new DiagramEdgeData(edgeDef)),
-);
+    .map((edgeDef) => new DiagramEdgeData(edgeDef))
+    .filter((e) => {
+      // filter out edges connected between components when one is not rendered
+      const collapsedIds = [...componentsStore.collapsedComponents].map((key) =>
+        key.substring(2),
+      );
+      const nodesNotDrawn = collapsedIds.flatMap((gId) => {
+        const group = componentsStore.componentsById[gId]!;
+        return allChildrenInGroup(group);
+      });
+
+      if (
+        nodesNotDrawn.includes(e.def.toComponentId) ||
+        nodesNotDrawn.includes(e.def.fromComponentId)
+      )
+        return false;
+      else return true;
+    })
+    .map((e) => {
+      e.fromPoint = getSocketLocationInfo("from", e);
+      e.toPoint = getSocketLocationInfo("to", e);
+      return e;
+    })
+    .filter((edge) => {
+      if (!edge.toPoint || !edge.fromPoint) return false;
+      const tf = { to: edge.toPoint.center, from: edge.fromPoint.center };
+      // filter out duplicate edges from collapsed items that connect the same two coordinates
+      if (
+        points.some(
+          (_tf) =>
+            _tf.to.x === tf.to.x &&
+            _tf.to.y === tf.to.y &&
+            _tf.from.x === tf.from.x &&
+            _tf.from.y === tf.from.y,
+        )
+      )
+        return false;
+      else {
+        points.push(tf);
+        return true;
+      }
+    });
+});
 
 // quick ways to look up specific element data from a unique key
 // const nodesByKey = computed(() => _.keyBy(nodes.value, (e) => e.uniqueKey));
@@ -2877,7 +2958,17 @@ const selectionRects = computed(() => {
   currentSelectionKeys.value.forEach((uniqueKey) => {
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
-    const rect = componentsStore.renderedGeometriesByComponentId[id];
+    let rect = componentsStore.renderedGeometriesByComponentId[id];
+    if (isGroup) {
+      const pos = componentsStore.combinedElementPositions[
+        uniqueKey
+      ] as Vector2d;
+      const size = componentsStore.combinedElementSizes[uniqueKey] as Size2D;
+      rect = {
+        ...pos,
+        ...size,
+      };
+    }
     if (rect) {
       const r = structuredClone(rect);
       r.x -= r.width / 2;

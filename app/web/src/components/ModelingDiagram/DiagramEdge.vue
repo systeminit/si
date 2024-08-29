@@ -154,12 +154,14 @@ const points = computed(() => {
     props.fromPoint,
     SOCKET_SIZE / 2,
   );
-  return [
+  const p = [
     fromPointWithGap.x,
     fromPointWithGap.y,
     toPointWithGap.x,
     toPointWithGap.y,
   ];
+  if (p.some((_p) => Number.isNaN(_p))) return;
+  return p;
 });
 
 const centerPoint = computed(() => {
