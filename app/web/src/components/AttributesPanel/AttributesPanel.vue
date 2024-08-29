@@ -25,6 +25,7 @@
         @blur="updateSiProp('name')"
         @keyup.enter="updateSiProp('name')"
       />
+      <!-- TODO(Wendy) - this always truncates and looks bad, perhaps an Icon with a DropdownMenu might be better? -->
       <div class="attributes-panel__type-dropdown">
         <select v-model="siValues.type" @change="updateComponentType()">
           <option :value="ComponentType.Component">Component</option>

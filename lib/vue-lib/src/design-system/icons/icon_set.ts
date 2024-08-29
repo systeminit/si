@@ -97,6 +97,17 @@ import Scissors from "~icons/clarity/scissors-solid";
 import Frame from "~icons/iconamoon/frame-light";
 import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
 import MaterialSymbolsStopCircleOutlineRounded from "~icons/material-symbols/stop-circle-outline-rounded";
+import MaterialSymbolsLightTouchpadMouseRounded from "~icons/material-symbols-light/touchpad-mouse";
+import IcBaselinePlusMinusAlt from "~icons/ic/baseline-plus-minus-alt";
+import MaterialSymbolsKeyboardCommandKey from "~icons/material-symbols/keyboard-command-key";
+import MaterialSymbolsKeyboardOptionKey from "~icons/material-symbols/keyboard-option-key";
+import PhArrowsOutCardinal from "~icons/ph/arrows-out-cardinal";
+import MaterialSymbolsSpaceBarRounded from "~icons/material-symbols/space-bar-rounded";
+import MdiKeyboardEsc from "~icons/mdi/keyboard-esc";
+import MaterialSymbolsBackspaceOutline from "~icons/material-symbols/backspace-outline";
+import IconoirMouseScrollWheel from "~icons/iconoir/mouse-scroll-wheel";
+import MdiCursorDefaultClickOutline from "~icons/mdi/cursor-default-click-outline";
+import MaterialSymbolsShiftLockOutline from "~icons/material-symbols/shift-lock-outline";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
 import PhTestTubeFill from "~icons/ph/test-tube-fill";
@@ -186,6 +197,8 @@ export const ICONS = Object.freeze({
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,
+  "arrows-out": PhArrowsOutCardinal,
+  backspace: MaterialSymbolsBackspaceOutline,
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,
@@ -207,6 +220,7 @@ export const ICONS = Object.freeze({
   "circle-full": MdiCheckboxBlankCircle,
   "circle-slash": CircleSlash,
   "circle-stop": MaterialSymbolsStopCircleOutlineRounded,
+  click: MdiCursorDefaultClickOutline,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   cloud: Cloud,
@@ -217,6 +231,7 @@ export const ICONS = Object.freeze({
   "code-pop": CodePop,
   "code-pop-square": CodePopSquare,
   "collapse-row": CollapseAll,
+  command: MaterialSymbolsKeyboardCommandKey,
   component: Cube,
   "component-plus": CubePlus,
   create: Create,
@@ -232,6 +247,7 @@ export const ICONS = Object.freeze({
   edit: Pencil,
   "empty-square": EmptySquare,
   erase: Eraser,
+  esc: MdiKeyboardEsc,
   "exclamation-circle": ExclamationCircle,
   "expand-row": ExpandAll,
   "external-link": ExternalLink,
@@ -265,9 +281,12 @@ export const ICONS = Object.freeze({
   "minus-hex-outline": MinusHexOutline,
   "minus-square": MinusSquare,
   moon: Moon,
+  "mouse-and-touchpad": MaterialSymbolsLightTouchpadMouseRounded,
+  "mouse-scroll": IconoirMouseScrollWheel,
   multiselect: Boxes,
   "nested-arrow-right": NestedArrowRight,
   none: EmptyIcon,
+  option: MaterialSymbolsKeyboardOptionKey,
   password: Password,
   play: Play,
   plug: Plug,
@@ -275,6 +294,7 @@ export const ICONS = Object.freeze({
   "plus-circle": PlusCircle,
   "plus-hex": PlusHex,
   "plus-hex-outline": PlusHexOutline,
+  "plus-minus": IcBaselinePlusMinusAlt,
   "plus-square": PlusSquare,
   "question-circle": QuestionMarkCircle,
   "question-hex-outline": QuestionHexOutline,
@@ -288,9 +308,11 @@ export const ICONS = Object.freeze({
   search: Search,
   selector: Selector,
   settings: Gear,
+  shift: MaterialSymbolsShiftLockOutline,
   show: Eye,
   slash: SlashForward,
   "sliders-vertical": SlidersVertical,
+  spacebar: MaterialSymbolsSpaceBarRounded,
   star: Star,
   sun: Sun,
   "test-tube": PhTestTubeFill,

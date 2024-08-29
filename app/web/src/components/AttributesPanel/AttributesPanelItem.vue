@@ -297,7 +297,7 @@
             validation && validation.status !== 'Success',
           'my-1': validation && validation.status !== 'Success',
         }"
-        class="attributes-panel-item__input-wrap"
+        class="attributes-panel-item__input-wrap group/input"
         @mouseleave="onHoverEnd"
         @mouseover="onHoverStart"
       >
@@ -310,15 +310,21 @@
           size="sm"
         />
         <Icon
-          v-if="
-            sourceOverridden &&
-            currentValue !== null &&
-            !propPopulatedBySocket &&
-            !propControlledByParent
-          "
-          class="attributes-panel-item__unset-button"
+          v-if="unsetButtonShow"
+          class="attributes-panel-item__unset-button peer"
           name="x-circle"
           @click="unsetHandler"
+        />
+        <Icon
+          v-if="validation"
+          :class="
+            clsx(
+              'absolute top-[2px]',
+              unsetButtonShow ? 'group-hover/input:right-6 right-0' : 'right-0',
+            )
+          "
+          :name="validation?.status === 'Success' ? 'check' : 'x'"
+          :tone="validation?.status === 'Success' ? 'success' : 'error'"
         />
         <template v-if="propKind === 'integer'">
           <input
@@ -468,23 +474,21 @@
           @click="openConfirmEditModal"
         />
       </div>
-
-      <Icon
-        v-if="validation?.status === 'Success'"
-        class="mr-2"
-        name="check"
-        tone="success"
-      />
-      <Icon v-else-if="validation" class="mr-2" name="x" tone="error" />
     </div>
 
     <!-- VALIDATION DETAILS -->
     <div
       v-if="showValidationDetails && validation"
       :style="{ marginLeft: indentPx }"
-      class="flex flex-col pl-3 border pb-1 m-2 text-destructive-500 border-destructive-500 bg-destructive-100 dark:text-destructive-900 dark:border-destructive-900 dark:bg-destructive-500"
+      :class="
+        clsx(
+          'attributes-panel-item__validation-details flex flex-col p-2xs border mx-xs text-xs translate-y-[-5px]',
+          'text-destructive-500 border-destructive-500',
+          themeClasses('bg-destructive-100', 'bg-neutral-900'),
+        )
+      "
     >
-      <p class="my-3">{{ validation.message }}</p>
+      {{ validation.message }}
 
       <!-- no more logs <span
         v-for="(output, index) in validation.logs"
@@ -685,6 +689,14 @@ const shouldBeHidden = (item: AttributeTreeItem) => {
 };
 
 const isHidden = computed(() => shouldBeHidden(props.attributeDef));
+
+const unsetButtonShow = computed(
+  () =>
+    sourceOverridden.value &&
+    currentValue.value !== null &&
+    !propPopulatedBySocket.value &&
+    !propControlledByParent.value,
+);
 
 const numberOfHiddenChildren = computed(() => {
   let count = 0;
@@ -1718,5 +1730,9 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 .attributes-panel-item__static-icons > * {
   cursor: pointer;
+}
+
+.attributes-panel-item__validation-details {
+  font-family: monospace;
 }
 </style>

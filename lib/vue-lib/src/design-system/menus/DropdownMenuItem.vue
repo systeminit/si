@@ -6,8 +6,9 @@
     ref="internalRef"
     :class="
       clsx(
-        'flex gap-xs items-center cursor-pointer children:pointer-events-none select-none',
+        'flex gap-xs items-center cursor-pointer select-none group',
         noInteract && 'text-gray-500',
+        !endLinkTo && 'children:pointer-events-none',
         header
           ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'
           : 'rounded-sm',
@@ -33,7 +34,12 @@
     @mouseleave="onMouseLeave"
     @click="onClick"
   >
-    <Toggle v-if="toggleIcon" :selected="checked || false" size="sm" />
+    <Toggle
+      v-if="toggleIcon"
+      :selected="checked || false"
+      size="sm"
+      class="pointer-events-none"
+    />
     <Icon
       v-else-if="menuCtx.isCheckable.value"
       :name="checked ? 'check' : 'none'"
@@ -45,16 +51,28 @@
         v-if="icon"
         :name="icon"
         size="sm"
-        :class="clsx('shrink-0', props.iconClass ? props.iconClass : '')"
+        :class="
+          clsx(
+            'shrink-0 pointer-events-none',
+            props.iconClass ? props.iconClass : '',
+          )
+        "
       />
     </slot>
 
-    <div ref="labelRef" class="capsize max-w-[220px] shrink-0">
+    <div
+      ref="labelRef"
+      class="capsize max-w-[220px] shrink-0 pointer-events-none"
+    >
       <div class="truncate">
         <slot>{{ label }}</slot>
       </div>
     </div>
-    <div class="pl-md capsize text-xs ml-auto shrink-0">
+    <div
+      :class="
+        clsx('ml-auto shrink-0', shortcut && !endLinkTo && 'capsize text-xs')
+      "
+    >
       <template v-if="submenuItems && submenuItems.length > 0">
         <Icon name="chevron--right" size="sm" />
         <DropdownMenu
@@ -65,6 +83,24 @@
           :items="submenuItems"
         />
       </template>
+
+      <div
+        v-else-if="endLinkTo"
+        :class="
+          clsx(
+            'text-action-300 group-hover:text-shade-0 group-hover:hover:text-action-300',
+            'font-bold hover:underline',
+          )
+        "
+        @mouseenter="onMouseEnterEndLink"
+        @mouseleave="onMouseLeaveEndLink"
+        @mousedown="onClickEndLink"
+      >
+        <slot name="endLinkLabel">
+          <div v-if="endLinkLabel">{{ endLinkLabel }}</div>
+          <Icon v-else name="link" />
+        </slot>
+      </div>
       <template v-else-if="shortcut">
         {{ shortcut }}
       </template>
@@ -81,7 +117,7 @@ import {
   onMounted,
   ref,
 } from "vue";
-import { RouterLink } from "vue-router";
+import { RouteLocationRaw, RouterLink, useRouter } from "vue-router";
 import Icon from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
 import DropdownMenu, { useDropdownMenuContext } from "./DropdownMenu.vue";
@@ -110,6 +146,8 @@ export interface DropdownMenuItemProps {
   doNotCloseMenuOnClick?: boolean;
 
   shortcut?: string;
+  endLinkLabel?: string;
+  endLinkTo?: string | RouteLocationRaw;
 
   insideSubmenu?: boolean;
   submenuItems?: DropdownMenuItemProps[];
@@ -134,6 +172,8 @@ const id = `dropdown-menu-item-${idCounter++}`;
 
 const submenuRef = ref<InstanceType<typeof DropdownMenu> | null>(null);
 const submenuTimeout = ref();
+
+const router = useRouter();
 
 const noCloseOnClick = computed(
   () =>
@@ -244,6 +284,20 @@ const openSubmenu = () => {
 const closeSubmenu = () => {
   if (submenuRef.value) submenuRef.value.close(false, false);
 };
+
+function onMouseEnterEndLink() {
+  menuCtx.focusOnItem();
+}
+
+function onMouseLeaveEndLink() {
+  menuCtx.focusOnItem(id);
+}
+
+async function onClickEndLink() {
+  if (props.endLinkTo) {
+    await router.push(props.endLinkTo);
+  }
+}
 
 defineExpose({ domRef: internalRef });
 </script>
