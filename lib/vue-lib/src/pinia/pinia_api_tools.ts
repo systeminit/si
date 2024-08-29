@@ -443,7 +443,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           store.$patch((state) => {
             if (err.response) {
               state.apiRequestStatuses[trackingKey].error = err.response;
-              span.setAttributes({ "http.status_code": err.response.status });
             } else {
               // if error was not http error or had no response body
               // we still want some kind of fallback message to show
@@ -462,6 +461,8 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           completed.resolve({
             error: err,
           });
+          span.setAttributes({ "http.status_code": err.response.status });
+          span.end();
           return await completed.promise;
         }
       });
