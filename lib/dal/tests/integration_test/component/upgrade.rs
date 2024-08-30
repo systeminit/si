@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
 use dal::diagram::Diagram;
@@ -8,10 +6,12 @@ use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, ComponentType, DalContext, Prop};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
-use dal_test::helpers::create_component_for_default_schema_name;
+use dal_test::helpers::{create_component_for_default_schema_name, PropEditorTestView};
 use dal_test::test;
+use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
-
+use serde_json::json;
+use std::collections::VecDeque;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
 
 // Components that exist on the unlocked variant get auto upgraded when it gets regenerated
@@ -463,6 +463,208 @@ async fn create_unlocked_schema_variant_after_component_changes_component_type(
         ComponentType::ConfigurationFrameUp,
         copy.get_type(ctx).await
     );
+}
+
+#[test]
+async fn upgrade_array_of_objects(ctx: &mut DalContext) {
+    let variant_code = r#"
+    function main() {
+        const networkInterfacesProp = new PropBuilder()
+            .setKind("array")
+            .setName("things")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("array").build())
+            .setEntry(new PropBuilder()
+                .setKind("object")
+                .setName("thing")
+                .addChild(new PropBuilder()
+                    .setKind("string")
+                    .setName("description")
+                    .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                    .build())
+                .build())
+            .build()
+        return new AssetBuilder()
+            .addProp(networkInterfacesProp)
+            .build();
+     }"#;
+
+    let variant_zero = VariantAuthoringClient::create_schema_and_variant_from_code(
+        ctx,
+        "withArrayOfObjects",
+        None,
+        None,
+        "Integration Tests",
+        "#00b0b0",
+        variant_code,
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let my_asset_schema = variant_zero
+        .schema(ctx)
+        .await
+        .expect("Unable to get the schema for the variant");
+
+    // Create a component, add fields to array, set values
+    let component = create_component_for_default_schema_name(
+        ctx,
+        my_asset_schema.name.clone(),
+        "demo component",
+    )
+    .await
+    .expect("could not create component");
+
+    let things_path = &["root", "domain", "things"];
+    let things_av_id = component
+        .attribute_values_for_prop(ctx, things_path)
+        .await
+        .expect("find value ids for the prop things")
+        .pop()
+        .expect("there should only be one value id");
+
+    let mut description_av_ids = vec![];
+    let description_values = ["A", "B", "C"]
+        .into_iter()
+        .map(|str| json!(str))
+        .collect_vec();
+    for value in &description_values {
+        let thing_av = AttributeValue::insert(ctx, things_av_id, None, None)
+            .await
+            .expect("unable to add field to array");
+
+        let description_av_id = AttributeValue::all_object_children_to_leaves(ctx, thing_av)
+            .await
+            .expect("could not get child of thing")
+            .pop()
+            .expect("thing should have a child");
+
+        AttributeValue::update(ctx, description_av_id, Some(value.to_owned()))
+            .await
+            .expect("could not update thing description");
+
+        description_av_ids.push(description_av_id);
+    }
+
+    // Check that values were set successfully
+    for index in 0..2 {
+        let index_str = index.to_string();
+        let value_path = ["root", "domain", "things", &index_str, "description"];
+        PropEditorTestView::for_component_id(ctx, component.id())
+            .await
+            .expect("could not get property editor test view")
+            .get_value(&value_path)
+            .expect("could not get description value");
+
+        let value = description_values
+            .get(index)
+            .expect("unable to get reference value")
+            .to_owned();
+
+        let av_id = description_av_ids
+            .get(index)
+            .expect("unable to get reference av id")
+            .to_owned();
+
+        let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+            .await
+            .expect("get prop_id for attribute value");
+
+        std::assert_eq!(
+            json![{
+                "id": av_id,
+                "propId": prop_id,
+                "key": null,
+                "value": value,
+                "validation": null,
+                "canBeSetBySocket": false,
+                "isFromExternalSource": false,
+                "isControlledByAncestor": false,
+                "isControlledByDynamicFunc": false,
+                "overridden": true
+            }], // expected
+            PropEditorTestView::for_component_id(ctx, component.id())
+                .await
+                .expect("could not get property editor test view")
+                .get_value(&value_path)
+                .expect("could not get value")
+        );
+    }
+
+    // Regenerate, check that the fields in the component are still there and with the correct values
+    VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id())
+        .await
+        .expect("unable to update asset");
+
+    // Since the variant was regenerated, we need to gather the description av ids back
+    let upgraded_component = Component::get_by_id(ctx, component.id())
+        .await
+        .expect("unable to find component after regeneration");
+
+    let things_av_id = upgraded_component
+        .attribute_values_for_prop(ctx, things_path)
+        .await
+        .expect("find value ids for the prop things")
+        .pop()
+        .expect("there should only be one value id");
+
+    let mut regenerated_description_av_ids = vec![];
+    for thing_av in AttributeValue::get_child_av_ids_in_order(ctx, things_av_id)
+        .await
+        .expect("unable to get thing av ids")
+    {
+        let description_av_id = AttributeValue::all_object_children_to_leaves(ctx, thing_av)
+            .await
+            .expect("could not get child of thing")
+            .pop()
+            .expect("thing should have a child");
+
+        regenerated_description_av_ids.push(description_av_id);
+    }
+
+    // Check that the values are there on the regenerated component
+    for index in 0..3 {
+        let index_str = index.to_string();
+        let value_path = ["root", "domain", "things", &index_str, "description"];
+        PropEditorTestView::for_component_id(ctx, upgraded_component.id())
+            .await
+            .expect("could not get property editor test view")
+            .get_value(&value_path)
+            .expect("could not get description value");
+
+        let value = description_values
+            .get(index)
+            .expect("unable to get reference value")
+            .to_owned();
+
+        let av_id = regenerated_description_av_ids
+            .get(index)
+            .expect("unable to get reference av id")
+            .to_owned();
+
+        let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+            .await
+            .expect("get prop_id for attribute value");
+
+        std::assert_eq!(
+            json![{
+                "id": av_id,
+                "propId": prop_id,
+                "key": null,
+                "value": value,
+                "validation": null,
+                "canBeSetBySocket": false,
+                "isFromExternalSource": false,
+                "isControlledByAncestor": false,
+                "isControlledByDynamicFunc": false,
+                "overridden": true
+            }], // expected
+            PropEditorTestView::for_component_id(ctx, upgraded_component.id())
+                .await
+                .expect("could not get property editor test view")
+                .get_value(&value_path)
+                .expect("could not get value")
+        );
+    }
 }
 
 async fn update_schema_variant_component_type(
