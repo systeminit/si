@@ -72,7 +72,9 @@ start_and_track_ssm_session() {
 # Function to start an interactive SSM session with any given instance
 start_interactive_ssm_session() {
   instance_id=$1
-  aws ssm start-session --target "$instance_id" --document-name AWS-StartInteractiveCommand --parameters command="bash -l"
+  name=$2
+  aws ssm start-session --target "$instance_id" --document-name AWS-StartInteractiveCommand --parameters \
+    "{\"command\": [\"PS1=\\\"\\\\u@\\\\h \\\\e[32m$name\\\\e[0m > \\\" bash -l\"]}"
 }
 
 # Function to check command status
