@@ -128,13 +128,14 @@ impl VariantAuthoringClient {
     /// Creates a [`SchemaVariant`] and returns the [result](SchemaVariant).
     #[instrument(name = "variant.authoring.create_variant", level = "info", skip_all)]
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_schema_and_variant(
+    pub async fn create_schema_and_variant_from_code(
         ctx: &DalContext,
         name: impl Into<String>,
         description: Option<String>,
         link: Option<String>,
         category: impl Into<String>,
         color: impl Into<String>,
+        code: impl AsRef<str>,
     ) -> VariantAuthoringResult<SchemaVariant> {
         let name = name.into();
         if Schema::is_name_taken(ctx, &name).await? {
@@ -143,7 +144,7 @@ impl VariantAuthoringClient {
 
         let variant_version = SchemaVariant::generate_version_string();
 
-        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(DEFAULT_ASSET_CODE);
+        let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.as_ref());
         let asset_func = Func::new(
             ctx,
             generate_scaffold_func_name(&name),
@@ -200,6 +201,26 @@ impl VariantAuthoringClient {
             .ok_or(VariantAuthoringError::NoAssetCreated)?;
 
         Ok(SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?)
+    }
+
+    pub async fn create_schema_and_variant(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        description: Option<String>,
+        link: Option<String>,
+        category: impl Into<String>,
+        color: impl Into<String>,
+    ) -> VariantAuthoringResult<SchemaVariant> {
+        Self::create_schema_and_variant_from_code(
+            ctx,
+            name,
+            description,
+            link,
+            category,
+            color,
+            DEFAULT_ASSET_CODE,
+        )
+        .await
     }
 
     #[instrument(

@@ -33,7 +33,7 @@ pub async fn insert_property_editor_value(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let _ = AttributeValue::insert(
+    AttributeValue::insert(
         &ctx,
         request.parent_attribute_value_id,
         request.value,
