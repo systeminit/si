@@ -17,13 +17,13 @@ use crate::{
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
-use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeWeight};
+use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeHash, NodeWeight};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     /// The unprocessed return value is the "real" result, unprocessed for any other behavior.
     /// This is potentially-maybe-only-kinda-sort-of(?) useful for non-scalar values.
     /// Example: a populated array.
@@ -49,6 +49,10 @@ impl AttributeValueNodeWeight {
         }
     }
 
+    pub fn id(&self) -> Ulid {
+        self.id
+    }
+
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
         let mut hashes = vec![];
 
@@ -60,10 +64,6 @@ impl AttributeValueNodeWeight {
         }
 
         hashes
-    }
-
-    pub fn id(&self) -> Ulid {
-        self.id
     }
 
     pub fn unprocessed_value(&self) -> Option<ContentAddress> {
@@ -82,27 +82,8 @@ impl AttributeValueNodeWeight {
         self.value = value
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn content_hash(&self) -> ContentHash {
         self.node_hash()
-    }
-
-    pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "unprocessed_value": self.unprocessed_value,
-            "value": self.value,
-        }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
@@ -111,6 +92,15 @@ impl AttributeValueNodeWeight {
             EdgeWeightKindDiscriminants::Prop,
             EdgeWeightKindDiscriminants::Socket,
         ]
+    }
+}
+
+impl NodeHash for AttributeValueNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        ContentHash::from(&serde_json::json![{
+            "unprocessed_value": self.unprocessed_value,
+            "value": self.value,
+        }])
     }
 }
 

@@ -18,11 +18,7 @@ use crate::{
 };
 
 use super::{
-    category_node_weight::CategoryNodeKind,
-    traits::CorrectTransformsResult,
-    NodeWeight,
-    NodeWeightDiscriminants::{self, Component},
-    NodeWeightError, NodeWeightResult,
+    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeHash, NodeWeight, NodeWeightDiscriminants::{self, Component}, NodeWeightError, NodeWeightResult
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -30,7 +26,7 @@ pub struct ComponentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     to_delete: bool,
 }
 
@@ -61,14 +57,6 @@ impl ComponentNodeWeight {
         self.id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn to_delete(&self) -> bool {
         self.to_delete
     }
@@ -94,17 +82,6 @@ impl ComponentNodeWeight {
         Ok(())
     }
 
-    pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "content_address": self.content_address,
-            "to_delete": self.to_delete,
-        }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
     pub fn overwrite_id(&mut self, id: Ulid) {
         self.id = id
     }
@@ -118,6 +95,15 @@ impl ComponentNodeWeight {
             EdgeWeightKindDiscriminants::Use,
             EdgeWeightKindDiscriminants::Root,
         ]
+    }
+}
+
+impl NodeHash for ComponentNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        ContentHash::from(&serde_json::json![{
+            "content_address": self.content_address,
+            "to_delete": self.to_delete,
+        }])
     }
 }
 

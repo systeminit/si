@@ -12,12 +12,14 @@ use crate::workspace_snapshot::{
 };
 use crate::EdgeWeightKindDiscriminants;
 
+use super::NodeHash;
+
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     name: String,
     func_kind: FuncKind,
 }
@@ -56,14 +58,6 @@ impl FuncNodeWeight {
         self.id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -98,20 +92,18 @@ impl FuncNodeWeight {
         Ok(())
     }
 
-    pub fn node_hash(&self) -> ContentHash {
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
+    }
+}
+
+impl NodeHash for FuncNodeWeight {
+    fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "name": self.name,
             "func_kind": self.func_kind,
         }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
     }
 }
 

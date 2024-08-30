@@ -7,6 +7,8 @@ use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::traits::CorrectTransforms;
 use crate::EdgeWeightKindDiscriminants;
 
+use super::NodeHash;
+
 /// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
 /// assume the new categories already exists on the graph. In places where you need to access the
 /// category, check if it exists, and if it doesn't exist, create it (if it makes sense to do so in
@@ -30,7 +32,7 @@ pub struct CategoryNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     kind: CategoryNodeKind,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
 }
 
 impl CategoryNodeWeight {
@@ -50,18 +52,6 @@ impl CategoryNodeWeight {
         self.kind
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
     pub fn new(id: Ulid, lineage_id: Ulid, kind: CategoryNodeKind) -> Self {
         Self {
             id,
@@ -71,12 +61,14 @@ impl CategoryNodeWeight {
         }
     }
 
-    pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![self.kind])
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
+    }
+}
+
+impl NodeHash for CategoryNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        ContentHash::from(&serde_json::json![self.kind])
     }
 }
 

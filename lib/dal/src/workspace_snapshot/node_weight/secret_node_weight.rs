@@ -18,14 +18,14 @@ use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
 use super::category_node_weight::CategoryNodeKind;
 use super::traits::CorrectTransformsResult;
-use super::NodeWeight;
+use super::{NodeHash, NodeWeight};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     encrypted_secret_key: EncryptedSecretKey,
 }
 
@@ -61,14 +61,6 @@ impl SecretNodeWeight {
         self.id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn encrypted_secret_key(&self) -> EncryptedSecretKey {
         self.encrypted_secret_key
     }
@@ -97,19 +89,17 @@ impl SecretNodeWeight {
         Ok(())
     }
 
-    pub fn node_hash(&self) -> ContentHash {
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
+    }
+}
+
+impl NodeHash for SecretNodeWeight {
+    fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "encrypted_secret_key": self.encrypted_secret_key,
         }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
     }
 }
 

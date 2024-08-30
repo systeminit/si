@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::traits::CorrectTransformsError;
-use super::{NodeWeight, NodeWeightError};
+use super::{NodeHash, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
 use crate::workspace_snapshot::graph::detect_updates::Update;
 use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
@@ -17,7 +17,7 @@ pub struct OrderingNodeWeight {
     pub lineage_id: Ulid,
     /// The `id` of the items, in the order that they should appear in the container.
     order: Vec<Ulid>,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
 }
 
 impl OrderingNodeWeight {
@@ -33,14 +33,6 @@ impl OrderingNodeWeight {
         self.id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn new(id: Ulid, lineage_id: Ulid) -> Self {
         Self {
             id,
@@ -49,22 +41,8 @@ impl OrderingNodeWeight {
         }
     }
 
-    pub fn node_hash(&self) -> ContentHash {
-        let mut content_hasher = ContentHash::hasher();
-        for id in &self.order {
-            let bytes = id.inner().to_bytes();
-            content_hasher.update(&bytes);
-        }
-
-        content_hasher.finalize()
-    }
-
     pub fn order(&self) -> &Vec<Ulid> {
         &self.order
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
     }
 
     pub fn set_order(&mut self, order: Vec<Ulid>) {
@@ -97,6 +75,18 @@ impl OrderingNodeWeight {
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
+    }
+}
+
+impl NodeHash for OrderingNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        let mut content_hasher = ContentHash::hasher();
+        for id in &self.order {
+            let bytes = id.inner().to_bytes();
+            content_hasher.update(&bytes);
+        }
+
+        content_hasher.finalize()
     }
 }
 

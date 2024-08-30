@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use strum::EnumDiscriminants;
 use thiserror::Error;
-use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
 
 use crate::{
     action::prototype::ActionKind,
@@ -55,6 +54,8 @@ pub mod secret_node_weight;
 pub mod traits;
 
 pub mod deprecated;
+
+pub use traits::*;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -106,64 +107,24 @@ pub enum NodeWeight {
     FinishedDependentValueRoot(FinishedDependentValueRootNodeWeight),
 }
 
+impl_discriminated_node_weight! {
+    Action(ActionNodeWeight),
+    ActionPrototype(ActionPrototypeNodeWeight),
+    AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight),
+    AttributeValue(AttributeValueNodeWeight),
+    Category(CategoryNodeWeight),
+    Component(ComponentNodeWeight),
+    Content(ContentNodeWeight),
+    DependentValueRoot(DependentValueRootNodeWeight),
+    Func(FuncNodeWeight),
+    FuncArgument(FuncArgumentNodeWeight),
+    Ordering(OrderingNodeWeight),
+    Prop(PropNodeWeight),
+    Secret(SecretNodeWeight),
+    FinishedDependentValueRoot(FinishedDependentValueRootNodeWeight)
+}
+
 impl NodeWeight {
-    pub fn content_hash(&self) -> ContentHash {
-        match self {
-            NodeWeight::Action(weight) => weight.content_hash(),
-            NodeWeight::ActionPrototype(weight) => weight.content_hash(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.content_hash(),
-            NodeWeight::AttributeValue(weight) => weight.content_hash(),
-            NodeWeight::Category(weight) => weight.content_hash(),
-            NodeWeight::Component(weight) => weight.content_hash(),
-            NodeWeight::Content(weight) => weight.content_hash(),
-            NodeWeight::Func(weight) => weight.content_hash(),
-            NodeWeight::FuncArgument(weight) => weight.content_hash(),
-            NodeWeight::Ordering(weight) => weight.content_hash(),
-            NodeWeight::Prop(weight) => weight.content_hash(),
-            NodeWeight::Secret(weight) => weight.content_hash(),
-            NodeWeight::DependentValueRoot(weight) => weight.content_hash(),
-            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_hash(),
-        }
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        match self {
-            NodeWeight::Action(weight) => weight.content_store_hashes(),
-            NodeWeight::ActionPrototype(weight) => weight.content_store_hashes(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.content_store_hashes(),
-            NodeWeight::AttributeValue(weight) => weight.content_store_hashes(),
-            NodeWeight::Category(weight) => weight.content_store_hashes(),
-            NodeWeight::Component(weight) => weight.content_store_hashes(),
-            NodeWeight::Content(weight) => weight.content_store_hashes(),
-            NodeWeight::Func(weight) => weight.content_store_hashes(),
-            NodeWeight::FuncArgument(weight) => weight.content_store_hashes(),
-            NodeWeight::Ordering(weight) => weight.content_store_hashes(),
-            NodeWeight::Prop(weight) => weight.content_store_hashes(),
-            NodeWeight::Secret(weight) => weight.content_store_hashes(),
-            NodeWeight::DependentValueRoot(weight) => weight.content_store_hashes(),
-            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_store_hashes(),
-        }
-    }
-
-    pub fn content_address_discriminants(&self) -> Option<ContentAddressDiscriminants> {
-        match self {
-            NodeWeight::Content(weight) => Some(weight.content_address().into()),
-            NodeWeight::Action(_)
-            | NodeWeight::ActionPrototype(_)
-            | NodeWeight::AttributePrototypeArgument(_)
-            | NodeWeight::AttributeValue(_)
-            | NodeWeight::Category(_)
-            | NodeWeight::Component(_)
-            | NodeWeight::Func(_)
-            | NodeWeight::FuncArgument(_)
-            | NodeWeight::Ordering(_)
-            | NodeWeight::Prop(_)
-            | NodeWeight::Secret(_)
-            | NodeWeight::DependentValueRoot(_)
-            | NodeWeight::FinishedDependentValueRoot(_) => None,
-        }
-    }
-
     pub fn id(&self) -> Ulid {
         match self {
             NodeWeight::Action(weight) => weight.id(),
@@ -282,22 +243,22 @@ impl NodeWeight {
         }
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
         match self {
-            NodeWeight::Component(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::Content(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::Func(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::Secret(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::Action(_)
-            | NodeWeight::ActionPrototype(_)
-            | NodeWeight::AttributePrototypeArgument(_)
-            | NodeWeight::AttributeValue(_)
-            | NodeWeight::Category(_)
-            | NodeWeight::DependentValueRoot(_)
-            | NodeWeight::FinishedDependentValueRoot(_)
-            | NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+            NodeWeight::Action(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::ActionPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::AttributeValue(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Category(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Component(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Content(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Func(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::FuncArgument(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Ordering(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Prop(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Secret(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::DependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::FinishedDependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -323,22 +284,80 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
+    // TODO make this Option<>
+    pub fn content_hash(&self) -> ContentHash {
         match self {
-            NodeWeight::Action(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::ActionPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::AttributeValue(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Category(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Component(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Content(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Func(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::FuncArgument(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Ordering(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Prop(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::Secret(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::DependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
-            NodeWeight::FinishedDependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Action(weight) => weight.node_hash(),
+            NodeWeight::ActionPrototype(weight) => weight.content_hash(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.content_hash(),
+            NodeWeight::AttributeValue(weight) => weight.content_hash(),
+            NodeWeight::Category(weight) => weight.content_hash(),
+            NodeWeight::Component(weight) => weight.content_hash(),
+            NodeWeight::Content(weight) => weight.content_hash(),
+            NodeWeight::Func(weight) => weight.content_hash(),
+            NodeWeight::FuncArgument(weight) => weight.content_hash(),
+            NodeWeight::Ordering(weight) => weight.content_hash(),
+            NodeWeight::Prop(weight) => weight.content_hash(),
+            NodeWeight::Secret(weight) => weight.content_hash(),
+            NodeWeight::DependentValueRoot(weight) => weight.content_hash(),
+            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_hash(),
+        }
+    }
+
+    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
+        match self {
+            NodeWeight::Action(_) => vec![],
+            NodeWeight::ActionPrototype(weight) => weight.content_store_hashes(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.content_store_hashes(),
+            NodeWeight::AttributeValue(weight) => weight.content_store_hashes(),
+            NodeWeight::Category(weight) => weight.content_store_hashes(),
+            NodeWeight::Component(weight) => weight.content_store_hashes(),
+            NodeWeight::Content(weight) => weight.content_store_hashes(),
+            NodeWeight::Func(weight) => weight.content_store_hashes(),
+            NodeWeight::FuncArgument(weight) => weight.content_store_hashes(),
+            NodeWeight::Ordering(weight) => weight.content_store_hashes(),
+            NodeWeight::Prop(weight) => weight.content_store_hashes(),
+            NodeWeight::Secret(weight) => weight.content_store_hashes(),
+            NodeWeight::DependentValueRoot(weight) => weight.content_store_hashes(),
+            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_store_hashes(),
+        }
+    }
+
+    pub fn content_address_discriminants(&self) -> Option<ContentAddressDiscriminants> {
+        match self {
+            NodeWeight::Content(weight) => Some(weight.content_address().into()),
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::AttributePrototypeArgument(_)
+            | NodeWeight::AttributeValue(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::Component(_)
+            | NodeWeight::Func(_)
+            | NodeWeight::FuncArgument(_)
+            | NodeWeight::Ordering(_)
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::FinishedDependentValueRoot(_) => None,
+        }
+    }
+
+    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Component(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Content(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Func(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Secret(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::AttributePrototypeArgument(_)
+            | NodeWeight::AttributeValue(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::FinishedDependentValueRoot(_)
+            | NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
         }
     }
 
@@ -794,6 +813,26 @@ impl CorrectTransforms for NodeWeight {
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
+    }
+}
+
+impl AnyNodeWeight for NodeWeight {
+    fn id(&self) -> Ulid { self.id() }
+    fn lineage_id(&self) -> Ulid { self.lineage_id() }
+    fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+        self.set_id_and_lineage(id, lineage_id)
+    }
+
+    fn merkle_tree_hash(&self) -> MerkleTreeHash { self.merkle_tree_hash() }
+
+    fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
+        self.set_merkle_tree_hash(new_hash)
+    }
+}
+
+impl NodeHash for NodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        self.node_hash()
     }
 }
 

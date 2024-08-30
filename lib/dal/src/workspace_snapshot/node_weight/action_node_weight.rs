@@ -8,13 +8,13 @@ use crate::{
     action::ActionState,
     workspace_snapshot::{
         graph::{deprecated::v1::DeprecatedActionNodeWeightV1, detect_updates::Update, LineageId},
-        node_weight::{traits::CorrectTransforms, NodeWeight},
+        node_weight::{CorrectTransforms, CorrectTransformsResult, NodeWeight},
         NodeId, NodeInformation,
     },
     ChangeSetId, EdgeWeightKindDiscriminants, NodeWeightDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
-use super::traits::CorrectTransformsResult;
+use super::NodeHash;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionNodeWeight {
@@ -22,7 +22,7 @@ pub struct ActionNodeWeight {
     state: ActionState,
     originating_change_set_id: ChangeSetId,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
 }
 
 impl ActionNodeWeight {
@@ -34,14 +34,6 @@ impl ActionNodeWeight {
             lineage_id,
             merkle_tree_hash: MerkleTreeHash::default(),
         }
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.node_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![]
     }
 
     pub fn id(&self) -> Ulid {
@@ -60,29 +52,19 @@ impl ActionNodeWeight {
         self.originating_change_set_id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
     }
+}
 
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
-    pub fn node_hash(&self) -> ContentHash {
+impl NodeHash for ActionNodeWeight {
+    fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "id": self.id,
             "lineage_id": self.lineage_id,
             "state": self.state,
             "originating_changeset_id": self.originating_change_set_id,
         }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
     }
 }
 

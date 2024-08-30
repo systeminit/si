@@ -8,6 +8,8 @@ use crate::{
     EdgeWeightKindDiscriminants,
 };
 
+use super::NodeHash;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionPrototypeNodeWeight {
     pub id: Ulid,
@@ -17,7 +19,7 @@ pub struct ActionPrototypeNodeWeight {
     // TODO: Move behind ContentHash, and out of the node weight directly.
     description: Option<String>,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
 }
 
 impl ActionPrototypeNodeWeight {
@@ -41,16 +43,16 @@ impl ActionPrototypeNodeWeight {
         }
     }
 
+    pub fn id(&self) -> Ulid {
+        self.id
+    }
+
     pub fn content_hash(&self) -> ContentHash {
         self.node_hash()
     }
 
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
         vec![]
-    }
-
-    pub fn id(&self) -> Ulid {
-        self.id
     }
 
     pub fn kind(&self) -> ActionKind {
@@ -65,29 +67,19 @@ impl ActionPrototypeNodeWeight {
         self.description.as_deref()
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[EdgeWeightKindDiscriminants::Use]
     }
+}
 
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
-    pub fn node_hash(&self) -> ContentHash {
+impl NodeHash for ActionPrototypeNodeWeight {
+    fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "id": self.id,
             "kind": self.kind,
             "name": self.name,
             "description": self.description,
         }])
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[EdgeWeightKindDiscriminants::Use]
     }
 }
 

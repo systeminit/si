@@ -14,12 +14,14 @@ use crate::{
     PropKind,
 };
 
+use super::NodeHash;
+
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PropNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
     content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     kind: PropKind,
     name: String,
     can_be_used_as_prototype_arg: bool,
@@ -72,18 +74,6 @@ impl PropNodeWeight {
         self.id
     }
 
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -104,16 +94,18 @@ impl PropNodeWeight {
         Ok(())
     }
 
-    pub fn node_hash(&self) -> ContentHash {
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
+    }
+}
+
+impl NodeHash for PropNodeWeight {
+    fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "kind": self.kind,
             "name": self.name,
         }])
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
     }
 }
 

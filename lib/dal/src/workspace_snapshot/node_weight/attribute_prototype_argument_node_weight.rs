@@ -9,6 +9,8 @@ use crate::{
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
+use super::NodeHash;
+
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -21,7 +23,7 @@ pub struct ArgumentTargets {
 pub struct AttributePrototypeArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     targets: Option<ArgumentTargets>,
     timestamp: Timestamp,
 }
@@ -35,6 +37,10 @@ impl AttributePrototypeArgumentNodeWeight {
             targets,
             timestamp: Timestamp::now(),
         }
+    }
+
+    pub fn id(&self) -> Ulid {
+        self.id
     }
 
     pub fn timestamp(&self) -> &Timestamp {
@@ -59,28 +65,8 @@ impl AttributePrototypeArgumentNodeWeight {
         vec![]
     }
 
-    pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
-    }
-
-    pub fn id(&self) -> Ulid {
-        self.id
-    }
-
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
     pub fn targets(&self) -> Option<ArgumentTargets> {
         self.targets
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
@@ -88,6 +74,12 @@ impl AttributePrototypeArgumentNodeWeight {
             EdgeWeightKindDiscriminants::Use,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         ]
+    }
+}
+
+impl NodeHash for AttributePrototypeArgumentNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        self.content_hash()
     }
 }
 

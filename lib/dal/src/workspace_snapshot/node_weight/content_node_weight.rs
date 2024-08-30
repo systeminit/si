@@ -12,6 +12,8 @@ use crate::workspace_snapshot::{
 };
 use crate::EdgeWeightKindDiscriminants;
 
+use super::NodeHash;
+
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ContentNodeWeight {
     /// The stable local ID of the object in question. Mainly used by external things like
@@ -29,7 +31,7 @@ pub struct ContentNodeWeight {
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
-    merkle_tree_hash: MerkleTreeHash,
+    pub(super) merkle_tree_hash: MerkleTreeHash,
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
@@ -68,14 +70,6 @@ impl ContentNodeWeight {
     }
     pub fn to_delete(&self) -> bool {
         self.to_delete
-    }
-
-    pub fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
     }
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
@@ -127,20 +121,19 @@ impl ContentNodeWeight {
         Ok(())
     }
 
-    pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
-    }
     pub fn set_to_delete(&mut self, to_delete: bool) -> bool {
         self.to_delete = to_delete;
         self.to_delete
     }
 
-    pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
+    }
+}
+
+impl NodeHash for ContentNodeWeight {
+    fn node_hash(&self) -> ContentHash {
+        self.content_hash()
     }
 }
 
