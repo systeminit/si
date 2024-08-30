@@ -126,6 +126,7 @@
                   required
                   @blur="updateFunc"
                   @focus="focus"
+                  @keyup.enter="updateFunc"
                 />
                 <VormInput
                   id="displayName"
@@ -136,6 +137,7 @@
                   required
                   @blur="updateFunc"
                   @focus="focus"
+                  @keyup.enter="updateFunc"
                 />
                 <VormInput
                   id="description"
@@ -146,6 +148,7 @@
                   type="textarea"
                   @blur="updateFunc"
                   @focus="focus"
+                  @keyup.enter="updateFunc"
                 />
               </Stack>
             </TreeNode>
@@ -243,7 +246,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, unref } from "vue";
 import {
   ErrorMessage,
   Stack,
@@ -309,7 +312,12 @@ const funcId = computed(() => props.funcId);
 
 watch(
   () => funcStore.selectedFuncSummary,
-  () => {
+  (currentFunc, lastFunc) => {
+    // when switching functions save if we see the func has been edited
+    // because blur has not fired yet
+    if (!_.isEqual(lastFunc, editingFunc.value)) {
+      updateFunc();
+    }
     resetEditingFunc();
   },
 );
@@ -325,7 +333,7 @@ function resetEditingFunc() {
 }
 
 watch(
-  () => funcStore.selectedFuncId,
+  () => props.funcId,
   () => {
     if (
       funcDetailsTabGroupRef.value &&
@@ -337,10 +345,18 @@ watch(
   { immediate: true },
 );
 
+// onBlur is firing AFTER the `watch selectedFuncSummary`
+// which is causing data to be saved to the wrong func
 const updateFunc = async () => {
+  // protect against no-op saves when a blur fires after switching functions
+  if (_.isEqual(editingFunc.value, funcStore.selectedFuncSummary)) return;
+  // and making sure locked FNs never attempt to save, since save fires on a watch now
+  if (editingFunc.value?.isLocked) return;
+
+  const payload = unref(editingFunc);
   focusedFormField.value = undefined;
-  if (editingFunc.value) {
-    await funcStore.UPDATE_FUNC(editingFunc.value);
+  if (payload) {
+    await funcStore.UPDATE_FUNC(payload);
     resetEditingFunc();
   }
 };
