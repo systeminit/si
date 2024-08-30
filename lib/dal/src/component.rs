@@ -601,7 +601,7 @@ impl Component {
         let self_schema_variant_id = Component::schema_variant_id(ctx, self.id).await?;
         let mut dvu_roots = vec![];
 
-        // Gather up a bunch of data about the current schema variant
+        // Gather a bunch of data about the current schema variant
         let mut new_input_sockets = HashMap::new();
         for input_socket_id in
             InputSocket::list_ids_for_schema_variant(ctx, self_schema_variant_id).await?
@@ -631,7 +631,8 @@ impl Component {
         let mut value_q = VecDeque::from([(old_root_id, None, None)]);
         while let Some((old_av_id, old_key_or_index, new_parent_id)) = value_q.pop_front() {
             let old_av = AttributeValue::get_by_id_or_error(ctx, old_av_id).await?;
-            let old_component_prototype_id =
+
+            let maybe_old_component_prototype_id =
                 AttributeValue::component_prototype_id(ctx, old_av_id).await?;
             let old_prop_id = AttributeValue::is_for(ctx, old_av_id)
                 .await?
@@ -643,202 +644,227 @@ impl Component {
             // Is there a matching prop in self for this prop in other? If there
             // is no matching prop do nothing (this means the prop was removed
             // from self, so can't get values from other)
-            if let Some(&new_prop_id) = new_props.get(&prop_path) {
-                let new_prop = Prop::get_by_id_or_error(ctx, new_prop_id).await?;
-                let old_prop = Prop::get_by_id_or_error(ctx, old_prop_id).await?;
+            let Some(&new_prop_id) = new_props.get(&prop_path) else {
+                continue;
+            };
 
-                // Prop kinds c ould have changed for the same prop. We could
-                // try and coerce values, but it's safer to just skip.  Even if
-                // there is a component specific prototype for this prop's value
-                // in other, we don't want to copy it over, since the kind has
-                // changed.
-                if new_prop.kind != old_prop.kind {
-                    continue;
-                }
+            let new_prop = Prop::get_by_id_or_error(ctx, new_prop_id).await?;
+            let old_prop = Prop::get_by_id_or_error(ctx, old_prop_id).await?;
 
-                // Similarly, we should verify that the secret kind has not
-                // changed if this is a secret prop. If it has changed, leave
-                // the prop alone (effectively empyting the secret)
-                if new_prop.secret_kind_widget_option() != old_prop.secret_kind_widget_option() {
-                    continue;
-                }
+            // Prop kinds could have changed for the same prop. We could
+            // try and coerce values, but it's safer to just skip.  Even if
+            // there is a component specific prototype for this prop's value
+            // in other, we don't want to copy it over, since the kind has
+            // changed.
+            if new_prop.kind != old_prop.kind {
+                continue;
+            }
 
+            // Similarly, we should verify that the secret kind has not
+            // changed if this is a secret prop. If it has changed, leave
+            // the prop alone (effectively emptying the secret)
+            if new_prop.secret_kind_widget_option() != old_prop.secret_kind_widget_option() {
+                continue;
+            }
+
+            // If there is another av for this prop with the same path, get that to populate later
+            let maybe_new_av_id = {
+                let old_av_path = AttributeValue::get_path_for_id(ctx, old_av_id).await?;
                 let mut new_av_id = None;
-                for maybe_new_av_id in
+                for av_id_for_prop in
                     Component::attribute_values_for_prop_id(ctx, self.id, new_prop_id).await?
                 {
-                    let new_key_or_index =
-                        AttributeValue::get_index_or_key_of_child_entry(ctx, maybe_new_av_id)
-                            .await?;
+                    let new_av_path = AttributeValue::get_path_for_id(ctx, av_id_for_prop).await?;
 
-                    if old_key_or_index == new_key_or_index {
-                        new_av_id = Some(maybe_new_av_id);
-                        break;
+                    if old_av_path == new_av_path {
+                        new_av_id = Some(av_id_for_prop);
                     }
                 }
+                new_av_id
+            };
 
-                let key = old_key_or_index
-                    .as_ref()
-                    .and_then(|key_or_index| match key_or_index {
-                        KeyOrIndex::Key(key) => Some(key.to_owned()),
-                        _ => None,
-                    });
+            let key = old_key_or_index
+                .as_ref()
+                .and_then(|key_or_index| match key_or_index {
+                    KeyOrIndex::Key(key) => Some(key.to_owned()),
+                    _ => None,
+                });
 
-                match new_av_id {
-                    // The value exists in both old and new (thought it might be defaulted)
-                    Some(new_av_id) => {
-                        dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
-                        match old_component_prototype_id {
-                            // The old component has an explicit value set rather than using
-                            // the default: set the value in the new component as well.
-                            Some(old_component_prototype_id) => {
-                                let old_prototype_func =
-                                    AttributePrototype::func(ctx, old_component_prototype_id)
-                                        .await?;
-                                if old_prototype_func.is_dynamic() {
-                                    // a custom function has been defined for
-                                    // this specific component. We have to copy
-                                    // this custom prototype over, but we can
-                                    // only do so if the inputs to the function
-                                    // exist in self after regeneration and have
-                                    // the same types.
+            let new_av_id = match maybe_new_av_id {
+                // The value exists in both old and new (thought it might be defaulted)
+                Some(new_av_id) => {
+                    dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
+                    match maybe_old_component_prototype_id {
+                        // The old component has an explicit value set rather than using
+                        // the default: set the value in the new component as well.
+                        Some(old_component_prototype_id) => {
+                            let old_prototype_func =
+                                AttributePrototype::func(ctx, old_component_prototype_id).await?;
+                            if old_prototype_func.is_dynamic() {
+                                // a custom function has been defined for
+                                // this specific component. We have to copy
+                                // this custom prototype over, but we can
+                                // only do so if the inputs to the function
+                                // exist in self after regeneration and have
+                                // the same types.
 
-                                    self.merge_component_specific_dynamic_func_from_other(
-                                        ctx,
-                                        new_av_id,
-                                        old_component_prototype_id,
-                                        &new_input_sockets,
-                                        &new_output_sockets,
-                                        &new_props,
-                                        key.clone(),
-                                    )
-                                    .await?;
+                                self.merge_component_specific_dynamic_func_from_other(
+                                    ctx,
+                                    new_av_id,
+                                    old_component_prototype_id,
+                                    &new_input_sockets,
+                                    &new_output_sockets,
+                                    &new_props,
+                                    key.clone(),
+                                )
+                                .await?;
 
-                                    // We continue here since we don't want to descend below a dynamic func
-                                    continue;
-                                } else {
-                                    // Ok, the original component has a
-                                    // component specific prototype here, but
-                                    // it's not a dynamic function. Just set the
-                                    // value. This means either it's a simple
-                                    // scalar that has had a value set manually,
-                                    // *OR*, it's a value set by a dynamic
-                                    // function that has been overriden by the
-                                    // user, manually, either way, we want to
-                                    // just set the value
-                                    let old_value = old_av.value(ctx).await?;
+                                // We continue here since we don't want to descend below a dynamic func
+                                continue;
+                            } else {
+                                // Ok, the original component has a
+                                // component specific prototype here, but
+                                // it's not a dynamic function. Just set the
+                                // value. This means either it's a simple
+                                // scalar that has had a value set manually,
+                                // *OR*, it's a value set by a dynamic
+                                // function that has been overriden by the
+                                // user, manually, either way, we want to
+                                // just set the value
+                                let old_value = old_av.value(ctx).await?;
+                                AttributeValue::set_value(ctx, new_av_id, old_value).await?;
+                            }
+                        }
+                        // The old component was using the default value. The new component
+                        // should do the same, so there's not much to do.
+                        None => {
+                            // The only exception is values that change the meaning or
+                            // validity of other components and connections the user may
+                            // have created. In these cases, we want to preserve the old
+                            // value to prevent the user's work from being invalidated.
+                            //
+                            // For example, if root/si/type is changed from Frame to
+                            // Component, and the user had already added child components,
+                            // those child components would now be in an invalid place
+                            // (because Components can't have children).
+                            //
+                            // For properties like this, we check whether the value has
+                            // changed between the old and new schema variant, and if so,
+                            // we explicitly set the value on the component to the old
+                            // value it used to have, as if the user had explicitly set it
+                            // themselves. (You could argue they basically implicitly set
+                            // the value of root/si/type when they created the child
+                            // components.)
+                            if prop_path == ["root", "si", "type"] {
+                                let old_value = Prop::default_value(ctx, old_prop_id).await?;
+                                let new_value = Prop::default_value(ctx, new_prop_id).await?;
+                                if old_value != new_value {
+                                    // Even if the value was set to a dynamic function, we want
+                                    // to freeze it now.
                                     AttributeValue::set_value(ctx, new_av_id, old_value).await?;
                                 }
                             }
-                            // The old component was using the default value. The new component
-                            // should do the same, so there's not much to do.
-                            None => {
-                                // The only exception is values that change the meaning or
-                                // validity of other components and connections the user may
-                                // have created. In these cases, we want to preserve the old
-                                // value to prevent the user's work from being invalidated.
-                                //
-                                // For example, if root/si/type is changed from Frame to
-                                // Component, and the user had already added child components,
-                                // those child components would now be in an invalid place
-                                // (because Components can't have children).
-                                //
-                                // For properties like this, we check whether the value has
-                                // changed between the old and new schema variant, and if so,
-                                // we explicitly set the value on the component to the old
-                                // value it used to have, as if the user had explicitly set it
-                                // themselves. (You could argue they basically implicitly set
-                                // the value of root/si/type when they created the child
-                                // components.)
-                                if prop_path == ["root", "si", "type"] {
-                                    let old_value = Prop::default_value(ctx, old_prop_id).await?;
-                                    let new_value = Prop::default_value(ctx, new_prop_id).await?;
-                                    if old_value != new_value {
-                                        error!("root/si/type different");
-                                        // Even if the value was set to a dynamic function, we want
-                                        // to freeze it now.
-                                        AttributeValue::set_value(ctx, new_av_id, old_value)
-                                            .await?;
-                                    }
-                                }
 
-                                // But we do need to see if this value is set dynamically. If
-                                // it is, we don't want to descend, since the tree underneath
-                                // it is completely controlled by the dynamic func.
-                                let new_prototype_for_value =
-                                    AttributeValue::prototype_id(ctx, new_av_id).await?;
-                                let new_prototype_func =
-                                    AttributePrototype::func(ctx, new_prototype_for_value).await?;
-                                if new_prototype_func.is_dynamic() {
-                                    continue;
-                                }
+                            // But we do need to see if this value is set dynamically. If
+                            // it is, we don't want to descend, since the tree underneath
+                            // it is completely controlled by the dynamic func.
+                            let new_prototype_for_value =
+                                AttributeValue::prototype_id(ctx, new_av_id).await?;
+                            let new_prototype_func =
+                                AttributePrototype::func(ctx, new_prototype_for_value).await?;
+                            if new_prototype_func.is_dynamic() {
+                                continue;
                             }
                         }
                     }
-                    // The new schema variant never had the value. If it's an array or map
-                    // element, we need to insert it.
-                    None => {
-                        if old_key_or_index.is_some() {
-                            if let Some(new_parent_id) = new_parent_id {
-                                if let Some(old_component_prototype_id) = old_component_prototype_id
-                                {
-                                    let prototype_func = Func::get_by_id_or_error(
-                                        ctx,
-                                        AttributePrototype::func_id(
-                                            ctx,
-                                            old_component_prototype_id,
-                                        )
-                                        .await?,
-                                    )
-                                    .await?;
-                                    // Insert this value
-                                    let inserted_value = AttributeValue::new(
-                                        ctx,
-                                        new_prop_id,
-                                        Some(self.id),
-                                        Some(new_parent_id),
-                                        key.clone(),
-                                    )
-                                    .await?;
-                                    if prototype_func.is_dynamic() {
-                                        self.merge_component_specific_dynamic_func_from_other(
-                                            ctx,
-                                            inserted_value.id,
-                                            old_component_prototype_id,
-                                            &new_input_sockets,
-                                            &new_output_sockets,
-                                            &new_props,
-                                            key.clone(),
-                                        )
-                                        .await?;
 
-                                        continue;
-                                    } else {
-                                        let old_value = old_av.value(ctx).await?;
-                                        AttributeValue::set_value(
-                                            ctx,
-                                            inserted_value.id,
-                                            old_value,
-                                        )
-                                        .await?;
-                                        dvu_roots.push(DependentValueRoot::Unfinished(
-                                            inserted_value.id.into(),
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    new_av_id
                 }
+                // The new schema variant never had the value. If it's an array or map
+                // element, we need to insert it.
+                None => {
+                    let Some(old_component_prototype_id) = maybe_old_component_prototype_id else {
+                        continue;
+                    };
 
-                for old_child_av_id in
-                    AttributeValue::get_child_av_ids_in_order(ctx, old_av_id).await?
-                {
-                    let old_key_or_index =
-                        AttributeValue::get_index_or_key_of_child_entry(ctx, old_child_av_id)
+                    let prototype_func = Func::get_by_id_or_error(
+                        ctx,
+                        AttributePrototype::func_id(ctx, old_component_prototype_id).await?,
+                    )
+                    .await?;
+
+                    // Insert this value
+                    let inserted_value = AttributeValue::new(
+                        ctx,
+                        new_prop_id,
+                        Some(self.id),
+                        new_parent_id,
+                        key.clone(),
+                    )
+                    .await?;
+
+                    // If the func for this av is dynamic, it will create its own child avs when
+                    // executed, if necessary, so we can skip the rest of the loop
+                    if prototype_func.is_dynamic() {
+                        self.merge_component_specific_dynamic_func_from_other(
+                            ctx,
+                            inserted_value.id,
+                            old_component_prototype_id,
+                            &new_input_sockets,
+                            &new_output_sockets,
+                            &new_props,
+                            key.clone(),
+                        )
+                        .await?;
+
+                        continue;
+                    }
+
+                    // If this av is for an object and it did not exist, it means it's a child of
+                    // an array or map. We need to create the children of this object
+                    // (and any direct object children) so that we don't get a malformed item in
+                    // the new component
+                    if new_prop.kind == PropKind::Object {
+                        let mut queue: VecDeque<_> =
+                            Prop::direct_child_props_ordered(ctx, new_prop_id)
+                                .await?
+                                .into_iter()
+                                .map(|prop| (prop, inserted_value.id))
+                                .collect();
+
+                        while let Some((this_prop, parent_av_id)) = queue.pop_front() {
+                            let attribute_value = AttributeValue::new(
+                                ctx,
+                                this_prop.id,
+                                Some(self.id),
+                                Some(parent_av_id),
+                                None,
+                            )
                             .await?;
-                    value_q.push_back((old_child_av_id, old_key_or_index, new_av_id));
+
+                            for child_prop in
+                                Prop::direct_child_props_ordered(ctx, this_prop.id).await?
+                            {
+                                if child_prop.kind == PropKind::Object {
+                                    queue.push_back((child_prop, attribute_value.id()))
+                                }
+                            }
+                        }
+                    }
+
+                    let old_value = old_av.value(ctx).await?;
+                    AttributeValue::set_value(ctx, inserted_value.id, old_value).await?;
+                    dvu_roots.push(DependentValueRoot::Unfinished(inserted_value.id.into()));
+
+                    inserted_value.id
                 }
+            };
+
+            for old_child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, old_av_id).await?
+            {
+                let old_key_or_index =
+                    AttributeValue::get_index_or_key_of_child_entry(ctx, old_child_av_id).await?;
+                value_q.push_back((old_child_av_id, old_key_or_index, Some(new_av_id)));
             }
         }
 
