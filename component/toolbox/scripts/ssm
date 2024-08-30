@@ -9,7 +9,7 @@
 set -eo pipefail
 
 # Find & Import all the supporting functions from the supporting folder
-# Get the directory of the current script to figure out where the 
+# Get the directory of the current script to figure out where the
 # Supporting funcs are
 IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
@@ -88,6 +88,7 @@ done <<< "$instances"
 
 read -p "Select an instance by index: " selection
 instance_id=$(echo "$instances" | sed -n "${selection}p" | awk '{print $2}')
+name=$(echo "$instances" | sed -n "${selection}p" | awk '{print $1}')
 
 if [ -z "$instance_id" ]; then
     echo "Invalid selection."
@@ -95,4 +96,4 @@ if [ -z "$instance_id" ]; then
 fi
 
 echo "Starting Interactive SSM session with instance $instance_id..."
-start_interactive_ssm_session "$instance_id"
+start_interactive_ssm_session "$instance_id" "$name"
