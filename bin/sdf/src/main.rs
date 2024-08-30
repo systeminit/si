@@ -147,6 +147,22 @@ async fn async_main() -> Result<()> {
                 "migration mode is {}, shutting down",
                 config.migration_mode()
             );
+
+            // TODO(fnichol): ensure that layer-db and telemetry are gracefully shut down
+            for (tracker, token) in [
+                (layer_db_tracker, layer_db_token),
+                (telemetry_tracker, telemetry_token),
+            ] {
+                info!("performing graceful shutdown for task group");
+                tracker.close();
+                token.cancel();
+                tracker.wait().await;
+            }
+
+            // TODO(nick): we need to handle telemetry shutdown properly as well.
+            telemetry_shutdown.wait().await?;
+
+            info!("graceful shutdown complete.");
             return Ok(());
         }
     } else {
