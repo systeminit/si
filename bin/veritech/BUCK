@@ -40,6 +40,7 @@ rust_binary(
         "//third-party/rust:tokio-util",
     ],
     srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "rebaser"},
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
@@ -73,7 +74,7 @@ docker_image(
         "//bin/veritech:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
-    ]
+    ],
 )
 
 nix_omnibus_pkg(
@@ -81,4 +82,3 @@ nix_omnibus_pkg(
     pkg_name = "veritech",
     build_dep = "//bin/veritech:veritech",
 )
-

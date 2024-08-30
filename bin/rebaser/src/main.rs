@@ -7,8 +7,11 @@ mod args;
 
 const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
+const BIN_NAME: &str = env!("CARGO_BIN_NAME");
+const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
+
 fn main() -> Result<()> {
-    rt::block_on("bin/rebaser-tokio::runtime", async_main())
+    rt::block_on(BIN_NAME, async_main())
 }
 
 async fn async_main() -> Result<()> {
@@ -30,10 +33,10 @@ async fn async_main() -> Result<()> {
                     .then_some(ConsoleLogFormat::Json)
                     .unwrap_or_default(),
             )
-            .service_name("rebaser")
+            .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec!["rebaser", "rebaser_server"])
+            .app_modules(vec![BIN_NAME, LIB_NAME])
             .interesting_modules(vec![
                 "dal",
                 "naxum",
@@ -47,7 +50,7 @@ async fn async_main() -> Result<()> {
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
 
-    startup::startup("rebaser").await?;
+    startup::startup(BIN_NAME).await?;
 
     if args.verbose > 0 {
         telemetry
