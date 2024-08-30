@@ -44,8 +44,8 @@ importers:
         specifier: ^2.1.7
         version: 2.1.7(typescript@4.9.5)(vue@3.4.15)
       posthog-js:
-        specifier: ^1.76.0
-        version: 1.76.0
+        specifier: ^1.155.0
+        version: 1.155.0
       vite-ssg:
         specifier: ^0.23.5
         version: 0.23.5(vite@5.0.10)(vue-router@4.2.5)(vue@3.4.15)
@@ -16518,12 +16518,6 @@ packages:
     dependencies:
       fflate: 0.4.8
       rrweb-snapshot: 1.1.14
-    dev: false
-
-  /posthog-js@1.76.0:
-    resolution: {integrity: sha512-C/+M+uVQ+CAEUz0ZAENMobw0fYcXGNomUXd8irelT7cQ9fsDSRgfyF5wwqaX0UXcIBD+iFXTOtK93T8NnFODyg==}
-    dependencies:
-      fflate: 0.4.8
     dev: false
 
   /posthog-node@2.6.0(debug@4.3.4):

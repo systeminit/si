@@ -229,14 +229,9 @@ const saveHandler = async () => {
 
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});
     if (completeProfileReq.result.success) {
-      if (featureFlagsStore.SIMPLIFIED_SIGNUP) {
-        if (authStore.user?.emailVerified && workspacesStore.defaultWorkspace) {
-          tracker.trackEvent("workspace_launcher_widget_click");
-          window.location.href = `${API_HTTP_URL}/workspaces/${workspacesStore.defaultWorkspace.id}/go`;
-        } else {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          router.push({ name: "login-success" });
-        }
+      if (authStore.user?.emailVerified && workspacesStore.defaultWorkspace) {
+        tracker.trackEvent("workspace_launcher_widget_click");
+        window.location.href = `${API_HTTP_URL}/workspaces/${workspacesStore.defaultWorkspace.id}/go`;
       } else {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         router.push({ name: "workspaces" });
