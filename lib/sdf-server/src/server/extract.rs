@@ -34,6 +34,71 @@ impl FromRequestParts<AppState> for AccessBuilder {
     }
 }
 
+/// An access builder for admin-only routes in sdf. Verifies the email for the
+/// user is @systeminit.com during construction. This should only be used as a
+/// route middleware for the admin routes. Use the normal AccessBuilder
+/// extractor for the actual route
+pub struct AdminAccessBuilder;
+
+#[async_trait]
+impl FromRequestParts<AppState> for AdminAccessBuilder {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let Authorization(claim) = Authorization::from_request_parts(parts, state).await?;
+        let Tenancy(tenancy) = tenancy_from_claim(&claim).await?;
+        let history_actor = dal::HistoryActor::from(claim.user_pk);
+        let access_builder = context::AccessBuilder::new(tenancy, history_actor);
+
+        let dal_context_builder = state
+            .services_context()
+            .clone()
+            .into_inner()
+            .into_builder(state.for_tests());
+
+        let ctx = dal_context_builder
+            .build_head(access_builder)
+            .await
+            .map_err(|err| {
+                let error_message =
+                    format!("Unable to build dal context for head in AdminAccessBuilder: {err}");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "admin_access_builder_error",
+                        "message": error_message,
+                    })),
+                )
+            })?;
+
+        let is_system_init = history_actor
+            .email_is_systeminit(&ctx)
+            .await
+            .map_err(|err| {
+                let error_message =
+                    format!("Unable to check email address in AdminAccessBuilder: {err}");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "admin_access_builder_error_email_check",
+                        "message": error_message,
+                    })),
+                )
+            })?;
+
+        if !is_system_init {
+            Err(unauthorized_error())
+        } else {
+            Ok(Self)
+        }
+    }
+}
+
 pub struct RawAccessToken(pub String);
 
 #[async_trait]
