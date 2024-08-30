@@ -5,6 +5,8 @@ use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_applic
 
 mod args;
 
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 10);
+
 fn main() -> Result<()> {
     rt::block_on("bin/rebaser-tokio::runtime", async_main())
 }
@@ -38,6 +40,7 @@ async fn async_main() -> Result<()> {
                 "si_data_nats",
                 "si_data_pg",
                 "si_layer_cache",
+                "si_service",
             ])
             .build()?;
 
@@ -68,15 +71,13 @@ async fn async_main() -> Result<()> {
         server.run().await
     });
 
-    shutdown::graceful(
-        [
-            (main_tracker, main_token),
-            (layer_db_tracker, layer_db_token),
-            (telemetry_tracker, telemetry_token),
-        ],
-        Some(telemetry_shutdown.into_future()),
-        Some(Duration::from_secs(10)),
-    )
-    .await
-    .map_err(Into::into)
+    shutdown::graceful()
+        .group(main_tracker, main_token)
+        .group(layer_db_tracker, layer_db_token)
+        .group(telemetry_tracker, telemetry_token)
+        .telemetry_guard(telemetry_shutdown.into_future())
+        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+        .wait()
+        .await
+        .map_err(Into::into)
 }

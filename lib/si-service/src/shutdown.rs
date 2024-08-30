@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     signal::unix::{self, SignalKind},
-    time::timeout,
+    time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -40,62 +40,138 @@ impl ShutdownError {
 ///
 /// # Platform-specific behavior
 ///
-/// This function sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so usage
+/// This facility sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so usage
 /// of this function with other code intercepting these signals is *highly* discouraged.
-pub async fn graceful<Fut, E, I>(
-    trackers_with_tokens: I,
-    telemetry_guard: Option<Fut>,
-    shutdown_timeout: Option<Duration>,
-) -> Result<(), ShutdownError>
+pub fn graceful<TelemetryFut, E>() -> GracefulShutdown<TelemetryFut>
 where
-    Fut: Future<Output = Result<(), E>>,
+    TelemetryFut: Future<Output = Result<(), E>>,
     E: error::Error + Send + Sync + 'static,
-    I: IntoIterator<Item = (TaskTracker, CancellationToken)>,
 {
-    let mut sig_int = unix::signal(SignalKind::interrupt()).map_err(ShutdownError::Signal)?;
-    let mut sig_term = unix::signal(SignalKind::terminate()).map_err(ShutdownError::Signal)?;
+    GracefulShutdown::default()
+}
 
-    tokio::select! {
-        _ = sig_int.recv() => {
-            info!("received SIGINT, performing graceful shutdown");
-        }
-        _ = sig_term.recv() => {
-            info!("received SIGTERM, performing graceful shutdown");
+/// Constructs and performs a graceful shutdown.
+#[derive(Debug)]
+pub struct GracefulShutdown<T> {
+    groups: Vec<(TaskTracker, CancellationToken)>,
+    telemetry_guard: Option<T>,
+    timeout: Option<Duration>,
+}
+
+impl<TelemetryFut, E> Default for GracefulShutdown<TelemetryFut>
+where
+    TelemetryFut: Future<Output = Result<(), E>>,
+    E: error::Error + Send + Sync + 'static,
+{
+    fn default() -> Self {
+        Self {
+            groups: Default::default(),
+            telemetry_guard: Default::default(),
+            timeout: Default::default(),
         }
     }
+}
 
-    // Create a future for draining each task group
-    let drain_future = async {
-        for (tracker, token) in trackers_with_tokens {
-            info!("performing graceful shutdown for task group");
-            tracker.close();
-            token.cancel();
-            tracker.wait().await;
-        }
-    };
+impl<TelemetryFut, E> GracefulShutdown<TelemetryFut>
+where
+    TelemetryFut: Future<Output = Result<(), E>>,
+    E: error::Error + Send + Sync + 'static,
+{
+    /// Adds a shutdown group, consisting of a related [`TaskTracker`] and [`CancellationToken`].
+    pub fn group(mut self, tracker: TaskTracker, token: CancellationToken) -> Self {
+        self.groups.extend([(tracker, token)]);
+        self
+    }
 
-    // Wait for all tasks to finish
-    match shutdown_timeout {
-        Some(duration) => {
-            if let Err(_elapsed) = timeout(duration, drain_future).await {
-                warn!("graceful shutdown timeout exceeded; completing shutdown anyway");
-                if let Some(telemetry_guard) = telemetry_guard {
-                    // Wait for telemetry to shutdown
-                    telemetry_guard.await.map_err(ShutdownError::telemetry)?;
-                }
-                return Err(ShutdownError::TimeoutElapsed(duration));
+    /// Adds a collection of shutdown groups, consisting of a related [`TaskTracker`] and
+    /// [`CancellationToken`].
+    pub fn groups<I>(mut self, shutdown_groups: I) -> Self
+    where
+        I: IntoIterator<Item = (TaskTracker, CancellationToken)>,
+    {
+        self.groups.extend(shutdown_groups);
+        self
+    }
+
+    /// Adds a telemetry shutdown guard.
+    pub fn telemetry_guard(mut self, telemetry_guard: TelemetryFut) -> Self {
+        self.telemetry_guard = Some(telemetry_guard);
+        self
+    }
+
+    /// Clears any prior set telemetry shutdown guard.
+    pub fn clear_telemetry_guard(mut self) -> Self {
+        self.telemetry_guard.take();
+        self
+    }
+
+    /// Adds a graceful shutdown timeout duration, after which graceful shutdown will cancel.
+    pub fn timeout(mut self, timeout: impl Into<Option<Duration>>) -> Self {
+        self.timeout = timeout.into();
+        self
+    }
+
+    /// Waits until all graceful shutdown conditions have been met.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so
+    /// usage of this function with other code intercepting these signals is *highly* discouraged.
+    pub async fn wait(self) -> Result<(), ShutdownError> {
+        let Self {
+            groups,
+            telemetry_guard,
+            timeout,
+        } = self;
+
+        let mut sig_int = unix::signal(SignalKind::interrupt()).map_err(ShutdownError::Signal)?;
+        let mut sig_term = unix::signal(SignalKind::terminate()).map_err(ShutdownError::Signal)?;
+
+        tokio::select! {
+            _ = sig_int.recv() => {
+                info!("received SIGINT, performing graceful shutdown");
+            }
+            _ = sig_term.recv() => {
+                info!("received SIGTERM, performing graceful shutdown");
             }
         }
-        None => {
-            drain_future.await;
+
+        let total = groups.len();
+        let mut current: usize = 1;
+
+        let await_groups = async {
+            for (tracker, token) in groups {
+                debug!("performing graceful shutdown for group(s) {current}/{total}");
+                tracker.close();
+                token.cancel();
+                tracker.wait().await;
+            }
+            current = current.saturating_add(1);
+        };
+
+        // Wait for all tasks to finish
+        match timeout {
+            Some(timeout) => {
+                if let Err(_elapsed) = time::timeout(timeout, await_groups).await {
+                    warn!("graceful shutdown timeout exceeded; completing shutdown anyway");
+                    if let Some(telemetry_guard) = telemetry_guard {
+                        debug!("performing graceful shutdown for telemetry guard");
+                        telemetry_guard.await.map_err(ShutdownError::telemetry)?;
+                    }
+                    return Err(ShutdownError::TimeoutElapsed(timeout));
+                }
+            }
+            None => {
+                await_groups.await;
+            }
         }
-    }
 
-    if let Some(telemetry_guard) = telemetry_guard {
-        // Wait for telemetry to shutdown
-        telemetry_guard.await.map_err(ShutdownError::telemetry)?;
-    }
+        if let Some(telemetry_guard) = telemetry_guard {
+            debug!("performing graceful shutdown for telemetry guard");
+            telemetry_guard.await.map_err(ShutdownError::telemetry)?;
+        }
 
-    info!("graceful shutdown complete.");
-    Ok(())
+        info!("graceful shutdown complete.");
+        Ok(())
+    }
 }

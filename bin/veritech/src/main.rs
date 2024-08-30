@@ -32,7 +32,7 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["veritech", "veritech_server"])
-            .interesting_modules(vec!["naxum", "si_data_nats"])
+            .interesting_modules(vec!["naxum", "si_data_nats", "si_service"])
             .build()?;
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
@@ -56,14 +56,12 @@ async fn async_main() -> Result<()> {
         server.run().await
     });
 
-    shutdown::graceful(
-        [
-            (main_tracker, main_token),
-            (telemetry_tracker, telemetry_token),
-        ],
-        Some(telemetry_shutdown.into_future()),
-        Some(GRACEFUL_SHUTDOWN_TIMEOUT),
-    )
-    .await
-    .map_err(Into::into)
+    shutdown::graceful()
+        .group(main_tracker, main_token)
+        .group(telemetry_tracker, telemetry_token)
+        .telemetry_guard(telemetry_shutdown.into_future())
+        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+        .wait()
+        .await
+        .map_err(Into::into)
 }
