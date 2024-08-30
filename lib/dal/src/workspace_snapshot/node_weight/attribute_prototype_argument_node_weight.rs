@@ -47,24 +47,6 @@ impl AttributePrototypeArgumentNodeWeight {
         &self.timestamp
     }
 
-    pub fn content_hash(&self) -> ContentHash {
-        let target_string = self
-            .targets
-            .map(|targets| {
-                format!(
-                    "{}{}",
-                    targets.source_component_id, targets.destination_component_id
-                )
-            })
-            .unwrap_or("".into());
-
-        ContentHash::new(target_string.as_bytes())
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![]
-    }
-
     pub fn targets(&self) -> Option<ArgumentTargets> {
         self.targets
     }
@@ -79,7 +61,17 @@ impl AttributePrototypeArgumentNodeWeight {
 
 impl NodeHash for AttributePrototypeArgumentNodeWeight {
     fn node_hash(&self) -> ContentHash {
-        self.content_hash()
+        let target_string = self
+            .targets
+            .map(|targets| {
+                format!(
+                    "{}{}",
+                    targets.source_component_id, targets.destination_component_id
+                )
+            })
+            .unwrap_or("".into());
+
+        ContentHash::new(target_string.as_bytes())
     }
 }
 

@@ -12,7 +12,7 @@ use crate::workspace_snapshot::{
 };
 use crate::EdgeWeightKindDiscriminants;
 
-use super::NodeHash;
+use super::{HasContent, HasContentAddress, NodeHash};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ContentNodeWeight {
@@ -49,22 +49,6 @@ impl ContentNodeWeight {
         }
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_address_discriminants(&self) -> ContentAddressDiscriminants {
-        self.content_address.into()
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -72,7 +56,29 @@ impl ContentNodeWeight {
         self.to_delete
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+    pub fn set_to_delete(&mut self, to_delete: bool) -> bool {
+        self.to_delete = to_delete;
+        self.to_delete
+    }
+
+    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+        &[]
+    }
+}
+
+impl NodeHash for ContentNodeWeight {
+    fn node_hash(&self) -> ContentHash { self.content_hash() }
+}
+
+impl HasContent for ContentNodeWeight {
+    fn content_hash(&self) -> ContentHash { self.content_address.content_hash() }
+    fn content_store_hashes(&self) -> Vec<ContentHash> { vec![self.content_address.content_hash()] }
+}
+
+impl HasContentAddress for ContentNodeWeight {
+    fn content_address(&self) -> ContentAddress { self.content_address }
+    fn content_address_discriminants(&self) -> ContentAddressDiscriminants { self.content_address.into() }
+    fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
             ContentAddress::DeprecatedAction(_) => ContentAddress::DeprecatedAction(content_hash),
             ContentAddress::DeprecatedActionBatch(_) => {
@@ -119,21 +125,6 @@ impl ContentNodeWeight {
         self.content_address = new_address;
 
         Ok(())
-    }
-
-    pub fn set_to_delete(&mut self, to_delete: bool) -> bool {
-        self.to_delete = to_delete;
-        self.to_delete
-    }
-
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
-        &[]
-    }
-}
-
-impl NodeHash for ContentNodeWeight {
-    fn node_hash(&self) -> ContentHash {
-        self.content_hash()
     }
 }
 

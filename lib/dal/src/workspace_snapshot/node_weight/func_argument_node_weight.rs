@@ -3,16 +3,15 @@ use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
     workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
+        content_address::ContentAddress,
         graph::{deprecated::v1::DeprecatedFuncArgumentNodeWeightV1, LineageId},
-        node_weight::traits::CorrectTransforms,
-        node_weight::NodeWeightResult,
-        NodeWeightError,
+        node_weight::{impl_has_discriminated_content_address, traits::CorrectTransforms, NodeHash},
     },
     EdgeWeightKindDiscriminants,
 };
 
-use super::NodeHash;
+use super::HasContent as _;
+
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncArgumentNodeWeight {
@@ -34,18 +33,6 @@ impl FuncArgumentNodeWeight {
         }
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -57,22 +44,6 @@ impl FuncArgumentNodeWeight {
     pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
         self.name = name.into();
         self
-    }
-
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
-            other => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
-                    ContentAddressDiscriminants::FuncArg.to_string(),
-                ));
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
@@ -88,6 +59,8 @@ impl NodeHash for FuncArgumentNodeWeight {
         }])
     }
 }
+
+impl_has_discriminated_content_address! { FuncArgumentNodeWeight: FuncArg }
 
 impl std::fmt::Debug for FuncArgumentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

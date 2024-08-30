@@ -47,14 +47,6 @@ impl ActionPrototypeNodeWeight {
         self.id
     }
 
-    pub fn content_hash(&self) -> ContentHash {
-        self.node_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![]
-    }
-
     pub fn kind(&self) -> ActionKind {
         self.kind
     }

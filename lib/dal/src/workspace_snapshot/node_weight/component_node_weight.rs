@@ -11,15 +11,13 @@ use crate::{
             correct_transforms::add_dependent_value_root_updates,
             deprecated::v1::DeprecatedComponentNodeWeightV1, detect_updates::Update, LineageId,
         },
-        node_weight::traits::CorrectTransforms,
+        node_weight::{category_node_weight::CategoryNodeKind, impl_has_discriminated_content_address, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight, NodeWeightDiscriminants::{self, Component}},
         NodeInformation,
     },
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
-use super::{
-    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeHash, NodeWeight, NodeWeightDiscriminants::{self, Component}, NodeWeightError, NodeWeightResult
-};
+use super::HasContentAddress as _;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ComponentNodeWeight {
@@ -41,18 +39,6 @@ impl ComponentNodeWeight {
         }
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -64,22 +50,6 @@ impl ComponentNodeWeight {
     pub fn set_to_delete(&mut self, to_delete: bool) -> &mut Self {
         self.to_delete = to_delete;
         self
-    }
-
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
-            other => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
-                    ContentAddressDiscriminants::Component.to_string(),
-                ));
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
     }
 
     pub fn overwrite_id(&mut self, id: Ulid) {
@@ -106,6 +76,8 @@ impl NodeHash for ComponentNodeWeight {
         }])
     }
 }
+
+impl_has_discriminated_content_address! { ComponentNodeWeight: Component }
 
 impl From<DeprecatedComponentNodeWeightV1> for ComponentNodeWeight {
     fn from(value: DeprecatedComponentNodeWeightV1) -> Self {

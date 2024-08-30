@@ -3,13 +3,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use super::traits::CorrectTransformsError;
-use super::{NodeHash, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
-use crate::workspace_snapshot::graph::detect_updates::Update;
-use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
-use crate::workspace_snapshot::node_weight::NodeWeightResult;
-use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use crate::{workspace_snapshot::{graph::{deprecated::v1::DeprecatedOrderingNodeWeightV1, detect_updates::Update}, node_weight::{traits::{CorrectTransforms, CorrectTransformsError, CorrectTransformsResult}, NodeHash, NodeWeight, NodeWeightError, NodeWeightResult}}, EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OrderingNodeWeight {
@@ -21,14 +15,6 @@ pub struct OrderingNodeWeight {
 }
 
 impl OrderingNodeWeight {
-    pub fn content_hash(&self) -> ContentHash {
-        self.node_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -103,7 +89,8 @@ impl std::fmt::Debug for OrderingNodeWeight {
                     .map(|id| id.to_string())
                     .collect::<Vec<String>>(),
             )
-            .field("content_hash", &self.content_hash())
+            // TODO we have no content address; should we report this hash at all?
+            .field("content_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
     }

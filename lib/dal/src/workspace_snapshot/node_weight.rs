@@ -287,39 +287,41 @@ impl NodeWeight {
     // TODO make this Option<>
     pub fn content_hash(&self) -> ContentHash {
         match self {
-            NodeWeight::Action(weight) => weight.node_hash(),
-            NodeWeight::ActionPrototype(weight) => weight.content_hash(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.content_hash(),
             NodeWeight::AttributeValue(weight) => weight.content_hash(),
-            NodeWeight::Category(weight) => weight.content_hash(),
             NodeWeight::Component(weight) => weight.content_hash(),
             NodeWeight::Content(weight) => weight.content_hash(),
             NodeWeight::Func(weight) => weight.content_hash(),
             NodeWeight::FuncArgument(weight) => weight.content_hash(),
-            NodeWeight::Ordering(weight) => weight.content_hash(),
             NodeWeight::Prop(weight) => weight.content_hash(),
             NodeWeight::Secret(weight) => weight.content_hash(),
-            NodeWeight::DependentValueRoot(weight) => weight.content_hash(),
-            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_hash(),
+
+            NodeWeight::Action(weight) => weight.node_hash(),
+            NodeWeight::ActionPrototype(weight) => weight.node_hash(),
+            NodeWeight::AttributePrototypeArgument(weight) => weight.node_hash(),
+            NodeWeight::Category(weight) => weight.node_hash(),
+            NodeWeight::Ordering(weight) => weight.node_hash(),
+            NodeWeight::DependentValueRoot(weight) => weight.node_hash(),
+            NodeWeight::FinishedDependentValueRoot(weight) => weight.node_hash(),
         }
     }
 
+    // TODO don't call this on NodeWeight
     pub fn content_store_hashes(&self) -> Vec<ContentHash> {
         match self {
-            NodeWeight::Action(_) => vec![],
-            NodeWeight::ActionPrototype(weight) => weight.content_store_hashes(),
-            NodeWeight::AttributePrototypeArgument(weight) => weight.content_store_hashes(),
             NodeWeight::AttributeValue(weight) => weight.content_store_hashes(),
-            NodeWeight::Category(weight) => weight.content_store_hashes(),
             NodeWeight::Component(weight) => weight.content_store_hashes(),
             NodeWeight::Content(weight) => weight.content_store_hashes(),
             NodeWeight::Func(weight) => weight.content_store_hashes(),
             NodeWeight::FuncArgument(weight) => weight.content_store_hashes(),
-            NodeWeight::Ordering(weight) => weight.content_store_hashes(),
             NodeWeight::Prop(weight) => weight.content_store_hashes(),
             NodeWeight::Secret(weight) => weight.content_store_hashes(),
-            NodeWeight::DependentValueRoot(weight) => weight.content_store_hashes(),
-            NodeWeight::FinishedDependentValueRoot(weight) => weight.content_store_hashes(),
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::AttributePrototypeArgument(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::Ordering(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::FinishedDependentValueRoot(_) => vec![],
         }
     }
 

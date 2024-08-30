@@ -17,7 +17,7 @@ use crate::{
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
-use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeHash, NodeWeight};
+use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, HasContent, NodeHash, NodeWeight};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {
@@ -53,19 +53,6 @@ impl AttributeValueNodeWeight {
         self.id
     }
 
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        let mut hashes = vec![];
-
-        if let Some(hash) = self.unprocessed_value {
-            hashes.push(hash.content_hash());
-        }
-        if let Some(hash) = self.value {
-            hashes.push(hash.content_hash());
-        }
-
-        hashes
-    }
-
     pub fn unprocessed_value(&self) -> Option<ContentAddress> {
         self.unprocessed_value
     }
@@ -82,10 +69,6 @@ impl AttributeValueNodeWeight {
         self.value = value
     }
 
-    pub fn content_hash(&self) -> ContentHash {
-        self.node_hash()
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[
             EdgeWeightKindDiscriminants::Prototype,
@@ -97,10 +80,28 @@ impl AttributeValueNodeWeight {
 
 impl NodeHash for AttributeValueNodeWeight {
     fn node_hash(&self) -> ContentHash {
+        self.content_hash()
+    }
+}
+
+impl HasContent for AttributeValueNodeWeight {
+    fn content_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "unprocessed_value": self.unprocessed_value,
             "value": self.value,
         }])
+    }
+    fn content_store_hashes(&self) -> Vec<ContentHash> {
+        let mut hashes = vec![];
+
+        if let Some(hash) = self.unprocessed_value {
+            hashes.push(hash.content_hash());
+        }
+        if let Some(hash) = self.value {
+            hashes.push(hash.content_hash());
+        }
+
+        hashes
     }
 }
 

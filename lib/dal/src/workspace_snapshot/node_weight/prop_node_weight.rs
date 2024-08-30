@@ -1,20 +1,10 @@
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedPropNodeWeightV1;
-use crate::EdgeWeightKindDiscriminants;
-use crate::{
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::LineageId,
-        node_weight::traits::CorrectTransforms,
-        node_weight::{NodeWeightError, NodeWeightResult},
-    },
-    PropKind,
-};
+use crate::{workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedPropNodeWeightV1, LineageId}, node_weight::{impl_has_discriminated_content_address, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants, PropKind};
 
-use super::NodeHash;
+use super::HasContent as _;
+
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PropNodeWeight {
@@ -50,18 +40,6 @@ impl PropNodeWeight {
         self.kind
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
     pub fn can_be_used_as_prototype_arg(&self) -> bool {
         self.can_be_used_as_prototype_arg
     }
@@ -78,22 +56,6 @@ impl PropNodeWeight {
         &self.name
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),
-            other => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
-                    ContentAddressDiscriminants::Prop.to_string(),
-                ));
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
@@ -108,6 +70,8 @@ impl NodeHash for PropNodeWeight {
         }])
     }
 }
+
+impl_has_discriminated_content_address! { PropNodeWeight: Prop }
 
 impl std::fmt::Debug for PropNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

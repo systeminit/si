@@ -3,22 +3,9 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeightV1;
-use crate::workspace_snapshot::graph::detect_updates::Update;
-use crate::workspace_snapshot::NodeId;
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    graph::correct_transforms::add_dependent_value_root_updates,
-    graph::LineageId,
-    node_weight::traits::CorrectTransforms,
-    node_weight::{NodeWeightError, NodeWeightResult},
-};
-use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use crate::{workspace_snapshot::{content_address::ContentAddress, graph::{correct_transforms::add_dependent_value_root_updates, deprecated::v1::DeprecatedSecretNodeWeightV1, detect_updates::Update, LineageId}, node_weight::{category_node_weight::CategoryNodeKind, impl_has_discriminated_content_address, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight}, NodeId}, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
-use super::category_node_weight::CategoryNodeKind;
-use super::traits::CorrectTransformsResult;
-use super::{NodeHash, NodeWeight};
+use super::HasContent as _;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {
@@ -45,18 +32,6 @@ impl SecretNodeWeight {
         }
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -73,22 +48,6 @@ impl SecretNodeWeight {
         self
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::Secret(_) => ContentAddress::Secret(content_hash),
-            other => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
-                    ContentAddressDiscriminants::Secret.to_string(),
-                ));
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
@@ -102,6 +61,8 @@ impl NodeHash for SecretNodeWeight {
         }])
     }
 }
+
+impl_has_discriminated_content_address! { crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight: Secret }
 
 impl std::fmt::Debug for SecretNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

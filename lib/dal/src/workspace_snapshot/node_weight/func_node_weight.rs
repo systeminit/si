@@ -1,18 +1,9 @@
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::func::FuncKind;
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedFuncNodeWeightV1;
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    graph::LineageId,
-    node_weight::traits::CorrectTransforms,
-    node_weight::{NodeWeightError, NodeWeightResult},
-};
-use crate::EdgeWeightKindDiscriminants;
+use crate::{func::FuncKind, workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedFuncNodeWeightV1, LineageId}, node_weight::{impl_has_discriminated_content_address, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants};
 
-use super::NodeHash;
+use super::HasContent as _;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncNodeWeight {
@@ -42,18 +33,6 @@ impl FuncNodeWeight {
         }
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![self.content_address.content_hash()]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
@@ -76,22 +55,6 @@ impl FuncNodeWeight {
         self
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            other => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
-                    ContentAddressDiscriminants::Func.to_string(),
-                ));
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
-    }
-
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
@@ -106,6 +69,8 @@ impl NodeHash for FuncNodeWeight {
         }])
     }
 }
+
+impl_has_discriminated_content_address! { FuncNodeWeight: Func }
 
 impl std::fmt::Debug for FuncNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

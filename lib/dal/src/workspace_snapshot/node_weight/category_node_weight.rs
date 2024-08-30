@@ -36,14 +36,6 @@ pub struct CategoryNodeWeight {
 }
 
 impl CategoryNodeWeight {
-    pub fn content_hash(&self) -> ContentHash {
-        self.node_hash()
-    }
-
-    pub fn content_store_hashes(&self) -> Vec<ContentHash> {
-        vec![]
-    }
-
     pub fn id(&self) -> Ulid {
         self.id
     }
