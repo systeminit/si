@@ -74,7 +74,7 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/ws", crate::server::service::ws::routes())
         .nest("/api/module", crate::server::service::module::routes())
         .nest("/api/variant", crate::server::service::variant::routes())
-        .nest("/api/v2", crate::server::service::v2::routes())
+        .nest("/api/v2", crate::server::service::v2::routes(state.clone()))
         .layer(CompressionLayer::new())
         // allows us to be permissive about cors from our owned subdomains
         .layer(
@@ -110,6 +110,8 @@ pub fn routes(state: AppState) -> Router {
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);
 
+    // Consider turning app state into an Arc so that all of the middleware
+    // share the same state object, instead of cloning
     router.with_state(state)
 }
 

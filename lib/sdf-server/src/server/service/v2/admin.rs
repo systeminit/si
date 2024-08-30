@@ -7,8 +7,8 @@ use axum::{
 use dal::func::runner::FuncRunnerError;
 use thiserror::Error;
 
-use crate::server::error;
 use crate::server::state::AppState;
+use crate::server::{error, extract::AdminAccessBuilder};
 use crate::service::ApiError;
 
 mod kill_execution;
@@ -41,9 +41,14 @@ impl IntoResponse for AdminAPIError {
 
 pub type AdminAPIResult<T> = Result<T, AdminAPIError>;
 
-pub fn v2_routes() -> Router<AppState> {
-    Router::new().route(
-        "/func/runs/:func_run_id/kill_execution",
-        put(kill_execution::kill_execution),
-    )
+pub fn v2_routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route(
+            "/func/runs/:func_run_id/kill_execution",
+            put(kill_execution::kill_execution),
+        )
+        .route_layer(axum::middleware::from_extractor_with_state::<
+            AdminAccessBuilder,
+            AppState,
+        >(state))
 }
