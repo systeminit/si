@@ -1,12 +1,14 @@
 use super::{SessionError, SessionResult};
-use crate::server::extract::{HandlerContext, RawAccessToken};
+use crate::server::extract::{HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::state::AppState;
+use crate::server::tracking::track;
 use crate::server::{WorkspacePermissions, WorkspacePermissionsMode};
 use crate::service::session::AuthApiErrBody;
-use axum::extract::State;
+use axum::extract::{Host, OriginalUri, State};
 use axum::Json;
 use dal::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
+use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use telemetry::tracing::warn;
@@ -73,9 +75,12 @@ pub struct AuthApiReconnectResponse {
 }
 
 // TODO: pull value from env vars / dotenv files
-
+#[allow(clippy::too_many_arguments)]
 async fn find_or_create_user_and_workspace(
     mut ctx: DalContext,
+    original_uri: &Uri,
+    host_name: &String,
+    PosthogClient(posthog_client): PosthogClient,
     auth_api_user: AuthApiUser,
     auth_api_workspace: AuthApiWorkspace,
     create_workspace_permissions: WorkspacePermissionsMode,
@@ -127,10 +132,25 @@ async fn find_or_create_user_and_workspace(
                 let workspace = Workspace::new(
                     &mut ctx,
                     auth_api_workspace.id,
-                    auth_api_workspace.display_name,
+                    auth_api_workspace.display_name.clone(),
                 )
                 .await?;
                 let _key_pair = KeyPair::new(&ctx, "default").await?;
+
+                track(
+                    &posthog_client,
+                    &ctx,
+                    original_uri,
+                    host_name,
+                    "workspace_first_loaded",
+                    serde_json::json!({
+                        "change_set_id": ctx.change_set_id(),
+                        "workspace_id": workspace.pk(),
+                        "workspace_name": auth_api_workspace.display_name,
+                        "user_id": user.pk(),
+                    }),
+                );
+
                 workspace
             } else {
                 warn!(
@@ -152,6 +172,9 @@ async fn find_or_create_user_and_workspace(
 }
 
 pub async fn auth_connect(
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     State(state): State<AppState>,
     Json(request): Json<AuthConnectRequest>,
@@ -179,6 +202,9 @@ pub async fn auth_connect(
 
     let (user, workspace) = find_or_create_user_and_workspace(
         ctx,
+        &original_uri,
+        &host_name,
+        PosthogClient(posthog_client),
         res_body.user,
         res_body.workspace,
         state.create_workspace_permissions(),
@@ -194,6 +220,9 @@ pub async fn auth_connect(
 }
 
 pub async fn auth_reconnect(
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
+    PosthogClient(posthog_client): PosthogClient,
     HandlerContext(builder): HandlerContext,
     RawAccessToken(raw_access_token): RawAccessToken,
     State(state): State<AppState>,
@@ -220,6 +249,9 @@ pub async fn auth_reconnect(
 
     let (user, workspace) = find_or_create_user_and_workspace(
         ctx,
+        &original_uri,
+        &host_name,
+        PosthogClient(posthog_client),
         res_body.user,
         res_body.workspace,
         state.create_workspace_permissions(),
