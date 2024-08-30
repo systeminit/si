@@ -14,8 +14,11 @@ const defaultWorkspace = computed(() => workspacesStore.defaultWorkspace);
 
 onMounted(async () => {
   if (import.meta.env.SSR) return;
-  if (!authStore.userIsLoggedIn) return;
-
+  if (
+    !authStore.userIsLoggedIn ||
+    !authStore.user?.onboardingDetails?.reviewedProfile
+  )
+    return;
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   await workspacesStore.LOAD_WORKSPACES();
   if (defaultWorkspace.value) {

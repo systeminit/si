@@ -3,7 +3,11 @@ import { ulid } from "ulidx";
 import * as Auth0 from "auth0";
 import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
-import { createWorkspace, LOCAL_WORKSPACE_URL } from "./workspaces.service";
+import {
+  createWorkspace,
+  LOCAL_WORKSPACE_URL,
+  SAAS_WORKSPACE_URL,
+} from "./workspaces.service";
 import { LATEST_TOS_VERSION_ID } from "./tos.service";
 import { tracker } from "../lib/tracker";
 import { fetchAuth0Profile } from "./auth0.service";
@@ -142,17 +146,28 @@ export async function createOrUpdateUserFromAuth0Details(
       lastName: user.lastName,
     });
 
+    if (user.email.includes("@systeminit.com")) {
+      await createWorkspace(
+        user,
+        InstanceEnvType.SI,
+        SAAS_WORKSPACE_URL,
+        `${user.nickname}'s  Production Workspace`,
+        true,
+      );
+    } else {
+      await createWorkspace(
+        user,
+        InstanceEnvType.LOCAL,
+        LOCAL_WORKSPACE_URL,
+        `${user.nickname}'s  Dev Workspace`,
+        false,
+      );
+    }
+
     // create a default saas workspace
     // await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
     // we want to check if this is the first production workspace that a user has and if so, we are going to set it as the default
     // when we launch this feature!
-    await createWorkspace(
-      user,
-      InstanceEnvType.LOCAL,
-      LOCAL_WORKSPACE_URL,
-      `${user.nickname}'s  Dev Workspace`,
-      false,
-    );
   }
 
   return user;
