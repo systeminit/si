@@ -12,6 +12,7 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
     ],
     srcs = glob([
         "src/**/*.rs",

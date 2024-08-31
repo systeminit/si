@@ -1,5 +1,6 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use tokio_util::sync::CancellationToken;
 
 use crate::{from_config, PosthogClient, PosthogError, PosthogResult, PosthogSender};
 
@@ -50,8 +51,8 @@ impl Default for PosthogConfig {
 }
 
 impl PosthogConfigBuilder {
-    pub fn build(&self) -> PosthogResult<(PosthogClient, PosthogSender)> {
+    pub fn build(&self, token: CancellationToken) -> PosthogResult<(PosthogSender, PosthogClient)> {
         let config = self._build()?;
-        from_config(&config)
+        from_config(&config, token)
     }
 }

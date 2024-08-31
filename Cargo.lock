@@ -3517,6 +3517,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "tower",
  "tower-http",
  "ulid",
@@ -3597,6 +3598,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -4188,13 +4190,8 @@ name = "pinga"
 version = "0.1.0"
 dependencies = [
  "clap",
- "color-eyre",
  "pinga-server",
  "si-service",
- "si-std",
- "telemetry-application",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -5295,14 +5292,8 @@ name = "sdf"
 version = "0.1.0"
 dependencies = [
  "clap",
- "color-eyre",
- "nats-multiplexer",
  "sdf-server",
  "si-service",
- "si-std",
- "telemetry-application",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -5927,6 +5918,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5941,9 +5933,11 @@ dependencies = [
 name = "si-service"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "color-eyre",
  "glob",
  "si-runtime",
+ "si-std",
  "telemetry",
  "telemetry-application",
  "thiserror",

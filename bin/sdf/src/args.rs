@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use clap::{builder::EnumValueParser, builder::PossibleValuesParser, ArgAction, Parser};
 
 use sdf_server::{
-    server::{WorkspacePermissions, WorkspacePermissionsMode},
     Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile,
+    WorkspacePermissions, WorkspacePermissionsMode,
 };
-use si_std::SensitiveString;
+use si_service::prelude::*;
 
 const NAME: &str = "sdf";
 
@@ -201,6 +201,31 @@ pub(crate) struct Args {
     /// Override for the auth api url
     #[arg(long, env = "SI_AUTH_API_URL")]
     pub(crate) auth_api_url: Option<String>,
+
+    /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
+    ///
+    /// And instance ID is used when tracking the execution of jobs in a way that can be traced
+    /// back to an instance of this service.
+    #[arg(long)]
+    pub(crate) instance_id: Option<String>,
+}
+
+impl Args {
+    pub fn generating_veritech_key_pair(&self) -> Option<(PathBuf, PathBuf)> {
+        match (
+            self.generate_veritech_secret_key_path.as_ref(),
+            self.generate_veritech_public_key_path.as_ref(),
+        ) {
+            (Some(secret_key_path), Some(public_key_path)) => {
+                Some((secret_key_path.clone(), public_key_path.clone()))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn generating_symmetric_key(&self) -> Option<PathBuf> {
+        self.generate_symmetric_key_path.clone()
+    }
 }
 
 impl TryFrom<Args> for Config {
@@ -208,6 +233,10 @@ impl TryFrom<Args> for Config {
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, |config_map| {
+            if let Some(instance_id) = args.instance_id {
+                config_map.set("instance_id", instance_id);
+            }
+
             if let Some(dbname) = args.pg_dbname {
                 config_map.set("pg.dbname", dbname);
             }

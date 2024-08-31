@@ -1,0 +1,278 @@
+use std::{future::IntoFuture as _, time::Duration};
+
+use dal::{
+    builtins, pkg::PkgError, workspace_snapshot::migrator::SnapshotGraphMigrator, DalContext,
+    ServicesContext, Workspace,
+};
+use module_index_client::{BuiltinsDetailsResponse, ModuleDetailsResponse, ModuleIndexClient};
+use si_pkg::SiPkg;
+use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::{
+    task::JoinSet,
+    time::{self, Instant},
+};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use ulid::Ulid;
+
+use crate::{init, Config};
+
+#[remain::sorted]
+#[derive(Debug, Error)]
+pub enum MigratorError {
+    #[error("error while initializing: {0}")]
+    Init(#[from] init::InitError),
+    #[error("error while migrating builtins from module index: {0}")]
+    MigrateBuiltins(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
+    #[error("error while migrating dal database: {0}")]
+    MigrateDalDatabase(#[source] dal::ModelError),
+    #[error("error while migrating layer db database: {0}")]
+    MigrateLayerDbDatabase(#[source] si_layer_cache::LayerDbError),
+    #[error("error while migrating snapshots: {0}")]
+    MigrateSnapshots(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
+    #[error("module index url not set")]
+    ModuleIndexNotSet,
+}
+
+impl MigratorError {
+    fn migrate_snapshots<E>(err: E) -> Self
+    where
+        E: std::error::Error + 'static + Sync + Send,
+    {
+        Self::MigrateSnapshots(Box::new(err))
+    }
+
+    fn migrate_builtins<E>(err: E) -> Self
+    where
+        E: std::error::Error + 'static + Sync + Send,
+    {
+        Self::MigrateBuiltins(Box::new(err))
+    }
+}
+
+type MigratorResult<T> = std::result::Result<T, MigratorError>;
+
+#[derive(Clone)]
+pub struct Migrator {
+    services_context: ServicesContext,
+}
+
+impl Migrator {
+    #[instrument(name = "sdf.migrator.init.from_config", level = "info", skip_all)]
+    pub async fn from_config(
+        config: Config,
+        helping_tasks_tracker: &TaskTracker,
+        helping_tasks_token: CancellationToken,
+    ) -> MigratorResult<Self> {
+        let (services_context, layer_db_graceful_shutdown) =
+            init::services_context_from_config(&config, helping_tasks_token).await?;
+
+        // Spawn helping tasks and track them for graceful shutdown
+        helping_tasks_tracker.spawn(layer_db_graceful_shutdown.into_future());
+
+        Ok(Self::from_services(services_context))
+    }
+
+    #[instrument(name = "sdf.migrator.init.from_services", level = "info", skip_all)]
+    pub fn from_services(services_context: ServicesContext) -> Self {
+        Self { services_context }
+    }
+
+    #[instrument(name = "sdf.migrator.run_migrations", level = "info", skip_all)]
+    pub async fn run_migrations(self) -> MigratorResult<()> {
+        self.migrate_layer_db_database().await?;
+        self.migrate_dal_database().await?;
+        self.migrate_snapshots().await?;
+        self.migrate_builtins_from_module_index().await?;
+        Ok(())
+    }
+
+    #[instrument(
+        name = "sdf.migrator.migrate_layer_db_database",
+        level = "info",
+        skip_all
+    )]
+    async fn migrate_layer_db_database(&self) -> MigratorResult<()> {
+        self.services_context
+            .layer_db()
+            .pg_migrate()
+            .await
+            .map_err(MigratorError::MigrateLayerDbDatabase)
+    }
+
+    #[instrument(name = "sdf.migrator.migrate_dal_database", level = "info", skip_all)]
+    async fn migrate_dal_database(&self) -> MigratorResult<()> {
+        dal::migrate_all_with_progress(&self.services_context)
+            .await
+            .map_err(MigratorError::MigrateDalDatabase)
+    }
+
+    #[instrument(name = "sdf.migrator.migrate_snapshots", level = "info", skip_all)]
+    async fn migrate_snapshots(&self) -> MigratorResult<()> {
+        let dal_context = self.services_context.clone().into_builder(true);
+        let ctx = dal_context
+            .build_default()
+            .await
+            .map_err(MigratorError::migrate_snapshots)?;
+
+        let mut migrator = SnapshotGraphMigrator::new();
+        migrator
+            .migrate_all(&ctx)
+            .await
+            .map_err(MigratorError::migrate_snapshots)?;
+        ctx.commit_no_rebase()
+            .await
+            .map_err(MigratorError::migrate_snapshots)?;
+        Ok(())
+    }
+
+    #[instrument(
+        name = "sdf.migrator.migrate_builtins_from_module_index",
+        level = "info",
+        skip_all
+    )]
+    async fn migrate_builtins_from_module_index(&self) -> MigratorResult<()> {
+        let mut interval = time::interval(Duration::from_secs(5));
+        let instant = Instant::now();
+
+        let mut dal_context = self.services_context.clone().into_builder(true);
+        dal_context.set_no_dependent_values();
+        let mut ctx = dal_context
+            .build_default()
+            .await
+            .map_err(MigratorError::migrate_builtins)?;
+        info!("setup builtin workspace");
+        Workspace::setup_builtin(&mut ctx)
+            .await
+            .map_err(MigratorError::migrate_builtins)?;
+
+        info!("migrating intrinsic functions");
+        builtins::func::migrate_intrinsics(&ctx)
+            .await
+            .map_err(MigratorError::migrate_builtins)?;
+        // info!("migrating builtin functions");
+        // builtins::func::migrate(&ctx).await?;
+
+        let module_index_url = self
+            .services_context
+            .module_index_url()
+            .ok_or(MigratorError::ModuleIndexNotSet)?;
+
+        let module_index_client = ModuleIndexClient::unauthenticated_client(
+            module_index_url
+                .try_into()
+                .map_err(MigratorError::migrate_builtins)?,
+        );
+        let module_list = module_index_client
+            .list_builtins()
+            .await
+            .map_err(MigratorError::migrate_builtins)?;
+        info!("builtins install starting");
+        let install_builtins = install_builtins(ctx, module_list, module_index_client);
+        tokio::pin!(install_builtins);
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
+                }
+                result = &mut install_builtins  => match result {
+                    Ok(_) => {
+                        info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
+                        break;
+                    }
+                    Err(err) => return Err(err),
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+async fn install_builtins(
+    ctx: DalContext,
+    module_list: BuiltinsDetailsResponse,
+    module_index_client: ModuleIndexClient,
+) -> MigratorResult<()> {
+    let dal = &ctx;
+    let client = &module_index_client.clone();
+    let modules: Vec<ModuleDetailsResponse> = module_list.modules;
+    // .into_iter()
+    // .filter(|module| module.name.contains("docker-image"))
+    // .collect();
+
+    let total = modules.len();
+
+    let mut join_set = JoinSet::new();
+    for module in modules {
+        let module = module.clone();
+        let client = client.clone();
+        join_set.spawn(async move {
+            (
+                module.name.to_owned(),
+                (module.to_owned(), fetch_builtin(&module, &client).await),
+            )
+        });
+    }
+
+    let mut count: usize = 0;
+    while let Some(res) = join_set.join_next().await {
+        let (pkg_name, (module, res)) = res.map_err(MigratorError::migrate_builtins)?;
+        match res {
+            Ok(pkg) => {
+                let instant = Instant::now();
+
+                match dal::pkg::import_pkg_from_pkg(
+                    &ctx,
+                    &pkg,
+                    Some(dal::pkg::ImportOptions {
+                        is_builtin: true,
+                        schema_id: module.schema_id().map(Into::into),
+                        past_module_hashes: module.past_hashes,
+                        ..Default::default()
+                    }),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        count += 1;
+                        let elapsed = instant.elapsed().as_secs_f32();
+                        info!(
+                            "pkg {pkg_name} install finished successfully and took {elapsed:.2} seconds ({count} of {total} installed)",
+                            );
+                    }
+                    Err(PkgError::PackageAlreadyInstalled(hash)) => {
+                        count += 1;
+                        warn!(%hash, "pkg {pkg_name} already installed ({count} of {total} installed)");
+                    }
+                    Err(err) => error!(?err, "pkg {pkg_name} install failed"),
+                }
+            }
+            Err(err) => {
+                error!(?err, "pkg {pkg_name} install failed with server error");
+            }
+        }
+    }
+    dal.commit()
+        .await
+        .map_err(MigratorError::migrate_builtins)?;
+
+    let mut ctx = ctx.clone();
+    ctx.update_snapshot_to_visibility()
+        .await
+        .map_err(MigratorError::migrate_builtins)?;
+
+    Ok(())
+}
+
+async fn fetch_builtin(
+    module: &ModuleDetailsResponse,
+    module_index_client: &ModuleIndexClient,
+) -> MigratorResult<SiPkg> {
+    let module = module_index_client
+        .get_builtin(Ulid::from_string(&module.id).unwrap_or_default())
+        .await
+        .map_err(MigratorError::migrate_builtins)?;
+
+    SiPkg::load_from_bytes(module).map_err(MigratorError::migrate_builtins)
+}
