@@ -2,11 +2,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::{CasValue, ContentHash};
+use si_layer_cache::LayerDbError;
+use std::fmt::Debug;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
 use crate::action::prototype::ActionKind;
 use crate::validation::ValidationStatus;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
@@ -18,6 +21,12 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ContentTypeError {
+    #[error("incorrect address type {0}, expected {1}")]
+    IncorrectAddressType(ContentAddressDiscriminants, ContentAddressDiscriminants),
+    #[error(transparent)]
+    LayerDb(#[from] LayerDbError),
+    #[error("missing content from store: {0}")]
+    MissingContentFromStore(ContentHash),
     #[error("error extracting schema variant content : {0}")]
     SchemaVariantContent(String),
 }
@@ -56,85 +65,107 @@ pub enum ContentTypes {
     OutputSocket(OutputSocketContent),
 }
 
-macro_rules! impl_into_content_types {
-    (
-        $(#[$($attrss:tt)*])*
-        $name:ident
-    ) => {
-        paste::paste! {
-            impl From<[<$name Content>]> for ContentTypes {
-                fn from(value: [<$name Content>]) -> Self {
-                    ContentTypes::$name(value)
+pub trait DiscriminatedContentType: Debug+Clone+Serialize+PartialEq+Into<ContentTypes>+TryFrom<ContentTypes, Error = &'static str> {
+    const CONTENT_TYPE_DISCRIMINANT: ContentTypesDiscriminants;
+}
+pub trait ContentType: DiscriminatedContentType {
+    const CONTENT_ADDRESS_DISCRIMINANT: ContentAddressDiscriminants;
+    async fn read(ctx: &DalContext, content_address: &ContentAddress) -> ContentTypeResult<Self> {
+        let content_hash = Self::address_as_hash(content_address)?;
+        ctx.layer_db()
+            .cas()
+            .try_read_as::<Self>(content_hash)
+            .await?
+            .ok_or(ContentTypeError::MissingContentFromStore(*content_hash))
+    }
+    fn address_as_hash(content_address: &ContentAddress) -> ContentTypeResult<&ContentHash>;
+    fn hash_into_address(content_hash: ContentHash) -> ContentAddress;
+}
+
+macro_rules! impl_base_content_type {
+    ($discriminant:ident($content:ty)) => {
+        impl DiscriminatedContentType for $content {
+            const CONTENT_TYPE_DISCRIMINANT: ContentTypesDiscriminants = ContentTypesDiscriminants::$discriminant;
+        }
+
+        impl From<$content> for ContentTypes {
+            fn from(value: $content) -> Self {
+                ContentTypes::$discriminant(value)
+            }
+        }
+
+        impl TryFrom<ContentTypes> for $content {
+            type Error = &'static str;
+
+            fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
+                match value {
+                    ContentTypes::$discriminant(inner) => Ok(inner),
+                    _ => Err(std::concat!("Could not convert ContentType to ", stringify!($discriminant)))
                 }
             }
+        }
 
-            impl TryFrom<ContentTypes> for [<$name Content>] {
-                type Error = &'static str;
-
-                fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
-                    match value {
-                        ContentTypes::$name(inner) => Ok(inner),
-                        _ => Err(std::concat!("Could not convert ContentType to ", stringify!($name)))
-                    }
-                }
-            }
-
-            impl From<ContentTypes> for Option<[<$name Content>]> {
-                fn from(value: ContentTypes) -> Self {
-                    match value {
-                        ContentTypes::$name(inner) => Some(inner),
-                        _ => None
-                    }
+        impl From<ContentTypes> for Option<$content> {
+            fn from(value: ContentTypes) -> Self {
+                match value {
+                    ContentTypes::$discriminant(inner) => Some(inner),
+                    _ => None
                 }
             }
         }
     };
 }
+macro_rules! impl_content_types {
+    () => {};
+    ($discriminant:ident($content:ty) has no content address, $($t:tt)*) => {
+        impl_base_content_type! { $discriminant($content) }
+        impl_content_types! { $($t)*}
+    };
+    ($discriminant:ident($content:ty), $($t:tt)*) => {
+        impl_content_types! { $discriminant($content) = ContentAddress::$discriminant, $($t)* }
+    };
+    ($discriminant:ident($content:ty) = ContentAddress::$address:ident, $($t:tt)*) => {
+        impl_base_content_type! { $discriminant($content) }
 
-impl_into_content_types!(DeprecatedActionPrototype);
-impl_into_content_types!(AttributePrototype);
-impl_into_content_types!(Component);
-impl_into_content_types!(DeprecatedAction);
-impl_into_content_types!(DeprecatedActionBatch);
-impl_into_content_types!(DeprecatedActionRunner);
-impl_into_content_types!(Func);
-impl_into_content_types!(FuncArgument);
-impl_into_content_types!(InputSocket);
-impl_into_content_types!(OutputSocket);
-impl_into_content_types!(Module);
-impl_into_content_types!(Prop);
-impl_into_content_types!(Schema);
-impl_into_content_types!(SchemaVariant);
-impl_into_content_types!(Secret);
-impl_into_content_types!(StaticArgumentValue);
-impl_into_content_types!(Validation);
+        impl ContentType for $content {
+            const CONTENT_ADDRESS_DISCRIMINANT: ContentAddressDiscriminants = ContentAddressDiscriminants::$address;
+            fn address_as_hash(content_address: &ContentAddress) -> ContentTypeResult<&ContentHash> {
+                match content_address {
+                    ContentAddress::$address(content_hash) => Ok(content_hash),
+                    _ => Err(ContentTypeError::IncorrectAddressType(
+                        content_address.into(),
+                        Self::CONTENT_ADDRESS_DISCRIMINANT
+                    ))
+                }
+            }
+            fn hash_into_address(content_hash: ContentHash) -> ContentAddress {
+                ContentAddress::$address(content_hash)
+            }
+        }
 
-// Here we've broken the Foo, FooContent convention so we need to implement
-// these traits manually
-impl From<CasValue> for ContentTypes {
-    fn from(value: CasValue) -> Self {
-        ContentTypes::Any(value)
-    }
+        impl_content_types! { $($t)*}
+    };
 }
 
-impl TryFrom<ContentTypes> for CasValue {
-    type Error = &'static str;
-
-    fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
-        match value {
-            ContentTypes::Any(inner) => Ok(inner),
-            _ => Err("Could not convert ContentType to CasValue"),
-        }
-    }
-}
-
-impl From<ContentTypes> for Option<CasValue> {
-    fn from(value: ContentTypes) -> Self {
-        match value {
-            ContentTypes::Any(value) => Some(value),
-            _ => None,
-        }
-    }
+impl_content_types! {
+    Any(CasValue) has no content address,
+    AttributePrototype(AttributePrototypeContent),
+    Component(ComponentContent),
+    DeprecatedAction(DeprecatedActionContent),
+    DeprecatedActionBatch(DeprecatedActionBatchContent),
+    DeprecatedActionPrototype(DeprecatedActionPrototypeContent) has no content address,
+    DeprecatedActionRunner(DeprecatedActionRunnerContent),
+    Func(FuncContent),
+    FuncArgument(FuncArgumentContent) = ContentAddress::FuncArg,
+    InputSocket(InputSocketContent),
+    Module(ModuleContent),
+    Prop(PropContent),
+    Schema(SchemaContent),
+    SchemaVariant(SchemaVariantContent),
+    Secret(SecretContent),
+    StaticArgumentValue(StaticArgumentValueContent),
+    Validation(ValidationContent) = ContentAddress::ValidationPrototype,
+    OutputSocket(OutputSocketContent),
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

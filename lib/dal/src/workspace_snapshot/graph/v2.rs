@@ -19,7 +19,7 @@ use crate::{
             detect_updates::{Detector, Update},
             MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
-        node_weight::{CategoryNodeWeight, NodeWeight},
+        node_weight::{CategoryNodeWeight, HasContent as _, NodeWeight},
         CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
     },
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,

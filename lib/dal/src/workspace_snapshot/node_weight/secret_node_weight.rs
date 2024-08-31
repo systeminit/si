@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 
-use crate::{workspace_snapshot::{content_address::ContentAddress, graph::{correct_transforms::add_dependent_value_root_updates, deprecated::v1::DeprecatedSecretNodeWeightV1, detect_updates::Update, LineageId}, node_weight::{category_node_weight::CategoryNodeKind, impl_has_discriminated_content_address, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight}, NodeId}, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use crate::{layer_db_types::SecretContent, workspace_snapshot::{content_address::ContentAddress, graph::{correct_transforms::add_dependent_value_root_updates, deprecated::v1::DeprecatedSecretNodeWeightV1, detect_updates::Update, LineageId}, node_weight::{category_node_weight::CategoryNodeKind, impl_has_content, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight}, NodeId}, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
 
-use super::HasContent as _;
+use super::HasContentHash as _;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {
@@ -62,7 +62,7 @@ impl NodeHash for SecretNodeWeight {
     }
 }
 
-impl_has_discriminated_content_address! { crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight: Secret }
+impl_has_content! { SecretNodeWeight => SecretContent }
 
 impl std::fmt::Debug for SecretNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -16,7 +16,7 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{HasContent as _, HasContentHash as _, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,

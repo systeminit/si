@@ -1,58 +1,49 @@
 use si_events::ContentHash;
 
-use crate::workspace_snapshot::node_weight::{NodeWeightResult, *};
+use crate::{layer_db_types::ContentTypes, workspace_snapshot::{node_weight::{NodeWeightResult, *}, WorkspaceSnapshotResult}, DalContext, WorkspaceSnapshotError};
 
-
-pub trait HasContent {
+pub trait HasContentHash: AnyNodeWeight {
     fn content_hash(&self) -> ContentHash;
     fn content_store_hashes(&self) -> Vec<ContentHash>;
 }
-
 ///
 /// For node weights with a single content hash.
 /// 
-pub trait HasContentAddress: HasContent {
+pub trait HasContent: HasContentHash {
+    type ContentType: TryFrom<ContentTypes, Error: std::fmt::Display>;
+    // fn read_content(&self, ctx: &DalContext) -> NodeWeightResult<Vec<u8>>;
     fn content_address(&self) -> ContentAddress;
     fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()>;
     fn content_address_discriminants(&self) -> ContentAddressDiscriminants {
         self.content_address().into()
     }
+    async fn read_content(&self, ctx: &DalContext) -> WorkspaceSnapshotResult<Self::ContentType> {
+        ctx
+        .layer_db()
+        .cas()
+        .try_read_as(&self.content_hash())
+        .await?
+        .ok_or(WorkspaceSnapshotError::MissingContentFromStore(self.id()))
+    }
 }
 
-pub trait HasDiscriminatedContentAddress: HasContentAddress {
-    const CONTENT_ADDRESS_DISCRIMINANT: ContentAddressDiscriminants;
-}
-
-macro_rules! impl_has_discriminated_content_address {
-    ($type:ty: $discriminant:ident) => {
-        impl $crate::workspace_snapshot::node_weight::HasContent for $type {
+macro_rules! impl_has_content {
+    ($type:ty => $content_type:ty) => {
+        impl $crate::workspace_snapshot::node_weight::HasContentHash for $type {
             fn content_store_hashes(&self) -> Vec<::si_events::ContentHash> {
                 vec![self.content_address.content_hash()]
             }
             fn content_hash(&self) -> ::si_events::ContentHash { self.content_address.content_hash() }
         }
-        impl $crate::workspace_snapshot::node_weight::HasContentAddress for $type {
+        impl $crate::workspace_snapshot::node_weight::HasContent for $type {
+            type ContentType = $content_type;
             fn content_address(&self) -> $crate::workspace_snapshot::node_weight::ContentAddress { self.content_address }
             fn new_content_hash(&mut self, content_hash: ::si_events::ContentHash) -> $crate::workspace_snapshot::node_weight::NodeWeightResult<()> {
-                let new_address = match &self.content_address {
-                    $crate::workspace_snapshot::node_weight::ContentAddress::$discriminant(_) => $crate::workspace_snapshot::node_weight::ContentAddress::$discriminant(content_hash),
-                    other => {
-                        return Err($crate::workspace_snapshot::node_weight::NodeWeightError::InvalidContentAddressForWeightKind(
-                            Into::<$crate::workspace_snapshot::ContentAddressDiscriminants>::into(other).to_string(),
-                            $crate::workspace_snapshot::ContentAddressDiscriminants::$discriminant.to_string(),
-                        ));
-                    }
-                };
-        
-                self.content_address = new_address;
-        
+                self.content_address = <$content_type as $crate::layer_db_types::ContentType>::hash_into_address(content_hash);
                 Ok(())
             }
-        }
-        impl $crate::workspace_snapshot::node_weight::HasDiscriminatedContentAddress for $type {
-            const CONTENT_ADDRESS_DISCRIMINANT: $crate::workspace_snapshot::ContentAddressDiscriminants = $crate::workspace_snapshot::ContentAddressDiscriminants::$discriminant;
         }
     };
 }
 
-pub(crate) use impl_has_discriminated_content_address;
+pub(crate) use impl_has_content;

@@ -1,18 +1,22 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::{ulid::Ulid, ContentHash};
 
+use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedContentNodeWeightV1;
+use crate::workspace_snapshot::WorkspaceSnapshotResult;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
     node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
-use crate::EdgeWeightKindDiscriminants;
+use crate::{DalContext, EdgeWeightKindDiscriminants, WorkspaceSnapshotError};
 
-use super::{HasContent, HasContentAddress, NodeHash};
+use super::{HasContent, HasContentHash, NodeHash};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ContentNodeWeight {
@@ -64,18 +68,28 @@ impl ContentNodeWeight {
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
+
+    pub async fn read_content_as<T: TryFrom<ContentTypes, Error: Display>>(&self, ctx: &DalContext) -> WorkspaceSnapshotResult<T> {
+        ctx
+        .layer_db()
+        .cas()
+        .try_read_as::<T>(&self.content_hash())
+        .await?
+        .ok_or(WorkspaceSnapshotError::MissingContentFromStore(self.id()))
+    }
 }
 
 impl NodeHash for ContentNodeWeight {
     fn node_hash(&self) -> ContentHash { self.content_hash() }
 }
 
-impl HasContent for ContentNodeWeight {
+impl HasContentHash for ContentNodeWeight {
     fn content_hash(&self) -> ContentHash { self.content_address.content_hash() }
     fn content_store_hashes(&self) -> Vec<ContentHash> { vec![self.content_address.content_hash()] }
 }
 
-impl HasContentAddress for ContentNodeWeight {
+impl HasContent for ContentNodeWeight {
+    type ContentType = ContentTypes;
     fn content_address(&self) -> ContentAddress { self.content_address }
     fn content_address_discriminants(&self) -> ContentAddressDiscriminants { self.content_address.into() }
     fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {

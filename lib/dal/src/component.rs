@@ -46,7 +46,7 @@ use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, HasContentHash as _, HasContent as _, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
@@ -1283,9 +1283,8 @@ impl Component {
         let mut hashes = vec![];
         for index in component_node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)
-                .await?
-                .get_component_node_weight()?;
+                .get_node_weight_as::<ComponentNodeWeight>(index)
+                .await?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
         }

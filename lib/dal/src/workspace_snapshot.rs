@@ -34,6 +34,7 @@ use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use node_weight::traits::CorrectTransformsError;
+use node_weight::HasContent as _;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -701,6 +702,13 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
+    pub async fn get_node_weight_by_id_as<T: TryFrom<NodeWeight, Error: Into<WorkspaceSnapshotError>>>(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<T> {
+        self.get_node_weight_by_id(id).await?.try_into().map_err(Into::into)
+    }
+
     pub async fn get_node_weight(
         &self,
         node_index: NodeIndex,
@@ -710,6 +718,13 @@ impl WorkspaceSnapshot {
             .await
             .get_node_weight(node_index)?
             .to_owned())
+    }
+
+    pub async fn get_node_weight_as<T: TryFrom<NodeWeight, Error: Into<WorkspaceSnapshotError>>>(
+        &self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<T> {
+        self.get_node_weight(node_index).await?.try_into().map_err(Into::into)
     }
 
     #[instrument(

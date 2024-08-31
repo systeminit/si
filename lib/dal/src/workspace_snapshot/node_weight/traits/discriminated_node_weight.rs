@@ -5,7 +5,7 @@ use crate::{workspace_snapshot::node_weight::*, NodeWeightDiscriminants};
 pub trait DiscriminatedNodeWeight: AnyNodeWeight
     where for<'de> Self: serde::Deserialize<'de>,
 {
-    const DISCRIMINANT: NodeWeightDiscriminants;
+    const NODE_WEIGHT_DISCRIMINANT: NodeWeightDiscriminants;
 }
 
 macro_rules! impl_discriminated_node_weight {
@@ -24,7 +24,16 @@ macro_rules! impl_discriminated_node_weight {
             }
         }
         impl $crate::workspace_snapshot::node_weight::DiscriminatedNodeWeight for $type {
-            const DISCRIMINANT: $crate::NodeWeightDiscriminants = $crate::NodeWeightDiscriminants::$discriminant;
+            const NODE_WEIGHT_DISCRIMINANT: $crate::NodeWeightDiscriminants = $crate::NodeWeightDiscriminants::$discriminant;
+        }
+        impl TryFrom<$crate::workspace_snapshot::node_weight::NodeWeight> for $type {
+            type Error = $crate::workspace_snapshot::node_weight::NodeWeightError;
+            fn try_from(value: $crate::workspace_snapshot::node_weight::NodeWeight) -> Result<Self, Self::Error> {
+                match value {
+                    $crate::workspace_snapshot::node_weight::NodeWeight::$discriminant(value) => Ok(value),
+                    value => Err($crate::workspace_snapshot::node_weight::NodeWeightError::UnexpectedNodeWeightVariant(value.into(), Self::NODE_WEIGHT_DISCRIMINANT)),
+                }
+            }
         }
     )*};
 }

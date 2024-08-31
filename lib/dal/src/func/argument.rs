@@ -16,7 +16,7 @@ use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::{
-    FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    FuncArgumentNodeWeight, HasContentHash as _, NodeWeight, NodeWeightDiscriminants, NodeWeightError
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{

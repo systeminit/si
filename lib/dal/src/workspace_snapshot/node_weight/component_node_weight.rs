@@ -5,19 +5,18 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
-    workspace_snapshot::{
+    layer_db_types::ComponentContent, workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
         graph::{
             correct_transforms::add_dependent_value_root_updates,
             deprecated::v1::DeprecatedComponentNodeWeightV1, detect_updates::Update, LineageId,
         },
-        node_weight::{category_node_weight::CategoryNodeKind, impl_has_discriminated_content_address, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight, NodeWeightDiscriminants::{self, Component}},
+        node_weight::{category_node_weight::CategoryNodeKind, impl_has_content, traits::{CorrectTransforms, CorrectTransformsResult}, NodeHash, NodeWeight, NodeWeightDiscriminants::{self, Component}},
         NodeInformation,
-    },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    }, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2
 };
 
-use super::HasContentAddress as _;
+use super::HasContent as _;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ComponentNodeWeight {
@@ -77,7 +76,7 @@ impl NodeHash for ComponentNodeWeight {
     }
 }
 
-impl_has_discriminated_content_address! { ComponentNodeWeight: Component }
+impl_has_content! { ComponentNodeWeight => ComponentContent }
 
 impl From<DeprecatedComponentNodeWeightV1> for ComponentNodeWeight {
     fn from(value: DeprecatedComponentNodeWeightV1) -> Self {

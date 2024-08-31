@@ -6,7 +6,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{deprecated::DeprecatedWorkspaceSnapshotGraphV1, LineageId},
-        node_weight::NodeWeight,
+        node_weight::{HasContent as _, NodeWeight},
     },
     EdgeWeight, WorkspaceSnapshotGraphV2,
 };

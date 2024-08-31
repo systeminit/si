@@ -29,7 +29,7 @@ use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContent
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
-    content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    content_node_weight, HasContent, NodeWeight, NodeWeightDiscriminants, NodeWeightError
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -300,24 +300,13 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<(ContentNodeWeight, AttributePrototypeContentV1)> {
-        let content_weight = ctx
+        let prototype_node_weight: ContentNodeWeight = ctx
             .workspace_snapshot()?
-            .get_node_weight_by_id(prototype_id)
+            .get_node_weight_by_id_as(prototype_id)
             .await?;
-        let prototype_node_weight = content_weight
-            .get_content_node_weight_of_kind(ContentAddressDiscriminants::AttributePrototype)?;
-
-        let content: AttributePrototypeContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&prototype_node_weight.content_hash())
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
-                prototype_id.into(),
-            ))?;
 
         // Do "upgrading" of the storage format from old versions to the latest here.
-        let AttributePrototypeContent::V1(inner) = content;
+        let AttributePrototypeContent::V1(inner) = prototype_node_weight.read_content_as(ctx).await?;
 
         Ok((prototype_node_weight, inner))
     }

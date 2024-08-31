@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::{func::FuncKind, workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedFuncNodeWeightV1, LineageId}, node_weight::{impl_has_discriminated_content_address, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants};
+use crate::{func::FuncKind, layer_db_types::FuncContent, workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedFuncNodeWeightV1, LineageId}, node_weight::{impl_has_content, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants};
 
-use super::HasContent as _;
+use super::HasContentHash as _;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FuncNodeWeight {
@@ -70,7 +70,7 @@ impl NodeHash for FuncNodeWeight {
     }
 }
 
-impl_has_discriminated_content_address! { FuncNodeWeight: Func }
+impl_has_content! { FuncNodeWeight => FuncContent }
 
 impl std::fmt::Debug for FuncNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

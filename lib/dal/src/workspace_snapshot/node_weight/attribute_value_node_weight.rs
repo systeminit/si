@@ -17,7 +17,7 @@ use crate::{
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
 };
 
-use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, HasContent, NodeHash, NodeWeight};
+use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, HasContentHash, NodeHash, NodeWeight};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {
@@ -84,7 +84,7 @@ impl NodeHash for AttributeValueNodeWeight {
     }
 }
 
-impl HasContent for AttributeValueNodeWeight {
+impl HasContentHash for AttributeValueNodeWeight {
     fn content_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
             "unprocessed_value": self.unprocessed_value,

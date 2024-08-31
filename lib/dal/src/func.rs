@@ -21,7 +21,7 @@ use crate::layer_db_types::{FuncContent, FuncContentV2};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{FuncNodeWeight, HasContentHash as _, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,

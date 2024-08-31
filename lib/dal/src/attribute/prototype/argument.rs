@@ -11,6 +11,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
+use crate::workspace_snapshot::node_weight::HasContent;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
@@ -150,10 +151,7 @@ impl AttributePrototypeArgument {
             {
                 match workspace_snapshot.get_node_weight(node_idx).await? {
                     NodeWeight::Content(inner) => {
-                        let inner_addr_discrim: ContentAddressDiscriminants =
-                            inner.content_address().into();
-
-                        if inner_addr_discrim == ContentAddressDiscriminants::StaticArgumentValue {
+                        if inner.content_address_discriminants() == ContentAddressDiscriminants::StaticArgumentValue {
                             static_value_id = Some(inner.id().into());
                             break;
                         }

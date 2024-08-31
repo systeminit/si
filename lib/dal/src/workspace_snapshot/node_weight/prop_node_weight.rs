@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use crate::{workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedPropNodeWeightV1, LineageId}, node_weight::{impl_has_discriminated_content_address, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants, PropKind};
+use crate::{layer_db_types::PropContent, workspace_snapshot::{content_address::ContentAddress, graph::{deprecated::v1::DeprecatedPropNodeWeightV1, LineageId}, node_weight::{impl_has_content, traits::CorrectTransforms, NodeHash}}, EdgeWeightKindDiscriminants, PropKind};
 
-use super::HasContent as _;
+use super::HasContentHash as _;
 
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -71,7 +71,7 @@ impl NodeHash for PropNodeWeight {
     }
 }
 
-impl_has_discriminated_content_address! { PropNodeWeight: Prop }
+impl_has_content! { PropNodeWeight => PropContent }
 
 impl std::fmt::Debug for PropNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
