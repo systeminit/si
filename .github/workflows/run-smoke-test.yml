@@ -1,0 +1,28 @@
+name: Smoke Test
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to test"
+        default: "tools"
+        options:
+          - tools
+          - production
+
+jobs:
+  smoke-test:
+    name: Smoke Test SDF
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    env:
+      SDF_API_URL: ${{ vars.SDF_API_URL }}
+      AUTH_API_URL: ${{ vars.AUTH_API_URL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run the deno exec
+        run: |
+          cd bin/si-smoketest
+          deno task run ${{ vars.API_TEST_WORKSPACE_ID }} ${{ secrets.API_TEST_EMAIL }} ${{ secrets.API_TEST_PASSWORD }}
