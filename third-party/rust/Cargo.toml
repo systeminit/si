@@ -36,7 +36,7 @@ base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
 bytes = "1.6.0"
-cacache = { version = "13.0.0", default-features = false, features = [ "tokio-runtime", "mmap" ] }
+cacache = { git = "https://github.com/zkat/cacache-rs", rev = "146a593c8e3abea8bc4c1888ae6781a3f2e1422e", default-features = false, features = [ "tokio-runtime", "mmap" ] }
 chrono = { version = "0.4.37", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
@@ -113,7 +113,7 @@ sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "runtime-tokio-rus
 self-replace = "1.3.7"
 serde = { version = "1.0.197", features = ["derive", "rc"] }
 serde-aux = "4.5.0"
-serde_json = { version = "1.0.115", features = ["preserve_order"] }
+serde_json = { version = "=1.0.125", features = ["preserve_order"] }
 serde_path_to_error = { version = "0.1.16" }
 serde_url_params = "0.2.1"
 serde_with = "3.7.0"
