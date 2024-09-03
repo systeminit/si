@@ -1613,7 +1613,9 @@ function onDragElementsMove() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
-      draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
+      componentsStore.collapsedComponents.has(el.uniqueKey)
+        ? draggedCollapsedElementsPositionsPreDrag.value[el.uniqueKey]!
+        : draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
       delta,
     );
 
