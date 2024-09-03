@@ -1,15 +1,25 @@
-import { z } from 'zod';
+import { z } from "zod";
 import { ApiError } from "../lib/api-error";
 import {
-  completeAuth0TokenExchange, getAuth0LoginUrl, getAuth0LogoutUrl,
+  completeAuth0TokenExchange,
+  getAuth0LoginUrl,
+  getAuth0LogoutUrl,
+  getAuth0UserCredential,
 } from "../services/auth0.service";
-import { SI_COOKIE_NAME, createAuthToken } from '../services/auth.service';
+import {
+  SI_COOKIE_NAME,
+  createAuthToken,
+  createSdfAuthToken,
+} from "../services/auth.service";
 import { setCache, getCache } from "../lib/cache";
 import {
-  createOrUpdateUserFromAuth0Details,
+  createOrUpdateUserFromAuth0Details, getUserByEmail,
 } from "../services/users.service";
 import { validate } from "../lib/validation-helpers";
 
+import {
+  userRoleForWorkspace,
+} from "../services/workspaces.service";
 import { router } from ".";
 
 router.get("/auth/login", async (ctx) => {
@@ -34,6 +44,38 @@ router.get("/auth/login", async (ctx) => {
   ctx.redirect(url);
 });
 
+router.post("/auth/login", async (ctx) => {
+  const { email, password, workspaceId } = validate(
+    ctx.request.body,
+    z.object({
+      email: z.string(),
+      password: z.string(),
+      workspaceId: z.string(),
+    }),
+  );
+
+  const user = await getUserByEmail(email);
+  if (!user) {
+    throw new ApiError("Forbidden", "Bad user");
+  }
+
+  try {
+    await getAuth0UserCredential(email, password);
+  } catch {
+    throw new ApiError("Forbidden", "Bad user");
+  }
+  // TODO check for the user AUTH0 role to make sure it's a test user
+
+  const memberRole = await userRoleForWorkspace(user.id, workspaceId);
+  if (!memberRole) {
+    throw new ApiError("Forbidden", "You do not have access to that workspace");
+  }
+
+  const token = createSdfAuthToken(user.id, workspaceId);
+
+  ctx.body = { token };
+});
+
 router.get("/auth/login-callback", async (ctx) => {
   // const { code, state } = ctx.request.query;
   // TODO: find a better way to assert/check its not a string array (and make TS happy)
@@ -48,7 +90,7 @@ router.get("/auth/login-callback", async (ctx) => {
   // verify `state` matches ours by checking cache (and destroys key so it cannot be used twice)
   const authStartMeta = await getCache(`auth:start:${reqQuery.state}`, true);
   if (!authStartMeta) {
-    throw new ApiError('Conflict', 'Oauth state does not match');
+    throw new ApiError("Conflict", "Oauth state does not match");
   }
 
   const { profile } = await completeAuth0TokenExchange(reqQuery.code);
@@ -61,7 +103,7 @@ router.get("/auth/login-callback", async (ctx) => {
   ctx.cookies.set(SI_COOKIE_NAME, siToken, {
     // TODO: verify these settings
     httpOnly: true,
-    secure: (process.env.AUTH_API_URL as string).startsWith('https://'),
+    secure: (process.env.AUTH_API_URL as string).startsWith("https://"),
     // domain:,
   });
 

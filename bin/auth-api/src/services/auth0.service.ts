@@ -1,6 +1,6 @@
 import Axios from "axios";
 import { nanoid } from "nanoid";
-import Auth0 from 'auth0';
+import Auth0 from "auth0";
 import JWT from "jsonwebtoken";
 
 import { ApiError } from "../lib/api-error";
@@ -23,6 +23,30 @@ const auth0Api = Axios.create({
 
 export type Auth0UserData = Auth0.UserData;
 
+export async function getAuth0UserCredential(username: String, password: String) {
+  const authResult = await auth0Api.request({
+    method: "post",
+    url: "/oauth/token",
+    headers: { "content-type": "application/json" },
+    data: JSON.stringify({
+      grant_type: "password",
+      username,
+      password,
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+    }),
+  });
+
+  const token = authResult.data?.access_token;
+
+  if (!token) {
+    throw Error("Bad User");
+  }
+
+  return token;
+}
+
 export function getAuth0LoginUrl(signup = false) {
   // lots of ways to generate this, but... nanoid is pretty good and already url-safe
   const randomState = nanoid(16);
@@ -33,7 +57,7 @@ export function getAuth0LoginUrl(signup = false) {
     redirect_uri: LOGIN_CALLBACK_URL,
     state: randomState,
     scope: "openid profile email",
-    ...signup && { screen_hint: 'signup' },
+    ...signup && { screen_hint: "signup" },
     // `connection=CONNECTION` // not quite sure
     // prompt=none // for silent authentication - https://auth0.com/docs/authenticate/login/configure-silent-authentication
     // audience -- can be used to specify which "api" we are connecting to?
@@ -97,11 +121,13 @@ export async function completeAuth0TokenExchange(code: string) {
 
   return { profile, token: accessToken };
 }
-const AUTH0_MANAGEMENT_TOKEN_REDIS_KEY = 'auth0-management-api-key';
+
+const AUTH0_MANAGEMENT_TOKEN_REDIS_KEY = "auth0-management-api-key";
 type SavedAuth0TokenData = {
   clientId: string,
   token: string,
 };
+
 async function getManagementApiToken() {
   // first check if we have a valid token in redis (and make sure the client id has not changed)
   const savedTokenInfo = await getCache<SavedAuth0TokenData>(AUTH0_MANAGEMENT_TOKEN_REDIS_KEY);
@@ -115,9 +141,9 @@ async function getManagementApiToken() {
   // but since nothing bad happens if we refresh the token multiple times and we have very low volume, we can ignore safely ignore for now
 
   const result = await auth0Api.request({
-    method: 'post',
-    url: '/oauth/token',
-    headers: { 'content-type': 'application/json' },
+    method: "post",
+    url: "/oauth/token",
+    headers: { "content-type": "application/json" },
     data: JSON.stringify({
       client_id: process.env.AUTH0_M2M_CLIENT_ID,
       client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
@@ -137,13 +163,14 @@ async function getManagementApiToken() {
 
   return token;
 }
+
 export async function setManagementApiTokenForTesting() {
-  if (process.env.NODE_ENV !== 'test') {
-    throw new Error('This should only be used in test mode...');
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("This should only be used in test mode...");
   }
   await setCache(AUTH0_MANAGEMENT_TOKEN_REDIS_KEY, {
     clientId: process.env.AUTH0_M2M_CLIENT_ID!,
-    token: 'mocktoken',
+    token: "mocktoken",
   });
 }
 
@@ -170,7 +197,7 @@ export async function fetchAuth0Profile(auth0Id: string) {
       err.response.data.error_description,
     );
   });
-  if (!profile) throw new Error('no profile'); // just for TS
+  if (!profile) throw new Error("no profile"); // just for TS
 
   return profile;
 }
