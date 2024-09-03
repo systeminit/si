@@ -1365,6 +1365,9 @@ const currentSelectionMovableElements = computed(() => {
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
+const draggedCollapsedElementsPositionsPreDrag = ref<
+  Record<DiagramElementUniqueKey, Vector2d | undefined>
+>({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 interface updateElementPositionAndSizeArgs {
@@ -1441,12 +1444,36 @@ function beginDragElements() {
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
+  const allComponents = {} as Record<
+    string,
+    DiagramNodeData | DiagramGroupData
+  >;
+  componentsStore.diagramNodes.forEach((n) => {
+    const el =
+      n.componentType !== ComponentType.Component
+        ? new DiagramGroupData(n)
+        : new DiagramNodeData(n);
+    allComponents[el.uniqueKey] = el;
+  });
   draggedElementsPositionsPreDrag.value = _.mapValues(
-    allElementsByKey.value,
+    allComponents,
     (el) =>
-      componentsStore.combinedElementPositions[el.uniqueKey] ||
+      componentsStore.movedElementPositions[el.uniqueKey] ||
       _.get(el.def, "position"),
   );
+
+  const collapsedByKeys = {} as Record<string, DiagramGroupData>;
+  for (const [uniqueKey, el] of Object.entries(allElementsByKey.value)) {
+    if (componentsStore.collapsedComponents.has(uniqueKey)) {
+      collapsedByKeys[uniqueKey] = el as DiagramGroupData;
+    }
+  }
+  if (Object.keys(collapsedByKeys).length > 0)
+    draggedCollapsedElementsPositionsPreDrag.value = _.mapValues(
+      collapsedByKeys,
+      (el) => componentsStore.collapsedElementPositions[el.uniqueKey]!,
+    );
+  else draggedCollapsedElementsPositionsPreDrag.value = {};
 }
 
 function endDragElements() {
@@ -1539,13 +1566,13 @@ let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
 // This needs to be recursive to find child components at all depths
 const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
   const children: DiagramElementData[] = [];
-  _.map(el.def.childIds, (childId) => {
-    const c = nodes.value.find((n) => n.def.id === childId);
-    if (c) children.push(c);
-    const g = groups.value.find((n) => n.def.id === childId);
-    if (g) {
-      children.push(g);
-      children.push(...allChildren(g));
+  el.def.childIds?.forEach((childId) => {
+    const c = componentsStore.diagramNodes.find((n) => n.id === childId);
+    const isGroup = c?.componentType !== ComponentType.Component;
+    if (c) {
+      const _el = isGroup ? new DiagramGroupData(c) : new DiagramNodeData(c);
+      children.push(_el);
+      if (isGroup) children.push(...allChildren(_el));
     }
   });
   return children;
@@ -1678,24 +1705,6 @@ function onDragElementsMove() {
       el instanceof DiagramGroupData &&
       !componentsStore.collapsedComponents.has(el.uniqueKey)
     ) {
-      const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
-      const cycleCheck = new Set();
-      const queue = [el];
-      while (queue.length > 0) {
-        cycleCheck.add(el.def.id);
-
-        const parent = queue.shift();
-        const x = _.filter(
-          groups.value,
-          (n) => n.def.parentId === parent?.def.id,
-        );
-        _.each(x, (childGroup) => {
-          if (cycleCheck.has(childGroup.def.id)) return;
-          queue.push(childGroup);
-          includedGroups.push(childGroup);
-        });
-      }
-
       const childEls = allChildren(el);
 
       const actualParentDelta = vectorBetween(
@@ -1704,18 +1713,26 @@ function onDragElementsMove() {
       );
 
       _.each(childEls, (childEl) => {
-        if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
-
         const newChildPosition = vectorAdd(
           draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
           actualParentDelta,
         );
 
-        // track the position locally, so we don't need to rely on parent to store the temporary position
         elements.push({
           uniqueKey: childEl.uniqueKey,
           position: newChildPosition,
         });
+
+        if (componentsStore.collapsedComponents.has(childEl.uniqueKey)) {
+          const newUnCollapsedPosition = vectorAdd(
+            draggedCollapsedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
+            actualParentDelta,
+          );
+          collapsedElements.push({
+            uniqueKey: childEl.uniqueKey,
+            position: newUnCollapsedPosition,
+          });
+        }
       });
     }
 
@@ -2027,8 +2044,11 @@ function onResizeMove() {
   };
 
   const presentSize = resizedElementSizesPreResize[resizeTargetKey];
-  const presentPosition =
-    draggedElementsPositionsPreDrag.value[resizeTargetKey];
+  const presentPosition = componentsStore.collapsedComponents.has(
+    resizeTargetKey,
+  )
+    ? draggedCollapsedElementsPositionsPreDrag.value[resizeTargetKey]
+    : draggedElementsPositionsPreDrag.value[resizeTargetKey];
 
   if (!presentSize || !presentPosition) {
     return;
