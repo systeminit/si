@@ -448,7 +448,7 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
 
     let mut workspace = ctx.get_workspace().await.expect("get workspace");
     workspace
-        .set_component_concurrency_limit(ctx, 4)
+        .set_component_concurrency_limit(ctx, 8)
         .await
         .expect("set concurrency limit");
     ctx.commit_no_rebase().await.expect("commit");
