@@ -18,7 +18,7 @@
         <div class="flex flex-row">
           <EditingPill v-if="!editingFunc.isLocked" color="#666"></EditingPill>
           <IconButton
-            v-if="editingFunc.isLocked"
+            v-if="canBeEdited && editingFunc.isLocked"
             :class="clsx(!unlocking && 'hover:scale-125')"
             :loading="unlocking"
             icon="sliders-vertical"
@@ -29,7 +29,7 @@
             @click="unlock"
           />
           <IconButton
-            v-else
+            v-if="!editingFunc.isLocked"
             :class="clsx('mx-xs', !isDeleting && 'hover:scale-125')"
             :loading="isDeleting"
             icon="trash"
@@ -323,6 +323,10 @@ watch(
 );
 
 const editingFunc = ref(_.cloneDeep(funcStore.selectedFuncSummary));
+
+const canBeEdited = computed(
+  () => funcStore.selectedFuncSummary?.name !== "si:resourcePayloadToValue",
+);
 
 function resetEditingFunc() {
   const data = _.cloneDeep(funcStore.selectedFuncSummary);
