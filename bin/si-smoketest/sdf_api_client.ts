@@ -33,6 +33,8 @@ export class SdfApiClient {
   }) {
     const url = `${this.base_url}${path}`;
 
+    console.log(`request to ${url}`);
+
     const headers = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${this.token}`,

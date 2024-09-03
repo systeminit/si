@@ -20,14 +20,16 @@ if (import.meta.main) {
 }
 
 async function smoke_test_sdf(sdf: SdfApiClient) {
-  const resp = await sdf.fetch("/api/change_set/list_open_change_sets");
+  const resp = await sdf.fetch("/change_set/list_open_change_sets");
   console.log(resp.status);
-  // if (!resp.ok) throw new Error(`Error ${resp.status}: ${await resp.text()}`);
-  // const data = await resp.json();
-  // assert(data.headChangeSetId, "Expected headChangeSetId");
-  // const head = data.changeSets.find((c) => c.name === "HEAD");
-  // assert(head, "Expected a HEAD changeset");
-  // assert(head.id === data.headChangeSetId, "Expected HEAD changesets to match headChangeSetId");
+  if (!resp.ok) throw new Error(`Error ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json();
+  // TODO finish this test
+  console.log(data);
+  assert(data.headChangeSetId, "Expected headChangeSetId");
+  const head = data.changeSets.find((c) => c.id === data.headChangeSetId);
+  assert(head, "Expected a HEAD changeset");
+
 
   console.log("~~ SUCCESS ~~");
 }
