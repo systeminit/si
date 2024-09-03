@@ -300,7 +300,7 @@ impl LocalUdsInstance {
 }
 
 /// The [`Spec`] for [`LocalUdsInstance`]
-#[derive(Builder, Clone, Debug)]
+#[derive(Builder, Clone, Debug, Default)]
 pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into), default)]
@@ -343,8 +343,8 @@ pub struct LocalUdsInstanceSpec {
     action: bool,
 
     /// Size of the pool to configure for the spec.
-    #[builder(setter(into), default = "10")]
-    pub pool_size: u16,
+    #[builder(setter(into), default = "500")]
+    pub pool_size: u32,
 
     /// Sets the timeout for connecting to firecracker
     #[builder(setter(into), default = "10")]

@@ -1,19 +1,18 @@
+use crate::lifeguard::LifeGuard;
+use crate::task::{PoolNoodleTask, PoolNoodleTaskType};
 use crossbeam_queue::ArrayQueue;
-use std::fmt;
 use std::fmt::Display;
-use std::fmt::Formatter;
 use std::result;
 use std::sync::Arc;
 use telemetry_utils::metric;
-use tokio::time::sleep;
-use tokio::time::Duration;
+use tokio::time::{self, sleep};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+
+use tokio::time::Duration;
+use tracing::{debug, info, warn};
 
 use crate::errors::PoolNoodleError;
 use crate::{Instance, Spec};
-
-const INTERNAL_WORKERS_COUNT: usize = 10;
 
 /// [`pool_noodle`] implementations.
 
@@ -55,7 +54,46 @@ const INTERNAL_WORKERS_COUNT: usize = 10;
 ///:------------:::::::::::::::::::::::::##****#######%%%%%+:::::::-----
 ///=:----------::::::::::::::::::::::::::*#***########%%%%%*::::::------
 
-type Result<T> = result::Result<T, PoolNoodleError>;
+type Result<T, E> = result::Result<T, PoolNoodleError<E>>;
+
+#[derive(Clone, Debug)]
+/// Configuration object for setting up pool noodle
+pub struct PoolNoodleConfig<S> {
+    /// Verify instances can be started and stopped before starting the pool management tasks
+    pub check_health: bool,
+    /// Max number of worker threads to run at once. Defaults to available_parallelism() or 16
+    pub max_concurrency: u32,
+    /// Maximum number of instances to manage at once
+    pub pool_size: u32,
+    /// Number of attempts to get from the pool before giving up with 10 ms between attempts
+    pub retry_limit: u32,
+    /// Shuts down the pool management tasks
+    pub shutdown_token: CancellationToken,
+    /// The spec for the type of instance to manage
+    pub spec: S,
+}
+
+impl<S> Default for PoolNoodleConfig<S>
+where
+    S: Spec + Default,
+{
+    fn default() -> Self {
+        let concurrency = {
+            match std::thread::available_parallelism() {
+                Ok(p) => p.get() as u32,
+                Err(_) => 16,
+            }
+        };
+        Self {
+            check_health: false,
+            max_concurrency: concurrency,
+            pool_size: 100,
+            retry_limit: 6000,
+            shutdown_token: CancellationToken::new(),
+            spec: S::default(),
+        }
+    }
+}
 
 /// Pool Noodle is a tool for ensuring that we maintain a bare minimum number of Firecracker Jails
 /// for function execution. We wrap it in an Arc Mutex so we can update the queues it manages
@@ -63,251 +101,96 @@ type Result<T> = result::Result<T, PoolNoodleError>;
 #[derive(Debug)]
 pub struct PoolNoodle<I, S: Spec>(Arc<PoolNoodleInner<I, S>>);
 
-impl<I, S: Spec> Clone for PoolNoodle<I, S> {
+impl<I, E, S> Clone for PoolNoodle<I, S>
+where
+    I: Instance<Error = E> + Send + Sync + 'static,
+    S: Spec<Error = E, Instance = I> + Send + Sync + 'static,
+    E: Send,
+{
     fn clone(&self) -> Self {
         PoolNoodle(self.0.clone())
     }
 }
 
-impl<B: 'static, I, E, S> PoolNoodle<I, S>
+impl<I, E, S> PoolNoodle<I, S>
 where
-    S: Spec<Error = E, Instance = I> + Send + Sync + 'static,
-    I: Instance<SpecBuilder = B, Error = E> + Send + Sync + 'static,
+    I: Instance<Error = E> + Send + Sync + 'static,
+    S: Spec<Error = E, Instance = I> + Clone + Send + Sync + 'static,
     E: Send + Display + 'static,
 {
     /// Creates a new instance of PoolNoodle
-    pub fn new(pool_size: u32, spec: S, token: CancellationToken) -> Self {
+    pub fn new(config: PoolNoodleConfig<S>) -> Self {
+        let pool_size = config.pool_size;
+        let pool = PoolNoodle(Arc::new(PoolNoodleInner::new(config)));
         // start by cleaning jails just to make sure
-        let pool = Self(Arc::new(PoolNoodleInner {
-            pool_size,
-            spec,
-            dropped: ArrayQueue::new(pool_size as usize),
-            ready: ArrayQueue::new(pool_size as usize),
-            to_be_cleaned: ArrayQueue::new(pool_size as usize),
-            unprepared: ArrayQueue::new(pool_size as usize),
-            shutdown_token: token,
-        }));
-        for n in 1..=pool_size {
-            let me = Arc::clone(&pool.0);
-            Self::push_to_clean(me, n);
+        for id in 1..=pool_size {
+            pool.inner().push_clean_task_to_work_queue(id);
         }
         pool
     }
 
-    /// Gets the current pool stats from the inner struct
-    /// Only used for tests
-    pub async fn stats(&self) -> PoolNoodleStats {
-        self.0.stats().await
-    }
-
-    /// Start PoolNoodle. It will spin up various threads to handle Cyclone Instance lifecycles.
-    #[allow(clippy::let_underscore_future)] // These needs to just run in the background forever.
-    pub fn start(&mut self, check_health: bool) -> Result<()> {
-        if check_health {
+    /// do the thing
+    pub fn run(&mut self) -> Result<(), E> {
+        if self.inner().check_health {
             if let Some(err) = futures::executor::block_on(self.check_health()).err() {
                 return Err(err);
             }
         }
+        let inner = self.inner();
 
-        let me = Arc::clone(&self.0);
-
-        // TODO(nick,fletcher,scott): shift towards our tokio select, task tracker and cancellation
-        // token pattern.
-        for _ in 0..INTERNAL_WORKERS_COUNT {
-            let _ = tokio::spawn(Self::handle_prepare(me.clone()));
-
-            let _ = tokio::spawn(Self::handle_clean(me.clone()));
-
-            let _ = tokio::spawn(Self::handle_drop(me.clone()));
-        }
+        // for each worker, spin up a thread to pull work
+        tokio::spawn(async move {
+            for _ in 0..inner.max_concurrency {
+                let inner = inner.clone();
+                tokio::spawn(Self::spawn_worker(inner));
+            }
+        });
         Ok(())
     }
 
-    async fn handle_prepare(me: Arc<PoolNoodleInner<I, S>>) {
-        debug!("PoolNoodle: starting prepare handler...");
-
-        let inner = async {
-            loop {
-                // let's make more instances!
-                if let Some(id) = Self::pop_from_unprepared(me.clone()) {
-                    debug!("PoolNoodle: readying instance");
-                    match PoolNoodleInner::prepare(id, &me.spec).await {
-                        Ok(_) => {
-                            debug!("PoolNoodle: instance readied: {}", id);
-                            match PoolNoodleInner::spawn(id, &me.spec).await {
-                                Ok(instance) => {
-                                    debug!("PoolNoodle: instance started: {}", id);
-                                    Self::push_to_ready(me.clone(), instance);
-                                }
-                                Err(e) => {
-                                    warn!("PoolNoodle: failed to start instance: {}", id);
-                                    warn!("{:?}", e);
-                                    Self::push_to_clean(me.clone(), id);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            warn!("PoolNoodle: failed to ready instance: {}", id);
-                            warn!("{:?}", e);
-                            Self::push_to_clean(me.clone(), id);
-                        }
-                    }
-                }
-                sleep(Duration::from_millis(1)).await;
-            }
-        };
-
-        tokio::select! {
-            _ = me.shutdown_token.cancelled() => {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-            }
-            _ = inner => {
-                error!("PoolNoodle: handle prepare task ended unexpectedly")
-            }
-        }
+    fn inner(&self) -> Arc<PoolNoodleInner<I, S>> {
+        Arc::clone(&self.0)
     }
 
-    async fn handle_clean(me: Arc<PoolNoodleInner<I, S>>) {
-        debug!("PoolNoodle: starting clean handler...");
-
-        let inner = async {
-            loop {
-                if let Some(id) = Self::pop_from_clean(me.clone()) {
-                    debug!("PoolNoodle: cleaning instance {}", id);
-                    match PoolNoodleInner::clean(id, &me.spec).await {
-                        Ok(_) => {
-                            debug!("PoolNoodle: instance cleaned: {}", id);
-                            Self::push_to_unprepared(me.clone(), id)
-                        }
-                        Err(e) => {
-                            warn!("PoolNoodle: failed to clean instance: {}", id);
-                            warn!("{:?}", e);
-                            Self::push_to_clean(me.clone(), id);
-                        }
-                    }
+    async fn spawn_worker(inner: Arc<PoolNoodleInner<I, S>>) {
+        loop {
+            let inner = inner.clone();
+            tokio::select! {
+                _ = inner.shutdown_token.cancelled() => {
+                    debug!("main loop received cancellation");
+                    break;
                 }
 
-                tokio::time::sleep(Duration::from_millis(1)).await;
-            }
-        };
-
-        tokio::select! {
-            _ = me.shutdown_token.cancelled() => {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-            }
-            _ = inner => {
-                error!("PoolNoodle: handle clean task ended unexpectedly")
-            }
-        }
-    }
-
-    async fn handle_drop(me: Arc<PoolNoodleInner<I, S>>) {
-        debug!("PoolNoodle: starting drop handler...");
-
-        let inner = async {
-            loop {
-                if let Some(instance) = me.dropped.pop() {
-                    let id = instance.id();
-                    debug!("PoolNoodle: dropping: {}", id);
-                    match PoolNoodleInner::terminate(instance, &me.spec).await {
-                        Ok(_) => {
-                            debug!("PoolNoodle: instance terminated: {}", id);
-                            Self::push_to_clean(me.clone(), id);
-                        }
-                        Err(e) => {
-                            warn!("PoolNoodle: failed to terminate instance: {}", id);
-                            warn!("{:?}", e);
-                            Self::push_to_clean(me.clone(), id);
-                        }
-                    }
+                Some(task_type) = async { inner.work_queue.pop() } => {
+                    inner.handle_task(task_type).await;
                 }
-                sleep(Duration::from_millis(1)).await;
-            }
-        };
 
-        tokio::select! {
-            _ = me.shutdown_token.cancelled() => {
-                debug!("PoolNoodle: received graceful shutdown signal, shutting down...");
-            }
-            _ = inner => {
-                error!("PoolNoodle: handle drop task ended unexpectedly")
+                _ = time::sleep(Duration::from_millis(1)) => {}
             }
         }
-    }
-
-    fn pop_from_clean(me: Arc<PoolNoodleInner<I, S>>) -> Option<u32> {
-        me.to_be_cleaned.pop().map(|id| {
-            metric!(counter.pool_noodle.to_be_cleaned = -1);
-            Some(id)
-        })?
-    }
-
-    fn pop_from_unprepared(me: Arc<PoolNoodleInner<I, S>>) -> Option<u32> {
-        me.unprepared.pop().map(|id| {
-            metric!(counter.pool_noodle.unprepared = -1);
-            Some(id)
-        })?
-    }
-
-    fn pop_from_ready(me: Arc<PoolNoodleInner<I, S>>) -> Option<I> {
-        me.ready.pop().map(|id| {
-            metric!(counter.pool_noodle.ready = -1);
-            Some(id)
-        })?
-    }
-
-    fn push_to_clean(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
-        if let Err(e) = me.to_be_cleaned.push(id) {
-            warn!(
-                "PoolNoodle: failed to push instance to to_be_cleaned: {}",
-                id
-            );
-            warn!("{:?}", e);
-        }
-        metric!(counter.pool_noodle.to_be_cleaned = 1);
-    }
-
-    fn push_to_ready(me: Arc<PoolNoodleInner<I, S>>, instance: I) {
-        if let Err(i) = me.ready.push(instance) {
-            warn!("PoolNoodle: failed to push instance to ready: {}", i.id());
-        }
-        metric!(counter.pool_noodle.ready = 1);
-    }
-
-    fn push_to_unprepared(me: Arc<PoolNoodleInner<I, S>>, id: u32) {
-        if let Err(e) = me.unprepared.push(id) {
-            warn!("PoolNoodle: failed to push instance to unprepared: {}", id);
-            warn!("{:?}", e);
-        }
-        metric!(counter.pool_noodle.unprepared = 1);
     }
 
     /// This will attempt to get a ready, healthy instance from the pool.
     /// If there are no instances, it will give the main loop a chance to fill the pool and try
     /// again. It will throw an error if there are no available instances after enough retries.
-    pub async fn get(&mut self) -> Result<LifeGuard<I, S>> {
-        let me = Arc::clone(&self.0);
+    pub async fn get(&self) -> Result<LifeGuard<I, E, S>, E> {
+        metric!(counter.pool_noodle.get_requests = 1);
+        let inner = self.inner();
 
-        let max_retries = 6000; // Set the maximum number of retries
+        let max_retries = self.inner().retry_limit; // Set the maximum number of retries
         let mut retries = 0;
         loop {
             if retries >= max_retries {
                 return Err(PoolNoodleError::ExecutionPoolStarved);
             }
-            if let Some(mut instance) = Self::pop_from_ready(me.clone()) {
-                debug!("PoolNoodle: got instance: {}", instance.id());
+            if let Some(mut instance) = inner.ready_queue.pop() {
+                metric!(counter.pool_noodle.ready = -1);
                 // Try to ensure the item is healthy
                 match &mut instance.ensure_healthy().await {
                     Ok(_) => {
-                        debug!(
-                            "PoolNoodle: got instance for func execution: {}",
-                            &instance.id()
-                        );
+                        metric!(counter.pool_noodle.get_requests = -1);
                         metric!(counter.pool_noodle.active = 1);
-                        return Ok(LifeGuard {
-                            pool: me.clone(),
-                            item: Some(instance),
-                        });
+                        return Ok(LifeGuard::new(Some(instance), inner.clone()));
                     }
                     Err(_) => {
                         debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
@@ -320,181 +203,173 @@ where
                     "Failed to get from pool, retry ({} of {})",
                     retries, max_retries
                 );
-                sleep(Duration::from_millis(100)).await;
+                sleep(Duration::from_millis(10)).await;
             }
         }
     }
 
-    async fn check_health(&mut self) -> Result<()> {
+    async fn check_health(&mut self) -> Result<(), E> {
         info!("verifying instance lifecycle health");
-        let me = Arc::clone(&self.0);
         let id = 0;
+        let mut task = PoolNoodleTask::new(None, id, self.inner().spec.clone());
         info!("cleaning...");
-        PoolNoodleInner::clean(id, &me.spec).await?;
+        task.clean().await?;
         info!("preparing...");
-        PoolNoodleInner::prepare(id, &me.spec).await?;
+        task.prepare().await?;
         info!("spawning...");
-        let mut i = PoolNoodleInner::spawn(id, &me.spec).await?;
+        let mut i = task.spawn().await?;
         info!("checking...");
         i.ensure_healthy()
             .await
-            .map_err(|e| PoolNoodleError::Unhealthy(e.to_string()))?;
+            .map_err(|err| PoolNoodleError::Unhealthy(err))?;
         info!("terminating...");
-        PoolNoodleInner::terminate(i, &me.spec).await?;
-        PoolNoodleInner::clean(id, &me.spec).await?;
+        task.set_instance(Some(i));
+        task.terminate().await?;
+        self.inner()
+            .spec
+            .clean(id)
+            .await
+            .map_err(|err| PoolNoodleError::InstanceClean(err))?;
         info!("instance lifecycle is good!");
         Ok(())
     }
 }
 
 #[derive(Debug)]
-struct PoolNoodleInner<I, S>
+pub(crate) struct PoolNoodleInner<I, S>
 where
     S: Spec,
 {
-    pool_size: u32,
-    spec: S,
-    dropped: ArrayQueue<I>,
-    ready: ArrayQueue<I>,
-    to_be_cleaned: ArrayQueue<u32>,
-    unprepared: ArrayQueue<u32>,
+    check_health: bool,
+    max_concurrency: u32,
+    ready_queue: ArrayQueue<I>,
+    retry_limit: u32,
     shutdown_token: CancellationToken,
+    spec: S,
+    work_queue: ArrayQueue<PoolNoodleTaskType<I, S>>,
 }
 
-impl<B, I, E, S> PoolNoodleInner<I, S>
+impl<I, E, S> PoolNoodleInner<I, S>
 where
-    S: Spec<Error = E, Instance = I> + Send + Sync + 'static,
-    I: Instance<SpecBuilder = B, Error = E> + Send + Sync + 'static,
-    E: Send + Display,
+    I: Instance<Error = E> + Send + Sync + 'static,
+    S: Spec<Error = E, Instance = I> + Clone + Send + Sync + 'static,
+    E: Send + Display + 'static,
 {
-    async fn clean(id: u32, spec: &S) -> Result<()> {
-        spec.clean(id)
-            .await
-            .map_err(|e| PoolNoodleError::InstanceClean(e.to_string()))
-    }
-
-    async fn prepare(id: u32, spec: &S) -> Result<()> {
-        spec.prepare(id)
-            .await
-            .map_err(|e| PoolNoodleError::InstancePrepare(e.to_string()))
-    }
-
-    /// This starts the instance. It will be available to .get() to execute functions
-    async fn spawn(id: u32, spec: &S) -> Result<I> {
-        spec.spawn(id)
-            .await
-            .map_err(|e| PoolNoodleError::InstanceSpawn(e.to_string()))
-    }
-
-    /// This terminates the instance
-    async fn terminate(mut instance: I, _: &S) -> Result<()> {
-        instance
-            .terminate()
-            .await
-            .map_err(|e| PoolNoodleError::InstanceTerminate(e.to_string()))
-    }
-
-    /// This outputs the current state of the pool
-    pub async fn stats(&self) -> PoolNoodleStats {
-        PoolNoodleStats {
-            pool_size: self.pool_size as usize,
-            dropped: self.dropped.len(),
-            ready: self.ready.len(),
-            to_be_cleaned: self.to_be_cleaned.len(),
-            unprepared: self.unprepared.len(),
+    fn new(config: PoolNoodleConfig<S>) -> Self {
+        info!(
+            "creating a pool of size {} with concurrency of {} ",
+            config.pool_size, config.max_concurrency
+        );
+        Self {
+            check_health: config.check_health,
+            max_concurrency: config.max_concurrency,
+            ready_queue: ArrayQueue::new(config.pool_size as usize),
+            retry_limit: config.retry_limit,
+            shutdown_token: config.shutdown_token,
+            spec: config.spec,
+            work_queue: ArrayQueue::new(config.pool_size as usize),
         }
     }
-}
 
-#[derive(Debug)]
-/// Gets the current stats for the pool
-pub struct PoolNoodleStats {
-    /// Total number of instances allowed in the pool
-    pub pool_size: usize,
-    /// Total number of instances dropped and awating to be cleaned
-    pub dropped: usize,
-    /// Total number of instances that have been fetched from the pool and not yet dropped
-    pub ready: usize,
-    /// Total number of instances that need to be cleaned up
-    pub to_be_cleaned: usize,
-    /// Total number of unclaimed instances waiting to be readied
-    pub unprepared: usize,
-}
-
-impl Display for PoolNoodleStats {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "PoolNoodle Stats -- pool size: {}, dropped: {}, ready: {}, to be cleaned: {}, unprepared: {}",
-            self.pool_size,  self.dropped, self.ready, self.to_be_cleaned, self.unprepared
-        )
-    }
-}
-
-/// LifeGuard is a wrapper for instances that come from the pool.
-/// It is carries a Sender and implements Drop. When an instance goes out of
-/// scope, it lets PoolNoodle know that the instance needs to be cleaned up.
-#[derive(Debug)]
-pub struct LifeGuard<I, S>
-where
-    I: Instance + Send + Sync,
-    S: Spec,
-{
-    pool: Arc<PoolNoodleInner<I, S>>,
-    item: Option<I>,
-}
-
-impl<I, S> Drop for LifeGuard<I, S>
-where
-    I: Instance + Send + Sync,
-    S: Spec,
-{
-    fn drop(&mut self) {
-        let item = self
-            .item
-            .take()
-            .expect("Item must be present as it is initialized with Some and never replaced.");
-        debug!("PoolNoodle: dropping instance: {}", item.id());
-
-        if let Err(i) = self.pool.dropped.push(item) {
-            warn!(
-                "PoolNoodle: failed to push instance to dropped: {}",
-                &i.id()
-            );
+    async fn handle_task(self: Arc<Self>, task_type: PoolNoodleTaskType<I, S>) {
+        match task_type {
+            PoolNoodleTaskType::Clean(task) => self.handle_clean(task).await,
+            PoolNoodleTaskType::Drop(task) => self.handle_drop(task).await,
+            PoolNoodleTaskType::Prepare(task) => self.handle_prepare(task).await,
         }
-        metric!(counter.pool_noodle.active = -1);
-        debug!("PoolNoodle: instance pushed to dropped");
     }
-}
 
-impl<I, S> std::ops::Deref for LifeGuard<I, S>
-where
-    I: Instance + Send + Sync,
-    S: Spec,
-{
-    type Target = I;
-
-    fn deref(&self) -> &I {
-        self.item
-            .as_ref()
-            .expect("Item must be present as it is initialized with Some and never replaced.")
+    async fn handle_clean(&self, task: PoolNoodleTask<I, S>) {
+        metric!(counter.pool_noodle.task.clean = -1);
+        let id = task.id();
+        match task.clean().await {
+            Ok(_) => {
+                self.push_prepare_task_to_work_queue(id);
+            }
+            Err(e) => {
+                warn!("PoolNoodle: failed to clean instance: {}", id);
+                warn!("{}", e);
+                self.push_clean_task_to_work_queue(id);
+            }
+        }
     }
-}
 
-impl<I, S> std::ops::DerefMut for LifeGuard<I, S>
-where
-    I: Instance + Send + Sync,
-    S: Spec,
-{
-    fn deref_mut(&mut self) -> &mut I {
-        self.item
-            .as_mut()
-            .expect("Item must be present as it is initialized with Some and never replaced.")
+    async fn handle_drop(&self, task: PoolNoodleTask<I, S>) {
+        metric!(counter.pool_noodle.task.drop = -1);
+        let id = task.id();
+        match task.terminate().await {
+            Ok(_) => {
+                self.push_clean_task_to_work_queue(id);
+            }
+            Err(e) => {
+                warn!("PoolNoodle: failed to drop instance: {}", id);
+                warn!("{}", e);
+            }
+        }
+    }
+
+    async fn handle_prepare(&self, task: PoolNoodleTask<I, S>) {
+        metric!(counter.pool_noodle.task.prepare = -1);
+        let id = task.id();
+        match &task.prepare().await {
+            Ok(_) => match task.spawn().await {
+                Ok(instance) => {
+                    self.push_to_ready_queue(instance);
+                }
+                Err(e) => {
+                    warn!("PoolNoodle: failed to start instance: {}", id);
+                    warn!("{}", e);
+                    self.push_clean_task_to_work_queue(id);
+                }
+            },
+            Err(e) => {
+                warn!("PoolNoodle: failed to ready instance: {}", id);
+                warn!("{}", e);
+                self.push_clean_task_to_work_queue(id);
+            }
+        }
+    }
+
+    fn push_clean_task_to_work_queue(&self, id: u32) {
+        let task = PoolNoodleTaskType::Clean(PoolNoodleTask::new(None, id, self.spec.clone()));
+        if self.work_queue.push(task).is_err() {
+            warn!("failed to push instance to clean: {}", id);
+        };
+        metric!(counter.pool_noodle.task.clean = 1);
+    }
+
+    /// used by the instance guard implementation to handle drops
+    pub(crate) fn push_drop_task_to_work_queue(&self, instance: I) {
+        let id = instance.id();
+        let task =
+            PoolNoodleTaskType::Drop(PoolNoodleTask::new(Some(instance), id, self.spec.clone()));
+        if self.work_queue.push(task).is_err() {
+            warn!("failed to push instance to drop: {}", id);
+        };
+        metric!(counter.pool_noodle.task.drop = 1);
+    }
+
+    fn push_prepare_task_to_work_queue(&self, id: u32) {
+        let task = PoolNoodleTaskType::Prepare(PoolNoodleTask::new(None, id, self.spec.clone()));
+        if self.work_queue.push(task).is_err() {
+            warn!("failed to push instance to prepare: {}", id);
+        };
+        metric!(counter.pool_noodle.task.prepare = 1);
+    }
+
+    fn push_to_ready_queue(&self, instance: I) {
+        let id = instance.id();
+        if self.ready_queue.push(instance).is_err() {
+            warn!("failed to push to ready queue: {}", id);
+        }
+        metric!(counter.pool_noodle.ready = 1);
     }
 }
 
 #[cfg(test)]
 mod tests {
+
+    use std::fmt::{self, Formatter};
 
     use crate::instance::SpecBuilder;
     use async_trait::async_trait;
@@ -505,6 +380,7 @@ mod tests {
 
     pub struct DummyInstance {}
 
+    #[derive(Clone)]
     pub struct DummyInstanceSpec {}
     #[async_trait]
     impl Spec for DummyInstanceSpec {
@@ -562,31 +438,35 @@ mod tests {
     }
     #[tokio::test]
     async fn pool_noodle_lifecycle() {
-        // TODO(nick,fletcher): use the cancellation token in the test.
         let shutdown_token = CancellationToken::new();
 
         let spec = DummyInstanceSpec {};
 
-        let mut pool = PoolNoodle::new(3, spec, shutdown_token);
-        pool.start(false).expect("failed to start");
+        let config = PoolNoodleConfig {
+            check_health: false,
+            max_concurrency: 10,
+            pool_size: 3,
+            retry_limit: 3,
+            shutdown_token: shutdown_token.clone(),
+            spec,
+        };
+        let mut pool = PoolNoodle::new(config);
+        pool.run().expect("failed to start");
 
         // give the pool time to create some instances
         sleep(Duration::from_millis(500)).await;
-        assert_eq!(3, pool.stats().await.ready, "{}", pool.stats().await);
         // go get an instance
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");
-        assert_eq!(2, pool.stats().await.ready, "{}", pool.stats().await);
         drop(instance);
+
         let a = pool.get().await.expect("should be able to get an instance");
         let b = pool.get().await.expect("should be able to get an instance");
         let c = pool.get().await.expect("should be able to get an instance");
-        assert_eq!(0, pool.stats().await.ready, "{}", pool.stats().await);
         drop(a);
         drop(b);
         drop(c);
-        // pool should refill
-        sleep(Duration::from_millis(1000)).await;
-        assert_eq!(3, pool.stats().await.ready, "{}", pool.stats().await);
+        shutdown_token.cancel();
+        assert!(pool.get().await.is_err());
     }
 }

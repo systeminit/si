@@ -85,7 +85,7 @@ pub(crate) struct Args {
 
     /// Cyclone pool size
     #[arg(long)]
-    pub(crate) cyclone_pool_size: Option<u16>,
+    pub(crate) cyclone_pool_size: Option<u32>,
 
     /// Veritech decryption key file location [example: /run/veritech/veritech.key]
     #[arg(long)]
