@@ -34,8 +34,10 @@ pub use cyclone_core::{
 pub mod errors;
 /// [`Instance`] implementations.
 pub mod instance;
+mod lifeguard;
 /// [`PoolNoodle`] implementations.
 pub mod pool_noodle;
+mod task;
 
 #[cfg(test)]
 mod tests {
@@ -44,8 +46,9 @@ mod tests {
     use tokio_util::sync::CancellationToken;
 
     use super::*;
-    use crate::instance::cyclone::{
-        LocalUdsInstance, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
+    use crate::{
+        instance::cyclone::{LocalUdsInstance, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy},
+        pool_noodle::PoolNoodleConfig,
     };
 
     #[tokio::test]
@@ -68,8 +71,12 @@ mod tests {
             .expect("failed to build spec");
 
         let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
-            PoolNoodle::new(10, spec.clone(), shutdown_token);
-        pool.start(false).expect("failed to start");
+            PoolNoodle::new(PoolNoodleConfig {
+                shutdown_token,
+                spec: spec.clone(),
+                ..Default::default()
+            });
+        pool.run().expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
 
@@ -107,9 +114,13 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_token);
-        pool.start(false).expect("failed to start");
-
+        let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
+            PoolNoodle::new(PoolNoodleConfig {
+                shutdown_token,
+                spec: spec.clone(),
+                ..Default::default()
+            });
+        pool.run().expect("failed to start");
         let mut instance = pool.get().await.expect("pool is empty!");
 
         let status = instance
@@ -161,8 +172,13 @@ mod tests {
             .build()
             .expect("failed to build spec");
 
-        let mut pool = PoolNoodle::new(10, spec.clone(), shutdown_token);
-        pool.start(false).expect("failed to start");
+        let mut pool: PoolNoodle<LocalUdsInstance, instance::cyclone::LocalUdsInstanceSpec> =
+            PoolNoodle::new(PoolNoodleConfig {
+                shutdown_token,
+                spec: spec.clone(),
+                ..Default::default()
+            });
+        pool.run().expect("failed to start");
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");
     }

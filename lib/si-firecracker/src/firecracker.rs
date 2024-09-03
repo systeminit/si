@@ -91,7 +91,7 @@ impl FirecrackerJail {
         Ok(())
     }
 
-    pub async fn setup(pool_size: u16) -> Result<()> {
+    pub async fn setup(pool_size: u32) -> Result<()> {
         Self::create_scripts().await?;
 
         let output = Command::new("sudo")

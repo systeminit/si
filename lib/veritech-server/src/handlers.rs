@@ -158,7 +158,7 @@ async fn action_run_request_task(
 
 #[instrument(name = "veritech.action_run_request", level = "info", skip_all)]
 async fn action_run_request(
-    mut state: AppState,
+    state: AppState,
     mut payload_request: ActionRunRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {
@@ -315,7 +315,7 @@ async fn resolver_function_request_task(
 
 #[instrument(name = "veritech.resolver_function_request", level = "info", skip_all)]
 async fn resolver_function_request(
-    mut state: AppState,
+    state: AppState,
     publisher: &Publisher<'_>,
     mut request: ResolverFunctionRequest,
 ) -> HandlerResult<FunctionResult<ResolverFunctionResultSuccess>> {
@@ -424,7 +424,7 @@ async fn schema_variant_definition_request_task(
     skip_all
 )]
 async fn schema_variant_definition_request(
-    mut state: AppState,
+    state: AppState,
     mut payload_request: SchemaVariantDefinitionRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {
@@ -544,7 +544,7 @@ async fn validation_request_task(
 
 #[instrument(name = "veritech.validation_request", level = "info", skip_all)]
 async fn validation_request(
-    mut state: AppState,
+    state: AppState,
     mut payload_request: ValidationRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {

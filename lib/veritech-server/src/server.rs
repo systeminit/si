@@ -21,6 +21,7 @@ use si_crypto::VeritechDecryptionKey;
 use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+    pool_noodle::PoolNoodleConfig,
     PoolNoodle, Spec,
 };
 use telemetry::prelude::*;
@@ -112,15 +113,23 @@ impl Server {
                 unimplemented!("get ready for a surprise!!")
             }
             CycloneSpec::LocalUds(spec) => {
+                let pool_config = PoolNoodleConfig {
+                    check_health: config.healthcheck_pool(),
+                    pool_size: spec.pool_size,
+                    shutdown_token: token.clone(),
+                    spec: spec.clone(),
+                    ..Default::default()
+                };
+
                 let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
-                    PoolNoodle::new(spec.pool_size.into(), spec.clone(), token.clone());
+                    PoolNoodle::new(pool_config);
 
                 spec.clone()
                     .setup()
                     .await
                     .map_err(|e| ServerError::CycloneSetupError(Box::new(e)))?;
                 cyclone_pool
-                    .start(config.healthcheck_pool())
+                    .run()
                     .map_err(|e| ServerError::CyclonePool(Box::new(e)))?;
 
                 let inner_future = Self::build_app(

@@ -283,7 +283,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_enable_endpoint")]
         action: bool,
         #[serde(default)]
-        pool_size: u16,
+        pool_size: u32,
         #[serde(default)]
         connect_timeout: u64,
     },
@@ -394,6 +394,12 @@ impl CycloneConfig {
         match self {
             CycloneConfig::LocalUds { action, .. } => *action = value,
             CycloneConfig::LocalHttp { action, .. } => *action = value,
+        };
+    }
+
+    pub fn set_pool_size(&mut self, value: u32) {
+        if let CycloneConfig::LocalUds { pool_size, .. } = self {
+            *pool_size = value
         };
     }
 }
@@ -527,8 +533,8 @@ fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
     LocalUdsRuntimeStrategy::default()
 }
 
-fn default_pool_size() -> u16 {
-    5
+fn default_pool_size() -> u32 {
+    500
 }
 
 fn default_connect_timeout() -> u64 {
