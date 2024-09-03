@@ -648,7 +648,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               let size: Size2D;
               if (c.isGroup) {
                 uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
-                size = this.combinedElementSizes[uniqueKey] ??
+                size = this.resizedElementSizes[uniqueKey] ??
                   c.size ?? {
                     width: GROUP_DEFAULT_WIDTH,
                     height: GROUP_DEFAULT_HEIGHT,
@@ -664,7 +664,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
 
               const position =
-                this.combinedElementPositions[uniqueKey] ?? c.position;
+                this.movedElementPositions[uniqueKey] ?? c.position;
 
               dictionary[c.id] = {
                 ...position,

@@ -2877,7 +2877,17 @@ const selectionRects = computed(() => {
   currentSelectionKeys.value.forEach((uniqueKey) => {
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
-    const rect = componentsStore.renderedGeometriesByComponentId[id];
+    let rect = componentsStore.renderedGeometriesByComponentId[id];
+    if (isGroup) {
+      const pos = componentsStore.combinedElementPositions[
+        uniqueKey
+      ] as Vector2d;
+      const size = componentsStore.combinedElementSizes[uniqueKey] as Size2D;
+      rect = {
+        ...pos,
+        ...size,
+      };
+    }
     if (rect) {
       const r = structuredClone(rect);
       r.x -= r.width / 2;
