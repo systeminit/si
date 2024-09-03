@@ -648,7 +648,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               let size: Size2D;
               if (c.isGroup) {
                 uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
-                size = this.combinedElementSizes[uniqueKey] ??
+                size = this.resizedElementSizes[uniqueKey] ??
                   c.size ?? {
                     width: GROUP_DEFAULT_WIDTH,
                     height: GROUP_DEFAULT_HEIGHT,
@@ -664,7 +664,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
 
               const position =
-                this.combinedElementPositions[uniqueKey] ?? c.position;
+                this.movedElementPositions[uniqueKey] ?? c.position;
 
               dictionary[c.id] = {
                 ...position,
@@ -689,8 +689,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               let right;
 
               for (const childId of childIds) {
-                const geometry = this.renderedGeometriesByComponentId[childId];
-                if (!geometry) continue;
+                let geometry = this.renderedGeometriesByComponentId[childId];
+                // in the case of frames being collapsed, look up the positions
+                if (!geometry) {
+                  const comp = this.componentsById[childId];
+                  // if nodes aren't rendered we won't have data for them, they cannot be collapsed either
+                  if (!comp || comp.componentType === ComponentType.Component)
+                    continue;
+                  const key = DiagramGroupData.generateUniqueKey(comp.id);
+                  const size = this.resizedElementSizes[key];
+                  const pos = this.movedElementPositions[key];
+                  if (!size) continue;
+                  if (!pos) continue;
+                  geometry = { ...size, ...pos };
+                }
 
                 if (!top || geometry.y < top) top = geometry.y;
 
@@ -764,6 +776,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               `${workspaceId}-collapsed-components`,
               JSON.stringify(Array.from(this.collapsedComponents)),
             );
+          },
+
+          removeCollapsedData(key: DiagramElementUniqueKey) {
+            // TODO: rework if this ends up being expensive...
+            const { SIZE_PREFIX, POS_PREFIX } =
+              getCollapsedPrefixes(workspaceId);
+            window.localStorage.removeItem(`${SIZE_PREFIX}-${key}`);
+            window.localStorage.removeItem(`${POS_PREFIX}-${key}`);
           },
 
           initMinimzedElementPositionAndSize(key: DiagramElementUniqueKey) {
