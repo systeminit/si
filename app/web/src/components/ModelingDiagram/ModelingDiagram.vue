@@ -1734,6 +1734,9 @@ function onDragElementsMove() {
             uniqueKey: childEl.uniqueKey,
             position: newUnCollapsedPosition,
           });
+        } else {
+          // clear out the collaposed position data of children if its no longer collapsed and its parent has moved
+          componentsStore.removeCollapsedData(childEl.uniqueKey);
         }
       });
     }

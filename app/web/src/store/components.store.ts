@@ -766,6 +766,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             );
           },
 
+          removeCollapsedData(key: DiagramElementUniqueKey) {
+            // TODO: rework if this ends up being expensive...
+            const { SIZE_PREFIX, POS_PREFIX } =
+              getCollapsedPrefixes(workspaceId);
+            window.localStorage.removeItem(`${SIZE_PREFIX}-${key}`);
+            window.localStorage.removeItem(`${POS_PREFIX}-${key}`);
+          },
+
           initMinimzedElementPositionAndSize(key: DiagramElementUniqueKey) {
             const { SIZE_PREFIX, POS_PREFIX } =
               getCollapsedPrefixes(workspaceId);
