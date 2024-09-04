@@ -38,13 +38,24 @@ export async function getAuth0UserCredential(username: String, password: String)
     }),
   });
 
-  const token = authResult.data?.access_token;
-
-  if (!token) {
+  const token_raw = authResult.data?.access_token;
+  if (!token_raw) {
     throw Error("Bad User");
   }
 
-  return token;
+  // Only allow login with this method if the account has the "Test User" role
+  const token = JWT.decode(token_raw);
+  if (!token || typeof token !== "object") {
+    throw Error("Bad Token Format");
+  }
+
+  const user_roles = token?.["https://systeminit.com/roles"] ?? [];
+
+  if (typeof user_roles !== "object" || !user_roles.includes("Test User")) {
+    throw Error("Non 'Test User' account");
+  }
+
+  return token_raw;
 }
 
 export function getAuth0LoginUrl(signup = false) {

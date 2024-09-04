@@ -2,15 +2,18 @@ import JWT from "npm:jsonwebtoken";
 
 export class SdfApiClient {
   readonly token: string;
-  readonly base_url: string;
+  readonly baseUrl: string;
+  readonly workspaceId: string;
 
   // We can't have async constructor so init() should be used to get a client instance
   private constructor(
     token: string,
-    base_url: string
+    baseUrl: string,
+    workspaceId: string
   ) {
     this.token = token;
-    this.base_url = base_url;
+    this.baseUrl = baseUrl;
+    this.workspaceId = workspaceId;
   }
 
   /// Get a client to do web requests to sdf. if JWT_PRIVATE_KEY is set, the
@@ -21,17 +24,33 @@ export class SdfApiClient {
     password: string
   ) {
     const token = await getSdfJWT(workspaceId, userEmailOrId, password);
-    const base_url = Deno.env.get("SDF_API_URL");
+    const baseUrl = Deno.env.get("SDF_API_URL");
 
-    return new SdfApiClient(token, base_url);
+    return new SdfApiClient(token, baseUrl, workspaceId);
   }
 
-  fetch(path: string, options?: {
+  async fetch(path: string, options?: {
     headers?: Record<string, string>
     body?: Record<string, string>
-    method?: "GET" | "POST" | "PUT" | "DELETE"
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
   }) {
-    const url = `${this.base_url}${path}`;
+    const resp = await this.fetch_no_throw(path, options);
+    if (!resp.ok) {
+      throw new Error(`Error ${resp.status}: ${await resp.text()}`);
+    }
+
+    return resp;
+  }
+
+  /// Don't automatically throw on errors
+  fetch_no_throw(path: string, options?: {
+    headers?: Record<string, string>
+    body?: Record<string, string>
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+  }) {
+    const url = `${this.baseUrl}${path}`;
+    const method = options?.method || "GET";
+    console.log(`calling ${method} ${url}`);
 
     const headers = {
       "Content-Type": "application/json",
@@ -45,7 +64,6 @@ export class SdfApiClient {
     return fetch(url, {
       headers, body, method: options?.method
     });
-
   }
 }
 
@@ -81,10 +99,11 @@ async function getSdfJWTFromAuth0(workspaceId: string, email: string, password: 
     method: "POST"
   });
 
-  const { token } = await login_resp.json();
+  const { token, message } = await login_resp.json();
 
   if (!token) {
-    throw Error("Could not get token");
+    const error_message = message ?? "Unknown Error";
+    throw Error(`Could not get token: ${error_message}`);
   }
 
   return token;
