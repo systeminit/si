@@ -103,6 +103,7 @@
         fastly
         doctl
         google-cloud-sdk
+        linode-cli
       ];
 
       buck2Derivation = {
