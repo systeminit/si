@@ -1,6 +1,5 @@
+// main.ts
 import assert from "node:assert";
-import JWT from "npm:jsonwebtoken";
-import { createPrivateKey } from "node:crypto";
 import { SdfApiClient } from "./sdf_api_client.ts";
 
 if (import.meta.main) {
@@ -11,49 +10,35 @@ if (import.meta.main) {
   const workspaceId = Deno.args[0];
   const userId = Deno.args[1];
   const password = Deno.args[2];
-  const sdf = await SdfApiClient.init(
-    workspaceId,
-    userId,
-    password
-  );
+
+  const sdfApiClient = await SdfApiClient.init(workspaceId, userId, password);
 
   // Run tests
-  // TODO make the tests run in parallel, be filterable, etc. For now this is good enough
-
-  // TODO automatically time tests, we should probably be using a testing library for this anyway
   let testStart = new Date();
-  await get_head_changeset(sdf);
+  await get_head_changeset(sdfApiClient);
   console.log(`get_head_changeset OK - ${(new Date() - testStart)}ms`);
 
   testStart = new Date();
-  await create_and_delete_component(sdf);
+  await create_and_delete_component(sdfApiClient);
   console.log(`create_and_delete_component OK - ${(new Date() - testStart)}ms`);
 
   console.log("~~ SUCCESS ~~");
 }
 
-async function get_head_changeset(sdf: SdfApiClient) {
-  const resp = await sdf.fetch("/change_set/list_open_change_sets");
-  const data = await resp.json();
+async function get_head_changeset(sdfApiClient: SdfApiClient) {
+  const data = await sdfApiClient.listOpenChangeSets();
 
   assert(data.headChangeSetId, "Expected headChangeSetId");
   const head = data.changeSets.find((c) => c.id === data.headChangeSetId);
   assert(head, "Expected a HEAD changeset");
 }
 
-async function create_and_delete_component(sdf: SdfApiClient) {
+async function create_and_delete_component(sdfApiClient: SdfApiClient) {
   const startTime = new Date();
   const changeSetName = `API_TEST create_and_delete_component - ${startTime.toISOString()}`;
 
   // CREATE CHANGE SET
-  const createChangesetResp = await sdf.fetch("/change_set/create_change_set", {
-    method: "POST",
-    body: {
-      changeSetName
-    }
-  });
-  const data = await createChangesetResp.json();
-
+  const data = await sdfApiClient.createChangeSet(changeSetName);
   assert(typeof data.changeSet === "object", "Expected changeSet in response");
   const changeSet = data.changeSet;
   assert(changeSet?.id, "Expected Change Set id");
@@ -61,67 +46,45 @@ async function create_and_delete_component(sdf: SdfApiClient) {
   const changeSetId = changeSet.id;
 
   // CREATE COMPONENT
-  // get schema variant id
-  const schemaVariantsResp = await sdf.fetch(`/v2/workspaces/${sdf.workspaceId}/change-sets/${changeSetId}/schema-variants`);
-  const schemaVariants = await schemaVariantsResp.json();
+  const schemaVariants = await sdfApiClient.listSchemaVariants(changeSetId);
   assert(Array.isArray(schemaVariants), "List schema variants should return an array");
   const genericFrameVariantId = schemaVariants.find((sv) => sv.schemaName === "Generic Frame")?.schemaVariantId;
   assert(genericFrameVariantId, "Expected to find Generic Frame schema and variant");
 
-
-  // actually create component
-  let createComponentPayload = {
-    "schemaVariantId": genericFrameVariantId,
-    "x": "0",
-    "y": "0",
-    "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdf.workspaceId
+  // Actually create component
+  const createComponentPayload = {
+    schemaVariantId: genericFrameVariantId,
+    x: "0",
+    y: "0",
+    visibility_change_set_pk: changeSetId,
+    workspaceId: sdfApiClient.workspaceId,
   };
-  const createComponentResp = await sdf.fetch("/diagram/create_component", {
-    method: "POST",
-    body: createComponentPayload
-  });
-  const newComponentId = (await createComponentResp.json())?.componentId;
+  const createComponentResp = await sdfApiClient.createComponent(createComponentPayload);
+  const newComponentId = createComponentResp?.componentId;
   assert(newComponentId, "Expected to get a component id after creation");
 
   // Check that component exists on diagram
-  const getDiagramResponse = await sdf.fetch(`/diagram/get_diagram?visibility_change_set_pk=${changeSetId}&workspaceId=${sdf.workspaceId}`);
-  const diagram = await getDiagramResponse.json();
-
+  const diagram = await sdfApiClient.getDiagram(changeSetId);
   assert(diagram?.components, "Expected components list on the diagram");
   assert(diagram.components.length === 1, "Expected a single component on the diagram");
   const createdComponent = diagram.components[0];
   assert(createdComponent?.id === newComponentId, "Expected diagram component id to match create component API return ID");
   assert(createdComponent?.schemaVariantId === genericFrameVariantId, "Expected diagram component schema variant id to match generic frame sv id");
 
-
   // DELETE COMPONENT
-  let deleteComponentPayload = {
-    "componentIds": [newComponentId],
-    "forceErase": false,
-    "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdf.workspaceId
+  const deleteComponentPayload = {
+    componentIds: [newComponentId],
+    forceErase: false,
+    visibility_change_set_pk: changeSetId,
+    workspaceId: sdfApiClient.workspaceId,
   };
-  await sdf.fetch("/diagram/delete_components", {
-    method: "POST",
-    body: deleteComponentPayload
-  });
+  await sdfApiClient.deleteComponents(deleteComponentPayload);
 
   // Check that component has been removed from diagram
-  const getDiagramAgainResponse = await sdf.fetch(`/diagram/get_diagram?visibility_change_set_pk=${changeSetId}&workspaceId=${sdf.workspaceId}`);
-  const diagramAfterDelete = await getDiagramAgainResponse.json();
-
+  const diagramAfterDelete = await sdfApiClient.getDiagram(changeSetId);
   assert(diagramAfterDelete?.components, "Expected components list on the diagram");
-  assert(diagramAfterDelete.components.length === 0, "Expected a no components on the diagram");
-
+  assert(diagramAfterDelete.components.length === 0, "Expected no components on the diagram");
 
   // DELETE CHANGE SET
-  await sdf.fetch("/change_set/abandon_change_set", {
-    method: "POST",
-    body: {
-      changeSetId
-    }
-  });
+  await sdfApiClient.abandonChangeSet(changeSetId);
 }
-
-
