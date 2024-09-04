@@ -41,11 +41,6 @@ async fn app_state_middeware<B>(
 pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
-        // root health route is currently pinged by auth portal to check if backend is up and running so we need permissive CORS headers
-        .nest(
-            "/api/",
-            Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
-        )
         .nest("/api/action", crate::server::service::action::routes())
         .nest(
             "/api/node_debug",
@@ -105,7 +100,13 @@ pub fn routes(state: AppState) -> Router {
         .layer(middleware::from_fn_with_state(
             state.clone(),
             app_state_middeware,
-        ));
+        ))
+        // root health route is currently pinged by auth portal to check if backend is up and running so we need permissive CORS headers
+        // it is last in the list so that it still services even if we are in maintenance mode
+        .nest(
+            "/api/",
+            Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
+        );
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);
