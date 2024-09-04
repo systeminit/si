@@ -57,7 +57,7 @@ pub enum SocketDebugViewError {
 }
 
 impl SocketDebugView {
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn new_for_output_socket(
         ctx: &DalContext,
         component_output_socket: ComponentOutputSocket,
@@ -119,7 +119,6 @@ impl SocketDebugView {
         let prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, component_input_socket.attribute_value_id)
                 .await?;
-        info!("prototype_debug_view: {:?}", prototype_debug_view);
         let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
         let input_socket =
             InputSocket::get_by_id(ctx, component_input_socket.input_socket_id).await?;
@@ -152,7 +151,6 @@ impl SocketDebugView {
             name: input_socket.name().to_string(),
             inferred_connections,
         };
-        info!("Socket Debug View: {:?}", view);
         Ok(view)
     }
 }

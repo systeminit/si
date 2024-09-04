@@ -97,7 +97,7 @@ pub enum ComponentDebugViewError {
 }
 
 impl ComponentDebugView {
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn new(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -152,7 +152,7 @@ impl ComponentDebugView {
 }
 
 impl ComponentDebugData {
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
         let parent_id = component.parent(ctx).await?;
@@ -179,7 +179,7 @@ impl ComponentDebugData {
         Ok(debug_view)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn get_input_sockets_for_component(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -197,7 +197,7 @@ impl ComponentDebugData {
         Ok(input_sockets)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn get_output_sockets_for_component(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -216,7 +216,7 @@ impl ComponentDebugData {
         Ok(output_sockets)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn get_attribute_value_tree_for_component(
         ctx: &DalContext,
         component_id: ComponentId,

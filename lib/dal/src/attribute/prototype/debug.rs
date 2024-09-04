@@ -93,7 +93,7 @@ pub enum SocketSourceKind {
 }
 
 impl AttributePrototypeDebugView {
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn new(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -108,21 +108,13 @@ impl AttributePrototypeDebugView {
         let mut func_binding_args: HashMap<String, Vec<FuncArgDebugView>> = HashMap::new();
         let attribute_prototype_arg_ids =
             AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-        info!("attribute prototype ids: {:?}", attribute_prototype_arg_ids);
         for attribute_prototype_arg_id in attribute_prototype_arg_ids {
             let attribute_prototype_argument =
                 AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_arg_id).await?;
-            info!(
-                "Attribute Prototype Argument: {:?}",
-                attribute_prototype_argument
-            );
-            let targets = attribute_prototype_argument.targets();
-            info!("targets: {:?}", targets);
             let expected_source_component_id = attribute_prototype_argument
                 .targets()
                 .map(|targets| targets.source_component_id)
                 .unwrap_or(destination_component_id);
-            info!("expected source id: {}", expected_source_component_id);
             if attribute_prototype_argument
                 .targets()
                 .map_or(true, |targets| {
@@ -141,7 +133,6 @@ impl AttributePrototypeDebugView {
                     attribute_prototype_arg_id,
                 )
                 .await?;
-                info!("func arg id: {:?}", func_arg_id);
 
                 let func_arg_name = FuncArgument::get_name_by_id(ctx, func_arg_id).await?;
                 let value_source =
@@ -192,7 +183,6 @@ impl AttributePrototypeDebugView {
                             let prop_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
                             let view = attribute_value.view(ctx).await?.unwrap_or(Value::Null);
-                            info!("View: {:?}", view);
                             let func_arg_debug = FuncArgDebugView {
                                 value: view,
                                 name: func_arg_name.clone(),
@@ -221,7 +211,6 @@ impl AttributePrototypeDebugView {
 
                             let value_view =
                                 attribute_value.view(ctx).await?.unwrap_or(Value::Null);
-                            info!("Materialized View: {:?}", value_view);
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
@@ -250,7 +239,6 @@ impl AttributePrototypeDebugView {
 
                             let value_view =
                                 attribute_value.view(ctx).await?.unwrap_or(Value::Null);
-                            info!("Materialized View: {:?}", value_view);
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
@@ -277,18 +265,15 @@ impl AttributePrototypeDebugView {
         if let ValueIsFor::InputSocket(input_socket_id) =
             AttributeValue::is_for(ctx, attribute_value_id).await?
         {
-            info!("value is for input socket!");
             if let Some(component_input_socket) =
                 ComponentInputSocket::get_by_ids(ctx, destination_component_id, input_socket_id)
                     .await?
             {
-                info!("Input socket match: {:?}", component_input_socket);
                 // now get inferred func binding args and values!
                 for output_match in
                     ComponentInputSocket::find_inferred_connections(ctx, component_input_socket)
                         .await?
                 {
-                    info!("output socket match: {:?}", output_match);
                     let arg_used = Component::should_data_flow_between_components(
                         ctx,
                         component_input_socket.component_id,
@@ -336,7 +321,6 @@ impl AttributePrototypeDebugView {
             attribute_values,
             is_component_specific: has_component_prototype,
         };
-        info!("AttributePrototype Debug View: {:?}", view);
         Ok(view)
     }
 }
