@@ -388,6 +388,30 @@ impl ChangeSet {
         Ok(result)
     }
 
+    /// List all change sets for a given workspace
+    pub async fn list_all_for_workspace(
+        ctx: &DalContext,
+        workspace_pk: WorkspacePk,
+    ) -> ChangeSetResult<Vec<Self>> {
+        let mut result = vec![];
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1",
+                &[&workspace_pk],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     /// Take care when working on these change sets to set the workspace id on the dal context!!!
     pub async fn list_open_for_all_workspaces(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let mut result = vec![];

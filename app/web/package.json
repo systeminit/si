@@ -112,6 +112,7 @@
     "@types/node": "^18.15.11",
     "@types/tinycolor2": "^1.4.3",
     "@types/validator": "^13.7.2",
+    "@types/wicg-file-system-access": "^2023.10.5",
     "@vitejs/plugin-vue": "^5.0.3",
     "cypress": "^13.8.1",
     "cypress-vite": "^1.5.0",
