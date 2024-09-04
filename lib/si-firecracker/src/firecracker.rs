@@ -98,7 +98,7 @@ impl FirecrackerJail {
             .arg(FIRECRACKER_SETUP_PATH)
             .arg("-j")
             .arg(pool_size.to_string())
-            .arg("-rk")
+            // .arg("-rk")
             .spawn()?
             .wait_with_output()
             .await?;
