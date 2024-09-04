@@ -9852,6 +9852,12 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "parking_lot",
+    actual = ":parking_lot-0.12.3",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "parking_lot-0.12.3.crate",
     sha256 = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27",
@@ -15952,6 +15958,7 @@ cargo.rust_binary(
         ":opentelemetry-semantic-conventions-0.14.0",
         ":opentelemetry_sdk-0.22.1",
         ":ouroboros-0.18.4",
+        ":parking_lot-0.12.3",
         ":paste-1.0.15",
         ":pathdiff-0.2.1",
         ":petgraph-0.6.5",

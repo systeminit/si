@@ -55,6 +55,7 @@ members = [
     "lib/telemetry-nats-rs",
     "lib/telemetry-rs",
     "lib/telemetry-utils-rs",
+    "lib/tokio-dedicated-executor",
     "lib/veritech-client",
     "lib/veritech-core",
     "lib/veritech-server",
@@ -130,6 +131,7 @@ opentelemetry-otlp = { version = "0.15.0", features = ["metrics", "trace"] }
 opentelemetry-semantic-conventions = "0.14.0"
 opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
 ouroboros = "0.18.3"
+parking_lot = "0.12.3"
 paste = "1.0.14"
 pathdiff = "0.2.1"
 petgraph = { version = "0.6.4", features = ["serde-1"] }
