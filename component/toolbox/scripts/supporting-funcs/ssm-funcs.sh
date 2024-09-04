@@ -27,11 +27,12 @@ start_and_track_ssm_session() {
   fi
 
   command_id=$(echo "$output" | jq -r '.Command.CommandId')
+  echo "Info: tracking SSM execution ID: $command_id"
 
   # Poll for command status with a timeout of 60 seconds
-  timeout=60
+  timeout=180
   elapsed=0
-  interval=1
+  interval=5
 
   while [ $elapsed -lt $timeout ]; do
     status=$(check_ssm_command_status)
