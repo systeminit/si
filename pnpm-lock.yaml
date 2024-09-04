@@ -623,6 +623,9 @@ importers:
       node-fetch:
         specifier: ^2
         version: 2.6.7
+      toml:
+        specifier: ^3.0.0
+        version: 3.0.0
       typescript:
         specifier: ^4.9.5
         version: 4.9.5
@@ -19045,7 +19048,6 @@ packages:
 
   /toml@3.0.0:
     resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==}
-    dev: true
 
   /tomlify-j0.4@3.0.0:
     resolution: {integrity: sha512-2Ulkc8T7mXJ2l0W476YC/A209PR38Nw8PuaCNtk9uI3t1zzFdGQeWYGQvmj2PZkVvRC/Yoi4xQKMRnWc/N29tQ==}
