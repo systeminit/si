@@ -6,8 +6,10 @@ use crate::server::{WorkspacePermissions, WorkspacePermissionsMode};
 use crate::service::session::AuthApiErrBody;
 use axum::extract::{Host, OriginalUri, State};
 use axum::Json;
-use dal::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
-use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
+use dal::{
+    DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk,
+    WorkspaceSnapshotGraph,
+};
 use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -113,7 +115,7 @@ async fn find_or_create_user_and_workspace(
                 workspace.set_token(&ctx, auth_api_workspace.token).await?;
             }
 
-            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
+            if workspace.snapshot_version() != WorkspaceSnapshotGraph::current_discriminant() {
                 return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
             }
 

@@ -25,7 +25,7 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
     HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    User, UserError, UserPk, WorkspaceSnapshot,
+    User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -222,7 +222,7 @@ impl Workspace {
             .feature_flags_service()
             .feature_is_enabled(&FeatureFlag::ActionsV2);
 
-        let version_string = WorkspaceSnapshotGraphDiscriminants::V2.to_string();
+        let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
         let row = ctx
             .txns()
             .await?
@@ -319,7 +319,7 @@ impl Workspace {
             .feature_is_enabled(&FeatureFlag::ActionsV2);
 
         let name = name.as_ref();
-        let version_string = WorkspaceSnapshotGraphDiscriminants::V2.to_string();
+        let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
 
         let row = ctx
             .txns()

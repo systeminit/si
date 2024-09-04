@@ -8,7 +8,7 @@ pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_layer_cache::db::serialize;
-use strum::{EnumDiscriminants, EnumString};
+use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use thiserror::Error;
 
 use telemetry::prelude::*;
@@ -82,7 +82,7 @@ pub enum WorkspaceSnapshotGraphError {
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
 
 #[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
-#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString))]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum WorkspaceSnapshotGraph {
     Legacy,
     V1(DeprecatedWorkspaceSnapshotGraphV1),
@@ -108,6 +108,12 @@ impl WorkspaceSnapshotGraph {
             }
             Self::V3(inner) => inner,
         }
+    }
+
+    pub fn current_discriminant() -> WorkspaceSnapshotGraphDiscriminants {
+        WorkspaceSnapshotGraphDiscriminants::iter()
+            .last()
+            .expect("Unable to get last element of an iterator guaranteed to have elements")
     }
 }
 
