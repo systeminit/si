@@ -46,16 +46,15 @@ jobs:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ inputs.version }}
-    needs:
-      - invoke-and-check-cdn
     secrets: inherit
 
   set-maintenance-mode:
+    needs:
+      - invoke-and-check-cdn
+      - set-service-versions
     uses: ./.github/workflows/set-maintenance-mode.yml
     with:
       environment: ${{ inputs.environment }}
-    needs:
-      - invoke-and-check-cdn
     secrets: inherit
 
   upgrade-web:
@@ -97,7 +96,6 @@ jobs:
     needs:
       - upgrade-web
       - upgrade-and-migrate-sdf
-    if: always()
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}
