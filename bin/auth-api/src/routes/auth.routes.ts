@@ -61,10 +61,13 @@ router.post("/auth/login", async (ctx) => {
 
   try {
     await getAuth0UserCredential(email, password);
-  } catch {
-    throw new ApiError("Forbidden", "Bad user");
+  } catch (e) {
+    let message = "Bad User";
+    if (e instanceof Error) {
+      message = e.message;
+    }
+    throw new ApiError("Forbidden", message);
   }
-  // TODO check for the user AUTH0 role to make sure it's a test user
 
   const memberRole = await userRoleForWorkspace(user.id, workspaceId);
   if (!memberRole) {
@@ -77,10 +80,6 @@ router.post("/auth/login", async (ctx) => {
 });
 
 router.get("/auth/login-callback", async (ctx) => {
-  // const { code, state } = ctx.request.query;
-  // TODO: find a better way to assert/check its not a string array (and make TS happy)
-  // (validation tooling should do this)
-
   const reqQuery = validate(ctx.request.query, z.object({
     // TODO: could check state/code look like valid values
     code: z.string(),
