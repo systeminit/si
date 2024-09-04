@@ -41,6 +41,7 @@ pub mod conflicts_for_component;
 pub mod debug;
 pub mod get_code;
 pub mod restore_default_function;
+pub mod set_name;
 pub mod set_type;
 mod upgrade;
 
@@ -170,6 +171,7 @@ pub fn routes() -> Router<AppState> {
             post(restore_default_function::restore_default_function),
         )
         .route("/set_type", post(set_type::set_type))
+        .route("/set_name", post(set_name::set_name))
         .route("/refresh", post(refresh::refresh))
         // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
         .route("/debug", get(debug::debug_component))

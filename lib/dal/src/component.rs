@@ -1466,8 +1466,7 @@ impl Component {
         Ok(Self::assemble(&node_weight, content))
     }
 
-    // Set the name of the component. Should only be used during component creation
-    async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
+    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
         let path = ["root", "si", "name"];
         let sv_id = Self::schema_variant_id(ctx, self.id).await?;
         let name_prop_id = Prop::find_prop_id_by_path(ctx, sv_id, &PropPath::new(path)).await?;
