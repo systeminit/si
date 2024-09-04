@@ -278,6 +278,20 @@ impl Workspace {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
+    pub async fn list_all(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT row_to_json(w.*) AS object FROM workspaces AS w",
+                &[],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
     pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
         let maybe_row = ctx.txns().await?.pg().query_opt(
             "SELECT row_to_json(w.*) AS object FROM workspaces AS w WHERE pk != $1 ORDER BY created_at ASC LIMIT 1", &[&WorkspacePk::NONE],
@@ -657,5 +671,9 @@ impl Workspace {
         self.component_concurrency_limit = Some(limit);
 
         Ok(())
+    }
+
+    pub fn timestamp(&self) -> &Timestamp {
+        &self.timestamp
     }
 }

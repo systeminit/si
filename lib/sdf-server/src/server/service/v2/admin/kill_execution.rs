@@ -1,6 +1,6 @@
 use axum::{extract::Path, response::IntoResponse};
 use dal::func::runner::FuncRunner;
-use si_events::{FuncRunId, WorkspacePk};
+use si_events::FuncRunId;
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
@@ -9,7 +9,7 @@ use super::AdminAPIResult;
 pub async fn kill_execution(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    Path((_workspace_pk, func_run_id)): Path<(WorkspacePk, FuncRunId)>,
+    Path(func_run_id): Path<FuncRunId>,
 ) -> AdminAPIResult<impl IntoResponse> {
     let ctx = builder.build_head(access_builder).await?;
 

@@ -11,7 +11,8 @@
     "types": [
       "vite/client",
       "vite-svg-loader",
-      "unplugin-icons/types/raw"
+      "unplugin-icons/types/raw",
+      "@types/wicg-file-system-access",
     ],
     "declaration": false,
     "declarationMap": false
