@@ -17,6 +17,7 @@ jobs:
     environment: ${{ inputs.environment }}
     name: ${{ inputs.service }} Upgrade
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Configure AWS credentials for ${{ inputs.environment }}
         uses: aws-actions/configure-aws-credentials@v4
@@ -28,9 +29,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Down service
+        run: |
+          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -S down
+
       - name: Upgrade service
         run: |
           component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -e ${{ inputs.environment }}
+
+      - name: Up service
+        run: |
+          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -S up
 
   on-failure:
     uses: ./.github/workflows/instance-refresh.yml

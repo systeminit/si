@@ -125,7 +125,6 @@ i=1
 while read -r line; do
     instance_id=$(echo "$line" | awk '{print $2}')
     service_name=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
-    start_and_track_ssm_session "$instance_id" "$service_maintenance_script" "$service_name" "$maintenance" "$results_directory" &
     start_and_track_ssm_session "$instance_id" "$service_maintenance_script" "$results_directory" "InstanceId=$instance_id,Action=$maintenance" &
     ((i++))
 done <<< "$instances"

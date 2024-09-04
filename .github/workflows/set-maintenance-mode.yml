@@ -24,6 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Down service
+      - name: Toggle maintenance
         run: |
-          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m n -a y
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m y -a y

@@ -58,19 +58,6 @@ jobs:
       - invoke-and-check-cdn
     secrets: inherit
 
-  down: # the backend services
-    needs:
-      - set-maintenance-mode
-    strategy:
-     fail-fast: false
-     matrix:
-      service: [ "pinga", "rebaser", "sdf" ]
-    uses: ./.github/workflows/down-service.yml
-    with:
-      environment: ${{ inputs.environment }}
-      service: ${{ matrix.service }}
-    secrets: inherit
-
   upgrade-web:
     needs:
       - set-maintenance-mode
@@ -82,33 +69,20 @@ jobs:
   upgrade: # the backend services
     needs:
       - set-service-versions
-      - down
+      - set-maintenance-mode
     strategy:
      fail-fast: false
      matrix:
-       service: [ "pinga", "rebaser", "sdf", "veritech" ]
+       service: [ "pinga", "rebaser", "veritech" ]
     uses: ./.github/workflows/upgrade-service.yml
     with:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
     secrets: inherit
 
-  up: # the backend services
+  upgrade-and-migrate-sdf:
     needs:
       - upgrade
-    strategy:
-     fail-fast: false
-     matrix:
-      service: [ "pinga", "rebaser", "veritech" ]
-    uses: ./.github/workflows/up-service.yml
-    with:
-      environment: ${{ inputs.environment }}
-      service: ${{ matrix.service }}
-    secrets: inherit
-
-  migrate-and-up-sdf:
-    needs:
-      - up
     uses: ./.github/workflows/migrate-sdf.yml
     with:
       environment: ${{ inputs.environment }}
@@ -122,7 +96,7 @@ jobs:
       cancel-in-progress: true
     needs:
       - upgrade-web
-      - migrate-and-up-sdf
+      - upgrade-and-migrate-sdf
     if: always()
     uses: ./.github/workflows/e2e-validation.yml
     with:

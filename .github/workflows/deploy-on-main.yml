@@ -1,3 +1,5 @@
+name: Deploy Main
+
 on:
   push:
     tags:
