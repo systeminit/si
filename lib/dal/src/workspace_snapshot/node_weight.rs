@@ -798,7 +798,7 @@ impl CorrectTransforms for NodeWeight {
 }
 
 impl CorrectExclusiveOutgoingEdge for NodeWeight {
-    fn exclusive_outgoing_edges(&self) -> Vec<EdgeWeightKindDiscriminants> {
+    fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         match self {
             NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ActionPrototype(weight) => weight.exclusive_outgoing_edges(),
@@ -815,6 +815,5 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
         }
-        .to_vec()
     }
 }

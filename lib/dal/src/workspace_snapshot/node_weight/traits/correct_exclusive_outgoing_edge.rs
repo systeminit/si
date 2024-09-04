@@ -13,7 +13,7 @@ pub trait CorrectExclusiveOutgoingEdge
 where
     NodeInformation: for<'a> From<&'a Self>,
 {
-    fn exclusive_outgoing_edges(&self) -> Vec<EdgeWeightKindDiscriminants>;
+    fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants];
 
     /// If a set of updates will produce a new outgoing edge that a node weight
     /// considers "exclusive" (that is, there can only be one of these kinds of
