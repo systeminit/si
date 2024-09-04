@@ -148,6 +148,7 @@ start(){
   if [ -f /mnt/scripts/scripts ]; then
       source /mnt/scripts/scripts
   fi
+  export HOME=/root
   cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 &
 }
 
