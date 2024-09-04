@@ -27,7 +27,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
 use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
-    SchemaVariantContentV2,
+    SchemaVariantContentV3,
 };
 use crate::module::Module;
 use crate::prop::{PropError, PropPath};
@@ -37,7 +37,11 @@ use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::node_weight::input_socket_node_weight::InputSocketNodeWeightError;
+use crate::workspace_snapshot::node_weight::SchemaVariantNodeWeight;
+use crate::workspace_snapshot::node_weight::{
+    traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError, PropNodeWeight,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk,
@@ -104,6 +108,8 @@ pub enum SchemaVariantError {
     IdForWrongType(Ulid),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("InputSocketNodeWeight error: {0}")]
+    InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("Func {0} of response type {1} cannot set leaf {2:?}")]
@@ -401,7 +407,7 @@ impl WsEvent {
 
 impl From<SchemaVariant> for SchemaVariantContent {
     fn from(value: SchemaVariant) -> Self {
-        Self::V2(SchemaVariantContentV2 {
+        Self::V3(SchemaVariantContentV3 {
             timestamp: value.timestamp(),
             ui_hidden: value.ui_hidden(),
             version: value.version().to_string(),
@@ -414,7 +420,6 @@ impl From<SchemaVariant> for SchemaVariantContent {
             asset_func_id: value.asset_func_id,
             finalized_once: value.finalized_once,
             is_builtin: value.is_builtin,
-            is_locked: value.is_locked,
         })
     }
 }
@@ -423,6 +428,7 @@ impl SchemaVariant {
     pub async fn assemble(
         ctx: &DalContext,
         id: SchemaVariantId,
+        is_locked: bool,
         content: SchemaVariantContent,
     ) -> SchemaVariantResult<Self> {
         let inner = content.extract(ctx, id).await?;
@@ -441,7 +447,7 @@ impl SchemaVariant {
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
             is_builtin: inner.is_builtin,
-            is_locked: inner.is_locked,
+            is_locked,
         })
     }
 
@@ -462,7 +468,9 @@ impl SchemaVariant {
         debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let content = SchemaVariantContentV2 {
+        // New SchemVariants are not locked by default.
+        let is_locked = false;
+        let content = SchemaVariantContentV3 {
             timestamp: Timestamp::now(),
             version: version.into(),
             link: link.into(),
@@ -475,14 +483,13 @@ impl SchemaVariant {
             description: description.into(),
             asset_func_id,
             is_builtin,
-            is_locked: false,
         };
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(SchemaVariantContent::V2(content.clone()).into()),
+                Arc::new(SchemaVariantContent::V3(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -491,8 +498,7 @@ impl SchemaVariant {
 
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
-        let node_weight =
-            NodeWeight::new_content(id, lineage_id, ContentAddress::SchemaVariant(hash));
+        let node_weight = NodeWeight::new_schema_variant(id, lineage_id, is_locked, hash);
         workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         // Schema --Use--> SchemaVariant (this)
@@ -503,7 +509,7 @@ impl SchemaVariant {
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
         let schema_variant =
-            Self::assemble(ctx, id.into(), SchemaVariantContent::V2(content)).await?;
+            Self::assemble(ctx, id.into(), is_locked, SchemaVariantContent::V3(content)).await?;
         Ok((schema_variant, root_prop))
     }
 
@@ -511,18 +517,18 @@ impl SchemaVariant {
     where
         L: FnOnce(&mut Self) -> SchemaVariantResult<()>,
     {
+        let before_modification_variant = self.clone();
         let mut schema_variant = self;
 
-        let before = SchemaVariantContent::from(schema_variant.clone());
         lambda(&mut schema_variant)?;
-        let updated = SchemaVariantContent::from(schema_variant.clone());
 
-        if updated != before {
+        if schema_variant != before_modification_variant {
+            let new_content = SchemaVariantContent::from(schema_variant.clone());
             let (hash, _) = ctx
                 .layer_db()
                 .cas()
                 .write(
-                    Arc::new(updated.into()),
+                    Arc::new(new_content.into()),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
@@ -530,8 +536,24 @@ impl SchemaVariant {
                 .await?;
 
             ctx.workspace_snapshot()?
-                .update_content(schema_variant.id.into(), hash)
+                .update_content(before_modification_variant.id.into(), hash)
                 .await?;
+
+            if schema_variant.is_locked() != before_modification_variant.is_locked() {
+                let node_weight = ctx
+                    .workspace_snapshot()?
+                    .get_node_weight_by_id(before_modification_variant.id())
+                    .await?;
+                let mut schema_variant_node_weight =
+                    node_weight.get_schema_variant_node_weight()?;
+                crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight::inner_mut(
+                    &mut schema_variant_node_weight,
+                )
+                .set_is_locked(schema_variant.is_locked());
+                ctx.workspace_snapshot()?
+                    .add_or_replace_node(NodeWeight::SchemaVariant(schema_variant_node_weight))
+                    .await?;
+            }
         }
 
         Ok(schema_variant)
@@ -650,23 +672,88 @@ impl SchemaVariant {
             })?;
 
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-
-        let NodeWeight::Content(content) = &node_weight else {
-            return Err(SchemaVariantError::IdForWrongType(id.into()));
-        };
-
-        let ContentAddress::SchemaVariant(hash) = content.content_address() else {
-            return Err(SchemaVariantError::IdForWrongType(id.into()));
-        };
+        let schema_variant_node_weight = node_weight.get_schema_variant_node_weight()?;
 
         let content: SchemaVariantContent = ctx
             .layer_db()
             .cas()
-            .try_read_as(&hash)
+            .try_read_as(&schema_variant_node_weight.content_hash())
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        Self::assemble(ctx, id, content).await
+        Self::from_node_weight_and_content(ctx, &schema_variant_node_weight, &content).await
+    }
+
+    async fn from_node_weight_and_content(
+        ctx: &DalContext,
+        schema_variant_node_weight: &SchemaVariantNodeWeight,
+        content: &SchemaVariantContent,
+    ) -> SchemaVariantResult<Self> {
+        let schema_variant =
+            match content {
+                SchemaVariantContent::V1(v1_inner) => {
+                    // From before locking existed; everything is locked.
+                    let is_locked = true;
+                    let v3_content = SchemaVariantContent::V3(SchemaVariantContentV3 {
+                        timestamp: v1_inner.timestamp,
+                        ui_hidden: v1_inner.ui_hidden,
+                        version: v1_inner.name.to_owned(),
+                        display_name: v1_inner.display_name.clone().unwrap_or_else(String::new),
+                        category: v1_inner.category.clone(),
+                        color: v1_inner.color.clone(),
+                        component_type: v1_inner.component_type,
+                        link: v1_inner.link.clone(),
+                        description: v1_inner.description.clone(),
+                        asset_func_id: v1_inner.asset_func_id,
+                        finalized_once: v1_inner.finalized_once,
+                        is_builtin: v1_inner.is_builtin,
+                    });
+
+                    Self::assemble(
+                        ctx,
+                        schema_variant_node_weight.id().into(),
+                        is_locked,
+                        v3_content,
+                    )
+                    .await?
+                }
+                SchemaVariantContent::V2(v2_inner) => {
+                    let v3_content = SchemaVariantContent::V3(SchemaVariantContentV3 {
+                        timestamp: v2_inner.timestamp,
+                        ui_hidden: v2_inner.ui_hidden,
+                        version: v2_inner.version.clone(),
+                        display_name: v2_inner.display_name.clone(),
+                        category: v2_inner.category.clone(),
+                        color: v2_inner.color.clone(),
+                        component_type: v2_inner.component_type,
+                        link: v2_inner.link.clone(),
+                        description: v2_inner.description.clone(),
+                        asset_func_id: v2_inner.asset_func_id,
+                        finalized_once: v2_inner.finalized_once,
+                        is_builtin: v2_inner.is_builtin,
+                    });
+
+                    Self::assemble(
+                        ctx,
+                        schema_variant_node_weight.id().into(),
+                        v2_inner.is_locked,
+                        v3_content,
+                    )
+                    .await?
+                }
+                SchemaVariantContent::V3(v3_inner) => Self::assemble(
+                    ctx,
+                    schema_variant_node_weight.id().into(),
+                    crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight::inner(
+                        schema_variant_node_weight,
+                    )
+                    .is_locked(),
+                    SchemaVariantContent::V3(v3_inner.clone()),
+                )
+                .await?,
+            };
+
+        Ok(schema_variant)
     }
 
     /// Lists all [`Components`](Component) that are using the provided [`SchemaVariantId`](SchemaVariant).
@@ -834,7 +921,7 @@ impl SchemaVariant {
             let node_weight = workspace_snapshot
                 .get_node_weight(index)
                 .await?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?;
+                .get_schema_variant_node_weight()?;
             content_hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
         }
@@ -849,7 +936,7 @@ impl SchemaVariant {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
                     schema_variants
-                        .push(Self::assemble(ctx, node_weight.id().into(), content.clone()).await?);
+                        .push(Self::assemble(ctx, node_weight.id().into(), crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight::inner(&node_weight).is_locked(), content.clone()).await?);
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -1180,27 +1267,6 @@ impl SchemaVariant {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    async fn get_content(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<(ContentHash, SchemaVariantContentV2)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: Ulid = schema_variant_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-        let hash = node_weight.content_hash();
-
-        let content: SchemaVariantContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
-
-        Ok((hash, content.extract(ctx, schema_variant_id).await?))
-    }
-
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
@@ -1504,17 +1570,23 @@ impl SchemaVariant {
             let node_weight = workspace_snapshot
                 .get_node_weight(maybe_socket_node_index)
                 .await?;
-            if let NodeWeight::Content(content_node_weight) = node_weight {
-                match content_node_weight.content_address() {
-                    ContentAddress::OutputSocket(output_socket_content_hash) => {
+            match node_weight {
+                NodeWeight::Content(content_node_weight) => {
+                    if let ContentAddress::OutputSocket(output_socket_content_hash) =
+                        content_node_weight.content_address()
+                    {
                         output_socket_hashes
                             .push((content_node_weight.id().into(), output_socket_content_hash));
                     }
-                    ContentAddress::InputSocket(input_socket_content_hash) => {
-                        input_socket_hashes
-                            .push((content_node_weight.id().into(), input_socket_content_hash));
-                    }
-                    _ => {}
+                }
+                NodeWeight::InputSocket(input_socket_node_weight) => {
+                    input_socket_hashes.push((
+                        input_socket_node_weight.id().into(),
+                        input_socket_node_weight.content_hash(),
+                    ));
+                }
+                _ => {
+                    // Anything else isn't an Input or Output Socket.
                 }
             }
         }
@@ -1559,11 +1631,31 @@ impl SchemaVariant {
                 WorkspaceSnapshotError::MissingContentFromStore(input_socket_id.into()),
             )?;
 
-            // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-            let InputSocketContent::V1(input_socket_content_inner) = input_socket_content;
+            let node_weight = workspace_snapshot
+                .get_node_weight(
+                    workspace_snapshot
+                        .get_node_index_by_id(input_socket_id)
+                        .await?,
+                )
+                .await?;
+            let input_socket_weight = node_weight.get_input_socket_node_weight()?;
+
+            let input_socket_content_inner = match input_socket_content {
+                InputSocketContent::V1(_) => {
+                    return Err(InputSocketNodeWeightError::InvalidContentForNodeWeight(
+                        input_socket_weight.id(),
+                    )
+                    .into());
+                }
+                InputSocketContent::V2(content_inner) => content_inner,
+            };
 
             input_sockets.push(InputSocket::assemble(
                 input_socket_id,
+                crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight::inner(
+                    &input_socket_weight,
+                )
+                .arity(),
                 input_socket_content_inner.to_owned(),
             ));
         }
@@ -1591,7 +1683,10 @@ impl SchemaVariant {
             let node_weight = workspace_snapshot
                 .get_node_weight(maybe_socket_node_index)
                 .await?;
-            if let Some(content_address_discriminant) = node_weight.content_address_discriminants()
+            if node_weight.get_input_socket_node_weight().is_ok() {
+                input_socket_ids.push(node_weight.id().into());
+            } else if let Some(content_address_discriminant) =
+                node_weight.content_address_discriminants()
             {
                 match content_address_discriminant {
                     ContentAddressDiscriminants::InputSocket => {
@@ -1838,7 +1933,10 @@ impl SchemaVariant {
 
         for source in sources {
             let node_weight = workspace_snapshot.get_node_weight(source).await?;
-            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
+            {
+                return Ok(node_weight.id().into());
+            } else if let Some(ContentAddressDiscriminants::SchemaVariant) =
                 &node_weight.content_address_discriminants()
             {
                 return Ok(node_weight.id().into());
@@ -1863,7 +1961,10 @@ impl SchemaVariant {
 
         for source in sources {
             let node_weight = workspace_snapshot.get_node_weight(source).await?;
-            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
+            {
+                return Ok(node_weight.id().into());
+            } else if let Some(ContentAddressDiscriminants::SchemaVariant) =
                 &node_weight.content_address_discriminants()
             {
                 return Ok(node_weight.id().into());
@@ -1888,7 +1989,10 @@ impl SchemaVariant {
 
         for source in sources {
             let node_weight = workspace_snapshot.get_node_weight(source).await?;
-            if let Some(ContentAddressDiscriminants::SchemaVariant) =
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
+            {
+                return Ok(node_weight.id().into());
+            } else if let Some(ContentAddressDiscriminants::SchemaVariant) =
                 &node_weight.content_address_discriminants()
             {
                 return Ok(node_weight.id().into());
@@ -1963,7 +2067,11 @@ impl SchemaVariant {
                 .await?
             {
                 let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-                if let Some(ContentAddressDiscriminants::SchemaVariant) =
+                if NodeWeightDiscriminants::from(&node_weight)
+                    == NodeWeightDiscriminants::SchemaVariant
+                {
+                    pairs.push((node_weight.id().into(), action_prototype_raw_id.into()));
+                } else if let Some(ContentAddressDiscriminants::SchemaVariant) =
                     node_weight.content_address_discriminants()
                 {
                     pairs.push((node_weight.id().into(), action_prototype_raw_id.into()));

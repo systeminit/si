@@ -18,7 +18,12 @@ use crate::{
         FuncId,
     },
     implement_add_edge_to,
-    workspace_snapshot::node_weight::{ActionPrototypeNodeWeight, NodeWeight, NodeWeightError},
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        node_weight::{
+            ActionPrototypeNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+        },
+    },
     ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
     EdgeWeightKind, EdgeWeightKindDiscriminants, HelperError, SchemaVariant, SchemaVariantError,
     SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
@@ -50,7 +55,7 @@ pub enum ActionPrototypeError {
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found for prototype: {0}")]
-    SchemaVariantFoundForPrototype(ActionPrototypeId),
+    SchemaVariantNotFoundForPrototype(ActionPrototypeId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("Transactions error: {0}")]
@@ -268,15 +273,23 @@ impl ActionPrototype {
             )
             .await?
         {
-            if let NodeWeight::Content(node_weight) = ctx
+            let node_weight = ctx
                 .workspace_snapshot()?
                 .get_node_weight(tail_node_idx)
-                .await?
+                .await?;
+
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
             {
                 return Ok(node_weight.id().into());
+            } else if let NodeWeight::Content(content_weight) = &node_weight {
+                if ContentAddressDiscriminants::from(content_weight.content_address())
+                    == ContentAddressDiscriminants::SchemaVariant
+                {
+                    return Ok(node_weight.id().into());
+                }
             }
         }
-        Err(ActionPrototypeError::SchemaVariantFoundForPrototype(id))
+        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id))
     }
 
     pub async fn run(

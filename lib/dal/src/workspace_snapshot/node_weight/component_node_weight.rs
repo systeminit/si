@@ -14,7 +14,7 @@ use crate::{
         node_weight::traits::CorrectTransforms,
         NodeInformation,
     },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
 };
 
 use super::{
@@ -143,7 +143,7 @@ impl From<&ComponentNodeWeight> for NodeInformation {
 }
 
 fn remove_hanging_socket_connections(
-    graph: &WorkspaceSnapshotGraphV2,
+    graph: &WorkspaceSnapshotGraphVCurrent,
     component_id: Ulid,
     component_idx: NodeIndex,
 ) -> CorrectTransformsResult<Vec<Update>> {
@@ -251,7 +251,7 @@ fn remove_hanging_socket_connections(
 impl CorrectTransforms for ComponentNodeWeight {
     fn correct_transforms(
         &self,
-        graph: &WorkspaceSnapshotGraphV2,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         mut updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

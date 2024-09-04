@@ -16,8 +16,8 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
+            detect_updates::{Detector, Update},
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
         CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
@@ -25,8 +25,10 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
+mod tests;
+
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraphV2 {
+pub struct WorkspaceSnapshotGraphV3 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
@@ -38,7 +40,7 @@ pub struct WorkspaceSnapshotGraphV2 {
     touched_node_indices: HashSet<NodeIndex>,
 }
 
-impl std::fmt::Debug for WorkspaceSnapshotGraphV2 {
+impl std::fmt::Debug for WorkspaceSnapshotGraphV3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
@@ -48,7 +50,7 @@ impl std::fmt::Debug for WorkspaceSnapshotGraphV2 {
     }
 }
 
-impl WorkspaceSnapshotGraphV2 {
+impl WorkspaceSnapshotGraphV3 {
     pub fn new() -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
             StableDiGraph::with_capacity(1024, 1024);
@@ -108,16 +110,6 @@ impl WorkspaceSnapshotGraphV2 {
     /// Access the internal petgraph for this snapshot
     pub fn graph(&self) -> &StableGraph<NodeWeight, EdgeWeight> {
         &self.graph
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn node_index_by_id(&self) -> &HashMap<Ulid, NodeIndex> {
-        &self.node_index_by_id
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn node_indices_by_lineage_id(&self) -> &HashMap<Ulid, HashSet<NodeIndex>> {
-        &self.node_indices_by_lineage_id
     }
 
     pub fn generate_ulid(&self) -> WorkspaceSnapshotGraphResult<Ulid> {
@@ -554,9 +546,8 @@ impl WorkspaceSnapshotGraphV2 {
         Ok(maybe_equivalent_node)
     }
 
-    /// *DO NOT USE*: V2 graphs are only usable for upgrading to V3 graphs.
-    pub fn detect_updates(&self, _updated_graph: &Self) -> Vec<Update> {
-        vec![]
+    pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
+        Detector::new(self, updated_graph).detect_updates()
     }
 
     #[allow(dead_code)]
@@ -949,7 +940,7 @@ impl WorkspaceSnapshotGraphV2 {
 
     pub fn import_component_subgraph(
         &mut self,
-        other: &WorkspaceSnapshotGraphV2,
+        other: &WorkspaceSnapshotGraphV3,
         component_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         // * DFS event-based traversal.
@@ -970,7 +961,7 @@ impl WorkspaceSnapshotGraphV2 {
     /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
     fn import_component_subgraph_process_dfs_event(
         &mut self,
-        other: &WorkspaceSnapshotGraphV2,
+        other: &WorkspaceSnapshotGraphV3,
         edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
         event: DfsEvent<NodeIndex>,
     ) -> WorkspaceSnapshotGraphResult<petgraph::visit::Control<()>> {
@@ -1510,7 +1501,6 @@ impl WorkspaceSnapshotGraphV2 {
     /// we treat node weights as immutable and replace them by creating a new
     /// node with a new node weight and replacing references to point to the new
     /// node.
-    #[allow(dead_code)]
     pub(crate) fn update_node_weight<L>(
         &mut self,
         node_idx: NodeIndex,
@@ -1532,7 +1522,7 @@ impl WorkspaceSnapshotGraphV2 {
 }
 
 fn ordering_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV2,
+    snapshot: &WorkspaceSnapshotGraphV3,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -1554,7 +1544,7 @@ fn ordering_node_indexes_for_node_index(
 }
 
 fn prop_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV2,
+    snapshot: &WorkspaceSnapshotGraphV3,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot

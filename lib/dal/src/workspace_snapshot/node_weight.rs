@@ -3,27 +3,30 @@ use std::num::TryFromIntError;
 use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
+use si_layer_cache::LayerDbError;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
 
 use crate::{
     action::prototype::ActionKind,
+    func::FuncKind,
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
+        graph::LineageId,
+        node_weight::secret_node_weight::SecretNodeWeight,
         vector_clock::VectorClockError,
     },
-    ChangeSetId, PropKind,
+    ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
+    WorkspaceSnapshotGraphV3,
 };
-use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use traits::SiNodeWeight;
 
-use crate::func::FuncKind;
-use crate::workspace_snapshot::graph::LineageId;
-use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
-pub use attribute_prototype_argument_node_weight::ArgumentTargets;
-pub use attribute_prototype_argument_node_weight::AttributePrototypeArgumentNodeWeight;
+pub use attribute_prototype_argument_node_weight::{
+    ArgumentTargets, AttributePrototypeArgumentNodeWeight,
+};
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
 pub use category_node_weight::CategoryNodeWeight;
 pub use component_node_weight::ComponentNodeWeight;
@@ -31,11 +34,17 @@ pub use content_node_weight::ContentNodeWeight;
 pub use dependent_value_root_node_weight::DependentValueRootNodeWeight;
 pub use func_argument_node_weight::FuncArgumentNodeWeight;
 pub use func_node_weight::FuncNodeWeight;
+pub use input_socket_node_weight::InputSocketNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
+pub use schema_variant_node_weight::SchemaVariantNodeWeight;
 
-use super::graph::deprecated::v1::DeprecatedNodeWeightV1;
-use super::graph::detect_updates::Update;
+use self::{
+    input_socket_node_weight::InputSocketNodeWeightError,
+    schema_variant_node_weight::SchemaVariantNodeWeightError,
+};
+
+use super::graph::{deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update};
 
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;
@@ -48,8 +57,10 @@ pub mod dependent_value_root_node_weight;
 pub mod finished_dependent_value_root_node_weight;
 pub mod func_argument_node_weight;
 pub mod func_node_weight;
+pub mod input_socket_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
+pub mod schema_variant_node_weight;
 pub mod secret_node_weight;
 
 pub mod traits;
@@ -69,10 +80,18 @@ pub enum NodeWeightError {
     // ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
+    #[error("InputSocket node weight error: {0}")]
+    InputSocketNodeWeight(#[from] Box<InputSocketNodeWeightError>),
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
+    #[error("LayerDb error: {0}")]
+    LayerDb(#[from] LayerDbError),
+    #[error("Content missing from store for node: {0}")]
+    MissingContentFromStore(Ulid),
     #[error("Missing Key for Child Entry {0}")]
     MissingKeytForChildEntry(Ulid),
+    #[error("SchemaVariant node weight error: {0}")]
+    SchemaVariantNodeWeight(#[from] Box<SchemaVariantNodeWeightError>),
     #[error("try from int error: {0}")]
     TryFromIntError(#[from] TryFromIntError),
     #[error("Unexpected content address variant: {1} expected {0}")]
@@ -81,6 +100,8 @@ pub enum NodeWeightError {
     UnexpectedNodeWeightVariant(NodeWeightDiscriminants, NodeWeightDiscriminants),
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
+    #[error("WorkspaceSnapshot error: {0}")]
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
 }
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
@@ -104,6 +125,8 @@ pub enum NodeWeight {
     Prop(PropNodeWeight),
     Secret(SecretNodeWeight),
     FinishedDependentValueRoot(FinishedDependentValueRootNodeWeight),
+    InputSocket(InputSocketNodeWeight),
+    SchemaVariant(SchemaVariantNodeWeight),
 }
 
 impl NodeWeight {
@@ -123,6 +146,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.content_hash(),
             NodeWeight::DependentValueRoot(weight) => weight.content_hash(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.content_hash(),
+            NodeWeight::InputSocket(weight) => weight.content_hash(),
+            NodeWeight::SchemaVariant(weight) => weight.content_hash(),
         }
     }
 
@@ -142,6 +167,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.content_store_hashes(),
             NodeWeight::DependentValueRoot(weight) => weight.content_store_hashes(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.content_store_hashes(),
+            NodeWeight::InputSocket(weight) => weight.content_store_hashes(),
+            NodeWeight::SchemaVariant(weight) => weight.content_store_hashes(),
         }
     }
 
@@ -160,7 +187,9 @@ impl NodeWeight {
             | NodeWeight::Prop(_)
             | NodeWeight::Secret(_)
             | NodeWeight::DependentValueRoot(_)
-            | NodeWeight::FinishedDependentValueRoot(_) => None,
+            | NodeWeight::FinishedDependentValueRoot(_)
+            | NodeWeight::InputSocket(_)
+            | NodeWeight::SchemaVariant(_) => None,
         }
     }
 
@@ -180,6 +209,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.id(),
             NodeWeight::DependentValueRoot(weight) => weight.id(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.id(),
+            NodeWeight::InputSocket(weight) => weight.id(),
+            NodeWeight::SchemaVariant(weight) => weight.id(),
         }
     }
 
@@ -199,6 +230,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.lineage_id(),
             NodeWeight::DependentValueRoot(weight) => weight.lineage_id(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.lineage_id(),
+            NodeWeight::InputSocket(weight) => weight.lineage_id(),
+            NodeWeight::SchemaVariant(weight) => weight.lineage_id(),
         }
     }
 
@@ -260,6 +293,14 @@ impl NodeWeight {
                 weight.id = id.into();
                 weight.lineage_id = lineage_id;
             }
+            NodeWeight::InputSocket(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::SchemaVariant(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
         }
     }
 
@@ -279,6 +320,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.merkle_tree_hash(),
             NodeWeight::DependentValueRoot(weight) => weight.merkle_tree_hash(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.merkle_tree_hash(),
+            NodeWeight::InputSocket(weight) => weight.merkle_tree_hash(),
+            NodeWeight::SchemaVariant(weight) => weight.merkle_tree_hash(),
         }
     }
 
@@ -290,6 +333,14 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Secret(weight) => weight.new_content_hash(content_hash),
+            NodeWeight::InputSocket(weight) => traits::SiVersionedNodeWeight::inner_mut(weight)
+                .new_content_hash(content_hash)
+                .map_err(Box::new)
+                .map_err(Into::into),
+            NodeWeight::SchemaVariant(weight) => traits::SiVersionedNodeWeight::inner_mut(weight)
+                .new_content_hash(content_hash)
+                .map_err(Box::new)
+                .map_err(Into::into),
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
@@ -320,6 +371,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.node_hash(),
             NodeWeight::DependentValueRoot(weight) => weight.node_hash(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.node_hash(),
+            NodeWeight::InputSocket(weight) => weight.node_hash(),
+            NodeWeight::SchemaVariant(weight) => weight.node_hash(),
         }
     }
 
@@ -339,6 +392,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::DependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::InputSocket(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::SchemaVariant(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -360,7 +415,9 @@ impl NodeWeight {
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
             | NodeWeight::Prop(_)
-            | NodeWeight::Secret(_) => Err(NodeWeightError::CannotSetOrderOnKind),
+            | NodeWeight::Secret(_)
+            | NodeWeight::InputSocket(_)
+            | NodeWeight::SchemaVariant(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
     }
 
@@ -374,7 +431,7 @@ impl NodeWeight {
     /// node. If edge kinds are not returned here, those unseen edges will be
     /// silently merged with the `onto` changeset's edges. This a "business"
     /// logic problem, rather than a purely graph-theoretical one.
-    pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
+    pub fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         match self {
             NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ActionPrototype(weight) => weight.exclusive_outgoing_edges(),
@@ -390,6 +447,8 @@ impl NodeWeight {
             NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::DependentValueRoot(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::FinishedDependentValueRoot(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 
@@ -552,6 +611,26 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_input_socket_node_weight(&self) -> NodeWeightResult<InputSocketNodeWeight> {
+        match self {
+            NodeWeight::InputSocket(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::InputSocket,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_schema_variant_node_weight(&self) -> NodeWeightResult<SchemaVariantNodeWeight> {
+        match self {
+            NodeWeight::SchemaVariant(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::SchemaVariant,
+                other.into(),
+            )),
+        }
+    }
+
     pub fn new_content(id: Ulid, lineage_id: Ulid, kind: ContentAddress) -> Self {
         NodeWeight::Content(ContentNodeWeight::new(id, lineage_id, kind))
     }
@@ -687,6 +766,34 @@ impl NodeWeight {
             encrypted_secret_key,
         ))
     }
+
+    pub fn new_input_socket(
+        input_socket_id: Ulid,
+        lineage_id: Ulid,
+        arity: SocketArity,
+        content_hash: ContentHash,
+    ) -> Self {
+        NodeWeight::InputSocket(InputSocketNodeWeight::new(
+            input_socket_id,
+            lineage_id,
+            arity,
+            content_hash,
+        ))
+    }
+
+    pub fn new_schema_variant(
+        schema_variant_id: Ulid,
+        lineage_id: Ulid,
+        is_locked: bool,
+        content_hash: ContentHash,
+    ) -> Self {
+        NodeWeight::SchemaVariant(SchemaVariantNodeWeight::new(
+            schema_variant_id,
+            lineage_id,
+            is_locked,
+            content_hash,
+        ))
+    }
 }
 
 impl From<DeprecatedNodeWeightV1> for NodeWeight {
@@ -716,7 +823,7 @@ impl From<DeprecatedNodeWeightV1> for NodeWeight {
 impl CorrectTransforms for NodeWeight {
     fn correct_transforms(
         &self,
-        workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        workspace_snapshot_graph: &WorkspaceSnapshotGraphV3,
         updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
@@ -791,6 +898,16 @@ impl CorrectTransforms for NodeWeight {
                 updates,
                 from_different_change_set,
             ),
+            NodeWeight::InputSocket(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::SchemaVariant(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
@@ -814,6 +931,8 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 }

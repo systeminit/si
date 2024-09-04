@@ -12,12 +12,15 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::func::FuncError;
-use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
+use crate::layer_db_types::{InputSocketContent, InputSocketContentV2};
 
 use crate::socket::{SocketArity, SocketKind};
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{
+    traits::SiVersionedNodeWeight, InputSocketNodeWeight, NodeWeight, NodeWeightDiscriminants,
+    NodeWeightError,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributePrototypeId, AttributeValue,
@@ -117,14 +120,14 @@ impl InputSocket {
         Self::get_from_node_weight(ctx, &node_weight).await
     }
 
-    pub fn assemble(id: InputSocketId, inner: InputSocketContentV1) -> Self {
+    pub fn assemble(id: InputSocketId, arity: SocketArity, inner: InputSocketContentV2) -> Self {
         Self {
             id,
             timestamp: inner.timestamp,
             name: inner.name,
             inbound_type_definition: inner.inbound_type_definition,
             outbound_type_definition: inner.outbound_type_definition,
-            arity: inner.arity,
+            arity,
             kind: inner.kind,
             required: inner.required,
             ui_hidden: inner.ui_hidden,
@@ -159,18 +162,50 @@ impl InputSocket {
         ctx: &DalContext,
         node_weight: &NodeWeight,
     ) -> InputSocketResult<Self> {
+        let input_socket_node_weight = node_weight.get_input_socket_node_weight()?;
         let content: InputSocketContent = ctx
             .layer_db()
             .cas()
-            .try_read_as(&node_weight.content_hash())
+            .try_read_as(&input_socket_node_weight.content_hash())
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
-                node_weight.id(),
+                input_socket_node_weight.id(),
             ))?;
 
-        let InputSocketContent::V1(inner) = content;
+        Self::from_node_weight_and_content(&input_socket_node_weight, &content)
+    }
 
-        Ok(Self::assemble(node_weight.id().into(), inner))
+    fn from_node_weight_and_content(
+        input_socket_node_weight: &InputSocketNodeWeight,
+        content: &InputSocketContent,
+    ) -> InputSocketResult<Self> {
+        let input_socket = match content {
+            InputSocketContent::V1(v1_inner) => {
+                let v2_inner = InputSocketContentV2 {
+                    timestamp: v1_inner.timestamp,
+                    name: v1_inner.name.clone(),
+                    inbound_type_definition: v1_inner.inbound_type_definition.clone(),
+                    outbound_type_definition: v1_inner.outbound_type_definition.clone(),
+                    kind: v1_inner.kind,
+                    required: v1_inner.required,
+                    ui_hidden: v1_inner.ui_hidden,
+                    connection_annotations: v1_inner.connection_annotations.clone(),
+                };
+
+                Self::assemble(
+                    input_socket_node_weight.id().into(),
+                    v1_inner.arity,
+                    v2_inner,
+                )
+            }
+            InputSocketContent::V2(inner) => Self::assemble(
+                input_socket_node_weight.id().into(),
+                input_socket_node_weight.inner().arity(),
+                inner.clone(),
+            ),
+        };
+
+        Ok(input_socket)
     }
 
     implement_add_edge_to!(
@@ -200,14 +235,10 @@ impl InputSocket {
             let node_weight = workspace_snapshot
                 .get_node_weight(socket_node_index)
                 .await?;
-            if let NodeWeight::Content(content_inner) = &node_weight {
-                if ContentAddressDiscriminants::InputSocket
-                    == content_inner.content_address().into()
-                {
-                    let input_socket = Self::get_from_node_weight(ctx, &node_weight).await?;
-                    if input_socket.name() == name {
-                        return Ok(Some(input_socket));
-                    }
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::InputSocket {
+                let input_socket = Self::get_from_node_weight(ctx, &node_weight).await?;
+                if input_socket.name() == name {
+                    return Ok(Some(input_socket));
                 }
             }
         }
@@ -245,12 +276,11 @@ impl InputSocket {
             vec![ConnectionAnnotation::try_from(name.clone())?]
         };
 
-        let content = InputSocketContentV1 {
+        let content = InputSocketContentV2 {
             timestamp: Timestamp::now(),
             name: name.clone(),
             inbound_type_definition: None,
             outbound_type_definition: None,
-            arity,
             kind,
             required: false,
             ui_hidden: false,
@@ -260,7 +290,7 @@ impl InputSocket {
             .layer_db()
             .cas()
             .write(
-                Arc::new(InputSocketContent::V1(content.clone()).into()),
+                Arc::new(InputSocketContent::V2(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -271,8 +301,7 @@ impl InputSocket {
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
 
-        let node_weight =
-            NodeWeight::new_content(id, lineage_id, ContentAddress::InputSocket(hash));
+        let node_weight = NodeWeight::new_input_socket(id, lineage_id, arity, hash);
         workspace_snapshot.add_or_replace_node(node_weight).await?;
         SchemaVariant::add_edge_to_input_socket(
             ctx,
@@ -285,7 +314,7 @@ impl InputSocket {
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        let socket = Self::assemble(id.into(), content);
+        let socket = Self::assemble(id.into(), arity, content);
 
         Self::add_edge_to_attribute_prototype(
             ctx,
@@ -314,9 +343,12 @@ impl InputSocket {
         let mut result = vec![];
         for node_index in node_indices {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-            if node_weight
-                .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
-                .is_some()
+            if node_weight.get_input_socket_node_weight().is_ok()
+                || node_weight
+                    .get_option_content_node_weight_of_kind(
+                        ContentAddressDiscriminants::InputSocket,
+                    )
+                    .is_some()
             {
                 result.push(node_weight.id().into());
             }
@@ -342,12 +374,16 @@ impl InputSocket {
         let mut node_weights = Vec::new();
         for node_index in node_indices {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-            if let Some(content_node_weight) = node_weight
-                .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
-            {
-                content_hashes.push(content_node_weight.content_hash());
-                node_weights.push(content_node_weight);
-            }
+            let input_socket_node_weight = match node_weight {
+                NodeWeight::InputSocket(inner) => inner,
+                _ => {
+                    // OutputSocket are also found through the `Socket` edge, but we're not
+                    // concerned about them here.
+                    continue;
+                }
+            };
+            content_hashes.push(input_socket_node_weight.content_hash());
+            node_weights.push(input_socket_node_weight);
         }
 
         let content_map: HashMap<ContentHash, InputSocketContent> = ctx
@@ -360,10 +396,9 @@ impl InputSocket {
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
-                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let InputSocketContent::V1(inner) = content;
+                    let input_socket = Self::from_node_weight_and_content(&node_weight, content)?;
 
-                    input_sockets.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                    input_sockets.push(input_socket);
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),

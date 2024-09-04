@@ -3,24 +3,36 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use super::graph::{
-    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
+use super::{
+    graph::{
+        WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
+    },
+    node_weight::{
+        input_socket_node_weight::InputSocketNodeWeightError,
+        schema_variant_node_weight::SchemaVariantNodeWeightError,
+    },
 };
 use crate::{
-    dependency_graph::DependencyGraph, workspace_snapshot::migrator::v2::migrate_v1_to_v2,
+    dependency_graph::DependencyGraph,
+    workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
     ChangeSet, ChangeSetError, DalContext, Workspace, WorkspaceError, WorkspaceSnapshotError,
 };
 use si_events::WorkspaceSnapshotAddress;
 
 pub mod v2;
+pub mod v3;
 
 #[derive(Error, Debug)]
 #[remain::sorted]
 pub enum SnapshotGraphMigratorError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("InputSocketNodeWeight error: {0}")]
+    InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("SchemaVariantNodeWeight error: {0}")]
+    SchemaVariantNodeWeight(#[from] SchemaVariantNodeWeightError),
     #[error("unexpected graph version {1:?} for snapshot {0}, cannot migrate")]
     UnexpectedGraphVersion(
         WorkspaceSnapshotAddress,
@@ -46,7 +58,7 @@ impl SnapshotGraphMigrator {
     async fn should_migrate(&self, ctx: &DalContext) -> SnapshotGraphMigratorResult<bool> {
         Ok(
             if let Some(builtin_workspace) = Workspace::find_builtin(ctx).await? {
-                builtin_workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2
+                builtin_workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V3
             } else {
                 false
             },
@@ -116,13 +128,14 @@ impl SnapshotGraphMigrator {
 
         Workspace::set_snapshot_version_for_all_workspaces(
             ctx,
-            WorkspaceSnapshotGraphDiscriminants::V2,
+            WorkspaceSnapshotGraphDiscriminants::V3,
         )
         .await?;
 
         Ok(())
     }
 
+    #[instrument(skip(self, ctx))]
     pub async fn migrate_snapshot(
         &mut self,
         ctx: &DalContext,
@@ -154,7 +167,11 @@ impl SnapshotGraphMigrator {
                 WorkspaceSnapshotGraph::V1(inner_graph) => {
                     working_graph = WorkspaceSnapshotGraph::V2(migrate_v1_to_v2(inner_graph)?);
                 }
-                WorkspaceSnapshotGraph::V2(_) => {
+                WorkspaceSnapshotGraph::V2(inner_graph) => {
+                    working_graph =
+                        WorkspaceSnapshotGraph::V3(migrate_v2_to_v3(ctx, inner_graph).await?);
+                }
+                WorkspaceSnapshotGraph::V3(_) => {
                     // Nothing to do, this is the newest version,
                     break;
                 }

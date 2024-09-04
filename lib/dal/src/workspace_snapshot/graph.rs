@@ -21,10 +21,13 @@ pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
 pub mod v2;
+pub mod v3;
 
 pub use v2::WorkspaceSnapshotGraphV2;
+pub use v3::WorkspaceSnapshotGraphV3;
 
 pub type LineageId = Ulid;
+pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV3;
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]
@@ -84,10 +87,12 @@ pub enum WorkspaceSnapshotGraph {
     Legacy,
     V1(DeprecatedWorkspaceSnapshotGraphV1),
     V2(WorkspaceSnapshotGraphV2),
+    /// Added `InputSocket` and `SchemaVariant` `NodeWeight` variants.
+    V3(WorkspaceSnapshotGraphV3),
 }
 
 impl std::ops::Deref for WorkspaceSnapshotGraph {
-    type Target = WorkspaceSnapshotGraphV2;
+    type Target = WorkspaceSnapshotGraphVCurrent;
 
     fn deref(&self) -> &Self::Target {
         self.inner()
@@ -96,12 +101,12 @@ impl std::ops::Deref for WorkspaceSnapshotGraph {
 
 impl WorkspaceSnapshotGraph {
     /// Return a reference to the most up to date enum variant for the graph type
-    pub fn inner(&self) -> &WorkspaceSnapshotGraphV2 {
+    pub fn inner(&self) -> &WorkspaceSnapshotGraphVCurrent {
         match self {
-            Self::Legacy | Self::V1(_) => {
+            Self::Legacy | Self::V1(_) | Self::V2(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
             }
-            Self::V2(inner) => inner,
+            Self::V3(inner) => inner,
         }
     }
 }

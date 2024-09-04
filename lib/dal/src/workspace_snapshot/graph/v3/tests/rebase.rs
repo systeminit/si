@@ -11,12 +11,12 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
-    use crate::WorkspaceSnapshotGraphV2;
+    use crate::WorkspaceSnapshotGraphV3;
 
     #[test]
     fn simulate_rebase() {
         let mut to_rebase =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         // Set up the to rebase graph.
         let schema_category_node_index = to_rebase

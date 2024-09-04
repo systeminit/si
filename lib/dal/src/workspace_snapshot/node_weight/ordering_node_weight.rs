@@ -9,7 +9,7 @@ use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeig
 use crate::workspace_snapshot::graph::detect_updates::Update;
 use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::workspace_snapshot::node_weight::NodeWeightResult;
-use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OrderingNodeWeight {
@@ -133,7 +133,7 @@ impl From<DeprecatedOrderingNodeWeightV1> for OrderingNodeWeight {
 impl CorrectTransforms for OrderingNodeWeight {
     fn correct_transforms(
         &self,
-        _workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        _workspace_snapshot_graph: &WorkspaceSnapshotGraphVCurrent,
         updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

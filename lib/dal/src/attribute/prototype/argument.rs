@@ -11,6 +11,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
+use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
@@ -406,6 +407,9 @@ impl AttributePrototypeArgument {
                             );
                         }
                     }));
+                }
+                NodeWeight::InputSocket(input_socket) => {
+                    return Ok(Some(ValueSource::InputSocket(input_socket.id().into())));
                 }
                 other => {
                     return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(

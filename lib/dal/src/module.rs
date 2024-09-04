@@ -21,6 +21,7 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -350,7 +351,11 @@ impl Module {
 
         let node_weights = workspace_snapshot.all_outgoing_targets(self.id).await?;
         for node_weight in node_weights {
-            if let NodeWeight::Content(inner) = &node_weight {
+            if let NodeWeight::SchemaVariant(variant_weight) = &node_weight {
+                let variant =
+                    SchemaVariant::get_by_id_or_error(ctx, variant_weight.id().into()).await?;
+                all_schema_variants.push(variant);
+            } else if let NodeWeight::Content(inner) = &node_weight {
                 let inner_addr_discrim: ContentAddressDiscriminants =
                     inner.content_address().into();
 

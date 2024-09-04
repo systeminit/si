@@ -474,16 +474,21 @@ impl AttributeValue {
 
         let socket_node_weight = workspace_snapshot.get_node_weight(*socket_target).await?;
 
-        if let Some(input_socket) = socket_node_weight
-            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
-        {
-            return Ok(ValueIsFor::InputSocket(input_socket.id().into()));
+        if socket_node_weight.get_input_socket_node_weight().is_ok() {
+            return Ok(ValueIsFor::InputSocket(socket_node_weight.id().into()));
         }
 
         if let Some(output_socket) = socket_node_weight
             .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)
         {
             return Ok(ValueIsFor::OutputSocket(output_socket.id().into()));
+        }
+
+        // Legacy format for InputSocket. We really shouldn't encounter this anymore.
+        if let Some(input_socket) = socket_node_weight
+            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
+        {
+            return Ok(ValueIsFor::InputSocket(input_socket.id().into()));
         }
 
         Err(WorkspaceSnapshotError::UnexpectedEdgeTarget(

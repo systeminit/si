@@ -3,7 +3,7 @@ use crate::{
         graph::{detect_updates::Update, WorkspaceSnapshotGraphError},
         NodeInformation,
     },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV3,
 };
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use thiserror::Error;
@@ -27,7 +27,7 @@ pub type CorrectTransformsResult<T> = Result<T, CorrectTransformsError>;
 pub trait CorrectTransforms {
     fn correct_transforms(
         &self,
-        _workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        _workspace_snapshot_graph: &WorkspaceSnapshotGraphV3,
         updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
@@ -152,7 +152,7 @@ where
 {
     fn correct_transforms(
         &self,
-        workspace_snapshot_graph: &WorkspaceSnapshotGraphV2,
+        workspace_snapshot_graph: &WorkspaceSnapshotGraphV3,
         updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

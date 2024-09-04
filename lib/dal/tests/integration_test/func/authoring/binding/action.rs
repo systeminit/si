@@ -184,7 +184,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
     let bindings = FuncBinding::for_func_id(ctx, func_id)
         .await
         .expect("found func bindings");
-    // shoudl be two bindings
+    // should be two bindings
     assert_eq!(2, bindings.len(),);
 
     // detach the action
@@ -198,7 +198,7 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         if action_binding.schema_variant_id == old_schema_variant_id {
             assert!(result.is_err());
         } else {
-            result.expect("can delete prototype");
+            result.expect("unable to delete prototype");
         }
     }
 

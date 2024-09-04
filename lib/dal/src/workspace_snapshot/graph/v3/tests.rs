@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use si_events::{ulid::Ulid, ContentHash};
 
 use crate::{
-    workspace_snapshot::node_weight::NodeWeight, EdgeWeight, EdgeWeightKind, PropKind,
-    WorkspaceSnapshotGraphV2,
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphV3, node_weight::NodeWeight},
+    EdgeWeight, EdgeWeightKind, PropKind,
 };
 
 mod detect_updates;
@@ -13,7 +13,7 @@ mod rebase;
 
 #[allow(dead_code)]
 fn add_prop_nodes_to_graph<'a, 'b>(
-    graph: &'a mut WorkspaceSnapshotGraphV2,
+    graph: &'a mut WorkspaceSnapshotGraphV3,
     nodes: &'a [&'b str],
     ordered: bool,
 ) -> HashMap<&'b str, Ulid> {
@@ -47,7 +47,7 @@ fn add_prop_nodes_to_graph<'a, 'b>(
 
 #[allow(dead_code)]
 fn add_edges(
-    graph: &mut WorkspaceSnapshotGraphV2,
+    graph: &mut WorkspaceSnapshotGraphV3,
     node_id_map: &HashMap<&str, Ulid>,
     edges: &[(Option<&str>, &str)],
 ) {
@@ -82,32 +82,25 @@ fn add_edges(
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::graph::NodeIndex;
-    use petgraph::visit::EdgeRef;
-    use petgraph::Outgoing;
+    use petgraph::{graph::NodeIndex, visit::EdgeRef, Outgoing};
     use pretty_assertions_sorted::assert_eq;
-    use si_events::merkle_tree_hash::MerkleTreeHash;
-    use si_events::ulid::Ulid;
-    use si_events::ContentHash;
-    use std::collections::HashSet;
-    use std::str::FromStr;
+    use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+    use std::{collections::HashSet, str::FromStr};
 
-    use crate::workspace_snapshot::content_address::ContentAddress;
-    use crate::workspace_snapshot::edge_weight::{
-        EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    use crate::workspace_snapshot::{
+        content_address::ContentAddress,
+        edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        graph::{detect_updates::Update, WorkspaceSnapshotGraphV3},
+        node_weight::NodeWeight,
     };
-    use crate::workspace_snapshot::graph::detect_updates::Update;
-    use crate::workspace_snapshot::node_weight::NodeWeight;
-    use crate::WorkspaceSnapshotGraphV2;
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
 
-    use super::add_edges;
-    use super::add_prop_nodes_to_graph;
+    use super::{add_edges, add_prop_nodes_to_graph};
 
     #[test]
     fn new() {
         let graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
     }
 
@@ -117,7 +110,7 @@ mod test {
     #[test]
     fn get_root_index_by_root_id_on_fresh_graph() {
         let graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let root_id = graph
             .get_node_weight(graph.root_index)
@@ -176,7 +169,7 @@ mod test {
         ];
 
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let node_id_map = add_prop_nodes_to_graph(&mut graph, &nodes, false);
         add_edges(&mut graph, &node_id_map, &edges);
@@ -234,7 +227,7 @@ mod test {
     #[test]
     fn add_nodes_and_edges() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -353,7 +346,7 @@ mod test {
     #[test]
     fn cyclic_failure() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let initial_schema_node_index = graph
@@ -442,7 +435,7 @@ mod test {
     #[test]
     fn update_content() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -580,7 +573,7 @@ mod test {
     #[test]
     fn add_ordered_node() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -747,7 +740,7 @@ mod test {
     #[test]
     fn add_ordered_node_below_root() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let prop_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let prop_index = graph
@@ -785,7 +778,7 @@ mod test {
     #[test]
     fn reorder_ordered_node() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -1000,7 +993,7 @@ mod test {
     #[test]
     fn remove_unordered_node_and_detect_edge_removal() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -1126,7 +1119,7 @@ mod test {
     #[test]
     fn remove_unordered_node() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph
@@ -1234,7 +1227,7 @@ mod test {
     #[test]
     fn remove_ordered_node() {
         let mut graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = graph

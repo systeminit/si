@@ -22,6 +22,7 @@ use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
+use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -595,6 +596,7 @@ impl Prop {
                             _ => return Err(PropError::PropParentInvalid(prop_id)),
                         }
                     }
+                    NodeWeight::SchemaVariant(_) => None,
                     _ => return Err(PropError::PropParentInvalid(prop_id)),
                 },
             ),
@@ -813,6 +815,9 @@ impl Prop {
                         ) =>
                     {
                         Ok(Some(content_inner.id().into()))
+                    }
+                    NodeWeight::SchemaVariant(schema_variant) => {
+                        Ok(Some(schema_variant.id().into()))
                     }
                     _ => Err(PropError::PropParentInvalid(root_prop_id)),
                 }

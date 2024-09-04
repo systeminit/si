@@ -14,7 +14,7 @@ use crate::workspace_snapshot::{
     node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
-use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2};
+use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
 
 use super::category_node_weight::CategoryNodeKind;
 use super::traits::CorrectTransformsResult;
@@ -140,7 +140,7 @@ impl From<DeprecatedSecretNodeWeightV1> for SecretNodeWeight {
 impl CorrectTransforms for SecretNodeWeight {
     fn correct_transforms(
         &self,
-        graph: &WorkspaceSnapshotGraphV2,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         mut updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
