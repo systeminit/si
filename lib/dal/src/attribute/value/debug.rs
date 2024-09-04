@@ -73,7 +73,7 @@ pub enum AttributeDebugViewError {
     WorkspaceSnapshotError(#[from] WorkspaceSnapshotError),
 }
 impl AttributeDebugView {
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub async fn new(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
