@@ -15,7 +15,8 @@ use super::{
 use crate::{
     dependency_graph::DependencyGraph,
     workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
-    ChangeSet, ChangeSetError, DalContext, Workspace, WorkspaceError, WorkspaceSnapshotError,
+    ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, Workspace, WorkspaceError,
+    WorkspaceSnapshotError,
 };
 use si_events::WorkspaceSnapshotAddress;
 
@@ -66,6 +67,7 @@ impl SnapshotGraphMigrator {
         )
     }
 
+    #[instrument(skip(self, ctx))]
     pub async fn migrate_all(&mut self, ctx: &DalContext) -> SnapshotGraphMigratorResult<()> {
         if !self.should_migrate(ctx).await? {
             debug!("Builtin workspace has been migrated. Not migrating snapshots to the latest");
@@ -111,7 +113,23 @@ impl SnapshotGraphMigrator {
                         snapshot_address, change_set_id, change_set.base_change_set_id,
                     );
 
-                    let new_snapshot = self.migrate_snapshot(ctx, snapshot_address).await?;
+                    let new_snapshot = match self.migrate_snapshot(ctx, snapshot_address).await {
+                        Ok(new_snapshot) => new_snapshot,
+                        Err(err) => {
+                            let err_string = err.to_string();
+                            if err_string.contains("missing from store for node") {
+                                error!(error = ?err, "Migration error: {err_string}, marking change set as failed");
+                                change_set
+                                    .update_status(ctx, ChangeSetStatus::Failed)
+                                    .await?;
+                                change_set_graph.remove_id(change_set_id);
+                                continue;
+                            } else {
+                                return Err(err)?;
+                            }
+                        }
+                    };
+
                     let (new_snapshot_address, _) = ctx
                         .layer_db()
                         .workspace_snapshot()
