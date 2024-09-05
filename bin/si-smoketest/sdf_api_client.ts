@@ -1,10 +1,71 @@
 // sdf_client.ts
 import JWT from "npm:jsonwebtoken";
 
+
+type HTTP_METHOD = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type ROUTE_VARS = Record<string, string>;
+interface API_DESCRIPTION {
+  path: (ROUTE_VARS) => string;
+  method: HTTP_METHOD;
+  headers?: Record<string, string>;
+}
+
+export const ROUTES = {
+
+  // Change Set Management ------------------------------------------------------
+  create_change_set: { path: () => '/change_set/create_change_set', method: 'POST'}, 
+  abandon_change_set: { path: () => '/change_set/abandon_change_set', method: 'POST'}, 
+  open_change_sets: { path: () => '/change_set/list_open_change_sets', method: 'GET' },
+  schema_variants: { path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants`, method: 'GET' },
+
+  // Diagram Management ---------------------------------------------------------
+  get_diagram: { path: (vars: ROUTE_VARS) => `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`, method: 'GET' },
+
+  // Component Management -------------------------------------------------------
+  delete_component: { path: () => `/diagram/delete_components`, method: 'POST'},
+  create_component: { path: () => '/diagram/create_component', method: 'POST' },
+  create_connection: { path: () => '/diagram/create_connection', method: 'POST' },
+
+  // Property Editor
+  component_property_values: { path: (vars: ROUTE_VARS) => `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&component_id=${vars.componentId}`, method: 'GET'}
+
+  // Add more groups below ------------------------------------------------------
+
+} satisfies Record<string, API_DESCRIPTION>;
+
+export type ROUTE_NAMES = keyof typeof ROUTES;
+
+interface API_CALL {
+  route: ROUTE_NAMES,
+  params?: Record<string, string | number | undefined>,
+  routeVars?: ROUTE_VARS,
+  body?: Record<string, unknown>,
+}
 export class SdfApiClient {
   private readonly token: string;
   private readonly baseUrl: string;
   public readonly workspaceId: string;
+
+  public async call({route, routeVars, params, body }: API_CALL) {
+    let { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
+    if (!routeVars) routeVars = {};
+    routeVars.workspaceId = this.workspaceId;
+    const url = path(routeVars);
+
+    const response = await this.fetch(url, {
+        method,
+        headers,
+        body,
+    });
+
+    // Some endpoints return a body, others return nothing on success
+    try {
+      return await response.json()
+    } catch {
+      return null
+    }
+     
+}
 
   // Constructor is private to enforce using the init method
   private constructor(
@@ -70,44 +131,6 @@ export class SdfApiClient {
       headers, body, method
     });
   }
-
-  // High-level API methods are located below
-  // --------------------------------------------------------------------------------
-
-  // Fetch list of open change sets
-  public async listOpenChangeSets() {
-    return listOpenChangeSets(this);
-  }
-
-  // Create a new change set
-  public async createChangeSet(changeSetName: string) {
-    return createChangeSet(this, changeSetName);
-  }
-
-  // Fetch list of schema variants for a specific change set
-  public async listSchemaVariants(changeSetId: string) {
-    return listSchemaVariants(this, changeSetId);
-  }
-
-  // Create a component in a diagram
-  public async createComponent(payload: Record<string, unknown>) {
-    return createComponent(this, payload);
-  }
-
-  // Get the current state of a diagram
-  public async getDiagram(changeSetId: string) {
-    return getDiagram(this, changeSetId);
-  }
-
-  // Delete components from a diagram
-  public async deleteComponents(payload: Record<string, unknown>) {
-    return deleteComponents(this, payload);
-  }
-
-  // Abandon a change set
-  public async abandonChangeSet(changeSetId: string) {
-    return abandonChangeSet(this, changeSetId);
-  }
 }
 
 // Helper functions for JWT generation and fetching
@@ -161,59 +184,4 @@ async function createJWTFromPrivateKey(
     user_pk: userId,
     workspace_pk: workspaceId
   }, privateKey, { algorithm: "RS256", subject: userId });
-}
-
-// API-Endpoint Specific Functions
-// --------------------------------------------------------------------------------
-
-// List open change sets
-async function listOpenChangeSets(client: SdfApiClient) {
-  const response = await client.fetch("/change_set/list_open_change_sets");
-  return await response.json();
-}
-
-// Create a change set
-async function createChangeSet(client: SdfApiClient, changeSetName: string) {
-  const response = await client.fetch("/change_set/create_change_set", {
-    method: "POST",
-    body: { changeSetName },
-  });
-  return await response.json();
-}
-
-// List schema variants for a change set
-async function listSchemaVariants(client: SdfApiClient, changeSetId: string) {
-  const response = await client.fetch(`/v2/workspaces/${client.workspaceId}/change-sets/${changeSetId}/schema-variants`);
-  return await response.json();
-}
-
-// Create a component in a diagram
-async function createComponent(client: SdfApiClient, payload: Record<string, unknown>) {
-  const response = await client.fetch("/diagram/create_component", {
-    method: "POST",
-    body: payload,
-  });
-  return await response.json();
-}
-
-// Get the current state of a diagram
-async function getDiagram(client: SdfApiClient, changeSetId: string) {
-  const response = await client.fetch(`/diagram/get_diagram?visibility_change_set_pk=${changeSetId}&workspaceId=${client.workspaceId}`);
-  return await response.json();
-}
-
-// Delete components from a diagram
-async function deleteComponents(client: SdfApiClient, payload: Record<string, unknown>) {
-  await client.fetch("/diagram/delete_components", {
-    method: "POST",
-    body: payload,
-  });
-}
-
-// Abandon a change set
-async function abandonChangeSet(client: SdfApiClient, changeSetId: string) {
-  await client.fetch("/change_set/abandon_change_set", {
-    method: "POST",
-    body: { changeSetId },
-  });
 }

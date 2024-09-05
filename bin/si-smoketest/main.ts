@@ -6,6 +6,7 @@ import { checkEnvironmentVariables, parseArgs } from "./binary_exeuction_lib.ts"
 
 if (import.meta.main) {
 
+  // All environment variable and runtime parsing happens in this block
   const { workspaceId, userId, password, testsToRun } = parseArgs(Deno.args);
   checkEnvironmentVariables(Deno.env.toObject());
   
