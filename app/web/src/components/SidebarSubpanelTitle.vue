@@ -3,6 +3,7 @@
     :class="
       clsx(
         'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs',
+        !selectable && 'select-none',
         variant === 'title'
           ? 'dark:border-neutral-500'
           : 'border-neutral-200 dark:border-neutral-600',
@@ -48,5 +49,6 @@ const props = defineProps({
     type: String as PropType<SidebarSubpanelTitleVariant>,
     default: "title",
   },
+  selectable: { type: Boolean },
 });
 </script>

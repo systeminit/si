@@ -772,6 +772,9 @@ async function onKeyDown(e: KeyboardEvent) {
   if (!props.readOnly && e.key === "e" && e.metaKey) {
     modelingEventBus.emit("eraseSelection");
   }
+  if (e.key === "a" && e.metaKey) {
+    // TODO(Wendy) - select all!
+  }
   if (
     !props.readOnly &&
     e.key === "r" &&
@@ -779,6 +782,18 @@ async function onKeyDown(e: KeyboardEvent) {
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
   ) {
     componentsStore.REFRESH_RESOURCE_INFO(componentsStore.selectedComponent.id);
+  }
+  if (!props.readOnly && e.code === "Backslash") {
+    if (e.metaKey) {
+      // collapse all
+      componentsStore.toggleCollapse(
+        "hotkey",
+        ...componentsStore.allComponentIds,
+      );
+    } else {
+      // collapse selected
+      componentsStore.toggleSelectedCollapse("hotkey");
+    }
   }
 }
 
@@ -2952,6 +2967,13 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
 
+function nodeShouldBeRendered(key: DiagramElementUniqueKey) {
+  return (
+    groups.value.find((n) => n.uniqueKey === key) ||
+    nodes.value.find((n) => n.uniqueKey === key)
+  );
+}
+
 // Selection rects
 const selectionRects = computed(() => {
   const rects = [] as (Size2D & Vector2d)[];
@@ -2979,7 +3001,9 @@ const selectionRects = computed(() => {
         r.height += adjust;
         r.y -= adjust;
       }
-      rects.push(r);
+      if (nodeShouldBeRendered(uniqueKey)) {
+        rects.push(r);
+      }
     }
   });
   return rects;

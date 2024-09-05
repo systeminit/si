@@ -44,6 +44,7 @@ import {
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { nonNullable } from "@/utils/typescriptLinter";
+import { trackEvent } from "@/utils/tracking";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -179,6 +180,12 @@ export interface elementPositionAndSize {
   position?: Vector2d;
   size?: Size2D; // only frames have a size
 }
+
+export type ComponentCollapseTrackingData = {
+  schemaVariantName?: string;
+  schemaName?: string;
+  hasParent: boolean;
+};
 
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
 export const COLLAPSED_HALFWIDTH = DEFAULT_COLLAPSED_SIZE.width / 2;
@@ -415,6 +422,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
           allComponents(): FullComponent[] {
             return _.values(this.componentsById);
+          },
+          allComponentIds(): ComponentId[] {
+            return _.keys(this.componentsById);
           },
           deepChildIdsByComponentId(): Record<ComponentId, ComponentId[]> {
             const getDeepChildIds = (id: ComponentId): string[] => {
@@ -822,6 +832,95 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             });
             this.persistCollapsed();
+          },
+
+          toggleCollapse(source: string, ...ids: ComponentId[]) {
+            let collapsing = false;
+            const uniqueKeys = [] as DiagramElementUniqueKey[];
+            const components = [] as FullComponent[];
+            ids.forEach((id) => {
+              const uniqueKey = `g-${id}`;
+              const component = this.componentsById[id];
+              if (component && component.componentType !== "component") {
+                uniqueKeys.push(uniqueKey);
+                components.push(component);
+
+                if (!this.collapsedComponents.has(uniqueKey)) {
+                  collapsing = true;
+                }
+              }
+            });
+            if (collapsing) {
+              const collapsed = [] as ComponentCollapseTrackingData[];
+              components.forEach((component, index) => {
+                const uniqueKey = uniqueKeys[index] as string;
+                const { position, size } =
+                  this.initMinimzedElementPositionAndSize(uniqueKey);
+                this.updateMinimzedElementPositionAndSize({
+                  uniqueKey,
+                  position,
+                  size,
+                });
+                collapsed.push({
+                  schemaVariantName: component.schemaVariantName,
+                  schemaName: component.schemaName,
+                  hasParent: !!component.parentId,
+                });
+              });
+              trackEvent("collapse-components", {
+                source,
+                components: collapsed,
+              });
+            } else {
+              const expanded = [] as ComponentCollapseTrackingData[];
+              components.forEach((component, index) => {
+                const uniqueKey = uniqueKeys[index] as string;
+                this.expandComponents(uniqueKey);
+                expanded.push({
+                  schemaVariantName: component.schemaVariantName,
+                  schemaName: component.schemaName,
+                  hasParent: !!component.parentId,
+                });
+              });
+              trackEvent("expand-components", {
+                source: "context-menu",
+                components: expanded,
+              });
+            }
+          },
+
+          toggleSelectedCollapse(source: string) {
+            this.toggleCollapse(source, ...this.selectedComponentIds);
+          },
+
+          collapseOrExpandComponents(...ids: ComponentId[]) {
+            let result;
+            const uniqueKeys = [] as DiagramElementUniqueKey[];
+            const components = [] as FullComponent[];
+            for (let i = 0; i < ids.length; i++) {
+              const id = ids[i];
+              if (id) {
+                const uniqueKey = `g-${id}`;
+                const component = this.componentsById[id];
+                if (component && component.componentType !== "component") {
+                  uniqueKeys.push(uniqueKey);
+                  components.push(component);
+
+                  if (!this.collapsedComponents.has(uniqueKey)) {
+                    return "Collapse";
+                  } else {
+                    result = "Expand";
+                  }
+                }
+              }
+            }
+            return result;
+          },
+
+          collapseOrExpandSelectedComponents() {
+            return this.collapseOrExpandComponents(
+              ...this.selectedComponentIds,
+            );
           },
           // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
           async FETCH_DIAGRAM_DATA() {

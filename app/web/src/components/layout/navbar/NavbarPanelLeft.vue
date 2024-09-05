@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-1 items-center">
+  <div class="flex flex-1 items-center select-none">
     <SiLogo class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none" />
 
     <label>

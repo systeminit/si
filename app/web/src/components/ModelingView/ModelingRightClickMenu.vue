@@ -21,7 +21,7 @@ import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { BindingWithDisplayName, useFuncStore } from "@/store/func/funcs.store";
 import { useActionsStore } from "@/store/actions.store";
-import { trackEvent } from "@/utils/tracking";
+import { useComponentAttributesStore } from "@/store/component_attributes.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -34,6 +34,7 @@ const {
   selectedComponentId,
   selectedComponentIds,
   selectedComponent,
+  selectedComponents,
   selectedComponentsAndChildren,
   deletableSelectedComponents,
   restorableSelectedComponents,
@@ -42,34 +43,29 @@ const {
   selectedEdge,
 } = storeToRefs(componentsStore);
 
-// function typeDisplayName(action = "delete") {
-//   if (selectedComponentId.value && selectedComponent.value) {
-//     if (selectedComponent.value.componentType === ComponentType.Component)
-//       return "Component";
-//     else return "Frame";
-//   } else if (selectedComponentIds.value.length) {
-//     let components;
-//     switch (action) {
-//       case "delete":
-//         components = deletableSelectedComponents.value;
-//         break;
-//       case "erase":
-//         components = erasableSelectedComponents.value;
-//         break;
-//       case "restore":
-//       default:
-//         components = restorableSelectedComponents.value;
-//     }
+const attributesStore = useComponentAttributesStore(
+  selectedComponentId.value || "NONE",
+);
 
-//     for (const c of components) {
-//       if (c.componentType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
-//     }
-
-//     return "Frame";
-//   } else {
-//     return "Component";
-//   }
-// }
+function typeDisplayName() {
+  if (selectedComponentId.value && selectedComponent.value) {
+    if (selectedComponent.value.componentType === ComponentType.Component)
+      return "COMPONENT";
+    else if (
+      selectedComponent.value.componentType ===
+      ComponentType.ConfigurationFrameUp
+    )
+      return "UP FRAME";
+    else return "DOWN FRAME";
+  } else if (selectedComponentIds.value.length) {
+    for (const c of selectedComponents.value) {
+      if (c.componentType === ComponentType.Component) return "COMPONENTS"; // if we have both frames and components, just use the word component
+    }
+    return "FRAMES";
+  } else {
+    return "COMPONENT";
+  }
+}
 
 const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 const canRefresh = computed(
@@ -116,10 +112,63 @@ const rightClickMenuItems = computed(() => {
   } else if (selectedComponentId.value && selectedComponent.value) {
     // single selected component
     items.push({
-      label: "COMPONENT",
+      label: typeDisplayName(),
       header: true,
     });
 
+    // set component type
+    {
+      const updateComponentType = (componentType: ComponentType) => {
+        if (selectedComponentId.value) {
+          attributesStore.SET_COMPONENT_TYPE({
+            componentId: selectedComponentId.value,
+            componentType,
+          });
+        }
+      };
+
+      const submenuItems: DropdownMenuItemObjectDef[] = [];
+      submenuItems.push({
+        label: "Component",
+        icon: "component",
+        checkable: true,
+        checked:
+          selectedComponent.value.componentType === ComponentType.Component,
+        onSelect: () => {
+          updateComponentType(ComponentType.Component);
+        },
+      });
+      submenuItems.push({
+        label: "Up Frame",
+        icon: "frame-up",
+        checkable: true,
+        checked:
+          selectedComponent.value.componentType ===
+          ComponentType.ConfigurationFrameUp,
+        onSelect: () => {
+          updateComponentType(ComponentType.ConfigurationFrameUp);
+        },
+      });
+      submenuItems.push({
+        label: "Down Frame",
+        icon: "frame-down",
+        checkable: true,
+        checked:
+          selectedComponent.value.componentType ===
+          ComponentType.ConfigurationFrameDown,
+        onSelect: () => {
+          updateComponentType(ComponentType.ConfigurationFrameDown);
+        },
+      });
+
+      items.push({
+        label: "Set Type",
+        icon: "component",
+        submenuItems,
+      });
+    }
+
+    // expand and collapse for a single component
     if (selectedComponent.value.componentType !== ComponentType.Component) {
       const verb = componentsStore.collapsedComponents.has(
         `g-${selectedComponentId.value}`,
@@ -133,35 +182,13 @@ const rightClickMenuItems = computed(() => {
         )
           ? "chevron--down"
           : "chevron--right",
-        onSelect: toggleCollapse,
+        onSelect: menuCollapse,
         disabled,
+        shortcut: "\\",
       });
     }
 
-    // TODO(Wendy) - do we want this here or no? this is just a mock, needs to be hooked up to work!
-    // {
-    //   const submenuItems: DropdownMenuItemObjectDef[] = [];
-    //   submenuItems.push({
-    //     label: "Component",
-    //     checkable: true,
-    //   });
-    //   submenuItems.push({
-    //     label: "Configuration Frame (Up)",
-    //     checkable: true,
-    //   });
-    //   submenuItems.push({
-    //     label: "Configuration Frame (Down)",
-    //     checkable: true,
-    //     checked: true,
-    //   });
-
-    //   items.push({
-    //     label: "Kind",
-    //     icon: "component",
-    //     submenuItems,
-    //   });
-    // }
-
+    // copy, restore, delete
     items.push({
       label: `Copy`,
       shortcut: "⌘C",
@@ -188,9 +215,24 @@ const rightClickMenuItems = computed(() => {
   } else if (selectedComponentIds.value.length) {
     // multiple selected components
     items.push({
-      label: ` ${selectedComponentIds.value.length} COMPONENTS`,
+      label: `${selectedComponentIds.value.length} ${typeDisplayName()}`,
       header: true,
     });
+
+    // expand and collapse for multiple components
+    const collapseOrExpand =
+      componentsStore.collapseOrExpandSelectedComponents();
+    if (collapseOrExpand) {
+      const verb = collapseOrExpand;
+      items.push({
+        label: verb,
+        icon:
+          collapseOrExpand === "Collapse" ? "chevron--down" : "chevron--right",
+        onSelect: menuCollapse,
+        disabled,
+        shortcut: "\\",
+      });
+    }
 
     items.push({
       label: `Copy`,
@@ -330,31 +372,8 @@ function open(
   contextMenuRef.value?.open(e, anchorToMouse);
 }
 
-const toggleCollapse = () => {
-  const uniqueKey = `g-${selectedComponentId.value}`;
-  if (componentsStore.collapsedComponents.has(uniqueKey)) {
-    componentsStore.expandComponents(uniqueKey);
-    trackEvent("expand-components", {
-      source: "context-menu",
-      schemaVariantName: selectedComponent.value?.schemaVariantName,
-      schemaName: selectedComponent.value?.schemaName,
-      hasParent: !!selectedComponent.value?.parentId,
-    });
-  } else {
-    const { position, size } =
-      componentsStore.initMinimzedElementPositionAndSize(uniqueKey);
-    componentsStore.updateMinimzedElementPositionAndSize({
-      uniqueKey,
-      position,
-      size,
-    });
-    trackEvent("collapse-components", {
-      source: "context-menu",
-      schemaVariantName: selectedComponent.value?.schemaVariantName,
-      schemaName: selectedComponent.value?.schemaName,
-      hasParent: !!selectedComponent.value?.parentId,
-    });
-  }
+const menuCollapse = () => {
+  componentsStore.toggleSelectedCollapse("context-menu");
 };
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);

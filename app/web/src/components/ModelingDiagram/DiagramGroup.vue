@@ -254,15 +254,24 @@
         @click="toggleChevron"
       />
 
+      <DiagramIcon
+        :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
+        origin="top-left"
+        :size="32"
+        :x="32"
+        :y="5"
+        :color="colors.headerText"
+      />
+
       <!-- header text -->
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 30,
+          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
           y: 2,
           verticalAlign: 'top',
           align: 'left',
-          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          width: headerWidth - GROUP_HEADER_ICON_SIZE * 2,
           text: group.def.title,
           padding: 6,
           fill: colors.headerText,
@@ -279,11 +288,11 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 30,
+          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
           y: 20,
           verticalAlign: 'top',
           align: 'left',
-          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          width: headerWidth - GROUP_HEADER_ICON_SIZE * 2,
           text: `${group.def.subtitle}: ${childCount ?? 0}`,
           padding: 6,
           fill: colors.headerText,
@@ -294,7 +303,6 @@
           wrap: 'none',
           ellipsis: true,
         }"
-      />
       />
     </v-group>
 
@@ -463,7 +471,11 @@ import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
-import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
+import {
+  getToneColorHex,
+  useTheme,
+  COMPONENT_TYPE_ICONS,
+} from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
 import {

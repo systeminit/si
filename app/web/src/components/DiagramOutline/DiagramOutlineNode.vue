@@ -49,7 +49,17 @@
           size="sm"
           :class="
             clsx(
-              'mr-xs flex-none',
+              'flex-none',
+              enableGroupToggle && 'group-hover:scale-0 transition-all',
+            )
+          "
+        />
+        <Icon
+          :name="COMPONENT_TYPE_ICONS[component.componentType]"
+          size="sm"
+          :class="
+            clsx(
+              'mr-2xs flex-none',
               enableGroupToggle && 'group-hover:scale-0 transition-all',
             )
           "
@@ -74,7 +84,13 @@
           <Icon
             :name="isOpen ? 'chevron--down' : 'chevron--right'"
             size="lg"
-            class="scale-[40%] translate-x-[-9px] translate-y-[13px] group-hover:scale-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all"
+            :class="
+              clsx(
+                'scale-[40%] translate-x-[-9px] translate-y-[13px] transition-all',
+                'group-hover:scale-100 group-hover:translate-x-[-2px] group-hover:translate-y-0 group-hover:w-[60px] group-hover:hover:scale-125',
+                themeClasses('hover:text-action-500', 'hover:text-action-300'),
+              )
+            "
           />
         </div>
 
@@ -180,13 +196,16 @@ import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
-import { themeClasses, Icon } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  Icon,
+  COMPONENT_TYPE_ICONS,
+} from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useQualificationsStore } from "@/store/qualifications.store";
 
-import { trackEvent } from "@/utils/tracking";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
@@ -220,30 +239,8 @@ const uniqueKey = computed<string | null>(() => {
 });
 
 const toggleGroup = () => {
-  isOpen.value = !isOpen.value;
-  if (!uniqueKey.value) return;
-  if (isOpen.value) {
-    componentsStore.expandComponents(uniqueKey.value);
-    trackEvent("expand-components", {
-      source: "diagram-outline-node",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
-  } else {
-    const { position, size } =
-      componentsStore.initMinimzedElementPositionAndSize(uniqueKey.value);
-    componentsStore.updateMinimzedElementPositionAndSize({
-      uniqueKey: uniqueKey.value,
-      position,
-      size,
-    });
-    trackEvent("collapse-components", {
-      source: "diagram-outline-node",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
+  if (component.value) {
+    componentsStore.toggleCollapse("diagram-outline-node", component.value.id);
   }
 };
 

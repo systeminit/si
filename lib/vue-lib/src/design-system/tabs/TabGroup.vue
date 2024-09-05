@@ -22,7 +22,7 @@
                 sm: 'mt-sm',
                 md: 'mt-md',
               }[marginTop],
-            'w-full h-8 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden',
+            'w-full h-8 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden select-none',
           )
         "
       >

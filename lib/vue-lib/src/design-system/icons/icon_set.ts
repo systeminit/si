@@ -190,6 +190,8 @@ import LogsPop from "./custom-icons/logs-pop.svg?raw";
 import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
 import LogsPopSquare from "./custom-icons/logs-pop-square.svg?raw";
 import Func from "./custom-icons/func.svg?raw";
+import FrameUp from "./custom-icons/frameup.svg?raw";
+import FrameDown from "./custom-icons/framedown.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -254,6 +256,8 @@ export const ICONS = Object.freeze({
   eye: Eye,
   filter: Filter,
   frame: Frame,
+  "frame-down": FrameDown,
+  "frame-up": FrameUp,
   func: Func,
   "git-branch": GitBranch,
   "git-branch-plus": GitBranchPlus,
@@ -358,6 +362,13 @@ export const LOGO_ICONS = Object.freeze({
   "logo-github": GithubLogo,
   "logo-vim": VimLogo,
 });
+
+export const COMPONENT_TYPE_ICONS = {
+  component: "component" as IconNames,
+  configurationFrameDown: "frame-down" as IconNames,
+  configurationFrameUp: "frame-up" as IconNames,
+  aggregationFrame: "frame" as IconNames,
+};
 
 /*
   additional aliases which makes it easy to be more consistent with icon usage
