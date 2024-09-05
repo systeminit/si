@@ -12,7 +12,6 @@ RUN set -ex && apk add --no-cache make git gcc libc-dev curl bash zip && \
 
 FROM alpine
 
-
 RUN set -eux; \
     apk add --no-cache jq aws-cli bash \
     rm -rf /var/cache/apk/*

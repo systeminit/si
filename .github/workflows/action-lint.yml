@@ -20,4 +20,3 @@ jobs:
 
       - name: Run actionlint
         run: actionlint -color
-
