@@ -12,7 +12,7 @@ mainSteps:
   inputs:
     runCommand:
     - |
-        sdf --migration-mode runAndQuit | systemd-cat \
+        sdf --migration-mode runAndQuit > >(systemd-cat -t sdf-migration) 2>&1 \
         && echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"message\": \"SDF Migration succeeded\"}" \
         || echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"error\", \"message\": \"SDF Migration has failed\"}"
 
