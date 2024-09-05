@@ -107,45 +107,44 @@ impl SnapshotGraphMigrator {
                     continue;
                 }
 
-                if let Some(snapshot_address) = change_set.workspace_snapshot_address {
-                    info!(
-                        "Migrating snapshot {} for change set {} with base change set of {:?}",
-                        snapshot_address, change_set_id, change_set.base_change_set_id,
-                    );
+                let snapshot_address = change_set.workspace_snapshot_address;
+                info!(
+                    "Migrating snapshot {} for change set {} with base change set of {:?}",
+                    snapshot_address, change_set_id, change_set.base_change_set_id,
+                );
 
-                    let new_snapshot = match self.migrate_snapshot(ctx, snapshot_address).await {
-                        Ok(new_snapshot) => new_snapshot,
-                        Err(err) => {
-                            let err_string = err.to_string();
-                            if err_string.contains("missing from store for node") {
-                                error!(error = ?err, "Migration error: {err_string}, marking change set {} for workspace {:?} as failed", change_set.id, change_set.workspace_id);
-                                change_set
-                                    .update_status(ctx, ChangeSetStatus::Failed)
-                                    .await?;
-                                change_set_graph.remove_id(change_set_id);
-                                continue;
-                            } else {
-                                return Err(err)?;
-                            }
+                let new_snapshot = match self.migrate_snapshot(ctx, snapshot_address).await {
+                    Ok(new_snapshot) => new_snapshot,
+                    Err(err) => {
+                        let err_string = err.to_string();
+                        if err_string.contains("missing from store for node") {
+                            error!(error = ?err, "Migration error: {err_string}, marking change set {} for workspace {:?} as failed", change_set.id, change_set.workspace_id);
+                            change_set
+                                .update_status(ctx, ChangeSetStatus::Failed)
+                                .await?;
+                            change_set_graph.remove_id(change_set_id);
+                            continue;
+                        } else {
+                            return Err(err)?;
                         }
-                    };
+                    }
+                };
 
-                    let (new_snapshot_address, _) = ctx
-                        .layer_db()
-                        .workspace_snapshot()
-                        .write(
-                            Arc::new(new_snapshot),
-                            None,
-                            ctx.events_tenancy(),
-                            ctx.events_actor(),
-                        )
-                        .await?;
-                    change_set.update_pointer(ctx, new_snapshot_address).await?;
-                    info!(
-                        "Migrated snapshot {} for change set {} with base change set of {:?}",
-                        snapshot_address, change_set_id, change_set.base_change_set_id,
-                    );
-                }
+                let (new_snapshot_address, _) = ctx
+                    .layer_db()
+                    .workspace_snapshot()
+                    .write(
+                        Arc::new(new_snapshot),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+                change_set.update_pointer(ctx, new_snapshot_address).await?;
+                info!(
+                    "Migrated snapshot {} for change set {} with base change set of {:?}",
+                    snapshot_address, change_set_id, change_set.base_change_set_id,
+                );
 
                 change_set_graph.remove_id(change_set_id);
             }

@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use dal::feature_flags::FeatureFlagService;
+use dal::{context::NatsStreams, feature_flags::FeatureFlagService};
 use dal::{
     ChangeSetStatus, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, NatsProcessor,
     ServicesContext,
@@ -76,6 +76,7 @@ impl Server {
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
+        let nats_streams = NatsStreams::get_or_create(&nats).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
@@ -90,6 +91,7 @@ impl Server {
         let services_context = ServicesContext::new(
             pg_pool,
             nats.clone(),
+            nats_streams,
             job_processor,
             veritech.clone(),
             encryption_key,

@@ -299,8 +299,8 @@ impl Diagram {
 
         let workspace = Workspace::get_by_pk_or_error(
             ctx,
-            &ctx.tenancy()
-                .workspace_pk()
+            ctx.tenancy()
+                .workspace_pk_opt()
                 .ok_or(WorkspaceSnapshotError::WorkspaceMissing)?,
         )
         .await?;

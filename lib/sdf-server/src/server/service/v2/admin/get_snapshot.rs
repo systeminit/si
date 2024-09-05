@@ -21,9 +21,7 @@ pub async fn get_snapshot(
         .await?
         .ok_or(AdminAPIError::ChangeSetNotFound(change_set_id))?;
 
-    let snap_addr = change_set.workspace_snapshot_address.ok_or(
-        AdminAPIError::WorkspaceSnapshotAddressNotFound(change_set_id),
-    )?;
+    let snap_addr = change_set.workspace_snapshot_address;
 
     let bytes = ctx
         .layer_db()

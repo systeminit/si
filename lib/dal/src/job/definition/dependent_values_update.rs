@@ -124,7 +124,7 @@ impl JobConsumer for DependentValuesUpdate {
         span.record(
             "si.workspace.id",
             ctx.tenancy()
-                .workspace_pk()
+                .workspace_pk_opt()
                 .unwrap_or(WorkspacePk::NONE)
                 .to_string(),
         );

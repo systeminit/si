@@ -19,7 +19,7 @@ pub async fn setup_history_actor_ctx(ctx: &mut DalContext) {
     user.associate_workspace(
         ctx,
         ctx.tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .expect("no workspace pk set on context"),
     )
     .await
@@ -36,9 +36,7 @@ pub async fn create_change_set_and_update_ctx(
         .await
         .expect("could not perform find change set")
         .expect("no change set found");
-    let workspace_snapshot_address = base_change_set
-        .workspace_snapshot_address
-        .expect("no workspace snapshot set on base change set");
+    let workspace_snapshot_address = base_change_set.workspace_snapshot_address;
     let change_set = ChangeSet::new(
         ctx,
         generate_fake_name().expect("could not generate fake name"),

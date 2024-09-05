@@ -7,6 +7,7 @@ load(
 rust_library(
     name = "dal",
     deps = [
+        "//lib/billing-events:billing-events",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
         "//lib/pinga-core:pinga-core",

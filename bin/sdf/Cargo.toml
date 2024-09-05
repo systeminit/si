@@ -13,6 +13,7 @@ name = "sdf"
 path = "src/main.rs"
 
 [dependencies]
+billing-events-server = { path = "../../lib/billing-events-server" }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
 sdf-server = { path = "../../lib/sdf-server" }
 si-service = { path = "../../lib/si-service" }

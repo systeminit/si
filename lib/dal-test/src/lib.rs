@@ -36,6 +36,7 @@ use std::{
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
+    context::NatsStreams,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
@@ -262,6 +263,8 @@ pub struct TestContext {
     pg_pool: PgPool,
     /// A connected NATS client
     nats_conn: NatsClient,
+    /// Required NATS streams
+    nats_streams: NatsStreams,
     /// A [`JobQueueProcessor`] impl
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
@@ -379,6 +382,7 @@ impl TestContext {
         ServicesContext::new(
             self.pg_pool.clone(),
             self.nats_conn.clone(),
+            self.nats_streams.clone(),
             self.job_processor.clone(),
             veritech,
             self.encryption_key.clone(),
@@ -461,6 +465,9 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&nats_config)
             .await
             .wrap_err("failed to create NatsClient")?;
+        let nats_streams = NatsStreams::get_or_create(&nats_conn)
+            .await
+            .wrap_err("failed to create NatsStreams")?;
         let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
             as Box<dyn JobQueueProcessor + Send + Sync>;
 
@@ -472,6 +479,7 @@ impl TestContextBuilder {
             config,
             pg_pool,
             nats_conn,
+            nats_streams,
             job_processor,
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
@@ -760,6 +768,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     migrate_local_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
+        services_ctx.nats_streams(),
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
@@ -786,6 +795,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 async fn migrate_local_builtins(
     dal_pg: &PgPool,
     nats: &NatsClient,
+    nats_streams: &NatsStreams,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &VeritechEncryptionKey,
@@ -798,6 +808,7 @@ async fn migrate_local_builtins(
     let services_context = ServicesContext::new(
         dal_pg.clone(),
         nats.clone(),
+        nats_streams.clone(),
         job_processor,
         veritech,
         Arc::new(*encryption_key),

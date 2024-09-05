@@ -982,7 +982,7 @@ impl PkgExporter {
             .version(&self.version)
             .created_by(&self.created_by);
 
-        if let Some(workspace_pk) = ctx.tenancy().workspace_pk() {
+        if let Some(workspace_pk) = ctx.tenancy().workspace_pk_opt() {
             pkg_spec_builder.workspace_pk(workspace_pk.to_string());
             let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
                 .await?

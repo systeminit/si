@@ -48,7 +48,7 @@ pub async fn begin_approval_process(
 
     let workspace_pk = ctx
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
 
     track(
@@ -108,7 +108,7 @@ pub async fn cancel_approval_process(
 
     let workspace_pk = ctx
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
 
     track(

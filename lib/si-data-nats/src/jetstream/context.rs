@@ -45,6 +45,10 @@ impl Context {
         self.inner.set_timeout(timeout)
     }
 
+    pub fn metadata(&self) -> &ConnectionMetadata {
+        &self.metadata
+    }
+
     pub(crate) fn with_prefix(client: Client, prefix: &str) -> Self {
         let (inner_client, metadata) = client.into_parts();
         let inner = async_nats::jetstream::with_prefix(inner_client, prefix);

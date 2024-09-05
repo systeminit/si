@@ -36,6 +36,8 @@ fn main() -> Result<()> {
 async fn async_main() -> Result<()> {
     let layer_db_tracker = TaskTracker::new();
     let layer_db_token = CancellationToken::new();
+    let billing_events_server_tracker = TaskTracker::new();
+    let billing_events_server_token = CancellationToken::new();
     let telemetry_tracker = TaskTracker::new();
     let telemetry_token = CancellationToken::new();
 
@@ -103,6 +105,8 @@ async fn async_main() -> Result<()> {
 
     let nats_conn = Server::connect_to_nats(config.nats()).await?;
 
+    let nats_streams = Server::get_or_create_nats_streams(&nats_conn).await?;
+
     let (job_client, job_processor) = JobProcessor::connect(&config).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
@@ -125,11 +129,16 @@ async fn async_main() -> Result<()> {
         LayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone()).await?;
     layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
+    let billing_events_server_future =
+        billing_events_server::new(nats_conn.clone(), billing_events_server_token.clone()).await?;
+    billing_events_server_tracker.spawn(billing_events_server_future);
+
     let feature_flags_service = FeatureFlagService::new(config.boot_feature_flags().clone());
 
     let services_context = ServicesContext::new(
         pg_pool,
         nats_conn,
+        nats_streams,
         job_processor,
         veritech,
         encryption_key,
@@ -151,6 +160,7 @@ async fn async_main() -> Result<()> {
             // TODO(fnichol): ensure that layer-db and telemetry are gracefully shut down
             for (tracker, token) in [
                 (layer_db_tracker, layer_db_token),
+                (billing_events_server_tracker, billing_events_server_token),
                 (telemetry_tracker, telemetry_token),
             ] {
                 info!("performing graceful shutdown for task group");
@@ -172,6 +182,7 @@ async fn async_main() -> Result<()> {
     let posthog_client = Server::start_posthog(config.posthog()).await?;
 
     layer_db_tracker.close();
+    billing_events_server_tracker.close();
     telemetry_tracker.close();
 
     match config.incoming_stream() {
@@ -216,6 +227,7 @@ async fn async_main() -> Result<()> {
         // TODO(nick): Fletcher's comment above still stands, but now we shutdown for multiple task groups.
         for (tracker, token) in [
             (layer_db_tracker, layer_db_token),
+            (billing_events_server_tracker, billing_events_server_token),
             (telemetry_tracker, telemetry_token),
         ] {
             info!("performing graceful shutdown for task group");

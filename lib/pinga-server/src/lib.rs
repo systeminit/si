@@ -5,7 +5,7 @@ pub mod server;
 
 use std::io;
 
-use dal::InitializationError;
+use dal::{InitializationError, TransactionsError};
 use si_data_nats::{async_nats, NatsError};
 use si_data_pg::PgPoolError;
 use thiserror::Error;
@@ -39,6 +39,8 @@ pub enum ServerError {
     PgPool(#[from] Box<PgPoolError>),
     #[error("symmetric crypto error: {0}")]
     SymmetricCryptoService(#[from] si_crypto::SymmetricCryptoError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("error when loading cyclone encryption key: {0}")]
     VeritechEncryptionKey(#[from] si_crypto::VeritechEncryptionKeyError),
 }

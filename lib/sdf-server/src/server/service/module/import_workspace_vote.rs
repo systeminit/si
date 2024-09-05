@@ -34,7 +34,7 @@ pub async fn import_workspace_vote(
 
     let workspace_pk = ctx
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
 
     track(

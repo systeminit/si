@@ -52,7 +52,7 @@ impl NatsProcessor {
             let workspace_pk = job_info
                 .access_builder
                 .tenancy()
-                .workspace_pk()
+                .workspace_pk_opt()
                 .ok_or(JobQueueProcessorError::MissingWorkspacePk)?;
 
             let subject = pinga_job(
@@ -104,7 +104,7 @@ impl JobQueueProcessor for NatsProcessor {
         let workspace_pk = job_info
             .access_builder
             .tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .ok_or(BlockingJobError::MissingWorkspacePk)?;
 
         let subject = pinga_job(

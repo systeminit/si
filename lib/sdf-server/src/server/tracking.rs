@@ -22,7 +22,7 @@ pub fn track(
     let distinct_id = ctx.history_actor().distinct_id();
     let workspace_id = ctx
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .map(|workspace_pk| workspace_pk.to_string())
         .unwrap_or_else(|| "unknown".to_string());
     let changeset_id = ctx.change_set_id().to_string();

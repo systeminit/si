@@ -41,7 +41,7 @@ pub async fn export_workspace(
 
     let workspace_pk = ctx
         .tenancy()
-        .workspace_pk()
+        .workspace_pk_opt()
         .ok_or(ModuleError::ExportingImportingWithRootTenancy)?;
     let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
         .await?

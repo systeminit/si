@@ -15,7 +15,7 @@ export interface AdminChangeSet {
   name: string;
   status: string;
   baseChangeSetId?: string;
-  workspaceSnapshotAddress?: string;
+  workspaceSnapshotAddress: string;
   workspaceId: string;
   mergeRequestedByUserId?: string;
 }

@@ -367,34 +367,6 @@ impl Workspace {
         Ok(new_workspace)
     }
 
-    pub async fn clear(&self, ctx: &DalContext) -> WorkspaceResult<()> {
-        let tenancy = Tenancy::new(self.pk);
-
-        ctx.txns()
-            .await?
-            .pg()
-            .execute("SELECT clear_workspace_v1($1)", &[&tenancy])
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn clear_or_create_workspace(
-        ctx: &mut DalContext,
-        workspace_pk: WorkspacePk,
-        workspace_name: impl AsRef<str>,
-    ) -> WorkspaceResult<Self> {
-        let workspace = match Workspace::get_by_pk(ctx, &workspace_pk).await? {
-            Some(existing_workspace) => {
-                existing_workspace.clear(ctx).await?;
-                existing_workspace
-            }
-            None => Workspace::new(ctx, workspace_pk, workspace_name).await?,
-        };
-
-        Ok(workspace)
-    }
-
     pub async fn get_by_pk(
         ctx: &DalContext,
         pk: &WorkspacePk,
@@ -415,11 +387,11 @@ impl Workspace {
 
     pub async fn get_by_pk_or_error(
         ctx: &DalContext,
-        pk: &WorkspacePk,
+        pk: WorkspacePk,
     ) -> WorkspaceResult<Workspace> {
-        Self::get_by_pk(ctx, pk)
+        Self::get_by_pk(ctx, &pk)
             .await?
-            .ok_or(WorkspaceError::WorkspaceNotFound(*pk))
+            .ok_or(WorkspaceError::WorkspaceNotFound(pk))
     }
 
     pub async fn generate_export_data(
@@ -616,7 +588,7 @@ impl Workspace {
             .pg()
             .query_one(
                 "SELECT count(*) > 0 AS has_change_set FROM change_set_pointers WHERE workspace_id = $1 AND id = $2",
-                &[&ctx.tenancy().workspace_pk(), &change_set_id],
+                &[&ctx.tenancy().workspace_pk_opt(), &change_set_id],
             )
             .await?;
         let has_change_set: bool = row.try_get("has_change_set")?;

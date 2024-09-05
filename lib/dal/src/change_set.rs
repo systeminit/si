@@ -1,9 +1,8 @@
-//! The sequel to [`ChangeSets`](crate::ChangeSet). Coming to an SI instance near you!
-
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use billing_events::{BillingEventsError, BillingWorkspaceChangeEvent};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -16,6 +15,7 @@ use telemetry::prelude::*;
 use crate::context::RebaseRequest;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::RebaseBatch;
+use crate::WorkspaceError;
 use crate::{
     action::{ActionError, ActionId},
     id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
@@ -33,6 +33,8 @@ const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancesto
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
+    #[error("billing events error: {0}")]
+    BillingEvents(#[from] BillingEventsError),
     #[error("change set with id {0} not found")]
     ChangeSetNotFound(ChangeSetId),
     #[error("could not find default change set: {0}")]
@@ -76,13 +78,19 @@ pub enum ChangeSetError {
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("workspace error: {0}")]
-    Workspace(String),
+    Workspace(#[from] Box<WorkspaceError>),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
     WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<WorkspaceError> for ChangeSetError {
+    fn from(value: WorkspaceError) -> Self {
+        Self::Workspace(Box::new(value))
+    }
 }
 
 impl From<WsEventError> for ChangeSetError {
@@ -141,7 +149,7 @@ pub struct ChangeSet {
     pub name: String,
     pub status: ChangeSetStatus,
     pub base_change_set_id: Option<ChangeSetId>,
-    pub workspace_snapshot_address: Option<WorkspaceSnapshotAddress>,
+    pub workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub workspace_id: Option<WorkspacePk>,
     pub merge_requested_by_user_id: Option<UserPk>,
 }
@@ -186,7 +194,7 @@ impl ChangeSet {
         // completely disjoint changesets.
         let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
 
-        let workspace_id = ctx.tenancy().workspace_pk();
+        let workspace_id = ctx.tenancy().workspace_pk_opt();
         let name = name.as_ref();
         let row = ctx
             .txns()
@@ -211,12 +219,11 @@ impl ChangeSet {
     pub async fn fork_head(ctx: &DalContext, name: impl AsRef<str>) -> ChangeSetResult<Self> {
         let workspace_pk = ctx
             .tenancy()
-            .workspace_pk()
+            .workspace_pk_opt()
             .ok_or(ChangeSetError::NoTenancySet)?;
 
         let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
-            .await
-            .map_err(|err| ChangeSetError::Workspace(err.to_string()))?
+            .await?
             .ok_or(ChangeSetError::WorkspaceNotFound(workspace_pk))?;
 
         let base_change_set = ChangeSet::find(ctx, workspace.default_change_set_id())
@@ -225,16 +232,11 @@ impl ChangeSet {
                 workspace.default_change_set_id(),
             ))?;
 
-        let workspace_snapshot_address = base_change_set.workspace_snapshot_address.ok_or(
-            ChangeSetError::DefaultChangeSetNoWorkspaceSnapshotPointer(
-                workspace.default_change_set_id(),
-            ),
-        )?;
         let change_set = ChangeSet::new(
             ctx,
             name,
             Some(workspace.default_change_set_id()),
-            workspace_snapshot_address,
+            base_change_set.workspace_snapshot_address,
         )
         .await?;
 
@@ -269,11 +271,57 @@ impl ChangeSet {
         Ok(())
     }
 
+    fn workspace_id(&self) -> ChangeSetResult<WorkspacePk> {
+        self.workspace_id.ok_or(ChangeSetError::NoTenancySet)
+    }
+
+    async fn workspace(&self, ctx: &DalContext) -> ChangeSetResult<Workspace> {
+        Ok(Workspace::get_by_pk_or_error(ctx, self.workspace_id()?).await?)
+    }
+
+    async fn is_head(&self, ctx: &DalContext) -> ChangeSetResult<bool> {
+        Ok(self.workspace(ctx).await?.default_change_set_id() == self.id)
+    }
+
+    async fn publish_billing_workspace_change_event(
+        &self,
+        ctx: &DalContext,
+        change_description: impl Into<String>,
+        modify_event: impl FnOnce(&mut BillingWorkspaceChangeEvent),
+    ) -> ChangeSetResult<()> {
+        if self.workspace_id.is_some() && self.is_head(ctx).await? {
+            let workspace = self.workspace_id()?;
+            let mut event = BillingWorkspaceChangeEvent {
+                workspace: workspace.into(),
+                workspace_snapshot_address: self.workspace_snapshot_address,
+                // TODO(nick,jkeiser): see the "TODO" on the struct definition for why we string convert here.
+                status: self.status.to_string(),
+                resource_count: 0,
+                change_set_id: self.id.into(),
+                merge_requested_by_user_id: self.merge_requested_by_user_id.map(Into::into),
+                change_description: change_description.into(),
+            };
+            modify_event(&mut event);
+            // Ensure queue is created
+            ctx.services_context()
+                .nats_streams()
+                .billing_events()
+                .publish_workspace_update(&workspace.to_string(), &event)
+                .await?;
+        }
+        Ok(())
+    }
+
     pub async fn update_pointer(
         &mut self,
         ctx: &DalContext,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<()> {
+        self.publish_billing_workspace_change_event(ctx, "update_pointer", |event| {
+            event.workspace_snapshot_address = workspace_snapshot_address;
+        })
+        .await?;
+
         ctx.txns()
             .await?
             .pg()
@@ -283,7 +331,7 @@ impl ChangeSet {
             )
             .await?;
 
-        self.workspace_snapshot_address = Some(workspace_snapshot_address);
+        self.workspace_snapshot_address = workspace_snapshot_address;
 
         Ok(())
     }
@@ -293,6 +341,12 @@ impl ChangeSet {
         ctx: &DalContext,
         status: ChangeSetStatus,
     ) -> ChangeSetResult<()> {
+        self.publish_billing_workspace_change_event(ctx, "update_pointer", |event| {
+            // TODO(nick,jkeiser): see the "TODO" on the struct definition for why we string convert here.
+            event.status = status.to_string();
+        })
+        .await?;
+
         ctx.txns()
             .await?
             .pg()
@@ -373,7 +427,7 @@ impl ChangeSet {
             .query(
                 "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4)",
                 &[
-                    &ctx.tenancy().workspace_pk(),
+                    &ctx.tenancy().workspace_pk_opt(),
                     &ChangeSetStatus::Open.to_string(),
                     &ChangeSetStatus::NeedsApproval.to_string(),
                     &ChangeSetStatus::NeedsAbandonApproval.to_string(),
@@ -701,9 +755,7 @@ impl std::fmt::Debug for ChangeSet {
             )
             .field(
                 "workspace_snapshot_address",
-                &self
-                    .workspace_snapshot_address
-                    .map(|wsaddr| wsaddr.to_string()),
+                &self.workspace_snapshot_address.to_string(),
             )
             .field(
                 "merge_requested_by_user_id",

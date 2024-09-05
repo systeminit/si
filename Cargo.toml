@@ -11,6 +11,8 @@ members = [
     "bin/sdf",
     "bin/veritech",
     "lib/auth-api-client",
+    "lib/billing-events",
+    "lib/billing-events-server",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",

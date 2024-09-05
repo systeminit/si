@@ -12,6 +12,7 @@ publish.workspace = true
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
+billing-events = { path = "../../lib/billing-events" }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
