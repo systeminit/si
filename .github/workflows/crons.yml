@@ -15,3 +15,8 @@ jobs:
     with:
       environment: production
     secrets: inherit
+  api-test:
+    uses: ./.github/workflows/run-api-test.yml
+    with:
+      environment: production
+    secrets: inherit
