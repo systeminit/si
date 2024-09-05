@@ -91,9 +91,7 @@ impl SchemaVariantNodeWeightV1 {
                     timestamp: old_content.timestamp,
                     ui_hidden: old_content.ui_hidden,
                     version: old_content.timestamp.created_at.to_string(),
-                    display_name: old_content
-                        .display_name
-                        .unwrap_or_else(|| content_node_weight.id().to_string()),
+                    display_name: old_content.display_name.unwrap_or_else(String::new),
                     category: old_content.category,
                     color: old_content.color,
                     component_type: old_content.component_type,
