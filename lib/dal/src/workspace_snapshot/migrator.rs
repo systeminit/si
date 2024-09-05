@@ -96,6 +96,14 @@ impl SnapshotGraphMigrator {
                 let mut change_set = ChangeSet::find(ctx, change_set_id)
                     .await?
                     .ok_or(ChangeSetError::ChangeSetNotFound(change_set_id))?;
+                if change_set.workspace_id.is_none() {
+                    // These are broken/garbage change sets generated during migrations of the
+                    // "universal" workspace/change set. They're not actually accessible via normal
+                    // means, as we generally follow the chain starting at the workspace, and these
+                    // aren't associated with any workspace.
+                    change_set_graph.remove_id(change_set_id);
+                    continue;
+                }
 
                 if let Some(snapshot_address) = change_set.workspace_snapshot_address {
                     info!(
