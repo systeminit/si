@@ -18,6 +18,8 @@ jobs:
     name: ${{ inputs.service }} Upgrade
     runs-on: ubuntu-latest
     continue-on-error: true
+    outputs:
+      upgrade_failed: ${{ steps.check_failure.outputs.failed }}
     steps:
       - name: Configure AWS credentials for ${{ inputs.environment }}
         uses: aws-actions/configure-aws-credentials@v4
@@ -29,22 +31,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Down service
-        run: |
-          component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -S down
-
       - name: Upgrade service
+        id: upgrade
         run: |
           component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -e ${{ inputs.environment }}
 
       - name: Up service
+        id: up
         run: |
           component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s ${{ inputs.service }} -S up
+
+      - name: Check if any step failed
+        id: check_failure
+        run: |
+          if [ "${{ steps.upgrade.outcome }}" == "failure" ] || [ "${{ steps.up.outcome }}" == "failure" ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
 
   on-failure:
     uses: ./.github/workflows/instance-refresh.yml
     needs: upgrade
-    if: failure()
+    if: ${{ needs.upgrade.outputs.upgrade_failed == 'true' }}
     with:
       environment: ${{ inputs.environment }}
       service: ${{ inputs.service }}
