@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="navbar bg-neutral-900 text-white relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90 h-[60px] overflow-hidden shrink-0 flex gap-sm"
+    class="navbar bg-neutral-900 text-white relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90 h-[60px] overflow-hidden shrink-0 flex gap-sm select-none"
   >
     <!-- Left side -->
     <NavbarPanelLeft />

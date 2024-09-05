@@ -66,7 +66,7 @@ you can pass in options as props too */
                 : '',
               compact
                 ? 'vorm-input-compact__input vorm-input__hidden-input'
-                : 'vorm-input__input',
+                : 'vorm-input__input cursor-pointer',
             ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"

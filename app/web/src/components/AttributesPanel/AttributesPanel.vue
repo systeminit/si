@@ -15,7 +15,15 @@
         ref="colorPickerMountRef"
         :style="{ backgroundColor: siValues.color }"
         :title="siValues.color"
-        class="attributes-panel__color-swatch"
+        :class="
+          clsx(
+            'attributes-panel__color-swatch',
+            'w-8 h-8 mr-xs shrink-0 cursor-pointer relative rounded border border-neutral-600',
+            pickerOpen
+              ? 'outline outline-2 outline-action-400 dark:outline-action-300'
+              : 'hover:outline hover:outline-2 hover:outline-action-400 dark:hover:outline-action-300',
+          )
+        "
         @click="openColorPicker"
       />
       <input
@@ -25,19 +33,48 @@
         @blur="updateSiProp('name')"
         @keyup.enter="updateSiProp('name')"
       />
-      <!-- TODO(Wendy) - this always truncates and looks bad, perhaps an Icon with a DropdownMenu might be better? -->
-      <div class="attributes-panel__type-dropdown">
-        <select v-model="siValues.type" @change="updateComponentType()">
-          <option :value="ComponentType.Component">Component</option>
-          <option :value="ComponentType.ConfigurationFrameUp">
-            Configuration Frame (Up)
-          </option>
-          <option :value="ComponentType.ConfigurationFrameDown">
-            Configuration Frame (Down)
-          </option>
-        </select>
-        <Icon name="chevron--down" />
-      </div>
+      <IconButton
+        class="flex-none ml-2xs"
+        iconTone="action"
+        :icon="COMPONENT_TYPE_ICONS[siValues.type]"
+        :tooltip="
+          {
+            component: 'Component',
+            configurationFrameUp: 'Up Frame',
+            configurationFrameDown: 'Down Frame',
+            aggregationFrame: 'Frame',
+          }[siValues.type]
+        "
+        variant="simple"
+        size="lg"
+        tooltipPlacement="top"
+        :selected="typeMenuRef?.isOpen"
+        @click="openTypeMenu"
+      >
+        <DropdownMenu ref="typeMenuRef" forceAlignRight>
+          <DropdownMenuItem
+            icon="component"
+            label="Component"
+            checkable
+            :checked="siValues.type === 'component'"
+            @select="updateComponentType(ComponentType.Component)"
+          />
+          <DropdownMenuItem
+            icon="frame-up"
+            label="Up Frame"
+            checkable
+            :checked="siValues.type === 'configurationFrameUp'"
+            @select="updateComponentType(ComponentType.ConfigurationFrameUp)"
+          />
+          <DropdownMenuItem
+            icon="frame-down"
+            label="Down Frame"
+            checkable
+            :checked="siValues.type === 'configurationFrameDown'"
+            @select="updateComponentType(ComponentType.ConfigurationFrameDown)"
+          />
+        </DropdownMenu>
+      </IconButton>
     </div>
 
     <LoadingMessage v-if="loadSchemaReqStatus.isPending && !domainTree">
@@ -105,19 +142,20 @@ import {
   watch,
 } from "vue";
 import mitt, { Emitter } from "mitt";
-
+import clsx from "clsx";
 import {
   DropdownMenu,
   DropdownMenuItem,
   JsonTreeExplorer,
   LoadingMessage,
-  Icon,
+  COMPONENT_TYPE_ICONS,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 
 import { ComponentType } from "@/api/sdf/dal/schema";
 import AttributesPanelItem from "./AttributesPanelItem.vue";
+import IconButton from "../IconButton.vue";
 
 const rootRef = ref<HTMLDivElement>();
 
@@ -189,7 +227,8 @@ function updateSiProp(key: keyof typeof siValues) {
   }
 }
 
-function updateComponentType() {
+function updateComponentType(type = siValues.type) {
+  siValues.type = type;
   attributesStore.SET_COMPONENT_TYPE({
     componentId: component.id,
     componentType: siValues.type,
@@ -198,7 +237,7 @@ function updateComponentType() {
 
 // color picker
 const colorPickerMountRef = ref<HTMLElement>();
-
+const pickerOpen = ref(false);
 let picker: Picker | undefined;
 function openColorPicker() {
   if (!picker) {
@@ -213,8 +252,12 @@ function openColorPicker() {
         picker = undefined;
       },
     });
+    picker.onClose = () => {
+      pickerOpen.value = false;
+    };
   }
   picker.show();
+  pickerOpen.value = true;
 }
 
 const domainTree = computed(() => attributesStore.domainTree);
@@ -228,6 +271,12 @@ function openContextMenu(e: MouseEvent, path: string) {
   contextMenuRef.value?.open(e, true);
   contextMenuPath.value = path;
 }
+
+const typeMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const openTypeMenu = (e: MouseEvent) => {
+  typeMenuRef.value?.open(e);
+};
 
 // function toggleAllOpen(open: boolean) {
 //   eventBus.emit("toggleAllOpen", open);
@@ -287,14 +336,6 @@ provide(AttributesPanelContextInjectionKey, {
 }
 
 .attributes-panel__color-swatch {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--input-border-color);
-  margin-right: @spacing-px[xs];
-  flex-shrink: 0;
-  cursor: pointer;
-  position: relative;
-
   .picker_wrapper.popup,
   .picker_wrapper.popup .picker_arrow::before,
   .picker_wrapper.popup .picker_arrow::after {
@@ -308,8 +349,10 @@ provide(AttributesPanelContextInjectionKey, {
 
 .attributes-panel__si-settings {
   display: flex;
-  height: 40px;
-  margin: @spacing-px[sm];
+  flex-direction: row;
+  align-items: center;
+  height: 32px;
+  margin: @spacing-px[xs];
   margin-left: @spacing-px[md];
   margin-right: 8px;
 

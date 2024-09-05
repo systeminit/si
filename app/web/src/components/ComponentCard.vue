@@ -14,13 +14,18 @@
       backgroundColor: `#${bodyBg.toHex()}`,
     }"
   >
-    <div class="flex gap-xs items-center">
+    <div class="flex gap-2xs items-center">
       <Icon :name="component.icon" size="lg" class="shrink-0" />
+      <Icon
+        :name="COMPONENT_TYPE_ICONS[component.componentType]"
+        size="lg"
+        class="shrink-0"
+      />
       <Stack spacing="xs" class="">
         <div
           ref="componentNameRef"
           v-tooltip="componentNameTooltip"
-          class="font-bold break-all line-clamp-4 pb-[2px]"
+          class="font-bold break-all line-clamp-4 pb-[1px]"
         >
           {{ component.displayName }}
         </div>
@@ -72,7 +77,12 @@
 import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
-import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
+import {
+  useTheme,
+  Icon,
+  Stack,
+  COMPONENT_TYPE_ICONS,
+} from "@si/vue-lib/design-system";
 import { FullComponent, useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
