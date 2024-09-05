@@ -6,14 +6,14 @@ use crate::{
     workspace_snapshot::{
         edge_weight::EdgeWeightKindDiscriminants, graph::detect_updates::Update, NodeInformation,
     },
-    WorkspaceSnapshotGraphV2,
+    WorkspaceSnapshotGraphV3,
 };
 
 pub trait CorrectExclusiveOutgoingEdge
 where
     NodeInformation: for<'a> From<&'a Self>,
 {
-    fn exclusive_outgoing_edges(&self) -> Vec<EdgeWeightKindDiscriminants>;
+    fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants];
 
     /// If a set of updates will produce a new outgoing edge that a node weight
     /// considers "exclusive" (that is, there can only be one of these kinds of
@@ -25,7 +25,7 @@ where
     /// outgoing NewEdge update for the exclusive edge)
     fn correct_exclusive_outgoing_edges(
         &self,
-        graph: &WorkspaceSnapshotGraphV2,
+        graph: &WorkspaceSnapshotGraphV3,
         mut updates: Vec<Update>,
     ) -> Vec<Update> {
         let exclusive_edge_kinds = self.exclusive_outgoing_edges();

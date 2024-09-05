@@ -3,7 +3,7 @@
 use std::{str::Utf8Error, time::Duration};
 
 use dal::{
-    workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetStatus,
+    workspace_snapshot::graph::WorkspaceSnapshotGraph, ChangeSet, ChangeSetStatus,
     DalContextBuilder, Tenancy, Visibility, Workspace,
 };
 use futures::StreamExt as _;
@@ -517,7 +517,7 @@ impl DvuDebouncerTask {
         if let Some(workspace) =
             Workspace::get_by_pk(&ctx, &self.workspace_id.into_raw_id().into()).await?
         {
-            if workspace.snapshot_version() != WorkspaceSnapshotGraphDiscriminants::V2 {
+            if workspace.snapshot_version() != WorkspaceSnapshotGraph::current_discriminant() {
                 debug!("snapshot not yet migrated; not attempting dependent values update");
                 // No depdendent values update to perform, so no next state transisiton
                 return Ok(None);

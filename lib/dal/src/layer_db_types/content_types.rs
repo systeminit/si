@@ -297,6 +297,7 @@ pub struct FuncArgumentContentV1 {
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 pub enum InputSocketContent {
     V1(InputSocketContentV1),
+    V2(InputSocketContentV2),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -309,6 +310,21 @@ pub struct InputSocketContentV1 {
     /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
     pub outbound_type_definition: Option<String>,
     pub arity: SocketArity,
+    pub kind: SocketKind,
+    pub required: bool,
+    pub ui_hidden: bool,
+    pub connection_annotations: Vec<ConnectionAnnotation>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct InputSocketContentV2 {
+    pub timestamp: Timestamp,
+    /// Name for [`Self`] that can be used for identification.
+    pub name: String,
+    /// Definition of the inbound type (e.g. "JSONSchema" or "Number").
+    pub inbound_type_definition: Option<String>,
+    /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
+    pub outbound_type_definition: Option<String>,
     pub kind: SocketKind,
     pub required: bool,
     pub ui_hidden: bool,
@@ -435,6 +451,7 @@ pub struct SchemaContentV1 {
 pub enum SchemaVariantContent {
     V1(SchemaVariantContentV1),
     V2(SchemaVariantContentV2),
+    V3(SchemaVariantContentV3),
 }
 
 impl SchemaVariantContent {
@@ -442,41 +459,58 @@ impl SchemaVariantContent {
         self,
         ctx: &DalContext,
         id: SchemaVariantId,
-    ) -> ContentTypeResult<SchemaVariantContentV2> {
+    ) -> ContentTypeResult<SchemaVariantContentV3> {
         // update progressively
-        let at_least_v2 = match self {
-            SchemaVariantContent::V1(v1) => {
-                let display_name = if let Some(display_name) = v1.display_name {
-                    display_name
-                } else {
-                    let schema = SchemaVariant::schema_for_schema_variant_id(ctx, id)
-                        .await
-                        .map_err(|e| ContentTypeError::SchemaVariantContent(e.to_string()))?;
-                    schema.name
-                };
+        let mut working_content = self;
+        loop {
+            working_content = match working_content {
+                SchemaVariantContent::V1(v1) => {
+                    let display_name = if let Some(display_name) = v1.display_name {
+                        display_name
+                    } else {
+                        let schema = SchemaVariant::schema_for_schema_variant_id(ctx, id)
+                            .await
+                            .map_err(|e| ContentTypeError::SchemaVariantContent(e.to_string()))?;
+                        schema.name
+                    };
 
-                SchemaVariantContent::V2(SchemaVariantContentV2 {
-                    timestamp: v1.timestamp,
-                    ui_hidden: v1.ui_hidden,
-                    version: v1.name.to_owned(),
-                    display_name,
-                    category: v1.category,
-                    color: v1.color,
-                    component_type: v1.component_type,
-                    link: v1.link,
-                    description: v1.description,
-                    asset_func_id: v1.asset_func_id,
-                    finalized_once: v1.finalized_once,
-                    is_builtin: v1.is_builtin,
-                    is_locked: true,
-                })
-            }
-            later => later,
-        };
+                    SchemaVariantContent::V2(SchemaVariantContentV2 {
+                        timestamp: v1.timestamp,
+                        ui_hidden: v1.ui_hidden,
+                        version: v1.name.to_owned(),
+                        display_name,
+                        category: v1.category,
+                        color: v1.color,
+                        component_type: v1.component_type,
+                        link: v1.link,
+                        description: v1.description,
+                        asset_func_id: v1.asset_func_id,
+                        finalized_once: v1.finalized_once,
+                        is_builtin: v1.is_builtin,
+                        is_locked: true,
+                    })
+                }
+                SchemaVariantContent::V2(v2) => SchemaVariantContent::V3(SchemaVariantContentV3 {
+                    timestamp: v2.timestamp,
+                    ui_hidden: v2.ui_hidden,
+                    version: v2.version,
+                    display_name: v2.display_name,
+                    category: v2.category,
+                    color: v2.color,
+                    component_type: v2.component_type,
+                    link: v2.link,
+                    description: v2.description,
+                    asset_func_id: v2.asset_func_id,
+                    finalized_once: v2.finalized_once,
+                    is_builtin: v2.is_builtin,
+                }),
+                SchemaVariantContent::V3(_) => break,
+            };
+        }
 
         // extract latest
-        let latest = match at_least_v2 {
-            SchemaVariantContent::V2(v2) => v2,
+        let latest = match working_content {
+            SchemaVariantContent::V3(v3) => v3,
             _ => unreachable!(),
         };
 
@@ -515,6 +549,22 @@ pub struct SchemaVariantContentV2 {
     pub finalized_once: bool,
     pub is_builtin: bool,
     pub is_locked: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SchemaVariantContentV3 {
+    pub timestamp: Timestamp,
+    pub ui_hidden: bool,
+    pub version: String,
+    pub display_name: String,
+    pub category: String,
+    pub color: String,
+    pub component_type: ComponentType,
+    pub link: Option<String>,
+    pub description: Option<String>,
+    pub asset_func_id: Option<FuncId>,
+    pub finalized_once: bool,
+    pub is_builtin: bool,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

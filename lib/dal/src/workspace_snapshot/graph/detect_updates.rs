@@ -13,7 +13,7 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 
-use super::WorkspaceSnapshotGraphV2;
+use super::WorkspaceSnapshotGraphV3;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update {
@@ -42,14 +42,14 @@ enum NodeDifference {
 }
 
 pub struct Detector<'a, 'b> {
-    base_graph: &'a WorkspaceSnapshotGraphV2,
-    updated_graph: &'b WorkspaceSnapshotGraphV2,
+    base_graph: &'a WorkspaceSnapshotGraphV3,
+    updated_graph: &'b WorkspaceSnapshotGraphV3,
 }
 
 impl<'a, 'b> Detector<'a, 'b> {
     pub fn new(
-        base_graph: &'a WorkspaceSnapshotGraphV2,
-        updated_graph: &'b WorkspaceSnapshotGraphV2,
+        base_graph: &'a WorkspaceSnapshotGraphV3,
+        updated_graph: &'b WorkspaceSnapshotGraphV3,
     ) -> Self {
         Self {
             base_graph,

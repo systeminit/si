@@ -60,7 +60,7 @@ use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::LineageId;
+use crate::workspace_snapshot::graph::{LineageId, WorkspaceSnapshotGraphDiscriminants};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
@@ -69,7 +69,7 @@ use crate::{
 };
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphV2,
+    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
@@ -200,7 +200,7 @@ pub struct WorkspaceSnapshot {
     /// to read or write to the graph. See the SnapshotReadGuard and SnapshotWriteGuard
     /// implemenations of Deref and DerefMut, and their construction in
     /// working_copy()/working_copy_mut()
-    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraphV2>>>,
+    working_copy: Arc<RwLock<Option<WorkspaceSnapshotGraphVCurrent>>>,
 
     /// Whether we should perform cycle checks on add edge operations
     cycle_check: Arc<AtomicBool>,
@@ -238,16 +238,16 @@ impl std::ops::Drop for CycleCheckGuard {
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotReadGuard<'a> {
     read_only_graph: Arc<WorkspaceSnapshotGraph>,
-    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
+    working_copy_read_guard: RwLockReadGuard<'a, Option<WorkspaceSnapshotGraphVCurrent>>,
 }
 
 #[must_use = "if unused the lock will be released immediately"]
 struct SnapshotWriteGuard<'a> {
-    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphV2>>,
+    working_copy_write_guard: RwLockWriteGuard<'a, Option<WorkspaceSnapshotGraphVCurrent>>,
 }
 
 impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
-    type Target = WorkspaceSnapshotGraphV2;
+    type Target = WorkspaceSnapshotGraphVCurrent;
 
     fn deref(&self) -> &Self::Target {
         if self.working_copy_read_guard.is_some() {
@@ -260,7 +260,7 @@ impl<'a> std::ops::Deref for SnapshotReadGuard<'a> {
 }
 
 impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
-    type Target = WorkspaceSnapshotGraphV2;
+    type Target = WorkspaceSnapshotGraphVCurrent;
 
     fn deref(&self) -> &Self::Target {
         let option = &*self.working_copy_write_guard;
@@ -272,7 +272,8 @@ impl<'a> std::ops::Deref for SnapshotWriteGuard<'a> {
 
 impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        let option: &mut Option<WorkspaceSnapshotGraphV2> = &mut self.working_copy_write_guard;
+        let option: &mut Option<WorkspaceSnapshotGraphVCurrent> =
+            &mut self.working_copy_write_guard;
         &mut *option.as_mut().expect("attempted to DerefMut a snapshot without copying contents into the mutable working copy")
     }
 }
@@ -313,7 +314,7 @@ impl From<DependentValueRoot> for Ulid {
 impl WorkspaceSnapshot {
     #[instrument(name = "workspace_snapshot.initial", level = "debug", skip_all)]
     pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let mut graph: WorkspaceSnapshotGraphV2 = WorkspaceSnapshotGraphV2::new()?;
+        let mut graph: WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphVCurrent::new()?;
 
         // Create the category nodes under root.
         for category_node_kind in CategoryNodeKind::iter() {
@@ -332,7 +333,7 @@ impl WorkspaceSnapshot {
         // "write" will populate them using the assigned working copy.
         let initial = Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
-            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V2(graph)),
+            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V3(graph)),
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
@@ -342,6 +343,10 @@ impl WorkspaceSnapshot {
         initial.write(ctx).await?;
 
         Ok(initial)
+    }
+
+    pub fn read_only_graph_version(&self) -> WorkspaceSnapshotGraphDiscriminants {
+        WorkspaceSnapshotGraphDiscriminants::from(&(*self.read_only_graph))
     }
 
     pub async fn generate_ulid(&self) -> WorkspaceSnapshotResult<Ulid> {
@@ -459,7 +464,7 @@ impl WorkspaceSnapshot {
                 let (new_address, _) = layer_db
                     .workspace_snapshot()
                     .write(
-                        Arc::new(WorkspaceSnapshotGraph::V2(working_copy.clone())),
+                        Arc::new(WorkspaceSnapshotGraph::V3(working_copy.clone())),
                         None,
                         events_tenancy,
                         events_actor,
@@ -528,7 +533,7 @@ impl WorkspaceSnapshot {
     pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
         let graph = self.working_copy().await.clone();
         Ok(si_layer_cache::db::serialize::to_vec(
-            &WorkspaceSnapshotGraph::V2(graph),
+            &WorkspaceSnapshotGraph::V3(graph),
         )?)
     }
 
@@ -609,7 +614,7 @@ impl WorkspaceSnapshot {
     }
 
     /// Add an edge to the graph, bypassing any cycle checks and using node
-    /// indices directly.  
+    /// indices directly.
     pub async fn add_edge_unchecked(
         &self,
         from_node_index: NodeIndex,
@@ -1571,7 +1576,9 @@ impl WorkspaceSnapshot {
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
+            | NodeWeight::InputSocket(_)
             | NodeWeight::Prop(_)
+            | NodeWeight::SchemaVariant(_)
             | NodeWeight::Secret(_) => None,
         } {
             let next_node_idxs = self

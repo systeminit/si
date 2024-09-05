@@ -5,7 +5,7 @@ use si_layer_cache::db::serialize;
 
 use dal::{
     workspace_snapshot::graph::{correct_transforms::correct_transforms, RebaseBatch},
-    WorkspaceSnapshotGraphV2,
+    WorkspaceSnapshotGraphVCurrent,
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     let to_rebase_path = args.get(1).expect(USAGE);
     let rebase_batch_path = args.get(2).expect(USAGE);
 
-    let mut to_rebase_graph: WorkspaceSnapshotGraphV2 = load_snapshot_graph(to_rebase_path)?;
+    let mut to_rebase_graph: WorkspaceSnapshotGraphVCurrent = load_snapshot_graph(to_rebase_path)?;
     let rebase_batch: RebaseBatch = load_snapshot_graph(rebase_batch_path)?;
 
     let corrected_transforms =

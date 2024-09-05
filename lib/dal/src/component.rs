@@ -46,7 +46,9 @@ use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{
+    ComponentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
@@ -1385,29 +1387,17 @@ impl Component {
             .outgoing_targets_for_edge_weight_kind(component_id, EdgeWeightKindDiscriminants::Use)
             .await?;
 
-        let mut schema_variant_id: Option<SchemaVariantId> = None;
         for maybe_schema_variant_index in maybe_schema_variant_indices {
-            if let NodeWeight::Content(content) = workspace_snapshot
+            let node_weight = workspace_snapshot
                 .get_node_weight(maybe_schema_variant_index)
-                .await?
+                .await?;
+            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
             {
-                let content_hash_discriminants: ContentAddressDiscriminants =
-                    content.content_address().into();
-                if let ContentAddressDiscriminants::SchemaVariant = content_hash_discriminants {
-                    schema_variant_id = match schema_variant_id {
-                        None => Some(content.id().into()),
-                        Some(_already_found_schema_variant_id) => {
-                            return Err(ComponentError::MoreThanOneSchemaVariantFound(
-                                component_id,
-                            ));
-                        }
-                    };
-                }
+                return Ok(node_weight.id().into());
             }
         }
-        let schema_variant_id =
-            schema_variant_id.ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
-        Ok(schema_variant_id)
+
+        Err(ComponentError::SchemaVariantNotFound(component_id))
     }
 
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {

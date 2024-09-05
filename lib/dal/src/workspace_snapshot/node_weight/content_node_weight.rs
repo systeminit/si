@@ -95,7 +95,12 @@ impl ContentNodeWeight {
             ContentAddress::OutputSocket(_) => ContentAddress::OutputSocket(content_hash),
             ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::InputSocket(_) => ContentAddress::InputSocket(content_hash),
+            ContentAddress::InputSocket(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "InputSocket".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
             ContentAddress::Module(_) => ContentAddress::Module(content_hash),
             ContentAddress::Prop(_) => {
@@ -106,7 +111,12 @@ impl ContentNodeWeight {
             }
             ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
-            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
+            ContentAddress::SchemaVariant(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "SchemaVariant".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::Secret(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Secret".to_string(),

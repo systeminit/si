@@ -29,7 +29,7 @@ use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContent
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
-    content_node_weight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    content_node_weight, traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -406,6 +406,9 @@ impl AttributePrototype {
                         .into());
                     }
                 },
+                NodeWeight::InputSocket(input_socket) => {
+                    (input_socket.id(), EdgeWeightKindDiscriminants::Socket)
+                }
                 other => {
                     return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
                         other.id(),
@@ -559,6 +562,14 @@ impl AttributePrototype {
                     .map_err(Box::new)?,
                 node_weight_id.into(),
             ),
+            NodeWeight::InputSocket(_) => {
+                AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
+                    SchemaVariant::find_for_input_socket_id(ctx, node_weight_id.into())
+                        .await
+                        .map_err(Box::new)?,
+                    node_weight_id.into(),
+                )
+            }
             NodeWeight::Content(inner) => match inner.content_address().into() {
                 ContentAddressDiscriminants::InputSocket => {
                     AttributePrototypeEventualParent::SchemaVariantFromInputSocket(
@@ -649,6 +660,12 @@ impl AttributePrototype {
                         .into());
                     }
                 },
+                NodeWeight::InputSocket(input_socket) => {
+                    sources.push(AttributePrototypeSource::InputSocket(
+                        input_socket.id().into(),
+                        key,
+                    ));
+                }
                 other => {
                     return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
                         other.id(),

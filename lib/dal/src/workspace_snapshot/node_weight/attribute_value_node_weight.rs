@@ -14,7 +14,7 @@ use crate::{
         node_weight::traits::CorrectTransforms,
         NodeId,
     },
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphV2,
+    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
 };
 
 use super::{category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeWeight};
@@ -142,7 +142,7 @@ impl From<DeprecatedAttributeValueNodeWeightV1> for AttributeValueNodeWeight {
 impl CorrectTransforms for AttributeValueNodeWeight {
     fn correct_transforms(
         &self,
-        graph: &WorkspaceSnapshotGraphV2,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         mut updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

@@ -480,7 +480,7 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
         .expect("no schema found");
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
         .await
-        .expect("could not ");
+        .expect("could not create unlocked variant copy");
 
     let func_id = Func::find_id_by_name(ctx, "test:generateStringCode")
         .await

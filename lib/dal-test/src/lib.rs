@@ -810,6 +810,7 @@ async fn migrate_local_builtins(
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
 
+    info!("setup builtin workspace");
     Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");

@@ -1,27 +1,26 @@
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::prelude::*;
-    use petgraph::Outgoing;
+    use petgraph::{prelude::*, Outgoing};
     use pretty_assertions_sorted::assert_eq;
-    use si_events::ulid::Ulid;
-    use si_events::ContentHash;
+    use si_events::{ulid::Ulid, ContentHash};
     use std::collections::HashMap;
 
-    use crate::workspace_snapshot::content_address::ContentAddress;
-    use crate::workspace_snapshot::edge_weight::{
-        EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    use crate::{
+        workspace_snapshot::{
+            content_address::ContentAddress,
+            edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+            graph::detect_updates::Update,
+            node_weight::NodeWeight,
+            NodeInformation,
+        },
+        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphV3,
     };
-    use crate::workspace_snapshot::graph::detect_updates::Update;
-    use crate::workspace_snapshot::node_weight::NodeWeight;
-    use crate::workspace_snapshot::NodeInformation;
-    use crate::NodeWeightDiscriminants;
-    use crate::{PropKind, WorkspaceSnapshotGraphV2};
 
     #[test]
     fn detect_updates_simple_no_conflicts_with_purely_new_content_in_base() {
         let mut base_graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = base_graph
@@ -113,7 +112,7 @@ mod test {
     #[test]
     fn detect_updates_with_purely_new_content_in_new_graph() {
         let mut base_graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         let component_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = base_graph
@@ -172,7 +171,7 @@ mod test {
     #[test]
     fn detect_updates_ordered_container_insert_and_remove() {
         let mut base_graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
         let active_graph = &mut base_graph;
 
         // Create base prop node
@@ -331,7 +330,7 @@ mod test {
     #[test]
     fn detect_updates_add_unordered_child_to_ordered_container() {
         let mut base_graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
         let active_graph = &mut base_graph;
 
         // Create base prop node
@@ -474,7 +473,7 @@ mod test {
         let edges = [(None, "a"), (None, "b"), (Some("a"), "c"), (Some("c"), "b")];
 
         let mut base_graph =
-            WorkspaceSnapshotGraphV2::new().expect("Unable to create WorkspaceSnapshotGraph");
+            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
 
         // Add all nodes from the slice and store their references in a hash map.
         let mut node_id_map = HashMap::new();
@@ -635,7 +634,7 @@ mod test {
     #[test]
     fn detect_updates_remove_edge_simple() {
         let mut to_rebase_graph =
-            WorkspaceSnapshotGraphV2::new().expect("unable to make to_rebase_graph");
+            WorkspaceSnapshotGraphV3::new().expect("unable to make to_rebase_graph");
 
         let prototype_node_id = to_rebase_graph.generate_ulid().expect("gen ulid");
         let prototype_node = NodeWeight::new_content(
