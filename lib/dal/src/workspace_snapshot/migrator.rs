@@ -118,7 +118,7 @@ impl SnapshotGraphMigrator {
                         Err(err) => {
                             let err_string = err.to_string();
                             if err_string.contains("missing from store for node") {
-                                error!(error = ?err, "Migration error: {err_string}, marking change set as failed");
+                                error!(error = ?err, "Migration error: {err_string}, marking change set {} for workspace {:?} as failed", change_set.id, change_set.workspace_id);
                                 change_set
                                     .update_status(ctx, ChangeSetStatus::Failed)
                                     .await?;
