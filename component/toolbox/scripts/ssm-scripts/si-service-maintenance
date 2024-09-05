@@ -22,17 +22,17 @@ mainSteps:
     - |
         flip_or_stick() {
           requested_state=$1
-          response_code=$(curl -s -o /dev/null -w "%{http_code}" localhost:5156/api/)
-          [[ "$response_code" == "200" ]] && [[ "$requested_state" == "y" ]] && killall -s USR2 {{ Service }}
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" localhost:5156/)
+          [[ "$response_code" == "404" ]] && [[ "$requested_state" == "y" ]] && killall -s USR2 {{ Service }}
           [[ "$response_code" == "503" ]] && [[ "$requested_state" == "n" ]] && killall -s USR2 {{ Service }}
         }
 
         check_state() {
           requested_state=$1
-          response_code=$(curl -s -o /dev/null -w "%{http_code}" localhost:5156/api/)
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" localhost:5156/)
           if [[ "$response_code" == "503" ]] && [[ "$requested_state" == "y" ]]; then
             echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"service\": \"{{ Service }}\", \"mode\": \"maintenance\" }"
-          elif [[ "$response_code" == "200" ]] && [[ "$requested_state" == "n" ]]; then
+          elif [[ "$response_code" == "404" ]] && [[ "$requested_state" == "n" ]]; then
             echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"success\", \"service\": \"{{ Service }}\", \"mode\": \"running\" }"
           else
             echo "{\"instance_id\": \"{{ InstanceId }}\", \"status\": \"failure\", \"service\": \"{{ Service }}\", \"mode\": \"Status code from API not valid for requested action. Response Code: $response_code, Maintenance Mode Requested: {{ Action }}\" }"

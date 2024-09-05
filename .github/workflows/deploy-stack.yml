@@ -46,29 +46,15 @@ jobs:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
       version: ${{ inputs.version }}
-    needs:
-      - invoke-and-check-cdn
     secrets: inherit
 
   set-maintenance-mode:
+    needs:
+      - invoke-and-check-cdn
+      - set-service-versions
     uses: ./.github/workflows/set-maintenance-mode.yml
     with:
       environment: ${{ inputs.environment }}
-    needs:
-      - invoke-and-check-cdn
-    secrets: inherit
-
-  down: # the backend services
-    needs:
-      - set-maintenance-mode
-    strategy:
-     fail-fast: false
-     matrix:
-      service: [ "pinga", "rebaser", "sdf" ]
-    uses: ./.github/workflows/down-service.yml
-    with:
-      environment: ${{ inputs.environment }}
-      service: ${{ matrix.service }}
     secrets: inherit
 
   upgrade-web:
@@ -82,33 +68,20 @@ jobs:
   upgrade: # the backend services
     needs:
       - set-service-versions
-      - down
+      - set-maintenance-mode
     strategy:
      fail-fast: false
      matrix:
-       service: [ "pinga", "rebaser", "sdf", "veritech" ]
+       service: [ "pinga", "rebaser", "veritech" ]
     uses: ./.github/workflows/upgrade-service.yml
     with:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
     secrets: inherit
 
-  up: # the backend services
+  upgrade-and-migrate-sdf:
     needs:
       - upgrade
-    strategy:
-     fail-fast: false
-     matrix:
-      service: [ "pinga", "rebaser", "veritech" ]
-    uses: ./.github/workflows/up-service.yml
-    with:
-      environment: ${{ inputs.environment }}
-      service: ${{ matrix.service }}
-    secrets: inherit
-
-  migrate-and-up-sdf:
-    needs:
-      - up
     uses: ./.github/workflows/migrate-sdf.yml
     with:
       environment: ${{ inputs.environment }}
@@ -122,8 +95,7 @@ jobs:
       cancel-in-progress: true
     needs:
       - upgrade-web
-      - migrate-and-up-sdf
-    if: always()
+      - upgrade-and-migrate-sdf
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}

@@ -24,7 +24,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Migrate and up service
+      - name: Upgrade service
+        run: |
+          component/toolbox/awsi.sh upgrade -p pull-from-env -r us-east-1 -a y -s sdf -e ${{ inputs.environment }}
+
+      - name: Migrate service
         run: |
           component/toolbox/awsi.sh migrate -p pull-from-env -r us-east-1 -a y -s sdf
+
+      - name: Up service
+        run: |
           component/toolbox/awsi.sh service-state -p pull-from-env -r us-east-1 -a y -s sdf -S up
