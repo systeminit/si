@@ -23,7 +23,7 @@ await_file_results() {
   results_directory=$1
   required_file_count=$2
 
-  timeout=60             # Timeout in seconds
+  timeout=180            # Timeout in seconds
   start_time=$(date +%s) # Record the start time
 
   while true; do
