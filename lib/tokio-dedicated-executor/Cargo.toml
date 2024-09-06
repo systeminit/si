@@ -13,6 +13,7 @@ futures = { workspace = true }
 parking_lot = { workspace = true }
 remain = { workspace = true }
 thiserror = { workspace = true }
+thread-priority = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 tracing = { workspace = true }

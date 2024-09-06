@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-runtime",
     deps = [
+        "//lib/tokio-dedicated-executor:tokio-dedicated-executor",
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
