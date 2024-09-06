@@ -6357,6 +6357,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-dedicated-executor"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "parking_lot",
+ "remain",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "tokio-io-timeout"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

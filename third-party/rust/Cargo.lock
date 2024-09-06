@@ -5679,6 +5679,7 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "ouroboros 0.18.4",
+ "parking_lot",
  "paste",
  "pathdiff",
  "petgraph",

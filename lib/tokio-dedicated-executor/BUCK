@@ -1,0 +1,18 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+)
+
+rust_library(
+    name = "tokio-dedicated-executor",
+    deps = [
+        "//third-party/rust:futures",
+        "//third-party/rust:parking_lot",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
