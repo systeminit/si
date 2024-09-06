@@ -192,8 +192,8 @@ fi
 cat << EOF
   ],
   "machine-config": {
-    "vcpu_count": 4,
-    "mem_size_mib": 512
+    "vcpu_count": 2,
+    "mem_size_mib": 256
   },
   "network-interfaces": [{
     "iface_id": "1",
