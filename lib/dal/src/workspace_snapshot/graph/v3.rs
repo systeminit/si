@@ -25,6 +25,7 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
+pub mod schema;
 mod tests;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -1435,8 +1436,6 @@ impl WorkspaceSnapshotGraphV3 {
         Ok(())
     }
 
-    /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
-    /// and a provided graph as the "onto" graph.
     pub fn perform_updates(&mut self, updates: &[Update]) -> WorkspaceSnapshotGraphResult<()> {
         for update in updates {
             match update {

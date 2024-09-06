@@ -65,7 +65,7 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    TenancyError, Workspace, WorkspaceError,
+    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
 };
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
@@ -1620,5 +1620,15 @@ impl WorkspaceSnapshot {
         }
 
         Ok(None)
+    }
+
+    pub async fn schema_id_for_schema_variant_id(
+        &self,
+        schema_variant_id: SchemaVariantId,
+    ) -> WorkspaceSnapshotResult<SchemaId> {
+        self.working_copy()
+            .await
+            .schema_id_for_schema_variant_id(schema_variant_id)
+            .map_err(Into::into)
     }
 }
