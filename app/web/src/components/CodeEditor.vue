@@ -59,6 +59,8 @@ import { WebsocketProvider } from "y-websocket";
 import { yCollab, yUndoManagerKeymap } from "yjs-codemirror-plugin";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { API_WS_URL } from "@/store/apis";
+import { usePresenceStore } from "@/store/presence.store";
 import {
   createTypescriptSource,
   GetTooltipFromPos,
@@ -300,6 +302,16 @@ const codeTooltip = {
   },
 };
 
+const presenceStore = usePresenceStore();
+function getUserInfo(userId: { id: string }) {
+  const user = presenceStore.usersById[userId.id];
+  return {
+    name: user?.name,
+    colorLight: user?.color ? `${user.color}30` : undefined,
+    color: user?.color || undefined,
+  };
+}
+
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
@@ -390,11 +402,22 @@ const mountEditor = async () => {
     // we don't need to fire anything on blur because the updates are debounced as users type
   };
 
+  const id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
+  wsProvider?.destroy();
+  wsProvider = new WebsocketProvider(
+    `${API_WS_URL}/crdt?token=Bearer+${authStore.selectedWorkspaceToken}&id=${id}`,
+    id,
+    ydoc,
+  );
+  wsProvider.awareness.setLocalStateField("user", {
+    id: authStore.user?.pk,
+  });
+
   extensions.push(keymap.of([...yUndoManagerKeymap]));
 
   // const undoManager = new Y.UndoManager(yText);
   extensions.push(
-    yCompartment.of(yCollab(yText, null)), // , { undoManager })),
+    yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })),
   );
 
   yText.delete(0, yText.length);
