@@ -75,16 +75,11 @@ impl<'a, 'b> Detector<'a, 'b> {
                     // `onto`.
                     base_graph_node_indexes.insert(self.base_graph.root());
                 } else {
-                    // Only retain node indexes... or indices... if they are part of the current
-                    // graph. There may still be garbage from previous updates to the graph
-                    // laying around.
-                    let mut potential_base_graph_node_indexes = self
+                    let new_base_graph_node_indexes = self
                         .base_graph
                         .get_node_index_by_lineage(updated_graph_node_weight.lineage_id());
-                    potential_base_graph_node_indexes
-                        .retain(|node_index| self.base_graph.has_path_to_root(*node_index));
 
-                    base_graph_node_indexes.extend(potential_base_graph_node_indexes);
+                    base_graph_node_indexes.extend(new_base_graph_node_indexes);
                 }
 
                 base_graph_node_indexes
@@ -336,6 +331,10 @@ impl<'a, 'b> Detector<'a, 'b> {
     /// Performs a post order walk of the updated graph, finding the updates
     /// made to it when compared to the base graph, using the Merkle tree hash
     /// to detect changes and ignore unchanged branches.
+    ///
+    /// This assumes that all graphs involved to not have any "garbage" laying around. If in doubt,
+    /// run [`cleanup`][WorkspaceSnapshotGraph::cleanup] on all involved graphs, before handing
+    /// them over to the [`Detector`].
     pub fn detect_updates(&self) -> Vec<Update> {
         let mut updates = vec![];
         let mut difference_cache = HashMap::new();
