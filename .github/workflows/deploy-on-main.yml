@@ -12,3 +12,13 @@ jobs:
       environment: tools
       version: stable
     secrets: inherit
+    
+  on-failure:
+    runs-on: ubuntu-latest
+    needs: deploy-tools-prod
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - run: |
+          curl -X POST \
+            -H 'Content-type: application/json' \
+            --data "{\"text\": \":si: Deployment to tools failed: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:ship: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
