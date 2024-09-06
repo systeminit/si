@@ -3,20 +3,17 @@ import assert from "node:assert";
 
 export async function sleep(seconds: number) {
   const natural_seconds = Math.max(0, Math.floor(seconds));
-  console.log(`Sleeping for ${natural_seconds} seconds`);
   return new Promise((resolve) => setTimeout(resolve, natural_seconds * 1000));
 }
 
 // Run fn n times, with increasing intervals between tries
-export async function retryWithBackoff(fn: () => Promise<void>, retries = 6, backoffFactor = 3, initialDelay = 2) {
+export async function retryWithBackoff(fn: () => Promise<void>, retries = 6, backoffFactor = 2, initialDelay = 2) {
   let latest_err;
   let try_count = 0;
   let delay = initialDelay;
 
-  console.log("Running retry_with_backoff block");
   do {
     try_count++;
-    console.log(`try number ${try_count}`);
     latest_err = undefined;
 
     try {
@@ -56,7 +53,6 @@ export async function runWithTemporaryChangeset(sdf: SdfApiClient, fn: (sdf: Sdf
   try {
     await fn(sdf, changeSetId);
   } catch (e) {
-    console.log("Function failed, deleting changeset");
     err = e;
   }
 

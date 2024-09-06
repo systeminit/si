@@ -156,7 +156,6 @@ export class SdfApiClient {
   }) {
     const url = `${this.baseUrl}${path}`;
     const method = options?.method || "GET";
-    console.log(`calling ${method} ${url}`);
 
     const headers = {
       "Content-Type": "application/json",
