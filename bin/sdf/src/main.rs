@@ -129,8 +129,10 @@ async fn async_main() -> Result<()> {
         LayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone()).await?;
     layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
+    // TODO(nick): allow the ability to configure the delivery mechanism.
     let billing_events_server_future =
-        billing_events_server::new(nats_conn.clone(), billing_events_server_token.clone()).await?;
+        billing_events_server::new(nats_conn.clone(), None, billing_events_server_token.clone())
+            .await?;
     billing_events_server_tracker.spawn(billing_events_server_future);
 
     let feature_flags_service = FeatureFlagService::new(config.boot_feature_flags().clone());

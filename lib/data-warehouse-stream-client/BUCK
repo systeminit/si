@@ -1,17 +1,15 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "billing-events-server",
+    name = "data-warehouse-stream-client",
     deps = [
-        "//lib/billing-events:billing-events",
-        "//lib/data-warehouse-stream-client:data-warehouse-stream-client",
-        "//lib/naxum:naxum",
-        "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:aws-config",
+        "//third-party/rust:aws-sdk-firehose",
+        "//third-party/rust:base64",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
-        "//third-party/rust:tokio-util",
     ],
     srcs = glob([
         "src/**/*.rs",

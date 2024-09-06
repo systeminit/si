@@ -1,4 +1,5 @@
 use billing_events::BillingWorkspaceChangeEvent;
+use data_warehouse_stream_client::DataWarehouseStreamClientError;
 use naxum::{
     extract::State,
     response::{IntoResponse, Response},
@@ -9,10 +10,14 @@ use thiserror::Error;
 
 use crate::AppState;
 
-// NOTE(nick,jkeiser): we will likely have fallible contents soon, so let's keep this for now.
 #[remain::sorted]
 #[derive(Debug, Error)]
-pub enum HandlerError {}
+pub enum HandlerError {
+    #[error("data warehouse stream client error: {0}")]
+    DataWarehouseStreamClient(#[from] DataWarehouseStreamClientError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+}
 
 type HandlerResult<T> = Result<T, HandlerError>;
 
@@ -24,9 +29,26 @@ impl IntoResponse for HandlerError {
 }
 
 pub async fn process_request(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Json(request): Json<BillingWorkspaceChangeEvent>,
 ) -> HandlerResult<()> {
-    debug!(?request, "receieved billing workspace change event");
+    info!(?request, "receieved billing workspace change event");
+
+    let serialized_request = serde_json::to_vec(&request)?;
+    state
+        .data_warehouse_stream_client
+        .publish(serialized_request)
+        .await?;
+
+    Ok(())
+}
+
+pub async fn process_request_noop(
+    Json(request): Json<BillingWorkspaceChangeEvent>,
+) -> HandlerResult<()> {
+    info!(
+        ?request,
+        "receieved billing workspace change event (no-op mode)"
+    );
     Ok(())
 }

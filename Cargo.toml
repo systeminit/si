@@ -21,6 +21,7 @@ members = [
     "lib/cyclone-server",
     "lib/dal",
     "lib/dal-test",
+    "lib/data-warehouse-stream-client",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-multiplexer",
@@ -74,6 +75,8 @@ publish = false
 async-nats = { version = "0.35.1", features = ["service"] }
 async-recursion = "1.0.5"
 async-trait = "0.1.79"
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+aws-sdk-firehose = "1.46.0"
 axum = { version = "0.6.20", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
 base64 = "0.22.0"
 blake3 = "1.5.1"
