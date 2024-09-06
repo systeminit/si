@@ -42,13 +42,16 @@ export const ROUTES = {
     path: () => `/diagram/delete_components`,
     method: "POST"
   },
-  create_component: { path: () => "/diagram/create_component", method: "POST" },
+  create_component: { 
+    path: () => "/diagram/create_component", 
+    method: "POST"
+  },
   create_connection: {
     path: () => "/diagram/create_connection",
     method: "POST"
   },
 
-  // Property Editor
+  // Property Editor ------------------------------------------------------------
   get_property_values: {
     path: (vars: ROUTE_VARS) => `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
     method: "GET"
@@ -56,7 +59,13 @@ export const ROUTES = {
   update_property_value: {
     path: () => `/component/update_property_editor_value`,
     method: "POST"
-  }
+  },
+
+  // Variant Management -----------------------------------------------------------
+  create_variant: {
+    path: (vars: ROUTE_VARS) => `/variant/create_variant`,
+    method: "POST"
+  },
 
 
   // Add more groups below ------------------------------------------------------
