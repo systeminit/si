@@ -16,6 +16,7 @@ use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
 use si_layer_cache::event::LayeredEventMetadata;
 use si_layer_cache::LayerDbError;
+use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -74,6 +75,8 @@ pub struct ServicesContext {
     layer_db: DalLayerDb,
     /// The service that stores feature flags
     feature_flag_service: FeatureFlagService,
+    /// Dedicated executor for running CPU-intensive tasks
+    compute_executor: DedicatedExecutor,
 }
 
 impl ServicesContext {
@@ -91,6 +94,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         layer_db: DalLayerDb,
         feature_flag_service: FeatureFlagService,
+        compute_executor: DedicatedExecutor,
     ) -> Self {
         Self {
             pg_pool,
@@ -104,6 +108,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             layer_db,
             feature_flag_service,
+            compute_executor,
         }
     }
 
@@ -163,6 +168,11 @@ impl ServicesContext {
     /// Get a reference to the feature flags service
     pub fn feature_flags_service(&self) -> &FeatureFlagService {
         &self.feature_flag_service
+    }
+
+    /// Gets a reference to the dedicated compute executor
+    pub fn compute_executor(&self) -> &DedicatedExecutor {
+        &self.compute_executor
     }
 
     /// Builds and returns a new [`Connections`].

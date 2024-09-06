@@ -136,6 +136,10 @@ pub async fn setup_nats_client(subject_prefix: Option<String>) -> NatsClient {
         .expect("failed to connect to nats")
 }
 
+pub fn setup_compute_executor() -> si_runtime::DedicatedExecutor {
+    si_runtime::compute_executor("test").expect("failed to create executor")
+}
+
 pub fn disk_cache_path(tempdir: &TempDir, name: &str) -> PathBuf {
     tempdir.path().join(format!("{name}-cacache"))
 }
