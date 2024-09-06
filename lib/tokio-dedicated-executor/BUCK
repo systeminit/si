@@ -10,6 +10,7 @@ rust_library(
         "//third-party/rust:parking_lot",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
+        "//third-party/rust:thread-priority",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",

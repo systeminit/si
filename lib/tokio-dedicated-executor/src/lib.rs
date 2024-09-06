@@ -40,6 +40,7 @@ use futures::{
 };
 use parking_lot::RwLock;
 use thiserror::Error;
+use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{runtime, sync::oneshot, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
@@ -83,9 +84,10 @@ impl DedicatedExecutor {
     pub fn new(
         name: &str,
         mut tokio_rt_builder: runtime::Builder,
+        thread_priority: impl Into<Option<u8>>,
         shutdown_timeout: Duration,
     ) -> Result<Self, DedicatedExecutorInitializeError> {
-        let manaing_tokio_rt_thread_name = format!("{name} DedicatedExecutorManager");
+        let manaing_tokio_rt_thread_name = format!("{name}-dedicated-executor-manager");
 
         let shutdown_token = CancellationToken::new();
         let (shutdown_completed_tx, shutdown_completed_rx) = oneshot::channel();
@@ -95,16 +97,34 @@ impl DedicatedExecutor {
 
         let executor_shutdown_token = shutdown_token.clone();
 
+        let maybe_thread_priority = match thread_priority.into() {
+            Some(value) => Some(ThreadPriority::try_from(value).map_err(|_| {
+                DedicatedExecutorInitializeError::new(ThreadPriorityParseError(value))
+            })?),
+            None => None,
+        };
+
         let managing_tokio_rt_thread = thread::Builder::new()
             .name(manaing_tokio_rt_thread_name)
             .spawn(move || {
                 // Register parent Tokio runtime for current thread
                 parent::register_parent_runtime(parent_tokio_rt_handle.clone());
 
+                #[allow(clippy::blocks_in_conditions)]
                 let tokio_rt = match tokio_rt_builder
                     // Register parent Tokio runtime on new runtime threads
                     .on_thread_start(move || {
-                        parent::register_parent_runtime(parent_tokio_rt_handle.clone())
+                        if let Some(thread_priority) = maybe_thread_priority {
+                            if let Err(err) = set_current_thread_priority(thread_priority) {
+                                warn!(
+                                    error = ?err,
+                                    ?thread_priority,
+                                    "failed to set thread priority",
+                                );
+                            }
+                        }
+
+                        parent::register_parent_runtime(parent_tokio_rt_handle.clone());
                     })
                     .build()
                 {
@@ -274,7 +294,8 @@ pub struct DedicatedExecutorInitializeError(
 );
 
 impl DedicatedExecutorInitializeError {
-    fn new<E>(err: E) -> Self
+    /// Creates a new `DedicatedExecutorInitializeError`.
+    pub fn new<E>(err: E) -> Self
     where
         E: std::error::Error + 'static + Sync + Send,
     {
@@ -286,6 +307,11 @@ impl DedicatedExecutorInitializeError {
 #[derive(Debug, Error)]
 #[error("error while awaiting shutdown; sender already closed")]
 pub struct DedicatedExecutorJoinError;
+
+/// Error when parsing a thread priority value
+#[derive(Debug, Error)]
+#[error("failed parse thread priority value: {0}")]
+struct ThreadPriorityParseError(u8);
 
 /// Interior state for [`DedicatedExecutor`].
 struct State {
@@ -354,6 +380,7 @@ mod tests {
         DedicatedExecutor::new(
             "Test DedicatedExecutor",
             tokio_rt_builder,
+            None,
             RUNTIME_SHUTDOWN_TIMEOUT,
         )
         .expect("failed to initialize runtime")
@@ -684,6 +711,7 @@ mod tests {
         let executor = DedicatedExecutor::new(
             "Test DedicatedExecutor",
             tokio_rt_builder,
+            None,
             RUNTIME_SHUTDOWN_TIMEOUT,
         )
         .expect("failed to initialize runtime");
@@ -698,6 +726,7 @@ mod tests {
         let executor = DedicatedExecutor::new(
             "Test DedicatedExecutor",
             tokio_rt_builder,
+            None,
             RUNTIME_SHUTDOWN_TIMEOUT,
         )
         .expect("failed to initialize runtime");
