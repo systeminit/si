@@ -1,15 +1,14 @@
-// main.ts
 import assert from "node:assert";
 import { SdfApiClient } from "./sdf_api_client.ts";
 import { createDefaultTestReportEntry, printTestReport, TestReportEntry } from "./test_execution_lib.ts";
-import { checkEnvironmentVariables, parseArgs } from "./binary_exeuction_lib.ts"; 
+import { checkEnvironmentVariables, parseArgs } from "./binary_exeuction_lib.ts";
 
 if (import.meta.main) {
 
   // All environment variable and runtime parsing happens in this block
   const { workspaceId, userId, password, testsToRun } = parseArgs(Deno.args);
   checkEnvironmentVariables(Deno.env.toObject());
-  
+
   // Init the SDF Module
   const sdfApiClient = await SdfApiClient.init(workspaceId, userId, password);
 
