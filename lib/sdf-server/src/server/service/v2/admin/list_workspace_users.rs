@@ -1,34 +1,32 @@
-use std::collections::HashMap;
-
 use axum::{extract::Path, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use dal::{User, WorkspacePk};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
-use super::{AdminAPIResult, AdminChangeSet};
+use super::{AdminAPIResult, AdminUser};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ListChangesetsResponse {
-    change_sets: HashMap<ChangeSetId, AdminChangeSet>,
+pub struct ListUsersForWorkspaceResponse {
+    users: Vec<AdminUser>,
 }
 
-#[instrument(name = "admin.list_change_sets", skip_all)]
-pub async fn list_change_sets(
+#[instrument(name = "admin.list_users_for_workspace", skip_all)]
+pub async fn list_workspace_users(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(workspace_pk): Path<WorkspacePk>,
 ) -> AdminAPIResult<impl IntoResponse> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let change_sets = ChangeSet::list_all_for_workspace(&ctx, workspace_pk)
+    let users = User::list_members_for_workspace(&ctx, workspace_pk.to_string())
         .await?
         .into_iter()
-        .map(|change_set| (change_set.id, change_set.into()))
+        .map(Into::into)
         .collect();
 
-    Ok(Json(ListChangesetsResponse { change_sets }))
+    Ok(Json(ListUsersForWorkspaceResponse { users }))
 }

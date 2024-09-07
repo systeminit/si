@@ -491,6 +491,29 @@ impl WorkspaceSnapshot {
         Ok(new_address)
     }
 
+    /// Write the read only graph to the layer db, unmodified. Useful for
+    /// persisting a snapshot that has been deserialized via `Self::from_bytes`
+    pub async fn write_readonly_graph(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotAddress> {
+        let events_tenancy = ctx.events_tenancy();
+        let events_actor = ctx.events_actor();
+
+        let (address, _) = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .write(
+                self.read_only_graph.clone(),
+                None,
+                events_tenancy,
+                events_actor,
+            )
+            .await?;
+
+        Ok(address)
+    }
+
     pub async fn id(&self) -> WorkspaceSnapshotAddress {
         *self.address.read().await
     }

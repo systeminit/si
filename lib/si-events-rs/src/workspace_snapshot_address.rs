@@ -7,6 +7,10 @@ use serde::{
 use std::{fmt, str::FromStr};
 use thiserror::Error;
 
+#[derive(Debug, Error)]
+#[error("failed to parse hash hex string")]
+pub struct WorkspaceSnapshotAddressParseError(#[from] blake3::HexError);
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct WorkspaceSnapshotAddress(blake3::Hash);
 
@@ -20,10 +24,6 @@ impl WorkspaceSnapshotAddress {
         Self(blake3::Hash::from_bytes([0; 32]))
     }
 }
-
-#[derive(Debug, Error)]
-#[error("failed to parse hash hex string")]
-pub struct WorkspaceSnapshotAddressParseError(#[from] blake3::HexError);
 
 impl FromStr for WorkspaceSnapshotAddress {
     type Err = WorkspaceSnapshotAddressParseError;

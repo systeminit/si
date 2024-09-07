@@ -169,4 +169,18 @@ where
             .get_bytes_from_durable_storage(key.to_string().into())
             .await
     }
+
+    pub async fn write_bytes_to_durable_storage(
+        &self,
+        key: &WorkspaceSnapshotAddress,
+        bytes: &[u8],
+    ) -> LayerDbResult<()> {
+        let key = key.to_string();
+        self.cache
+            .pg()
+            .insert(&key, "workspace_snapshot", bytes)
+            .await?;
+
+        Ok(())
+    }
 }
