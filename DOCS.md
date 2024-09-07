@@ -273,7 +273,7 @@ To use LocalStack with "AWS Credential", do the following:
 
 1. Create a `Component` using the `SchemaVariant`.
 1. Create a `Secret` and use it in the property editor.
-1. Populate `http://localhost:4566` in the "Endpoint" field for the `Secret`.
+1. Populate `http://localhost:4566` (or `http://0.0.0.0:4566`, depending on your system) in the "Endpoint" field for the `Secret`.
 
 Now, you can use LocalStack in your development setup.
 
