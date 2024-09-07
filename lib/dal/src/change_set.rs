@@ -2,7 +2,9 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use billing_events::{BillingEventsError, BillingWorkspaceChangeEvent};
+use billing_events::{
+    BillingEventsError, BillingWorkspaceChangeEvent, BillingWorkspaceChangeEventLocation,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -300,6 +302,9 @@ impl ChangeSet {
                 change_set_id: self.id.into(),
                 merge_requested_by_user_id: self.merge_requested_by_user_id.map(Into::into),
                 change_description: change_description.into(),
+                // TODO(nick): we need to ensure that this is correct. This will likely come from
+                // sdf and/or the billing events server if it runs in a separate binary.
+                location: BillingWorkspaceChangeEventLocation::Local,
             };
             modify_event(&mut event);
             // Ensure queue is created

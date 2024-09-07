@@ -26,6 +26,12 @@ pub enum BillingEventsError {
 
 pub type BillingEventsResult<T> = Result<T, BillingEventsError>;
 
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
+pub enum BillingWorkspaceChangeEventLocation {
+    Local,
+    Hosted,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BillingWorkspaceChangeEvent {
     /// The workspace of this change
@@ -47,6 +53,9 @@ pub struct BillingWorkspaceChangeEvent {
     pub change_set_id: ChangeSetId,
     /// The user who requested the update (if any)
     pub merge_requested_by_user_id: Option<UserPk>,
+
+    /// The location of the billing event
+    pub location: BillingWorkspaceChangeEventLocation,
 }
 
 #[derive(Debug, Clone)]
