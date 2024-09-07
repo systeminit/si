@@ -105,8 +105,8 @@
                   >
                     <th scope="col">Email</th>
                     <th scope="col">Role</th>
-                    <!-- <th scope="col">Invite Accepted?</th> -->
-                    <th scope="col" />
+                    <th scope="col">Remove User</th>
+                    <th scope="col">Change Workspace Role</th>
                   </tr>
                 </thead>
                 <tbody
@@ -136,6 +136,24 @@
                       >
                         <Icon name="trash" />
                       </div>
+                    </td>
+                    <td class="normal-case">
+                      <ErrorMessage :requestStatus="changeMembershipReq" />
+                      <VButton
+                        v-if="memUser.role === 'OWNER'"
+                        :disabled="hasOnlyOneOwner"
+                        label="Make Editor"
+                        tone="action"
+                        variant="solid"
+                        @click="changeMembership(memUser.userId, 'EDITOR')"
+                      />
+                      <VButton
+                        v-else
+                        label="Make Owner"
+                        tone="action"
+                        variant="solid"
+                        @click="changeMembership(memUser.userId, 'OWNER')"
+                      />
                     </td>
                   </tr>
                 </tbody>
@@ -270,6 +288,13 @@ const inviteUserReqStatus = workspacesStore.getRequestStatus(
 const deleteWorkspaceReqStatus =
   workspacesStore.getRequestStatus("DELETE_WORKSPACE");
 
+const hasOnlyOneOwner = computed(() => {
+  const ownerCount = members.value.filter(
+    (member) => member.role === "OWNER",
+  ).length;
+  return ownerCount === 1;
+});
+
 const createMode = computed(() => props.workspaceId === "new");
 const isWorkspaceOwner = computed(
   () =>
@@ -387,6 +412,15 @@ const deleteUserHandler = async (email: string) => {
       window.location.href = ` ${draftWorkspace.instanceUrl}/refresh-auth?workspaceId=${props.workspaceId}`;
     }
   }
+};
+
+const changeMembershipReq =
+  workspacesStore.getRequestStatus("CHANGE_MEMBERSHIP");
+const changeMembership = async (userId: string, role: string) => {
+  if (userId === "" || role === "") return;
+  await workspacesStore.CHANGE_MEMBERSHIP(props.workspaceId, userId, role);
+
+  await workspacesStore.LOAD_WORKSPACE_MEMBERS(props.workspaceId);
 };
 
 const inviteButtonHandler = async () => {
