@@ -122,7 +122,7 @@ impl Server {
                 };
 
                 let mut cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec> =
-                    PoolNoodle::new(pool_config);
+                    PoolNoodle::new(pool_config).await;
 
                 spec.clone()
                     .setup()

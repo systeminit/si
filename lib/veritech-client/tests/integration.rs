@@ -53,6 +53,7 @@ async fn veritech_server_for_uds_cyclone(
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to setup lang_js_cmd_path")
             .all_endpoints()
+            .pool_size(4_u32)
             .build()
             .expect("failed to build cyclone spec"),
     );
@@ -73,8 +74,6 @@ async fn client(subject_prefix: String) -> Client {
 }
 
 async fn run_veritech_server_for_uds_cyclone(subject_prefix: String) -> JoinHandle<()> {
-    // NOTE(nick,fletcher): thread through the cancellation token for tests. For now, we don't use
-    // it all, but it may be useful in the future.
     let shutdown_token = CancellationToken::new();
     tokio::spawn(
         veritech_server_for_uds_cyclone(subject_prefix, shutdown_token)
