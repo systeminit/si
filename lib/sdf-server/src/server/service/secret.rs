@@ -1,4 +1,4 @@
-use axum::routing::{get, patch};
+use axum::routing::{delete, get, patch};
 use axum::{response::Response, routing::post, Json, Router};
 use dal::{
     ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
@@ -11,6 +11,7 @@ use crate::server::impl_default_error_into_response;
 use crate::server::state::AppState;
 
 pub mod create_secret;
+pub mod delete_secret;
 pub mod get_public_key;
 pub mod list_secrets;
 pub mod update_secret;
@@ -18,6 +19,8 @@ pub mod update_secret;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SecretError {
+    #[error("can't delete a secret with components connected: {0}")]
+    CantDeleteSecret(SecretId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("dal secret error: {0}")]
@@ -60,4 +63,5 @@ pub fn routes() -> Router<AppState> {
         .route("/", post(create_secret::create_secret))
         .route("/", get(list_secrets::list_secrets))
         .route("/", patch(update_secret::update_secret))
+        .route("/", delete(delete_secret::delete_secret))
 }

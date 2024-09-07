@@ -56,6 +56,18 @@
         by
         {{ secret.createdInfo.actor.label }}
       </div>
+      <div class="grow flex flex-row items-center">
+        <div
+          :class="
+            clsx(
+              'italic text-xs text-neutral-400',
+              !detailedListItem && 'line-clamp-2',
+            )
+          "
+        >
+          Connected Components: {{ secret.connectedComponents.length }}
+        </div>
+      </div>
       <!-- TODO(Wendy) - eventually we will add expiry to secrets, here's the code to display it! -->
       <!-- <div
       v-if="detailedListItem"
@@ -94,6 +106,14 @@
         iconIdleTone="neutral"
         @click="emit('edit')"
       />
+      <IconButton
+        icon="trash"
+        tooltip="Delete"
+        iconTone="destructive"
+        :disabled="secret.connectedComponents.length > 0"
+        iconIdleTone="neutral"
+        @click="deleteSecret"
+      />
     </div>
   </div>
 </template>
@@ -102,13 +122,21 @@
 import { Timestamp } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import clsx from "clsx";
-import { Secret } from "../store/secrets.store";
+import { Secret, useSecretsStore } from "../store/secrets.store";
 import IconButton from "./IconButton.vue";
 
-defineProps({
+const props = defineProps({
   secret: { type: Object as PropType<Secret>, required: true },
   detailedListItem: { type: Boolean },
 });
+
+const secretsStore = useSecretsStore();
+
+const deleteSecret = async () => {
+  if (!props.secret || !props.secret.id) return;
+
+  await secretsStore.DELETE_SECRET(props.secret.id);
+};
 
 const emit = defineEmits<{
   (e: "edit"): void;

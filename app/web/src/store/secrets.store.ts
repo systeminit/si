@@ -64,6 +64,7 @@ export type Secret = {
   createdInfo: ActorAndTimestamp;
   updatedInfo?: ActorAndTimestamp;
   expiration?: string;
+  connectedComponents: string[];
 };
 
 export interface SecretFormSchema {
@@ -301,6 +302,7 @@ export function useSecretsStore() {
                     actor: { kind: "user", label: userName, id: userId },
                     timestamp: Date(),
                   },
+                  connectedComponents: [],
                 });
                 this.secretIsTransitioning[id] = true;
 
@@ -402,6 +404,7 @@ export function useSecretsStore() {
                     actor: { kind: "user", label: userName, id: userId },
                     timestamp: Date(),
                   },
+                  connectedComponents: [],
                 });
                 this.secretIsTransitioning[tempId] = true;
 
@@ -433,7 +436,6 @@ export function useSecretsStore() {
               },
             });
           },
-          // This is totally unimplemented, as of 2024-01-29 -- Adam
           async DELETE_SECRET(id: SecretId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -444,32 +446,15 @@ export function useSecretsStore() {
 
             if (_.isNil(secret)) return;
 
-            return new ApiRequest({
+            return new ApiRequest<Secret>({
               method: "delete",
               url: "secret",
               params: {
                 ...visibilityParams,
                 id,
               },
-              optimistic: () => {
-                this.secretIsTransitioning[secret.id] = true;
-
-                return () => {
-                  this.secretIsTransitioning[secret.id] = false;
-                };
-              },
               onSuccess: () => {
-                const secretsOnDef =
-                  this.secretsByDefinitionId[secret.definition];
-                if (secretsOnDef === undefined) return;
-
-                this.secretsByDefinitionId[secret.definition] =
-                  secretsOnDef.filter((s) => s.id !== id);
-
-                this.secretIsTransitioning[secret.id] = false;
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
+                // WsEvents will sort this out
               },
             });
           },
@@ -506,6 +491,13 @@ export function useSecretsStore() {
             },
             {
               eventType: "SecretUpdated",
+              callback: (data) => {
+                if (data.changeSetId !== changeSetId) return;
+                this.LOAD_SECRETS();
+              },
+            },
+            {
+              eventType: "SecretDeleted",
               callback: (data) => {
                 if (data.changeSetId !== changeSetId) return;
                 this.LOAD_SECRETS();
