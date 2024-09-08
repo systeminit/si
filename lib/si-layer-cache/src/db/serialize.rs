@@ -28,7 +28,7 @@ where
 #[inline]
 #[instrument(
     name = "serialize.from_bytes",
-    level = "debug",
+    level = "trace",
     skip_all,
     fields(
         bytes.size = bytes.len(),
@@ -40,6 +40,27 @@ where
 {
     let uncompressed = miniz_oxide::inflate::decompress_to_vec(bytes)
         .map_err(|e| LayerDbError::Decompress(e.to_string()))?;
+
+    Ok(postcard::from_bytes(&uncompressed)?)
+}
+
+#[inline]
+#[instrument(
+    name = "serialize.from_bytes_async",
+    level = "trace",
+    skip_all,
+    fields(
+        bytes.size = bytes.len(),
+    )
+)]
+pub async fn from_bytes_async<T>(bytes: &[u8]) -> LayerDbResult<T>
+where
+    T: DeserializeOwned,
+{
+    let uncompressed = miniz_oxide::inflate::decompress_to_vec(bytes)
+        .map_err(|e| LayerDbError::Decompress(e.to_string()))?;
+
+    tokio::task::yield_now().await;
 
     Ok(postcard::from_bytes(&uncompressed)?)
 }

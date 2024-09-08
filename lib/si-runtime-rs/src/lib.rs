@@ -9,7 +9,7 @@ use tokio::runtime::{Builder, Runtime};
 use tokio_dedicated_executor::{DedicatedExecutor, DedicatedExecutorInitializeError};
 
 pub const DEFAULT_TOKIO_RT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
-pub const DEFAULT_TOKIO_RT_BLOCKING_POOL_SIZE: usize = 2048; // this is 4x the tokio default of 512
+pub const DEFAULT_TOKIO_RT_BLOCKING_POOL_SIZE: usize = 512;
 
 // Thread priority for compute executors (min = 0, max = 99, default = 50)
 const COMPUTE_EXECUTOR_THREAD_PRIORITY: u8 = 25;

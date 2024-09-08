@@ -164,8 +164,9 @@ where
     }
 
     pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
-        tokio::task::spawn_blocking(move || serialize::from_bytes(&bytes).map_err(Into::into))
-            .await?
+        serialize::from_bytes_async(&bytes)
+            .await
+            .map_err(Into::into)
     }
 
     pub fn memory_cache(&self) -> MemoryCache<V> {
