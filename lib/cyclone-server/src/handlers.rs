@@ -14,8 +14,7 @@ use axum::{
 };
 use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, LivenessStatus, Message, ReadinessStatus,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use hyper::StatusCode;
@@ -27,8 +26,8 @@ use super::extract::LimitRequestGuard;
 use crate::{
     execution::{self, Execution},
     result::{
-        LangServerActionRunResultSuccess, LangServerReconciliationResultSuccess,
-        LangServerResolverFunctionResultSuccess, LangServerValidationResultSuccess,
+        LangServerActionRunResultSuccess, LangServerResolverFunctionResultSuccess,
+        LangServerValidationResultSuccess,
     },
     state::{
         LangServerFunctionTimeout, LangServerPath, LangServerProcessTimeout, TelemetryLevel,
@@ -183,37 +182,6 @@ pub async fn ws_execute_action_run(
             lang_server_process_timeout.inner(),
             limit_request_guard,
             "actionRun".to_owned(),
-            request,
-            lang_server_success,
-            success,
-            request_span.into_inner(),
-        )
-    })
-}
-
-pub async fn ws_execute_reconciliation(
-    wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(telemetry_level): State<TelemetryLevel>,
-    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
-    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
-    limit_request_guard: LimitRequestGuard,
-    Extension(request_span): Extension<ParentSpan>,
-) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    let telemetry_level = telemetry_level.is_debug_or_lower().await;
-    wsu.on_upgrade(move |socket| {
-        let request: PhantomData<ReconciliationRequest> = PhantomData;
-        let lang_server_success: PhantomData<LangServerReconciliationResultSuccess> = PhantomData;
-        let success: PhantomData<ReconciliationResultSuccess> = PhantomData;
-        handle_socket(
-            socket,
-            lang_server_path,
-            telemetry_level,
-            lang_server_function_timeout.inner(),
-            lang_server_process_timeout.inner(),
-            limit_request_guard,
-            "reconciliation".to_owned(),
             request,
             lang_server_success,
             success,

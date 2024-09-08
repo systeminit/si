@@ -49,7 +49,6 @@ use super::backend::{
     integer::FuncBackendInteger,
     js_action::FuncBackendJsAction,
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_reconciliation::FuncBackendJsReconciliation,
     js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
     json::FuncBackendJson,
     map::FuncBackendMap,
@@ -1492,15 +1491,6 @@ impl FuncRunnerExecutionTask {
         let execution_result = match self.func_run.backend_kind().into() {
             FuncBackendKind::JsAction => {
                 FuncBackendJsAction::create_and_execute(
-                    self.func_dispatch_context,
-                    &self.func,
-                    &self.args,
-                    self.before,
-                )
-                .await
-            }
-            FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(
                     self.func_dispatch_context,
                     &self.func,
                     &self.args,

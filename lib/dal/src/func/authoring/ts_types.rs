@@ -45,13 +45,6 @@ pub(crate) fn compile_return_types(
   message: string;
 }"
         }
-        FuncBackendResponseType::Reconciliation => {
-            "type Output {
-  updates: { [key: string]: unknown };
-  actions: string[];
-  message: string | null;
-}"
-        }
         FuncBackendResponseType::Action => {
             "type Output {
     status: 'ok' | 'warning' | 'error';

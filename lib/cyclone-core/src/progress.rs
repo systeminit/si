@@ -150,7 +150,6 @@ pub enum FunctionResultFailureErrorKind {
     ActionFieldWrongType,
     InvalidReturnType,
     KilledExecution,
-    ReconciliationFieldWrongType,
     UserCodeException(String),
     VeritechServer,
 }

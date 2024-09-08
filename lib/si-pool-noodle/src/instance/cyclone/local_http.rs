@@ -12,8 +12,7 @@ use cyclone_client::{
 use cyclone_core::{
     process::{self, ShutdownError},
     ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, CycloneRequest,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use derive_builder::Builder;
@@ -182,23 +181,6 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.prepare_action_run_execution(request).await;
-        self.count_request();
-
-        result
-    }
-
-    async fn prepare_reconciliation_execution(
-        &mut self,
-        request: CycloneRequest<ReconciliationRequest>,
-    ) -> result::Result<
-        Execution<TcpStream, ReconciliationRequest, ReconciliationResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.prepare_reconciliation_execution(request).await;
         self.count_request();
 
         result

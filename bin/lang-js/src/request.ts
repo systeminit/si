@@ -1,7 +1,6 @@
 import { ActionRunFunc } from "./function_kinds/action_run";
 import { BeforeFunc } from "./function_kinds/before";
 import { JoiValidationFunc } from "./function_kinds/joi_validation";
-import { ReconciliationFunc } from "./function_kinds/reconciliation";
 import { ResolverFunc } from "./function_kinds/resolver_function";
 import {
   SchemaVariantDefinitionFunc,
@@ -11,7 +10,6 @@ export type AnyFunction =
   | ActionRunFunc
   | JoiValidationFunc
   | BeforeFunc
-  | ReconciliationFunc
   | ResolverFunc
   | SchemaVariantDefinitionFunc;
 
