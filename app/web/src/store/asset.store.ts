@@ -602,7 +602,10 @@ export const useAssetStore = () => {
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              this.variantList.splice(savedAssetIdx, 1, variant);
+              if (savedAssetIdx !== -1) {
+                this.variantList.splice(savedAssetIdx, 1, variant);
+                this.setSchemaVariantSelection(variant.schemaVariantId);
+              } else this.variantList.push(variant);
             },
           },
           {
