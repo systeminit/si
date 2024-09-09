@@ -17,7 +17,7 @@ export interface TestReportEntry {
     test_result: "success" | "failure";
     message?: string;
     test_execution_sequence: number;
-    uuid: string;   
+    uuid: string;
 }
 
 let executionCount = 0;
@@ -40,9 +40,13 @@ export function printTestReport(report: TestReportEntry[]) {
     console.log("Test Report:");
     console.log(JSON.stringify(report, null, 2));
 }
-  
+
+export function testsFailed(report: TestReportEntry[]) {
+  return report.some(test => test.test_result === 'failure');
+}
+
 export class ExecutionTracker {
-        
+
     private reports: TestReport[] = [];
 
     startTest(testName: string): TestReport {
@@ -68,4 +72,5 @@ export class ExecutionTracker {
     getReports(): TestReport[] {
         return this.reports;
     }
+
 }

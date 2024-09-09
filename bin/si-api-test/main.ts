@@ -1,5 +1,5 @@
 import { SdfApiClient } from "./sdf_api_client.ts";
-import { createDefaultTestReportEntry, printTestReport, TestReportEntry } from "./test_execution_lib.ts";
+import { createDefaultTestReportEntry, printTestReport, TestReportEntry, testsFailed } from "./test_execution_lib.ts";
 import { checkEnvironmentVariables, parseArgs } from "./binary_execution_lib.ts";
 
 if (import.meta.main) {
@@ -132,5 +132,7 @@ if (import.meta.main) {
     await Promise.all(oneShotPromises);
     console.log("~~ FINAL REPORT GENERATED ~~");
     printTestReport(testReport);
+    let exitCode = testsFailed(testReport) ? 1 : 0;
+    Deno.exit(exitCode);
   }
 }
