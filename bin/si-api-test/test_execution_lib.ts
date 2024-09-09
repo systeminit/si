@@ -47,9 +47,8 @@ export function printTestReport(report: TestReportEntry[]) {
 }
 
 export function testsFailed(report: TestReportEntry[]) {
-  return report.some(test => test.test_result === 'failure');
+  return report.some((test) => test.test_result === "failure");
 }
-
 
 export class ExecutionTracker {
   private reports: TestReportEntry[] = [];
