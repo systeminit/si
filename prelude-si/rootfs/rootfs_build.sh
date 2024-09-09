@@ -47,6 +47,7 @@ PACKAGEDIR=$(realpath "$BUCKROOT/cyclone-pkg")
 ROOTFS="$PACKAGEDIR/cyclone-rootfs.ext4"
 ROOTFSMOUNT="$PACKAGEDIR/rootfs"
 ROOTFS_TAR="rootfs.tar.gz"
+INITSCRIPT="$PACKAGEDIR/init.sh"
 ALPINE_VERSION=3.18
 
 # Vendored from https://github.com/fnichol/libsh/blob/main/lib/setup_traps.sh
@@ -70,14 +71,14 @@ cleanup() {
   # cleanup the PACKAGEDIR
   sudo umount -fv "$ROOTFSMOUNT"
 
-  rm -rfv "$ROOTFSMOUNT" "$ROOTFS_TAR"
+  rm -rfv "$ROOTFSMOUNT" "$INITSCRIPT" "$ROOTFS_TAR"
 }
 
 setup_traps cleanup
 
 # create disk and mount to a known location
 mkdir -pv "$ROOTFSMOUNT"
-dd if=/dev/zero of="$ROOTFS" bs=1M count=4096
+dd if=/dev/zero of="$ROOTFS" bs=1M count=3072
 mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
@@ -104,7 +105,7 @@ sudo chroot "$ROOTFSMOUNT" sh <<EOL
 echo "nameserver 8.8.8.8" >"/etc/resolv.conf"
 
 apk update
-apk add openrc mingetty runuser
+apk add openrc openssh mingetty runuser
 
 adduser -D app
 for dir in / run etc usr/local/etc home/app/.config; do
@@ -115,23 +116,19 @@ done
 mknod /dev/null c 1 3
 chmod 666 /dev/null
 
+ssh-keygen -A
+
 # Make sure special file systems are mounted on boot:
 rc-update add devfs boot
 rc-update add procfs boot
 rc-update add sysfs boot
 rc-update add networking boot
-rc-update add swap boot
 rc-update add local default
+rc-update add sshd
 
 # autologin
 echo "ttyS0::respawn:/sbin/mingetty --autologin root --noclear ttyS0" >> /etc/inittab
 sed -i 's/root:*::0:::::/root:::0:::::/g' /etc/shadow
-
-# swapon
-fallocate -l 512M /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-echo '/swapfile swap swap default 0 0' | tee -a /etc/fstab
 
 # mount scripts volume
 cat <<EOV >>"/etc/fstab"
