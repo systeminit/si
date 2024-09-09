@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use axum::extract::Host;
 use axum::Json;
 use axum::{extract::OriginalUri, http::uri::Uri, response::IntoResponse};
-use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility};
+use dal::change_status::ChangeStatus;
+use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -94,7 +97,7 @@ pub async fn remove_delete_intent(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    for component_id in request.components {
+    for component_id in request.components.clone() {
         let maybe_component = Component::try_get_by_id(&ctx, component_id).await?;
         if maybe_component.is_some() {
             remove_single_delete_intent(
@@ -115,6 +118,18 @@ pub async fn remove_delete_intent(
             )
             .await?;
         }
+    }
+
+    let mut diagram_sockets = HashMap::new();
+    for component_id in request.components {
+        let component = Component::get_by_id(&ctx, component_id).await?;
+        let payload = component
+            .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+            .await?;
+        WsEvent::component_updated(&ctx, payload)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
     }
 
     ctx.commit().await?;
