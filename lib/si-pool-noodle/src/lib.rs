@@ -24,9 +24,10 @@ pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
     FunctionResult, FunctionResultFailure, FunctionResultFailureError,
     FunctionResultFailureErrorKind, KillExecutionRequest, OutputStream, ProgressMessage,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
-    ValidationRequest, ValidationResultSuccess,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
+    ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.

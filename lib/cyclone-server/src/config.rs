@@ -38,6 +38,9 @@ pub struct Config {
     enable_action_run: bool,
 
     #[builder(default = "true")]
+    enable_reconciliation: bool,
+
+    #[builder(default = "true")]
     enable_validation: bool,
 
     #[builder(default = "true")]
@@ -94,6 +97,12 @@ impl Config {
     #[must_use]
     pub fn enable_action_run(&self) -> bool {
         self.enable_action_run
+    }
+
+    /// Gets a reference to the config's enable reconciliation.
+    #[must_use]
+    pub fn enable_reconciliation(&self) -> bool {
+        self.enable_reconciliation
     }
 
     /// Gets a reference to the config's enable validation
