@@ -3,7 +3,9 @@ name: Deploy Main
 on:
   push:
     tags:
-      - 'release/*'
+      - "release/*"
+  schedule:
+    - cron: "0 16 * * 1-5"
 
 jobs:
   deploy-tools-prod:
@@ -12,7 +14,7 @@ jobs:
       environment: tools
       version: stable
     secrets: inherit
-    
+
   on-failure:
     runs-on: ubuntu-latest
     needs: deploy-tools-prod
