@@ -1,7 +1,6 @@
 // sdf_client.ts
 import JWT from "npm:jsonwebtoken";
 
-
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type ROUTE_VARS = Record<string, string>;
 
@@ -12,73 +11,72 @@ interface API_DESCRIPTION {
 }
 
 export const ROUTES = {
-
   // Change Set Management ------------------------------------------------------
   create_change_set: {
     path: () => "/change_set/create_change_set",
-    method: "POST"
+    method: "POST",
   },
   abandon_change_set: {
     path: () => "/change_set/abandon_change_set",
-    method: "POST"
+    method: "POST",
   },
   open_change_sets: {
     path: () => "/change_set/list_open_change_sets",
-    method: "GET"
+    method: "GET",
   },
   schema_variants: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants`,
-    method: "GET"
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants`,
+    method: "GET",
   },
 
   // Diagram Management ---------------------------------------------------------
   get_diagram: {
-    path: (vars: ROUTE_VARS) => `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET"
+    path: (vars: ROUTE_VARS) =>
+      `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
+    method: "GET",
   },
 
   // Component Management -------------------------------------------------------
   delete_component: {
     path: () => `/diagram/delete_components`,
-    method: "POST"
+    method: "POST",
   },
-  create_component: { 
-    path: () => "/diagram/create_component", 
-    method: "POST"
+  create_component: {
+    path: () => "/diagram/create_component",
+    method: "POST",
   },
   create_connection: {
     path: () => "/diagram/create_connection",
-    method: "POST"
+    method: "POST",
   },
 
   // Property Editor ------------------------------------------------------------
   get_property_values: {
-    path: (vars: ROUTE_VARS) => `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
-    method: "GET"
+    path: (vars: ROUTE_VARS) =>
+      `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
+    method: "GET",
   },
   update_property_value: {
     path: () => `/component/update_property_editor_value`,
-    method: "POST"
+    method: "POST",
   },
 
   // Variant Management -----------------------------------------------------------
   create_variant: {
     path: (vars: ROUTE_VARS) => `/variant/create_variant`,
-    method: "POST"
+    method: "POST",
   },
-
-
   // Add more groups below ------------------------------------------------------
-
 } satisfies Record<string, API_DESCRIPTION>;
 
 export type ROUTE_NAMES = keyof typeof ROUTES;
 
 interface API_CALL {
-  route: ROUTE_NAMES,
-  params?: Record<string, string | number | undefined>,
-  routeVars?: ROUTE_VARS,
-  body?: Record<string, unknown>,
+  route: ROUTE_NAMES;
+  params?: Record<string, string | number | undefined>;
+  routeVars?: ROUTE_VARS;
+  body?: Record<string, unknown>;
 }
 
 export class SdfApiClient {
@@ -90,7 +88,7 @@ export class SdfApiClient {
   private constructor(
     token: string,
     baseUrl: string,
-    workspaceId: string
+    workspaceId: string,
   ) {
     this.token = token;
     this.baseUrl = baseUrl;
@@ -101,7 +99,7 @@ export class SdfApiClient {
   public static async init(
     workspaceId: string,
     userEmailOrId: string,
-    password: string
+    password?: string,
   ) {
     const token = await getSdfJWT(workspaceId, userEmailOrId, password);
     const baseUrl = Deno.env.get("SDF_API_URL");
@@ -131,14 +129,13 @@ export class SdfApiClient {
     } catch {
       return null;
     }
-
   }
 
   // General fetch method
   private async fetch(path: string, options?: {
-    headers?: Record<string, string>
-    body?: Record<string, unknown>
-    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+    headers?: Record<string, string>;
+    body?: Record<string, unknown>;
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   }) {
     const resp = await this.fetch_no_throw(path, options);
     if (!resp.ok) {
@@ -150,9 +147,9 @@ export class SdfApiClient {
 
   // Fetch method without automatic error throwing
   private fetch_no_throw(path: string, options?: {
-    headers?: Record<string, string>
-    body?: Record<string, unknown>
-    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+    headers?: Record<string, string>;
+    body?: Record<string, unknown>;
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   }) {
     const url = `${this.baseUrl}${path}`;
     const method = options?.method || "GET";
@@ -161,30 +158,45 @@ export class SdfApiClient {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${this.token}`,
       "Cache-Control": "no-cache",
-      ...options?.headers || {}
+      ...options?.headers || {},
     };
 
     const body = options?.body ? JSON.stringify(options.body) : undefined;
 
     return fetch(url, {
-      headers, body, method
+      headers,
+      body,
+      method,
     });
   }
 }
 
 // Helper functions for JWT generation and fetching
-async function getSdfJWT(workspaceId: string, userEmailOrId: string, password: string) {
+function getSdfJWT(
+  workspaceId: string,
+  userEmailOrId: string,
+  password?: string,
+) {
   const privateKey = Deno.env.get("JWT_PRIVATE_KEY");
   if (privateKey && privateKey.length > 0) {
-    console.log("JWT_PRIVATE_KEY is set, signing jwt locally. UserId should be passed in instead of email");
+    console.log(
+      "JWT_PRIVATE_KEY is set, signing jwt locally. UserId should be passed in instead of email",
+    );
 
     return createJWTFromPrivateKey(workspaceId, userEmailOrId, privateKey);
   } else {
+    if (!password) {
+      throw new Error("No password provided");
+    }
     return getSdfJWTFromAuth0(workspaceId, userEmailOrId, password);
   }
 }
 
-async function getSdfJWTFromAuth0(workspaceId: string, email: string, password: string): Promise<string> {
+async function getSdfJWTFromAuth0(
+  workspaceId: string,
+  email: string,
+  password: string,
+): Promise<string> {
   const authApiUrl = Deno.env.get("AUTH_API_URL");
 
   if (!authApiUrl || authApiUrl.length === 0) {
@@ -194,14 +206,14 @@ async function getSdfJWTFromAuth0(workspaceId: string, email: string, password: 
   const loginResp = await fetch(`${authApiUrl}/auth/login`, {
     headers: {
       "Accept": "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       email,
       password,
-      workspaceId
+      workspaceId,
     }),
-    method: "POST"
+    method: "POST",
   });
 
   const { token, message } = await loginResp.json();
@@ -217,10 +229,14 @@ async function getSdfJWTFromAuth0(workspaceId: string, email: string, password: 
 async function createJWTFromPrivateKey(
   workspaceId: string,
   userId: string,
-  privateKey: string
+  privateKey: string,
 ): Promise<string> {
-  return JWT.sign({
-    user_pk: userId,
-    workspace_pk: workspaceId
-  }, privateKey, { algorithm: "RS256", subject: userId });
+  return JWT.sign(
+    {
+      user_pk: userId,
+      workspace_pk: workspaceId,
+    },
+    privateKey,
+    { algorithm: "RS256", subject: userId },
+  );
 }
