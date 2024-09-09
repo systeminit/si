@@ -105,7 +105,7 @@ jobs:
     # We want to ensure that in-progress cron runs against tools-prod
     # are canceled when we do a deploy so they don't fail erroneously
     concurrency:
-      group: e2e-${{ inputs.environment }}
+      group: api-test-${{ inputs.environment }}
       cancel-in-progress: true
     needs:
       - upgrade-web

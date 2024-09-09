@@ -12,11 +12,11 @@ jobs:
       environment: tools
       version: stable
     secrets: inherit
-    
+
   on-failure:
     runs-on: ubuntu-latest
     needs: deploy-tools-prod
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: failure()
     steps:
       - run: |
           curl -X POST \
