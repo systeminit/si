@@ -7,7 +7,9 @@ use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<String, String, String, String>;
 
@@ -21,6 +23,7 @@ async fn write_to_db() {
         dbfile,
         setup_pg_db("workspace_snapshot_write_to_db").await,
         setup_nats_client(Some("workspace_snapshot_write_to_db".to_string())).await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -92,6 +95,7 @@ async fn evict_from_db() {
         dbfile,
         setup_pg_db("workspace_snapshot_evict_from_db").await,
         setup_nats_client(Some("workspace_snapshot_evict_from_db".to_string())).await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -184,6 +188,7 @@ async fn evictions_are_gossiped() {
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -199,6 +204,7 @@ async fn evictions_are_gossiped() {
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )

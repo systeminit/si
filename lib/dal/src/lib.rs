@@ -132,6 +132,11 @@ pub use workspace_snapshot::{
 pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
+pub use si_runtime::{
+    compute_executor, DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
+    DedicatedExecutorJoinError,
+};
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InitializationError {

@@ -51,6 +51,7 @@ use si_crypto::{
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::{memory_cache::MemoryCacheConfig, CaCacheTempFile};
+use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
@@ -275,6 +276,8 @@ pub struct TestContext {
     layer_db_pg_pool: PgPool,
     /// The disk cache path for the layer db
     layer_db_cache_path: CaCacheTempFile,
+    /// Dedicated executor for running CPU-intensive tasks
+    compute_executor: DedicatedExecutor,
 }
 
 impl TestContext {
@@ -372,6 +375,7 @@ impl TestContext {
             self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
+            self.compute_executor.clone(),
             MemoryCacheConfig::default(),
             token,
         )
@@ -391,6 +395,7 @@ impl TestContext {
             self.symmetric_crypto_service.clone(),
             layer_db,
             FeatureFlagService::default(),
+            self.compute_executor.clone(),
         )
     }
 
@@ -475,6 +480,8 @@ impl TestContextBuilder {
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
 
+        let compute_executor = si_runtime::compute_executor("dal-test")?;
+
         Ok(TestContext {
             config,
             pg_pool,
@@ -485,6 +492,7 @@ impl TestContextBuilder {
             symmetric_crypto_service,
             layer_db_pg_pool,
             layer_db_cache_path: si_layer_cache::disk_cache::default_cacache_path()?,
+            compute_executor,
         })
     }
 
@@ -777,6 +785,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.symmetric_crypto_service(),
         services_ctx.layer_db().clone(),
         services_ctx.feature_flags_service().clone(),
+        services_ctx.compute_executor().clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -804,6 +813,7 @@ async fn migrate_local_builtins(
     symmetric_crypto_service: &SymmetricCryptoService,
     layer_db: DalLayerDb,
     feature_flag_service: FeatureFlagService,
+    compute_executor: DedicatedExecutor,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -817,6 +827,7 @@ async fn migrate_local_builtins(
         symmetric_crypto_service.clone(),
         layer_db.clone(),
         feature_flag_service,
+        compute_executor,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

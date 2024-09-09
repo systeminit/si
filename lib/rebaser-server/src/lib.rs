@@ -27,6 +27,7 @@
     while_true
 )]
 
+use dal::DedicatedExecutorInitializeError;
 use dvu_debouncer_task::DvuDebouncerTaskError;
 use thiserror::Error;
 
@@ -48,6 +49,9 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    /// When a compute executor fails to initialize
+    #[error("compute executor initialization error: {0}")]
+    ComputeExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     /// When a Cyclone encryption key failed to be loaded
     #[error("error when loading encryption key: {0}")]
     CycloneEncryptionKey(#[source] si_crypto::VeritechEncryptionKeyError),

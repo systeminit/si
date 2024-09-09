@@ -4,11 +4,11 @@ use dal::context::NatsStreams;
 use dal::jwt_key::JwtConfig;
 use dal::pkg::PkgError;
 use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
-use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
     WorkspaceError,
 };
+use dal::{DedicatedExecutor, ServicesContext};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use module_index_client::{BuiltinsDetailsResponse, ModuleDetailsResponse, ModuleIndexClient};
 use nats_multiplexer::Multiplexer;
@@ -53,6 +53,8 @@ pub enum ServerError {
     Builtins(#[from] BuiltinsError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
+    #[error("compute executor initialization error: {0}")]
+    DedicatedExecutorInitialize(#[from] dal::DedicatedExecutorInitializeError),
     #[error("error when loading veritech encryption key: {0}")]
     EncryptionKey(#[from] VeritechEncryptionKeyError),
     #[error("hyper server error")]
@@ -335,6 +337,11 @@ impl Server<(), ()> {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
+    }
+
+    #[instrument(name = "sdf.init.create_compute_executor", level = "info", skip_all)]
+    pub fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+        dal::compute_executor("sdf").map_err(Into::into)
     }
 }
 

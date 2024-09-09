@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use dal::{context::NatsStreams, feature_flags::FeatureFlagService};
+use dal::{context::NatsStreams, feature_flags::FeatureFlagService, DedicatedExecutor};
 use dal::{
     ChangeSetStatus, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, NatsProcessor,
     ServicesContext,
@@ -82,10 +82,14 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+        let compute_executor = Self::create_compute_executor()?;
 
-        let (layer_db, layer_db_graceful_shutdown) =
-            DalLayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone())
-                .await?;
+        let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_config(
+            config.layer_db_config().clone(),
+            compute_executor.clone(),
+            layer_db_token.clone(),
+        )
+        .await?;
         layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         let services_context = ServicesContext::new(
@@ -100,6 +104,7 @@ impl Server {
             symmetric_crypto_service,
             layer_db,
             FeatureFlagService::default(),
+            compute_executor,
         );
 
         Self::from_services(
@@ -459,6 +464,15 @@ impl Server {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
+    }
+
+    #[instrument(
+        name = "rebaser.init.create_compute_executor",
+        level = "info",
+        skip_all
+    )]
+    fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+        dal::compute_executor("rebaser").map_err(Into::into)
     }
 }
 

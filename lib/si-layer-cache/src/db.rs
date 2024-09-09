@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
+use si_runtime::DedicatedExecutor;
 use std::path::PathBuf;
 use std::{future::IntoFuture, io, path::Path, sync::Arc};
 
@@ -69,6 +70,7 @@ where
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
         config: LayerDbConfig,
+        compute_executor: DedicatedExecutor,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let pg_pool = PgPool::new(&config.pg_pool_config).await?;
@@ -78,6 +80,7 @@ where
             config.disk_path,
             pg_pool,
             nats_client,
+            compute_executor,
             config.memory_cache_config,
             token,
         )
@@ -89,6 +92,7 @@ where
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,
         nats_client: NatsClient,
+        compute_executor: DedicatedExecutor,
         memory_cache_config: MemoryCacheConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
@@ -106,6 +110,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
@@ -113,6 +118,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
@@ -120,6 +126,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
@@ -127,6 +134,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
@@ -134,6 +142,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
@@ -141,6 +150,7 @@ where
             disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            compute_executor.clone(),
         )?;
 
         let cache_updates_task = CacheUpdatesTask::create(

@@ -125,8 +125,14 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
-    let (layer_db, layer_db_graceful_shutdown) =
-        LayerDb::from_config(config.layer_db_config().clone(), layer_db_token.clone()).await?;
+    let compute_executor = Server::create_compute_executor()?;
+
+    let (layer_db, layer_db_graceful_shutdown) = LayerDb::from_config(
+        config.layer_db_config().clone(),
+        compute_executor.clone(),
+        layer_db_token.clone(),
+    )
+    .await?;
     layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
     // TODO(nick): allow the ability to configure the delivery mechanism.
@@ -149,6 +155,7 @@ async fn async_main() -> Result<()> {
         symmetric_crypto_service,
         layer_db,
         feature_flags_service,
+        compute_executor,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

@@ -4,6 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::PgPool;
+use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 
 use crate::db::serialize;
@@ -21,6 +22,8 @@ where
     memory_cache: MemoryCache<V>,
     disk_cache: DiskCache,
     pg: PgLayer,
+    #[allow(dead_code)] // TODO(fnichol): remove once in use
+    compute_executor: DedicatedExecutor,
 }
 
 impl<V> LayerCache<V>
@@ -32,6 +35,7 @@ where
         disk_path: impl Into<PathBuf>,
         pg_pool: PgPool,
         memory_cache_config: MemoryCacheConfig,
+        compute_executor: DedicatedExecutor,
     ) -> LayerDbResult<Self> {
         let disk_cache = DiskCache::new(disk_path, name)?;
 
@@ -41,6 +45,7 @@ where
             memory_cache: MemoryCache::new(memory_cache_config),
             disk_cache,
             pg,
+            compute_executor,
         })
     }
 

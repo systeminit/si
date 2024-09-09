@@ -25,6 +25,7 @@ serde = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
+si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
