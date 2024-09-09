@@ -1,19 +1,25 @@
 use axum::{
-    extract::Path,
+    extract::{Host, OriginalUri, Path},
     response::{IntoResponse, Response},
 };
 use base64::prelude::*;
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use hyper::{header, Body};
 
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::{
+    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    tracking::track_no_ctx,
+};
 
 use super::{AdminAPIError, AdminAPIResult};
 
 pub async fn get_snapshot(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
+    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> AdminAPIResult<impl IntoResponse> {
     let ctx = builder.build_head(access_builder).await?;
 
@@ -33,13 +39,26 @@ pub async fn get_snapshot(
             change_set_id,
         ))?;
 
-    let base64 = BASE64_STANDARD.encode(bytes);
+    let base64 = tokio::task::spawn_blocking(|| BASE64_STANDARD.encode(bytes)).await?;
 
     let body = Body::from(base64);
 
     let response = Response::builder()
         .header(header::CONTENT_TYPE, "application/octet-stream")
         .body(body)?;
+
+    track_no_ctx(
+        &posthog_client,
+        &original_uri,
+        &host_name,
+        ctx.history_actor().distinct_id(),
+        Some(workspace_pk.to_string()),
+        Some(change_set_id.to_string()),
+        "admin.get_snapshot",
+        serde_json::json!({
+            "workspace_snapshot_address": snap_addr.to_string(),
+        }),
+    );
 
     Ok(response)
 }

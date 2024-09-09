@@ -3,7 +3,7 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
-use si_events::ContentHash;
+use si_events::{ContentHash, WorkspaceSnapshotAddress};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -30,6 +30,11 @@ use crate::{
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
 const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
+const SEARCH_WORKSPACES_BY_ULID: &str = include_str!("queries/workspace/search_ulid.sql");
+const SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS: &str =
+    include_str!("queries/workspace/search_snapshot_address.sql");
+const SEARCH_WORKSPACES_USER_NAME_EMAIL: &str =
+    include_str!("queries/workspace/search_user_name_email.sql");
 
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
 const DEFAULT_BUILTIN_WORKSPACE_TOKEN: &str = "builtin";
@@ -278,16 +283,42 @@ impl Workspace {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    pub async fn list_all(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT row_to_json(w.*) AS object FROM workspaces AS w",
-                &[],
-            )
-            .await?;
+    pub async fn search(
+        ctx: &DalContext,
+        query: Option<&str>,
+        limit: usize,
+    ) -> WorkspaceResult<Vec<Self>> {
+        let query = query.unwrap_or("").trim();
+
+        let rows = if query.len() < 3 {
+            let select_stmt =
+                format!("SELECT row_to_json(w.*) AS object FROM workspaces AS w ORDER BY created_at DESC LIMIT {limit}");
+
+            ctx.txns().await?.pg().query(&select_stmt, &[]).await?
+        } else {
+            let (select_stmt, query) = if ulid::Ulid::from_string(query).is_ok() {
+                (
+                    format!("{SEARCH_WORKSPACES_BY_ULID} LIMIT {limit}"),
+                    query.to_string(),
+                )
+            } else if WorkspaceSnapshotAddress::from_str(query).is_ok() {
+                (
+                    format!("{SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS} LIMIT {limit}"),
+                    query.to_string(),
+                )
+            } else {
+                (
+                    format!("{SEARCH_WORKSPACES_USER_NAME_EMAIL} LIMIT {limit}"),
+                    format!("%{query}%"),
+                )
+            };
+
+            ctx.txns()
+                .await?
+                .pg()
+                .query(&select_stmt, &[&query])
+                .await?
+        };
 
         Ok(standard_model::objects_from_rows(rows)?)
     }
@@ -622,14 +653,19 @@ impl Workspace {
             .unwrap_or(DEFAULT_COMPONENT_CONCURRENCY_LIMIT)
     }
 
+    pub fn raw_component_concurrency_limit(&self) -> Option<i32> {
+        self.component_concurrency_limit
+    }
+
     pub async fn set_component_concurrency_limit(
         &mut self,
         ctx: &DalContext,
-        mut limit: i32,
+        limit: Option<i32>,
     ) -> WorkspaceResult<()> {
-        if limit < 0 {
-            limit = DEFAULT_COMPONENT_CONCURRENCY_LIMIT;
-        }
+        let limit = match limit {
+            Some(limit) if limit <= 0 => None,
+            other => other,
+        };
 
         ctx.txns()
             .await?
@@ -640,7 +676,7 @@ impl Workspace {
             )
             .await?;
 
-        self.component_concurrency_limit = Some(limit);
+        self.component_concurrency_limit = limit;
 
         Ok(())
     }
