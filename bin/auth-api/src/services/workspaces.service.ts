@@ -163,10 +163,20 @@ const roleTypeMap: { [key: string]: RoleType } = {
   EDITOR: RoleType.EDITOR,
 };
 
-export async function inviteMember(email: string, id: WorkspaceId) {
+export async function inviteMember(
+  authUser: User,
+  email: string,
+  id: WorkspaceId,
+) {
   let user = await getUserByEmail(email);
   if (!user) {
     user = await createInvitedUser(email);
+    tracker.trackEvent(authUser, "new_user_created_from_invite", {
+      workspaceId: id,
+      newUserEmail: email,
+      triggeredBy: authUser.email,
+      triggeredAt: new Date(),
+    });
   }
 
   return await prisma.workspaceMembers.create({

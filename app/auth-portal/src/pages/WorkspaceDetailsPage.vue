@@ -428,12 +428,6 @@ const inviteButtonHandler = async () => {
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
-    tracker.trackEvent("workspace_invitation", {
-      inviteeEmail: newMember.email,
-      workspaceId: props.workspaceId,
-      inviterName: authStore.invitersName,
-      workspaceName: draftWorkspace.displayName,
-    });
     newMember.email = "";
   }
 };
