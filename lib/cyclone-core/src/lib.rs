@@ -20,6 +20,7 @@ mod liveness;
 pub mod process;
 mod progress;
 mod readiness;
+mod reconciliation;
 mod request;
 mod resolver_function;
 mod schema_variant_definition;
@@ -39,6 +40,7 @@ pub use progress::{
     FunctionResultFailureErrorKind, Message, OutputStream, ProgressMessage,
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
+pub use reconciliation::{ReconciliationRequest, ReconciliationResultSuccess};
 pub use request::CycloneRequest;
 pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,

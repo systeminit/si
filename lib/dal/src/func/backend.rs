@@ -23,6 +23,7 @@ pub mod identity;
 pub mod integer;
 pub mod js_action;
 pub mod js_attribute;
+pub mod js_reconciliation;
 pub mod js_schema_variant_definition;
 pub mod json;
 pub mod map;
@@ -87,6 +88,7 @@ pub enum FuncBackendKind {
     JsAttribute,
     JsAuthentication,
     Json,
+    JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,
     Map,
@@ -108,6 +110,7 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
             FuncBackendKind::JsAttribute => si_events::FuncBackendKind::JsAttribute,
             FuncBackendKind::JsAuthentication => si_events::FuncBackendKind::JsAuthentication,
             FuncBackendKind::Json => si_events::FuncBackendKind::Json,
+            FuncBackendKind::JsReconciliation => si_events::FuncBackendKind::JsReconciliation,
             FuncBackendKind::JsSchemaVariantDefinition => {
                 si_events::FuncBackendKind::JsSchemaVariantDefinition
             }
@@ -133,6 +136,7 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
             si_events::FuncBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
             si_events::FuncBackendKind::JsAuthentication => FuncBackendKind::JsAuthentication,
             si_events::FuncBackendKind::Json => FuncBackendKind::Json,
+            si_events::FuncBackendKind::JsReconciliation => FuncBackendKind::JsReconciliation,
             si_events::FuncBackendKind::JsSchemaVariantDefinition => {
                 FuncBackendKind::JsSchemaVariantDefinition
             }
@@ -172,6 +176,7 @@ pub enum FuncBackendResponseType {
     Map,
     Object,
     Qualification,
+    Reconciliation,
     SchemaVariantDefinition,
     String,
     Unset,
@@ -195,6 +200,9 @@ impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
             FuncBackendResponseType::Object => si_events::FuncBackendResponseType::Object,
             FuncBackendResponseType::Qualification => {
                 si_events::FuncBackendResponseType::Qualification
+            }
+            FuncBackendResponseType::Reconciliation => {
+                si_events::FuncBackendResponseType::Reconciliation
             }
             FuncBackendResponseType::SchemaVariantDefinition => {
                 si_events::FuncBackendResponseType::SchemaVariantDefinition
@@ -223,6 +231,9 @@ impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
             si_events::FuncBackendResponseType::Object => FuncBackendResponseType::Object,
             si_events::FuncBackendResponseType::Qualification => {
                 FuncBackendResponseType::Qualification
+            }
+            si_events::FuncBackendResponseType::Reconciliation => {
+                FuncBackendResponseType::Reconciliation
             }
             si_events::FuncBackendResponseType::SchemaVariantDefinition => {
                 FuncBackendResponseType::SchemaVariantDefinition
@@ -277,6 +288,9 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
             FuncBackendResponseType::Validation => {
+                return Err(InvalidResolverFunctionTypeError(value));
+            }
+            FuncBackendResponseType::Reconciliation => {
                 return Err(InvalidResolverFunctionTypeError(value));
             }
             FuncBackendResponseType::SchemaVariantDefinition => {

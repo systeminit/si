@@ -4,7 +4,7 @@ use strum::{AsRefStr, Display};
 use telemetry::prelude::warn;
 
 use crate::func::FuncResult;
-use crate::{FuncBackendKind, FuncBackendResponseType};
+use crate::{FuncBackendKind, FuncBackendResponseType, FuncError};
 
 /// Describes the kind of [`Func`](crate::Func).
 #[remain::sorted]
@@ -83,6 +83,10 @@ impl FuncKind {
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
+            _ => Err(FuncError::UnknownFunctionType(
+                func_backend_kind,
+                func_backend_response_type,
+            )),
         }
     }
 }

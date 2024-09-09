@@ -76,6 +76,8 @@ pub enum FuncError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("unable to determine the function type for backend kind ({0}) and backend response type ({1})")]
+    UnknownFunctionType(FuncBackendKind, FuncBackendResponseType),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]

@@ -103,6 +103,7 @@ impl IntoResponse for FuncAPIError {
                     }
                     FunctionResultFailureErrorKind::InvalidReturnType
                     | FunctionResultFailureErrorKind::KilledExecution
+                    | FunctionResultFailureErrorKind::ReconciliationFieldWrongType
                     | FunctionResultFailureErrorKind::ActionFieldWrongType => {
                         (StatusCode::UNPROCESSABLE_ENTITY, Some(message))
                     }

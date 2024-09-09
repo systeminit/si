@@ -6,9 +6,9 @@ mod watch;
 pub use client::{Client, ClientConfig, ClientError, CycloneClient, HttpClient, UdsClient};
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, CycloneRequest, LivenessStatus,
-    LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings,
+    LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
 };
 pub use execution::{Execution, ExecutionError};
 pub use hyper::client::connect::Connection;

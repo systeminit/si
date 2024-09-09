@@ -8,6 +8,9 @@ import joi_validation, {
   JoiValidationFunc,
   JoiValidationResult,
 } from "./function_kinds/joi_validation";
+import reconciliation, {
+  ReconciliationFunc,
+} from "./function_kinds/reconciliation";
 import resolver_function, {
   ResolverFunc,
 } from "./function_kinds/resolver_function";
@@ -24,6 +27,7 @@ export enum FunctionKind {
   Before = "before",
   ResolverFunction = "resolverfunction",
   Validation = "validation",
+  Reconciliation = "reconciliation",
   SchemaVariantDefinition = "schemaVariantDefinition",
 }
 
@@ -122,6 +126,15 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
         }),
       );
 
+      break;
+    case FunctionKind.Reconciliation:
+      result = await executor(
+        ctx,
+        request as ReconciliationFunc,
+        kind,
+        timeout,
+        reconciliation,
+      );
       break;
     case FunctionKind.ResolverFunction:
       result = await executor(
