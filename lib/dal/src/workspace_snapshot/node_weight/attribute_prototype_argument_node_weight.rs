@@ -2,10 +2,10 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use crate::{
-    workspace_snapshot::graph::{
-        deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1, LineageId,
+    workspace_snapshot::{
+        graph::{deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1, LineageId},
+        node_weight::traits::CorrectTransforms,
     },
-    workspace_snapshot::node_weight::traits::CorrectTransforms,
     ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 

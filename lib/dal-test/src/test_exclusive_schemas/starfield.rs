@@ -671,6 +671,20 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
                 )
                 .domain_prop(
                     PropSpec::builder()
+                        .name("private_language")
+                        .kind(PropKind::String)
+                        .func_unique_id(&identity_func_spec.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::InputSocket)
+                                .name("identity")
+                                .socket_name("private_language")
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
                         .name("hidden_prop")
                         .kind(PropKind::String)
                         .hidden(true)
@@ -774,6 +788,21 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
                         )
                         .build()?,
                 )
+                .socket(
+                    SocketSpec::builder()
+                        .name("private_language")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("private_language")
+                                .connection_annotations(serde_json::to_string(&vec![
+                                    "private_language",
+                                ])?)
+                                .kind(SocketSpecKind::Input)
+                                .arity(SocketSpecArity::One)
+                                .build()?,
+                        )
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -788,6 +817,121 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
 
     let etoiles_pkg = SiPkg::load_from_spec(etoiles_spec)?;
     import_pkg_from_pkg(ctx, &etoiles_pkg, None).await?;
+
+    Ok(())
+}
+
+pub(crate) async fn migrate_test_exclusive_schema_private_language(
+    ctx: &DalContext,
+) -> BuiltinsResult<()> {
+    let mut private_lang_builder = PkgSpec::builder();
+
+    let schema_name = "private_language";
+
+    private_lang_builder
+        .name(schema_name)
+        .version(PKG_VERSION)
+        .created_by(PKG_CREATED_BY);
+
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+
+    let private_lang_scaff = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+    let fn_name = "test:scaffoldPrivateLang";
+    let private_lang_auth_schema = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(private_lang_scaff)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()?,
+        )
+        .build()?;
+
+    let private_lang_payload_to_val = "async function translate(arg: Input): Promise<Output> {\
+            return arg.payload ?? {};
+        }";
+    let fn_name = "test:resourcePayloadToValue";
+    let private_lang_payload_to_val_fn = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(private_lang_payload_to_val)
+                .handler("translate")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Json)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("payload")
+                .kind(FuncArgumentKind::Object)
+                .build()?,
+        )
+        .build()?;
+
+    let private_lang_schema = SchemaSpec::builder()
+        .name(schema_name)
+        .data(
+            SchemaSpecData::builder()
+                .name(schema_name)
+                .category("test exclusive")
+                .category_name(schema_name)
+                .build()?,
+        )
+        .variant(
+            SchemaVariantSpec::builder()
+                .version("v0")
+                .unique_id("priv_lang_sv")
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .version("v0")
+                        .color("#ffffff")
+                        .func_unique_id(&private_lang_auth_schema.unique_id)
+                        .build()?,
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("private_language")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("private_language")
+                                .connection_annotations(serde_json::to_string(&vec![
+                                    "private_language",
+                                ])?)
+                                .kind(SocketSpecKind::Output)
+                                .func_unique_id(&identity_func_spec.unique_id)
+                                .build()?,
+                        )
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .name("identity")
+                                .kind(AttrFuncInputSpecKind::Prop)
+                                .prop_path(PropPath::new(["root", "si", "name"]))
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .build()?,
+        )
+        .build()?;
+
+    let private_lang_spec = private_lang_builder
+        .func(identity_func_spec)
+        .func(private_lang_auth_schema)
+        .func(private_lang_payload_to_val_fn)
+        .schema(private_lang_schema)
+        .build()?;
+
+    let private_lang_pkg = SiPkg::load_from_spec(private_lang_spec)?;
+    import_pkg_from_pkg(ctx, &private_lang_pkg, None).await?;
 
     Ok(())
 }

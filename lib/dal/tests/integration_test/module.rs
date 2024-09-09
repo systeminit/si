@@ -33,6 +33,7 @@ async fn list_modules(ctx: &DalContext) {
         "morningstar".to_string(),
         "pet_shop".to_string(),
         "pirate".to_string(),
+        "private_language".to_string(),
         "si-intrinsic-funcs".to_string(),
         "small even lego".to_string(),
         "small odd lego".to_string(),
