@@ -21,6 +21,7 @@ import {
   userRoleForWorkspace,
   LOCAL_WORKSPACE_URL,
   SAAS_WORKSPACE_URL,
+  changeWorkspaceMembership,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -279,6 +280,44 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
   extractAuthUser(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
+});
+
+router.post("/workspace/:workspaceId/membership", async (ctx) => {
+  // user must be logged in
+  const authUser = extractAuthUser(ctx);
+
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      userId: z.string(),
+      role: z.string(),
+    }),
+  );
+
+  tracker.trackEvent(authUser, "change_workspace_member_role", {
+    role: reqBody.role,
+    userId: reqBody.userId,
+    workspaceId: workspace.id,
+  });
+
+  await changeWorkspaceMembership(workspace.id, reqBody.userId, reqBody.role);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);

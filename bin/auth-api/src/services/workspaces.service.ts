@@ -140,6 +140,29 @@ export async function getWorkspaceMembers(id: WorkspaceId) {
   return workspaceMembers;
 }
 
+export async function changeWorkspaceMembership(
+  workspaceId: WorkspaceId,
+  userId: UserId,
+  role: string,
+) {
+  await prisma.workspaceMembers.update({
+    where: {
+      userId_workspaceId: {
+        userId,
+        workspaceId,
+      },
+    },
+    data: {
+      roleType: roleTypeMap[role],
+    },
+  });
+}
+
+const roleTypeMap: { [key: string]: RoleType } = {
+  OWNER: RoleType.OWNER,
+  EDITOR: RoleType.EDITOR,
+};
+
 export async function inviteMember(email: string, id: WorkspaceId) {
   let user = await getUserByEmail(email);
   if (!user) {
