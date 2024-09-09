@@ -1613,33 +1613,28 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async RESTORE_COMPONENTS(components: Record<ComponentId, boolean>) {
+          async RESTORE_COMPONENTS(...components: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const payload = [];
-            for (const [key, value] of Object.entries(components)) {
-              payload.push({ componentId: key, fromBaseChangeSet: value });
-            }
             return new ApiRequest({
               method: "post",
               url: "diagram/remove_delete_intent",
               keyRequestStatusBy: Object.keys(components),
               params: {
-                components: payload,
+                components,
                 ...visibilityParams,
               },
               onSuccess: () => {
-                for (const componentId of Object.keys(components)) {
+                for (const componentId of components) {
                   const component = this.rawComponentsById[componentId];
                   if (component) {
                     this.rawComponentsById[componentId] = {
                       ...component,
                       changeStatus: "unmodified",
                       toDelete: false,
-                      fromBaseChangeSet: false,
                       deletedInfo: undefined,
                     };
                   }

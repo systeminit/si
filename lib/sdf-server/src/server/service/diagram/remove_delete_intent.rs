@@ -73,17 +73,10 @@ async fn restore_component_from_base_change_set(
     Ok(())
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveDeleteIntentComponentInformation {
-    pub component_id: ComponentId,
-    pub from_base_change_set: bool,
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoveDeleteIntentRequest {
-    pub components: Vec<RemoveDeleteIntentComponentInformation>,
+    pub components: Vec<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -101,28 +94,26 @@ pub async fn remove_delete_intent(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    for component_info in request.components {
-        match component_info.from_base_change_set {
-            true => {
-                restore_component_from_base_change_set(
-                    &ctx,
-                    component_info.component_id,
-                    &original_uri,
-                    &host_name,
-                    &posthog_client,
-                )
-                .await?
-            }
-            false => {
-                remove_single_delete_intent(
-                    &ctx,
-                    component_info.component_id,
-                    &original_uri,
-                    &host_name,
-                    &posthog_client,
-                )
-                .await?
-            }
+    for component_id in request.components {
+        let maybe_component = Component::try_get_by_id(&ctx, component_id).await?;
+        if maybe_component.is_some() {
+            remove_single_delete_intent(
+                &ctx,
+                component_id,
+                &original_uri,
+                &host_name,
+                &posthog_client,
+            )
+            .await?;
+        } else {
+            restore_component_from_base_change_set(
+                &ctx,
+                component_id,
+                &original_uri,
+                &host_name,
+                &posthog_client,
+            )
+            .await?;
         }
     }
 
