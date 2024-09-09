@@ -1,0 +1,71 @@
+name: Soak Test
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to test"
+      executors:
+        type: number
+        required: true
+        description: "number of instances of all tests to run"
+      maxDuration:
+        type: number
+        required: true
+        description: "how long to test for in seconds"
+      rate:
+        type: number
+        required: true
+        description: "time between tests in milliseconds"
+      test:
+        type: string
+        required: true
+        description: "which tests to run"
+      useJitter:
+        type: boolean
+        required: true
+        description: "insert random time of 0-1 seconds between test runs"
+
+
+jobs:
+  define-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      executors: ${{ steps.executors.outputs.executors }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: executors
+        run: |
+          echo "executors=$(jq -n '[range(0; $num + 1)]' --argjson num ${{ inputs.executors }})" >> "$GITHUB_OUTPUT"
+
+  api-test:
+    name: API Test SDF
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: define-test-matrix
+    strategy:
+      # don't fail the entire matrix on failure
+      fail-fast: false
+      matrix:
+        tests: ${{ fromJSON(needs.define-test-matrix.outputs.executors) }}
+    env:
+      SDF_API_URL: ${{ vars.SDF_API_URL }}
+      AUTH_API_URL: ${{ vars.AUTH_API_URL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Run the deno exec
+        run: |
+          cd bin/si-api-test
+          deno task run \
+          --workspaceId ${{ vars.API_TEST_WORKSPACE_ID }} \
+          --userId ${{ secrets.API_TEST_EMAIL }} \
+          --password ${{ secrets.API_TEST_PASSWORD }} \
+          --test ${{ inputs.test }} \
+          --profile '{"maxDuration":${{ inputs.maxDuration }}, "rate": ${{ inputs.rate }}, "useJitter": ${{ inputs.useJitter }} }'
+

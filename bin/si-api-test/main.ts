@@ -4,6 +4,7 @@ import {
   printTestReport,
   TestFunction,
   TestReportEntry,
+  testsFailed,
 } from "./test_execution_lib.ts";
 import {
   checkEnvironmentVariables,
@@ -74,6 +75,8 @@ if (import.meta.main) {
   await Promise.all(testPromises);
   console.log("~~ FINAL REPORT GENERATED ~~");
   printTestReport(testReport);
+  const exitCode = testsFailed(testReport) ? 1 : 0;
+  Deno.exit(exitCode);
 }
 
 // Define the test execution function
