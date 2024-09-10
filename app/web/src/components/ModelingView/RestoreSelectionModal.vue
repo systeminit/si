@@ -29,10 +29,9 @@ import {
   VButton,
   useModal,
 } from "@si/vue-lib/design-system";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, toRaw } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
 
 const componentsStore = useComponentsStore();
 const selectedEdge = computed(() => componentsStore.selectedEdge);
@@ -82,11 +81,9 @@ async function onConfirmRestore() {
     componentsStore.selectedComponentIds &&
     componentsStore.selectedComponentIds.length > 0
   ) {
-    const data = {} as Record<ComponentId, boolean>;
-    componentsStore.selectedComponentIds.forEach((cId) => {
-      data[cId] = !!componentsStore.componentsById[cId]?.fromBaseChangeSet;
-    });
-    await componentsStore.RESTORE_COMPONENTS(data);
+    await componentsStore.RESTORE_COMPONENTS(
+      ...toRaw(componentsStore.selectedComponentIds),
+    );
   } else if (componentsStore.selectedEdge) {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
