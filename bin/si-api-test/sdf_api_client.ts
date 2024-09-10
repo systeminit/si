@@ -1,11 +1,12 @@
 // sdf_client.ts
 import JWT from "npm:jsonwebtoken";
+import { retryWithBackoff } from "./test_helpers.ts";
 
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type ROUTE_VARS = Record<string, string>;
 
 interface API_DESCRIPTION {
-  path: (ROUTE_VARS) => string;
+  path: (vars: ROUTE_VARS) => string;
   method: HTTP_METHOD;
   headers?: Record<string, string>;
 }
@@ -97,11 +98,23 @@ export class SdfApiClient {
 
   // Initializes the SdfApiClient with authentication
   public static async init(
-    workspaceId: string,
-    userEmailOrId: string,
-    password?: string,
+    args: {
+      workspaceId: string;
+      userEmailOrId: string;
+      password?: string;
+      token?: string;
+    },
   ) {
-    const token = await getSdfJWT(workspaceId, userEmailOrId, password);
+    let { workspaceId, userEmailOrId, password, token } = args;
+    if (!token) {
+      await retryWithBackoff(async () => {
+        token = await getSdfJWT(workspaceId, userEmailOrId, password);
+      });
+    }
+    if (!token) {
+      throw new Error("No auth token has been set!");
+    }
+
     const baseUrl = Deno.env.get("SDF_API_URL");
 
     if (!baseUrl) {

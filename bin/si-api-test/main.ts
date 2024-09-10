@@ -16,13 +16,19 @@ const testReport: TestReportEntry[] = [];
 
 if (import.meta.main) {
   // Parse args and check environment variables
-  const { workspaceId, userId, password, testsToRun, testProfile } = parseArgs(
-    Deno.args,
-  );
+  const { workspaceId, userId, password, testsToRun, testProfile, token } =
+    parseArgs(
+      Deno.args,
+    );
   checkEnvironmentVariables(Deno.env.toObject());
 
   // Init the SDF Module
-  const sdfApiClient = await SdfApiClient.init(workspaceId, userId, password);
+  const sdfApiClient = await SdfApiClient.init({
+    workspaceId,
+    userEmailOrId: userId,
+    password,
+    token,
+  });
 
   // Dynamically load test files from the ./tests directory
   const testFiles: { [key: string]: string } = {};

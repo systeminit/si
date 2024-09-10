@@ -10,29 +10,34 @@ export interface TestExecutionProfile {
 export function parseArgs(args: string[]) {
   // Parse arguments using std/flags
   const parsedArgs = parse(args, {
-    string: ["workspaceId", "userId", "password", "profile", "tests"],
+    string: ["workspaceId", "userId", "password", "profile", "tests", "token"],
     alias: {
       w: "workspaceId",
       u: "userId",
       p: "password",
       t: "tests",
       l: "profile",
+      k: "token",
     },
     default: { profile: undefined, tests: "" },
     boolean: ["help"],
   });
 
   // Display help information if required arguments are missing or help flag is set
-  if (parsedArgs.help || !parsedArgs.workspaceId || !parsedArgs.userId) {
+  if (
+    parsedArgs.help || !parsedArgs.workspaceId ||
+    (!parsedArgs.userId && !parsedArgs.token)
+  ) {
     console.log(`
 Usage: deno run main.ts [options]
 
 Options:
   --workspaceId, -w   Workspace ID (required)
-  --userId, -u        User ID (required)
+  --userId, -u        User ID (required if token not set)
   --password, -p      User password (optional)
   --tests, -t         Test names to run (comma-separated, optional)
   --profile, -l       Test profile in JSON format (optional)
+  --token, -k         SDF Auth Token (optional)
   --help              Show this help message
 `);
     Deno.exit(0);
@@ -40,8 +45,9 @@ Options:
 
   // Extract parsed arguments
   const workspaceId = parsedArgs.workspaceId;
-  const userId = parsedArgs.userId;
+  const userId = parsedArgs.userId || undefined;
   const password = parsedArgs.password || undefined;
+  const token = parsedArgs.token || undefined;
 
   // Handle optional tests argument
   const testsToRun = parsedArgs.tests
@@ -62,7 +68,7 @@ Options:
     }
   }
 
-  return { workspaceId, userId, password, testsToRun, testProfile };
+  return { workspaceId, userId, password, testsToRun, testProfile, token };
 }
 
 export function checkEnvironmentVariables(
