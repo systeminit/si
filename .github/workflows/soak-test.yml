@@ -80,7 +80,7 @@ jobs:
     steps:
       - run: |
           curl https://api.honeycomb.io/1/markers/sdf -X POST \
-              -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
              -d '{"message":" '"Beginning soak test in ${{ inputs.environment }}."' ", "type":"soak-test-start"}'
 
   api-test:
@@ -91,6 +91,8 @@ jobs:
       - define-test-matrix
       - login
       - start-marker
+    outputs:
+      report: ${{ steps.runTest.outputs.report }}
     strategy:
       # don't fail the entire matrix on failure
       fail-fast: false
@@ -114,6 +116,7 @@ jobs:
           key: ${{ hashFiles('./bin/si-api-test/*') }}
 
       - name: Run the deno exec
+        id: runTest
         working-directory: bin/si-api-test
         run: |
           TOKEN=$(echo "${{ needs.login.outputs.token }}" \
@@ -124,7 +127,36 @@ jobs:
           --workspaceId "${{ vars.API_TEST_WORKSPACE_ID }}" \
           --token "$TOKEN" \
           --tests "${{ inputs.test }}" \
-          --profile '{"maxDuration":${{ inputs.maxDuration }}, "rate": ${{ inputs.rate }}, "useJitter": ${{ inputs.useJitter }} }'
+          --profile '{"maxDuration":${{ inputs.maxDuration }}, "rate": ${{ inputs.rate }}, "useJitter": ${{ inputs.useJitter }} }' \
+          --reportFile report-${{ matrix.tests }}.json
+
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-${{ matrix.tests }}
+          path: ./**/report-${{ matrix.tests }}.json
+
+  gather-reports:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: api-test
+    if: always()
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v4
+      with:
+        path: ./reports
+        merge-multiple: true
+
+    - name: Concatenate reports
+      run: |
+        cat ./reports/bin/si-api-test/*.json | jq -s '
+          {
+            total_success: flatten | map(select(.test_result == "success")) | length,
+            total_failure: flatten | map(select(.test_result == "failure")) | length,
+            average_duration: (flatten | map(.test_duration | sub("ms"; "") | tonumber) | add / length)
+          }'
 
   stop-marker:
     runs-on: ubuntu-latest
@@ -134,5 +166,5 @@ jobs:
     steps:
       - run: |
           curl https://api.honeycomb.io/1/markers/sdf -X POST \
-              -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
              -d '{"message":" '"Completing soak test in ${{ inputs.environment }}."' ", "type":"soak-test-stop"}'

@@ -16,10 +16,17 @@ const testReport: TestReportEntry[] = [];
 
 if (import.meta.main) {
   // Parse args and check environment variables
-  const { workspaceId, userId, password, testsToRun, testProfile, token } =
-    parseArgs(
-      Deno.args,
-    );
+  const {
+    workspaceId,
+    userId,
+    password,
+    testsToRun,
+    testProfile,
+    token,
+    reportFile,
+  } = parseArgs(
+    Deno.args,
+  );
   checkEnvironmentVariables(Deno.env.toObject());
 
   // Init the SDF Module
@@ -95,7 +102,7 @@ if (import.meta.main) {
   await Promise.all(testPromises);
   clearInterval(intervalId);
   console.log("~~ FINAL REPORT GENERATED ~~");
-  printTestReport(testReport);
+  await printTestReport(testReport, reportFile);
   const exitCode = testsFailed(testReport) ? 1 : 0;
   Deno.exit(exitCode);
 }
