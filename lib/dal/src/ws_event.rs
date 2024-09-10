@@ -26,6 +26,7 @@ use crate::schema::variant::{
     SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantSavedPayload,
     SchemaVariantUpdatedPayload,
 };
+use crate::secret::SecretDeletedPayload;
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
@@ -108,6 +109,7 @@ pub enum WsPayload {
     SchemaVariantUpdated(frontend_types::SchemaVariant),
     SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
     SecretCreated(SecretCreatedPayload),
+    SecretDeleted(SecretDeletedPayload),
     SecretUpdated(SecretUpdatedPayload),
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),

@@ -242,6 +242,10 @@ export type WsEventPayloadMap = {
     actionId: ActionId;
     changeSetId: ChangeSetId;
   };
+  SecretDeleted: {
+    secretId: SecretId;
+    changeSetId: ChangeSetId;
+  };
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;
