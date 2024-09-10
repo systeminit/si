@@ -28,6 +28,7 @@ use si_pkg::{
 };
 use starfield::migrate_test_exclusive_schema_etoiles;
 use starfield::migrate_test_exclusive_schema_morningstar;
+use starfield::migrate_test_exclusive_schema_private_language;
 use starfield::migrate_test_exclusive_schema_starfield;
 use swifty::migrate_test_exclusive_schema_swifty;
 
@@ -48,6 +49,7 @@ const PKG_CREATED_BY: &str = "System Initiative";
 pub(crate) async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     migrate_test_exclusive_func_si_resource_payload_to_value(ctx).await?;
     migrate_test_exclusive_schema_starfield(ctx).await?;
+    migrate_test_exclusive_schema_private_language(ctx).await?;
     migrate_test_exclusive_schema_etoiles(ctx).await?;
     migrate_test_exclusive_schema_morningstar(ctx).await?;
     migrate_test_exclusive_schema_fallout(ctx).await?;
