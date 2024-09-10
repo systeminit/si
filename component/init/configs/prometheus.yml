@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 1s
+  scrape_interval: 5s
   external_labels:
     monitor: prometheus
 scrape_configs:
@@ -7,10 +7,6 @@ scrape_configs:
    static_configs:
     - targets:
        - otelcol:9090
- - job_name: firecracker
-   static_configs:
-    - targets:
-       - process-exporter:9256
  - job_name: node-exporter
    static_configs:
     - targets:
