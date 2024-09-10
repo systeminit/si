@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use petgraph::{visit::EdgeRef, Direction::Outgoing};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
@@ -8,14 +9,18 @@ use crate::{
     layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::LineageId,
+        graph::{detect_updates::Update, LineageId},
         node_weight::{
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+            traits::{
+                CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult,
+                SiNodeWeight,
+            },
             ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
         },
         ContentAddressDiscriminants,
     },
-    DalContext, EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotGraphV3,
+    DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
+    WorkspaceSnapshotGraphV3,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -201,7 +206,58 @@ impl SiNodeWeight for SchemaVariantNodeWeightV1 {
     }
 }
 
-impl CorrectTransforms for SchemaVariantNodeWeightV1 {}
+impl CorrectTransforms for SchemaVariantNodeWeightV1 {
+    fn correct_transforms(
+        &self,
+        graph: &WorkspaceSnapshotGraphV3,
+        mut updates: Vec<Update>,
+        _from_different_change_set: bool,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        let mut new_updates = vec![];
+
+        for update in &updates {
+            match update {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if destination.id == self.id.into() => {
+                    if let EdgeWeightKind::Use { is_default: true } = edge_weight.kind() {
+                        if let Some(source_node_idx) = graph.get_node_index_by_id_opt(source.id) {
+                            for default_target_node_weight in graph
+                                .edges_directed(source_node_idx, Outgoing)
+                                .filter(|edge_ref| {
+                                    matches!(
+                                        edge_ref.weight().kind(),
+                                        EdgeWeightKind::Use { is_default: true }
+                                    )
+                                })
+                                .filter_map(|edge_ref| graph.get_node_weight_opt(edge_ref.target()))
+                            {
+                                new_updates.push(Update::RemoveEdge {
+                                    source: *source,
+                                    destination: default_target_node_weight.into(),
+                                    edge_kind: EdgeWeightKindDiscriminants::Use,
+                                });
+
+                                new_updates.push(Update::NewEdge {
+                                    source: *source,
+                                    destination: default_target_node_weight.into(),
+                                    edge_weight: EdgeWeight::new(EdgeWeightKind::new_use()),
+                                });
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        updates.extend(new_updates);
+
+        Ok(updates)
+    }
+}
 
 impl CorrectExclusiveOutgoingEdge for SchemaVariantNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
