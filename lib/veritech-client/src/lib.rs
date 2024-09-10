@@ -17,10 +17,10 @@ use veritech_core::{
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
     FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind, KillExecutionRequest,
-    OutputStream, ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
-    ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
-    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
-    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
+    OutputStream, ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveContainer, ValidationRequest,
+    ValidationResultSuccess,
 };
 pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 
@@ -35,8 +35,6 @@ pub enum ClientError {
     NoResult,
     #[error("unable to publish message: {0:?}")]
     PublishingFailed(si_data_nats::Message),
-    #[error("reconciliation functions no longer supported")]
-    ReconciliationFunctionsNoLongerSupported,
     #[error("root connection closed")]
     RootConnectionClosed,
     #[error("subscriber error: {0}")]
@@ -91,21 +89,6 @@ impl Client {
             RequestMode::Jetstream,
         )
         .await
-    }
-
-    // TODO(nick,fletcher): remove reconcilation from both sides. As of the time of writing, we
-    // removed it from the veritech layer since we moved everything to jetstream for production
-    // hardening. As a result, reconciliation did not make the great journey. We landed on the
-    // landmine of dead code here, but we all collectively need to take the time to clean this up.
-    #[instrument(name = "client.execute_reconciliation", level = "info", skip_all)]
-    pub async fn execute_reconciliation(
-        &self,
-        _output_tx: mpsc::Sender<OutputStream>,
-        _request: &ReconciliationRequest,
-        _workspace_id: &str,
-        _change_set_id: &str,
-    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
-        Err(ClientError::ReconciliationFunctionsNoLongerSupported)
     }
 
     #[instrument(name = "client.execute_resolver_function", level = "info", skip_all)]
