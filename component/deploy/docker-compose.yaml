@@ -82,17 +82,5 @@ services:
     depends_on:
       - otelcol
 
-  process-exporter:
-    image: ncabatoff/process-exporter
-    profiles: [veritech]
-    command:
-      - '-procfs=/host/proc'
-      - '-config.path=/config/proc-exporter.yml'
-    ports:
-      - "9256:9256"
-    volumes:
-      - "config:/config/"
-      - /proc:/host/proc:ro
-
 volumes:
   config:
