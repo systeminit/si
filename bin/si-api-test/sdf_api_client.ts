@@ -65,7 +65,7 @@ export const ROUTES = {
 
   // Variant Management -----------------------------------------------------------
   create_variant: {
-    path: (vars: ROUTE_VARS) => `/variant/create_variant`,
+    path: () => `/variant/create_variant`,
     method: "POST",
   },
   // Add more groups below ------------------------------------------------------
@@ -125,7 +125,7 @@ export class SdfApiClient {
   }
 
   public async call({ route, routeVars, params, body }: API_CALL) {
-    let { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
+    const { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
     if (!routeVars) routeVars = {};
     routeVars.workspaceId = this.workspaceId;
     const url = path(routeVars);
@@ -166,6 +166,7 @@ export class SdfApiClient {
   }) {
     const url = `${this.baseUrl}${path}`;
     const method = options?.method || "GET";
+    console.log(`calling ${method} ${url}`);
 
     const headers = {
       "Content-Type": "application/json",

@@ -48,7 +48,6 @@ jobs:
     outputs:
       executors: ${{ steps.executors.outputs.executors }}
     steps:
-      - uses: actions/checkout@v4
       - id: executors
         run: |
           echo "executors=$(jq -nc '[range(0; $num)]' --argjson num ${{ inputs.executors }})" >> "$GITHUB_OUTPUT"
@@ -75,6 +74,15 @@ jobs:
           fi
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
+  start-marker:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - run: |
+          curl https://api.honeycomb.io/1/markers/sdf -X POST \
+              -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -d '{"message":" '"Beginning soak test in ${{ inputs.environment }}."' ", "type":"soak-test-start"}'
+
   api-test:
     name: API Test SDF
     environment: ${{ inputs.environment }}
@@ -82,6 +90,7 @@ jobs:
     needs:
       - define-test-matrix
       - login
+      - start-marker
     strategy:
       # don't fail the entire matrix on failure
       fail-fast: false
@@ -102,7 +111,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
-          key: ${{ hashFiles('./bin/si-api-test/deno.lock') }}
+          key: ${{ hashFiles('./bin/si-api-test/*') }}
 
       - name: Run the deno exec
         working-directory: bin/si-api-test
@@ -117,3 +126,13 @@ jobs:
           --tests "${{ inputs.test }}" \
           --profile '{"maxDuration":${{ inputs.maxDuration }}, "rate": ${{ inputs.rate }}, "useJitter": ${{ inputs.useJitter }} }'
 
+  stop-marker:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: api-test
+    if: always()
+    steps:
+      - run: |
+          curl https://api.honeycomb.io/1/markers/sdf -X POST \
+              -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -d '{"message":" '"Completing soak test in ${{ inputs.environment }}."' ", "type":"soak-test-stop"}'

@@ -51,6 +51,9 @@ if (import.meta.main) {
     testFuncs[testName] = testFunc;
   }
 
+  console.log("Running tests:");
+  console.dir(tests);
+
   // Create a list of promises for all test executions
   const testPromises: Promise<void>[] = [];
 
@@ -58,6 +61,16 @@ if (import.meta.main) {
   const startTime = Date.now();
   let testExecutionSequence = 1;
   let elapsed = 0;
+
+  const intervalId = setInterval(() => {
+    const jobTotal = testPromises.length;
+    const jobsFinished = testReport.length;
+    const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+    console.log(
+      `Finished ${jobsFinished} out of ${jobTotal}, ran for ${elapsedTime}s`,
+    );
+  }, 1000);
+
   do {
     for (const testName of tests) {
       // Execute tests asynchronously and increment sequence, show progress bar
@@ -77,8 +90,10 @@ if (import.meta.main) {
 
     await sleep(sleepAmount);
   } while (testProfile && elapsed < (testProfile.maxDuration * 1000));
+  console.log("Finished enqueuing jobs");
 
   await Promise.all(testPromises);
+  clearInterval(intervalId);
   console.log("~~ FINAL REPORT GENERATED ~~");
   printTestReport(testReport);
   const exitCode = testsFailed(testReport) ? 1 : 0;
