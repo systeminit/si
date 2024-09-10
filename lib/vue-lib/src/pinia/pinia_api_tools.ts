@@ -395,7 +395,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           // may need to handle registering multiple apis if we need to hit more than 1
 
           let request;
-          if (method === "get" || method === "delete") {
+          if (method === "get") {
             request = await api({
               method,
               url: _url,
@@ -404,9 +404,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
               ...options,
             });
           } else {
-            // post, patch, put. Axios's types forbid formData on the request if
-            // method is not one of these three, so we have to do branch on the
-            // method types to make a formData request
+            // delete, post, patch, put. Axios's types forbid formData on the
+            // request if method is not one of these , so we have to do branch
+            // on the method types to make a formData request
             if (formData) {
               headers["Content-Type"] = "multipart/form-data";
               request = await api({
