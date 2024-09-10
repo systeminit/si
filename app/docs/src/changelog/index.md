@@ -11,7 +11,7 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-## 20224-09-09
+## 2024-09-09
 
 New demo's this week:
 
@@ -23,7 +23,7 @@ New demo's this week:
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/0K3RTIJhUt8?si=Q3kTfuHbzi56aibH" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## 20224-09-03
+## 2024-09-03
 
 New demo's this week:
 
@@ -34,7 +34,7 @@ New demo's this week:
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/-pgh5NeBtek?si=k571V7SHhTaovSJC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## 20224-08-26
+## 2024-08-26
 
 New demo's this week:
 
@@ -42,13 +42,13 @@ New demo's this week:
 - Durable Queue Implementation
 - Function Cancelation
 - Collapsing Frames
-- Right Click Component Pop-up 
+- Right Click Component Pop-up
 - Self-service User Reporting
 - How-to for Actions
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/yCjLyoSXfnE?si=gY1TDg4H3QTQgooH" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## 20224-08-19
+## 2024-08-19
 
 New demo's this week:
 
@@ -59,7 +59,7 @@ New demo's this week:
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/dpgHOIdUL0E?si=V2pAzfO8I1_Eczoi" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## 20224-08-12
+## 2024-08-12
 
 New demo's this week:
 
