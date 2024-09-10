@@ -41,9 +41,19 @@ export function createDefaultTestReportEntry(
   };
 }
 
-export function printTestReport(report: TestReportEntry[]) {
+export async function printTestReport(
+  report: TestReportEntry[],
+  reportFile?: string,
+) {
+  const reportString = JSON.stringify(report, null, 2);
+
   console.log("Test Report:");
-  console.log(JSON.stringify(report, null, 2));
+  console.log(reportString);
+
+  if (reportFile) {
+    console.log(`Writing report to ${reportFile}`);
+    await Deno.writeTextFile(`./${reportFile}`, reportString);
+  }
 }
 
 export function testsFailed(report: TestReportEntry[]) {

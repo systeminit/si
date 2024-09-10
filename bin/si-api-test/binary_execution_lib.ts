@@ -10,7 +10,15 @@ export interface TestExecutionProfile {
 export function parseArgs(args: string[]) {
   // Parse arguments using std/flags
   const parsedArgs = parse(args, {
-    string: ["workspaceId", "userId", "password", "profile", "tests", "token"],
+    string: [
+      "workspaceId",
+      "userId",
+      "password",
+      "profile",
+      "tests",
+      "token",
+      "reportFile",
+    ],
     alias: {
       w: "workspaceId",
       u: "userId",
@@ -38,6 +46,7 @@ Options:
   --tests, -t         Test names to run (comma-separated, optional)
   --profile, -l       Test profile in JSON format (optional)
   --token, -k         SDF Auth Token (optional)
+  --reportFile        Address of the output file, if unset it will be logged
   --help              Show this help message
 `);
     Deno.exit(0);
@@ -48,6 +57,7 @@ Options:
   const userId = parsedArgs.userId || undefined;
   const password = parsedArgs.password || undefined;
   const token = parsedArgs.token || undefined;
+  const reportFile = parsedArgs.reportFile;
 
   // Handle optional tests argument
   const testsToRun = parsedArgs.tests
@@ -68,7 +78,15 @@ Options:
     }
   }
 
-  return { workspaceId, userId, password, testsToRun, testProfile, token };
+  return {
+    workspaceId,
+    userId,
+    password,
+    testsToRun,
+    testProfile,
+    token,
+    reportFile,
+  };
 }
 
 export function checkEnvironmentVariables(
