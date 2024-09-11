@@ -516,7 +516,7 @@ impl Action {
     #[instrument(
         name = "action.get_hold_status_influenced_by",
         level = "info",
-        skip(ctx)
+        skip(ctx, action_dependency_graph)
     )]
     pub async fn get_hold_status_influenced_by(
         ctx: &DalContext,
