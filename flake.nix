@@ -145,8 +145,7 @@
                   --replace /bin/bash "${bash}/bin/bash"
               done
           '';
-          configurePhase =
-            ''
+          configurePhase = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
@@ -155,7 +154,7 @@
               $NIX_CFLAGS_COMPILE"
             export OUT=${placeholder "out"}
             echo $OUT
-            '';
+          '';
           buildPhase =
             ''
               export HOME="$(dirname $(pwd))/home"
@@ -254,6 +253,8 @@
             '';
           };
 
+          forklift = binDerivation {pkgName = "forklift";};
+
           module-index = binDerivation {pkgName = "module-index";};
 
           pinga = binDerivation {pkgName = "pinga";};
@@ -288,8 +289,7 @@
 
         devShells.default = mkShell {
           # Env Vars so bindgen can find libclang
-          shellHook =
-            ''
+          shellHook = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="$(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
@@ -298,7 +298,7 @@
               $NIX_CFLAGS_COMPILE"
             export OUT=${placeholder "out"}
             echo $OUT
-            '';
+          '';
           packages =
             [
               alejandra
@@ -325,7 +325,6 @@
             ++ buck2BuildInputs
             ++ langJsExtraPkgs;
         };
-
 
         formatter = alejandra;
       });

@@ -1,9 +1,9 @@
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::context::NatsStreams;
 use dal::jwt_key::JwtConfig;
 use dal::pkg::PkgError;
 use dal::workspace_snapshot::migrator::{SnapshotGraphMigrator, SnapshotGraphMigratorError};
+use dal::JetstreamStreams;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
     WorkspaceError,
@@ -53,6 +53,8 @@ pub enum ServerError {
     Builtins(#[from] BuiltinsError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
+    #[error("dal jetstream streams error: {0}")]
+    DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
     #[error("compute executor initialization error: {0}")]
     DedicatedExecutorInitialize(#[from] dal::DedicatedExecutorInitializeError),
     #[error("error when loading veritech encryption key: {0}")]
@@ -315,10 +317,16 @@ impl Server<(), ()> {
         Ok(client)
     }
 
-    #[instrument(name = "sdf.init.get_or_create_nats_streams", level = "info", skip_all)]
-    pub async fn get_or_create_nats_streams(client: &NatsClient) -> ServerResult<NatsStreams> {
-        let streams = NatsStreams::get_or_create(client).await?;
-        debug!("successfully connected nats streams");
+    #[instrument(
+        name = "sdf.init.get_or_create_jetstream_streams",
+        level = "info",
+        skip_all
+    )]
+    pub async fn get_or_create_jetstream_streams(
+        client: NatsClient,
+    ) -> ServerResult<JetstreamStreams> {
+        let streams = JetstreamStreams::new(client).await?;
+        debug!("successfully found or created jetstream streams");
         Ok(streams)
     }
 

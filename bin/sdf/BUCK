@@ -8,7 +8,6 @@ load(
 rust_binary(
     name = "sdf",
     deps = [
-        "//lib/billing-events-server:billing-events-server",
         "//lib/nats-multiplexer:nats-multiplexer",
         "//lib/sdf-server:sdf-server",
         "//lib/si-service:si-service",

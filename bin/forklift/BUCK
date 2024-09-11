@@ -1,0 +1,30 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "nix_omnibus_pkg",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "forklift",
+    deps = [
+        "//lib/forklift-server:forklift-server",
+        "//lib/si-service:si-service",
+        "//lib/si-std:si-std",
+        "//third-party/rust:clap",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "forklift"},
+)
+
+docker_image(
+    name = "image",
+    image_name = "forklift",
+    build_deps = ["//bin/forklift:forklift"],
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "forklift",
+    build_dep = "//bin/forklift:forklift",
+)

@@ -36,10 +36,10 @@ use std::{
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
-    context::NatsStreams,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
+    DalContext, DalLayerDb, JetstreamStreams, JwtPublicSigningKey, ModelResult, ServicesContext,
+    Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -265,7 +265,7 @@ pub struct TestContext {
     /// A connected NATS client
     nats_conn: NatsClient,
     /// Required NATS streams
-    nats_streams: NatsStreams,
+    nats_streams: JetstreamStreams,
     /// A [`JobQueueProcessor`] impl
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
@@ -470,7 +470,7 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&nats_config)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let nats_streams = NatsStreams::get_or_create(&nats_conn)
+        let nats_streams = JetstreamStreams::new(nats_conn.clone())
             .await
             .wrap_err("failed to create NatsStreams")?;
         let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
@@ -663,6 +663,27 @@ pub async fn veritech_server_for_uds_cyclone(
     Ok(server)
 }
 
+/// Configures and builds a [`forklift_server::Server`] suitable for running alongside DAL
+/// object-related tests.
+pub async fn forklift_server(
+    nats_config: NatsConfig,
+    token: CancellationToken,
+) -> Result<forklift_server::Server> {
+    let config: forklift_server::Config = {
+        let mut config_file = forklift_server::ConfigFile::default();
+        config_file.nats = nats_config;
+        config_file
+            .try_into()
+            .wrap_err("failed to build forklift server config")?
+    };
+
+    let server = forklift_server::Server::from_config(config, token)
+        .await
+        .wrap_err("failed to create forklift server")?;
+
+    Ok(server)
+}
+
 async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("running global test setup");
     let test_context = test_context_builer.build_for_global().await?;
@@ -741,6 +762,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to migrate layerdb")?;
 
+    // Startup up a Forklift server exclusively for migrations
+    info!("starting Forklift server for initial migrations");
+    let forklift_server = forklift_server(test_context.config.nats.clone(), token.clone()).await?;
+    tracker.spawn(forklift_server.run());
+
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");
     let srv_services_ctx = test_context
@@ -776,7 +802,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     migrate_local_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
-        services_ctx.nats_streams(),
+        services_ctx.jetstream_streams(),
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
@@ -804,7 +830,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 async fn migrate_local_builtins(
     dal_pg: &PgPool,
     nats: &NatsClient,
-    nats_streams: &NatsStreams,
+    nats_streams: &JetstreamStreams,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &VeritechEncryptionKey,

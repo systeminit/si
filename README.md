@@ -119,7 +119,7 @@ In our documentation, you can also learn more about running the stack locally an
 
 If some services failed to start, you can restart them on the Tilt dashboard.
 
-- A backend service fails (e.g. `sdf`): restart them in the following order: `veritech`, `rebaser`, `pinga`, `sdf`
+- A backend service fails (e.g. `sdf`): restart them in the following order: `forklift`, `veritech`, `rebaser`, `pinga`, `sdf`
 - A frontend service fails (e.g. `web`): restart the service individually
 - A dependent service fails (e.g. PostgreSQL): tear down the stack and restart
 

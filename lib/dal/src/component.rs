@@ -1292,6 +1292,32 @@ impl Component {
         Ok(None)
     }
 
+    /// List all IDs for all [`Components`](Component) in the workspace.
+    pub async fn list_ids(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let component_category_node_id = workspace_snapshot
+            .get_category_node_or_err(None, CategoryNodeKind::Component)
+            .await?;
+
+        let component_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+
+        let mut component_ids = Vec::with_capacity(component_node_indices.len());
+        for index in component_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)
+                .await?
+                .get_component_node_weight()?;
+            component_ids.push(node_weight.id.into())
+        }
+        Ok(component_ids)
+    }
+
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -1497,10 +1523,17 @@ impl Component {
         Ok(())
     }
 
+    /// Finds the [`ResourceData`] for a given [`Component`].
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Option<ResourceData>> {
-        let value_id = self
-            .attribute_value_for_prop(ctx, &["root", "resource"])
-            .await?;
+        Self::resource_by_id(ctx, self.id).await
+    }
+
+    /// Finds the [`ResourceData`] for a given [`ComponentId`](Component).
+    pub async fn resource_by_id(
+        ctx: &DalContext,
+        id: ComponentId,
+    ) -> ComponentResult<Option<ResourceData>> {
+        let value_id = Self::attribute_value_for_prop_by_id(ctx, id, &["root", "resource"]).await?;
 
         let av = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
 
@@ -1521,10 +1554,10 @@ impl Component {
         }
     }
 
-    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
-        let name_value_id = self
-            .attribute_value_for_prop(ctx, &["root", "si", "name"])
-            .await?;
+    /// Returns the name of a [`Component`] for a given [`ComponentId`](Component).
+    pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<String> {
+        let name_value_id =
+            Self::attribute_value_for_prop_by_id(ctx, id, &["root", "si", "name"]).await?;
 
         let name_av = AttributeValue::get_by_id_or_error(ctx, name_value_id).await?;
 
@@ -1532,6 +1565,11 @@ impl Component {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
+    }
+
+    /// Returns the name of the [`Component`].
+    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
+        Self::name_by_id(ctx, self.id).await
     }
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {

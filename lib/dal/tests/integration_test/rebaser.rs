@@ -1,9 +1,6 @@
 use base64::{engine::general_purpose, Engine};
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::{
-    AttributeValue, ChangeSet, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType,
-};
+use dal::{AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType};
 use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -203,120 +200,6 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         modified_arg.name.as_str(),
         "modified func arg should have new name after rebase"
     );
-}
-
-/// This can't be checked for until we have more fully-featured semantic conflict detection.
-#[ignore]
-#[test]
-async fn func_node_with_arguments_conflict(ctx: &mut DalContext) {
-    let code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is code");
-
-    let func = Func::new(
-        ctx,
-        "test",
-        None::<String>,
-        None::<String>,
-        None::<String>,
-        false,
-        false,
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::Boolean,
-        None::<String>,
-        Some(code_base64),
-    )
-    .await
-    .expect("able to make a func");
-
-    Func::get_by_id_or_error(ctx, func.id)
-        .await
-        .expect("able to get func by id before commit");
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("commit");
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    let change_set_a = ChangeSet::fork_head(ctx, "a")
-        .await
-        .expect("able to fork head to a");
-    let change_set_b = ChangeSet::fork_head(ctx, "b")
-        .await
-        .expect("able to fork head to b");
-
-    // In change set A, add an argument, apply to head
-    ctx.update_visibility_and_snapshot_to_visibility(change_set_a.id)
-        .await
-        .expect("able to update to change set a");
-    let func = Func::get_by_id_or_error(ctx, func.id)
-        .await
-        .expect("able to get func by id after switch to a");
-    let args = FuncArgument::list_for_func(ctx, func.id)
-        .await
-        .expect("able to list args");
-    assert!(args.is_empty());
-    FuncArgument::new(ctx, "argle bargle", FuncArgumentKind::Object, None, func.id)
-        .await
-        .expect("able to create func argument");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("commit");
-    let args = FuncArgument::list_for_func(ctx, func.id)
-        .await
-        .expect("able to list args");
-    assert_eq!(1, args.len());
-
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
-
-    // In change set B, add an argument, apply to head
-    ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
-        .await
-        .expect("able to update to change set a");
-    let func = Func::get_by_id_or_error(ctx, func.id)
-        .await
-        .expect("able to get func by id after switch to b");
-    let args = FuncArgument::list_for_func(ctx, func.id)
-        .await
-        .expect("able to list args");
-    assert!(args.is_empty());
-    FuncArgument::new(ctx, "bargle argle", FuncArgumentKind::Object, None, func.id)
-        .await
-        .expect("able to create func argument");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("commit");
-    let args = FuncArgument::list_for_func(ctx, func.id)
-        .await
-        .expect("able to list args");
-    assert_eq!(1, args.len());
-
-    // NOTE(nick): at the time of writing, this test has the "#![ignore]" macro applied and we've
-    // removed the formal "ChangeSetTestHelpersError" enum in favor of the "eyre!" and "Result"
-    // type. As an aside, that change was made to help make error reporting more clear for runtime
-    // assertion failures and explicit "expect" and "panic" usages in tests. Anyway, how the
-    // conflicts are detected will likely be slightly different in the future, so commenting this
-    // out for now should suffice. Please don't hesitate to reach out with questions or rage.
-    // let result = ChangeSetTestHelpers::apply_change_set_to_base(ctx).await;
-    // assert!(matches!(
-    //     result,
-    //     Err(ChangeSetTestHelpersError::ChangeSetApply(_))
-    // ));
-    //
-    // if let Err(ChangeSetTestHelpersError::Transactions(TransactionsError::ConflictsOccurred(
-    //     conflicts,
-    // ))) = result
-    // {
-    //     assert_eq!(1, conflicts.conflicts_found.len());
-    //     let conflict = conflicts
-    //         .conflicts_found
-    //         .first()
-    //         .expect("conflict should be there")
-    //         .to_owned();
-    //     assert!(matches!(conflict, Conflict::ExclusiveEdgeMismatch { .. }));
-    // }
 }
 
 #[test]

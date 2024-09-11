@@ -5,6 +5,7 @@ debug = true
 resolver = "2"
 members = [
     "bin/cyclone",
+    "bin/forklift",
     "bin/module-index",
     "bin/pinga",
     "bin/rebaser",
@@ -12,7 +13,6 @@ members = [
     "bin/veritech",
     "lib/auth-api-client",
     "lib/billing-events",
-    "lib/billing-events-server",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
@@ -22,6 +22,7 @@ members = [
     "lib/dal",
     "lib/dal-test",
     "lib/data-warehouse-stream-client",
+    "lib/forklift-server",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-multiplexer",

@@ -11,6 +11,7 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::billing_publish::BillingPublishError;
 use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
@@ -36,6 +37,8 @@ pub enum JobConsumerError {
     ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("billing publish error: {0}")]
+    BillingPublish(#[from] BillingPublishError),
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
     #[error("component error: {0}")]
@@ -48,43 +51,37 @@ pub enum JobConsumerError {
     Diagram(#[from] DiagramError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
-    #[error(transparent)]
+    #[error("std io error: {0}")]
     Io(#[from] ::std::io::Error),
-    #[error(transparent)]
+    #[error("job producer error: {0}")]
     JobProducer(#[from] JobProducerError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
     NatsUnavailable,
-    // #[error("no schema found for component {0}")]
-    // NoSchemaFound(ComponentId),
-    // #[error("no schema variant found for component {0}")]
-    // NoSchemaVariantFound(ComponentId),
-    #[error(transparent)]
+    #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
-    #[error(transparent)]
+    #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    // #[error(transparent)]
-    // PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error("execution of job {0} failed after {1} retry attempts")]
     RetriesFailed(String, u32),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
+    #[error("tokio task error: {0}")]
     TokioTask(#[from] JoinError),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error(transparent)]
+    #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationError),
-    #[error(transparent)]
+    #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
-    #[error(transparent)]
+    #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
 

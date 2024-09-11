@@ -2,28 +2,25 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use billing_events::{
-    BillingEventsError, BillingWorkspaceChangeEvent, BillingWorkspaceChangeEventLocation,
-};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_layer_cache::LayerDbError;
-use thiserror::Error;
-
 use si_data_pg::{PgError, PgRow};
 use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::billing_publish::BillingPublishError;
 use crate::context::RebaseRequest;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::RebaseBatch;
-use crate::WorkspaceError;
 use crate::{
     action::{ActionError, ActionId},
     id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
     TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
     WorkspaceSnapshotError, WsEvent, WsEventError,
 };
+use crate::{billing_publish, WorkspaceError};
 
 pub mod event;
 pub mod status;
@@ -31,12 +28,11 @@ pub mod view;
 
 const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancestors.sql");
 
-/// The primary error type for this module.
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
-    #[error("billing events error: {0}")]
-    BillingEvents(#[from] BillingEventsError),
+    #[error("billing publish error: {0}")]
+    BillingPublish(#[from] Box<BillingPublishError>),
     #[error("change set with id {0} not found")]
     ChangeSetNotFound(ChangeSetId),
     #[error("could not find default change set: {0}")]
@@ -273,7 +269,7 @@ impl ChangeSet {
         Ok(())
     }
 
-    fn workspace_id(&self) -> ChangeSetResult<WorkspacePk> {
+    pub fn workspace_id(&self) -> ChangeSetResult<WorkspacePk> {
         self.workspace_id.ok_or(ChangeSetError::NoTenancySet)
     }
 
@@ -281,40 +277,8 @@ impl ChangeSet {
         Ok(Workspace::get_by_pk_or_error(ctx, self.workspace_id()?).await?)
     }
 
-    async fn is_head(&self, ctx: &DalContext) -> ChangeSetResult<bool> {
+    pub async fn is_head(&self, ctx: &DalContext) -> ChangeSetResult<bool> {
         Ok(self.workspace(ctx).await?.default_change_set_id() == self.id)
-    }
-
-    async fn publish_billing_workspace_change_event(
-        &self,
-        ctx: &DalContext,
-        change_description: impl Into<String>,
-        modify_event: impl FnOnce(&mut BillingWorkspaceChangeEvent),
-    ) -> ChangeSetResult<()> {
-        if self.workspace_id.is_some() && self.is_head(ctx).await? {
-            let workspace = self.workspace_id()?;
-            let mut event = BillingWorkspaceChangeEvent {
-                workspace: workspace.into(),
-                workspace_snapshot_address: self.workspace_snapshot_address,
-                // TODO(nick,jkeiser): see the "TODO" on the struct definition for why we string convert here.
-                status: self.status.to_string(),
-                resource_count: 0,
-                change_set_id: self.id.into(),
-                merge_requested_by_user_id: self.merge_requested_by_user_id.map(Into::into),
-                change_description: change_description.into(),
-                // TODO(nick): we need to ensure that this is correct. This will likely come from
-                // sdf and/or the billing events server if it runs in a separate binary.
-                location: BillingWorkspaceChangeEventLocation::Local,
-            };
-            modify_event(&mut event);
-            // Ensure queue is created
-            ctx.services_context()
-                .nats_streams()
-                .billing_events()
-                .publish_workspace_update(&workspace.to_string(), &event)
-                .await?;
-        }
-        Ok(())
     }
 
     pub async fn update_pointer(
@@ -322,10 +286,9 @@ impl ChangeSet {
         ctx: &DalContext,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<()> {
-        self.publish_billing_workspace_change_event(ctx, "update_pointer", |event| {
-            event.workspace_snapshot_address = workspace_snapshot_address;
-        })
-        .await?;
+        billing_publish::for_head_change_set_pointer_update(ctx, self)
+            .await
+            .map_err(Box::new)?;
 
         ctx.txns()
             .await?
@@ -346,11 +309,9 @@ impl ChangeSet {
         ctx: &DalContext,
         status: ChangeSetStatus,
     ) -> ChangeSetResult<()> {
-        self.publish_billing_workspace_change_event(ctx, "update_pointer", |event| {
-            // TODO(nick,jkeiser): see the "TODO" on the struct definition for why we string convert here.
-            event.status = status.to_string();
-        })
-        .await?;
+        billing_publish::for_change_set_status_update(ctx, self)
+            .await
+            .map_err(Box::new)?;
 
         ctx.txns()
             .await?

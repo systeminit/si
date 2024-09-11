@@ -8,10 +8,12 @@ pub mod xxhash_type;
 
 mod actor;
 mod cas;
+mod change_set_status;
 mod func;
 mod func_execution;
 mod func_run;
 mod func_run_log;
+mod resource_metadata;
 mod schema;
 mod schema_variant;
 mod socket;
@@ -24,6 +26,7 @@ pub use crate::{
     actor::Actor,
     actor::UserPk,
     cas::CasValue,
+    change_set_status::ChangeSetStatus,
     content_hash::ContentHash,
     encrypted_secret::EncryptedSecretKey,
     func::{FuncArgumentId, FuncId},
@@ -35,6 +38,7 @@ pub use crate::{
         FuncRunState, FuncRunValue,
     },
     func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
+    resource_metadata::{ResourceMetadata, ResourceStatus},
     schema::SchemaId,
     schema_variant::{PropId, SchemaVariantId},
     socket::{InputSocketId, OutputSocketId},
