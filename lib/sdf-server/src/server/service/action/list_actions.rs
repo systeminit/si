@@ -7,6 +7,7 @@ use dal::Func;
 use dal::{action::ActionId, ActionPrototypeId, ChangeSetId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
+use telemetry::prelude::*;
 
 use super::ActionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -53,6 +54,10 @@ pub async fn list_actions(
     let mut queued = Vec::new();
 
     let action_graph = ActionDependencyGraph::for_workspace(&ctx).await?;
+    if !action_graph.is_acyclic() {
+        warn!("action graph for {:?} has a cycle", request.visibility);
+    }
+
     for action_id in action_ids {
         let action = Action::get_by_id(&ctx, action_id).await?;
 
