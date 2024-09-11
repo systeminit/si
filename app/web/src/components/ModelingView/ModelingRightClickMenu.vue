@@ -43,8 +43,10 @@ const {
   selectedEdge,
 } = storeToRefs(componentsStore);
 
-const attributesStore = useComponentAttributesStore(
-  selectedComponentId.value || "NONE",
+const attributesStore = computed(() =>
+  selectedComponentId.value
+    ? useComponentAttributesStore(selectedComponentId.value)
+    : undefined,
 );
 
 function typeDisplayName() {
@@ -119,8 +121,8 @@ const rightClickMenuItems = computed(() => {
     // set component type
     {
       const updateComponentType = (componentType: ComponentType) => {
-        if (selectedComponentId.value) {
-          attributesStore.SET_COMPONENT_TYPE({
+        if (selectedComponentId.value && attributesStore.value) {
+          attributesStore.value.SET_COMPONENT_TYPE({
             componentId: selectedComponentId.value,
             componentType,
           });
