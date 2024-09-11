@@ -1,5 +1,5 @@
-use axum::extract::Query;
 use axum::response::IntoResponse;
+use axum::Json;
 use dal::SecretView;
 use dal::{ChangeSet, Visibility, WsEvent};
 use dal::{Secret, SecretId};
@@ -22,7 +22,7 @@ pub type UpdateSecretResponse = SecretView;
 pub async fn delete_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
-    Query(request): Query<DeleteSecretRequest>,
+    Json(request): Json<DeleteSecretRequest>,
 ) -> SecretResult<impl IntoResponse> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
