@@ -280,7 +280,8 @@ export type MoveElementsState = {
 export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
   | { type: "socket"; socket: DiagramSocketData }
-  | { type: "parent" };
+  | { type: "parent" }
+  | { type: "rename" };
 
 export type RightClickElementEvent = {
   element: DiagramElementData;

@@ -772,6 +772,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
+          async RENAME_COMPONENT(componentId: ComponentId, newName: string) {
+            return new ApiRequest<{
+              componentId: ComponentId;
+            }>({
+              method: "post",
+              url: "component/set_name",
+              params: {
+                componentId,
+                name: newName,
+                ...visibilityParams,
+              },
+            });
+          },
+
           expandComponents(...keys: DiagramElementUniqueKey[]) {
             keys.forEach((key) => {
               this.collapsedComponents.delete(key);

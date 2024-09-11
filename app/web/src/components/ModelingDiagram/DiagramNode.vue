@@ -40,7 +40,22 @@
       />
 
       <!-- header text -->
+
+      <!-- rename hitbox -->
+      <v-rect
+        :config="{
+          ...renameHitbox,
+          ...(debug && { fill: 'red' }),
+        }"
+        @mouseout="mouseOutRename"
+        @mouseover="mouseOverRename"
+        @click="renameIfSelected"
+        @dblclick="rename"
+      />
+
+      <!-- component name -->
       <v-text
+        v-if="!renaming"
         ref="titleTextRef"
         :config="{
           x: -halfWidth + 10,
@@ -48,7 +63,7 @@
           verticalAlign: 'top',
           align: 'left',
           text: truncatedNodeTitle,
-          width: nodeWidth - 24 - 24 - 8,
+          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
           padding: 0,
           fill: colors.headerText,
           fontStyle: 'bold',
@@ -57,6 +72,7 @@
         }"
       />
 
+      <!-- component type -->
       <v-text
         ref="subtitleTextRef"
         :config="{
@@ -65,7 +81,7 @@
           verticalAlign: 'top',
           align: 'left',
           text: node.def.subtitle,
-          width: nodeWidth - 24 - 24 - 8,
+          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
           padding: 0,
           fill: colors.bodyText,
           fontFamily: DIAGRAM_FONT_FAMILY,
@@ -74,6 +90,8 @@
           listening: false,
         }"
       />
+
+      <!-- end header text -->
 
       <!-- parent frame attachment indicator -->
       <DiagramIcon
@@ -259,7 +277,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, PropType, ref, watch } from "vue";
+import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -276,6 +294,7 @@ import {
   DiagramElementUniqueKey,
   DiagramNodeData,
   DiagramSocketData,
+  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -289,6 +308,7 @@ import {
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
   SOCKET_SIZE,
+  NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramContext } from "./ModelingDiagram.vue";
@@ -308,10 +328,12 @@ const props = defineProps({
   qualificationStatus: {
     type: String as PropType<QualificationStatus>,
   },
+  debug: Boolean,
 });
 
 const emit = defineEmits<{
   (e: "resize"): void;
+  (e: "rename", v: () => void): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -501,11 +523,11 @@ watch([() => props.isLoading, overlay], () => {
   transition.play();
 });
 
-function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: "parent") {
+function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: string) {
   evt.cancelBubble = true;
   componentsStore.setHoveredComponentId(
     componentId.value,
-    type ? { type } : undefined,
+    type ? ({ type } as ElementHoverMeta) : undefined,
   );
 }
 
@@ -527,6 +549,68 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
 function onClick(detailsTabSlug: string) {
   componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
+  });
+}
+
+// RENAME ON DIAGRAM STUFF
+const renameHitboxSelfRect = ref();
+
+onUpdated(() => {
+  renameHitboxSelfRect.value = titleTextRef.value?.getNode()?.getSelfRect();
+});
+
+const renameHitbox = computed(() => {
+  if (titleTextRef.value) {
+    const raw =
+      renameHitboxSelfRect.value ||
+      titleTextRef.value?.getNode()?.getSelfRect();
+    if (raw) {
+      const box = { ...raw, x: -halfWidth.value + 10, y: 4 };
+      box.width -= 3;
+      box.height += 1;
+      return box;
+    }
+  }
+
+  return {
+    x: -halfWidth.value + 10,
+    y: 4,
+    width: nodeWidth.value,
+    height: nodeHeaderHeight.value,
+  };
+});
+
+const renaming = ref(false);
+
+function mouseOverRename(evt: KonvaEventObject<MouseEvent>) {
+  if (props.isSelected) {
+    onMouseOver(evt, "rename");
+  }
+}
+
+function mouseOutRename(evt: KonvaEventObject<MouseEvent>) {
+  if (props.isSelected) {
+    onMouseOver(evt);
+  }
+}
+
+function renameIfSelected(e: KonvaEventObject<MouseEvent>) {
+  if (
+    props.isSelected &&
+    e.evt.button === 0 &&
+    componentsStore.hoveredComponentMeta?.type === "rename"
+  ) {
+    rename();
+  }
+}
+
+function rename() {
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "rename",
+  });
+  renaming.value = true;
+  emit("rename", () => {
+    renaming.value = false;
   });
 }
 </script>
