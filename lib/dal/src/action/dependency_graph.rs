@@ -32,6 +32,10 @@ impl ActionDependencyGraph {
         }
     }
 
+    pub fn is_acyclic(&self) -> bool {
+        petgraph::algo::toposort(self.inner.graph(), None).is_ok()
+    }
+
     /// Construct an [`ActionDependencyGraph`] of all of the queued [`Action`s][crate::action::Action]
     /// for the current [`WorkspaceSnapshot`][crate::WorkspaceSnapshot].
     #[instrument(
@@ -211,7 +215,6 @@ impl ActionDependencyGraph {
     /// Gets all downstream dependencies for the provided ActionId. This includes the entire subgraph
     /// starting at ActionId.
     #[instrument(level = "info", skip(self))]
-
     pub fn get_all_dependencies(&self, action_id: ActionId) -> Vec<ActionId> {
         let current_dependencies = self.inner.direct_reverse_dependencies_of(action_id);
         let mut all_dependencies = HashSet::new();
