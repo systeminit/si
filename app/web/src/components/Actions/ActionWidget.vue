@@ -17,7 +17,9 @@
       tone="inherit"
       class="flex-none"
     />
-    <div class="font-bold leading-normal">{{ binding.displayName }}</div>
+    <div class="font-bold leading-normal">
+      {{ binding.displayName || binding.name }}
+    </div>
 
     <Icon
       v-if="addRequestStatus.isPending || removeRequestStatus.isPending"
@@ -54,7 +56,8 @@ import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 interface BindingWithDisplayName extends Action {
-  displayName: string;
+  displayName?: string | null;
+  name: string;
 }
 
 const props = defineProps({
