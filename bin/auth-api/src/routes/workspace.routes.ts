@@ -91,6 +91,7 @@ router.post("/workspaces/new", async (ctx) => {
       instanceUrl: z.string().url(),
       displayName: z.string(),
       isDefault: z.boolean(),
+      description: z.string(),
     }),
   );
 
@@ -109,6 +110,7 @@ router.post("/workspaces/new", async (ctx) => {
     reqBody.instanceUrl,
     reqBody.displayName,
     reqBody.isDefault,
+    reqBody.description,
   );
 
   ctx.body = {
@@ -127,6 +129,7 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     z.object({
       instanceUrl: z.string().url(),
       displayName: z.string(),
+      description: z.string(),
     }),
   );
 
@@ -135,6 +138,8 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     reqBody.instanceUrl,
     reqBody.displayName,
     workspace.quarantinedAt,
+    reqBody.description,
+    workspace.isFavourite,
   );
 
   tracker.trackEvent(authUser, "workspace_updated", {
@@ -283,6 +288,45 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
   });
 
   ctx.body = members;
+});
+
+router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
+  const authUser = extractAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isFavourite: z.boolean(),
+    }),
+  );
+
+  const favouriteDate = new Date();
+  if (reqBody.isFavourite) {
+    tracker.trackEvent(authUser, "favourite_workspace", {
+      favouritedBy: authUser.email,
+      favouriteDate,
+      workspaceId: workspace.id,
+    });
+  } else {
+    tracker.trackEvent(authUser, "unfavourite_workspace", {
+      unFavouritedBy: authUser.email,
+      unFavouriteDate: favouriteDate,
+      workspaceId: workspace.id,
+    });
+  }
+
+  await patchWorkspace(
+    workspace.id,
+    workspace.instanceUrl,
+    workspace.displayName,
+    workspace.quarantinedAt,
+    workspace.description,
+    reqBody.isFavourite,
+  );
+
+  ctx.body = await getUserWorkspaces(authUser.id);
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {

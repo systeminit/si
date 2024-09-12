@@ -9,9 +9,10 @@ export type WorkspaceId = string;
 // TODO: do we want to share this type with the backend?
 export type Workspace = {
   id: WorkspaceId;
-  instanceEnvType: "LOCAL" | "REMOTE" | "SI";
+  instanceEnvType: "LOCAL" | "PRIVATE" | "SI";
   instanceUrl: string;
   displayName: string;
+  description?: string;
   slug: string;
   creatorUserId: UserId;
   creatorUser: {
@@ -22,6 +23,7 @@ export type Workspace = {
   role: string;
   invitedAt: Date;
   isDefault: boolean;
+  isFavourite: boolean;
   quarantinedAt: Date;
 };
 
@@ -179,6 +181,15 @@ export const useWorkspacesStore = defineStore("workspaces", {
         url: `/workspaces/${workspaceId}/quarantine`,
         params: {
           isQuarantined,
+        },
+      });
+    },
+    async SET_FAVOURITE_QUARANTINE(workspaceId: string, isFavourite: boolean) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/workspaces/${workspaceId}/favourite`,
+        params: {
+          isFavourite,
         },
       });
     },

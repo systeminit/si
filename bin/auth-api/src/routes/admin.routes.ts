@@ -65,6 +65,7 @@ router.post("/workspaces/setup-production-workspace", async (ctx) => {
       SAAS_WORKSPACE_URL,
       `${user.nickname}'s Production Workspace`,
       hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
+      "",
     );
 
     ctx.body = {
@@ -100,6 +101,7 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
       SAAS_WORKSPACE_URL,
       `${user.nickname}'s Production Workspace`,
       hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
+      "",
     );
 
     ctx.body = {
@@ -142,6 +144,8 @@ router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
     workspace.instanceUrl,
     workspace.displayName,
     quarantinedAt,
+    workspace.description,
+    workspace.isFavourite,
   );
 
   ctx.body = await getUserWorkspaces(authUser.id);

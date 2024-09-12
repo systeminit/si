@@ -80,17 +80,39 @@ const workspacesStore = useWorkspacesStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const workspaces = computed(() => workspacesStore.workspaces);
+// function sortedWorkspaces(workspaces: Workspace[]): Workspace[] {
+//   return workspaces.sort((a, b) => {
+//     // First, prioritize "SI" instanceEnvType
+//     if (a.instanceEnvType === "SI" && b.instanceEnvType !== "SI") {
+//       return -1;
+//     }
+//     if (a.instanceEnvType !== "SI" && b.instanceEnvType === "SI") {
+//       return 1;
+//     }
+
+//     // If both are "SI" or both are not "SI", sort by displayName
+//     return a.displayName.localeCompare(b.displayName);
+//   });
+// }
 function sortedWorkspaces(workspaces: Workspace[]): Workspace[] {
   return workspaces.sort((a, b) => {
-    // First, prioritize "SI" instanceEnvType
-    if (a.instanceEnvType === "SI" && b.instanceEnvType !== "SI") {
-      return -1;
-    }
-    if (a.instanceEnvType !== "SI" && b.instanceEnvType === "SI") {
-      return 1;
+    // 1. Sort by isDefault (true comes first)
+    if (a.isDefault !== b.isDefault) {
+      return a.isDefault ? -1 : 1;
     }
 
-    // If both are "SI" or both are not "SI", sort by displayName
+    // 2. Sort by isFavourite (true comes first)
+    if (a.isFavourite !== b.isFavourite) {
+      return a.isFavourite ? -1 : 1;
+    }
+
+    // 3. Sort by instanceEnvType (SI comes first, then REMOTE, then LOCAL)
+    if (a.instanceEnvType !== b.instanceEnvType) {
+      const envTypeOrder = { SI: 0, PRIVATE: 1, LOCAL: 2 };
+      return envTypeOrder[a.instanceEnvType] - envTypeOrder[b.instanceEnvType];
+    }
+
+    // 4. If all above are equal, sort by displayName
     return a.displayName.localeCompare(b.displayName);
   });
 }

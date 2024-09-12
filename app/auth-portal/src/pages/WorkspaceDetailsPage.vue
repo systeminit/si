@@ -2,7 +2,7 @@
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <div
-        class="flex flex-row gap-sm align-middle items-center justify-between"
+        class="flex flex-row gap-sm align-middle items-start justify-between"
       >
         <div
           ref="workspaceNameRef"
@@ -14,13 +14,24 @@
             (createMode ? "Create New Workspace" : "Workspace Details")
           }}
         </div>
-        <RouterLink
-          :to="{
-            name: 'workspaces',
-          }"
-        >
-          <VButton label="Return To Workspaces" tone="neutral" />
-        </RouterLink>
+        <div class="flex flex-col items-end relative">
+          <RouterLink
+            :to="{
+              name: 'workspaces',
+            }"
+          >
+            <VButton label="Return To Workspaces" tone="neutral" />
+          </RouterLink>
+          <div
+            class="absolute -bottom-10 left-0 right-0 flex justify-center cursor-not-allowed opacity-50"
+            @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
+          >
+            <Icon
+              :name="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
+              size="xl"
+            />
+          </div>
+        </div>
       </div>
       <div class="mt-sm pb-md">
         <div>
@@ -65,6 +76,14 @@
           placeholder="The instance url for this workspace"
           required
           :disabled="!isWorkspaceOwner"
+        />
+
+        <VormInput
+          v-model="draftWorkspace.description"
+          label="Description"
+          placeholder="A description for this workspace"
+          :disabled="!isWorkspaceOwner && !createMode"
+          :required="false"
         />
 
         <VButton
@@ -269,6 +288,8 @@ const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
   isDefault: false,
+  description: "",
+  isFavourite: false,
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
@@ -383,6 +404,17 @@ const editWorkspace = async () => {
     // }, 500);
     return;
   }
+};
+
+const favouriteWorkspace = async (isFavourite: boolean) => {
+  if (!props.workspaceId) return;
+
+  await workspacesStore.SET_FAVOURITE_QUARANTINE(
+    props.workspaceId,
+    isFavourite,
+  );
+
+  draftWorkspace.isFavourite = isFavourite;
 };
 
 const deleteWorkspace = async () => {
