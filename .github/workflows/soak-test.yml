@@ -1,4 +1,7 @@
 name: Soak Test
+
+run-name: Running ${{ inputs.test }} for ${{ inputs.maxDuration }}s every ${{ inputs.rate }}ms on ${{ inputs.executors }} instances
+
 on:
   workflow_dispatch:
     inputs:
