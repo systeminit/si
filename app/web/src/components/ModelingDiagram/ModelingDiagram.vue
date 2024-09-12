@@ -96,17 +96,6 @@ overflow hidden */
               }
             "
           />
-          <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
-            <DiagramEdge
-              v-for="edge in edges"
-              :key="edge.uniqueKey"
-              :edge="edge"
-              :fromPoint="edge.fromPoint?.center"
-              :isHovered="elementIsHovered(edge)"
-              :isSelected="elementIsSelected(edge)"
-              :toPoint="edge.toPoint?.center"
-            />
-          </template>
           <DiagramNode
             v-for="node in nodes"
             :key="node.uniqueKey"
@@ -131,17 +120,15 @@ overflow hidden */
             :key="mouseCursor.userId"
             :cursor="mouseCursor"
           />
-          <template v-if="edgeDisplayMode === 'EDGES_OVER'">
-            <DiagramEdge
-              v-for="edge in edges"
-              :key="edge.uniqueKey"
-              :edge="edge"
-              :fromPoint="getSocketLocationInfo('from', edge)?.center"
-              :isHovered="elementIsHovered(edge)"
-              :isSelected="elementIsSelected(edge)"
-              :toPoint="getSocketLocationInfo('to', edge)?.center"
-            />
-          </template>
+          <DiagramEdge
+            v-for="edge in edges"
+            :key="edge.uniqueKey"
+            :edge="edge"
+            :fromPoint="getSocketLocationInfo('from', edge)?.center"
+            :isHovered="elementIsHovered(edge)"
+            :isSelected="elementIsSelected(edge)"
+            :toPoint="getSocketLocationInfo('to', edge)?.center"
+          />
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
@@ -250,8 +237,6 @@ overflow hidden */
 type DiagramContext = {
   zoomLevel: Ref<number>;
   setZoomLevel: (newZoom: number) => void;
-  edgeDisplayMode: Ref<EdgeDisplayMode>;
-  toggleEdgeDisplayMode: () => void;
   drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
   moveElementsState: ComputedRef<MoveElementsState>;
   gridRect: ComputedRef<IRect>;
@@ -333,7 +318,6 @@ import {
   Size2D,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
-  EdgeDisplayMode,
   MoveElementsState,
   SocketLocationInfo,
 } from "./diagram_types";
@@ -403,13 +387,6 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const statusStore = useStatusStore();
 const modelingEventBus = componentsStore.eventBus;
-
-const edgeDisplayMode = ref<EdgeDisplayMode>("EDGES_OVER");
-
-const toggleEdgeDisplayMode = () => {
-  edgeDisplayMode.value =
-    edgeDisplayMode.value === "EDGES_OVER" ? "EDGES_UNDER" : "EDGES_OVER";
-};
 
 const fetchDiagramReqStatus =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
@@ -3273,8 +3250,6 @@ onBeforeUnmount(() => {
 const context: DiagramContext = {
   zoomLevel,
   setZoomLevel,
-  edgeDisplayMode,
-  toggleEdgeDisplayMode,
   drawEdgeState,
   moveElementsState,
   gridRect,

@@ -18,7 +18,6 @@ export type SideAndCornerIdentifiers =
   | "top-left"
   | "bottom-right"
   | "bottom-left";
-export type EdgeDisplayMode = "EDGES_OVER" | "EDGES_UNDER";
 
 export type DiagramElementUniqueKey = string;
 

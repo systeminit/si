@@ -53,19 +53,6 @@
     </div>
 
     <div
-      v-tooltip="displayModeTooltip"
-      class="ml-4"
-      :class="
-        edgeDisplayMode === 'EDGES_OVER'
-          ? getButtonClasses(false)
-          : getInvertedButtonClasses(false)
-      "
-      @click="toggleEdgeDisplayMode"
-    >
-      <Icon name="eye" size="full" />
-    </div>
-
-    <div
       v-tooltip="'Generate Workspace Screenshot'"
       class="ml-4"
       :class="getButtonClasses(false)"
@@ -93,14 +80,7 @@ import { useDiagramContext } from "./ModelingDiagram.vue";
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
 const diagramContext = useDiagramContext();
-const { edgeDisplayMode, toggleEdgeDisplayMode, zoomLevel, setZoomLevel } =
-  diagramContext;
-
-const displayModeTooltip = computed(() => ({
-  content:
-    edgeDisplayMode.value === "EDGES_OVER" ? "Edges Over" : "Edges Under",
-  hideTriggers: ["hover", "focus", "touch"],
-}));
+const { zoomLevel, setZoomLevel } = diagramContext;
 
 const emit = defineEmits<{
   (e: "open:help"): void;
@@ -122,19 +102,6 @@ function getButtonClasses(isDisabled: boolean) {
     themeClasses(
       "bg-neutral-600 text-white active:bg-neutral-200 active:text-black active:border-black",
       "bg-neutral-200 text-black active:bg-neutral-700 active:text-white active:border-white",
-    ),
-    isDisabled
-      ? tw`cursor-not-allowed opacity-50`
-      : tw`cursor-pointer hover:scale-110`,
-  );
-}
-
-function getInvertedButtonClasses(isDisabled: boolean) {
-  return clsx(
-    tw`rounded-full p-1 border`,
-    themeClasses(
-      "bg-neutral-200 text-black border-black",
-      "bg-neutral-700 text-white border-white",
     ),
     isDisabled
       ? tw`cursor-not-allowed opacity-50`
