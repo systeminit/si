@@ -4,6 +4,7 @@ create_workspace_permissions = "$SI_WORKSPACE_PERMISSIONS"
 create_workspace_allowlist = [ "$SI_WORKSPACE_ALLOW_LIST" ]
 
 concurrency_limit = $SI_PINGA_CONCURRENCY_LIMIT
+data_warehouse_stream_name = "$SI_FORKLIFT_DATA_WAREHOUSE_STREAM_NAME"
 
 [crypto]
 encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
