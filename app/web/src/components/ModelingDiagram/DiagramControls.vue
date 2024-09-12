@@ -59,6 +59,14 @@
     >
       <Icon name="eye" size="full" />
     </div>
+
+    <div
+      v-tooltip="downloadScreenshotTooltip"
+      class="ml-4"
+      @click="emit('downloadCanvasScreenshot')"
+    >
+      <Icon name="download" size="full" />
+    </div>
   </div>
 </template>
 
@@ -87,8 +95,13 @@ const displayModeTooltip = computed(() => ({
   hideTriggers: ["hover", "focus", "touch"],
 }));
 
+const downloadScreenshotTooltip = computed(() => {
+  return "Generate workspace image";
+});
+
 const emit = defineEmits<{
   (e: "open:help"): void;
+  (e: "downloadCanvasScreenshot"): void;
 }>();
 
 const zoomMenuRef = ref<InstanceType<typeof DropdownMenu>>();
