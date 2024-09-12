@@ -8,7 +8,6 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
@@ -182,7 +181,7 @@ impl AttributePrototypeArgument {
 
     implement_add_edge_to!(
         source_id: AttributePrototypeArgumentId,
-        destination_id: Ulid,
+        destination_id: ValueSource,
         add_fn: add_edge_to_value,
         discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         result: AttributePrototypeArgumentResult,
@@ -450,7 +449,7 @@ impl AttributePrototypeArgument {
         Self::add_edge_to_value(
             ctx,
             apa_id,
-            value_source.into_inner_id().into(),
+            value_source,
             EdgeWeightKind::PrototypeArgumentValue,
         )
         .await?;

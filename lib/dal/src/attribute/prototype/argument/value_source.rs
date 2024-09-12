@@ -49,6 +49,12 @@ pub enum ValueSource {
     StaticArgumentValue(StaticArgumentValueId),
 }
 
+impl From<ValueSource> for si_events::ulid::Ulid {
+    fn from(value_source: ValueSource) -> Self {
+        value_source.into_inner_id()
+    }
+}
+
 impl From<InputSocketId> for ValueSource {
     fn from(id: InputSocketId) -> Self {
         Self::InputSocket(id)
