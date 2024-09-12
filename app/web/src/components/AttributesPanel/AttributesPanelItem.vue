@@ -133,9 +133,9 @@
                 :key="source"
               >
                 <DropdownMenuItem
-                  checkable
                   :checked="propSource === source"
                   :label="source"
+                  checkable
                   @click="setSource(source)"
                 />
               </template>
@@ -166,8 +166,8 @@
         <div v-if="numberOfHiddenChildren > 0" class="attributes-panel-item">
           <!-- TODO(wendy) - If we want to add the option to show the hidden props, add the click handler here! -->
           <div
-            class="text-center pt-2xs italic text-2xs text-neutral-400"
             :style="{ paddingLeft: indentPxPlusOne }"
+            class="text-center pt-2xs italic text-2xs text-neutral-400"
           >
             +{{ numberOfHiddenChildren }} hidden empty prop{{
               numberOfHiddenChildren > 1 ? "s" : ""
@@ -329,9 +329,9 @@
         <template v-if="propKind === 'integer'">
           <input
             v-model="newValueNumber"
+            :disabled="!propIsEditable"
             spellcheck="false"
             type="number"
-            :disabled="!propIsEditable"
             @blur="onBlur"
             @focus="onFocus"
             @keyup.enter="updateValue"
@@ -341,9 +341,9 @@
           <input
             v-model="newValueString"
             :class="`${propLabelParts[0]}${propLabelParts[1]}`"
+            :disabled="!propIsEditable"
             spellcheck="false"
             type="text"
-            :disabled="!propIsEditable"
             @blur="onBlur"
             @focus="onFocus"
             @keyup.enter="updateValue"
@@ -353,8 +353,8 @@
           <!-- todo add show/hide controls -->
           <input
             v-model="newValueString"
-            type="password"
             :disabled="!propIsEditable"
+            type="password"
             @blur="onBlur"
             @focus="onFocus"
             @keyup.enter="updateValue"
@@ -366,8 +366,8 @@
           <textarea
             v-model="newValueString"
             :class="`$propLabelParts`"
-            spellcheck="false"
             :disabled="!propIsEditable"
+            spellcheck="false"
             @blur="onBlur"
             @focus="onFocus"
             @keydown.enter="(e) => e.metaKey && updateValue()"
@@ -396,8 +396,8 @@
           <input
             :checked="newValueBoolean"
             :class="`attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`"
-            type="checkbox"
             :disabled="!propIsEditable"
+            type="checkbox"
             @blur="onBlur"
             @change="updateValue"
             @focus="onFocus"
@@ -442,7 +442,15 @@
             class="attributes-panel-item__secret-value-wrap"
             @click="secretModalRef?.open()"
           >
-            <div v-if="secret" class="attributes-panel-item__secret-value">
+            <div
+              v-if="secret"
+              :class="
+                clsx(
+                  'attributes-panel-item__secret-value',
+                  secret.isUsable ? 'bg-action-700' : 'bg-destructive-600',
+                )
+              "
+            >
               <Icon name="key" size="xs" />
               {{ secret.definition }} / {{ secret.name }}
             </div>
@@ -479,7 +487,6 @@
     <!-- VALIDATION DETAILS -->
     <div
       v-if="showValidationDetails && validation"
-      :style="{ marginLeft: indentPx }"
       :class="
         clsx(
           'attributes-panel-item__validation-details flex flex-col p-2xs border mx-xs text-xs translate-y-[-5px]',
@@ -487,6 +494,7 @@
           themeClasses('bg-destructive-100', 'bg-neutral-900'),
         )
       "
+      :style="{ marginLeft: indentPx }"
     >
       {{ validation.message }}
 
@@ -994,7 +1002,17 @@ function removeChildHandler() {
   });
 }
 
-const validation = computed(() => props.attributeDef?.validation);
+const validation = computed(() => {
+  if (widgetKind.value === "secret" && secret.value?.isUsable === false) {
+    return {
+      status: "Failure",
+      message:
+        "Unusable Secret: Created in another workspace. Edit it to be able to use it.",
+    };
+  }
+
+  return props.attributeDef?.validation;
+});
 
 function getKey() {
   if (isChildOfMap.value) return props.attributeDef?.mapKey;
@@ -1646,7 +1664,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   padding: 4px;
 }
 .attributes-panel-item__secret-value {
-  background: @colors-action-700;
   display: inline-block;
   padding: 2px 10px;
   border-radius: 4px;

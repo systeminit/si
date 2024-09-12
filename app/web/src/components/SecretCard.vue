@@ -5,7 +5,10 @@
         'flex flex-row flex-none items-center overflow-hidden text-shade-100 dark:text-shade-0',
         detailedListItem
           ? 'border-b border-neutral-200 dark:border-neutral-500'
-          : 'border rounded h-[90px] cursor-pointer border-neutral-500 dark:hover:bg-action-700 hover:bg-action-100 dark:hover:outline-action-300 hover:outline-action-500 hover:outline -outline-offset-1',
+          : 'border rounded h-[90px]',
+        !detailedListItem && secret.isUsable
+          ? 'cursor-pointer border-neutral-500 dark:hover:bg-action-700 hover:bg-action-100 dark:hover:outline-action-300 hover:outline-action-500 hover:outline -outline-offset-1'
+          : 'cursor-default border-destructive-600',
       )
     "
   >
@@ -15,6 +18,9 @@
           clsx(
             'text-md font-bold leading-tight',
             detailedListItem ? 'break-words' : 'truncate',
+            secret.isUsable
+              ? 'text-neutral-500 dark:text-neutral-300'
+              : 'text-destructive-500 font-bold',
           )
         "
       >
@@ -42,19 +48,27 @@
         v-if="!secret.updatedInfo || detailedListItem"
         :class="
           clsx(
-            'text-xs text-neutral-500 dark:text-neutral-300',
+            'text-xs',
             !detailedListItem && 'truncate',
+            secret.isUsable
+              ? 'text-neutral-500 dark:text-neutral-300'
+              : 'text-destructive-500 font-bold',
           )
         "
       >
-        Created:
-        <Timestamp
-          :date="new Date(secret.createdInfo.timestamp)"
-          :relative="!detailedListItem"
-          :size="detailedListItem ? 'extended' : 'normal'"
-        />
-        by
-        {{ secret.createdInfo.actor.label }}
+        <template v-if="secret.isUsable">
+          Created:
+          <Timestamp
+            :date="new Date(secret.createdInfo.timestamp)"
+            :relative="!detailedListItem"
+            :size="detailedListItem ? 'extended' : 'normal'"
+          />
+          by
+          {{ secret.createdInfo.actor.label }}
+        </template>
+        <template v-else>
+          Created in another workspace. Edit secret to be able to use it.
+        </template>
       </div>
       <div class="grow flex flex-row items-center">
         <div
@@ -101,28 +115,28 @@
     <div v-if="detailedListItem" class="pr-sm flex flex-col gap-xs">
       <IconButton
         icon="edit"
-        tooltip="Edit"
-        iconTone="action"
         iconIdleTone="neutral"
+        iconTone="action"
+        tooltip="Edit"
         @click="emit('edit')"
       />
       <IconButton
-        icon="trash"
-        tooltip="Delete"
-        iconTone="destructive"
         :disabled="secret.connectedComponents.length > 0"
+        icon="trash"
         iconIdleTone="neutral"
+        iconTone="destructive"
+        tooltip="Delete"
         @click="deleteSecret"
       />
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Timestamp } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import clsx from "clsx";
-import { Secret, useSecretsStore } from "../store/secrets.store";
+import { Secret, useSecretsStore } from "@/store/secrets.store";
 import IconButton from "./IconButton.vue";
 
 const props = defineProps({

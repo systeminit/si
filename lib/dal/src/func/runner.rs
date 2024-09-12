@@ -36,8 +36,8 @@ use crate::{
     func::backend::FuncBackendError,
     ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
     ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, FuncError,
-    FuncId, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    FuncId, KeyPairError, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError,
+    WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use crate::{HistoryEventError, TransactionsError};
 
@@ -1134,7 +1134,15 @@ impl FuncRunner {
                 .ok_or(SecretError::EncryptedSecretNotFound(key))?;
 
             // Decrypt message from EncryptedSecret
-            let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
+            // Skip secret if unauthorized
+            let decrypted_secret = match encrypted_secret.decrypt(ctx).await {
+                Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => {
+                    continue;
+                }
+                other_result => other_result,
+            }?;
+
+            let mut arg = decrypted_secret.message().into_inner();
 
             Self::inject_workspace_token(ctx, &mut arg).await?;
 

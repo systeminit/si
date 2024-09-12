@@ -11,8 +11,8 @@ use thiserror::Error;
 use crate::{
     pk,
     serde_impls::{base64_bytes_serde, nonce_serde},
-    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, Timestamp,
-    TransactionsError, Workspace, WorkspaceError, WorkspacePk,
+    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, TenancyError,
+    Timestamp, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
 };
 
 mod key_pair_box_public_key_serde;
@@ -39,8 +39,12 @@ pub enum KeyPairError {
     SerdeJson(#[from] serde_json::Error),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("cannot get key for different workspace")]
+    UnauthorizedKeyAccess,
     #[error(transparent)]
     Workspace(#[from] Box<WorkspaceError>),
 }
@@ -111,6 +115,11 @@ impl KeyPair {
         let row = ctx.txns().await?.pg().query_one(GET_BY_PK, &[&pk]).await?;
         let json: serde_json::Value = row.try_get("object")?;
         let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
+
+        if key_pair_row.workspace_pk != ctx.tenancy().workspace_pk()? {
+            return Err(KeyPairError::UnauthorizedKeyAccess);
+        }
+
         let key_pair = key_pair_row.decrypt_into(ctx.symmetric_crypto_service())?;
         Ok(key_pair)
     }

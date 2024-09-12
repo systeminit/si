@@ -37,6 +37,8 @@ pub struct SecretView {
     pub updated_info: Option<HistoryEventMetadata>,
     /// The list of component Ids connected to the secret [`Secret`].
     pub connected_components: Vec<ComponentId>,
+    /// If the secret can be used on this workspace
+    pub is_usable: bool,
 }
 
 impl SecretView {
@@ -74,6 +76,7 @@ impl SecretView {
             }
         };
 
+        let is_usable = secret.can_be_decrypted(ctx).await?;
         let connected_components = secret.clone().find_connected_components(ctx).await?;
 
         Ok(Self {
@@ -84,6 +87,7 @@ impl SecretView {
             created_info,
             updated_info,
             connected_components,
+            is_usable,
         })
     }
 }

@@ -319,6 +319,21 @@ impl Secret {
         self.encrypted_secret_key
     }
 
+    /// Returns if the secret can be decrypted in this workspace
+    pub async fn can_be_decrypted(&self, ctx: &DalContext) -> SecretResult<bool> {
+        let key = self.encrypted_secret_key;
+
+        let encrypted_secret = EncryptedSecret::get_by_key(ctx, key)
+            .await?
+            .ok_or(SecretError::EncryptedSecretNotFound(key))?;
+
+        match encrypted_secret.key_pair(ctx).await {
+            Ok(_) => Ok(true),
+            Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => Ok(false),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Attach a [`Secret`] to a given [`AttributeValue`] corresponding to a
     /// "/root/secrets/\<secret\>" [`Prop`](crate::Prop).
     ///
