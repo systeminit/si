@@ -1135,8 +1135,10 @@ impl FuncRunner {
 
             // Decrypt message from EncryptedSecret
             // Skip secret if unauthorized
+            // Skip secret if we can't find keypair
             let decrypted_secret = match encrypted_secret.decrypt(ctx).await {
-                Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => {
+                Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess))
+                | Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_))) => {
                     continue;
                 }
                 other_result => other_result,

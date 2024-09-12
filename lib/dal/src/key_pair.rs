@@ -29,6 +29,8 @@ pub enum KeyPairError {
     InvalidSecretKeyBytes,
     #[error("Invalid workspace: {0}")]
     InvalidWorkspace(WorkspacePk),
+    #[error("key pair not found: {0}")]
+    KeyPairNotFound(KeyPairPk),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("no current key pair found when one was expected")]
@@ -112,7 +114,9 @@ impl KeyPair {
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: KeyPairPk) -> KeyPairResult<Self> {
-        let row = ctx.txns().await?.pg().query_one(GET_BY_PK, &[&pk]).await?;
+        let Some(row) = ctx.txns().await?.pg().query_opt(GET_BY_PK, &[&pk]).await? else {
+            return Err(KeyPairError::KeyPairNotFound(pk));
+        };
         let json: serde_json::Value = row.try_get("object")?;
         let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
 

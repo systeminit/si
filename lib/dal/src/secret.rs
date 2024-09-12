@@ -323,13 +323,14 @@ impl Secret {
     pub async fn can_be_decrypted(&self, ctx: &DalContext) -> SecretResult<bool> {
         let key = self.encrypted_secret_key;
 
-        let encrypted_secret = EncryptedSecret::get_by_key(ctx, key)
-            .await?
-            .ok_or(SecretError::EncryptedSecretNotFound(key))?;
+        let Some(encrypted_secret) = EncryptedSecret::get_by_key(ctx, key).await? else {
+            return Ok(false);
+        };
 
         match encrypted_secret.key_pair(ctx).await {
             Ok(_) => Ok(true),
-            Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => Ok(false),
+            Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_)))
+            | Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => Ok(false),
             Err(err) => Err(err),
         }
     }
