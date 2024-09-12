@@ -165,10 +165,10 @@ async fn run(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    assert!(ActionPrototype::run(ctx, proto.id(), component.id())
+    let (maybe_resource, _func_run_id) = ActionPrototype::run(ctx, proto.id(), component.id())
         .await
-        .expect("unable to run ActionPrototype")
-        .is_some());
+        .expect("unable to run ActionPrototype");
+    assert!(maybe_resource.is_some());
 }
 
 #[test]
