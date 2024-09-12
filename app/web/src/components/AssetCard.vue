@@ -66,6 +66,7 @@
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
+            :requestStatus="createUnlockedVariantReqStatus"
             @click="unlock"
           />
           <Icon v-if="!asset.isLocked" name="sliders-vertical" tone="action" />
@@ -244,6 +245,11 @@ const componentNameTooltip = computed(() => {
     return {};
   }
 });
+
+const createUnlockedVariantReqStatus = assetStore.getRequestStatus(
+  "CREATE_UNLOCKED_COPY",
+  asset.value?.schemaVariantId,
+);
 
 const unlock = async () => {
   if (asset.value) {
