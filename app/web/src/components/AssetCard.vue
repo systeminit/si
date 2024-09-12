@@ -37,7 +37,6 @@
             icon="cloud-upload"
             tooltip="Contribute"
             tooltipPlacement="top"
-            variant="simple"
             @click="contributeAsset"
           />
 
@@ -47,7 +46,6 @@
             icon="code-deployed"
             tooltip="Update"
             tooltipPlacement="top"
-            variant="simple"
             :loading="installStatus.isPending"
             loadingIcon="loader"
             @click="updateAsset"
@@ -59,7 +57,6 @@
             icon="trash"
             tooltip="Delete Unlocked Variant"
             tooltipPlacement="top"
-            variant="simple"
             @click="deleteUnlockedVariant"
           />
 
@@ -69,7 +66,6 @@
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
-            variant="simple"
             @click="unlock"
           />
           <Icon v-if="!asset.isLocked" name="sliders-vertical" tone="action" />

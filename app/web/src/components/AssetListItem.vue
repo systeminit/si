@@ -30,7 +30,6 @@
             tone="action"
             tooltip="Contribute"
             tooltipPlacement="top"
-            variant="simple"
           />
           <Icon
             v-if="canUpdate"
@@ -39,7 +38,6 @@
             tone="action"
             tooltip="Update"
             tooltipPlacement="top"
-            variant="simple"
           />
         </div>
       </div>

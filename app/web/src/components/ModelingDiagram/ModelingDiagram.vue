@@ -40,7 +40,7 @@ overflow hidden */
     >
       <!-- DEBUG BAR-->
       <div
-        v-if="showDebugBar"
+        v-if="enableDebugMode"
         class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
       >
         <div>fonts loaded? {{ customFontsLoaded }}</div>
@@ -85,7 +85,13 @@ overflow hidden */
             :collapsed="
               componentsStore.collapsedComponents.has(group.uniqueKey)
             "
+            :debug="enableDebugMode"
             @resize="onNodeLayoutOrLocationChange(group)"
+            @rename="
+              (f) => {
+                renameOnDiagram(group, f);
+              }
+            "
           />
           <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
             <DiagramEdge
@@ -109,7 +115,13 @@ overflow hidden */
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(node.def.id)
             "
+            :debug="enableDebugMode"
             @resize="onNodeLayoutOrLocationChange(node)"
+            @rename="
+              (f) => {
+                renameOnDiagram(node, f);
+              }
+            "
           />
           <DiagramCursor
             v-for="mouseCursor in presenceStore.diagramCursors"
@@ -215,6 +227,18 @@ overflow hidden */
       </v-stage>
 
       <DiagramHelpModal ref="helpModalRef" />
+
+      <div ref="renameInputWrapperRef" class="absolute">
+        <VormInput
+          ref="renameInputRef"
+          v-model="renameInputValue"
+          compact
+          rename
+          noLabel
+          @keydown="onRenameKeyDown"
+          @blur="onRenameSubmit"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -262,7 +286,11 @@ import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
-import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
+import {
+  LoadingMessage,
+  getToneColorHex,
+  VormInput,
+} from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
 import { useRoute } from "vue-router";
@@ -321,6 +349,8 @@ import {
   GROUP_INNER_Y_BOUNDARY_OFFSET,
   MIN_NODE_DIMENSION,
   GROUP_HEADER_BOTTOM_MARGIN,
+  NODE_TITLE_HEADER_MARGIN_RIGHT,
+  GROUP_HEADER_ICON_SIZE,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -380,7 +410,7 @@ const toggleEdgeDisplayMode = () => {
 const fetchDiagramReqStatus =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
 
-const showDebugBar = false;
+const enableDebugMode = false;
 
 const customFontsLoaded = useCustomFontsLoaded();
 
@@ -439,6 +469,13 @@ function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
   };
 }
 
+function convertGridCoordsToContainerCoords(v: Vector2d): Vector2d {
+  return {
+    x: v.x * zoomLevel.value - gridMinX.value,
+    y: v.y * zoomLevel.value - gridMinY.value,
+  };
+}
+
 /** pointer position in frame of reference of container */
 const containerPointerPos = ref<Vector2d>();
 /** pointer position in frame of reference of grid  */
@@ -492,6 +529,7 @@ function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
       x: gridOrigin.value.x + e.evt.deltaX * panFactor,
       y: gridOrigin.value.y + e.evt.deltaY * panFactor,
     };
+    fixRenameInputPosition();
   }
 }
 
@@ -762,6 +800,7 @@ async function onKeyDown(e: KeyboardEvent) {
   // TODO: escape will probably have more complex behaviour
   if (e.key === "Escape") {
     clearSelection();
+    renameHide();
     if (insertElementActive.value) componentsStore.cancelInsert();
     componentsStore.copyingFrom = null;
     if (dragSelectActive.value) endDragSelect(false);
@@ -1036,6 +1075,9 @@ const cursor = computed(() => {
   }
 
   if (hoveredElement.value) {
+    if (hoveredElementMeta.value?.type === "rename") {
+      return "text";
+    }
     return "pointer";
   }
   return "auto";
@@ -3067,6 +3109,96 @@ function recenterOnElement(panTarget: DiagramElementData) {
   const centerOnPoint = getCenterPointOfElement(panTarget);
   if (centerOnPoint) {
     gridOrigin.value = centerOnPoint;
+  }
+}
+
+const renameInputRef = ref<InstanceType<typeof VormInput>>();
+const renameInputWrapperRef = ref();
+const renameInputValue = ref("");
+const renameElement = ref();
+const renameEndFunc = ref();
+
+function fixRenameInputPosition() {
+  if (renameElement.value) {
+    const componentBox =
+      componentsStore.renderedGeometriesByComponentId[
+        renameElement.value.def.id
+      ];
+    if (componentBox && renameInputWrapperRef.value) {
+      const { x, y } = convertGridCoordsToContainerCoords(componentBox);
+
+      if (renameElement.value instanceof DiagramNodeData) {
+        // moving the input box for a Node
+        renameInputWrapperRef.value.style.top = `${y + 3}px`;
+        renameInputWrapperRef.value.style.left = `${
+          x + 8 - componentBox.width / 2
+        }px`;
+        renameInputWrapperRef.value.style.width = `${
+          componentBox.width - NODE_TITLE_HEADER_MARGIN_RIGHT
+        }px`;
+      } else if (renameElement.value instanceof DiagramGroupData) {
+        // moving the input box for a Group
+        const diffIcon =
+          !renameElement.value.def.changeStatus ||
+          renameElement.value.def.changeStatus === "unmodified";
+        const width = diffIcon
+          ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE * 2
+          : componentBox.width - 18 - GROUP_HEADER_ICON_SIZE * 3;
+
+        renameInputWrapperRef.value.style.top = `${y - 58}px`;
+        renameInputWrapperRef.value.style.left = `${
+          x + (diffIcon ? 30 : 4) - width / 2
+        }px`;
+        renameInputWrapperRef.value.style.width = `${width}px`;
+      }
+    }
+  }
+}
+
+function renameOnDiagram(
+  el: DiagramNodeData | DiagramGroupData,
+  endFunc: () => void,
+) {
+  const componentBox =
+    componentsStore.renderedGeometriesByComponentId[el.def.id];
+
+  if (componentBox && renameInputWrapperRef.value && renameInputRef.value) {
+    renameElement.value = el;
+    renameEndFunc.value = endFunc;
+    renameInputValue.value = el.def.title;
+    fixRenameInputPosition();
+    renameInputRef.value.focus();
+  }
+}
+
+function onRenameSubmit() {
+  if (
+    renameInputValue.value &&
+    renameElement.value.def.title !== renameInputValue.value &&
+    renameInputValue.value.length > 0
+  ) {
+    componentsStore.RENAME_COMPONENT(
+      renameElement.value.def.id,
+      renameInputValue.value,
+    );
+  }
+  renameHide();
+}
+
+function renameHide() {
+  if (renameInputWrapperRef.value && renameEndFunc.value) {
+    renameInputWrapperRef.value.style.removeProperty("top");
+    renameInputWrapperRef.value.style.removeProperty("left");
+    renameInputWrapperRef.value.style.removeProperty("width");
+    renameEndFunc.value(renameInputValue.value); // tells the component to show its title again!
+    renameInputValue.value = "";
+    renameElement.value = undefined;
+  }
+}
+
+function onRenameKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape") {
+    renameHide();
   }
 }
 

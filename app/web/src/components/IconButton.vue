@@ -91,7 +91,7 @@ const props = defineProps({
   loading: { type: Boolean },
   loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
   loadingTooltip: { type: String },
-  variant: { type: String as PropType<IconButtonVariant>, default: "classic" },
+  variant: { type: String as PropType<IconButtonVariant>, default: "simple" },
   requestStatus: {
     type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
   },

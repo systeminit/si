@@ -16,6 +16,8 @@ export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 export const NODE_WIDTH = 200;
 export const MIN_NODE_DIMENSION = NODE_WIDTH + 20 * 2;
 
+export const NODE_TITLE_HEADER_MARGIN_RIGHT = 56;
+
 // spacing between sockets
 export const SOCKET_GAP = 22;
 // spacing above/below sockets within the node
