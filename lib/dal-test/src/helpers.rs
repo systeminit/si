@@ -17,6 +17,7 @@ mod property_editor_test_view;
 
 pub use change_set::ChangeSetTestHelpers;
 pub use property_editor_test_view::PropEditorTestView;
+use serde_json::Value;
 
 /// Generates a fake name.
 pub fn generate_fake_name() -> Result<String> {
@@ -228,6 +229,25 @@ pub async fn update_attribute_value_for_component(
     }
     AttributeValue::update(ctx, attribute_value_id, Some(value)).await?;
     Ok(())
+}
+
+/// Given a [`ComponentId`] and PropPath, get the value for an attribute value at that path
+pub async fn get_attribute_value_for_component(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prop_path: &[&str],
+) -> Result<Option<Value>> {
+    let component = Component::get_by_id(ctx, component_id).await?;
+    let mut attribute_value_ids = component.attribute_values_for_prop(ctx, prop_path).await?;
+    let attribute_value_id = attribute_value_ids
+        .pop()
+        .ok_or(eyre!("unexpected, no attribute values found for prop"))?;
+    assert!(attribute_value_ids.is_empty());
+
+    let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
+
+    let value = attribute_value.view(ctx).await?;
+    Ok(value)
 }
 
 /// Encrypts a message with a given [`KeyPairPk`](KeyPair).

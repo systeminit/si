@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use dal::{ChangeSetId, Func, WorkspacePk};
+use telemetry::prelude::*;
 
 use super::FuncAPIResult;
 
@@ -13,11 +14,25 @@ pub async fn list_all_funcs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> FuncAPIResult<Json<Vec<Func>>> {
+) -> FuncAPIResult<Json<Vec<si_frontend_types::FuncSummary>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let funcs = Func::list_all(&ctx).await?;
+    let mut funcs = Vec::new();
+
+    for func in Func::list_all(&ctx).await? {
+        match func.into_frontend_type(&ctx).await {
+            Ok(f) => {
+                funcs.push(f);
+            }
+            Err(err) => {
+                error!(
+                    ?err,
+                    "could not make func with id {} into frontend type", func.id
+                )
+            }
+        }
+    }
     Ok(Json(funcs))
 }
