@@ -35,8 +35,8 @@ use si_data_nats::{
     jetstream,
 };
 use si_events::{
-    ChangeSetId, ChangeSetStatus, ComponentId, ResourceMetadata, SchemaId, SchemaVariantId, UserPk,
-    WorkspacePk, WorkspaceSnapshotAddress,
+    ulid::Ulid, ChangeSetId, ChangeSetStatus, ComponentId, ResourceMetadata, SchemaId,
+    SchemaVariantId, UserPk, WorkspacePk, WorkspaceSnapshotAddress,
 };
 use thiserror::Error;
 
@@ -86,9 +86,11 @@ pub struct BillingEvent {
     /// The user who requested the update (if any)
     pub merge_requested_by_user_id: Option<UserPk>,
 
-    /// The total number of resources (conditional based on the event kind).
-    pub resource_count: Option<usize>,
-    /// The metadata of all resources (conditional based on the event kind).
+    /// The total number of resources in the workspace (conditional based on the event kind).
+    pub resource_count_total: Option<usize>,
+    /// The total number of resources in the chunk (conditional based on the event kind and size).
+    pub resource_count_for_chunk: Option<usize>,
+    /// The metadata of all resources in the workspace or in the chunk (conditional based on the event kind and size).
     pub resource_metadata: Option<Vec<ResourceMetadata>>,
 
     /// The ID of the component (conditional based on the event kind).
@@ -104,6 +106,20 @@ pub struct BillingEvent {
 
     /// The kind of billing event.
     pub kind: BillingEventKind,
+
+    /// Contains chunk information, if applicable.
+    pub chunk_info: Option<BillingEventChunkInfo>,
+}
+
+/// Contains information for identifying and ordering chunks.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BillingEventChunkInfo {
+    /// The unique identifier of this specific chunk.
+    pub chunk_id: Ulid,
+    /// The unique identifier of the chunk group.
+    pub chunk_group_id: Ulid,
+    /// The order of the members of the chunk group (including this chunk).
+    pub chunk_group_order: Vec<Ulid>,
 }
 
 /// A wrapper around the billing events stream's NATS Jetstream context with helper methods for
