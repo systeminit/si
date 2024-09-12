@@ -57,7 +57,7 @@ overflow hidden */
 
       <DiagramControls
         @open:help="helpModalRef.open()"
-        @downloadCanvasScreenshot="downloadCanvasScreenshot()"
+        @downloadCanvasScreenshot="downloadCanvasScreenshot"
       />
 
       <!-- MAIN V-STAGE -->

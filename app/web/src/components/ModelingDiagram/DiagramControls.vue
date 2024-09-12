@@ -1,6 +1,7 @@
 <template>
   <div :class="clsx('absolute flex left-4 bottom-4 z-20 h-8')">
     <div
+      v-tooltip="'Zoom Out'"
       :class="getButtonClasses(zoomLevel <= MIN_ZOOM)"
       @click="adjustZoom('down')"
     >
@@ -10,9 +11,11 @@
     <div
       :class="
         clsx(
-          'bg-white border-neutral-300 border text-black',
-          'dark:bg-black dark:text-white dark:border-black',
-          'w-20 mx-2 flex flex-col justify-center text-center cursor-pointer select-none',
+          themeClasses(
+            'bg-white border-neutral-300 text-black hover:border-black',
+            'bg-black text-white border-black hover:border-white',
+          ),
+          'w-20 mx-2  rounded border flex flex-col justify-center text-center cursor-pointer select-none',
         )
       "
       title="set zoom level"
@@ -33,6 +36,7 @@
     </div>
 
     <div
+      v-tooltip="'Zoom In'"
       :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
       @click="adjustZoom('up')"
     >
@@ -40,6 +44,7 @@
     </div>
 
     <div
+      v-tooltip="'Diagram Controls'"
       class="ml-4"
       :class="getButtonClasses(false)"
       @click="emit('open:help')"
@@ -61,8 +66,9 @@
     </div>
 
     <div
-      v-tooltip="downloadScreenshotTooltip"
+      v-tooltip="'Generate Workspace Screenshot'"
       class="ml-4"
+      :class="getButtonClasses(false)"
       @click="emit('downloadCanvasScreenshot')"
     >
       <Icon name="download" size="full" />
@@ -79,6 +85,7 @@ import {
   DropdownMenu,
   DropdownMenuItem,
   Icon,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
 import { useDiagramContext } from "./ModelingDiagram.vue";
@@ -94,10 +101,6 @@ const displayModeTooltip = computed(() => ({
     edgeDisplayMode.value === "EDGES_OVER" ? "Edges Over" : "Edges Under",
   hideTriggers: ["hover", "focus", "touch"],
 }));
-
-const downloadScreenshotTooltip = computed(() => {
-  return "Generate workspace image";
-});
 
 const emit = defineEmits<{
   (e: "open:help"): void;
@@ -115,8 +118,11 @@ const roundedZoomPercent = computed(() => Math.round(zoomLevel.value * 100));
 
 function getButtonClasses(isDisabled: boolean) {
   return clsx(
-    tw`rounded-full p-1 bg-neutral-600 text-white`,
-    tw`dark:bg-neutral-200 dark:text-black`,
+    tw`rounded-full p-1 active:border`,
+    themeClasses(
+      "bg-neutral-600 text-white active:bg-neutral-200 active:text-black active:border-black",
+      "bg-neutral-200 text-black active:bg-neutral-700 active:text-white active:border-white",
+    ),
     isDisabled
       ? tw`cursor-not-allowed opacity-50`
       : tw`cursor-pointer hover:scale-110`,
@@ -125,8 +131,11 @@ function getButtonClasses(isDisabled: boolean) {
 
 function getInvertedButtonClasses(isDisabled: boolean) {
   return clsx(
-    tw`rounded-full p-1 bg-neutral-200 text-black border border-black`,
-    tw`dark:bg-neutral-700 dark:text-white dark:border-white`,
+    tw`rounded-full p-1 border`,
+    themeClasses(
+      "bg-neutral-200 text-black border-black",
+      "bg-neutral-700 text-white border-white",
+    ),
     isDisabled
       ? tw`cursor-not-allowed opacity-50`
       : tw`cursor-pointer hover:scale-110`,
