@@ -18,6 +18,8 @@ use crate::{
     nats,
 };
 
+const PARENT_ACTIVITY_WAIT_TIMEOUT: u64 = 60;
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct ActivityClient {
@@ -134,7 +136,8 @@ impl ActivityClient {
                 false
             }
         });
-        let timeout_stream = filter_stream.timeout(Duration::from_secs(30));
+        let timeout_stream =
+            filter_stream.timeout(Duration::from_secs(PARENT_ACTIVITY_WAIT_TIMEOUT));
         pin!(timeout_stream);
         if let Some(activity_result_or_timeout) = timeout_stream.next().await {
             match activity_result_or_timeout {
