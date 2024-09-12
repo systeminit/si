@@ -16,6 +16,7 @@ color-eyre = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 derive_more = { workspace = true }
+forklift-server = { path = "../../lib/forklift-server" }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }

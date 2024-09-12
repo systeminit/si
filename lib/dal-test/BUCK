@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/forklift-server:forklift-server",
         "//lib/pinga-server:pinga-server",
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-crypto:si-crypto",

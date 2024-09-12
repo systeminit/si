@@ -828,22 +828,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "billing-events-server"
-version = "0.1.0"
-dependencies = [
- "billing-events",
- "data-warehouse-stream-client",
- "derive_builder",
- "naxum",
- "remain",
- "serde_json",
- "si-data-nats",
- "telemetry",
- "thiserror",
- "tokio-util",
-]
-
-[[package]]
 name = "bindgen"
 version = "0.68.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1766,6 +1750,7 @@ dependencies = [
  "dal",
  "derive_builder",
  "derive_more",
+ "forklift-server",
  "itertools 0.12.1",
  "jwt-simple",
  "lazy_static",
@@ -2347,6 +2332,35 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "forklift"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "forklift-server",
+ "si-service",
+ "si-std",
+]
+
+[[package]]
+name = "forklift-server"
+version = "0.1.0"
+dependencies = [
+ "billing-events",
+ "data-warehouse-stream-client",
+ "derive_builder",
+ "naxum",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-settings",
+ "telemetry",
+ "thiserror",
+ "tokio-util",
+ "ulid",
+]
 
 [[package]]
 name = "form_urlencoded"
@@ -5280,7 +5294,6 @@ dependencies = [
 name = "sdf"
 version = "0.1.0"
 dependencies = [
- "billing-events-server",
  "clap",
  "color-eyre",
  "nats-multiplexer",

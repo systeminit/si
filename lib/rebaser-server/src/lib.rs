@@ -58,6 +58,9 @@ pub enum ServerError {
     /// When the DAL library fails to be initialized
     #[error("dal initialization error: {0}")]
     DalInitialization(#[from] dal::InitializationError),
+    /// When we fail to get or create inner NATS Jetstream streams
+    #[error("dal jetstream streams error: {0}")]
+    DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
     /// When failing to determine open change sets from calling DAL code
     #[error("dal open change sets error: {0}")]
     DalOpenChangeSets(#[source] si_data_pg::PgError),

@@ -21,6 +21,8 @@ pub use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("dal jetstream streams error: {0}")]
+    DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
     #[error("compute executor initialization error: {0}")]
     DedicatedExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     #[error("initialization error: {0}")]

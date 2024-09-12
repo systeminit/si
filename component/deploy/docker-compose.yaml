@@ -4,7 +4,7 @@ services:
   init:
     container_name: init
     image: systeminit/init:${INIT_VERSION:-stable}
-    profiles: [rebaser, pinga, sdf, veritech]
+    profiles: [forklift, rebaser, pinga, sdf, veritech]
     environment:
       - SI_HOSTENV=${SI_HOSTENV}
       - SI_SERVICE=${SI_SERVICE}
@@ -15,7 +15,7 @@ services:
   otelcol:
     container_name: otelcol
     image: systeminit/otelcol:${SI_VERSION:-stable}
-    profiles: [rebaser, pinga, sdf, veritech]
+    profiles: [forklift, rebaser, pinga, sdf, veritech]
     ports:
       - 4317:4317
       - 55679:55679
@@ -29,7 +29,7 @@ services:
   node-exporter:
     container_name: node_exporter
     image: prom/node-exporter:v1.7.0
-    profiles: [rebaser, pinga, sdf, veritech]
+    profiles: [forklift, rebaser, pinga, sdf, veritech]
     command:
       - --collector.systemd
       - --collector.systemd.unit-include=${SI_SERVICE}.service
@@ -60,7 +60,7 @@ services:
   vector:
     container_name: vector
     image: timberio/vector:0.X-debian
-    profiles: [rebaser, pinga, sdf, veritech]
+    profiles: [forklift, rebaser, pinga, sdf, veritech]
     ports:
       - 8686:8686
     volumes:
@@ -74,7 +74,7 @@ services:
   prometheus:
     container_name: prometheus
     image: prom/prometheus
-    profiles: [rebaser, pinga, sdf, veritech]
+    profiles: [forklift, rebaser, pinga, sdf, veritech]
     ports:
       - "9100:9090"
     volumes:

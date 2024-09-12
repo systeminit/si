@@ -99,6 +99,17 @@ A-rebaser:
       - Cargo.lock
       - rust-toolchain
       - rustfmt.toml
+A-forklift:
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/forklift/**/*
+      - lib/forklift-server/**/*
+      - lib/billing-events/**/*
+      - lib/data-warehouse-stream-client/**/*
+      - .cargo/**/*
+      - Cargo.lock
+      - rust-toolchain
+      - rustfmt.toml
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)

@@ -24,6 +24,7 @@ groups = {
         "sdf",
         "module-index",
         "rebaser",
+        "forklift",
     ],
     "frontend": [
         "web",
@@ -129,7 +130,7 @@ for service in compose_services:
     dc_resource(service, links = links, labels = [find_group(service, groups)])
 
 
-# Locally build and run `rebaser-server`
+# Locally build and run `rebaser`
 rebaser_target = "//bin/rebaser:rebaser"
 
 cmd = "buck2 build @//mode/release {}".format(rebaser_target)
@@ -157,6 +158,33 @@ local_resource(
         "postgres",
     ],
     deps = _buck2_dep_inputs(rebaser_target),
+    trigger_mode = trigger_mode
+)
+
+# Locally build and run `forklift`
+forklift_target = "//bin/forklift:forklift"
+
+cmd = "buck2 build @//mode/release {}".format(forklift_target)
+serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/forklift".format(forklift_target)
+if rustc_build_mode == 'standard':
+    cmd = "buck2 build {}".format(forklift_target)
+    serve_cmd = "buck2 run {}".format(forklift_target)
+elif rustc_build_mode == 'debug':
+    cmd = "buck2 build @//mode/debug {}".format(forklift_target)
+    serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/forklift".format(forklift_target)
+
+local_resource(
+    "forklift",
+    labels = ["backend"],
+    cmd = cmd,
+    serve_cmd = serve_cmd,
+    serve_env = {"SI_FORCE_COLOR": "true"},
+    allow_parallel = True,
+    resource_deps = [
+        "nats",
+        "otelcol",
+    ],
+    deps = _buck2_dep_inputs(forklift_target),
     trigger_mode = trigger_mode
 )
 
@@ -273,6 +301,7 @@ local_resource(
         "postgres",
         "veritech",
         "rebaser",
+        "forklift",
     ],
     deps = _buck2_dep_inputs(sdf_target),
     trigger_mode = trigger_mode,

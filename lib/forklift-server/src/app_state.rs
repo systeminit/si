@@ -6,7 +6,7 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub fn new(data_warehouse_stream_client: DataWarehouseStreamClient) -> Self {
+    pub(crate) fn new(data_warehouse_stream_client: DataWarehouseStreamClient) -> Self {
         Self {
             data_warehouse_stream_client,
         }
@@ -18,7 +18,7 @@ impl AppState {
 pub(crate) struct NoopAppState {}
 
 impl NoopAppState {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {}
     }
 }

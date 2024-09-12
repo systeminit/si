@@ -186,6 +186,12 @@ pub(crate) trait FnSetupExpander {
     fn start_rebaser_server(&self) -> Option<()>;
     fn set_start_rebaser_server(&mut self, value: Option<()>);
 
+    fn forklift_server(&self) -> Option<&Rc<Ident>>;
+    fn set_forklift_server(&mut self, value: Option<Rc<Ident>>);
+
+    fn start_forklift_server(&self) -> Option<()>;
+    fn set_start_forklift_server(&mut self, value: Option<()>);
+
     fn veritech_server(&self) -> Option<&Rc<Ident>>;
     fn set_veritech_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -395,6 +401,43 @@ pub(crate) trait FnSetupExpander {
             ::tokio::spawn(#veritech_server.run());
         });
         self.set_start_veritech_server(Some(()));
+    }
+
+    fn setup_forklift_server(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.forklift_server() {
+            return ident.clone();
+        }
+
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
+        let var = Ident::new("forklift_server", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::forklift_server(
+                #test_context.nats_config().clone(),
+                #cancellation_token.clone(),
+            ).await?;
+        });
+        self.set_forklift_server(Some(Rc::new(var)));
+
+        self.forklift_server().unwrap().clone()
+    }
+
+    fn setup_start_forklift_server(&mut self) {
+        if self.start_forklift_server().is_some() {
+            return;
+        }
+
+        let forklift_server = self.setup_forklift_server();
+        let forklift_server = forklift_server.as_ref();
+
+        self.code_extend(quote! {
+            ::tokio::spawn(#forklift_server.run());
+        });
+        self.set_start_forklift_server(Some(()));
     }
 
     fn setup_services_context(&mut self) -> Rc<Ident> {
