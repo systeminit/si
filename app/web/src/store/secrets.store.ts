@@ -61,6 +61,7 @@ export type Secret = {
   definition: SecretDefinitionId;
   name: string;
   description?: string;
+  isUsable: boolean;
   createdInfo: ActorAndTimestamp;
   updatedInfo?: ActorAndTimestamp;
   expiration?: string;
@@ -298,6 +299,7 @@ export function useSecretsStore() {
                   definition,
                   description,
                   createdInfo,
+                  isUsable: true,
                   updatedInfo: {
                     actor: { kind: "user", label: userName, id: userId },
                     timestamp: Date(),
@@ -400,6 +402,7 @@ export function useSecretsStore() {
                   definition: definitionId,
                   name,
                   description,
+                  isUsable: true,
                   createdInfo: {
                     actor: { kind: "user", label: userName, id: userId },
                     timestamp: Date(),

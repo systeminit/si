@@ -11,8 +11,8 @@ use thiserror::Error;
 use crate::{
     pk,
     serde_impls::{base64_bytes_serde, nonce_serde},
-    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, Timestamp,
-    TransactionsError, Workspace, WorkspaceError, WorkspacePk,
+    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, TenancyError,
+    Timestamp, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
 };
 
 mod key_pair_box_public_key_serde;
@@ -29,6 +29,8 @@ pub enum KeyPairError {
     InvalidSecretKeyBytes,
     #[error("Invalid workspace: {0}")]
     InvalidWorkspace(WorkspacePk),
+    #[error("key pair not found: {0}")]
+    KeyPairNotFound(KeyPairPk),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("no current key pair found when one was expected")]
@@ -39,8 +41,12 @@ pub enum KeyPairError {
     SerdeJson(#[from] serde_json::Error),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("cannot get key for different workspace")]
+    UnauthorizedKeyAccess,
     #[error(transparent)]
     Workspace(#[from] Box<WorkspaceError>),
 }
@@ -108,9 +114,16 @@ impl KeyPair {
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: KeyPairPk) -> KeyPairResult<Self> {
-        let row = ctx.txns().await?.pg().query_one(GET_BY_PK, &[&pk]).await?;
+        let Some(row) = ctx.txns().await?.pg().query_opt(GET_BY_PK, &[&pk]).await? else {
+            return Err(KeyPairError::KeyPairNotFound(pk));
+        };
         let json: serde_json::Value = row.try_get("object")?;
         let key_pair_row: KeyPairRow = serde_json::from_value(json)?;
+
+        if key_pair_row.workspace_pk != ctx.tenancy().workspace_pk()? {
+            return Err(KeyPairError::UnauthorizedKeyAccess);
+        }
+
         let key_pair = key_pair_row.decrypt_into(ctx.symmetric_crypto_service())?;
         Ok(key_pair)
     }

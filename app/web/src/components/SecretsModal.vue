@@ -1,10 +1,10 @@
 <template>
   <Modal
     ref="modalRef"
-    class="bg-neutral-100 dark:bg-neutral-700 text-shade-100 dark:text-shade-0"
-    titleClasses="bg-shade-0 dark:bg-shade-100 text-shade-100 dark:text-shade-0"
-    noInnerPadding
     :noExit="addingSecret"
+    class="bg-neutral-100 dark:bg-neutral-700 text-shade-100 dark:text-shade-0"
+    noInnerPadding
+    titleClasses="bg-shade-0 dark:bg-shade-100 text-shade-100 dark:text-shade-0"
   >
     <template #title>
       <div class="flex flex-col overflow-hidden">
@@ -40,8 +40,8 @@
       <AddSecretForm
         v-if="addingSecret"
         :definitionId="definitionId"
-        @save="selectSecret"
         @cancel="cancelAddSecretForm"
+        @save="selectSecret"
       />
       <ScrollArea v-else class="m-sm">
         <RequestStatusMessage
@@ -54,7 +54,7 @@
             v-for="secret in secrets"
             :key="secret.id"
             :secret="secret"
-            @click="emit('select', secret)"
+            @click="secretCardClick(secret)"
           />
         </div>
         <div v-else class="flex flex-row items-center h-full">
@@ -74,17 +74,17 @@
           <div class="flex flex-row gap-sm pt-sm">
             <VButton
               icon="x"
+              label="Close"
               tone="shade"
               variant="ghost"
-              label="Close"
               @click="close"
             />
             <VButton
               v-if="!addingSecret"
-              label="Add Secret"
-              icon="plus"
-              tone="action"
               class="flex-grow"
+              icon="plus"
+              label="Add Secret"
+              tone="action"
               @click="showAddSecretForm"
             />
           </div>
@@ -94,7 +94,7 @@
   </Modal>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
   VButton,
   RequestStatusMessage,
@@ -135,6 +135,12 @@ const showAddSecretForm = () => {
 
 const cancelAddSecretForm = () => {
   addingSecret.value = false;
+};
+
+const secretCardClick = (secret: Secret) => {
+  if (secret.isUsable) {
+    emit("select", secret);
+  }
 };
 
 const selectSecret = (secret: Secret) => {
