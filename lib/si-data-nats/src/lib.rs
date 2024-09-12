@@ -146,6 +146,10 @@ impl Client {
 
     /// Returns true if the server version is compatible with the version components.
     ///
+    /// This has to be used with caution, as it is not guaranteed that the server that client is
+    /// connected to is the same version that the one that is a JetStream meta/stream/consumer
+    /// leader, especially across leafnodes.
+    ///
     /// # Examples
     /// ```no_run
     /// # #[tokio::main]
