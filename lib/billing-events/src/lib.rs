@@ -35,7 +35,7 @@ use si_data_nats::{
     jetstream,
 };
 use si_events::{
-    ChangeSetId, ChangeSetStatus, ComponentId, ResourceMetadata, SchemaId, SchemaVariantId, UserPk,
+    ChangeSetId, ChangeSetStatus, ComponentId, FuncRunId, SchemaId, SchemaVariantId, UserPk,
     WorkspacePk, WorkspaceSnapshotAddress,
 };
 use thiserror::Error;
@@ -88,8 +88,6 @@ pub struct BillingEvent {
 
     /// The total number of resources (conditional based on the event kind).
     pub resource_count: Option<usize>,
-    /// The metadata of all resources (conditional based on the event kind).
-    pub resource_metadata: Option<Vec<ResourceMetadata>>,
 
     /// The ID of the component (conditional based on the event kind).
     pub component_id: Option<ComponentId>,
@@ -101,6 +99,8 @@ pub struct BillingEvent {
     pub schema_id: Option<SchemaId>,
     /// The name of the schema (conditional based on the event kind).
     pub schema_name: Option<String>,
+    /// The ID of the func run (conditional based on the event kind).
+    pub func_run_id: Option<FuncRunId>,
 
     /// The kind of billing event.
     pub kind: BillingEventKind,

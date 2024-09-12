@@ -140,7 +140,8 @@ async fn inner_run(
     let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
     // Execute the action function
-    let maybe_resource = ActionPrototype::run(ctx, prototype_id, component_id).await?;
+    let (maybe_resource, func_run_id) =
+        ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
     // process the result
     process_execution(ctx, maybe_resource.as_ref(), action_id).await?;
@@ -172,10 +173,10 @@ async fn inner_run(
     // Now that everything has passed, we can send billing events.
     match prototype.kind {
         ActionKind::Create => {
-            billing_publish::for_resource_create(ctx, component_id).await?;
+            billing_publish::for_resource_create(ctx, component_id, func_run_id).await?;
         }
         ActionKind::Destroy => {
-            billing_publish::for_resource_delete(ctx, component_id).await?;
+            billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;
         }
         ActionKind::Manual | ActionKind::Refresh | ActionKind::Update => {}
     }

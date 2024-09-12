@@ -26,6 +26,7 @@
 )]
 
 use billing_events::{BillingEvent, BillingEventKind, BillingEventsError};
+use si_events::FuncRunId;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -72,6 +73,8 @@ pub(crate) async fn for_head_change_set_pointer_update(
         return Ok(());
     };
 
+    // NOTE(nick): the metadata itself is not sent over the wire at the time of writing due to unbounded size in the
+    // message payload. We should store this locally and batch up in a separate process.
     let metadata = resource_metadata::list(ctx).await?;
     let resource_count = metadata.len();
 
@@ -84,13 +87,13 @@ pub(crate) async fn for_head_change_set_pointer_update(
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: Some(resource_count),
-        resource_metadata: Some(metadata),
 
         component_id: None,
         component_name: None,
         schema_variant_id: None,
         schema_id: None,
         schema_name: None,
+        func_run_id: None,
 
         kind: BillingEventKind::HeadChangeSetPointerUpdate,
     };
@@ -121,6 +124,8 @@ pub(crate) async fn for_change_set_status_update(
         return Ok(());
     };
 
+    // NOTE(nick): the metadata itself is not sent over the wire at the time of writing due to unbounded size in the
+    // message payload. We should store this locally and batch up in a separate process.
     let metadata = resource_metadata::list(ctx).await?;
     let resource_count = metadata.len();
 
@@ -133,13 +138,13 @@ pub(crate) async fn for_change_set_status_update(
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: Some(resource_count),
-        resource_metadata: Some(metadata),
 
         component_id: None,
         component_name: None,
         schema_variant_id: None,
         schema_id: None,
         schema_name: None,
+        func_run_id: None,
 
         kind: BillingEventKind::ChangeSetStatusUpdate,
     };
@@ -161,6 +166,7 @@ pub(crate) async fn for_change_set_status_update(
 pub(crate) async fn for_resource_create(
     ctx: &DalContext,
     component_id: ComponentId,
+    func_run_id: FuncRunId,
 ) -> BillingPublishResult<()> {
     let change_set = ctx.change_set()?;
 
@@ -187,13 +193,13 @@ pub(crate) async fn for_resource_create(
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: None,
-        resource_metadata: None,
 
         component_id: Some(component_id.into()),
         component_name: Some(component_name),
         schema_variant_id: Some(schema_variant_id.into()),
         schema_id: Some(schema_id.into()),
         schema_name: Some(schema_name),
+        func_run_id: Some(func_run_id),
 
         kind: BillingEventKind::ResourceCreate,
     };
@@ -215,6 +221,7 @@ pub(crate) async fn for_resource_create(
 pub(crate) async fn for_resource_delete(
     ctx: &DalContext,
     component_id: ComponentId,
+    func_run_id: FuncRunId,
 ) -> BillingPublishResult<()> {
     let change_set = ctx.change_set()?;
 
@@ -241,13 +248,13 @@ pub(crate) async fn for_resource_delete(
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: None,
-        resource_metadata: None,
 
         component_id: Some(component_id.into()),
         component_name: Some(component_name),
         schema_variant_id: Some(schema_variant_id.into()),
         schema_id: Some(schema_id.into()),
         schema_name: Some(schema_name),
+        func_run_id: Some(func_run_id),
 
         kind: BillingEventKind::ResourceDelete,
     };
