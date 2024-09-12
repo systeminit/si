@@ -5,22 +5,22 @@
 Run all tests (with auth api running locally):
 
 ```shell
-export SDF_API_URL="http://localhost:8080" 
-export AUTH_API_URL="http://localhost:9001" 
+export SDF_API_URL="http://localhost:8080"
+export AUTH_API_URL="http://localhost:9001"
 
 deno task run --workspace-id $WORKSPACE_ID \
               --userId $EMAIL \
               --password $PASSWORD \
-              --profile '{"Duration": "5", "Requests": 5}'
-              --tests create_and_use_variant,get_head_changeset 
-
+              --profile '{"maxDuration": "5", "rate": "1", "useJitter": false}'
+              --tests create_and_use_variant,get_head_changeset
 
 Usage: deno run main.ts [options]
 
 Options:
   --workspaceId, -w   Workspace ID (required)
-  --userId, -u        User ID (required)
-  --password, -p      User password (optional)
+  --userId, -u        User ID (optional, if token is provided)
+  --password, -p      User password (optional, if token is provided)
+  --token, -t         User token (optional, if userId and password are provided)
   --tests, -t         Test names to run (comma-separated, optional)
   --profile, -l       Test profile in JSON format (optional)
   --help              Show this help message

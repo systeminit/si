@@ -68,6 +68,14 @@ export const ROUTES = {
     path: () => `/variant/create_variant`,
     method: "POST",
   },
+
+  // Action Management -----------------------------------------------------------
+  action_list: {
+    path: (vars: ROUTE_VARS) =>
+      `/action/list?visibility_change_set_pk=${vars.changeSetId}`,
+    method: "GET",
+  },
+
   // Add more groups below ------------------------------------------------------
 } satisfies Record<string, API_DESCRIPTION>;
 
