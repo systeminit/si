@@ -1,12 +1,13 @@
 //! Graceful service/server shutdown using cancellation tokens, task trackers, driven by Unix
 //! signal handling.
 
-use std::{error, future::Future, io, time::Duration};
+use std::{convert::Infallible, error, future::Future, io, time::Duration};
 
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     signal::unix::{self, SignalKind},
+    task::JoinHandle,
     time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -16,6 +17,12 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 /// See [`graceful`] for more details.
 #[derive(Debug, Error)]
 pub enum ShutdownError {
+    /// When a main handle returns an error
+    #[error("main handle returned an error: {0}")]
+    Handle(#[source] Box<dyn error::Error + Send + Sync + 'static>),
+    /// When a main handle returns a join error
+    #[error("main handle returned a join error")]
+    Join,
     /// When a signal handler fails to be correcly setup
     #[error("failed to setup signal handler: {0}")]
     Signal(#[source] io::Error),
@@ -42,7 +49,7 @@ impl ShutdownError {
 ///
 /// This facility sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so usage
 /// of this function with other code intercepting these signals is *highly* discouraged.
-pub fn graceful<TelemetryFut, E>() -> GracefulShutdown<TelemetryFut>
+pub fn graceful<TelemetryFut, E>() -> GracefulShutdown<TelemetryFut, Infallible>
 where
     TelemetryFut: Future<Output = Result<(), E>>,
     E: error::Error + Send + Sync + 'static,
@@ -50,21 +57,43 @@ where
     GracefulShutdown::default()
 }
 
+/// Gracfully shutdown a service with a "main" handle that may be running multiple tasks and
+/// in-flight work.
+///
+/// # Platform-specific behavior
+///
+/// This facility sets up a signal handler for both `SIGINT` (i.e. `Ctrl+c`) and `SIGTERM` so usage
+/// of this function with other code intercepting these signals is *highly* discouraged.
+pub fn graceful_with_handle<TelemetryFut, E, HanErr>(
+    handle: JoinHandle<Result<(), HanErr>>,
+) -> GracefulShutdown<TelemetryFut, HanErr>
+where
+    TelemetryFut: Future<Output = Result<(), E>>,
+    E: error::Error + Send + Sync + 'static,
+{
+    GracefulShutdown {
+        main_handle: Some(handle),
+        ..Default::default()
+    }
+}
+
 /// Constructs and performs a graceful shutdown.
 #[derive(Debug)]
-pub struct GracefulShutdown<T> {
+pub struct GracefulShutdown<TelemetryFut, HanErr> {
+    main_handle: Option<JoinHandle<Result<(), HanErr>>>,
     groups: Vec<(TaskTracker, CancellationToken)>,
-    telemetry_guard: Option<T>,
+    telemetry_guard: Option<TelemetryFut>,
     timeout: Option<Duration>,
 }
 
-impl<TelemetryFut, E> Default for GracefulShutdown<TelemetryFut>
+impl<TelemetryFut, E, HanErr> Default for GracefulShutdown<TelemetryFut, HanErr>
 where
     TelemetryFut: Future<Output = Result<(), E>>,
     E: error::Error + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self {
+            main_handle: Default::default(),
             groups: Default::default(),
             telemetry_guard: Default::default(),
             timeout: Default::default(),
@@ -72,10 +101,11 @@ where
     }
 }
 
-impl<TelemetryFut, E> GracefulShutdown<TelemetryFut>
+impl<TelemetryFut, E, HanErr> GracefulShutdown<TelemetryFut, HanErr>
 where
     TelemetryFut: Future<Output = Result<(), E>>,
     E: error::Error + Send + Sync + 'static,
+    HanErr: error::Error + Send + Sync + 'static,
 {
     /// Adds a shutdown group, consisting of a related [`TaskTracker`] and [`CancellationToken`].
     pub fn group(mut self, tracker: TaskTracker, token: CancellationToken) -> Self {
@@ -119,6 +149,7 @@ where
     /// usage of this function with other code intercepting these signals is *highly* discouraged.
     pub async fn wait(self) -> Result<(), ShutdownError> {
         let Self {
+            main_handle,
             groups,
             telemetry_guard,
             timeout,
@@ -127,14 +158,41 @@ where
         let mut sig_int = unix::signal(SignalKind::interrupt()).map_err(ShutdownError::Signal)?;
         let mut sig_term = unix::signal(SignalKind::terminate()).map_err(ShutdownError::Signal)?;
 
-        tokio::select! {
-            _ = sig_int.recv() => {
-                info!("received SIGINT, performing graceful shutdown");
+        let maybe_handle_result = match main_handle {
+            Some(main_handle) => {
+                tokio::select! {
+                    join_result = main_handle => {
+                        trace!("main handle completed");
+                        match join_result {
+                            Ok(result) => Some(result.map_err(|err| {
+                                ShutdownError::Handle(Box::new(err))
+                            })),
+                            Err(_join_err) => Some(Err(ShutdownError::Join)),
+                        }
+                    }
+                    _ = sig_int.recv() => {
+                        info!("received SIGINT, performing graceful shutdown");
+                        None
+                    }
+                    _ = sig_term.recv() => {
+                        info!("received SIGTERM, performing graceful shutdown");
+                        None
+                    }
+                }
             }
-            _ = sig_term.recv() => {
-                info!("received SIGTERM, performing graceful shutdown");
+            None => {
+                tokio::select! {
+                    _ = sig_int.recv() => {
+                        info!("received SIGINT, performing graceful shutdown");
+                        None
+                    }
+                    _ = sig_term.recv() => {
+                        info!("received SIGTERM, performing graceful shutdown");
+                        None
+                    }
+                }
             }
-        }
+        };
 
         let total = groups.len();
         let mut current: usize = 1;
@@ -145,8 +203,8 @@ where
                 tracker.close();
                 token.cancel();
                 tracker.wait().await;
+                current = current.saturating_add(1);
             }
-            current = current.saturating_add(1);
         };
 
         // Wait for all tasks to finish
@@ -172,6 +230,9 @@ where
         }
 
         info!("graceful shutdown complete.");
-        Ok(())
+        match maybe_handle_result {
+            Some(handle_result) => handle_result,
+            None => Ok(()),
+        }
     }
 }

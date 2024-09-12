@@ -271,6 +271,14 @@ impl MigrationMode {
     pub const fn variants() -> &'static [&'static str] {
         <MigrationMode as strum::VariantNames>::VARIANTS
     }
+
+    pub fn is_run(&self) -> bool {
+        matches!(self, Self::Run)
+    }
+
+    pub fn is_run_and_quit(&self) -> bool {
+        matches!(self, Self::RunAndQuit)
+    }
 }
 
 #[cfg(test)]

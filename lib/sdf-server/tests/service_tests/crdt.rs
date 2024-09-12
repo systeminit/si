@@ -1,17 +1,21 @@
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
+use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
+
 use axum::extract::ws::Message;
 use dal::WorkspacePk;
 use futures::{Future, Sink, SinkExt, Stream};
 use futures_lite::future::FutureExt;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
-use sdf_server::server::service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError};
-use sdf_server::server::CRDT_MULTIPLEXER_SUBJECT;
+use sdf_server::{
+    service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError},
+    CRDT_MULTIPLEXER_SUBJECT,
+};
 use si_data_nats::{NatsClient, NatsConfig, Subject};
-use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
 use tokio::{
     sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle, time::timeout,
 };
+use tokio_util::sync::CancellationToken;
 use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection};
 use yrs::{updates::encoder::Encode, Doc, GetString, Text, Transact, UpdateSubscription};
 
@@ -22,21 +26,24 @@ struct Server {
     id: String,
     broadcast_groups: BroadcastGroups,
     crdt_multiplexer_client: MultiplexerClient,
-    _shutdown_broadcast_tx: broadcast::Sender<()>,
-    _shutdown_broadcast_rx: broadcast::Receiver<()>,
+    multiplexer_trigger_shutdown_token: CancellationToken,
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        self.multiplexer_trigger_shutdown_token.cancel();
+    }
 }
 
 struct Client {
     _handle: JoinHandle<()>,
     conn: Connection<TestSink, TestStream>,
-    shutdown_broadcast_tx: broadcast::Sender<()>,
+    signal_shutdown_token: CancellationToken,
 }
 
 impl Drop for Client {
     fn drop(&mut self) {
-        self.shutdown_broadcast_tx
-            .send(())
-            .expect("unable to drop client");
+        self.signal_shutdown_token.cancel();
     }
 }
 
@@ -51,7 +58,7 @@ async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error:
         .await?;
     let ws_receiver = receiver.resubscribe();
 
-    let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
+    let signal_shutdown_token = CancellationToken::new();
 
     let _handle = tokio::spawn(crdt_handle(
         sink.clone(),
@@ -63,7 +70,7 @@ async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error:
         ws_receiver,
         server.workspace_pk,
         server.id.clone(),
-        shutdown_broadcast_rx,
+        signal_shutdown_token.clone(),
     ));
 
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
@@ -71,7 +78,7 @@ async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error:
     Ok(Client {
         _handle,
         conn,
-        shutdown_broadcast_tx,
+        signal_shutdown_token,
     })
 }
 
@@ -97,13 +104,16 @@ async fn start_server(
 
     let channel_name = format!("crdt.{workspace_pk}.{id}").into();
 
-    // NOTE(nick,paulo,fletcher): we need to ensure the lifetimes of these correspond to the lifetime of an entire test.
-    let (_shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
+    let multiplexer_trigger_shutdown_token = CancellationToken::new();
 
-    let (crdt_multiplexer, crdt_multiplexer_client) =
-        Multiplexer::new(&nats, CRDT_MULTIPLEXER_SUBJECT).await?;
+    let (crdt_multiplexer, crdt_multiplexer_client) = Multiplexer::new(
+        &nats,
+        CRDT_MULTIPLEXER_SUBJECT,
+        multiplexer_trigger_shutdown_token.clone(),
+    )
+    .await?;
 
-    tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
+    tokio::spawn(crdt_multiplexer.run());
 
     Ok(Server {
         nats,
@@ -112,8 +122,7 @@ async fn start_server(
         workspace_pk,
         id,
         crdt_multiplexer_client,
-        _shutdown_broadcast_tx,
-        _shutdown_broadcast_rx: shutdown_broadcast_rx,
+        multiplexer_trigger_shutdown_token,
     })
 }
 

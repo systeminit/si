@@ -37,6 +37,7 @@ use std::fmt::Debug;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
+use tokio_util::sync::CancellationToken;
 
 /// The buffer used for senders within the [`Multiplexer's`] channels map.
 const MULTIPLEXER_BROADCAST_SENDER_BUFFER: usize = 4096;
@@ -65,13 +66,17 @@ pub struct Multiplexer {
     subscriber: Subscriber,
     channels: HashMap<MultiplexerKey, broadcast::Sender<Message>>,
     client_rx: mpsc::UnboundedReceiver<MultiplexerRequest>,
+    token: CancellationToken,
 }
 
 impl Multiplexer {
+    const NAME: &'static str = "nats_multiplexter::multiplexer";
+
     /// Creates a new [`Multiplexer`].
     pub async fn new(
         nats: &NatsClient,
         subject: impl ToSubject,
+        token: CancellationToken,
     ) -> MultiplexerResult<(Self, MultiplexerClient)> {
         let subject = subject.to_subject();
         let subscriber = nats.subscribe(subject.clone()).await?;
@@ -82,17 +87,15 @@ impl Multiplexer {
                 channels: Default::default(),
                 client_rx,
                 subject,
+                token,
             },
             MultiplexerClient::new(client_tx),
         ))
     }
 
     /// Runs the [`Multiplexer`] with a given shutdown receiver.
-    pub async fn run(
-        mut self,
-        mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) -> MultiplexerResult<()> {
-        info!(%self.subject, "running channel multiplexer");
+    pub async fn run(mut self) {
+        debug!(%self.subject, "running channel multiplexer");
 
         loop {
             tokio::select! {
@@ -106,8 +109,12 @@ impl Multiplexer {
                         error!("{e}");
                     }
                 }
-                _ = shutdown_broadcast_rx.recv() => {
-                    info!(%self.subject, "shutting down channel multiplexer");
+                _ = self.token.cancelled() => {
+                    info!(
+                        task = Self::NAME,
+                        subject = %self.subject,
+                        "received cancellation",
+                    );
 
                     // NOTE(nick,fletcher): we may not want to unsubscribe here.
                     if let Err(e) = self.subscriber.unsubscribe().await {
@@ -117,7 +124,8 @@ impl Multiplexer {
                 },
             }
         }
-        Ok(())
+
+        debug!(task = Self::NAME, subject = %self.subject, "shutdown complete");
     }
 
     fn process_message(&self, message: Message) -> MultiplexerResult<()> {
