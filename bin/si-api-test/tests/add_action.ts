@@ -52,8 +52,6 @@ export async function add_action_inner(
 
   const newComponentId = createComponentResp?.componentId;
   assert(newComponentId, "Expected to get a component id after creation");
-  console.log(newComponentId);
-  console.log(changeSetId);
 
   // Assert that an action has been queued for EC2 Instance component
   data = await sdfApiClient.call({
