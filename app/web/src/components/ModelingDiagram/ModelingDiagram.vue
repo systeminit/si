@@ -55,7 +55,10 @@ overflow hidden */
         </div>
       </div>
 
-      <DiagramControls @open:help="helpModalRef.open()" />
+      <DiagramControls
+        @open:help="helpModalRef.open()"
+        @downloadCanvasScreenshot="downloadCanvasScreenshot"
+      />
 
       <!-- MAIN V-STAGE -->
       <v-stage
@@ -282,6 +285,7 @@ import {
   toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
+import Konva from "konva";
 import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
@@ -694,6 +698,59 @@ watch(
   },
   { immediate: true },
 );
+
+function downloadCanvasScreenshot() {
+  const stage = stageRef.value.getNode() as Konva.Stage;
+  if (!stage || typeof stage.getLayers !== "function") return;
+
+  // Find the bounding box of all shapes on the stage
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  stage.find("Shape, Text, Image").forEach((node) => {
+    const box = node.getClientRect();
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxX = Math.max(maxX, box.x + box.width);
+    maxY = Math.max(maxY, box.y + box.height);
+  });
+
+  // Add a small padding around the components on the graph (adjust as needed)
+  const padding = 10;
+  minX -= padding;
+  minY -= padding;
+  maxX += padding;
+  maxY += padding;
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Capture the content
+  const dataURL = stage.toDataURL({
+    x: minX,
+    y: minY,
+    width,
+    height,
+    pixelRatio: 10, // Increase for higher resolution
+  });
+
+  // Generate filename with current date
+  const currentDate = new Date();
+  const dateString = currentDate.toISOString().split("T")[0];
+  const fileName = `canvas-screenshot-${dateString}.png`;
+
+  // Create a link element
+  const link = document.createElement("a");
+  link.download = fileName;
+  link.href = dataURL;
+
+  // Trigger download
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 onBeforeUnmount(() => {
   // this fires when you change the change set from the drop down
