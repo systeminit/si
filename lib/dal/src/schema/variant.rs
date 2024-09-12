@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use chrono::Utc;
-use petgraph::{Direction, Incoming, Outgoing};
+use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::ParseError;
@@ -34,15 +34,16 @@ use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::node_weight::input_socket_node_weight::InputSocketNodeWeightError;
-use crate::workspace_snapshot::node_weight::SchemaVariantNodeWeight;
-use crate::workspace_snapshot::node_weight::{
-    traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError, PropNodeWeight,
+use crate::workspace_snapshot::{
+    content_address::{ContentAddress, ContentAddressDiscriminants},
+    edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+    graph::NodeIndex,
+    node_weight::{
+        input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
+        NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
+    },
+    WorkspaceSnapshotError,
 };
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
@@ -1720,40 +1721,10 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<SchemaId> {
-        let schema_id = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            let maybe_schema_indices = workspace_snapshot
-                .edges_directed(schema_variant_id, Incoming)
-                .await?;
-
-            let mut schema_id: Option<SchemaId> = None;
-            for (edge_weight, source_index, _target_index) in maybe_schema_indices {
-                if *edge_weight.kind() == EdgeWeightKind::new_use()
-                    || *edge_weight.kind() == EdgeWeightKind::new_use_default()
-                {
-                    if let NodeWeight::Content(content) =
-                        workspace_snapshot.get_node_weight(source_index).await?
-                    {
-                        let content_hash_discriminants: ContentAddressDiscriminants =
-                            content.content_address().into();
-                        if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
-                            schema_id = match schema_id {
-                                None => Some(content.id().into()),
-                                Some(_already_found_schema_id) => {
-                                    return Err(SchemaVariantError::MoreThanOneSchemaFound(
-                                        schema_variant_id,
-                                    ));
-                                }
-                            };
-                        }
-                    }
-                }
-            }
-            schema_id.ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))?
-        };
-
-        Ok(schema_id)
+        ctx.workspace_snapshot()?
+            .schema_id_for_schema_variant_id(schema_variant_id)
+            .await
+            .map_err(Into::into)
     }
 
     /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring

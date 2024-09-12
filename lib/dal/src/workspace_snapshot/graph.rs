@@ -13,8 +13,9 @@ use thiserror::Error;
 
 use telemetry::prelude::*;
 
-use crate::workspace_snapshot::node_weight::{
-    category_node_weight::CategoryNodeKind, NodeWeightError,
+use crate::{
+    workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
+    SchemaVariantError,
 };
 
 pub mod correct_transforms;
@@ -69,6 +70,8 @@ pub enum WorkspaceSnapshotGraphError {
     NoPropFound(NodeIndex),
     #[error("Ordering node {0} has id in its order for non-existent node {1}")]
     OrderingNodeHasNonexistentNodeInOrder(Ulid, Ulid),
+    #[error("SchemaVariant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("NodeIndex has too many Ordering children: {0:?}")]
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]

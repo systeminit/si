@@ -8,7 +8,7 @@ use crate::{
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use thiserror::Error;
 
-use super::NodeWeightDiscriminants;
+use super::{NodeWeightDiscriminants, NodeWeightError};
 
 pub mod correct_exclusive_outgoing_edge;
 
@@ -16,6 +16,8 @@ pub use correct_exclusive_outgoing_edge::CorrectExclusiveOutgoingEdge;
 
 #[derive(Debug, Error)]
 pub enum CorrectTransformsError {
+    #[error("NodeWeight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("expected a node weight of kind {0} but got another, or none")]
     UnexpectedNodeWeight(NodeWeightDiscriminants),
     #[error("workspace snapshot graph: {0}")]

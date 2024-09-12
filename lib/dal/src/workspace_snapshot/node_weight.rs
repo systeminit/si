@@ -631,6 +631,19 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_schema_variant_node_weight_ref_mut(
+        &mut self,
+    ) -> NodeWeightResult<&mut SchemaVariantNodeWeight> {
+        match self {
+            NodeWeight::SchemaVariant(inner) => Ok(inner),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::SchemaVariant,
+                // &*other is to convert the `&mut` to `&`.
+                NodeWeightDiscriminants::from(&*other),
+            )),
+        }
+    }
+
     pub fn new_content(id: Ulid, lineage_id: Ulid, kind: ContentAddress) -> Self {
         NodeWeight::Content(ContentNodeWeight::new(id, lineage_id, kind))
     }
