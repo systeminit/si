@@ -594,7 +594,7 @@ impl AttributeBinding {
     )]
     /// For a given [`AttributePrototypeId`], remove the existing [`AttributePrototype`] and [`AttributePrototypeArgument`]s
     /// For a [`Component`], we'll reset the prototype to what is defined for the [`SchemaVariant`], and for now, reset the
-    /// [`SchemaVariant`]'s prototype to be the Identity Func. When the user regenerates the schema, we'll re-apply whatever has
+    /// [`SchemaVariant`]'s prototype to be the si:Unset. When the user regenerates the schema, we'll re-apply whatever has
     /// been configured in the Schema Def function. This is a hold over until we remove this behavior from being configured in the
     /// definition func and enable users to set intrinsic funcs via the UI.
     pub async fn reset_attribute_binding(
@@ -610,12 +610,12 @@ impl AttributeBinding {
         {
             AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
         } else {
-            // let's set the prototype to identity so that when we regenerate,
+            // let's set the prototype to unset so that when we regenerate,
             // the socket or prop's prototype can get reset to the value from (if that is where it was coming from)
             // or the default value as defined in the schema variant def
 
-            let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-            AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id)
+            let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+            AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, unset_func_id)
                 .await?;
 
             // loop through and delete all existing attribute prototype arguments

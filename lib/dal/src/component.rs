@@ -297,7 +297,7 @@ pub struct ComponentGeometry {
     pub height: Option<String>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ControllingFuncData {
     pub func_id: FuncId,
     pub av_id: AttributeValueId,
