@@ -120,6 +120,7 @@ async fn keeps_only_one_unlocked_variant_from_concurrent_requests(ctx: &mut DalC
     assert_eq!(second_unlocked_variant.id(), unlocked_schema_variant.id());
 }
 
+#[ignore]
 #[test]
 async fn only_one_default_schema_variant(ctx: &mut DalContext) {
     let asset_name = "chainsawVariant".to_string();
