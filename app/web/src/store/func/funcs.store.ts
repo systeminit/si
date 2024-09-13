@@ -56,7 +56,8 @@ export interface DeleteFuncResponse {
 }
 
 export interface BindingWithDisplayName extends Action {
-  displayName: string;
+  displayName?: string | null;
+  name: string;
 }
 
 export interface BindingWithBackendKind extends Attribute {
@@ -178,14 +179,16 @@ export const useFuncStore = () => {
             if (actions && actions.length > 0) {
               actions.forEach((b) => {
                 const a = _.cloneDeep(b) as BindingWithDisplayName;
-                a.displayName = summary?.displayName || "<Unknown>";
+                a.displayName = summary?.displayName;
+                a.name = summary?.name || "<not set>";
                 _bindings.push(a);
               });
             }
           });
-          return _bindings.sort((_a, _b) =>
-            _a.displayName.localeCompare(_b.displayName),
-          );
+          return _bindings;
+          // return _bindings.sort((_a, _b) =>
+          //   _a.displayName.localeCompare(_b.displayName),
+          // );
         },
 
         intrinsicBindingsByVariant(

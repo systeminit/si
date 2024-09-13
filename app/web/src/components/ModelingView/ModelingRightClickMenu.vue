@@ -309,7 +309,7 @@ const rightClickMenuItems = computed(() => {
         });
 
         submenuItems.push({
-          label: binding.displayName,
+          label: binding.displayName || binding.name,
           toggleIcon: true,
           checked: binding.actionPrototypeId
             ? getActionToggleState(binding.actionPrototypeId)
