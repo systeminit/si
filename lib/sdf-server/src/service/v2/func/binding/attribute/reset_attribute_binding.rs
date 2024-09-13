@@ -29,48 +29,38 @@ pub async fn reset_attribute_binding(
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
-    match func.kind {
-        dal::func::FuncKind::Attribute => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::Attribute {
-                    attribute_prototype_id,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let eventual_parent = AttributeBinding::reset_attribute_binding(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                            )
-                            .await?;
-                            if let EventualParent::SchemaVariant(schema_variant_id) =
-                                eventual_parent
-                            {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx,
-                                    schema_variant_id,
-                                )
-                                .await?;
-                                let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                                        .await?;
 
-                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                                    .await?
-                                    .publish_on_commit(&ctx)
-                                    .await?;
-                            }
-                        }
-                        None => return Err(FuncAPIError::MissingPrototypeId),
-                    }
-                }
-            }
+    if func.kind != dal::func::FuncKind::Attribute {
+        return Err(FuncAPIError::WrongFunctionKindForBinding);
+    }
+
+    for binding in request.bindings {
+        let frontend_types::FuncBinding::Attribute {
+            attribute_prototype_id: Some(attribute_prototype_id),
+            ..
+        } = binding
+        else {
+            return Err(FuncAPIError::MissingPrototypeId);
+        };
+
+        let eventual_parent = AttributeBinding::reset_attribute_binding(
+            &ctx,
+            attribute_prototype_id.into_raw_id().into(),
+        )
+        .await?;
+
+        if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
+            let schema =
+                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+            let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+
+            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
         }
-        _ => {
-            return Err(FuncAPIError::WrongFunctionKindForBinding);
-        }
-    };
+    }
+
     track(
         &posthog_client,
         &ctx,
