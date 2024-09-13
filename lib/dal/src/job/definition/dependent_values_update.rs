@@ -402,13 +402,11 @@ impl DependentValuesUpdate {
         }
 
         let snap = ctx.workspace_snapshot()?;
-        let mut has_unfinished_values = false;
         for value_id in &independent_value_ids {
             if spawned_ids.contains(value_id) {
                 snap.add_dependent_value_root(DependentValueRoot::Finished(value_id.into()))
                     .await?;
             } else {
-                has_unfinished_values = true;
                 snap.add_dependent_value_root(DependentValueRoot::Unfinished(value_id.into()))
                     .await?;
             }
@@ -418,8 +416,7 @@ impl DependentValuesUpdate {
         // not process the downstream attributes and thus will fail to send the
         // "finish" update. So we send the "finish" update here to ensure the
         // frontend can continue to work on the snapshot.
-        if !has_unfinished_values && !independent_value_ids.is_empty() {
-            info!("here");
+        if independent_value_ids.is_empty() {
             for status_update in tracker.finish_remaining() {
                 if let Err(err) = send_status_update(ctx, status_update).await {
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
