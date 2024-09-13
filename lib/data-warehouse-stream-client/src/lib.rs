@@ -26,7 +26,6 @@
 )]
 
 use aws_sdk_firehose::{operation::put_record::PutRecordError, primitives::Blob, types::Record};
-use base64::{engine::general_purpose, Engine};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -75,7 +74,7 @@ impl DataWarehouseStreamClient {
     )]
     pub async fn publish(&self, raw_data: impl AsRef<[u8]>) -> DataWarehouseStreamClientResult<()> {
         let record = Record::builder()
-            .data(Blob::new(Self::base64_encode_data(raw_data)))
+            .data(Blob::new(raw_data.as_ref()))
             .build()?;
         let output = self
             .inner
@@ -89,9 +88,5 @@ impl DataWarehouseStreamClient {
             "output from sending put record request to kinesis firehose stream"
         );
         Ok(())
-    }
-
-    fn base64_encode_data(input: impl AsRef<[u8]>) -> String {
-        general_purpose::STANDARD_NO_PAD.encode(input)
     }
 }

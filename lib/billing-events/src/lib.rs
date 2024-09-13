@@ -25,6 +25,7 @@
     while_true
 )]
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use si_data_nats::{
@@ -78,6 +79,8 @@ pub struct BillingEvent {
     pub workspace_id: WorkspacePk,
     /// The ID of the change set.
     pub change_set_id: ChangeSetId,
+    /// The UTC Timestamp when it was created
+    pub event_timestamp: DateTime<Utc>,
 
     /// The specific snapshot that the change set is pointing at.
     pub workspace_snapshot_address: WorkspaceSnapshotAddress,
