@@ -1,6 +1,8 @@
-use crate::pool_noodle::PoolNoodleInner;
-use std::sync::Arc;
+use crate::task::PoolNoodleTask;
+use crate::task::PoolNoodleTaskType;
+use tokio::sync::mpsc::Sender;
 use tracing::info;
+use tracing::warn;
 
 use std::fmt::Display;
 
@@ -22,8 +24,9 @@ where
     S: Spec<Error = E, Instance = I> + Clone + Send + Sync + 'static,
     E: Send + Display + 'static,
 {
-    item: Option<I>,
-    pool: Arc<PoolNoodleInner<I, S>>,
+    drop_tx: Sender<PoolNoodleTaskType<I, S>>,
+    instance: Option<I>,
+    spec: S,
 }
 
 impl<I, E, S> LifeGuard<I, E, S>
@@ -32,8 +35,16 @@ where
     S: Spec<Error = E, Instance = I> + Clone + Send + Sync + 'static,
     E: Send + Display,
 {
-    pub(crate) fn new(item: Option<I>, pool: Arc<PoolNoodleInner<I, S>>) -> Self {
-        Self { item, pool }
+    pub(crate) fn new(
+        instance: Option<I>,
+        drop_tx: Sender<PoolNoodleTaskType<I, S>>,
+        spec: S,
+    ) -> Self {
+        Self {
+            drop_tx,
+            instance,
+            spec,
+        }
     }
 }
 
@@ -49,14 +60,21 @@ where
         S: Spec<Instance = I> + Clone + Send + Sync,
         E: Send,
     {
-        let item = self
-            .item
+        let instance = self
+            .instance
             .take()
             .expect("Item must be present as it is initialized with Some and never replaced.");
-        debug!("PoolNoodle: dropping instance: {}", item.id());
 
-        self.pool.push_drop_task_to_work_queue(item);
+        let id = instance.id();
+        debug!("PoolNoodle: dropping instance: {}", id);
+        let task =
+            PoolNoodleTaskType::Drop(PoolNoodleTask::new(Some(instance), id, self.spec.clone()));
+
+        if futures::executor::block_on(self.drop_tx.send(task)).is_err() {
+            warn!("failed to drop instance: {}", id);
+        };
         metric!(counter.pool_noodle.active = -1);
+        metric!(counter.pool_noodle.task.drop = 1);
         debug!("PoolNoodle: instance pushed to dropped");
     }
 }
@@ -70,7 +88,7 @@ where
     type Target = I;
 
     fn deref(&self) -> &I {
-        self.item
+        self.instance
             .as_ref()
             .expect("Item must be present as it is initialized with Some and never replaced.")
     }
@@ -83,7 +101,7 @@ where
     E: Send + Display,
 {
     fn deref_mut(&mut self) -> &mut I {
-        self.item
+        self.instance
             .as_mut()
             .expect("Item must be present as it is initialized with Some and never replaced.")
     }
