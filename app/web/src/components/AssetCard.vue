@@ -42,12 +42,12 @@
 
           <IconButton
             v-if="canUpdate"
+            :loading="installStatus.isPending"
             class="hover:scale-125"
             icon="code-deployed"
+            loadingIcon="loader"
             tooltip="Update"
             tooltipPlacement="top"
-            :loading="installStatus.isPending"
-            loadingIcon="loader"
             @click="updateAsset"
           />
 
@@ -62,11 +62,11 @@
 
           <IconButton
             v-if="asset.isLocked && editingVersionDoesNotExist"
+            :requestStatus="createUnlockedVariantReqStatus"
             class="hover:scale-125"
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
-            :requestStatus="createUnlockedVariantReqStatus"
             @click="unlock"
           />
           <Icon v-if="!asset.isLocked" name="sliders-vertical" tone="action" />
@@ -197,7 +197,7 @@ const canUpdate = computed(
 
 const canContribute = computed(() => {
   return (
-    !!moduleStore.contributableModules.includes(
+    moduleStore.contributableModules.includes(
       asset.value?.schemaVariantId ?? "",
     ) || asset.value?.canContribute
   );
