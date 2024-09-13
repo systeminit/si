@@ -17,6 +17,7 @@ import {
   Authentication,
   Qualification,
   FuncBackendKind,
+  AttributePrototypeId,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -55,6 +56,9 @@ export interface DeleteFuncResponse {
   name: string;
 }
 
+export interface AttributeWithVariant extends Attribute {
+  schemaVariantId: NonNullable<SchemaVariantId>;
+}
 export interface BindingWithDisplayName extends Action {
   displayName?: string | null;
   name: string;
@@ -62,6 +66,7 @@ export interface BindingWithDisplayName extends Action {
 
 export interface BindingWithBackendKind extends Attribute {
   backendKind: FuncBackendKind;
+  attributePrototypeId: NonNullable<AttributePrototypeId>;
 }
 
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
@@ -201,15 +206,19 @@ export const useFuncStore = () => {
           Object.values(state.funcsById)
             .filter((func) => INTRINSICS_DISPLAYED.includes(func.backendKind))
             .forEach((func) => {
-              func.bindings.forEach((binding) => {
-                if (binding.schemaVariantId) {
+              func.bindings
+                .filter(
+                  (binding): binding is AttributeWithVariant =>
+                    !!binding.schemaVariantId &&
+                    binding.bindingKind === FuncBindingKind.Attribute,
+                )
+                .forEach((binding) => {
                   const _curr = _bindings.get(binding.schemaVariantId);
                   const b = binding as BindingWithBackendKind;
                   b.backendKind = func.backendKind;
                   _curr.push(b);
                   _bindings.set(binding.schemaVariantId, _curr);
-                }
-              });
+                });
             });
           return _bindings;
         },
