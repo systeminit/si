@@ -370,6 +370,7 @@ impl Prop {
             kind: self.kind.into(),
             name: self.name.to_owned(),
             path: path.to_owned(),
+            hidden: self.hidden,
             eligible_to_receive_data: {
                 // props can receive data if they're on a certain part of the prop tree
                 // or if they're not a child of an array/map (for now?)

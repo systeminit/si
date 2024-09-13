@@ -75,6 +75,7 @@ pub struct Prop {
     pub kind: PropKind,
     pub name: String,
     pub path: String,
+    pub hidden: bool,
     pub eligible_to_receive_data: bool,
     pub eligible_to_send_data: bool,
 }
