@@ -26,6 +26,7 @@
 )]
 
 use billing_events::{BillingEvent, BillingEventKind, BillingEventsError};
+use chrono::Utc;
 use si_events::FuncRunId;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -82,6 +83,7 @@ pub(crate) async fn for_head_change_set_pointer_update(
     let event = BillingEvent {
         workspace_id: workspace_id.into(),
         workspace_snapshot_address: change_set.workspace_snapshot_address,
+        event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id.into(),
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
@@ -133,6 +135,7 @@ pub(crate) async fn for_change_set_status_update(
     let event = BillingEvent {
         workspace_id: workspace_id.into(),
         workspace_snapshot_address: change_set.workspace_snapshot_address,
+        event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id.into(),
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
@@ -188,6 +191,7 @@ pub(crate) async fn for_resource_create(
     let event = BillingEvent {
         workspace_id: workspace_id.into(),
         workspace_snapshot_address: change_set.workspace_snapshot_address,
+        event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id.into(),
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
@@ -243,6 +247,7 @@ pub(crate) async fn for_resource_delete(
     let event = BillingEvent {
         workspace_id: workspace_id.into(),
         workspace_snapshot_address: change_set.workspace_snapshot_address,
+        event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
         change_set_id: change_set.id.into(),
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),

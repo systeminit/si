@@ -35,7 +35,6 @@ pub(crate) async fn process_request(
     Json(request): Json<BillingEvent>,
 ) -> HandlerResult<()> {
     trace!(kind = ?request.kind, ?request, "received billing event");
-
     let serialized_request = serde_json::to_vec(&request)?;
     state
         .data_warehouse_stream_client
