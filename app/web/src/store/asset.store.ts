@@ -477,6 +477,8 @@ export const useAssetStore = () => {
 
               if (savedAssetIdx === -1) this.variantList.push(variant);
               else this.variantList.splice(savedAssetIdx, 1, variant);
+
+              this.setSchemaVariantSelection(variant.schemaVariantId);
             },
           });
         },
