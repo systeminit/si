@@ -56,6 +56,8 @@ pub enum FuncError {
     FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
     #[error("func bindings error: {0}")]
     FuncBinding(#[from] Box<FuncBindingError>),
+    #[error("func bindings can't be found: {0}")]
+    FuncBindingsLookup(FuncId),
     #[error("cannot modify locked func: {0}")]
     FuncLocked(FuncId),
     #[error("func name already in use {0}")]
@@ -578,6 +580,13 @@ impl Func {
                     Ok(b) => {
                         if !b.is_empty() {
                             pruned_funcs.push(func);
+                        } else {
+                            let bindings = FuncBinding::for_func_id(ctx, func.id)
+                                .await
+                                .map_err(|_| FuncError::FuncBindingsLookup(func.id))?;
+                            if bindings.is_empty() {
+                                pruned_funcs.push(func)
+                            }
                         }
                     }
                     Err(err) => {
