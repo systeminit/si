@@ -160,7 +160,11 @@ type EventBusEvents = {
   restoreSelection: void;
   refreshSelectionResource: void;
   eraseSelection: void;
-  panToComponent: { componentId: ComponentId; center?: boolean };
+  panToComponent: {
+    componentId: ComponentId;
+    center?: boolean;
+  };
+  rename: ComponentId;
 };
 
 type PendingComponent = {

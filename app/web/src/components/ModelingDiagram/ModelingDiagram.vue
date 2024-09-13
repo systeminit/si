@@ -224,6 +224,7 @@ overflow hidden */
           v-model="renameInputValue"
           compact
           rename
+          :renameZoom="zoomLevel"
           noLabel
           @keydown="onRenameKeyDown"
           @blur="onRenameSubmit"
@@ -452,8 +453,8 @@ function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
 
 function convertGridCoordsToContainerCoords(v: Vector2d): Vector2d {
   return {
-    x: v.x * zoomLevel.value - gridMinX.value,
-    y: v.y * zoomLevel.value - gridMinY.value,
+    x: (v.x - gridMinX.value) * zoomLevel.value,
+    y: (v.y - gridMinY.value) * zoomLevel.value,
   };
 }
 
@@ -510,8 +511,8 @@ function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
       x: gridOrigin.value.x + e.evt.deltaX * panFactor,
       y: gridOrigin.value.y + e.evt.deltaY * panFactor,
     };
-    fixRenameInputPosition();
   }
+  fixRenameInputPosition();
 }
 
 function zoomAtPoint(delta: number, zoomPos: Vector2d, isPinchToZoom = false) {
@@ -866,6 +867,16 @@ async function onKeyDown(e: KeyboardEvent) {
     } else {
       // collapse selected
       componentsStore.toggleSelectedCollapse("hotkey");
+    }
+  }
+  if (!props.readOnly && e.key === "n" && componentsStore.selectedComponentId) {
+    // rename component
+    const collapsed = componentsStore.collapsedComponents.has(
+      `g-${componentsStore.selectedComponentId}`,
+    );
+    if (!collapsed) {
+      e.preventDefault();
+      renameOnDiagramByComponentId(componentsStore.selectedComponentId);
     }
   }
 }
@@ -3160,32 +3171,60 @@ function fixRenameInputPosition() {
       ];
     if (componentBox && renameInputWrapperRef.value) {
       const { x, y } = convertGridCoordsToContainerCoords(componentBox);
+      const z = zoomLevel.value;
 
       if (renameElement.value instanceof DiagramNodeData) {
         // moving the input box for a Node
-        renameInputWrapperRef.value.style.top = `${y + 3}px`;
-        renameInputWrapperRef.value.style.left = `${
-          x + 8 - componentBox.width / 2
-        }px`;
-        renameInputWrapperRef.value.style.width = `${
-          componentBox.width - NODE_TITLE_HEADER_MARGIN_RIGHT
-        }px`;
+        const top = y + 3 * z;
+        const left =
+          z > 0.5
+            ? x + 8 * z - (componentBox.width * z) / 2
+            : x - (componentBox.width * z) / 2;
+        const width =
+          z > 0.5
+            ? (componentBox.width - NODE_TITLE_HEADER_MARGIN_RIGHT) * z
+            : componentBox.width * z;
+
+        renameInputWrapperRef.value.style.top = `${top}px`;
+        renameInputWrapperRef.value.style.left = `${left}px`;
+        renameInputWrapperRef.value.style.width = `${width}px`;
       } else if (renameElement.value instanceof DiagramGroupData) {
         // moving the input box for a Group
         const diffIcon =
           !renameElement.value.def.changeStatus ||
           renameElement.value.def.changeStatus === "unmodified";
-        const width = diffIcon
-          ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE * 2
-          : componentBox.width - 18 - GROUP_HEADER_ICON_SIZE * 3;
+        const width =
+          z > 0.5
+            ? (diffIcon
+                ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE * 2
+                : componentBox.width - 18 - GROUP_HEADER_ICON_SIZE * 3) * z
+            : componentBox.width * z;
+        const top = y - 58 * z;
+        const left =
+          z > 0.5 ? x - width / 2 + (diffIcon ? 30 : 4) * z : x - width / 2;
 
-        renameInputWrapperRef.value.style.top = `${y - 58}px`;
-        renameInputWrapperRef.value.style.left = `${
-          x + (diffIcon ? 30 : 4) - width / 2
-        }px`;
+        renameInputWrapperRef.value.style.top = `${top}px`;
+        renameInputWrapperRef.value.style.left = `${left}px`;
         renameInputWrapperRef.value.style.width = `${width}px`;
       }
     }
+  }
+}
+
+function renameOnDiagramByComponentId(componentId: ComponentId) {
+  const key = getDiagramElementKeyForComponentId(componentId);
+  if (!key) return;
+  const el = allElementsByKey.value[key];
+  if (!el) return;
+
+  const nodeRect = nodesLocationInfo[el.uniqueKey];
+  if (!nodeRect) return;
+
+  if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+    // TODO - for now, renaming from the event bus resets the zoom level
+    gridOrigin.value = getRectCenter(nodeRect);
+    setZoomLevel(1);
+    renameOnDiagram(el, () => {});
   }
 }
 
@@ -3241,9 +3280,11 @@ const helpModalRef = ref();
 onMounted(() => {
   componentsStore.copyingFrom = null;
   componentsStore.eventBus.on("panToComponent", panToComponent);
+  modelingEventBus.on("rename", renameOnDiagramByComponentId);
 });
 onBeforeUnmount(() => {
   componentsStore.eventBus.off("panToComponent", panToComponent);
+  modelingEventBus.off("rename", renameOnDiagramByComponentId);
 });
 
 // this object gets provided to the children within the diagram that need it

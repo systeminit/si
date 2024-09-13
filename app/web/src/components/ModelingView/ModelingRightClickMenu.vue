@@ -118,6 +118,21 @@ const rightClickMenuItems = computed(() => {
       header: true,
     });
 
+    // checks if this is a collapsed frame
+    const collapsed = componentsStore.collapsedComponents.has(
+      `g-${selectedComponentId.value}`,
+    );
+
+    // rename
+    if (!collapsed) {
+      items.push({
+        label: "Rename",
+        shortcut: "N",
+        icon: "cursor",
+        onSelect: renameComponent,
+      });
+    }
+
     // set component type
     {
       const updateComponentType = (componentType: ComponentType) => {
@@ -170,13 +185,9 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
-    // expand and collapse for a single component
+    // expand and collapse for a single frame
     if (selectedComponent.value.componentType !== ComponentType.Component) {
-      const verb = componentsStore.collapsedComponents.has(
-        `g-${selectedComponentId.value}`,
-      )
-        ? "Expand"
-        : "Collapse";
+      const verb = collapsed ? "Expand" : "Collapse";
       items.push({
         label: verb,
         icon: componentsStore.collapsedComponents.has(
@@ -221,7 +232,7 @@ const rightClickMenuItems = computed(() => {
       header: true,
     });
 
-    // expand and collapse for multiple components
+    // expand and collapse for multiple frames
     const collapseOrExpand =
       componentsStore.collapseOrExpandSelectedComponents();
     if (collapseOrExpand) {
@@ -361,6 +372,12 @@ function triggerRestoreSelection() {
 function triggerWipeFromDiagram() {
   modelingEventBus.emit("eraseSelection");
   elementPos.value = null;
+}
+
+function renameComponent() {
+  if (selectedComponentId.value) {
+    componentsStore.eventBus.emit("rename", selectedComponentId.value);
+  }
 }
 
 const elementPos = ref<{ x: number; y: number } | null>(null);
