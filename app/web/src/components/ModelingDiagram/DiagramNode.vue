@@ -311,7 +311,6 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const props = defineProps({
   node: {
@@ -352,9 +351,6 @@ const statusIconHovers = ref(
 );
 
 const { theme } = useTheme();
-
-const diagramContext = useDiagramContext();
-const { edgeDisplayMode } = diagramContext;
 
 const isDeleted = computed(
   () =>
@@ -495,8 +491,6 @@ const colors = computed(() => {
   const bodyBgHsl = primaryColor.toHsl();
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
   const bodyBg = tinycolor(bodyBgHsl);
-
-  if (edgeDisplayMode.value === "EDGES_UNDER") bodyBg.setAlpha(0.5);
 
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
