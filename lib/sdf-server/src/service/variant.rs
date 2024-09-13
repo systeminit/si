@@ -83,7 +83,7 @@ impl IntoResponse for SchemaVariantError {
             SchemaVariantError::VariantAuthoring(
                 VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _),
             ) => (
-                StatusCode::NOT_MODIFIED,
+                StatusCode::UNPROCESSABLE_ENTITY,
                 "unexpected return type, expected 'Asset' return type".to_string(),
             ),
             SchemaVariantError::VariantAuthoring(VariantAuthoringError::FuncExecutionFailure(
