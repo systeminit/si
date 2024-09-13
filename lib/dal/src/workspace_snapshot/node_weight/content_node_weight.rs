@@ -14,9 +14,7 @@ use crate::{
     },
     ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphV3,
 };
-use crate::{EdgeWeight, EdgeWeightKind};
 
-use super::NodeWeightDiscriminants;
 use super::{
     traits::{CorrectTransformsResult, SiVersionedNodeWeight},
     NodeWeight,
@@ -291,58 +289,6 @@ fn protect_arity_for_input_socket(
     updates
 }
 
-fn fix_duplicate_default_schema_variant_updates(
-    graph: &WorkspaceSnapshotGraphV3,
-    self_node: &ContentNodeWeight,
-    mut updates: Vec<Update>,
-) -> Vec<Update> {
-    let mut new_updates = vec![];
-
-    for update in &updates {
-        match update {
-            Update::NewEdge {
-                source,
-                destination,
-                edge_weight,
-            } if source.id == self_node.id().into()
-                && destination.node_weight_kind == NodeWeightDiscriminants::SchemaVariant =>
-            {
-                if let EdgeWeightKind::Use { is_default: true } = edge_weight.kind() {
-                    if let Some(source_node_idx) = graph.get_node_index_by_id_opt(source.id) {
-                        for default_target_node_weight in graph
-                            .edges_directed(source_node_idx, Outgoing)
-                            .filter(|edge_ref| {
-                                matches!(
-                                    edge_ref.weight().kind(),
-                                    EdgeWeightKind::Use { is_default: true }
-                                )
-                            })
-                            .filter_map(|edge_ref| graph.get_node_weight_opt(edge_ref.target()))
-                        {
-                            new_updates.push(Update::RemoveEdge {
-                                source: *source,
-                                destination: default_target_node_weight.into(),
-                                edge_kind: EdgeWeightKindDiscriminants::Use,
-                            });
-
-                            new_updates.push(Update::NewEdge {
-                                source: *source,
-                                destination: default_target_node_weight.into(),
-                                edge_weight: EdgeWeight::new(EdgeWeightKind::new_use()),
-                            });
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    updates.extend(new_updates);
-
-    updates
-}
-
 impl CorrectTransforms for ContentNodeWeight {
     fn correct_transforms(
         &self,
@@ -353,9 +299,6 @@ impl CorrectTransforms for ContentNodeWeight {
         Ok(match self.content_address_discriminants() {
             ContentAddressDiscriminants::AttributePrototype => {
                 protect_arity_for_input_socket(graph, updates, self)
-            }
-            ContentAddressDiscriminants::Schema => {
-                fix_duplicate_default_schema_variant_updates(graph, self, updates)
             }
             _ => updates,
         })
