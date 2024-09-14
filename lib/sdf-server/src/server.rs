@@ -10,6 +10,7 @@ use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
+    signal,
     sync::RwLock,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -94,6 +95,8 @@ impl Server {
         .await?;
 
         let application_runtime_mode = Arc::new(RwLock::new(ApplicationRuntimeMode::Running));
+
+        prepare_maintenance_mode_watcher(application_runtime_mode.clone(), token.clone())?;
 
         // Spawn helping tasks and track them for graceful shutdown
         helping_tasks_tracker.spawn(layer_db_graceful_shutdown.into_future());
@@ -236,4 +239,39 @@ where
             .await
             .map_err(ServerError::Axum)
     }
+}
+
+fn prepare_maintenance_mode_watcher(
+    mode: Arc<RwLock<ApplicationRuntimeMode>>,
+    cancellation_token: CancellationToken,
+) -> ServerResult<()> {
+    let mut sigusr2_watcher = signal::unix::signal(signal::unix::SignalKind::user_defined2())
+        .map_err(ServerError::Signal)?;
+
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = sigusr2_watcher.recv() => {
+                    info!("received SIGUSR2 signal, changing application runtime mode");
+                    let mut mode = mode.write().await;
+                    info!(?mode, "current application runtime mode (changing it...)");
+                    *mode = match *mode {
+                        ApplicationRuntimeMode::Maintenance => ApplicationRuntimeMode::Running,
+                        ApplicationRuntimeMode::Running => ApplicationRuntimeMode::Maintenance,
+                    };
+                    info!(?mode, "new application runtime mode (changed!)");
+                }
+                _ = cancellation_token.cancelled() => {
+                    break
+                }
+                else => {
+                    // All other arms are closed, nothing left to do but return
+                    trace!("returning from graceful shutdown with all select arms closed");
+                    break
+                }
+            }
+        }
+    });
+
+    Ok(())
 }
