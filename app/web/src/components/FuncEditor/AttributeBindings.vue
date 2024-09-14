@@ -28,19 +28,13 @@
             Asset:
           </h1>
           <h2 class="pb-xs text-sm">
-            {{
-              componentStore.schemaVariantsById[bind.schemaVariantId || ""]
-                ?.displayName || "N/A"
-            }}
+            {{ bind.schemaVariant.displayName }}
           </h2>
           <h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
             Asset version:
           </h1>
           <h2 class="pb-xs text-sm">
-            {{
-              componentStore.schemaVariantsById[bind.schemaVariantId || ""]
-                ?.version || "N/A"
-            }}
+            {{ bind.schemaVariant.version }}
           </h2>
 
           <!--<h1 class="pt-xs text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -186,7 +180,7 @@ const getSocketNameFrom = (
 interface ExtendedBinding extends Attribute {
   outputDescription: string;
   attributePrototypeId: AttributePrototypeId;
-  schemaVariant: SchemaVariant | undefined;
+  schemaVariant: SchemaVariant;
 }
 const bindings = computed(() => {
   let b;
@@ -195,9 +189,12 @@ const bindings = computed(() => {
     b = funcStore.attributeBindings[props.funcId];
   }
   b = ((b as ExtendedBinding[]) || []).filter(nonNullable);
-  return b.map((_b) => {
-    _b.schemaVariant =
+  const _bindings: ExtendedBinding[] = [];
+  b.forEach((_b) => {
+    const schemaVariant =
       componentStore.schemaVariantsById[_b.schemaVariantId || ""];
+    if (!schemaVariant) return;
+    _b.schemaVariant = schemaVariant;
     if (_b.outputSocketId) {
       _b.outputDescription =
         getSocketNameFrom(_b.schemaVariantId, _b.outputSocketId) || "N/A";
@@ -206,8 +203,9 @@ const bindings = computed(() => {
       _b.outputDescription =
         getPropPathFrom(_b.schemaVariantId, _b.propId) || "N/A";
     }
-    return _b;
+    _bindings.push(_b);
   });
+  return _bindings;
 });
 
 const makeBinding = () => {
