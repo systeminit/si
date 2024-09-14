@@ -7,6 +7,11 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, natural_ms));
 }
 
+export function sleepBetween(minMs: number, maxMs: number) {
+  if (maxMs < minMs) maxMs = minMs;
+  return sleep(minMs + Math.floor((maxMs - minMs) * Math.random()));
+}
+
 // Run fn n times, with increasing intervals between tries
 export async function retryWithBackoff(
   fn: () => Promise<void>,

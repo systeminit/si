@@ -37,6 +37,14 @@ export const ROUTES = {
       `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
     method: "GET",
   },
+  set_component_position: {
+    path: () => `/diagram/set_component_position`,
+    method: "POST",
+  },
+  set_component_type: {
+    path: () => `/component/set_type`,
+    method: "POST",
+  },
 
   // Component Management -------------------------------------------------------
   delete_component: {
@@ -53,6 +61,11 @@ export const ROUTES = {
   },
 
   // Property Editor ------------------------------------------------------------
+  get_property_schema: {
+    path: (vars: ROUTE_VARS) =>
+      `/component/get_property_editor_schema?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
+    method: "GET",
+  },
   get_property_values: {
     path: (vars: ROUTE_VARS) =>
       `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
@@ -76,6 +89,19 @@ export const ROUTES = {
     method: "GET",
   },
 
+  // Qualification ------------------------------------------------------
+  qualification_summary: {
+    path: (vars: ROUTE_VARS) =>
+      `/qualification/get_summary?visibility_change_set_pk=${vars.changeSetId}`,
+    method: "GET",
+  },
+
+  // Funcs ------------------------------------------------------
+  func_list: {
+    path: (vars: ROUTE_VARS) =>
+      `/qualification/get_summary?visibility_change_set_pk=${vars.changeSetId}`,
+    method: "GET",
+  },
   // Add more groups below ------------------------------------------------------
 } satisfies Record<string, API_DESCRIPTION>;
 
@@ -108,16 +134,19 @@ export class SdfApiClient {
   public static async init(
     args: {
       workspaceId: string;
-      userEmailOrId: string;
+      userEmailOrId?: string;
       password?: string;
       token?: string;
     },
   ) {
     let { workspaceId, userEmailOrId, password, token } = args;
+
     if (!token) {
-      await retryWithBackoff(async () => {
-        token = await getSdfJWT(workspaceId, userEmailOrId, password);
-      });
+      if (!userEmailOrId) {
+        throw new Error("Must set token or userEmail!");
+      }
+
+      token = await getSdfJWT(workspaceId, userEmailOrId, password);
     }
     if (!token) {
       throw new Error("No auth token has been set!");
@@ -194,7 +223,7 @@ export class SdfApiClient {
 }
 
 // Helper functions for JWT generation and fetching
-function getSdfJWT(
+async function getSdfJWT(
   workspaceId: string,
   userEmailOrId: string,
   password?: string,
@@ -210,7 +239,11 @@ function getSdfJWT(
     if (!password) {
       throw new Error("No password provided");
     }
-    return getSdfJWTFromAuth0(workspaceId, userEmailOrId, password);
+    let token;
+    await retryWithBackoff(async () => {
+      token = await getSdfJWTFromAuth0(workspaceId, userEmailOrId, password);
+    });
+    return token;
   }
 }
 
@@ -238,6 +271,10 @@ async function getSdfJWTFromAuth0(
     method: "POST",
   });
 
+  if (!loginResp.ok) {
+    throw new Error(`Could not get token: response status ${loginResp.status}`);
+  }
+
   const { token, message } = await loginResp.json();
 
   if (!token) {
@@ -248,7 +285,7 @@ async function getSdfJWTFromAuth0(
   return token;
 }
 
-async function createJWTFromPrivateKey(
+function createJWTFromPrivateKey(
   workspaceId: string,
   userId: string,
   privateKey: string,

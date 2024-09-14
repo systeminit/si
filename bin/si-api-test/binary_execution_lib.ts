@@ -3,7 +3,7 @@ import assert from "node:assert";
 
 export interface TestExecutionProfile {
   maxDuration: number;
-  rate: number; // Time in between test runs
+  rate: number; // Time in between test batches
   useJitter: boolean; // If true, add a random amount of time to the rate, to avoid thundering herds
 }
 
@@ -15,6 +15,7 @@ export function parseArgs(args: string[]) {
       "userId",
       "password",
       "profile",
+      "batchSize",
       "tests",
       "token",
       "reportFile",
@@ -25,6 +26,7 @@ export function parseArgs(args: string[]) {
       p: "password",
       t: "tests",
       l: "profile",
+      b: "batchSize",
       k: "token",
     },
     default: { profile: undefined, tests: "" },
@@ -45,6 +47,7 @@ Options:
   --password, -p      User password (optional)
   --tests, -t         Test names to run (comma-separated, optional)
   --profile, -l       Test profile in JSON format (optional)
+  --batchSize, -b     Number of test instances, per test, to run per batch
   --token, -k         SDF Auth Token (optional)
   --reportFile        Address of the output file, if unset it will be logged
   --help              Show this help message
@@ -58,6 +61,8 @@ Options:
   const password = parsedArgs.password || undefined;
   const token = parsedArgs.token || undefined;
   const reportFile = parsedArgs.reportFile;
+  const batchArg = parseInt(parsedArgs?.batchSize ?? "");
+  const batchSize = Math.max(batchArg, 1);
 
   // Handle optional tests argument
   const testsToRun = parsedArgs.tests
@@ -86,6 +91,7 @@ Options:
     testProfile,
     token,
     reportFile,
+    batchSize,
   };
 }
 
