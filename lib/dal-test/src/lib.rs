@@ -619,7 +619,7 @@ pub async fn pinga_server(
 
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn rebaser_server(
+pub async fn rebaser_server(
     services_context: ServicesContext,
     shutdown_token: CancellationToken,
 ) -> Result<rebaser_server::Server> {
@@ -634,6 +634,7 @@ pub fn rebaser_server(
         // a huge interval, to prevent dvu debouncer from running dvus in tests
         std::time::Duration::from_secs(10000),
     )
+    .await
     .wrap_err("failed to create Rebaser server")?;
 
     Ok(server)
@@ -780,7 +781,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let srv_services_ctx = test_context
         .create_services_context(token.clone(), tracker.clone())
         .await;
-    let rebaser_server = rebaser_server(srv_services_ctx, token.clone())?;
+    let rebaser_server = rebaser_server(srv_services_ctx, token.clone()).await?;
     tracker.spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run

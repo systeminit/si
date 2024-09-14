@@ -344,7 +344,8 @@ pub(crate) trait FnSetupExpander {
                 ::dal_test::rebaser_server(
                     s_ctx,
                     #cancellation_token.clone(),
-                )?
+                )
+                .await?
             };
         });
         self.set_rebaser_server(Some(Rc::new(var)));

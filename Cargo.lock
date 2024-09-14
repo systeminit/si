@@ -4722,16 +4722,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rebaser-core"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "si-events",
- "ulid",
-]
-
-[[package]]
 name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
@@ -4741,7 +4731,6 @@ dependencies = [
  "futures",
  "nats-subscriber",
  "naxum",
- "rebaser-core",
  "remain",
  "serde",
  "serde_json",

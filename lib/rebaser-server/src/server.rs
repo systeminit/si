@@ -61,6 +61,7 @@ pub struct Server {
     change_set_tasks: HashMap<ChangeSetId, RunningTask>,
     shutdown_token: CancellationToken,
     dvu_interval: Duration,
+    stream: jetstream::stream::Stream,
 }
 
 impl Server {
@@ -113,11 +114,12 @@ impl Server {
             shutdown_token,
             config.dvu_interval(),
         )
+        .await
     }
 
     /// Creates a runnable [`Server`] from pre-configured and pre-created services.
     #[instrument(name = "rebaser.init.from_services", level = "info", skip_all)]
-    pub fn from_services(
+    pub async fn from_services(
         instance_id: impl Into<String>,
         services_context: ServicesContext,
         shutdown_token: CancellationToken,
@@ -129,6 +131,16 @@ impl Server {
             instance_id: instance_id.into(),
         };
 
+        let stream = {
+            let subject_prefix = services_context.nats_conn().metadata().subject_prefix();
+            let context = si_data_nats::jetstream::new(services_context.nats_conn().clone());
+            si_layer_cache::external::rebaser_server::rebaser_requests_work_queue_stream(
+                &context,
+                subject_prefix,
+            )
+            .await?
+        };
+
         let ctx_builder = DalContext::builder(services_context, false);
 
         Ok(Self {
@@ -137,6 +149,7 @@ impl Server {
             change_set_tasks: HashMap::default(),
             shutdown_token,
             dvu_interval,
+            stream,
         })
     }
 
@@ -240,14 +253,6 @@ impl Server {
         Ok(())
     }
 
-    /// Gets a [`ShutdownHandle`] that can externally or on demand trigger the server's shutdown
-    /// process.
-    pub fn shutdown_handle(&self) -> ShutdownHandle {
-        ShutdownHandle {
-            token: self.shutdown_token.clone(),
-        }
-    }
-
     fn running_change_set_task(&self, change_set_id: ChangeSetId) -> bool {
         self.change_set_tasks.contains_key(&change_set_id)
     }
@@ -283,19 +288,16 @@ impl Server {
             return Err(Error::ExistingChangeSetTask(change_set_id));
         }
 
+        let prefix = self.ctx_builder.nats_conn().metadata().subject_prefix();
+
         let incoming = self
-            .ctx_builder
-            .layer_db()
-            .activity()
-            .rebaser_change_set_requests_work_queue_stream(workspace_id, change_set_id)
-            .await?
-            .create_consumer(Self::consumer_config())
+            .stream
+            .create_consumer(Self::consumer_config(prefix, workspace_id, change_set_id))
             .await?
             .messages()
             .await?;
 
         let kv = {
-            let prefix = self.ctx_builder.nats_conn().metadata().subject_prefix();
             let context = si_data_nats::jetstream::new(self.ctx_builder.nats_conn().clone());
             crate::nats::get_or_create_key_value(&context, Self::debouncer_kv_config(prefix))
                 .await?
@@ -393,13 +395,23 @@ impl Server {
     }
 
     #[inline]
-    fn consumer_config() -> jetstream::consumer::pull::Config {
+    fn consumer_config(
+        subject_prefix: Option<&str>,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> jetstream::consumer::pull::Config {
         jetstream::consumer::pull::Config {
-            durable_name: Some(CONSUMER_NAME.to_owned()),
+            durable_name: Some(format!("{CONSUMER_NAME}-{workspace_id}-{change_set_id}")),
             // Ensure that only *one* message is processed before the next message is processed.
             // Note that the consumer is shared across potentially multiple connected clients,
             // meaning they all share this behavior (i.e. only one service processes one message
             // at a time, thus guarenteeing queue is processed serially, in order).
+            filter_subject: si_layer_cache::external::rebaser_server::for_rebaser_requests(
+                subject_prefix,
+                workspace_id,
+                change_set_id,
+            )
+            .to_string(),
             max_ack_pending: 1,
             ..Default::default()
         }
@@ -480,15 +492,4 @@ impl Server {
 struct RunningTask {
     handle: JoinHandle<()>,
     token: CancellationToken,
-}
-
-#[derive(Clone, Debug)]
-pub struct ShutdownHandle {
-    token: CancellationToken,
-}
-
-impl ShutdownHandle {
-    pub fn shutdown(self) {
-        self.token.cancel()
-    }
 }
