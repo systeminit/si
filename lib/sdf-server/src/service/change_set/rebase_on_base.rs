@@ -57,7 +57,7 @@ pub async fn rebase_on_base(
     .await?
     {
         let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
-        let rebase_request = RebaseRequest::new(ctx.change_set_id(), rebase_batch_address);
+        let rebase_request = RebaseRequest::new(ctx.change_set_id(), rebase_batch_address, None);
         ctx.do_rebase_request(rebase_request).await?;
     }
 

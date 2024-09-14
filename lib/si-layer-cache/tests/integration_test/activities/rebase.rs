@@ -210,6 +210,7 @@ async fn rebase_and_wait() {
             .rebase()
             .rebase_and_wait(
                 Ulid::new(),
+                None,
                 RebaseBatchAddress::new(b"poop"),
                 metadata_for_task,
             )
@@ -505,7 +506,7 @@ async fn rebase_and_wait_stress() {
                 let _response = ldb_slash_clone
                     .activity()
                     .rebase()
-                    .rebase_and_wait(Ulid::new(), RebaseBatchAddress::new(b"poop"), mp)
+                    .rebase_and_wait(Ulid::new(), None, RebaseBatchAddress::new(b"poop"), mp)
                     .await;
                 RECV_REPLY_COUNTER.fetch_add(1, Ordering::Relaxed);
             }
