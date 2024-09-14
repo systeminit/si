@@ -238,7 +238,7 @@ impl ActivityMultiplexer {
             has_filter_array,
         )
         .await?;
-        let (tx, rx) = broadcast::channel(1000); // the 1_000_000 here is the depth the channel will
+        let (tx, rx) = broadcast::channel(1000000); // the 1_000_000 here is the depth the channel will
 
         let mut amx_task = ActivityMultiplexerTask::new(activity_stream, tx.clone());
         let amx_shutdown_token = self.shutdown_token.clone();
