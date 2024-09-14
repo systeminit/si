@@ -12,6 +12,8 @@
     clippy::module_name_repetitions
 )]
 
+use std::io;
+
 use thiserror::Error;
 
 mod app;
@@ -59,6 +61,8 @@ pub enum ServerError {
     Init(#[from] init::InitError),
     #[error("nats multipler error: {0}")]
     NatsMultiplexer(#[from] ::nats_multiplexer::MultiplexerError),
+    #[error("Failed to set up signal handler")]
+    Signal(#[source] io::Error),
     #[error("unix domain socket incoming stream error: {0}")]
     Uds(#[from] uds::UdsIncomingStreamError),
 }
