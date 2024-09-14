@@ -705,6 +705,20 @@ function downloadCanvasScreenshot() {
   const width = maxX - minX;
   const height = maxY - minY;
 
+  // Create a temporary layer for the background
+  const tempLayer = new Konva.Layer();
+  stage.add(tempLayer);
+
+  const bgRect = new Konva.Rect({
+    x: minX,
+    y: minY,
+    width,
+    height,
+    fill: "black",
+  });
+  tempLayer.add(bgRect);
+  tempLayer.moveToBottom();
+
   // Capture the content
   const dataURL = stage.toDataURL({
     x: minX,
@@ -713,6 +727,9 @@ function downloadCanvasScreenshot() {
     height,
     pixelRatio: 10, // Increase for higher resolution
   });
+
+  // Remove the temporary layer
+  tempLayer.destroy();
 
   // Generate filename with current date
   const currentDate = new Date();
