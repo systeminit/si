@@ -270,8 +270,12 @@
         :config="{
           ...renameHitbox,
           ...(debug && { fill: 'red' }),
+          cornerRadius: 2,
+          strokeWidth: 2,
+          stroke: renameHovered ? SELECTION_COLOR : 'transparent',
         }"
         @mouseout="mouseOutRename"
+        @mousemove="mouseOverRename"
         @mouseover="mouseOverRename"
         @click="renameIfSelected"
         @dblclick="rename"
@@ -290,7 +294,7 @@
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
-          fontStyle: 'bold',
+          fontStyle: renameHovered ? 'italic bold' : 'bold',
           fontFamily: DIAGRAM_FONT_FAMILY,
           listening: false,
           wrap: 'none',
@@ -748,7 +752,7 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
   componentsStore.setHoveredComponentId(null);
 }
 
-function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
+function onMouseOut() {
   componentsStore.setHoveredComponentId(null);
 }
 
@@ -832,6 +836,14 @@ const renameHitbox = computed(() => {
       };
       return box;
     }
+
+    // we only reach this point if the rename input field is active
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    };
   }
 
   return {
@@ -843,26 +855,56 @@ const renameHitbox = computed(() => {
 });
 
 const renaming = ref(false);
+const renameHoverState = ref(false);
+const fixCursorToText = ref(false);
+
+const renameHovered = computed(
+  () =>
+    (componentsStore.hoveredComponentMeta?.type === "rename" &&
+      componentsStore.hoveredComponentId === props.group.def.id) ||
+    renameHoverState.value,
+);
+
+const selectedAndRenameHovered = computed(
+  () =>
+    props.isSelected &&
+    componentsStore.hoveredComponentMeta?.type === "rename" &&
+    componentsStore.hoveredComponentId === props.group.def.id &&
+    renameHoverState.value,
+);
+
+watch(
+  () => props.isSelected,
+  (isSelected) => {
+    if (isSelected && renameHovered.value) {
+      fixCursorToText.value = true;
+    }
+  },
+);
 
 function mouseOverRename(evt: KonvaEventObject<MouseEvent>) {
   if (props.isSelected) {
     onMouseOver(evt, "rename");
   }
+  renameHoverState.value = true;
 }
 
-function mouseOutRename(evt: KonvaEventObject<MouseEvent>) {
+function mouseOutRename() {
   if (props.isSelected) {
-    onMouseOver(evt);
+    onMouseOut();
   }
+  renameHoverState.value = false;
+  fixCursorToText.value = false;
 }
 
 function renameIfSelected(e: KonvaEventObject<MouseEvent>) {
-  if (
-    props.isSelected &&
-    e.evt.button === 0 &&
-    componentsStore.hoveredComponentMeta?.type === "rename"
-  ) {
+  if (e.evt.button === 0 && selectedAndRenameHovered.value) {
     rename();
+  } else if (fixCursorToText.value) {
+    fixCursorToText.value = false;
+    componentsStore.setHoveredComponentId(componentId.value, {
+      type: "rename",
+    } as ElementHoverMeta);
   }
 }
 
@@ -871,6 +913,7 @@ function rename() {
     type: "rename",
   });
   renaming.value = true;
+  fixCursorToText.value = false;
   emit("rename", () => {
     renaming.value = false;
   });
