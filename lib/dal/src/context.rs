@@ -480,7 +480,7 @@ impl DalContext {
             .write_current_rebase_batch()
             .await?
             .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
             });
 
         if self.blocking {
@@ -565,7 +565,7 @@ impl DalContext {
             .write_current_rebase_batch()
             .await?
             .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
             });
 
         info!("rebase_request: {:?}", rebase_request);
@@ -1209,16 +1209,19 @@ pub struct Transactions {
 pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
     pub rebase_batch_address: RebaseBatchAddress,
+    pub from_change_set_id: Option<ChangeSetId>,
 }
 
 impl RebaseRequest {
     pub fn new(
         to_rebase_change_set_id: ChangeSetId,
         rebase_batch_address: RebaseBatchAddress,
+        from_change_set_id: Option<ChangeSetId>,
     ) -> Self {
         Self {
             to_rebase_change_set_id,
             rebase_batch_address,
+            from_change_set_id,
         }
     }
 }
@@ -1278,6 +1281,7 @@ async fn rebase(
         .rebase()
         .rebase_and_wait(
             rebase_request.to_rebase_change_set_id.into(),
+            rebase_request.from_change_set_id.map(Into::into),
             rebase_request.rebase_batch_address,
             metadata,
         )

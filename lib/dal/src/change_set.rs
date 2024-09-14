@@ -513,7 +513,8 @@ impl ChangeSet {
         if let Some(rebase_batch) = self.detect_updates_that_will_be_applied(ctx).await? {
             let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
 
-            let rebase_request = RebaseRequest::new(base_change_set_id, rebase_batch_address);
+            let rebase_request =
+                RebaseRequest::new(base_change_set_id, rebase_batch_address, Some(self.id));
             ctx.do_rebase_request(rebase_request).await?;
         }
 

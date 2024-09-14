@@ -37,6 +37,8 @@ pub enum RebaseError {
     Transactions(#[from] TransactionsError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("workspace {0} missing")]
+    WorkspaceMissing(WorkspacePk),
     #[error("workspace pk expected but was none")]
     WorkspacePkExpected,
     #[error("workspace snapshot error: {0}")]
@@ -69,6 +71,10 @@ pub async fn perform_rebase(
         &message.metadata.tenancy.workspace_pk.to_string(),
     );
     let start = Instant::now();
+    let workspace = get_workspace(ctx).await?;
+    let updating_head =
+        message.payload.to_rebase_change_set_id == workspace.default_change_set_id().into();
+
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set =
         ChangeSet::find(ctx, message.payload.to_rebase_change_set_id.into())
@@ -99,10 +105,11 @@ pub async fn perform_rebase(
     let corrected_updates = to_rebase_workspace_snapshot
         .correct_transforms(
             rebase_batch.updates().to_vec(),
-            message
-                .payload
-                .from_change_set_id
-                .is_some_and(|from_id| from_id != to_rebase_change_set.id.into()),
+            !updating_head
+                && message
+                    .payload
+                    .from_change_set_id
+                    .is_some_and(|from_id| from_id != to_rebase_change_set.id.into()),
         )
         .await?;
     debug!("corrected transforms: {:?}", start.elapsed());
@@ -149,46 +156,37 @@ pub async fn perform_rebase(
         });
     }
 
-    if let Some(workspace) = Workspace::get_by_pk(
-        ctx,
-        &ctx.tenancy()
-            .workspace_pk_opt()
-            .ok_or(RebaseError::WorkspacePkExpected)?,
-    )
-    .await?
-    {
-        if workspace.default_change_set_id() == to_rebase_change_set.id
-            && *workspace.pk() != WorkspacePk::NONE
-        {
-            let all_open_change_sets = ChangeSet::list_open(ctx).await?;
-            for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
-                cs.id != workspace.default_change_set_id() && cs.id != to_rebase_change_set.id
-            }) {
-                let ctx_clone = ctx.clone();
-                let rebase_batch_address = message.payload.rebase_batch_address;
-                tokio::task::spawn(async move {
-                    debug!(
-                        "replaying batch {} onto {} from {}",
-                        rebase_batch_address, target_change_set.id, to_rebase_change_set.id
-                    );
+    if updating_head && *workspace.pk() != WorkspacePk::NONE {
+        let all_open_change_sets = ChangeSet::list_open(ctx).await?;
+        for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
+            cs.id != workspace.default_change_set_id()
+                && cs.id != to_rebase_change_set.id
+                && message.payload.from_change_set_id != Some(cs.id.into())
+        }) {
+            let ctx_clone = ctx.clone();
+            let rebase_batch_address = message.payload.rebase_batch_address;
+            tokio::task::spawn(async move {
+                debug!(
+                    "replaying batch {} onto {} from {}",
+                    rebase_batch_address, target_change_set.id, to_rebase_change_set.id
+                );
 
-                    if let Err(err) = replay_changes(
-                        &ctx_clone,
-                        to_rebase_change_set.id,
-                        target_change_set.id,
+                if let Err(err) = replay_changes(
+                    &ctx_clone,
+                    to_rebase_change_set.id,
+                    target_change_set.id,
+                    rebase_batch_address,
+                )
+                .await
+                {
+                    error!(
+                        err = ?err,
+                        "error replaying rebase batch {} changes onto {}",
                         rebase_batch_address,
-                    )
-                    .await
-                    {
-                        error!(
-                            err = ?err,
-                            "error replaying rebase batch {} changes onto {}",
-                            rebase_batch_address,
-                            target_change_set.id
-                        );
-                    }
-                });
-            }
+                        target_change_set.id
+                    );
+                }
+            });
         }
     }
 
@@ -256,4 +254,15 @@ async fn replay_changes(
         .await?;
 
     Ok(())
+}
+
+async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
+    let workspace_pk = ctx
+        .tenancy()
+        .workspace_pk_opt()
+        .ok_or(RebaseError::WorkspacePkExpected)?;
+
+    Workspace::get_by_pk(ctx, &workspace_pk)
+        .await?
+        .ok_or(RebaseError::WorkspaceMissing(workspace_pk))
 }
