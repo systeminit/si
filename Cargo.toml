@@ -33,7 +33,6 @@ members = [
     "lib/object-tree",
     "lib/pinga-core",
     "lib/pinga-server",
-    "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
     "lib/si-crypto",

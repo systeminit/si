@@ -5,7 +5,6 @@ use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
-use rebaser_core::RebaserMessagingConfig;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
@@ -57,9 +56,6 @@ pub struct Config {
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
-    #[builder(default)]
-    messaging_config: RebaserMessagingConfig,
-
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
@@ -103,11 +99,6 @@ impl Config {
         &self.symmetric_crypto_service
     }
 
-    /// Gets a reference to the messaging config
-    pub fn messaging_config(&self) -> &RebaserMessagingConfig {
-        &self.messaging_config
-    }
-
     /// Gets a reference to the layderdb config
     #[must_use]
     pub fn layer_db_config(&self) -> &LayerDbConfig {
@@ -136,8 +127,6 @@ pub struct ConfigFile {
     crypto: VeritechCryptoConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
-    #[serde(default)]
-    messaging_config: RebaserMessagingConfig,
     #[serde(default = "default_layer_db_config")]
     layer_db_config: LayerDbConfig,
     #[serde(default = "random_instance_id")]
@@ -152,7 +141,6 @@ impl Default for ConfigFile {
             crypto: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             layer_db_config: default_layer_db_config(),
-            messaging_config: Default::default(),
             instance_id: random_instance_id(),
         }
     }

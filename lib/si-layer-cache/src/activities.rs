@@ -364,6 +364,7 @@ impl ActivityStream {
         let mut config = jetstream::consumer::pull::Config {
             name: Some(name),
             description: Some(description),
+            // NOTE(nick,fletcher): we may need to tune this for long-running change sets.
             deliver_policy: jetstream::consumer::DeliverPolicy::All,
             max_bytes: MAX_BYTES,
             inactive_threshold: Duration::from_secs(180),

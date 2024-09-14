@@ -41,7 +41,6 @@ mod server;
 pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
 };
-pub use rebaser_core::RebaserMessagingConfig;
 pub use server::{Server, ServerMetadata};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
@@ -79,6 +78,9 @@ pub enum ServerError {
     /// When attempting to launch a change set task but one is already running
     #[error("existing change set task already running for id: {0}")]
     ExistingChangeSetTask(si_events::ChangeSetId),
+    /// When a NATS Jetstream stream could not be created
+    #[error("jetstream create stream error: {0}")]
+    JetstreamCreateStream(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
     /// When failing to create or fetch a Jetstream consumer
     #[error("jetstream consumer error: {0}")]
     JsConsumer(#[from] si_data_nats::async_nats::jetstream::stream::ConsumerError),

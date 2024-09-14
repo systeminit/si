@@ -1,7 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use si_data_nats::{async_nats::jetstream, jetstream::Context, NatsClient};
-use si_events::{ChangeSetId, WorkspacePk};
+use si_data_nats::{jetstream::Context, NatsClient};
 use telemetry::prelude::*;
 use tokio::{pin, sync::mpsc::UnboundedReceiver};
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
@@ -15,7 +14,6 @@ use crate::{
         ActivityRebaseRequest, RebaserRequestWorkQueue,
     },
     error::{LayerDbError, LayerDbResult},
-    nats,
 };
 
 const PARENT_ACTIVITY_WAIT_TIMEOUT: u64 = 60;
@@ -64,21 +62,6 @@ impl ActivityClient {
 
     pub fn activity_multiplexer(&self) -> &ActivityMultiplexer {
         &self.activity_multiplexer
-    }
-
-    pub async fn rebaser_change_set_requests_work_queue_stream(
-        &self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-    ) -> LayerDbResult<jetstream::stream::Stream> {
-        nats::rebaser_change_set_requests_work_queue_stream(
-            &self.context,
-            self.subject_prefix.as_deref(),
-            workspace_id,
-            change_set_id,
-        )
-        .await
-        .map_err(Into::into)
     }
 
     pub async fn rebaser_request_work_queue(

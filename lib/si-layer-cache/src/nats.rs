@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use si_data_nats::{async_nats::jetstream, jetstream::Context};
-use si_events::{ChangeSetId, WorkspacePk};
 
 pub const NATS_HEADER_DB_NAME: &str = "X-DB-NAME";
 pub const NATS_HEADER_KEY: &str = "X-KEY";
@@ -73,6 +72,7 @@ pub async fn layerdb_activities_stream(
     Ok(stream)
 }
 
+// FIXME(nick): move this out of layer cache.
 pub async fn rebaser_requests_work_queue_stream(
     context: &Context,
     prefix: Option<&str>,
@@ -93,53 +93,6 @@ pub async fn rebaser_requests_work_queue_stream(
             name: nats_stream_name(prefix, NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME),
             description: Some("Rebaser requests work queue".to_owned()),
             retention: jetstream::stream::RetentionPolicy::WorkQueue,
-            sources: Some(vec![source]),
-            max_bytes: MAX_BYTES,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok(stream)
-}
-
-fn rebaser_change_set_requests_work_queue_stream_name(
-    prefix: Option<&str>,
-    change_set_id: ChangeSetId,
-) -> String {
-    nats_stream_name(
-        prefix,
-        format!(
-            "{}_{}",
-            NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME, &change_set_id,
-        ),
-    )
-}
-
-pub async fn rebaser_change_set_requests_work_queue_stream(
-    context: &Context,
-    prefix: Option<&str>,
-    workspace_id: WorkspacePk,
-    change_set_id: ChangeSetId,
-) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
-    let requests_subject = subject::for_rebaser_requests(prefix, workspace_id, change_set_id);
-
-    let source = jetstream::stream::Source {
-        name: nats_stream_name(prefix, NATS_ACTIVITIES_STREAM_NAME),
-        filter_subject: Some(requests_subject.to_string()),
-        ..Default::default()
-    };
-
-    let name = rebaser_change_set_requests_work_queue_stream_name(prefix, change_set_id);
-
-    let stream = context
-        .get_or_create_stream(jetstream::stream::Config {
-            name,
-            description: Some(format!(
-                "Rebaser requests work queue [workspace_id={}, change_set_id={}]",
-                workspace_id, change_set_id,
-            )),
-            retention: jetstream::stream::RetentionPolicy::WorkQueue,
-            discard: jetstream::stream::DiscardPolicy::New,
             sources: Some(vec![source]),
             max_bytes: MAX_BYTES,
             ..Default::default()
@@ -253,6 +206,7 @@ pub mod subject {
         nats_subject(prefix, suffix)
     }
 
+    // FIXME(nick): move this out of layer cache.
     pub fn for_rebaser_requests(
         prefix: Option<&str>,
         workspace_id: WorkspacePk,
