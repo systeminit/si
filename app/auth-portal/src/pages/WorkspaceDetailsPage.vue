@@ -64,7 +64,7 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
-          :disabled="!isWorkspaceOwner && !createMode"
+          :disabled="!isWorkspaceOwner"
         />
 
         <VButton
