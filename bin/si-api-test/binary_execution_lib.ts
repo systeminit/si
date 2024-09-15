@@ -62,7 +62,7 @@ Options:
   const token = parsedArgs.token || undefined;
   const reportFile = parsedArgs.reportFile;
   const batchArg = parseInt(parsedArgs?.batchSize ?? "");
-  const batchSize = Math.max(batchArg, 1);
+  const batchSize = Number.isNaN(batchArg) ? 1 : Math.max(batchArg, 1);
 
   // Handle optional tests argument
   const testsToRun = parsedArgs.tests
