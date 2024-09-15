@@ -469,7 +469,7 @@ async function getQualificationSummary(
   changeSetId: string,
 ) {
   return await sdf.call({
-    route: "get_diagram",
+    route: "qualification_summary",
     routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,

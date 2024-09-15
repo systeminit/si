@@ -99,7 +99,7 @@ export const ROUTES = {
   // Funcs ------------------------------------------------------
   func_list: {
     path: (vars: ROUTE_VARS) =>
-      `/qualification/get_summary?visibility_change_set_pk=${vars.changeSetId}`,
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs`,
     method: "GET",
   },
   // Add more groups below ------------------------------------------------------
