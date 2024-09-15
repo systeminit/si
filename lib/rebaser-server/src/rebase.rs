@@ -190,17 +190,19 @@ pub async fn perform_rebase(
         }
     }
 
-    if let Some(source_change_set_id) = message.payload.from_change_set_id {
-        let mut event = WsEvent::change_set_applied(
-            ctx,
-            source_change_set_id.into(),
-            message.payload.to_rebase_change_set_id.into(),
-            None,
-        )
-        .await?;
-        event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_raw_id().into());
-        event.set_change_set_id(Some(message.payload.to_rebase_change_set_id.into()));
-        event.publish_immediately(ctx).await?;
+    if !updating_head {
+        if let Some(source_change_set_id) = message.payload.from_change_set_id {
+            let mut event = WsEvent::change_set_applied(
+                ctx,
+                source_change_set_id.into(),
+                message.payload.to_rebase_change_set_id.into(),
+                None,
+            )
+            .await?;
+            event.set_workspace_pk(message.metadata.tenancy.workspace_pk.into_raw_id().into());
+            event.set_change_set_id(Some(message.payload.to_rebase_change_set_id.into()));
+            event.publish_immediately(ctx).await?;
+        }
     }
 
     Ok(RebaseStatus::Success {
