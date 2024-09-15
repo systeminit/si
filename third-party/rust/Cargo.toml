@@ -28,7 +28,6 @@ rust-version = "1.78"
 publish = false
 
 [dependencies]
-console-subscriber = "0.4.0"
 async-nats = { version = "0.36.0", features = ["service"] }
 async-recursion = "1.0.5"
 async-trait = "0.1.79"
