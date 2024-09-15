@@ -11,6 +11,7 @@ A-ci:
 A-docs:
   - changed-files:
     - any-glob-to-any-file:
+      - app/docs/**/*
       - docs/**/*
 
 #
@@ -21,6 +22,12 @@ A-web:
     - any-glob-to-any-file:
       - app/web/**/*
       - .prettierrc.js
+      
+A-auth:
+  - changed-files:
+    - any-glob-to-any-file:
+      - app/docs/**/*
+      - bin/auth-api/**/*
 
 #
 # System Initiative bins (i.e. services/programs/binaries)
