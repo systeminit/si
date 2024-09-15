@@ -801,23 +801,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "atomic-waker-1.1.2.crate",
-    sha256 = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0",
-    strip_prefix = "atomic-waker-1.1.2",
-    urls = ["https://static.crates.io/crates/atomic-waker/1.1.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "atomic-waker-1.1.2",
-    srcs = [":atomic-waker-1.1.2.crate"],
-    crate = "atomic_waker",
-    crate_root = "atomic-waker-1.1.2.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-)
-
-http_archive(
     name = "atomic_refcell-0.1.13.crate",
     sha256 = "41e67cd8309bbd06cd603a9e693a784ac2e5d1e955f11286e355089fcab3047c",
     strip_prefix = "atomic_refcell-0.1.13",
@@ -1669,43 +1652,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "axum-0.7.5.crate",
-    sha256 = "3a6c9af12842a67734c9a2e355436e5d03b22383ed60cf13cd0c18fbfe3dcbcf",
-    strip_prefix = "axum-0.7.5",
-    urls = ["https://static.crates.io/crates/axum/0.7.5/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "axum-0.7.5",
-    srcs = [":axum-0.7.5.crate"],
-    crate = "axum",
-    crate_root = "axum-0.7.5.crate/src/lib.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":async-trait-0.1.82",
-        ":axum-core-0.4.3",
-        ":bytes-1.7.1",
-        ":futures-util-0.3.30",
-        ":http-1.1.0",
-        ":http-body-1.0.1",
-        ":http-body-util-0.1.2",
-        ":itoa-1.0.11",
-        ":matchit-0.7.3",
-        ":memchr-2.7.4",
-        ":mime-0.3.17",
-        ":percent-encoding-2.3.1",
-        ":pin-project-lite-0.2.14",
-        ":serde-1.0.210",
-        ":sync_wrapper-1.0.1",
-        ":tower-0.4.13",
-        ":tower-layer-0.3.3",
-        ":tower-service-0.3.3",
-    ],
-)
-
-http_archive(
     name = "axum-core-0.3.4.crate",
     sha256 = "759fa577a247914fd3f7f76d62972792636412fbfd634cd452f6a385a74d2d2c",
     strip_prefix = "axum-core-0.3.4",
@@ -1727,36 +1673,6 @@ cargo.rust_library(
         ":http-0.2.12",
         ":http-body-0.4.6",
         ":mime-0.3.17",
-        ":tower-layer-0.3.3",
-        ":tower-service-0.3.3",
-    ],
-)
-
-http_archive(
-    name = "axum-core-0.4.3.crate",
-    sha256 = "a15c63fd72d41492dc4f497196f5da1fb04fb7529e631d73630d1b491e47a2e3",
-    strip_prefix = "axum-core-0.4.3",
-    urls = ["https://static.crates.io/crates/axum-core/0.4.3/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "axum-core-0.4.3",
-    srcs = [":axum-core-0.4.3.crate"],
-    crate = "axum_core",
-    crate_root = "axum-core-0.4.3.crate/src/lib.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":async-trait-0.1.82",
-        ":bytes-1.7.1",
-        ":futures-util-0.3.30",
-        ":http-1.1.0",
-        ":http-body-1.0.1",
-        ":http-body-util-0.1.2",
-        ":mime-0.3.17",
-        ":pin-project-lite-0.2.14",
-        ":sync_wrapper-0.1.2",
         ":tower-layer-0.3.3",
         ":tower-service-0.3.3",
     ],
@@ -3473,79 +3389,6 @@ cargo.rust_library(
         ":lazy_static-1.5.0",
         ":libc-0.2.158",
         ":unicode-width-0.1.13",
-    ],
-)
-
-http_archive(
-    name = "console-api-0.8.0.crate",
-    sha256 = "86ed14aa9c9f927213c6e4f3ef75faaad3406134efe84ba2cb7983431d5f0931",
-    strip_prefix = "console-api-0.8.0",
-    urls = ["https://static.crates.io/crates/console-api/0.8.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "console-api-0.8.0",
-    srcs = [":console-api-0.8.0.crate"],
-    crate = "console_api",
-    crate_root = "console-api-0.8.0.crate/src/lib.rs",
-    edition = "2021",
-    features = ["transport"],
-    visibility = [],
-    deps = [
-        ":futures-core-0.3.30",
-        ":prost-0.13.2",
-        ":prost-types-0.13.2",
-        ":tonic-0.12.2",
-        ":tracing-core-0.1.32",
-    ],
-)
-
-alias(
-    name = "console-subscriber",
-    actual = ":console-subscriber-0.4.0",
-    visibility = ["PUBLIC"],
-)
-
-http_archive(
-    name = "console-subscriber-0.4.0.crate",
-    sha256 = "e2e3a111a37f3333946ebf9da370ba5c5577b18eb342ec683eb488dd21980302",
-    strip_prefix = "console-subscriber-0.4.0",
-    urls = ["https://static.crates.io/crates/console-subscriber/0.4.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "console-subscriber-0.4.0",
-    srcs = [":console-subscriber-0.4.0.crate"],
-    crate = "console_subscriber",
-    crate_root = "console-subscriber-0.4.0.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "default",
-        "env-filter",
-    ],
-    rustc_flags = ["--cfg=tokio_unstable"],
-    visibility = [],
-    deps = [
-        ":console-api-0.8.0",
-        ":crossbeam-channel-0.5.13",
-        ":crossbeam-utils-0.8.20",
-        ":futures-task-0.3.30",
-        ":hdrhistogram-7.5.4",
-        ":humantime-2.1.0",
-        ":hyper-util-0.1.8",
-        ":prost-0.13.2",
-        ":prost-types-0.13.2",
-        ":serde-1.0.210",
-        ":serde_json-1.0.125",
-        ":thread_local-1.1.8",
-        ":tokio-1.40.0",
-        ":tokio-stream-0.1.16",
-        ":tonic-0.12.2",
-        ":tracing-0.1.40",
-        ":tracing-core-0.1.32",
-        ":tracing-subscriber-0.3.18",
     ],
 )
 
@@ -6611,36 +6454,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "h2-0.4.6.crate",
-    sha256 = "524e8ac6999421f49a846c2d4411f337e53497d8ec55d67753beffa43c5d9205",
-    strip_prefix = "h2-0.4.6",
-    urls = ["https://static.crates.io/crates/h2/0.4.6/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "h2-0.4.6",
-    srcs = [":h2-0.4.6.crate"],
-    crate = "h2",
-    crate_root = "h2-0.4.6.crate/src/lib.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":atomic-waker-1.1.2",
-        ":bytes-1.7.1",
-        ":fnv-1.0.7",
-        ":futures-core-0.3.30",
-        ":futures-sink-0.3.30",
-        ":http-1.1.0",
-        ":indexmap-2.5.0",
-        ":slab-0.4.9",
-        ":tokio-1.40.0",
-        ":tokio-util-0.7.12",
-        ":tracing-0.1.40",
-    ],
-)
-
-http_archive(
     name = "half-2.4.1.crate",
     sha256 = "6dd08c532ae367adf81c312a4580bc67f1d0fe8bc9c460520283f4c0ff277888",
     strip_prefix = "half-2.4.1",
@@ -6777,18 +6590,9 @@ cargo.rust_library(
     crate = "hdrhistogram",
     crate_root = "hdrhistogram-7.5.4.crate/src/lib.rs",
     edition = "2018",
-    features = [
-        "base64",
-        "flate2",
-        "nom",
-        "serialization",
-    ],
     visibility = [],
     deps = [
-        ":base64-0.21.7",
         ":byteorder-1.5.0",
-        ":flate2-1.0.33",
-        ":nom-7.1.3",
         ":num-traits-0.2.19",
     ],
 )
@@ -7320,19 +7124,15 @@ cargo.rust_library(
         "client",
         "default",
         "http1",
-        "http2",
-        "server",
     ],
     visibility = [],
     deps = [
         ":bytes-1.7.1",
         ":futures-channel-0.3.30",
         ":futures-util-0.3.30",
-        ":h2-0.4.6",
         ":http-1.1.0",
         ":http-body-1.0.1",
         ":httparse-1.9.4",
-        ":httpdate-1.0.3",
         ":itoa-1.0.11",
         ":pin-project-lite-0.2.14",
         ":smallvec-1.13.2",
@@ -7468,30 +7268,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "hyper-timeout-0.5.1.crate",
-    sha256 = "3203a961e5c83b6f5498933e78b6b263e208c197b63e9c6c53cc82ffd3f63793",
-    strip_prefix = "hyper-timeout-0.5.1",
-    urls = ["https://static.crates.io/crates/hyper-timeout/0.5.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "hyper-timeout-0.5.1",
-    srcs = [":hyper-timeout-0.5.1.crate"],
-    crate = "hyper_timeout",
-    crate_root = "hyper-timeout-0.5.1.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-    deps = [
-        ":hyper-1.4.1",
-        ":hyper-util-0.1.8",
-        ":pin-project-lite-0.2.14",
-        ":tokio-1.40.0",
-        ":tower-service-0.3.3",
-    ],
-)
-
-http_archive(
     name = "hyper-util-0.1.8.crate",
     sha256 = "da62f120a8a37763efb0cf8fdf264b884c7b8b9ac8660b900c8661030c00e6ba",
     strip_prefix = "hyper-util-0.1.8",
@@ -7510,10 +7286,6 @@ cargo.rust_library(
         "client-legacy",
         "default",
         "http1",
-        "http2",
-        "server",
-        "server-auto",
-        "service",
         "tokio",
     ],
     visibility = [],
@@ -12024,33 +11796,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "prost-0.13.2.crate",
-    sha256 = "3b2ecbe40f08db5c006b5764a2645f7f3f141ce756412ac9e1dd6087e6d32995",
-    strip_prefix = "prost-0.13.2",
-    urls = ["https://static.crates.io/crates/prost/0.13.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "prost-0.13.2",
-    srcs = [":prost-0.13.2.crate"],
-    crate = "prost",
-    crate_root = "prost-0.13.2.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "default",
-        "derive",
-        "prost-derive",
-        "std",
-    ],
-    visibility = [],
-    deps = [
-        ":bytes-1.7.1",
-        ":prost-derive-0.13.2",
-    ],
-)
-
-http_archive(
     name = "prost-derive-0.12.6.crate",
     sha256 = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1",
     strip_prefix = "prost-derive-0.12.6",
@@ -12073,53 +11818,6 @@ cargo.rust_library(
         ":quote-1.0.37",
         ":syn-2.0.77",
     ],
-)
-
-http_archive(
-    name = "prost-derive-0.13.2.crate",
-    sha256 = "acf0c195eebb4af52c752bec4f52f645da98b6e92077a04110c7f349477ae5ac",
-    strip_prefix = "prost-derive-0.13.2",
-    urls = ["https://static.crates.io/crates/prost-derive/0.13.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "prost-derive-0.13.2",
-    srcs = [":prost-derive-0.13.2.crate"],
-    crate = "prost_derive",
-    crate_root = "prost-derive-0.13.2.crate/src/lib.rs",
-    edition = "2021",
-    proc_macro = True,
-    visibility = [],
-    deps = [
-        ":anyhow-1.0.88",
-        ":itertools-0.12.1",
-        ":proc-macro2-1.0.86",
-        ":quote-1.0.37",
-        ":syn-2.0.77",
-    ],
-)
-
-http_archive(
-    name = "prost-types-0.13.2.crate",
-    sha256 = "60caa6738c7369b940c3d49246a8d1749323674c65cb13010134f5c9bad5b519",
-    strip_prefix = "prost-types-0.13.2",
-    urls = ["https://static.crates.io/crates/prost-types/0.13.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "prost-types-0.13.2",
-    srcs = [":prost-types-0.13.2.crate"],
-    crate = "prost_types",
-    crate_root = "prost-types-0.13.2.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "default",
-        "std",
-    ],
-    visibility = [],
-    deps = [":prost-0.13.2"],
 )
 
 http_archive(
@@ -16991,7 +16689,6 @@ cargo.rust_binary(
         ":comfy-table-7.1.1",
         ":config-0.14.0",
         ":console-0.15.8",
-        ":console-subscriber-0.4.0",
         ":convert_case-0.6.0",
         ":criterion-0.5.1",
         ":crossbeam-channel-0.5.13",
@@ -17433,7 +17130,6 @@ cargo.rust_library(
         "time",
         "tokio-macros",
         "tokio_track_caller",
-        "tracing",
         "windows-sys",
     ],
     platform = {
@@ -17777,7 +17473,6 @@ cargo.rust_library(
         "default",
         "fs",
         "io-util",
-        "net",
         "sync",
         "time",
         "tokio-util",
@@ -18054,67 +17749,6 @@ cargo.rust_library(
         ":percent-encoding-2.3.1",
         ":pin-project-1.1.5",
         ":prost-0.12.6",
-        ":tokio-1.40.0",
-        ":tokio-stream-0.1.16",
-        ":tower-0.4.13",
-        ":tower-layer-0.3.3",
-        ":tower-service-0.3.3",
-        ":tracing-0.1.40",
-    ],
-)
-
-http_archive(
-    name = "tonic-0.12.2.crate",
-    sha256 = "c6f6ba989e4b2c58ae83d862d3a3e27690b6e3ae630d0deb59f3697f32aa88ad",
-    strip_prefix = "tonic-0.12.2",
-    urls = ["https://static.crates.io/crates/tonic/0.12.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "tonic-0.12.2",
-    srcs = [":tonic-0.12.2.crate"],
-    crate = "tonic",
-    crate_root = "tonic-0.12.2.crate/src/lib.rs",
-    edition = "2021",
-    env = {
-        "CARGO_MANIFEST_DIR": "tonic-0.12.2.crate",
-        "CARGO_PKG_AUTHORS": "Lucio Franco <luciofranco14@gmail.com>",
-        "CARGO_PKG_DESCRIPTION": "A gRPC over HTTP/2 implementation focused on high performance, interoperability, and flexibility.\n",
-        "CARGO_PKG_NAME": "tonic",
-        "CARGO_PKG_REPOSITORY": "https://github.com/hyperium/tonic",
-        "CARGO_PKG_VERSION": "0.12.2",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "12",
-        "CARGO_PKG_VERSION_PATCH": "2",
-    },
-    features = [
-        "channel",
-        "codegen",
-        "default",
-        "prost",
-        "router",
-        "server",
-        "transport",
-    ],
-    visibility = [],
-    deps = [
-        ":async-stream-0.3.5",
-        ":async-trait-0.1.82",
-        ":axum-0.7.5",
-        ":base64-0.22.1",
-        ":bytes-1.7.1",
-        ":h2-0.4.6",
-        ":http-1.1.0",
-        ":http-body-1.0.1",
-        ":http-body-util-0.1.2",
-        ":hyper-1.4.1",
-        ":hyper-timeout-0.5.1",
-        ":hyper-util-0.1.8",
-        ":percent-encoding-2.3.1",
-        ":pin-project-1.1.5",
-        ":prost-0.13.2",
-        ":socket2-0.5.7",
         ":tokio-1.40.0",
         ":tokio-stream-0.1.16",
         ":tower-0.4.13",
