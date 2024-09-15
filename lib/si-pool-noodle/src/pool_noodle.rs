@@ -286,17 +286,30 @@ where
         }
     }
 
+    // clean instances with backoff to handle intermittent failures. If an instance fails enough it
+    // will be abandoned
     async fn handle_clean(&self, task: PoolNoodleTask<I, S>) {
         metric!(counter.pool_noodle.task.clean = -1);
         let id = task.id();
-        match task.clean().await {
-            Ok(_) => {
-                self.push_prepare_task_to_work_queue(id).await;
-            }
-            Err(e) => {
-                warn!("PoolNoodle: failed to clean instance: {}", id);
-                warn!("{}", e);
-                self.push_clean_task_to_work_queue(id).await;
+        let max_retries = 5;
+        let mut attempts = 0;
+        loop {
+            match task.clean().await {
+                Ok(_) => {
+                    self.push_prepare_task_to_work_queue(id).await;
+                    break;
+                }
+                Err(e) => {
+                    if attempts >= max_retries {
+                        warn!("Failed to clean instance {} after {} attempts. Abandoning this instance", id, max_retries);
+                        break;
+                    }
+                    warn!("PoolNoodle: failed to clean instance: {}", id);
+                    warn!("{}", e);
+                    warn!("Trying again, {} of {}", attempts, max_retries);
+                    attempts += 1;
+                    tokio::time::sleep(Duration::from_millis(100 * (attempts * attempts))).await;
+                }
             }
         }
     }
