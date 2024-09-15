@@ -162,8 +162,6 @@ frame.
 
 Set the component name to `allow-ec2`.
 
-Set the `Sid` to `allow-ec2`.
-
 Set the `Effect` to `Allow`.
 
 Add an array item to the `Action` array.
