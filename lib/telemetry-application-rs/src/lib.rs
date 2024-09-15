@@ -390,10 +390,12 @@ fn tracing_subscriber(
         (layer, reloader)
     };
 
+    let console_layer = console_subscriber::spawn();
     let registry = Registry::default();
     let registry = registry.with(console_log_layer);
     let registry = registry.with(otel_layer);
     let registry = registry.with(metrics_layer);
+    let registry = registry.with(console_layer);
 
     let handles = TelemetryHandles {
         console_log_filter_reload,
