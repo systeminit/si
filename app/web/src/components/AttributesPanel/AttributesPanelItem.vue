@@ -420,7 +420,6 @@
             v-model="newValueString"
             :class="`attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`"
             :disabled="!propIsEditable"
-            @blur="onBlur"
             @change="updateValue"
             @focus="onFocus"
           >
@@ -1047,6 +1046,7 @@ function unsetHandler() {
     attributeValueId: props.attributeDef.valueId,
   });
 }
+
 function updateValue() {
   let newVal;
   let skipUpdate = false;
