@@ -40,7 +40,7 @@ rust_binary(
         "//third-party/rust:tokio-util",
     ],
     srcs = glob(["src/**/*.rs"]),
-    env = {"CARGO_BIN_NAME": "rebaser"},
+    env = {"CARGO_BIN_NAME": "veritech"},
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
