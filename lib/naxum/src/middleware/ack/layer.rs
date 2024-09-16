@@ -76,8 +76,12 @@ impl<OnSuccess, OnFailure> AckLayer<OnSuccess, OnFailure> {
     }
 }
 
-impl<S> Layer<S> for AckLayer {
-    type Service = Ack<S>;
+impl<S, OnSuccess, OnFailure> Layer<S> for AckLayer<OnSuccess, OnFailure>
+where
+    OnSuccess: Clone,
+    OnFailure: Clone,
+{
+    type Service = Ack<S, OnSuccess, OnFailure>;
 
     fn layer(&self, inner: S) -> Self::Service {
         Ack {
