@@ -5,6 +5,7 @@ use std::{
     io,
     marker::PhantomData,
     ops,
+    pin::Pin,
     sync::Arc,
     time::Duration,
 };
@@ -127,7 +128,7 @@ where
     for<'a> <M as Service<IncomingMessage<'a, R>>>::Future: Send,
     S: Service<R, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
-    T: Stream<Item = Result<R, E>> + Unpin + Send + 'static,
+    T: Stream<Item = Result<R, E>> + Send + 'static,
     E: error::Error,
     R: MessageHead + Send + 'static,
     F: Future<Output = ()> + Send + 'static,
@@ -137,7 +138,7 @@ where
 
     fn into_future(self) -> Self::IntoFuture {
         let Self {
-            mut stream,
+            stream,
             mut make_service,
             limit,
             signal,
@@ -159,6 +160,8 @@ where
         let semaphore = limit.map(|limit| Arc::new(Semaphore::new(limit)));
 
         private::ServeFuture(Box::pin(async move {
+            tokio::pin!(stream);
+
             loop {
                 let (msg, permit) = tokio::select! {
                     biased;
@@ -183,6 +186,7 @@ where
                             },
                             None => {
                                 trace!("stream is closed, breaking out of loop");
+                                tracker.close();
                                 break;
                             },
                         }
@@ -231,12 +235,12 @@ where
 }
 
 async fn next_message<T, E, R>(
-    stream: &mut T,
+    stream: &mut Pin<&mut T>,
     semaphore: Option<Arc<Semaphore>>,
     failed_count: usize,
 ) -> (Option<Result<R, E>>, Option<OwnedSemaphorePermit>)
 where
-    T: Stream<Item = Result<R, E>> + Unpin + Send + 'static,
+    T: Stream<Item = Result<R, E>> + Send + 'static,
     E: error::Error,
     R: MessageHead + Send + 'static,
 {
