@@ -977,6 +977,32 @@ impl DalContextBuilder {
         })
     }
 
+    /// Constructs and returns a new [`DalContext`] from a [`WorkspacePk`] and [`ChangeSetId`] as
+    /// the system user.
+    pub async fn build_for_change_set_as_system(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> TransactionsResult<DalContext> {
+        let conns = self.services_context.connections().await?;
+
+        let mut ctx = DalContext {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+            tenancy: Tenancy::new(workspace_pk),
+            visibility: Visibility::new(change_set_id),
+            history_actor: HistoryActor::SystemInit,
+            no_dependent_values: self.no_dependent_values,
+            workspace_snapshot: None,
+            change_set: None,
+        };
+
+        ctx.update_snapshot_to_visibility().await?;
+
+        Ok(ctx)
+    }
+
     /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
     pub async fn build_head(
         &self,
@@ -1071,6 +1097,11 @@ impl DalContextBuilder {
     /// Gets a reference to the LayerDb.
     pub fn layer_db(&self) -> &DalLayerDb {
         &self.services_context.layer_db
+    }
+
+    /// Gets a reference to the compute [`DedicatedExecutor`].
+    pub fn compute_executor(&self) -> &DedicatedExecutor {
+        &self.services_context.compute_executor
     }
 
     /// Set blocking flag
