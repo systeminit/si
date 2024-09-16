@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract::{AccessBuilder, HandlerContext};
 
-use super::ComponentResult;
+use super::{ComponentError, ComponentResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,6 +31,15 @@ pub async fn insert_property_editor_value(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+
+    if let Some(key) = &request.key {
+        let parent_keys =
+            AttributeValue::child_keys_for_id(&ctx, request.parent_attribute_value_id).await?;
+
+        if parent_keys.contains(key) {
+            return Err(ComponentError::KeyAlreadyExists(key.to_owned()));
+        }
+    }
 
     AttributeValue::insert(
         &ctx,

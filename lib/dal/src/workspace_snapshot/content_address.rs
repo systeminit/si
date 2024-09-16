@@ -3,13 +3,14 @@ use strum::EnumDiscriminants;
 
 use si_events::ContentHash;
 
-#[remain::sorted]
 #[derive(
     EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, strum::Display,
 )]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
+/// NOTE: This type is postcard serialized, so cannot be
+/// #[remain::sorted]. New enum variants must come at the end of the enum!
 pub enum ContentAddress {
     ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),

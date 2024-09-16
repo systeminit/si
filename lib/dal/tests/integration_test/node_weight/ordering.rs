@@ -156,3 +156,58 @@ async fn correct_transforms_both_added_and_removed_edges(ctx: &mut DalContext) {
 
     assert_eq!(json!(["1", "2", "3"]), exposed_ports.get(ctx).await);
 }
+
+#[test]
+async fn correct_transforms_attribute_value_duplicate_map_keys(ctx: &mut DalContext) {
+    // Make a docker image with ExposedPorts = 1, 22, and 33
+    let component = ExpectComponent::create(ctx, "pirate").await;
+    let treasure = component.prop(ctx, ["root", "domain", "treasure"]).await;
+    treasure.push_with_key(ctx, "a", "1").await;
+    expected::apply_change_set_to_base(ctx).await;
+    assert_eq!(json!({"a":  "1"}), treasure.get(ctx).await);
+
+    // Fork a change set, add "b", "c", "d" and "e"
+    let change_set_2 = expected::fork_from_head_change_set(ctx).await;
+    treasure.push_with_key(ctx, "b", "2").await;
+    treasure.push_with_key(ctx, "c", "3").await;
+    treasure.push_with_key(ctx, "d", "4").await;
+    treasure.push_with_key(ctx, "e", "5").await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    assert_eq!(
+        json!({"a": "1", "b": "2", "c": "3", "d": "4", "e": "5"}),
+        treasure.get(ctx).await
+    );
+
+    // Fork a separate change set, add duplicates c and d, non duplicate f
+    let _change_set_3 = expected::fork_from_head_change_set(ctx).await;
+    treasure.push_with_key(ctx, "c", "300").await;
+    treasure.push_with_key(ctx, "d", "400").await;
+    treasure.push_with_key(ctx, "f", "6").await;
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    assert_eq!(
+        json!({"a": "1", "c": "300", "d": "400", "f": "6"}),
+        treasure.get(ctx).await
+    );
+    // Apply change_set_3
+    expected::apply_change_set_to_base(ctx).await;
+    assert_eq!(
+        json!({"a": "1", "c": "300", "d": "400", "f": "6"}),
+        treasure.get(ctx).await
+    );
+
+    // Update to change set 2, and check that we got the new key, and replaced the duplicates
+    expected::update_visibility_and_snapshot_to_visibility(ctx, change_set_2.id).await;
+    assert_eq!(
+        json!({"a": "1", "b": "2", "c": "300", "d": "400", "e": "5", "f": "6"}),
+        treasure.get(ctx).await
+    );
+    assert_eq!(
+        6,
+        treasure
+            .attribute_value(ctx)
+            .await
+            .children(ctx)
+            .await
+            .len()
+    );
+}

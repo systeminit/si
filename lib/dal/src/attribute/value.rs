@@ -38,7 +38,7 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use async_recursion::async_recursion;
@@ -1270,6 +1270,27 @@ impl AttributeValue {
         }
 
         Ok(())
+    }
+
+    /// Return a hashset of all the keys contained by this attribute value (if any)
+    pub async fn child_keys_for_id(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<HashSet<String>> {
+        let snapshot = ctx.workspace_snapshot()?;
+
+        Ok(snapshot
+            .edges_directed_for_edge_weight_kind(id, Outgoing, EdgeWeightKindDiscriminants::Contain)
+            .await?
+            .iter()
+            .filter_map(|(edge_weight, _, _)| {
+                if let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() {
+                    Some(key.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     #[async_recursion]

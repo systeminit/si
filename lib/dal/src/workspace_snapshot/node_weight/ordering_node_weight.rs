@@ -1,14 +1,16 @@
 use std::collections::HashSet;
 
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
 use super::traits::CorrectTransformsError;
-use super::{NodeWeight, NodeWeightError};
+use super::{NodeWeight, NodeWeightDiscriminants, NodeWeightError};
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
 use crate::workspace_snapshot::graph::detect_updates::Update;
 use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::workspace_snapshot::node_weight::NodeWeightResult;
+use crate::workspace_snapshot::NodeInformation;
 use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -130,14 +132,49 @@ impl From<DeprecatedOrderingNodeWeightV1> for OrderingNodeWeight {
     }
 }
 
+impl From<&OrderingNodeWeight> for NodeInformation {
+    fn from(value: &OrderingNodeWeight) -> Self {
+        Self {
+            node_weight_kind: NodeWeightDiscriminants::Ordering,
+            id: value.id.into(),
+        }
+    }
+}
+
 impl CorrectTransforms for OrderingNodeWeight {
     fn correct_transforms(
         &self,
-        _workspace_snapshot_graph: &WorkspaceSnapshotGraphVCurrent,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
         let mut updates = updates;
+
+        // We need to handle the key conflicts for attribute value Contain edges
+        // at the same time that we handle ordering conflicts, since we have to
+        // be sure to remove the duplicate target from the AV's order, but also
+        // preserve any other ordering changes that have come in from another
+        // change set
+        let maybe_attribute_value_container: Option<(NodeIndex, Ulid, NodeInformation)> = graph
+            .get_node_index_by_id_opt(self.id)
+            .and_then(|self_idx| {
+                graph
+                    .edges_directed(self_idx, Incoming)
+                    .filter(|edge_ref| edge_ref.weight().kind() == &EdgeWeightKind::Ordering)
+                    .filter_map(|edge_ref| {
+                        graph
+                            .get_node_weight_opt(edge_ref.source())
+                            .and_then(|source_weight| match source_weight {
+                                NodeWeight::AttributeValue(_) => Some((
+                                    edge_ref.source(),
+                                    source_weight.id(),
+                                    source_weight.into(),
+                                )),
+                                _ => None,
+                            })
+                    })
+                    .next()
+            });
 
         //
         // After this, final_children:
@@ -147,6 +184,7 @@ impl CorrectTransforms for OrderingNodeWeight {
         //
         let mut final_children: HashSet<Ulid> = self.order.iter().copied().collect();
         let mut replace_node_index = None;
+        let mut new_av_contains = HashSet::new();
         for (index, update) in updates.iter().enumerate() {
             match update {
                 // We don't do this for NewNode because we know nothing needs to be resolved.
@@ -157,10 +195,17 @@ impl CorrectTransforms for OrderingNodeWeight {
                     source,
                     destination,
                     edge_weight,
-                } if source.id == self.id.into()
-                    && edge_weight.kind() == &EdgeWeightKind::Ordinal =>
-                {
-                    final_children.insert(destination.id.into());
+                } => {
+                    if source.id == self.id.into() && edge_weight.kind() == &EdgeWeightKind::Ordinal
+                    {
+                        final_children.insert(destination.id.into());
+                    } else if let Some((_, av_container_id, _)) = maybe_attribute_value_container {
+                        if source.id == av_container_id.into() {
+                            if let EdgeWeightKind::Contain(Some(new_key)) = edge_weight.kind() {
+                                new_av_contains.insert(new_key);
+                            }
+                        }
+                    }
                 }
                 Update::RemoveEdge {
                     source,
@@ -171,6 +216,31 @@ impl CorrectTransforms for OrderingNodeWeight {
                 }
                 _ => (),
             }
+        }
+
+        let mut remove_duplicate_contain_edge_updates = vec![];
+        if let Some((av_container_idx, _, av_node_info)) = maybe_attribute_value_container {
+            graph
+                .edges_directed(av_container_idx, Outgoing)
+                .filter(|edge_ref| match edge_ref.weight().kind() {
+                    EdgeWeightKind::Contain(Some(key)) => new_av_contains.contains(key),
+                    _ => false,
+                })
+                .filter_map(|edge_ref| graph.get_node_weight_opt(edge_ref.target()))
+                .for_each(|duplicate_key_target| {
+                    remove_duplicate_contain_edge_updates.push(Update::RemoveEdge {
+                        source: av_node_info,
+                        destination: duplicate_key_target.into(),
+                        edge_kind: EdgeWeightKindDiscriminants::Contain,
+                    });
+                    remove_duplicate_contain_edge_updates.push(Update::RemoveEdge {
+                        source: self.into(),
+                        destination: duplicate_key_target.into(),
+                        edge_kind: EdgeWeightKindDiscriminants::Ordinal,
+                    });
+
+                    final_children.remove(&duplicate_key_target.id());
+                });
         }
 
         // Generally, this will only be None if this is an entirely new ordering node.
@@ -185,11 +255,14 @@ impl CorrectTransforms for OrderingNodeWeight {
                 }
                 _ => {
                     return Err(CorrectTransformsError::UnexpectedNodeWeight(
-                        super::NodeWeightDiscriminants::Ordering,
+                        NodeWeightDiscriminants::Ordering,
                     ))
                 }
             };
         }
+
+        updates.extend(remove_duplicate_contain_edge_updates);
+
         Ok(updates)
     }
 }
