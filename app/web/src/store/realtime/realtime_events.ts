@@ -52,7 +52,7 @@ export interface OnlineRequest {
 export interface ComponentPositionRequest {
   kind: "ComponentSetPosition";
   data: {
-    userPk: UserId;
+    clientUlid?: string;
     changeSetId: string | null;
     positions: ComponentGeometry[];
   };
@@ -78,7 +78,7 @@ export type WsEventPayloadMap = {
 
   SetComponentPosition: {
     changeSetId: ChangeSetId;
-    userPk: UserId;
+    clientUlid: string;
     positions: [
       {
         componentId: ComponentId;
