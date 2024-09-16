@@ -7,7 +7,7 @@
       )
     "
     :color="a.color"
-    :isSelected="selectedAssets.includes(a.schemaVariantId)"
+    :isSelected="isSelected"
     showSelection
     @mousedown.left.stop="onClick"
     @click.right.prevent
@@ -65,19 +65,28 @@ const moduleStore = useModuleStore();
 
 const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
+const isSelected = computed(() =>
+  selectedAssets.value.includes(props.a.schemaVariantId),
+);
+
 const canUpdate = computed(
   () => !!moduleStore.upgradeableModules[props.a.schemaVariantId],
 );
 
 const canContribute = computed(() => {
   return (
-    !!moduleStore.contributableModules.includes(props.a.schemaVariantId) ||
+    moduleStore.contributableModules.includes(props.a.schemaVariantId) ||
     props.a.canContribute
   );
 });
 
 const onClick = (e: MouseEvent) => {
-  if (e.shiftKey) assetStore.addSchemaVariantSelection(props.a.schemaVariantId);
-  else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
+  if (e.shiftKey) {
+    if (isSelected.value) {
+      assetStore.removeSchemaVariantSelection(props.a.schemaVariantId);
+    } else {
+      assetStore.addSchemaVariantSelection(props.a.schemaVariantId);
+    }
+  } else assetStore.setSchemaVariantSelection(props.a.schemaVariantId);
 };
 </script>

@@ -158,10 +158,10 @@
                 :id="config.socketName"
                 v-model="config.value"
                 :disabled="editingAsset.isLocked"
-                compact
                 :label="config.socketName + '&lt;&mdash;'"
-                type="dropdown"
                 :options="optionsForIntrinsicDisplay"
+                compact
+                type="dropdown"
                 @change="updateOutputSocketIntrinsics(config)"
               />
             </li>
@@ -175,10 +175,10 @@
                 :id="prop.path"
                 v-model="prop.value"
                 :disabled="editingAsset.isLocked"
-                compact
                 :label="prop.path + '&lt;&mdash;'"
-                type="dropdown"
                 :options="optionsForIntrinsicDisplay"
+                compact
+                type="dropdown"
                 @change="updatePropIntrinsics(prop)"
               />
             </li>
@@ -527,12 +527,7 @@ const saveAssetReqStatus = assetStore.getRequestStatus(
 );
 const executeAsset = async () => {
   if (editingAsset.value) {
-    const resp = await assetStore.REGENERATE_VARIANT(
-      editingAsset.value.schemaVariantId,
-    );
-    if (resp.result.success) {
-      assetStore.setSchemaVariantSelection(resp.result.data.schemaVariantId);
-    }
+    await assetStore.REGENERATE_VARIANT(editingAsset.value.schemaVariantId);
   }
 };
 

@@ -261,6 +261,12 @@ export type WsEventPayloadMap = {
   };
   SchemaVariantCreated: SchemaVariant;
   SchemaVariantUpdated: SchemaVariant;
+  SchemaVariantReplaced: {
+    schemaId: SchemaId;
+    oldSchemaVariantId: SchemaVariantId;
+    newSchemaVariant: SchemaVariant;
+    changeSetId: ChangeSetId;
+  };
   SchemaVariantCloned: {
     schemaVariantId: string;
     changeSetId: ChangeSetId;

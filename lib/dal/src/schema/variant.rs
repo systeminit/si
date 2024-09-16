@@ -309,6 +309,15 @@ pub struct SchemaVariantDeletedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantReplacedPayload {
+    schema_id: SchemaId,
+    old_schema_variant_id: SchemaVariantId,
+    new_schema_variant: frontend_types::SchemaVariant,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
@@ -337,6 +346,26 @@ impl WsEvent {
             WsPayload::SchemaVariantDeleted(SchemaVariantDeletedPayload {
                 schema_variant_id,
                 schema_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+    pub async fn schema_variant_replaced(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+        old_schema_variant_id: SchemaVariantId,
+        new_schema_variant: SchemaVariant,
+    ) -> WsEventResult<Self> {
+        let new_schema_variant = new_schema_variant
+            .into_frontend_type(ctx, schema_id)
+            .await?;
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantReplaced(SchemaVariantReplacedPayload {
+                schema_id,
+                old_schema_variant_id,
+                new_schema_variant,
                 change_set_id: ctx.change_set_id(),
             }),
         )
