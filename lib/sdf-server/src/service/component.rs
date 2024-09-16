@@ -68,6 +68,8 @@ pub enum ComponentError {
     Http(#[from] axum::http::Error),
     #[error("invalid visibility")]
     InvalidVisibility,
+    #[error("key {0} already exists for that map")]
+    KeyAlreadyExists(String),
     #[error("component not found for id: {0}")]
     NotFound(ComponentId),
     #[error(transparent)]
@@ -122,6 +124,9 @@ impl IntoResponse for ComponentError {
 
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             },
+            ComponentError::KeyAlreadyExists(_) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

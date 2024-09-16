@@ -5,7 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use petgraph::{algo, prelude::*, stable_graph::Edges, visit::DfsEvent};
+use petgraph::{
+    algo,
+    prelude::*,
+    stable_graph::{Edges, Neighbors},
+    visit::DfsEvent,
+};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
@@ -340,6 +345,14 @@ impl WorkspaceSnapshotGraphV3 {
         direction: Direction,
     ) -> Edges<'_, EdgeWeight, Directed, u32> {
         self.graph.edges_directed(node_index, direction)
+    }
+
+    pub fn neighbors_directed(
+        &self,
+        node_index: NodeIndex,
+        direction: Direction,
+    ) -> Neighbors<'_, EdgeWeight> {
+        self.graph.neighbors_directed(node_index, direction)
     }
 
     pub fn find_edge(&self, from_idx: NodeIndex, to_idx: NodeIndex) -> Option<&EdgeWeight> {
@@ -866,7 +879,7 @@ impl WorkspaceSnapshotGraphV3 {
     }
 
     #[inline(always)]
-    pub(crate) fn get_node_index_by_id(
+    pub fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
@@ -879,7 +892,7 @@ impl WorkspaceSnapshotGraphV3 {
     }
 
     #[inline(always)]
-    pub(crate) fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+    pub fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         let id = id.into();
 
         self.node_index_by_id.get(&id).copied()

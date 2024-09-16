@@ -489,6 +489,18 @@ impl ExpectComponentProp {
             .await
     }
 
+    pub async fn push_with_key(
+        self,
+        ctx: &DalContext,
+        key: impl Into<String>,
+        value: impl Into<Value>,
+    ) -> AttributeValueId {
+        self.attribute_value(ctx)
+            .await
+            .insert(ctx, Some(value.into()), Some(key.into()))
+            .await
+    }
+
     pub async fn children(self, ctx: &DalContext) -> Vec<ExpectAttributeValue> {
         self.attribute_value(ctx).await.children(ctx).await
     }
