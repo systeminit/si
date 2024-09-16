@@ -611,6 +611,24 @@ export const useAssetStore = () => {
             },
           },
           {
+            eventType: "SchemaVariantReplaced",
+            callback: (data, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+
+              const newVariant = data.newSchemaVariant;
+              const oldVariantId = data.oldSchemaVariantId;
+
+              const oldAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === oldVariantId,
+              );
+              if (oldAssetIdx !== -1) {
+                this.variantList.splice(oldAssetIdx, 1, newVariant);
+
+                this.setSchemaVariantSelection(newVariant.schemaVariantId);
+              } else this.variantList.push(newVariant);
+            },
+          },
+          {
             eventType: "ModuleImported",
             callback: (schemaVariants, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;

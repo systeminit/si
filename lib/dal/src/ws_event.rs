@@ -23,8 +23,8 @@ use crate::pkg::{
 };
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{
-    SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantSavedPayload,
-    SchemaVariantUpdatedPayload,
+    SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantReplacedPayload,
+    SchemaVariantSavedPayload, SchemaVariantUpdatedPayload,
 };
 use crate::secret::SecretDeletedPayload;
 use crate::status::StatusUpdate;
@@ -105,6 +105,7 @@ pub enum WsPayload {
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(frontend_types::SchemaVariant),
     SchemaVariantDeleted(SchemaVariantDeletedPayload),
+    SchemaVariantReplaced(SchemaVariantReplacedPayload),
     SchemaVariantSaved(SchemaVariantSavedPayload),
     SchemaVariantUpdated(frontend_types::SchemaVariant),
     SchemaVariantUpdateFinished(SchemaVariantUpdatedPayload),
