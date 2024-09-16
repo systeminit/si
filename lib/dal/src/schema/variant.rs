@@ -549,9 +549,7 @@ impl SchemaVariant {
     {
         let before_modification_variant = self.clone();
         let mut schema_variant = self;
-
         lambda(&mut schema_variant)?;
-
         if schema_variant != before_modification_variant {
             let new_content = SchemaVariantContent::from(schema_variant.clone());
             let (hash, _) = ctx

@@ -426,10 +426,11 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
                     .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
                 // If the existing unlocked variant is also going to be removed, then we don't
                 // particularly care about it.
-                if !node_weight::traits::SiVersionedNodeWeight::inner(
-                    &node_weight.get_schema_variant_node_weight()?,
-                )
-                .is_locked()
+                if node_weight.id() != self.id()
+                    && !node_weight::traits::SiVersionedNodeWeight::inner(
+                        &node_weight.get_schema_variant_node_weight()?,
+                    )
+                    .is_locked()
                     && !removed_variants_for_schema
                         .get(&my_schema_id)
                         .map(|removed_sv_ids| removed_sv_ids.contains(&node_weight.id().into()))

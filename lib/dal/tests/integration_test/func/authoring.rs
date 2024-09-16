@@ -192,7 +192,6 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
     let mut new_bindings = FuncBinding::get_attribute_bindings_for_func_id(ctx, new_func_id)
         .await
         .expect("found new bindings");
-    dbg!(&new_bindings);
 
     // new func has one binding for the newly unlocked variant!
     assert_eq!(

@@ -1021,10 +1021,23 @@ impl Prop {
             ))?;
 
         AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id).await?;
-        AttributePrototypeArgument::new(ctx, prototype_id, func_arg_id)
+
+        if let Some(existing_apa) =
+            AttributePrototypeArgument::find_by_func_argument_id_and_attribute_prototype_id(
+                ctx,
+                func_arg_id,
+                prototype_id,
+            )
             .await?
-            .set_value_from_static_value(ctx, value)
-            .await?;
+        {
+            let existing_apa = AttributePrototypeArgument::get_by_id(ctx, existing_apa).await?;
+            existing_apa.set_value_from_static_value(ctx, value).await?;
+        } else {
+            AttributePrototypeArgument::new(ctx, prototype_id, func_arg_id)
+                .await?
+                .set_value_from_static_value(ctx, value)
+                .await?;
+        }
 
         Ok(())
     }

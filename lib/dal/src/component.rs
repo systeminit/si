@@ -576,6 +576,15 @@ impl Component {
 
         component.set_name(ctx, &name).await?;
 
+        //set a component specific prototype for the root/si/type as we don't want it to ever change other than manually
+        let sv_type = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+            .await?
+            .get_type(ctx)
+            .await?;
+        if let Some(sv_type) = sv_type {
+            component.set_type(ctx, sv_type).await?;
+        }
+
         let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
         let leaf_value_ids = component_graph.independent_values();
         ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
@@ -758,14 +767,15 @@ impl Component {
                             // (because Components can't have children).
                             //
                             // For properties like this, we check whether the value has
-                            // changed between the old and new schema variant, and if so,
+                            // changed between the current component's value
+                            // and new schema variant's default, and if so,
                             // we explicitly set the value on the component to the old
                             // value it used to have, as if the user had explicitly set it
                             // themselves. (You could argue they basically implicitly set
                             // the value of root/si/type when they created the child
                             // components.)
                             if prop_path == ["root", "si", "type"] {
-                                let old_value = Prop::default_value(ctx, old_prop_id).await?;
+                                let old_value = old_av.value(ctx).await?;
                                 let new_value = Prop::default_value(ctx, new_prop_id).await?;
                                 if old_value != new_value {
                                     // Even if the value was set to a dynamic function, we want
