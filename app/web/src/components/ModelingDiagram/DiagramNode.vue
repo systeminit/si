@@ -6,7 +6,6 @@
       x: position.x,
       y: position.y,
     }"
-    @mousemove="onMouseOver"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
   >
