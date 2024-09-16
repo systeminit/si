@@ -15,6 +15,18 @@ All notable changes to System Initiative will be documented in this file.
 
 New demo's this week:
 
+- Renaming UX Improvements
+- Workspace Management
+- Redshift in Production
+- Assets: Redshift creation
+- Bug fix: Secret Import/Export
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/2PwNGbwml4o?si=KDspBt1MIXVmGvFt" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 2024-09-09
+
+New demo's this week:
+
 - Billing Event Stream
 - Workspace Management
 - Frame UI Changes
