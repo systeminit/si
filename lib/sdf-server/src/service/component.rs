@@ -84,7 +84,7 @@ pub enum ComponentError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
-    #[error("schema variant not required")]
+    #[error("schema variant upgrade not required")]
     SchemaVariantUpgradeSkipped,
     #[error("dal secret error: {0}")]
     Secret(#[from] DalSecretError),
@@ -124,6 +124,9 @@ impl IntoResponse for ComponentError {
 
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             },
+            ComponentError::SchemaVariantUpgradeSkipped => {
+                (StatusCode::NOT_MODIFIED, self.to_string())
+            }
             ComponentError::KeyAlreadyExists(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
