@@ -1,22 +1,28 @@
 use std::collections::HashSet;
 
-use dal::attribute::prototype::AttributePrototypeEventualParent;
-use dal::diagram::Diagram;
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::{EventualParent, FuncBinding};
-use dal::prop::PropPath;
-use dal::qualification::QualificationSubCheckStatus;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{
-    AttributePrototype, AttributePrototypeId, Component, DalContext, Prop, SchemaVariant,
-    SchemaVariantId,
+    attribute::prototype::AttributePrototypeEventualParent,
+    diagram::Diagram,
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::{EventualParent, FuncBinding},
+    },
+    prop::PropPath,
+    qualification::QualificationSubCheckStatus,
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::{LeafInputLocation, LeafKind},
+    },
+    AttributePrototype, AttributePrototypeId, Component, ComponentType, DalContext, Prop,
+    SchemaVariant, SchemaVariantId,
 };
-use dal_test::helpers::{
-    create_component_for_default_schema_name, create_component_for_unlocked_schema_name,
-    ChangeSetTestHelpers,
+use dal_test::{
+    helpers::{
+        create_component_for_default_schema_name, create_component_for_unlocked_schema_name,
+        ChangeSetTestHelpers,
+    },
+    test,
 };
-use dal_test::test;
 
 #[test]
 async fn update_variant(ctx: &mut DalContext) {
@@ -145,6 +151,298 @@ async fn update_variant(ctx: &mut DalContext) {
         .expect("unable to get the default schema variant id");
     assert!(updated_default_schema_variant.is_some());
     assert_eq!(updated_default_schema_variant, Some(second_updated_sv_id));
+}
+
+#[test]
+async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
+    // Let's create a new asset
+
+    let asset_name = "paulsTestAsset".to_string();
+    let first_description = Some("first description".to_string());
+    let first_link = Some("https://firstlink.com/".to_string());
+    let first_category = "Integration Tests".to_string();
+    let first_color = "#00b0b0".to_string();
+    let first_variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        asset_name.clone(),
+        first_description.clone(),
+        first_link.clone(),
+        first_category.clone(),
+        first_color.clone(),
+    )
+    .await
+    .expect("Unable to create new asset");
+
+    let schema = first_variant
+        .schema(ctx)
+        .await
+        .expect("Unable to get the schema for the variant");
+
+    let default_schema_variant = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get the default schema variant id");
+    assert!(default_schema_variant.is_some());
+    assert_eq!(default_schema_variant, Some(first_variant.id()));
+
+    // Now let's update the variant
+    let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build()\n  return new AssetBuilder().addProp(myProp).build()\n}".to_string();
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        first_variant.id(),
+        &schema.name,
+        first_variant.display_name(),
+        first_variant.category(),
+        first_variant.description(),
+        first_variant.link(),
+        first_variant
+            .get_color(ctx)
+            .await
+            .expect("get color from schema variant"),
+        first_variant.component_type(),
+        Some(new_code.clone()),
+    )
+    .await
+    .expect("save variant contents");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+        .await
+        .expect("unable to update asset");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let updated_variant = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+        .await
+        .expect("could not get schema variant");
+
+    assert_eq!(first_variant.id(), updated_sv_id);
+    assert_eq!(updated_variant.category(), first_category);
+    assert_eq!(updated_variant.description(), first_description);
+    assert_eq!(updated_variant.display_name(), asset_name);
+    assert_eq!(updated_variant.color(), first_color);
+    assert_eq!(updated_variant.link(), first_link);
+
+    dbg!(
+        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap()
+            .node_hash(),
+    );
+
+    // now let's update the metadata\
+    let second_asset_name = "britsTestAsset".to_string();
+    let second_display_name = "britsTestAsset".to_string();
+    let second_description = Some("second description".to_string());
+    let second_link = Some("https://secondlink.com/".to_string());
+    let second_category = "Integration Tests 2".to_string();
+    let second_color = "#00b0b1".to_string();
+    let second_component_type = ComponentType::ConfigurationFrameDown;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        updated_sv_id,
+        &second_asset_name.clone(),
+        second_display_name.clone(),
+        second_category.clone(),
+        second_description.clone(),
+        second_link.clone(),
+        second_color.clone(),
+        second_component_type,
+        Some(new_code.clone()),
+    )
+    .await
+    .expect("save variant contents");
+
+    dbg!(
+        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap()
+            .node_hash(),
+    );
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+
+    dbg!(
+        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap(),
+        ctx.workspace_snapshot()
+            .unwrap()
+            .get_node_weight_by_id(updated_sv_id)
+            .await
+            .unwrap()
+            .node_hash(),
+    );
+
+    // ensure these things are set as expected
+    let updated_sv_after_metadata_change = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+        .await
+        .expect("could not get schema variant");
+    let schema = updated_sv_after_metadata_change
+        .schema(ctx)
+        .await
+        .expect("could not get schema");
+    assert_eq!(schema.name, second_asset_name);
+    assert_eq!(updated_sv_after_metadata_change.id(), updated_sv_id);
+    assert_eq!(updated_sv_after_metadata_change.category(), second_category);
+    assert_eq!(
+        updated_sv_after_metadata_change.description(),
+        second_description
+    );
+    assert_eq!(
+        updated_sv_after_metadata_change.display_name(),
+        second_display_name
+    );
+    assert_eq!(updated_sv_after_metadata_change.color(), second_color);
+    assert_eq!(updated_sv_after_metadata_change.link(), second_link);
+    assert_eq!(
+        updated_sv_after_metadata_change.component_type(),
+        second_component_type
+    );
+
+    // now let's regenerate and everything should still match
+    let updated_sv_id_after_regen = VariantAuthoringClient::regenerate_variant(ctx, updated_sv_id)
+        .await
+        .expect("unable to update asset");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let updated_variant_after_regen =
+        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_after_regen)
+            .await
+            .expect("could not get schema variant");
+    assert_eq!(updated_variant_after_regen.id(), updated_sv_id);
+    assert_eq!(updated_variant_after_regen.category(), second_category);
+    assert_eq!(
+        updated_variant_after_regen.description(),
+        second_description
+    );
+    assert_eq!(
+        updated_variant_after_regen.display_name(),
+        second_display_name
+    );
+    assert_eq!(updated_variant_after_regen.color(), second_color);
+    assert_eq!(updated_variant_after_regen.link(), second_link);
+
+    // now let's create a component with the new variant
+    let component = create_component_for_unlocked_schema_name(ctx, schema.name(), "component")
+        .await
+        .expect("could not create compoennt");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    let component_name = component.name(ctx).await.expect("could not get name");
+    let diagram = Diagram::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    pretty_assertions_sorted::assert_eq!(1, diagram.components.len());
+    assert!(diagram
+        .components
+        .into_iter()
+        .any(|c| c.display_name == component_name));
+    // now let's update metadata again
+    let third_display_name = "britsTestAsset2".to_string();
+    let third_description = Some("third description".to_string());
+    let third_link = Some("https://thirdlink.com/".to_string());
+    let third_category = "Integration Tests 3".to_string();
+    let third_color = "#00b1b1".to_string();
+    let third_component_type = ComponentType::ConfigurationFrameUp;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        updated_sv_id,
+        &schema.name,
+        third_display_name.clone(),
+        third_category.clone(),
+        third_description.clone(),
+        third_link.clone(),
+        third_color.clone(),
+        third_component_type,
+        Some(new_code),
+    )
+    .await
+    .expect("save variant contents");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit");
+    // make sure everything saved as expected
+    let updated_sv_after_metadata_change = SchemaVariant::get_by_id_or_error(ctx, updated_sv_id)
+        .await
+        .expect("could not get schema variant");
+    assert_eq!(updated_sv_after_metadata_change.id(), updated_sv_id);
+    assert_eq!(updated_sv_after_metadata_change.category(), third_category);
+    assert_eq!(
+        updated_sv_after_metadata_change.description(),
+        third_description
+    );
+    assert_eq!(
+        updated_sv_after_metadata_change.display_name(),
+        third_display_name
+    );
+    assert_eq!(updated_sv_after_metadata_change.color(), third_color);
+    assert_eq!(updated_sv_after_metadata_change.link(), third_link);
+    assert_eq!(
+        updated_sv_after_metadata_change.component_type(),
+        third_component_type
+    );
+    // now regen again, which should produce a new schema variant as there is now a component
+    let updated_sv_id_after_regen = VariantAuthoringClient::regenerate_variant(ctx, updated_sv_id)
+        .await
+        .expect("unable to update asset");
+    assert_ne!(updated_sv_id_after_regen, updated_sv_id);
+    let updated_variant_after_regen =
+        SchemaVariant::get_by_id_or_error(ctx, updated_sv_id_after_regen)
+            .await
+            .expect("could not get schema variant");
+
+    // make sure the metadata matches
+    assert_eq!(updated_variant_after_regen.category(), third_category);
+    assert_eq!(updated_variant_after_regen.description(), third_description);
+    assert_eq!(
+        updated_variant_after_regen.display_name(),
+        third_display_name
+    );
+    assert_eq!(updated_variant_after_regen.color(), third_color);
+    assert_eq!(updated_variant_after_regen.link(), third_link);
+    assert_eq!(
+        updated_variant_after_regen.component_type(),
+        third_component_type
+    );
+    // component should be eligible to upgrade
+    let diagram = Diagram::assemble(ctx)
+        .await
+        .expect("could not assemble diagram");
+    let _component = diagram.components.first().expect("has one compoennt");
 }
 
 #[test]

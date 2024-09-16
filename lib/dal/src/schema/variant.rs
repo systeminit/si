@@ -524,7 +524,12 @@ impl SchemaVariant {
         lambda(&mut schema_variant)?;
 
         if schema_variant != before_modification_variant {
+            let mut timestamp = before_modification_variant.timestamp();
+            timestamp.set_updated();
+            schema_variant.timestamp = timestamp;
+
             let new_content = SchemaVariantContent::from(schema_variant.clone());
+
             let (hash, _) = ctx
                 .layer_db()
                 .cas()

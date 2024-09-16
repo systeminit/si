@@ -29,6 +29,10 @@ impl Timestamp {
             updated_at,
         }
     }
+
+    pub fn set_updated(&mut self) {
+        self.updated_at = Utc::now();
+    }
 }
 
 impl From<si_events::Timestamp> for Timestamp {
