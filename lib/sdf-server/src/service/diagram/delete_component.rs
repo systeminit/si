@@ -59,6 +59,8 @@ pub async fn delete_components(
             &posthog_client,
         )
         .await?;
+        ctx.workspace_snapshot()?.cleanup().await?;
+
         components.insert(component_id, component_still_exists);
 
         let exists_on_head = components_existing_on_head.contains(&component_id);
