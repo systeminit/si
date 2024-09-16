@@ -138,6 +138,12 @@ impl From<ChangeSetId> for si_events::ChangeSetId {
     }
 }
 
+impl From<si_events::ChangeSetId> for ChangeSetId {
+    fn from(value: si_events::ChangeSetId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSet {
     pub id: ChangeSetId,
