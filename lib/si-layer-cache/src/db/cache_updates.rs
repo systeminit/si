@@ -164,27 +164,19 @@ where
         match event.event_kind {
             crate::event::LayeredEventKind::CasInsertion => {
                 if !self.cas_cache.contains(&event.key) {
-                    let memory_value = self
-                        .cas_cache
-                        .deserialize_memory_value(event.payload.value.clone())
-                        .await?;
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.cas_cache
-                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .insert_from_cache_updates(event.key, serialized_value)
                         .await?;
                 }
             }
             crate::event::LayeredEventKind::EncryptedSecretInsertion => {
                 if !self.encrypted_secret_cache.contains(&event.key) {
-                    let memory_value = self
-                        .encrypted_secret_cache
-                        .deserialize_memory_value(event.payload.value.clone())
-                        .await?;
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.encrypted_secret_cache
-                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .insert_from_cache_updates(event.key, serialized_value)
                         .await?;
                 }
             }
@@ -194,14 +186,10 @@ where
 
             crate::event::LayeredEventKind::RebaseBatchWrite => {
                 if !self.rebase_batch_cache.contains(&event.key) {
-                    let memory_value = self
-                        .rebase_batch_cache
-                        .deserialize_memory_value(event.payload.value.clone())
-                        .await?;
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.rebase_batch_cache
-                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .insert_from_cache_updates(event.key, serialized_value)
                         .await?;
                 }
             }
@@ -213,14 +201,10 @@ where
 
             crate::event::LayeredEventKind::SnapshotWrite => {
                 if !self.snapshot_cache.contains(&event.key) {
-                    let memory_value = self
-                        .snapshot_cache
-                        .deserialize_memory_value(event.payload.value.clone())
-                        .await?;
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.snapshot_cache
-                        .insert_from_cache_updates(event.key, memory_value, serialized_value)
+                        .insert_from_cache_updates(event.key, serialized_value)
                         .await?;
                 }
             }
@@ -230,25 +214,17 @@ where
                     .await?;
             }
             crate::event::LayeredEventKind::FuncRunWrite => {
-                let memory_value = self
-                    .func_run_cache
-                    .deserialize_memory_value(event.payload.value.clone())
-                    .await?;
                 let serialized_value =
                     Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                 self.func_run_cache
-                    .insert_or_update_from_cache_updates(event.key, memory_value, serialized_value)
+                    .insert_or_update_from_cache_updates(event.key, serialized_value)
                     .await?;
             }
             crate::event::LayeredEventKind::FuncRunLogWrite => {
-                let memory_value = self
-                    .func_run_log_cache
-                    .deserialize_memory_value(event.payload.value.clone())
-                    .await?;
                 let serialized_value =
                     Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                 self.func_run_log_cache
-                    .insert_or_update_from_cache_updates(event.key, memory_value, serialized_value)
+                    .insert_or_update_from_cache_updates(event.key, serialized_value)
                     .await?;
             }
         }

@@ -203,10 +203,11 @@ where
     pub async fn insert_from_cache_updates(
         &self,
         key: Arc<str>,
-        memory_value: V,
         serialize_value: Vec<u8>,
     ) -> LayerDbResult<()> {
-        self.memory_cache.insert(key.clone(), memory_value).await;
+        self.memory_cache
+            .insert_raw_bytes(key.clone(), serialize_value.clone())
+            .await;
         self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
             .await
     }
@@ -218,12 +219,9 @@ where
     pub async fn insert_or_update_from_cache_updates(
         &self,
         key: Arc<str>,
-        memory_value: V,
         serialize_value: Vec<u8>,
     ) -> LayerDbResult<()> {
-        self.insert_or_update(key.clone(), memory_value).await;
-        self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
-            .await
+        self.insert_from_cache_updates(key, serialize_value).await
     }
 
     pub async fn evict_from_cache_updates(&self, key: Arc<str>) -> LayerDbResult<()> {
