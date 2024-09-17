@@ -1,5 +1,5 @@
 <template>
-  <v-group v-if="points && centerPoint">
+  <v-group v-if="points && centerPoint && !edge.def.isInferred">
     <v-line
       :config="{
         visible: isHovered || isSelected,
@@ -9,18 +9,6 @@
         listening: false,
       }"
     />
-    <!-- <v-line
-      :config="{
-        points,
-        stroke: '#000',
-        strokeWidth: 4,
-        listening: false,
-        opacity: 0.4,
-      }"
-      @mouseover="onMouseOver"
-      @mouseout="onMouseOut"
-      @mousedown="onMouseDown"
-    /> -->
     <v-line
       :config="{
         id: edge.uniqueKey,
@@ -36,9 +24,9 @@
         shadowBlur: 1,
         shadowEnabled: isHovered || isSelected,
       }"
-      @mouseover="onMouseOver"
-      @mouseout="onMouseOut"
       @mousedown="onMouseDown"
+      @mouseout="onMouseOut"
+      @mouseover="onMouseOver"
     />
 
     <v-group
@@ -54,25 +42,25 @@
     >
       <template v-if="willDeleteIfPendingEdgeCreated">
         <DiagramIcon
-          icon="scissors"
           :color="getToneColorHex('destructive')"
           :size="20"
+          icon="scissors"
         />
       </template>
       <template v-else-if="isAdded">
         <DiagramIcon
-          icon="plus-square"
           :color="getToneColorHex('success')"
           :size="20"
+          icon="plus-square"
           shadeBg
         />
       </template>
       <template v-else-if="isDeleted">
         <DiagramIcon
-          icon="minus-square"
-          shadeBg
           :color="getToneColorHex('destructive')"
           :size="20"
+          icon="minus-square"
+          shadeBg
         />
       </template>
     </v-group>
