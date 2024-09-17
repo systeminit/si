@@ -604,16 +604,19 @@ impl AttributeValue {
             None => None,
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_values_and_set_state_to_success(
-                func_values.func_run_id(),
-                unprocessed_value_address,
-                value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let func = Func::get_by_id_or_error(ctx, prototype_func_id).await?;
+        if !func.is_intrinsic() {
+            ctx.layer_db()
+                .func_run()
+                .set_values_and_set_state_to_success(
+                    func_values.func_run_id(),
+                    unprocessed_value_address,
+                    value_address,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+        }
 
         Ok(func_values)
     }
