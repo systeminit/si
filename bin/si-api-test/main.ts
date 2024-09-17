@@ -80,7 +80,7 @@ if (import.meta.main) {
   }, 1000);
 
   do {
-    for (let i = 0; i <= batchSize; i++) {
+    for (let i = 0; i < batchSize; i++) {
       for (const testName of tests) {
         // Execute tests asynchronously and increment sequence, show progress bar
         const testPromise = executeTest(

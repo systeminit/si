@@ -6,6 +6,7 @@ import {
   sleep,
   sleepBetween,
 } from "../test_helpers.ts";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
 export default async function emulate_paul_stack(
   sdfApiClient: SdfApiClient,
@@ -308,6 +309,7 @@ async function setComponentGeometry(
     "visibility_change_set_pk": changeSetId,
     "workspaceId": sdf.workspaceId,
     requestUlid: changeSetId,
+    clientUlid: ulid(),
   };
 
   const result = await sdf.call({
