@@ -184,7 +184,7 @@ impl SiNodeWeight for SchemaVariantNodeWeightV1 {
     fn node_hash(&self) -> ContentHash {
         let mut content_hasher = ContentHash::hasher();
         content_hasher.update(if self.is_locked { &[0x01] } else { &[0x00] });
-        content_hasher.update(self.content_address.to_string().as_bytes());
+        content_hasher.update(self.content_address.content_hash().to_string().as_bytes());
 
         content_hasher.finalize()
     }

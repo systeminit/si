@@ -106,7 +106,7 @@ impl PropNodeWeight {
 
     pub fn node_hash(&self) -> ContentHash {
         ContentHash::from(&serde_json::json![{
-            "content_address": self.content_address,
+            "content_hash": self.content_address.content_hash(),
             "kind": self.kind,
             "name": self.name,
         }])
