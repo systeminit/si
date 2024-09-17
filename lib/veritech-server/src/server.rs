@@ -36,6 +36,7 @@ use crate::{
 };
 
 const CONSUMER_NAME: &str = "veritech-server";
+const CONSUMER_MAX_DELIVERY: i64 = 5;
 
 /// Server metadata, used with telemetry.
 #[derive(Clone, Debug)]
@@ -288,6 +289,7 @@ impl Server {
         async_nats::jetstream::consumer::pull::Config {
             durable_name: Some(CONSUMER_NAME.to_owned()),
             filter_subject: subject::incoming(subject_prefix).to_string(),
+            max_deliver: CONSUMER_MAX_DELIVERY,
             ..Default::default()
         }
     }
