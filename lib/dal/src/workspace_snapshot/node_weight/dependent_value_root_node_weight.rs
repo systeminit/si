@@ -49,9 +49,10 @@ impl DependentValueRootNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "value_id": self.value_id,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.value_id.to_string().as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

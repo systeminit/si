@@ -95,10 +95,21 @@ impl AttributeValueNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "unprocessed_value": self.unprocessed_value,
-            "value": self.value,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(
+            &self
+                .unprocessed_value
+                .map(|v| v.content_hash().as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0x00]),
+        );
+        content_hasher.update(
+            &self
+                .value
+                .map(|v| v.content_hash().as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0x00]),
+        );
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
