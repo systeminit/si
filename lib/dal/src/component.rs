@@ -414,6 +414,13 @@ impl Component {
         result: ComponentResult,
     );
 
+    #[instrument(
+        name = "component.new", 
+        level = "info",
+        skip_all,
+        fields(
+            schema_variant.id = ?schema_variant_id
+        ))]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,

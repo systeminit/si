@@ -638,7 +638,7 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_attribute_value",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
@@ -672,7 +672,7 @@ impl FuncRunner {
         // and in order to time the function's preparation vs. execution timings.
         #[instrument(
             name = "func_runner.run_attribute_value.prepare",
-            level = "debug",
+            level = "info",
             skip_all,
             fields()
         )]
