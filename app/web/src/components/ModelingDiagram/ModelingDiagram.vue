@@ -3019,7 +3019,6 @@ type ToFrom = { to: Vector2d; from: Vector2d };
 const edges = computed(() => {
   const points: ToFrom[] = [];
   return componentsStore.diagramEdges
-    .filter((e) => !e.isInferred)
     .map((edgeDef) => new DiagramEdgeData(edgeDef))
     .filter((e) => {
       // filter out edges connected between components when one is not rendered
