@@ -62,7 +62,7 @@ use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
+    StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
 
@@ -3354,7 +3354,8 @@ pub struct ComponentSetPosition {
 pub struct ComponentSetPositionPayload {
     change_set_id: ChangeSetId,
     positions: Vec<ComponentSetPosition>,
-    user_pk: Option<UserPk>,
+    // Used so the client can ignore the messages it caused. created by the frontend, and not stored
+    client_ulid: Option<ulid::Ulid>,
 }
 
 impl ComponentSetPositionPayload {
@@ -3435,7 +3436,7 @@ impl WsEvent {
         ctx: &DalContext,
         change_set_id: ChangeSetId,
         components: Vec<Component>,
-        user_pk: Option<UserPk>,
+        client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];
         for component in components {
@@ -3458,7 +3459,7 @@ impl WsEvent {
             WsPayload::SetComponentPosition(ComponentSetPositionPayload {
                 change_set_id,
                 positions,
-                user_pk,
+                client_ulid,
             }),
         )
         .await

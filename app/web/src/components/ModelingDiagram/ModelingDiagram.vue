@@ -56,8 +56,8 @@ overflow hidden */
       </div>
 
       <DiagramControls
-        @open:help="helpModalRef.open()"
         @downloadCanvasScreenshot="downloadCanvasScreenshot"
+        @open:help="helpModalRef.open()"
       />
 
       <!-- MAIN V-STAGE -->
@@ -78,42 +78,42 @@ overflow hidden */
           <DiagramGroup
             v-for="group in groups"
             :key="group.uniqueKey"
+            :collapsed="
+              componentsStore.collapsedComponents.has(group.uniqueKey)
+            "
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+            :debug="enableDebugMode"
             :group="group"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
-            "
-            :debug="enableDebugMode"
-            @resize="onNodeLayoutOrLocationChange(group)"
             @rename="
               (f) => {
                 renameOnDiagram(group, f);
               }
             "
+            @resize="onNodeLayoutOrLocationChange(group)"
           />
           <DiagramNode
             v-for="node in nodes"
             :key="node.uniqueKey"
             :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+            :debug="enableDebugMode"
             :isHovered="elementIsHovered(node)"
-            :isSelected="elementIsSelected(node)"
             :isLoading="statusStore.componentIsLoading(node.def.id)"
+            :isSelected="elementIsSelected(node)"
             :node="node"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(node.def.id)
             "
-            :debug="enableDebugMode"
-            @resize="onNodeLayoutOrLocationChange(node)"
             @rename="
               (f) => {
                 renameOnDiagram(node, f);
               }
             "
+            @resize="onNodeLayoutOrLocationChange(node)"
           />
           <DiagramCursor
             v-for="mouseCursor in presenceStore.diagramCursors"
@@ -132,10 +132,10 @@ overflow hidden */
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
-            :group="group"
             :collapsed="
               componentsStore.collapsedComponents.has(group.uniqueKey)
             "
+            :group="group"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
 
@@ -222,12 +222,12 @@ overflow hidden */
         <VormInput
           ref="renameInputRef"
           v-model="renameInputValue"
-          compact
-          rename
           :renameZoom="zoomLevel"
+          compact
           noLabel
-          @keydown="onRenameKeyDown"
+          rename
           @blur="onRenameSubmit"
+          @keydown="onRenameKeyDown"
         />
       </div>
     </div>
@@ -285,6 +285,7 @@ import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-ann
 import { windowListenerManager } from "@si/vue-lib";
 import { useRoute } from "vue-router";
 import { useToast } from "vue-toastification";
+import { ulid } from "ulid";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -399,6 +400,7 @@ const customFontsLoaded = useCustomFontsLoaded();
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
+const diagramUlid = computed(() => ulid());
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -647,9 +649,9 @@ watch(
       [
         {
           eventType: "SetComponentPosition",
-          callback: ({ changeSetId, userPk, positions }) => {
+          callback: ({ changeSetId, clientUlid, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-            if (userPk === authStore.userPk) return;
+            if (clientUlid === diagramUlid.value) return;
 
             const elements: elementPositionAndSize[] = [];
             for (const { componentId, position, size } of positions) {
@@ -668,7 +670,11 @@ watch(
                 });
               }
             }
-            updateElementPositionAndSize({ elements });
+            updateElementPositionAndSize({
+              elements,
+              writeToChangeSet: false,
+              broadcastToClients: false,
+            });
           },
         },
       ],
@@ -1538,7 +1544,10 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
 
   if (componentUpdate.length > 0) {
     if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_GEOMETRY(componentUpdate);
+      componentsStore.SET_COMPONENT_GEOMETRY(
+        componentUpdate,
+        diagramUlid.value,
+      );
     }
 
     if (
@@ -1550,7 +1559,7 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
         kind: "ComponentSetPosition",
         data: {
           positions: _.map(componentUpdate, (c) => c.geometry),
-          userPk: authStore.userPk,
+          clientUlid: diagramUlid.value,
           changeSetId: changeSetsStore.selectedChangeSetId,
         },
       });

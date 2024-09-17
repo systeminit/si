@@ -27,6 +27,7 @@ pub struct SetComponentPositionRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
     pub data_by_component_id: HashMap<ComponentId, SingleComponentGeometryUpdate>,
+    pub client_ulid: Ulid,
     pub request_ulid: Ulid,
 }
 
@@ -117,12 +118,16 @@ pub async fn set_component_position(
             .await?;
         components.push(component);
     }
-    let user_id = ChangeSet::extract_userid_from_context(&ctx).await;
 
-    WsEvent::set_component_position(&ctx, ctx.change_set_id(), components, user_id)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    WsEvent::set_component_position(
+        &ctx,
+        ctx.change_set_id(),
+        components,
+        Some(request.client_ulid),
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     if !diagram_inferred_edges.is_empty() {
         WsEvent::upsert_inferred_edges(&ctx, diagram_inferred_edges)

@@ -1064,6 +1064,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async SET_COMPONENT_GEOMETRY(
             componentUpdates: SingleSetComponentGeometryData[],
+            clientUlid: string,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -1094,6 +1095,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 dataByComponentId,
                 diagramKind: "configuration",
+                clientUlid,
                 ...visibilityParams,
               },
               onFail: (err) => {
@@ -1154,7 +1156,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     });
                   }
                   const payload = this.constructGeometryData(components);
-                  this.SET_COMPONENT_GEOMETRY(payload);
+                  this.SET_COMPONENT_GEOMETRY(payload, clientUlid);
                 }
               },
               onSuccess: (response) => {
