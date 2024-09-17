@@ -120,7 +120,7 @@ pub async fn process_request(
             let request: ActionRunRequest =
                 serde_json::from_slice(&msg.payload).map_err(HandlerError::RequestDerializing)?;
             info!(execution_kind = %NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX, execution_id = %request.execution_id, "validated request and about to execute");
-            action_run_request_task(state, request, reply_subject).await?
+            action_run_request(state, request, reply_subject).await?
         }
         (Some(NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX), None) => {
             let request: ResolverFunctionRequest =
@@ -132,26 +132,18 @@ pub async fn process_request(
             let request: SchemaVariantDefinitionRequest =
                 serde_json::from_slice(&msg.payload).map_err(HandlerError::RequestDerializing)?;
             info!(execution_kind = %NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX, execution_id = %request.execution_id, "validated request and about to execute");
-            schema_variant_definition_request_task(state, request, reply_subject).await?
+            schema_variant_definition_request(state, request, reply_subject).await?
         }
         (Some(NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX), None) => {
             let request: ValidationRequest =
                 serde_json::from_slice(&msg.payload).map_err(HandlerError::RequestDerializing)?;
             info!(execution_kind = %NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX, execution_id = %request.execution_id, "validated request and about to execute");
-            validation_request_task(state, request, reply_subject).await?
+            validation_request(state, request, reply_subject).await?
         }
         _ => return Err(HandlerError::InvalidIncomingSubject(subject)),
     }
 
     Ok(())
-}
-
-async fn action_run_request_task(
-    state: AppState,
-    cyclone_request: ActionRunRequest,
-    reply_mailbox: Subject,
-) -> HandlerResult<()> {
-    action_run_request(state, cyclone_request, reply_mailbox).await
 }
 
 #[instrument(name = "veritech.action_run_request", level = "info", skip_all)]
@@ -425,14 +417,6 @@ async fn resolver_function_request(
     Ok(function_result)
 }
 
-async fn schema_variant_definition_request_task(
-    state: AppState,
-    cyclone_request: SchemaVariantDefinitionRequest,
-    reply_mailbox: Subject,
-) -> HandlerResult<()> {
-    schema_variant_definition_request(state, cyclone_request, reply_mailbox).await
-}
-
 #[instrument(
     name = "veritech.schema_variant_definition_request",
     level = "info",
@@ -562,14 +546,6 @@ async fn schema_variant_definition_request(
     }
 
     Ok(())
-}
-
-async fn validation_request_task(
-    state: AppState,
-    cyclone_request: ValidationRequest,
-    reply_mailbox: Subject,
-) -> HandlerResult<()> {
-    validation_request(state, cyclone_request, reply_mailbox).await
 }
 
 #[instrument(name = "veritech.validation_request", level = "info", skip_all)]
