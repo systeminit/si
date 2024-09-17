@@ -5,11 +5,12 @@ use axum::{
 use dal::{change_set::ChangeSet, Func, Schema, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::ChangeSetResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
+
+use super::{ChangeSetError, ChangeSetResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +34,21 @@ pub async fn apply_change_set(
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    // Ensure that DVU roots are empty before continuing.
+    if !ctx
+        .workspace_snapshot()?
+        .get_dependent_value_roots()
+        .await?
+        .is_empty()
+    {
+        // TODO(nick): we should consider requiring this check in integration tests too. Why did I
+        // not do this at the time of writing? Tests have multiple ways to call "apply", whether
+        // its via helpers or through the change set methods directly. In addition, they test
+        // for success and failure, not solely for success. We should still do this, but not within
+        // the PR corresponding to when this message was written.
+        return Err(ChangeSetError::DvuRootsNotEmpty(ctx.change_set_id()));
+    }
 
     // Lock all unlocked variants
     for schema_id in Schema::list_ids(&ctx).await? {

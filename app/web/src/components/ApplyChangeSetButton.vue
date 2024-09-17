@@ -71,19 +71,22 @@ import {
   themeClasses,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { useToast } from "vue-toastification";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import RetryApply from "@/components/toasts/RetryApply.vue";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 
-const statusStore = useStatusStore();
-const changeSetsStore = useChangeSetsStore();
 const actionsStore = useActionsStore();
 const authStore = useAuthStore();
-const router = useRouter();
+const changeSetsStore = useChangeSetsStore();
 const route = useRoute();
+const router = useRouter();
+const statusStore = useStatusStore();
+const toast = useToast();
 
 const displayCount = computed(() => actionsStore.proposedActions.length);
 
@@ -111,6 +114,10 @@ const applyChangeSet = async () => {
         ...route.params,
         changeSetId: "head",
       },
+    });
+  } else if (resp.result.statusCode === 428) {
+    toast({
+      component: RetryApply,
     });
   }
 };
