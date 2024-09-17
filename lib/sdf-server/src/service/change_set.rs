@@ -7,7 +7,7 @@ use axum::{
 use dal::{
     action::{prototype::ActionPrototypeError, ActionError},
     ActionPrototypeId, ChangeSetApplyError as DalChangeSetApplyError,
-    ChangeSetError as DalChangeSetError, ComponentError, FuncError, SchemaError,
+    ChangeSetError as DalChangeSetError, ChangeSetId, ComponentError, FuncError, SchemaError,
     SchemaVariantError, StandardModelError, TransactionsError, WorkspaceError,
     WorkspaceSnapshotError, WsEventError,
 };
@@ -48,6 +48,8 @@ pub enum ChangeSetError {
     DalChangeSet(#[from] DalChangeSetError),
     #[error("dal change set apply error: {0}")]
     DalChangeSetApply(#[from] DalChangeSetApplyError),
+    #[error("dvu roots are not empty for change set: {0}")]
+    DvuRootsNotEmpty(ChangeSetId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("invalid header name {0}")]
@@ -73,11 +75,16 @@ pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;
 impl IntoResponse for ChangeSetError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),
             ChangeSetError::ActionAlreadyEnqueued(_) => {
                 (StatusCode::NOT_MODIFIED, self.to_string())
             }
+            ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),
+            ChangeSetError::DvuRootsNotEmpty(_) => (
+                StatusCode::PRECONDITION_REQUIRED,
+                "There are dependent values that still need to be calculated. Please retry!"
+                    .to_string(),
+            ),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
