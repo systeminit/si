@@ -687,35 +687,6 @@ impl FuncRunner {
             let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
             let function_args: CasValue = args.clone().into();
-            let (function_args_cas_address, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(function_args.into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
-
-            let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
-                let code_json_value: serde_json::Value = code.clone().into();
-                let code_cas_value: CasValue = code_json_value.into();
-                let (hash, _) = ctx
-                    .layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(code_cas_value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?;
-                hash
-            } else {
-                // Why are we doing this? Because the struct gods demand it. I have feelings.
-                ContentHash::new("".as_bytes())
-            };
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             let before = FuncRunner::before_funcs(ctx, component_id).await?;
@@ -724,7 +695,9 @@ impl FuncRunner {
             let attribute_value_id = attribute_value_id.into();
 
             let func_run_create_time = Utc::now();
-            let func_run_inner = FuncRunBuilder::default()
+            let mut func_run_builder = FuncRunBuilder::default();
+
+            func_run_builder
                 .actor(ctx.events_actor())
                 .tenancy(ctx.events_tenancy())
                 .backend_kind(func.backend_kind.into())
@@ -734,13 +707,51 @@ impl FuncRunner {
                 .function_display_name(func.display_name.clone())
                 .function_description(func.description.clone())
                 .function_link(func.link.clone())
-                .function_args_cas_address(function_args_cas_address)
-                .function_code_cas_address(code_cas_hash)
                 .attribute_value_id(Some(attribute_value_id))
                 .component_id(Some(component_id))
                 .created_at(func_run_create_time)
-                .updated_at(func_run_create_time)
-                .build()?;
+                .updated_at(func_run_create_time);
+
+            if !func.is_intrinsic() {
+                let (function_args_cas_address, _) = ctx
+                    .layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(function_args.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+
+                let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+                    let code_json_value: serde_json::Value = code.clone().into();
+                    let code_cas_value: CasValue = code_json_value.into();
+                    let (hash, _) = ctx
+                        .layer_db()
+                        .cas()
+                        .write(
+                            Arc::new(code_cas_value.into()),
+                            None,
+                            ctx.events_tenancy(),
+                            ctx.events_actor(),
+                        )
+                        .await?;
+                    hash
+                } else {
+                    ContentHash::new("".as_bytes())
+                };
+
+                func_run_builder.function_args_cas_address(function_args_cas_address);
+                func_run_builder.function_code_cas_address(code_cas_hash);
+            } else {
+                // We could turn these into an option, except we postcard
+                // serialize this data so we'd have to create a new type
+                func_run_builder.function_args_cas_address(ContentHash::new("".as_bytes()));
+                func_run_builder.function_code_cas_address(ContentHash::new("".as_bytes()));
+            }
+
+            let func_run_inner = func_run_builder.build()?;
 
             if !parent_span.is_disabled() {
                 let mut id_buf = FuncRunId::array_to_str_buf();
