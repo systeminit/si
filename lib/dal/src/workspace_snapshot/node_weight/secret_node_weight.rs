@@ -98,10 +98,11 @@ impl SecretNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "content_hash": self.content_address.content_hash(),
-            "encrypted_secret_key": self.encrypted_secret_key,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.content_address.content_hash().as_bytes());
+        content_hasher.update(self.encrypted_secret_key.as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

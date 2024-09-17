@@ -78,7 +78,7 @@ impl From<ActionPrototypeId> for si_events::ActionPrototypeId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum ActionState {
     /// Action has been determined to be eligible to run, and has had its job sent to the job
