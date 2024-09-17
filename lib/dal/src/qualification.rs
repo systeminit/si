@@ -10,11 +10,11 @@ use crate::component::qualification::QualificationEntry;
 use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
+use crate::AttributeValue;
 use crate::{
     ws_event::{WsEvent, WsPayload},
     Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
 };
-use crate::{AttributeValue, AttributeValueId};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct QualificationSummaryForComponent {
@@ -61,20 +61,19 @@ impl QualificationSummary {
 
         for component in Component::list(ctx).await? {
             let component_id = component.id();
-            let qualifications = Component::list_qualifications(ctx, component_id).await?;
+            let qualification_statuses =
+                Component::list_qualification_statuses(ctx, component_id).await?;
 
-            let individual_total = qualifications.len() as i64;
+            let individual_total = qualification_statuses.len() as i64;
             let mut succeeded = 0;
             let mut warned = 0;
             let mut failed = 0;
-            for qualification in qualifications {
-                if let Some(result) = qualification.result {
-                    match result.status {
-                        QualificationSubCheckStatus::Success => succeeded += 1,
-                        QualificationSubCheckStatus::Warning => warned += 1,
-                        QualificationSubCheckStatus::Failure => failed += 1,
-                        QualificationSubCheckStatus::Unknown => {}
-                    }
+            for status in qualification_statuses.iter().flatten() {
+                match status {
+                    QualificationSubCheckStatus::Success => succeeded += 1,
+                    QualificationSubCheckStatus::Warning => warned += 1,
+                    QualificationSubCheckStatus::Failure => failed += 1,
+                    QualificationSubCheckStatus::Unknown => {}
                 }
             }
 
@@ -175,15 +174,14 @@ impl Ord for QualificationView {
 impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
+        attribute_value: AttributeValue,
     ) -> Result<Option<Self>, QualificationError> {
-        let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
         let maybe_qual_run = ctx
             .layer_db()
             .func_run()
             .get_last_qualification_for_attribute_value_id(
                 ctx.events_tenancy().workspace_pk,
-                attribute_value_id.into(),
+                attribute_value.id().into(),
             )
             .await?;
         match maybe_qual_run {
@@ -195,10 +193,9 @@ impl QualificationView {
                     };
 
                 let sub_check = QualificationSubCheck {
-                    description: match qualification_entry.message {
-                        Some(message) => message,
-                        None => String::from("no description provided"),
-                    },
+                    description: qualification_entry
+                        .message
+                        .unwrap_or_else(|| "no description provided".to_string()),
                     status: qualification_entry
                         .result
                         .unwrap_or(QualificationSubCheckStatus::Unknown),
