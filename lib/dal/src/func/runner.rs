@@ -774,15 +774,17 @@ impl FuncRunner {
 
             let func_run = Arc::new(func_run_inner);
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            if !func.is_intrinsic() {
+                ctx.layer_db()
+                    .func_run()
+                    .write(
+                        func_run.clone(),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+            }
 
             Ok(FuncRunner {
                 func_run,
