@@ -11,7 +11,7 @@ use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::time::Duration;
+use tokio::time::{timeout, Duration};
 use tracing::{debug, info, warn};
 
 use crate::errors::PoolNoodleError;
@@ -85,7 +85,7 @@ where
             check_health: false,
             max_concurrency: 1000,
             pool_size: 100,
-            retry_limit: 6000,
+            retry_limit: 120, // * 100ms between tries, we will try for 2 minutes before giving up
             shutdown_token: CancellationToken::new(),
             spec: S::default(),
         }
@@ -123,8 +123,11 @@ where
     /// do the thing
     pub fn run(&mut self) -> Result<(), E> {
         if self.inner().check_health {
-            if let Some(err) = futures::executor::block_on(self.check_health()).err() {
-                return Err(err);
+            if let Some(err) =
+                futures::executor::block_on(timeout(Duration::from_secs(60), self.check_health()))
+                    .err()
+            {
+                return Err(PoolNoodleError::UnhealthyTimeout(err));
             }
         }
         let inner = self.inner();
@@ -179,6 +182,7 @@ where
         let mut retries = 0;
         loop {
             if retries >= max_retries {
+                metric!(counter.pool_noodle.get_requests = -1);
                 return Err(PoolNoodleError::ExecutionPoolStarved);
             }
             if let Some(mut instance) = inner.ready_queue.pop() {
