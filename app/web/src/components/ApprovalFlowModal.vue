@@ -505,6 +505,7 @@ async function vote(vote: string) {
 }
 
 function openVotingModalHandler() {
+  if (changeSet?.value?.name === "HEAD") return;
   votingModalRef.value?.open();
   resetState();
   checkForUserWhoStartedVotingAndCancelIfTheyAreGone();
