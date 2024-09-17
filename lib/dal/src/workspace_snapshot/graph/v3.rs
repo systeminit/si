@@ -1462,6 +1462,10 @@ impl WorkspaceSnapshotGraphV3 {
 
                     if let (Some(source_idx), Some(destination_idx)) = (source_idx, destination_idx)
                     {
+                        if let EdgeWeightKind::Use { is_default: true } = edge_weight.kind() {
+                            ensure_only_one_default_use_edge(self, source_idx)?;
+                        }
+
                         self.add_edge_inner(
                             source_idx,
                             edge_weight.clone(),
@@ -1564,4 +1568,32 @@ fn prop_node_indexes_for_node_index(
             None
         })
         .collect()
+}
+
+fn ensure_only_one_default_use_edge(
+    graph: &mut WorkspaceSnapshotGraphV3,
+    source_idx: NodeIndex,
+) -> WorkspaceSnapshotGraphResult<()> {
+    let existing_default_targets: Vec<NodeIndex> = graph
+        .edges_directed(source_idx, Outgoing)
+        .filter(|edge_ref| {
+            matches!(
+                edge_ref.weight().kind(),
+                EdgeWeightKind::Use { is_default: true }
+            )
+        })
+        .map(|edge_ref| edge_ref.target())
+        .collect();
+
+    for target_idx in existing_default_targets {
+        graph.remove_edge(source_idx, target_idx, EdgeWeightKindDiscriminants::Use)?;
+        graph.add_edge_inner(
+            source_idx,
+            EdgeWeight::new(EdgeWeightKind::new_use()),
+            target_idx,
+            false,
+        )?;
+    }
+
+    Ok(())
 }
