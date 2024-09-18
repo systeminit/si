@@ -89,6 +89,12 @@ model Workspace {
   /// Timestamp of the latest workspace quarantine. `undefined` if not quarantined
   quarantinedAt DateTime? @map("quarantined_at")
 
+  /// A description of the workspace - defaults to empty
+  description String?
+
+  /// Denotes whether this will show up in a users favourite workspaces list
+  isFavourite Boolean @default(false) @map("is_favourite")
+
   @@index(fields: [creatorUserId])
   @@map("workspaces")
 }

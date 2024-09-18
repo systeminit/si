@@ -22,6 +22,7 @@ export async function createWorkspace(
   instanceUrl: string,
   displayName: string,
   isDefault: boolean,
+  description: string,
 ) {
   const newWorkspace = await prisma.workspace.create({
     data: {
@@ -32,6 +33,7 @@ export async function createWorkspace(
       displayName,
       creatorUserId: creatorUser.id,
       isDefault,
+      description,
     },
   });
   tracker.trackEvent(creatorUser, "create_workspace", {
@@ -65,6 +67,8 @@ export async function patchWorkspace(
   instanceUrl: string | null,
   displayName: string,
   quarantinedAt: Date | null,
+  description: string | null,
+  isFavourite: boolean,
 ) {
   return prisma.workspace.update({
     where: { id },
@@ -72,6 +76,8 @@ export async function patchWorkspace(
       instanceUrl: instanceUrl ?? LOCAL_WORKSPACE_URL,
       displayName,
       quarantinedAt,
+      description,
+      isFavourite,
     },
   });
 }

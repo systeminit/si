@@ -36,11 +36,29 @@
       @click="clickHandler"
       @mousedown="tracker.trackEvent('workspace_launcher_widget_click')"
     >
-      <Icon
-        v-if="!compact"
-        :name="workspace.instanceEnvType === 'SI' ? 'cloud' : 'laptop'"
-        size="lg"
-      />
+      <div v-if="!compact" class="flex flex-col items-center gap-1">
+        <div
+          v-tooltip="
+            workspace.instanceEnvType === 'SI'
+              ? 'Managed by System Initiative'
+              : workspace.instanceEnvType === 'PRIVATE'
+              ? 'Private Instance'
+              : 'Local Instance'
+          "
+        >
+          <Icon
+            v-if="!compact"
+            :name="workspace.instanceEnvType === 'SI' ? 'cloud' : 'laptop'"
+            size="lg"
+          />
+        </div>
+        <div v-tooltip="workspace.isFavourite ? 'Favourite Workspace' : ''">
+          <Icon
+            :name="workspace.isFavourite ? 'star' : 'starOutline'"
+            size="lg"
+          />
+        </div>
+      </div>
       <Stack spacing="xs" class="overflow-hidden">
         <div
           ref="workspaceNameRef"
@@ -49,9 +67,17 @@
         >
           {{ workspace.displayName }}
         </div>
-        <div class="text-sm opacity-70 capsize">
+        <div
+          v-if="workspace.instanceEnvType === 'PRIVATE'"
+          class="text-sm opacity-70 capsize"
+        >
           <div class="truncate w-full">
             {{ workspace.instanceUrl }}
+          </div>
+        </div>
+        <div class="text-sm opacity-70 capsize">
+          <div class="truncate w-full">
+            {{ workspace.description }}
           </div>
         </div>
         <div
