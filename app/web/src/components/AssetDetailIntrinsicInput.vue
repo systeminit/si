@@ -10,6 +10,7 @@
       display.funcId === identityFuncId ? 'input-socket' : 'circle-slash'
     "
     :disabled="isLocked || display.funcId === unsetFuncId"
+    :showCautionLines="display.funcId === unsetFuncId"
     iconRightRotate="down"
     :nullLabel="display.funcId === unsetFuncId ? 'Unset' : 'not set'"
     type="dropdown-optgroup"
@@ -17,25 +18,28 @@
   >
     <template #rightOfInput>
       <DropdownMenu ref="contextMenuRef" :forceAbove="false">
-        <DropdownMenuItem header :checkable="false" class="uppercase"
-          >Change Configuration</DropdownMenuItem
-        >
         <DropdownMenuItem
-          :checked="display.funcId === unsetFuncId"
-          @select="() => emit('changeToUnset', display)"
-          >Unset Binding</DropdownMenuItem
-        >
-        <DropdownMenuItem
-          :checked="display.value?.startsWith('p_')"
-          label="Bind to Input Socket"
-          :submenuItems="socketSubmenu"
-          @select="() => emit('changeToIdentity', display, null)"
+          label="Change Configuration"
+          header
+          class="uppercase"
         />
         <DropdownMenuItem
-          :checked="display.value?.startsWith('s_')"
+          label="Unset"
+          checkable
+          :checked="selectedFilter === 'unset'"
+          @select="selectFilter('unset')"
+        />
+        <DropdownMenuItem
+          label="Bind to Input Socket"
+          checkable
+          :checked="selectedFilter === 'inputSocket'"
+          @select="selectFilter('inputSocket')"
+        />
+        <DropdownMenuItem
           label="Bind to Prop"
-          :submenuItems="propSubmenu"
-          @select="() => emit('changeToIdentity', display, null)"
+          checkable
+          :checked="selectedFilter === 'prop'"
+          @select="selectFilter('prop')"
         />
       </DropdownMenu>
       <DetailsPanelMenuIcon
@@ -56,7 +60,6 @@ import {
   VormInput,
   DropdownMenu,
   DropdownMenuItem,
-  DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
 import {
   FuncKind,
@@ -64,7 +67,11 @@ import {
   PropDisplay,
   IntrinsicDisplay,
 } from "@/api/sdf/dal/func";
-import { SchemaVariantId, inputSocketsAndPropsFor } from "@/api/sdf/dal/schema";
+import {
+  SchemaVariantId,
+  groupedPropsFor,
+  inputSocketsFor,
+} from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
@@ -74,6 +81,8 @@ const props = defineProps<{
   data: PropDisplay | IntrinsicDisplay;
   isLocked: boolean;
 }>();
+
+type DropdownFilter = "unset" | "prop" | "inputSocket";
 
 const display = ref<PropDisplay | IntrinsicDisplay | undefined>();
 
@@ -102,47 +111,6 @@ const emit = defineEmits(["change", "changeToUnset", "changeToIdentity"]);
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 
-const optionsForIntrinsicDisplay = computed(() => {
-  if (!props.schemaVariantId) return {};
-  const variant = assetStore.variantFromListById[props.schemaVariantId];
-  if (!variant) return {};
-  return inputSocketsAndPropsFor(variant);
-});
-
-const socketSubmenu = computed<DropdownMenuItemObjectDef[]>(() => {
-  const sockets = optionsForIntrinsicDisplay.value["Input Socket"];
-  if (!sockets) return [];
-  return sockets.map((socket) => {
-    return {
-      label: socket.label,
-      onSelect: () => select(socket.value as string),
-    };
-  });
-});
-
-const propSubmenu = computed<DropdownMenuItemObjectDef[]>(() => {
-  const options: DropdownMenuItemObjectDef[] = [];
-  Object.keys(optionsForIntrinsicDisplay.value).forEach((label) => {
-    if (label === "Input Socket") return;
-
-    const submenuItems =
-      optionsForIntrinsicDisplay.value[label]?.map((option) => {
-        const { label, value } = option;
-        return {
-          label,
-          onSelect: () => select(value as string),
-        };
-      }) || [];
-    options.push({
-      label,
-      disabled: submenuItems.length === 0,
-      checkable: false,
-      submenuItems,
-    });
-  });
-  return options;
-});
-
 const identityFuncId = computed(() => {
   const func = funcStore.funcList.find(
     (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
@@ -157,13 +125,53 @@ const unsetFuncId = computed(() => {
   return func?.funcId as FuncId;
 });
 
+const initialFilter = (): DropdownFilter | null => {
+  if (display.value?.value?.startsWith("s_")) {
+    return "inputSocket";
+  } else if (display.value?.value?.startsWith("p_")) {
+    return "prop";
+  } else if (display.value?.funcId === unsetFuncId.value) {
+    return "unset";
+  } else if ("socketName" in props.data) {
+    // NOTE(nick): fallback to the input data if the display is empty. We need this in case a "emit" blows the
+    // component away. This could be cleaner to avoid having multiple branches.
+    return "inputSocket";
+  } else if ("path" in props.data) {
+    // NOTE(nick): fallback to the input data if the display is empty. We need this in case a "emit" blows the
+    // component away. This could be cleaner to avoid having multiple branches.
+    return "prop";
+  }
+  return null;
+};
+const selectedFilter = ref<DropdownFilter | null>(initialFilter());
+const selectFilter = (item: DropdownFilter) => {
+  if (props.isLocked) return;
+
+  selectedFilter.value = item;
+
+  if (item === "unset") {
+    emit("changeToUnset", display.value);
+  } else {
+    emit("changeToIdentity", display.value, null);
+  }
+};
+
+const optionsForIntrinsicDisplay = computed(() => {
+  if (!props.schemaVariantId) return {};
+  const variant = assetStore.variantFromListById[props.schemaVariantId];
+  if (!variant) return {};
+
+  if (selectedFilter.value === "prop") {
+    return groupedPropsFor(variant);
+  } else if (selectedFilter.value === "inputSocket") {
+    return inputSocketsFor(variant);
+  }
+  return {};
+});
+
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const changeInput = () => {
   emit("change", toRaw(display.value));
-};
-
-const select = (value: string) => {
-  emit("changeToIdentity", toRaw(display.value), value);
 };
 </script>

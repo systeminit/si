@@ -110,8 +110,14 @@ this
 
 > **setValueFrom**(`valueFrom`): `this`
 
-DEPRECATED: Set the value of this socket using a ValueFromBuilder.
-The recommended way to do this is to attach an attribute function.
+DEPRECATED: this method no longer does anything. It will be ignored
+when executing the asset function. Please use the asset editing
+interface to perform equivalent functionality.
+
+If the entry is new, you will need to regenerate the asset first!
+
+In the past, this was used to set the value of this entry using a
+ValueFromBuilder.
 
 #### Parameters
 

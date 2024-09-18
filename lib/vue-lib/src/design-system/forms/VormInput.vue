@@ -69,6 +69,14 @@ you can pass in options as props too */
             : null
         "
         class="vorm-input__input-wrap"
+        :class="
+          clsx(
+            'vorm-input__input-wrap',
+            showCautionLines
+              ? themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark')
+              : '',
+          )
+        "
       >
         <template v-if="type === 'container'">
           <slot />
@@ -285,7 +293,7 @@ import { IconNames } from "../icons/icon_set";
 import { useValidatedInput, validators } from "./helpers/form-validation";
 import { useDisabledBySelfOrParent } from "./helpers/form-disabling";
 import VormInputOption from "./VormInputOption.vue";
-import { useTheme } from "../utils/theme_tools";
+import { themeClasses, useTheme } from "../utils/theme_tools";
 import type { PropType, ComponentInternalInstance } from "vue";
 
 type InputTypes =
@@ -359,6 +367,7 @@ const props = defineProps({
   defaultValue: {}, // eslint-disable-line vue/require-prop-types
   autocomplete: { type: String },
   name: { type: String },
+  showCautionLines: Boolean,
 
   // validations
   required: Boolean,

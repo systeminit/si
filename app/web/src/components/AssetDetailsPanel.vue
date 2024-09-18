@@ -146,47 +146,47 @@
           @focus="focus"
         />
       </Stack>
-      <template v-if="ffStore.SHOW_INTRINSIC_EDITING">
-        <Stack class="p-xs" spacing="none">
-          <span class="uppercase font-bold py-3"
-            >CONFIGURE DATA PROPAGATION</span
+      <Stack class="p-xs" spacing="none">
+        <span class="uppercase font-bold py-3">CONFIGURE DATA PROPAGATION</span>
+        <p class="text-xs pb-4">
+          Choose how output sockets and props get their values.
+        </p>
+        <span class="uppercase font-bold text-sm">Output Sockets</span>
+        <ul v-if="outputSocketIntrinsics.length > 0">
+          <li
+            v-for="config in outputSocketIntrinsics"
+            :key="config.attributePrototypeId"
           >
-          <p class="text-xs pb-4">
-            Choose how output sockets and props get their value
-          </p>
-          <span class="uppercase font-bold text-sm">Output Sockets</span>
-          <ul>
-            <li
-              v-for="config in outputSocketIntrinsics"
-              :key="config.attributePrototypeId"
-            >
-              <AssetDetailIntrinsicInput
-                :schemaVariantId="schemaVariantId"
-                :isLocked="editingAsset.isLocked"
-                :data="config"
-                @change="updateOutputSocketIntrinsics"
-                @changeToUnset="changeToUnset"
-                @changeToIdentity="changeToIdentity"
-              />
-            </li>
-          </ul>
-        </Stack>
-        <Stack class="p-xs" spacing="none">
-          <span class="uppercase font-bold text-sm">Props</span>
-          <ul>
-            <li v-for="prop in configurableProps" :key="prop.id">
-              <AssetDetailIntrinsicInput
-                :schemaVariantId="schemaVariantId"
-                :isLocked="editingAsset.isLocked"
-                :data="prop"
-                @change="updatePropIntrinsics"
-                @changeToUnset="changeToUnset"
-                @changeToIdentity="changeToIdentity"
-              />
-            </li>
-          </ul>
-        </Stack>
-      </template>
+            <AssetDetailIntrinsicInput
+              :schemaVariantId="schemaVariantId"
+              :isLocked="editingAsset.isLocked"
+              :data="config"
+              @change="updateOutputSocketIntrinsics"
+              @changeToUnset="changeToUnset"
+              @changeToIdentity="changeToIdentity"
+            />
+          </li>
+        </ul>
+        <p v-else class="text-xs pb-4 pt-2">
+          No output sockets exist for asset.
+        </p>
+      </Stack>
+      <Stack class="p-xs" spacing="none">
+        <span class="uppercase font-bold text-sm">Props</span>
+        <ul v-if="configurableProps.length > 0">
+          <li v-for="prop in configurableProps" :key="prop.id">
+            <AssetDetailIntrinsicInput
+              :schemaVariantId="schemaVariantId"
+              :isLocked="editingAsset.isLocked"
+              :data="prop"
+              @change="updatePropIntrinsics"
+              @changeToUnset="changeToUnset"
+              @changeToIdentity="changeToIdentity"
+            />
+          </li>
+        </ul>
+        <p v-else class="text-xs pb-4 pt-2">No props exist for asset.</p>
+      </Stack>
     </ScrollArea>
     <div
       v-else
@@ -243,7 +243,6 @@ import {
   BindingWithBackendKindAndOutputSocket,
 } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   ComponentType,
   InputSocketId,
@@ -265,7 +264,6 @@ const props = defineProps<{
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
-const ffStore = useFeatureFlagsStore();
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
 
@@ -383,6 +381,7 @@ const _configurableProps = computed(() => {
     };
     config.push(d);
   });
+  config.sort((a, b) => a.name.localeCompare(b.name));
   return config;
 });
 
@@ -433,6 +432,7 @@ const _outputSocketIntrinsics = computed(() => {
 
       bindings.push(d);
     });
+  bindings.sort((a, b) => a.socketName.localeCompare(b.socketName));
   return bindings;
 });
 
