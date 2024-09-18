@@ -340,21 +340,18 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         func_argument_id: FuncArgumentId,
         ap_id: AttributePrototypeId,
-    ) -> AttributePrototypeArgumentResult<AttributePrototypeArgumentId> {
+    ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentId>> {
         // AP --> APA --> Func Arg
 
         for apa_id in AttributePrototype::list_arguments_for_id(ctx, ap_id).await? {
             let this_func_arg_id = Self::func_argument_id_by_id(ctx, apa_id).await?;
 
             if this_func_arg_id == func_argument_id {
-                return Ok(apa_id);
+                return Ok(Some(apa_id));
             }
         }
 
-        Err(AttributePrototypeArgumentError::NotFoundForApAndFuncArg(
-            ap_id,
-            func_argument_id,
-        ))
+        Ok(None)
     }
 
     pub async fn value_source(

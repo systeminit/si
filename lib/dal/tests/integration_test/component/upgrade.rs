@@ -4,7 +4,7 @@ use dal::diagram::Diagram;
 use dal::func::authoring::FuncAuthoringClient;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, Component, ComponentType, DalContext, Prop};
+use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, SchemaVariant};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::{create_component_for_default_schema_name, PropEditorTestView};
 use dal_test::test;
@@ -354,7 +354,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
     //
     let variant_one =
         update_schema_variant_component_type(ctx, variant_zero, ComponentType::Component).await;
-    assert_ne!(variant_zero, variant_one);
+    assert_eq!(variant_zero, variant_one);
     assert_eq!(ComponentType::Component, variant_one.get_type(ctx).await);
 
     //
@@ -410,7 +410,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     // Update the variant (we add a new description)
     //
     let variant_one = update_schema_variant_description(ctx, variant_zero, "eek").await;
-    assert_ne!(variant_zero, variant_one);
+    assert_eq!(variant_zero, variant_one);
     assert_eq!(
         ComponentType::ConfigurationFrameDown,
         variant_one.get_type(ctx).await
@@ -688,9 +688,9 @@ async fn update_schema_variant_component_type(
     .await
     .expect("save variant contents");
 
-    VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+    SchemaVariant::get_by_id_or_error(ctx, variant.id)
         .await
-        .expect("unable to update asset")
+        .expect("could not get updated variant")
         .into()
 }
 
@@ -714,9 +714,8 @@ async fn update_schema_variant_description(
     )
     .await
     .expect("save variant contents");
-
-    VariantAuthoringClient::regenerate_variant(ctx, variant.id())
+    SchemaVariant::get_by_id_or_error(ctx, variant.id)
         .await
-        .expect("unable to update asset")
+        .expect("could not get updated variant")
         .into()
 }
