@@ -6,6 +6,10 @@ on:
         type: string
         required: true
         description: "where to test"
+      report_slack_channel:
+        type: string
+        required: true
+        description: "where to push result data back to"
   workflow_dispatch:
     inputs:
       environment:
@@ -16,6 +20,10 @@ on:
         options:
           - tools
           - production
+      report_slack_channel:
+        type: string
+        required: false
+        description: "where to push result data back to"
   repository_dispatch:
     types:
       - webhook
@@ -79,3 +87,15 @@ jobs:
           curl -X POST \
             -H 'Content-type: application/json' \
             --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  push-webhook-result:
+    runs-on: ubuntu-latest
+    needs: api-test
+    if: ${{ always() && github.ref == 'refs/heads/main' && github.event.action == 'webhook' }}
+    steps:
+      - run: |
+          if [[ ${{ needs.api-test.result }} == 'success' ]]; then
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":tada: All API tests passed for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+          else
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":x: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+          fi
