@@ -29,7 +29,7 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     workspace_snapshot::DependentValueRoot,
-    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext,
+    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
     TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
@@ -325,7 +325,7 @@ impl DependentValuesUpdate {
                 metric!(counter.dvu.function_execution = -1);
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
-                        Ok(execution_values) => {
+                        Ok((execution_values, func)) => {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
@@ -351,6 +351,7 @@ impl DependentValuesUpdate {
                                     ctx,
                                     finished_value_id,
                                     execution_values,
+                                    func,
                                 )
                                 .await
                                 {
@@ -472,7 +473,7 @@ async fn values_from_prototype_function_execution(
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
     status_update: Option<StatusUpdate>,
-) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
+) -> (Ulid, DependentValueUpdateResult<(FuncRunValue, Func)>) {
     metric!(counter.dvu.function_execution = 1);
 
     if let Some(status_update) = status_update {
