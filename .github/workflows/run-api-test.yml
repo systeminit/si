@@ -16,6 +16,9 @@ on:
         options:
           - tools
           - production
+  repository_dispatch:
+    types:
+      - webhook
 
 jobs:
   define-test-matrix:
