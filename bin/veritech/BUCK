@@ -1,6 +1,5 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
     "export_file",
     "nix_omnibus_pkg",
     "rust_binary",
@@ -63,18 +62,6 @@ shfmt_check(
 shellcheck(
     name = "check-lint-shell",
     srcs = [":docker-entrypoint.sh"],
-)
-
-docker_image(
-    name = "image",
-    image_name = "veritech",
-    flake_lock = "//:flake.lock",
-    build_deps = [
-        "//bin/veritech:veritech",
-        "//bin/veritech:docker-entrypoint.sh",
-        "//bin/cyclone:cyclone",
-        "//bin/lang-js:bin",
-    ],
 )
 
 nix_omnibus_pkg(

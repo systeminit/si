@@ -1,6 +1,5 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
     "nix_omnibus_pkg",
     "rust_binary",
 )
@@ -20,12 +19,6 @@ rust_binary(
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
     },
-)
-
-docker_image(
-    name = "image",
-    image_name = "rebaser",
-    build_deps = ["//bin/rebaser:rebaser"],
 )
 
 nix_omnibus_pkg(
