@@ -1502,16 +1502,19 @@ impl FuncRunnerExecutionTask {
         let mut running_state_func_run_inner = Arc::unwrap_or_clone(self.func_run.clone());
         running_state_func_run_inner.set_state_to_running();
         let running_state_func_run = Arc::new(running_state_func_run_inner);
-        self.ctx
-            .layer_db()
-            .func_run()
-            .write(
-                running_state_func_run.clone(),
-                None,
-                self.ctx.events_tenancy(),
-                self.ctx.events_actor(),
-            )
-            .await?;
+
+        if !self.func.is_intrinsic() {
+            self.ctx
+                .layer_db()
+                .func_run()
+                .write(
+                    running_state_func_run.clone(),
+                    None,
+                    self.ctx.events_tenancy(),
+                    self.ctx.events_actor(),
+                )
+                .await?;
+        }
 
         let execution_result = match self.func_run.backend_kind().into() {
             FuncBackendKind::JsAction => {
@@ -1616,16 +1619,20 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_post_processing();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
+
                 let _ = self.result_tx.send(Ok(FuncRunValue::new(
                     next_state.id(),
                     unprocessed_value,
@@ -1640,16 +1647,18 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_failure();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
 
                 let _ = self.result_tx.send(Err(FuncRunnerError::ResultFailure {
                     kind,
@@ -1661,16 +1670,20 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_failure();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
+
                 let _ = self.result_tx.send(Err(err.into()));
             }
         }
