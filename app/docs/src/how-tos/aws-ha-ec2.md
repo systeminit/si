@@ -37,13 +37,12 @@ Start in a change set named `EC2 HA How-to`.
 When you are through with this guide, you should have components that look like
 this in your diagram:
 
-![AWS HA EC2 Diagram](./aws-ha-ec2-howto-complete.png)
+![AWS HA EC2 Diagram](./aws-ha-ec2/aws-ha-ec2-complete.png)
 
 ### Create a Loadbalancer component
 
-Add a `Loadbalancer` to your `VPC How-to` vpc frame.
-
-Set the component type to be `Configuration Frame (down)`.
+![Create Loadbalancer](./aws-ha-ec2/create-loadbalancer.png) Add a
+`Loadbalancer` to your `VPC How-to` vpc frame.
 
 Set the component name to `application-lb`.
 
@@ -60,6 +59,8 @@ the `Subnet ID` input socket of the `application-alb` component.
 
 ### Create an EC2 security group component for the Loadbalancer
 
+![Create Security Group](./aws-ha-ec2/create-security-group.png)
+
 Add a `Security Group` to your `application-alb` loadbalancer frame.
 
 Set the component name to `ALB Security Group`.
@@ -72,6 +73,8 @@ Connect the `Security Group ID` output socket of `ALB Security Group` component
 to the `Security Group ID` input socket of the `application-alb` frame.
 
 ### Create an Ec2 Ingress Rule component
+
+![Create Security Group](./aws-ha-ec2/create-security-group-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `application-alb` loadbalancer
 frame.
@@ -92,6 +95,8 @@ to the `Security Group ID` input socket of this `alb-8080-ingress` component.
 
 ### Create a Listener component
 
+![Create Listener](./aws-ha-ec2/create-listener.png)
+
 Add a `Listener` component to your `application-alb` loadbalancer frame.
 
 Set the component name to `HTTP:8080`.
@@ -103,6 +108,8 @@ Set the `Protocol` to be `HTTP`.
 Resize the frame to be large enough to fit another component.
 
 ### Create a Target Group
+
+![Create Target Group](./aws-ha-ec2/create-target-group.png)
 
 Add a `Target Group` component to your `Listener` frame.
 
@@ -137,6 +144,8 @@ Connect the `Target Group ARN` output socket of `app-tg` component to the
 
 ### Create an Application Frame
 
+![Create Application Frame](./aws-ha-ec2/create-application-frame.png)
+
 Add a `Generic Frame` component to your `VPC` frame.
 
 Set the component name to be `Application`.
@@ -144,6 +153,8 @@ Set the component name to be `Application`.
 Resize the frame to hold many components.
 
 ### Create an IAM Role
+
+![Create IAM Role](./aws-ha-ec2/create-iam-role.png)
 
 Add an `AWS IAM Role` component to your `Application` frame.
 
@@ -156,6 +167,8 @@ Set the `Description` to `EC2 Application Role`.
 Set the `Path` to `/si-tutorial/`.
 
 ### Create an Assume Role Policy
+
+![Create Assume Role](./aws-ha-ec2/create-iam-policy.png)
 
 Add an `AWS IAM Policy Statement` within the `application-role` AWS IAM Role
 frame.
@@ -170,6 +183,8 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 
 ### Create an AWS IAM AWS Service Principal
 
+![Create Service Principal](./aws-ha-ec2/create-service-principal.png)
+
 Add an `AWS IAM Service Principal` within the `application-role` AWS IAM Role
 frame.
 
@@ -182,6 +197,8 @@ Principal to the `Principal` input socket of your `allow-ec2` AWS IAM Policy
 Statement.
 
 ### Create an IAM Instance Profile
+
+![Create IAM Instance](./aws-ha-ec2/create-iam-instance.png)
 
 Add an `IAM Instance Profile` to your `Application` frame.
 
@@ -197,6 +214,8 @@ Instance Profile component.
 
 ### Create a Security Group component for the Application
 
+![Create Security Group](./aws-ha-ec2/create-security-group-application.png)
+
 Add a `Security Group` to your `Application` frame.
 
 Set the component name to `application-sg`
@@ -206,6 +225,8 @@ Set the `GroupName` to `application-sg`.
 Set the `Description` to be `Application Security Group`
 
 ### Create an Ec2 Ingress Rule component
+
+![Application Ingress](./aws-ha-ec2/create-application-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `Application` frame.
 
@@ -223,7 +244,9 @@ Connect the `Security Group ID` output socket of `ALB Security Group` component
 to the `Source Traffic Security Group ID` input socket of this
 `application-8080-ingress` component.
 
-### Create a Keypair component
+### Create a Key Pair component
+
+![Create Key Pair](./aws-ha-ec2/create-key-pair.png)
 
 Add a `Key Pair` to your `Application` frame.
 
@@ -233,6 +256,8 @@ Set the `KeyName` to `application-key-pair`.
 
 ### Create an AMI component
 
+![Create AMI](./aws-ha-ec2/create-ami.png)
+
 Add an `AMI` to your `Application` frame.
 
 Set the component name to be `Amazon Linux 2023`.
@@ -240,6 +265,8 @@ Set the component name to be `Amazon Linux 2023`.
 Set the `ImageId` to be `ami-0ba9883b710b05ac6`.
 
 ### Create a Launch Template component
+
+![Create Launch Template](./aws-ha-ec2/create-launch-template.png)
 
 Add a `Launch Template` component to your `Application` frame.
 
@@ -251,7 +278,7 @@ Set the `InstanceType` to be `t3.small`
 
 Set the `UserData` to be:
 
-```
+```bash
 #!/bin/bash
 # Update the system
 yum update -y
@@ -340,6 +367,8 @@ Connect the `Image ID` output socket of `Amazon Linux 2023` component to the
 
 ### Create an AutoScaling Group component
 
+![Create AutoScaling Group](./aws-ha-ec2/create-asg.png)
+
 Add an `AutoScaling Group` component to the `Application` frame.
 
 Set the component name to `application-asg`.
@@ -364,6 +393,8 @@ Group to the `Target Group ARN` input socket of this `application-asg`
 component.
 
 ### Apply your Change Set
+
+![Apply Change Set](./aws-ha-ec2/apply.png)
 
 Press `Escape` or click anywhere on the canvas background to select the
 Workspace.
