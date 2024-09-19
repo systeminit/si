@@ -1,9 +1,9 @@
 <template>
   <component
     :is="htmlTagOrComponentType"
-    v-bind="dynamicAttrs"
     :id="id"
     ref="internalRef"
+    :aria-disabled="noInteract === true ? true : undefined"
     :class="
       clsx(
         'flex gap-xs items-center cursor-pointer select-none group',
@@ -26,37 +26,37 @@
           'pl-sm',
       )
     "
-    role="menuitem"
-    :tabIndex="noInteract === true ? undefined : -1"
-    :aria-disabled="noInteract === true ? true : undefined"
     :data-no-close-on-click="noCloseOnClick ? true : ''"
+    :tabIndex="noInteract === true ? undefined : -1"
+    role="menuitem"
+    v-bind="dynamicAttrs"
+    @click="onClick"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
-    @click="onClick"
   >
     <Toggle
       v-if="toggleIcon"
       :selected="checked || false"
-      size="sm"
       class="pointer-events-none"
+      size="sm"
     />
     <Icon
       v-else-if="menuCtx.isCheckable.value"
       :name="checked ? 'check' : 'none'"
-      size="xs"
       class="mr-2xs shrink-0 pointer-events-none"
+      size="xs"
     />
     <slot name="icon">
       <Icon
         v-if="icon"
-        :name="icon"
-        size="sm"
         :class="
           clsx(
             'shrink-0 pointer-events-none',
             props.iconClass ? props.iconClass : '',
           )
         "
+        :name="icon"
+        size="sm"
       />
     </slot>
 
@@ -77,10 +77,10 @@
         <Icon name="chevron--right" size="sm" />
         <DropdownMenu
           ref="submenuRef"
-          variant="editor"
-          submenu
           :anchorTo="{ $el: internalRef, close: menuCtx.close }"
           :items="submenuItems"
+          submenu
+          variant="editor"
         />
       </template>
 
@@ -92,9 +92,9 @@
             'font-bold hover:underline',
           )
         "
+        @mousedown="onClickEndLink"
         @mouseenter="onMouseEnterEndLink"
         @mouseleave="onMouseLeaveEndLink"
-        @mousedown="onClickEndLink"
       >
         <slot name="endLinkLabel">
           <div v-if="endLinkLabel">{{ endLinkLabel }}</div>
@@ -206,6 +206,12 @@ const isFocused = computed(() => {
   return menuCtx.focusedItemId.value === id;
 });
 
+function trySelect() {
+  if (!noInteract.value) {
+    emit("select");
+  }
+}
+
 function onClick(event: MouseEvent) {
   if (
     noCloseOnClick.value ||
@@ -219,11 +225,9 @@ function onClick(event: MouseEvent) {
     ) {
       openSubmenu();
     }
-    if (!noInteract.value) {
-      emit("select");
-    }
+    trySelect();
   } else {
-    emit("select");
+    trySelect();
     menuCtx.close(props.doNotCloseMenuOnClick);
   }
 }

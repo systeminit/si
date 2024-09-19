@@ -4,9 +4,8 @@ use axum::{
     Json,
 };
 use dal::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, change_status::ChangeStatus,
-    diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId, InputSocketId, OutputSocketId,
-    User, Visibility, WsEvent,
+    change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
+    InputSocketId, OutputSocketId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,14 +26,6 @@ pub struct CreateConnectionRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateConnectionResponse {
-    pub id: AttributePrototypeArgumentId,
-    pub created_by: Option<User>,
-    pub deleted_by: Option<User>,
-}
-
 pub async fn create_connection(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -47,7 +38,7 @@ pub async fn create_connection(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let attribute_prototype_argument_id = Component::connect(
+    Component::connect(
         &ctx,
         request.from_component_id,
         request.from_socket_id,
@@ -99,12 +90,5 @@ pub async fn create_connection(
     if let Some(force_change_set_id) = force_change_set_id {
         response = response.header("force_change_set_id", force_change_set_id.to_string());
     }
-    Ok(response
-        .header("content-type", "application/json")
-        .body(serde_json::to_string(&CreateConnectionResponse {
-            id: attribute_prototype_argument_id,
-            // TODO(nick): figure out what to do with these fields that were left over from the "Connection" struct.
-            created_by: None,
-            deleted_by: None,
-        })?)?)
+    Ok(response.body(axum::body::Empty::new())?)
 }

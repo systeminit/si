@@ -1294,13 +1294,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const tempId = `temp-edge-${+new Date()}`;
+            const timestamp = new Date().toISOString();
 
-            return new ApiRequest<{
-              id: string;
-              creatd_by: string | null;
-              deleted_by: string | null;
-            }>({
+            const newEdge = edgeFromRawEdge(false)({
+              fromComponentId: from.componentId,
+              fromSocketId: from.socketId,
+              toComponentId: to.componentId,
+              toSocketId: to.socketId,
+              toDelete: false,
+              changeStatus: "added",
+              createdInfo: {
+                timestamp,
+                actor: { kind: "user", label: "You" },
+              },
+            });
+
+            return new ApiRequest({
               method: "post",
               url: "diagram/create_connection",
               params: {
@@ -1310,34 +1319,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 toSocketId: to.socketId,
                 ...visibilityParams,
               },
-              onSuccess: (response) => {
-                // change our temporary id to the real one, only if we haven't re-fetched the diagram yet
-                if (this.edgesById[tempId]) {
-                  const edge = this.edgesById[tempId];
-                  if (edge) {
-                    edge.id = response.id;
-                    this.edgesById[response.id] = edge;
-                    delete this.edgesById[tempId];
-                  }
-                }
-                // TODO: store component details rather than waiting for re-fetch
-              },
+              onSuccess: () => {},
               optimistic: () => {
-                const nowTs = new Date().toISOString();
-                this.edgesById[tempId] = {
-                  id: tempId,
-                  fromComponentId: from.componentId,
-                  fromSocketId: from.socketId,
-                  toComponentId: to.componentId,
-                  toSocketId: to.socketId,
-                  changeStatus: "added",
-                  toDelete: false,
-                  isInferred: false,
-                  createdInfo: {
-                    timestamp: nowTs,
-                    actor: { kind: "user", label: "You" },
-                  },
-                };
+                this.edgesById[newEdge.id] = newEdge;
 
                 const replacingEdge = this.allEdges
                   .filter(
@@ -1351,7 +1335,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.edgesById[replacingEdge.id];
                 }
                 return () => {
-                  delete this.edgesById[tempId];
+                  delete this.edgesById[newEdge.id];
                   if (replacingEdge) {
                     this.edgesById[replacingEdge.id] = replacingEdge;
                   }
@@ -1872,6 +1856,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
+
                   const e = edgeFromRawEdge(false)(edge);
                   this.edgesById[e.id] = e;
                 },
