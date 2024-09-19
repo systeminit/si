@@ -100,6 +100,8 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
+    #[error("component has children, cannot change to component type")]
+    ComponentHasChildren,
     #[error("component {0} has more than one value for the {1} prop")]
     ComponentHasTooManyValues(ComponentId, PropId),
     #[error("component {0} has an unexpected schema variant id")]
@@ -132,6 +134,8 @@ pub enum ComponentError {
     InputSocketNotFoundForComponentId(InputSocketId, ComponentId),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
+    #[error("invalid component type update from {0} to {1}")]
+    InvalidComponentTypeUpdate(ComponentType, ComponentType),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("component {0} missing attribute value for code")]
@@ -1619,12 +1623,81 @@ impl Component {
 
         Ok(serde_json::from_value(type_value)?)
     }
+    /// Sets the [`AttributeValue`] for root/si/type to the given [`ComponentType`]
+    /// NOTE: This does NOT ensure that this change is valid, nor does it account for
+    /// needing to update other attribute values in cases where the new type is an up or
+    /// down frame
+    pub async fn set_type_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        new_type: ComponentType,
+    ) -> ComponentResult<()> {
+        let type_value_id =
+            Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
+                .await?;
+        let value = serde_json::to_value(new_type)?;
+
+        AttributeValue::update(ctx, type_value_id, Some(value)).await?;
+
+        Ok(())
+    }
 
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
         Self::get_type_by_id(ctx, self.id()).await
     }
 
-    pub async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
+    /// For the given [`ComponentId`], updates the type.  If the type is changing from or to an Up/Down Frame,
+    /// this ensures we update the necessary values given the changing data flows
+    pub async fn update_type_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        new_type: ComponentType,
+    ) -> ComponentResult<()> {
+        // cache the current type
+        let current_type = Self::get_type_by_id(ctx, component_id).await?;
+
+        let children = Self::get_children_for_id(ctx, component_id).await?;
+
+        // see if this component is a parent or child
+        let reference_id = match Self::get_parent_by_id(ctx, component_id).await? {
+            Some(parent) => Some(parent),
+            None => children.first().copied(),
+        };
+
+        // if the current component has children, and the new type is a component, return an error
+        if new_type == ComponentType::Component && !children.is_empty() {
+            return Err(ComponentError::ComponentHasChildren);
+        }
+
+        // no-op if we're not actually changing the type
+        if new_type == current_type {
+            return Ok(());
+        }
+        if let Some(reference_id) = reference_id {
+            // this means the component is a child or parent,
+            //so we need to ensure we update any necessary values
+            match (new_type, current_type) {
+                (ComponentType::Component, ComponentType::ConfigurationFrameDown)
+                | (ComponentType::Component, ComponentType::ConfigurationFrameUp)
+                | (ComponentType::ConfigurationFrameDown, ComponentType::Component)
+                | (ComponentType::ConfigurationFrameDown, ComponentType::ConfigurationFrameUp)
+                | (ComponentType::ConfigurationFrameUp, ComponentType::Component)
+                | (ComponentType::ConfigurationFrameUp, ComponentType::ConfigurationFrameDown) => {
+                    Frame::update_type_from_or_to_frame(ctx, component_id, reference_id, new_type)
+                        .await
+                        .map_err(Box::new)?;
+                }
+                (new, old) => return Err(ComponentError::InvalidComponentTypeUpdate(old, new)),
+            }
+        } else {
+            // this component stands alone, just set the type!
+            Self::set_type_by_id(ctx, component_id, new_type).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
         let type_value_id = self
             .attribute_value_for_prop(ctx, &["root", "si", "type"])
             .await?;

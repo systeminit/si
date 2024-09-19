@@ -50,6 +50,60 @@ pub type FrameResult<T> = Result<T, FrameError>;
 pub struct Frame;
 
 impl Frame {
+    /// Given a [`ComponentId`] and either the parent or a child of it,
+    /// calculate what needs to be updated given the change in [`ComponentType`]
+    /// and enqueue those [`AttributeValue`]s to be updated
+    pub async fn update_type_from_or_to_frame(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        reference_id: ComponentId,
+        new_type: ComponentType,
+    ) -> FrameResult<()> {
+        let initial_impacted_values =
+            Frame::get_all_inferred_connections_for_component_tree(ctx, reference_id, component_id)
+                .await?;
+        // do it
+        Component::set_type_by_id(ctx, component_id, new_type).await?;
+        let after_impacted_values =
+            Frame::get_all_inferred_connections_for_component_tree(ctx, reference_id, component_id)
+                .await?;
+        let mut diff = HashSet::new();
+        diff.extend(
+            initial_impacted_values
+                .difference(&after_impacted_values)
+                .cloned(),
+        );
+        let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        for pair in &diff {
+            inferred_edges.push(SummaryDiagramInferredEdge {
+                to_socket_id: pair.component_input_socket.input_socket_id,
+                to_component_id: pair.component_input_socket.component_id,
+                from_socket_id: pair.component_output_socket.output_socket_id,
+                from_component_id: pair.component_output_socket.component_id,
+                to_delete: false, // irrelevant
+            })
+        }
+        // let the front end know what's been removed
+        WsEvent::remove_inferred_edges(ctx, inferred_edges)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        // also get what's in current that's not in before (because these have also changed!)
+        diff.extend(
+            after_impacted_values
+                .difference(&initial_impacted_values)
+                .cloned(),
+        );
+        // enqueue dvu for those values that no longer have an output socket driving them!
+        ctx.add_dependent_values_and_enqueue(
+            diff.into_iter()
+                .map(|values| values.component_input_socket.attribute_value_id)
+                .collect_vec(),
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Provides an ability to remove the existing ['Component']'s parent``
     #[instrument(level = "info", skip(ctx))]
     pub async fn orphan_child(ctx: &DalContext, child_id: ComponentId) -> FrameResult<()> {
