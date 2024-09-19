@@ -18,10 +18,8 @@ macro_rules! __log_rejection {
     };
 }
 
-/// Private API.
-#[doc(hidden)]
 #[macro_export]
-macro_rules! __define_rejection {
+macro_rules! define_rejection {
     (
         #[status_code = $status_code:expr]
         #[body = $body:expr]
@@ -52,8 +50,8 @@ macro_rules! __define_rejection {
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> ::async_nats::StatusCode {
-                ::async_nats::StatusCode::from_u16($status_code).expect("status code is valid")
+            pub fn status(&self) -> $crate::StatusCode {
+                $crate::StatusCode::from_u16($status_code).expect("status code is valid")
             }
         }
 
@@ -110,8 +108,8 @@ macro_rules! __define_rejection {
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> ::async_nats::StatusCode {
-                ::async_nats::StatusCode::from_u16($status_code).expect("status code is valid")
+            pub fn status(&self) -> $crate::StatusCode {
+                $crate::StatusCode::from_u16($status_code).expect("status code is valid")
             }
         }
 
@@ -129,10 +127,8 @@ macro_rules! __define_rejection {
     };
 }
 
-/// Private API.
-#[doc(hidden)]
 #[macro_export]
-macro_rules! __composite_rejection {
+macro_rules! composite_rejection {
     (
         $(#[$m:meta])*
         pub enum $name:ident {
@@ -171,7 +167,7 @@ macro_rules! __composite_rejection {
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> ::async_nats::StatusCode {
+            pub fn status(&self) -> $crate::StatusCode {
                 match self {
                     $(
                         Self::$variant(inner) => inner.status(),
