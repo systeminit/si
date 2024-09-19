@@ -74,6 +74,7 @@ impl IntoResponse for SessionError {
             SessionError::WorkspacePermissions => {
                 (StatusCode::UNAUTHORIZED, None, self.to_string())
             }
+            SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, None, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, None, self.to_string()),
         };
 
