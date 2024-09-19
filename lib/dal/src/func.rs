@@ -707,6 +707,22 @@ impl Func {
     }
 
     pub async fn into_frontend_type(&self, ctx: &DalContext) -> FuncResult<FuncSummary> {
+        let bindings: Vec<FuncBinding> = FuncBinding::for_func_id(ctx, self.id)
+            .await
+            .map_err(Box::new)?;
+
+        self.into_frontend_type_sideload_bindings(ctx, bindings)
+            .await
+    }
+
+    pub async fn into_frontend_type_sideload_bindings(
+        &self,
+        ctx: &DalContext,
+        bindings: Vec<FuncBinding>,
+    ) -> FuncResult<FuncSummary> {
+        let bindings: Vec<si_frontend_types::FuncBinding> =
+            bindings.into_iter().map(Into::into).collect_vec();
+
         let args = FuncArgument::list_for_func(ctx, self.id)
             .await
             .map_err(Box::new)?;
@@ -720,13 +736,8 @@ impl Func {
                 timestamp: arg.timestamp.into(),
             });
         }
-        let bindings: Vec<si_frontend_types::FuncBinding> = FuncBinding::for_func_id(ctx, self.id)
-            .await
-            .map_err(Box::new)?
-            .into_iter()
-            .map(Into::into)
-            .collect_vec();
-        let types = Self::get_types(ctx, self.id).await?;
+
+        let types = self.get_types(ctx).await?;
         Ok(FuncSummary {
             func_id: self.id.into(),
             kind: self.kind.into(),
@@ -735,20 +746,19 @@ impl Func {
             display_name: self.display_name.clone(),
             description: self.description.clone(),
             is_locked: self.is_locked,
+            bindings,
             arguments,
-            bindings: si_frontend_types::FuncBindings { bindings },
             types: Some(types),
         })
     }
     // helper to get updated types to fire WSEvents so SDF can decide when these events need to fire
-    pub async fn get_types(ctx: &DalContext, func_id: FuncId) -> FuncResult<String> {
-        let func = Func::get_by_id_or_error(ctx, func_id).await?;
+    pub async fn get_types(&self, ctx: &DalContext) -> FuncResult<String> {
         let types = [
             FuncAuthoringClient::compile_return_types(
-                func.backend_response_type,
-                func.backend_kind,
+                self.backend_response_type,
+                self.backend_kind,
             ),
-            FuncAuthoringClient::compile_types_from_bindings(ctx, func_id)
+            FuncAuthoringClient::compile_types_from_bindings(ctx, self.id)
                 .await
                 .map_err(Box::new)?
                 .as_str(),

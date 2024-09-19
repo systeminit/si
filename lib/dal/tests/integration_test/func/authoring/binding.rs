@@ -982,7 +982,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
             .into_frontend_type(ctx)
             .await
             .expect("could not get front end type");
-        for binding in func_summary.bindings.bindings {
+        for binding in func_summary.bindings {
             match binding {
                 si_frontend_types::FuncBinding::Action {
                     schema_variant_id,
