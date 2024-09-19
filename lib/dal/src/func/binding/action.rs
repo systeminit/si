@@ -147,14 +147,12 @@ impl ActionBinding {
         let mut ts_types = vec![];
         for (variant_id, _) in schema_variant_ids {
             let path = "root";
-            let prop = match Prop::find_prop_by_path(ctx, variant_id, &PropPath::new([path])).await
-            {
-                Ok(prop_id) => prop_id,
-                Err(_) => Err(SchemaVariantError::PropNotFoundAtPath(
-                    variant_id,
-                    path.to_string(),
-                ))?,
-            };
+
+            let prop = Prop::find_prop_by_path(ctx, variant_id, &PropPath::new([path]))
+                .await
+                .map_err(|_| {
+                    SchemaVariantError::PropNotFoundAtPath(variant_id, path.to_string())
+                })?;
             ts_types.push(prop.ts_type(ctx).await?)
         }
         Ok(format!(

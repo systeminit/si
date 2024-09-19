@@ -126,7 +126,7 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         func_id,                     // expected
         func_summary.func_id.into()  // actual
     );
-    let bindings = func_summary.bindings.bindings;
+    let bindings = func_summary.bindings;
     assert_eq!(
         2,              // expected
         bindings.len()  // actual

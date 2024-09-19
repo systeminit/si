@@ -31,8 +31,7 @@ pub struct FuncSummary {
     pub description: Option<String>,
     pub is_locked: bool,
     pub arguments: Vec<FuncArgument>,
-    #[serde(flatten)]
-    pub bindings: FuncBindings,
+    pub bindings: Vec<FuncBinding>,
     pub types: Option<String>,
     pub backend_kind: FuncBackendKind,
 }

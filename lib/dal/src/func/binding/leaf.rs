@@ -251,9 +251,9 @@ impl LeafBinding {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncBindingResult<String> {
-        let attribute_prorotypes = AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
+        let attribute_prototypes = AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
         let mut schema_variant_ids = vec![];
-        for attribute_prototype_id in attribute_prorotypes {
+        for attribute_prototype_id in attribute_prototypes {
             match AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await? {
                 EventualParent::SchemaVariant(schema_variant_id) => {
                     schema_variant_ids.push(schema_variant_id)

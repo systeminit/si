@@ -573,7 +573,7 @@ impl FuncAuthoringClient {
         ts_types::compile_return_types(response_type, kind)
     }
 
-    /// Comiples return types based on the [`FuncBinding`] for the Func
+    /// Compiles return types based on the [`FuncBinding`] for the Func
     pub async fn compile_types_from_bindings(
         ctx: &DalContext,
         func_id: FuncId,
