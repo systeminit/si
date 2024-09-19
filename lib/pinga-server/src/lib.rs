@@ -5,7 +5,7 @@ pub mod server;
 
 use std::io;
 
-use dal::{InitializationError, TransactionsError};
+use dal::{DedicatedExecutorInitializeError, InitializationError, TransactionsError};
 use si_data_nats::{async_nats, NatsError};
 use si_data_pg::PgPoolError;
 use thiserror::Error;
@@ -21,6 +21,10 @@ pub use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("dal jetstream streams error: {0}")]
+    DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
+    #[error("compute executor initialization error: {0}")]
+    DedicatedExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     #[error("initialization error: {0}")]
     Initialization(#[from] InitializationError),
     #[error("stream consumer error: {0}")]

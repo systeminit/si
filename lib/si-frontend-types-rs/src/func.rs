@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use si_events::{
     ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
-    FuncArgumentId, FuncId, FuncKind, InputSocketId, OutputSocketId, PropId, SchemaVariantId,
-    Timestamp,
+    FuncArgumentId, FuncBackendKind, FuncId, FuncKind, InputSocketId, OutputSocketId, PropId,
+    SchemaVariantId, Timestamp,
 };
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -34,7 +34,9 @@ pub struct FuncSummary {
     #[serde(flatten)]
     pub bindings: FuncBindings,
     pub types: Option<String>,
+    pub backend_kind: FuncBackendKind,
 }
+
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncArgument {
@@ -136,6 +138,7 @@ pub struct AttributeArgumentBinding {
     pub attribute_prototype_argument_id: Option<AttributePrototypeArgumentId>,
     pub prop_id: Option<PropId>,
     pub input_socket_id: Option<InputSocketId>,
+    pub static_value: Option<serde_json::Value>,
 }
 
 /// This enum provides available child [`Prop`](crate::Prop) trees of [`RootProp`](crate::RootProp)

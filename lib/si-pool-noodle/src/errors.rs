@@ -25,4 +25,7 @@ pub enum PoolNoodleError<E> {
     /// Failed to healthcheck instance creation.
     #[error("Failed to check pool health: {0}")]
     Unhealthy(#[source] E),
+    /// Failed to healthcheck instance creation in time.
+    #[error("Failed to check pool health in time")]
+    UnhealthyTimeout(#[source] tokio::time::error::Elapsed),
 }

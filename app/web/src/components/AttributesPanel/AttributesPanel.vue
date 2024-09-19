@@ -45,7 +45,6 @@
             aggregationFrame: 'Frame',
           }[siValues.type]
         "
-        variant="simple"
         size="lg"
         tooltipPlacement="top"
         :selected="typeMenuRef?.isOpen"

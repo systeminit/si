@@ -16,6 +16,8 @@ import {
   CodeGeneration,
   Authentication,
   Qualification,
+  FuncBackendKind,
+  AttributePrototypeId,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -24,6 +26,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -53,9 +56,20 @@ export interface DeleteFuncResponse {
   name: string;
 }
 
-export interface BindingWithDisplayName extends Action {
-  displayName: string;
+export interface AttributeWithVariant extends Attribute {
+  schemaVariantId: NonNullable<SchemaVariantId>;
 }
+export interface BindingWithDisplayName extends Action {
+  displayName?: string | null;
+  name: string;
+}
+
+export interface BindingWithBackendKind extends Attribute {
+  backendKind: FuncBackendKind;
+  attributePrototypeId: NonNullable<AttributePrototypeId>;
+}
+
+const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -170,14 +184,43 @@ export const useFuncStore = () => {
             if (actions && actions.length > 0) {
               actions.forEach((b) => {
                 const a = _.cloneDeep(b) as BindingWithDisplayName;
-                a.displayName = summary?.displayName || "<Unknown>";
+                a.displayName = summary?.displayName;
+                a.name = summary?.name || "<not set>";
                 _bindings.push(a);
               });
             }
           });
-          return _bindings.sort((_a, _b) =>
-            _a.displayName.localeCompare(_b.displayName),
-          );
+          return _bindings;
+          // return _bindings.sort((_a, _b) =>
+          //   _a.displayName.localeCompare(_b.displayName),
+          // );
+        },
+
+        intrinsicBindingsByVariant(
+          state,
+        ): Map<SchemaVariantId, BindingWithBackendKind[]> {
+          const _bindings = new DefaultMap<
+            SchemaVariantId,
+            BindingWithBackendKind[]
+          >(() => []);
+          Object.values(state.funcsById)
+            .filter((func) => INTRINSICS_DISPLAYED.includes(func.backendKind))
+            .forEach((func) => {
+              func.bindings
+                .filter(
+                  (binding): binding is AttributeWithVariant =>
+                    !!binding.schemaVariantId &&
+                    binding.bindingKind === FuncBindingKind.Attribute,
+                )
+                .forEach((binding) => {
+                  const _curr = _bindings.get(binding.schemaVariantId);
+                  const b = binding as BindingWithBackendKind;
+                  b.backendKind = func.backendKind;
+                  _curr.push(b);
+                  _bindings.set(binding.schemaVariantId, _curr);
+                });
+            });
+          return _bindings;
         },
       },
 

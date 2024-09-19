@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use chrono::Utc;
-use petgraph::{Direction, Incoming, Outgoing};
+use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::ParseError;
@@ -34,15 +34,16 @@ use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::node_weight::input_socket_node_weight::InputSocketNodeWeightError;
-use crate::workspace_snapshot::node_weight::SchemaVariantNodeWeight;
-use crate::workspace_snapshot::node_weight::{
-    traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError, PropNodeWeight,
+use crate::workspace_snapshot::{
+    content_address::{ContentAddress, ContentAddressDiscriminants},
+    edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+    graph::NodeIndex,
+    node_weight::{
+        input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
+        NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
+    },
+    WorkspaceSnapshotError,
 };
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     implement_add_edge_to, pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
@@ -308,6 +309,15 @@ pub struct SchemaVariantDeletedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantReplacedPayload {
+    schema_id: SchemaId,
+    old_schema_variant_id: SchemaVariantId,
+    new_schema_variant: frontend_types::SchemaVariant,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     pub async fn schema_variant_created(
         ctx: &DalContext,
@@ -336,6 +346,26 @@ impl WsEvent {
             WsPayload::SchemaVariantDeleted(SchemaVariantDeletedPayload {
                 schema_variant_id,
                 schema_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+    pub async fn schema_variant_replaced(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+        old_schema_variant_id: SchemaVariantId,
+        new_schema_variant: SchemaVariant,
+    ) -> WsEventResult<Self> {
+        let new_schema_variant = new_schema_variant
+            .into_frontend_type(ctx, schema_id)
+            .await?;
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantReplaced(SchemaVariantReplacedPayload {
+                schema_id,
+                old_schema_variant_id,
+                new_schema_variant,
                 change_set_id: ctx.change_set_id(),
             }),
         )
@@ -519,9 +549,7 @@ impl SchemaVariant {
     {
         let before_modification_variant = self.clone();
         let mut schema_variant = self;
-
         lambda(&mut schema_variant)?;
-
         if schema_variant != before_modification_variant {
             let new_content = SchemaVariantContent::from(schema_variant.clone());
             let (hash, _) = ctx
@@ -1720,44 +1748,14 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<SchemaId> {
-        let schema_id = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            let maybe_schema_indices = workspace_snapshot
-                .edges_directed(schema_variant_id, Incoming)
-                .await?;
-
-            let mut schema_id: Option<SchemaId> = None;
-            for (edge_weight, source_index, _target_index) in maybe_schema_indices {
-                if *edge_weight.kind() == EdgeWeightKind::new_use()
-                    || *edge_weight.kind() == EdgeWeightKind::new_use_default()
-                {
-                    if let NodeWeight::Content(content) =
-                        workspace_snapshot.get_node_weight(source_index).await?
-                    {
-                        let content_hash_discriminants: ContentAddressDiscriminants =
-                            content.content_address().into();
-                        if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
-                            schema_id = match schema_id {
-                                None => Some(content.id().into()),
-                                Some(_already_found_schema_id) => {
-                                    return Err(SchemaVariantError::MoreThanOneSchemaFound(
-                                        schema_variant_id,
-                                    ));
-                                }
-                            };
-                        }
-                    }
-                }
-            }
-            schema_id.ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))?
-        };
-
-        Ok(schema_id)
+        ctx.workspace_snapshot()?
+            .schema_id_for_schema_variant_id(schema_variant_id)
+            .await
+            .map_err(Into::into)
     }
 
     /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
-    /// [intrinsics](IntrinsicFunc).
+    /// [intrinsics](IntrinsicFunc) that are not [`IntrinsicFunc::Unset`] and [`IntrinsicFunc::Identity`].
     pub async fn all_funcs(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -1766,7 +1764,40 @@ impl SchemaVariant {
         let func_ids = Vec::from_iter(func_id_set.into_iter());
         let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
 
-        // Filter out intrinsic funcs. kkep this here
+        // Filter out most intrinsic funcs - return si:unset and si:identity to start. kkep this here
+        let mut filtered_funcs = Vec::new();
+        for func in &funcs {
+            match IntrinsicFunc::maybe_from_str(&func.name) {
+                None => filtered_funcs.push(func.to_owned()),
+                Some(intrinsic) => match intrinsic {
+                    IntrinsicFunc::Identity | IntrinsicFunc::Unset => {
+                        filtered_funcs.push(func.to_owned())
+                    }
+                    IntrinsicFunc::SetArray
+                    | IntrinsicFunc::SetBoolean
+                    | IntrinsicFunc::SetInteger
+                    | IntrinsicFunc::SetJson
+                    | IntrinsicFunc::SetMap
+                    | IntrinsicFunc::SetObject
+                    | IntrinsicFunc::SetString
+                    | IntrinsicFunc::Validation => {} //not returning these at the moment!
+                },
+            }
+        }
+        Ok(filtered_funcs)
+    }
+
+    /// Returns all [`Funcs`](Func) for a given [`SchemaVariantId`](SchemaVariant) barring
+    /// [intrinsics](IntrinsicFunc) .
+    pub async fn all_funcs_without_intrinsics(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let func_id_set = Self::all_func_ids(ctx, schema_variant_id).await?;
+        let func_ids = Vec::from_iter(func_id_set.into_iter());
+        let funcs: Vec<Func> = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
+
+        // Filter out intrinsic funcs.
         let mut filtered_funcs = Vec::new();
         for func in &funcs {
             if IntrinsicFunc::maybe_from_str(&func.name).is_none() {

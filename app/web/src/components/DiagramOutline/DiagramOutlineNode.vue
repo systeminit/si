@@ -122,6 +122,8 @@
                 class="hover:scale-110"
                 size="sm"
                 type="upgradable"
+                :disabled="upgradeRequestStatus.isPending"
+                :requestStatus="upgradeRequestStatus"
                 @click.stop="upgradeComponent"
               />
             </div>
@@ -314,6 +316,8 @@ const parentBreadcrumbsText = computed(() => {
   ).join(" > ");
 });
 
+const upgradeRequestStatus =
+  componentsStore.getRequestStatus("UPGRADE_COMPONENT");
 const upgradeComponent = async () => {
   componentsStore.setSelectedComponentId(null);
   await componentsStore.UPGRADE_COMPONENT(

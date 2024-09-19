@@ -9,7 +9,6 @@
         >
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedVariantId"
-            variant="simple"
             :disabled="!assetStore.selectedSchemaVariant?.schemaVariantId"
             @selected-attach-type="openAttachFuncModal"
           />

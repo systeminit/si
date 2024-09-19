@@ -5,7 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use petgraph::{algo, prelude::*, stable_graph::Edges, visit::DfsEvent};
+use petgraph::{
+    algo,
+    prelude::*,
+    stable_graph::{Edges, Neighbors},
+    visit::DfsEvent,
+};
 use serde::{Deserialize, Serialize};
 use si_events::{ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
@@ -25,6 +30,7 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
+pub mod schema;
 mod tests;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -339,6 +345,14 @@ impl WorkspaceSnapshotGraphV3 {
         direction: Direction,
     ) -> Edges<'_, EdgeWeight, Directed, u32> {
         self.graph.edges_directed(node_index, direction)
+    }
+
+    pub fn neighbors_directed(
+        &self,
+        node_index: NodeIndex,
+        direction: Direction,
+    ) -> Neighbors<'_, EdgeWeight> {
+        self.graph.neighbors_directed(node_index, direction)
     }
 
     pub fn find_edge(&self, from_idx: NodeIndex, to_idx: NodeIndex) -> Option<&EdgeWeight> {
@@ -865,7 +879,7 @@ impl WorkspaceSnapshotGraphV3 {
     }
 
     #[inline(always)]
-    pub(crate) fn get_node_index_by_id(
+    pub fn get_node_index_by_id(
         &self,
         id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
@@ -878,7 +892,7 @@ impl WorkspaceSnapshotGraphV3 {
     }
 
     #[inline(always)]
-    pub(crate) fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
+    pub fn get_node_index_by_id_opt(&self, id: impl Into<Ulid>) -> Option<NodeIndex> {
         let id = id.into();
 
         self.node_index_by_id.get(&id).copied()
@@ -932,10 +946,6 @@ impl WorkspaceSnapshotGraphV3 {
         edge_index: EdgeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<&EdgeWeight>> {
         Ok(self.graph.edge_weight(edge_index))
-    }
-
-    pub fn has_path_to_root(&self, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, self.root_index, node, None)
     }
 
     pub fn import_component_subgraph(
@@ -1097,12 +1107,6 @@ impl WorkspaceSnapshotGraphV3 {
     pub fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
-    }
-
-    #[allow(dead_code)]
-    fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, start, node, None)
-            && algo::has_path_connecting(&self.graph, node, end, None)
     }
 
     pub fn node_count(&self) -> usize {
@@ -1445,8 +1449,6 @@ impl WorkspaceSnapshotGraphV3 {
         Ok(())
     }
 
-    /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
-    /// and a provided graph as the "onto" graph.
     pub fn perform_updates(&mut self, updates: &[Update]) -> WorkspaceSnapshotGraphResult<()> {
         for update in updates {
             match update {
@@ -1460,6 +1462,10 @@ impl WorkspaceSnapshotGraphV3 {
 
                     if let (Some(source_idx), Some(destination_idx)) = (source_idx, destination_idx)
                     {
+                        if let EdgeWeightKind::Use { is_default: true } = edge_weight.kind() {
+                            ensure_only_one_default_use_edge(self, source_idx)?;
+                        }
+
                         self.add_edge_inner(
                             source_idx,
                             edge_weight.clone(),
@@ -1562,4 +1568,32 @@ fn prop_node_indexes_for_node_index(
             None
         })
         .collect()
+}
+
+fn ensure_only_one_default_use_edge(
+    graph: &mut WorkspaceSnapshotGraphV3,
+    source_idx: NodeIndex,
+) -> WorkspaceSnapshotGraphResult<()> {
+    let existing_default_targets: Vec<NodeIndex> = graph
+        .edges_directed(source_idx, Outgoing)
+        .filter(|edge_ref| {
+            matches!(
+                edge_ref.weight().kind(),
+                EdgeWeightKind::Use { is_default: true }
+            )
+        })
+        .map(|edge_ref| edge_ref.target())
+        .collect();
+
+    for target_idx in existing_default_targets {
+        graph.remove_edge(source_idx, target_idx, EdgeWeightKindDiscriminants::Use)?;
+        graph.add_edge_inner(
+            source_idx,
+            EdgeWeight::new(EdgeWeightKind::new_use()),
+            target_idx,
+            false,
+        )?;
+    }
+
+    Ok(())
 }

@@ -4,7 +4,7 @@ use strum::{AsRefStr, Display};
 use telemetry::prelude::warn;
 
 use crate::func::FuncResult;
-use crate::{FuncBackendKind, FuncBackendResponseType, FuncError};
+use crate::{FuncBackendKind, FuncBackendResponseType};
 
 /// Describes the kind of [`Func`](crate::Func).
 #[remain::sorted]
@@ -64,14 +64,6 @@ impl FuncKind {
             FuncBackendKind::JsAction => Ok(FuncKind::Action),
             FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
             FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
-            FuncBackendKind::JsValidation => {
-                warn!(
-                    ?func_backend_kind,
-                    ?func_backend_response_type,
-                    "found JsValidation func backend kind, marking as unknown"
-                );
-                Ok(FuncKind::Unknown)
-            }
             FuncBackendKind::Array
             | FuncBackendKind::Json
             | FuncBackendKind::Boolean
@@ -83,10 +75,14 @@ impl FuncKind {
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
-            _ => Err(FuncError::UnknownFunctionType(
-                func_backend_kind,
-                func_backend_response_type,
-            )),
+            FuncBackendKind::JsReconciliation | FuncBackendKind::JsValidation => {
+                warn!(
+                    %func_backend_kind,
+                    %func_backend_response_type,
+                    "found deprecated or unknown func backend kind, marking as unknown"
+                );
+                Ok(FuncKind::Unknown)
+            }
         }
     }
 }

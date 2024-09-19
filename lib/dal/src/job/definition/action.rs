@@ -15,6 +15,7 @@ use crate::{
         prototype::{ActionKind, ActionPrototype},
         Action, ActionError, ActionId, ActionState,
     },
+    billing_publish,
     change_status::ChangeStatus,
     job::{
         consumer::{
@@ -139,14 +140,15 @@ async fn inner_run(
     let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
     // Execute the action function
-    let maybe_resource = ActionPrototype::run(ctx, prototype_id, component_id).await?;
+    let (maybe_resource, func_run_id) =
+        ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
     // process the result
     process_execution(ctx, maybe_resource.as_ref(), action_id).await?;
 
     // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-    if prototype.kind == ActionKind::Destroy {
+    if ActionKind::Destroy == prototype.kind {
         // after we commit check for removable components if we just successfully deleted a component
         let to_delete_components = Component::list_to_be_deleted(ctx).await?;
         let mut work_queue = VecDeque::from(to_delete_components);
@@ -165,7 +167,20 @@ async fn inner_run(
             }
         }
     }
+
     ctx.commit().await?;
+
+    // Now that everything has passed, we can send billing events.
+    match prototype.kind {
+        ActionKind::Create => {
+            billing_publish::for_resource_create(ctx, component_id, func_run_id).await?;
+        }
+        ActionKind::Destroy => {
+            billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;
+        }
+        ActionKind::Manual | ActionKind::Refresh | ActionKind::Update => {}
+    }
+
     Ok(maybe_resource)
 }
 

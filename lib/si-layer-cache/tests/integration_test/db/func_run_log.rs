@@ -9,7 +9,9 @@ use si_layer_cache::LayerDb;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<String, String, String, String>;
 
@@ -23,6 +25,7 @@ async fn write_to_db() {
         dbfile,
         setup_pg_db("func_run_log_write_to_db").await,
         setup_nats_client(Some("func_run_log_write_to_db".to_string())).await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -87,6 +90,7 @@ async fn update() {
         dbfile,
         db.clone(),
         setup_nats_client(Some("func_run_log_update_to_db".to_string())).await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -99,6 +103,7 @@ async fn update() {
         dbfile,
         db,
         setup_nats_client(Some("func_run_log_update_to_db".to_string())).await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -269,6 +274,7 @@ async fn write_and_get_for_func_run_id() {
             "func_run_log_write_and_read_many_for_func_run_id".to_string(),
         ))
         .await,
+        setup_compute_executor(),
         MemoryCacheConfig::default(),
         token,
     )

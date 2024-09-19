@@ -66,6 +66,7 @@ import Refresh from "~icons/heroicons-solid/refresh";
 import Pencil from "~icons/heroicons-outline/pencil";
 import PencilOff from "~icons/material-symbols/edit-off-outline";
 import Cube from "~icons/heroicons-outline/cube";
+import StarOutline from "~icons/heroicons-outline/star";
 import CubePlus from "./custom-icons/cube-plus.svg?raw";
 import Clock from "~icons/heroicons-solid/clock";
 import ExclamationCircle from "~icons/heroicons-solid/exclamation-circle";
@@ -318,6 +319,7 @@ export const ICONS = Object.freeze({
   "sliders-vertical": SlidersVertical,
   spacebar: MaterialSymbolsSpaceBarRounded,
   star: Star,
+  starOutline: StarOutline,
   sun: Sun,
   "test-tube": PhTestTubeFill,
   "thumbs-down": ThumbsDown,

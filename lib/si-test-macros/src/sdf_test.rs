@@ -176,6 +176,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
         // TODO(fnichol): we can use a macro attribute to opt-out and not run a veritech server in
         // the future, but for now (as before), every test starts with its own veritech server with
         // a randomized subject prefix
+        expander.setup_start_forklift_server();
         expander.setup_start_veritech_server();
         expander.setup_start_pinga_server();
         expander.setup_start_rebaser_server();
@@ -206,6 +207,8 @@ struct SdfTestFnSetupExpander {
     start_pinga_server: Option<()>,
     rebaser_server: Option<Rc<Ident>>,
     start_rebaser_server: Option<()>,
+    forklift_server: Option<Rc<Ident>>,
+    start_forklift_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
     start_veritech_server: Option<()>,
     services_context: Option<Rc<Ident>>,
@@ -238,6 +241,8 @@ impl SdfTestFnSetupExpander {
             start_pinga_server: None,
             rebaser_server: None,
             start_rebaser_server: None,
+            forklift_server: None,
+            start_forklift_server: None,
             veritech_server: None,
             start_veritech_server: None,
             services_context: None,
@@ -282,14 +287,17 @@ impl SdfTestFnSetupExpander {
             return ident.clone();
         }
 
+        let cancellation_token = self.setup_cancellation_token();
+        let cancellation_token = cancellation_token.as_ref();
+
         let var = Ident::new("posthog_client", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-                let (client, sender) = ::si_posthog::new()
+                let (sender, client) = ::si_posthog::new()
                     .api_endpoint("http://localhost:9999")
                     .api_key("not-a-key")
                     .enabled(false)
-                    .build()
+                    .build(#cancellation_token.clone())
                     .wrap_err("failed to create posthost client and sender")?;
                 drop(::tokio::spawn(sender.run()));
                 client
@@ -365,17 +373,20 @@ impl SdfTestFnSetupExpander {
                         #task_tracker.clone(),
                     )
                     .await;
-                let (service, _, _) = ::sdf_server::build_service_for_tests(
+                ::sdf_server::AxumApp::from_services_for_tests(
                     s_ctx,
                     #jwt_public_signing_key.clone(),
                     #posthog_client,
                     "https://auth-api.systeminit.com".to_string(),
                     #ws_multiplexer_client,
                     #crdt_multiplexer_client,
-                    ::sdf_server::server::WorkspacePermissionsMode::Open,
+                    ::sdf_server::WorkspacePermissionsMode::Open,
                     vec![],
-                ).wrap_err("failed to build sdf router")?;
-                service
+                    std::sync::Arc::new(
+                        ::tokio::sync::RwLock::new(::sdf_server::ApplicationRuntimeMode::Running)
+                    ),
+                    #cancellation_token.clone(),
+                ).into_inner()
             };
         });
         self.router = Some(Rc::new(var));
@@ -488,6 +499,22 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_start_rebaser_server(&mut self, value: Option<()>) {
         self.start_rebaser_server = value;
+    }
+
+    fn forklift_server(&self) -> Option<&Rc<Ident>> {
+        self.forklift_server.as_ref()
+    }
+
+    fn set_forklift_server(&mut self, value: Option<Rc<Ident>>) {
+        self.forklift_server = value;
+    }
+
+    fn start_forklift_server(&self) -> Option<()> {
+        self.start_forklift_server
+    }
+
+    fn set_start_forklift_server(&mut self, value: Option<()>) {
+        self.start_forklift_server = value;
     }
 
     fn veritech_server(&self) -> Option<&Rc<Ident>> {

@@ -6,8 +6,8 @@ use std::{
 };
 
 use dal::{
-    context::NatsStreams, feature_flags::FeatureFlagService, DalContext, JobQueueProcessor,
-    NatsProcessor, ServicesContext,
+    feature_flags::FeatureFlagService, DalContext, DedicatedExecutor, JetstreamStreams,
+    JobQueueProcessor, NatsProcessor, ServicesContext,
 };
 use naxum::{
     handler::Handler as _,
@@ -81,15 +81,20 @@ impl Server {
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
-        let nats_streams = NatsStreams::get_or_create(&nats).await?;
+        let nats_streams = JetstreamStreams::new(nats.clone()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+        let compute_executor = Self::create_compute_executor()?;
 
-        let (layer_db, layer_db_graceful_shutdown) =
-            LayerDb::from_config(config.layer_db_config().clone(), layer_db_token).await?;
+        let (layer_db, layer_db_graceful_shutdown) = LayerDb::from_config(
+            config.layer_db_config().clone(),
+            compute_executor.clone(),
+            layer_db_token,
+        )
+        .await?;
         layer_db_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
         let services_context = ServicesContext::new(
@@ -104,6 +109,7 @@ impl Server {
             symmetric_crypto_service,
             layer_db,
             FeatureFlagService::default(),
+            compute_executor,
         );
 
         Self::from_services(
@@ -230,6 +236,11 @@ impl Server {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
+    }
+
+    #[instrument(name = "pinga.init.create_compute_executor", level = "info", skip_all)]
+    fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+        dal::compute_executor("pinga").map_err(Into::into)
     }
 
     #[inline]

@@ -135,10 +135,15 @@ impl<'a> ActivityRebase<'a> {
     pub async fn rebase_and_wait(
         &self,
         to_rebase_change_set_id: Ulid,
+        from_change_set_id: Option<Ulid>,
         rebase_batch_address: RebaseBatchAddress,
         metadata: LayeredEventMetadata,
     ) -> LayerDbResult<Activity> {
-        let payload = RebaseRequest::new(to_rebase_change_set_id, rebase_batch_address, None);
+        let payload = RebaseRequest::new(
+            to_rebase_change_set_id,
+            rebase_batch_address,
+            from_change_set_id,
+        );
         let activity = Activity::rebase(payload, metadata);
         // println!("trigger: sending rebase and waiting for response");
         debug!(?activity, "sending rebase and waiting for response");

@@ -22,6 +22,7 @@ export async function createWorkspace(
   instanceUrl: string,
   displayName: string,
   isDefault: boolean,
+  description: string,
 ) {
   const newWorkspace = await prisma.workspace.create({
     data: {
@@ -32,6 +33,7 @@ export async function createWorkspace(
       displayName,
       creatorUserId: creatorUser.id,
       isDefault,
+      description,
     },
   });
   tracker.trackEvent(creatorUser, "create_workspace", {
@@ -65,6 +67,8 @@ export async function patchWorkspace(
   instanceUrl: string | null,
   displayName: string,
   quarantinedAt: Date | null,
+  description: string | null,
+  isFavourite: boolean,
 ) {
   return prisma.workspace.update({
     where: { id },
@@ -72,6 +76,8 @@ export async function patchWorkspace(
       instanceUrl: instanceUrl ?? LOCAL_WORKSPACE_URL,
       displayName,
       quarantinedAt,
+      description,
+      isFavourite,
     },
   });
 }
@@ -140,10 +146,43 @@ export async function getWorkspaceMembers(id: WorkspaceId) {
   return workspaceMembers;
 }
 
-export async function inviteMember(email: string, id: WorkspaceId) {
+export async function changeWorkspaceMembership(
+  workspaceId: WorkspaceId,
+  userId: UserId,
+  role: string,
+) {
+  await prisma.workspaceMembers.update({
+    where: {
+      userId_workspaceId: {
+        userId,
+        workspaceId,
+      },
+    },
+    data: {
+      roleType: roleTypeMap[role],
+    },
+  });
+}
+
+const roleTypeMap: { [key: string]: RoleType } = {
+  OWNER: RoleType.OWNER,
+  EDITOR: RoleType.EDITOR,
+};
+
+export async function inviteMember(
+  authUser: User,
+  email: string,
+  id: WorkspaceId,
+) {
   let user = await getUserByEmail(email);
   if (!user) {
     user = await createInvitedUser(email);
+    tracker.trackEvent(authUser, "new_user_created_from_invite", {
+      workspaceId: id,
+      newUserEmail: email,
+      triggeredBy: authUser.email,
+      triggeredAt: new Date(),
+    });
   }
 
   return await prisma.workspaceMembers.create({

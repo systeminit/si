@@ -70,6 +70,8 @@ pub enum FuncSpecBackendKind {
     JsAttribute,
     JsAuthentication,
     Json,
+    // NOTE(nick): this is deprecated, but keeping it for now in case something from the module
+    // index needs it.
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,
@@ -94,6 +96,8 @@ pub enum FuncSpecBackendResponseType {
     Map,
     Object,
     Qualification,
+    // NOTE(nick): this is deprecated, but keeping it for now in case something from the module
+    // index needs it.
     Reconciliation,
     SchemaVariantDefinition,
     String,

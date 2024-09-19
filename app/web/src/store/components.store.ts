@@ -160,7 +160,11 @@ type EventBusEvents = {
   restoreSelection: void;
   refreshSelectionResource: void;
   eraseSelection: void;
-  panToComponent: { componentId: ComponentId; center?: boolean };
+  panToComponent: {
+    componentId: ComponentId;
+    center?: boolean;
+  };
+  rename: ComponentId;
 };
 
 type PendingComponent = {
@@ -772,6 +776,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
+          async RENAME_COMPONENT(componentId: ComponentId, newName: string) {
+            return new ApiRequest<{
+              componentId: ComponentId;
+            }>({
+              method: "post",
+              url: "component/set_name",
+              params: {
+                componentId,
+                name: newName,
+                ...visibilityParams,
+              },
+            });
+          },
+
           expandComponents(...keys: DiagramElementUniqueKey[]) {
             keys.forEach((key) => {
               this.collapsedComponents.delete(key);
@@ -1046,6 +1064,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async SET_COMPONENT_GEOMETRY(
             componentUpdates: SingleSetComponentGeometryData[],
+            clientUlid: string,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -1076,6 +1095,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 dataByComponentId,
                 diagramKind: "configuration",
+                clientUlid,
                 ...visibilityParams,
               },
               onFail: (err) => {
@@ -1136,7 +1156,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     });
                   }
                   const payload = this.constructGeometryData(components);
-                  this.SET_COMPONENT_GEOMETRY(payload);
+                  this.SET_COMPONENT_GEOMETRY(payload, clientUlid);
                 }
               },
               onSuccess: (response) => {
@@ -1613,33 +1633,28 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async RESTORE_COMPONENTS(components: Record<ComponentId, boolean>) {
+          async RESTORE_COMPONENTS(...components: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
-            const payload = [];
-            for (const [key, value] of Object.entries(components)) {
-              payload.push({ componentId: key, fromBaseChangeSet: value });
-            }
             return new ApiRequest({
               method: "post",
               url: "diagram/remove_delete_intent",
               keyRequestStatusBy: Object.keys(components),
               params: {
-                components: payload,
+                components,
                 ...visibilityParams,
               },
               onSuccess: () => {
-                for (const componentId of Object.keys(components)) {
+                for (const componentId of components) {
                   const component = this.rawComponentsById[componentId];
                   if (component) {
                     this.rawComponentsById[componentId] = {
                       ...component,
                       changeStatus: "unmodified",
                       toDelete: false,
-                      fromBaseChangeSet: false,
                       deletedInfo: undefined,
                     };
                   }

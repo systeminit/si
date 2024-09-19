@@ -56,6 +56,8 @@ pub enum FuncError {
     FuncAuthoringClient(#[from] Box<FuncAuthoringError>),
     #[error("func bindings error: {0}")]
     FuncBinding(#[from] Box<FuncBindingError>),
+    #[error("func bindings can't be found: {0}")]
+    FuncBindingsLookup(FuncId),
     #[error("cannot modify locked func: {0}")]
     FuncLocked(FuncId),
     #[error("func name already in use {0}")]
@@ -76,8 +78,6 @@ pub enum FuncError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error("unable to determine the function type for backend kind ({0}) and backend response type ({1})")]
-    UnknownFunctionType(FuncBackendKind, FuncBackendResponseType),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]
@@ -321,6 +321,26 @@ impl Func {
         Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
     }
 
+    /// If you know the func_id is supposed to be for an [`IntrinsicFunc`], get which one or error
+    pub async fn get_intrinsic_kind_by_id_or_error(
+        ctx: &DalContext,
+        id: FuncId,
+    ) -> FuncResult<IntrinsicFunc> {
+        let func = Self::get_by_id_or_error(ctx, id).await?;
+
+        Self::get_intrinsic_kind_by_id(ctx, id)
+            .await?
+            .ok_or(FuncError::IntrinsicFuncNotFound(func.name))
+    }
+
+    pub async fn get_intrinsic_kind_by_id(
+        ctx: &DalContext,
+        id: FuncId,
+    ) -> FuncResult<Option<IntrinsicFunc>> {
+        let func = Self::get_by_id_or_error(ctx, id).await?;
+        Ok(IntrinsicFunc::maybe_from_str(func.name.clone()))
+    }
+
     async fn get_by_id_inner(
         ctx: &DalContext,
         hash: &ContentHash,
@@ -560,6 +580,13 @@ impl Func {
                     Ok(b) => {
                         if !b.is_empty() {
                             pruned_funcs.push(func);
+                        } else {
+                            let bindings = FuncBinding::for_func_id(ctx, func.id)
+                                .await
+                                .map_err(|_| FuncError::FuncBindingsLookup(func.id))?;
+                            if bindings.is_empty() {
+                                pruned_funcs.push(func)
+                            }
                         }
                     }
                     Err(err) => {
@@ -704,6 +731,7 @@ impl Func {
             func_id: self.id.into(),
             kind: self.kind.into(),
             name: self.name.clone(),
+            backend_kind: self.backend_kind.into(),
             display_name: self.display_name.clone(),
             description: self.description.clone(),
             is_locked: self.is_locked,

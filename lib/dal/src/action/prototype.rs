@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use petgraph::{Direction::Incoming, Outgoing};
 use serde::{Deserialize, Serialize};
-use si_events::ActionResultState;
+use si_events::{ActionResultState, FuncRunId};
 use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
@@ -296,7 +296,7 @@ impl ActionPrototype {
         ctx: &DalContext,
         id: ActionPrototypeId,
         component_id: ComponentId,
-    ) -> ActionPrototypeResult<Option<ActionRunResultSuccess>> {
+    ) -> ActionPrototypeResult<(Option<ActionRunResultSuccess>, FuncRunId)> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.view(ctx).await?;
         let func_id = Self::func_id(ctx, id).await?;
@@ -398,7 +398,7 @@ impl ActionPrototype {
             }
         }
 
-        Ok(maybe_run_result)
+        Ok((maybe_run_result, func_run_value.func_run_id()))
     }
 
     pub async fn for_variant(

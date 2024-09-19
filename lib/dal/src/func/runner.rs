@@ -36,8 +36,8 @@ use crate::{
     func::backend::FuncBackendError,
     ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
     ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, FuncError,
-    FuncId, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    FuncId, KeyPairError, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError,
+    WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use crate::{HistoryEventError, TransactionsError};
 
@@ -49,7 +49,6 @@ use super::backend::{
     integer::FuncBackendInteger,
     js_action::FuncBackendJsAction,
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_reconciliation::FuncBackendJsReconciliation,
     js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
     json::FuncBackendJson,
     map::FuncBackendMap,
@@ -110,6 +109,8 @@ pub enum FuncRunnerError {
     NoWidgetOptionsForSecretProp(PropId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("reconciliation funcs are no longer supported (found: {0})")]
+    ReconciliationFuncsNoLongerSupported(FuncId),
     #[error("function run result failure: kind={kind}, message={message}, backend={backend}")]
     ResultFailure {
         kind: FunctionResultFailureErrorKind,
@@ -637,7 +638,7 @@ impl FuncRunner {
 
     #[instrument(
         name = "func_runner.run_attribute_value",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             job.id = Empty,
@@ -671,7 +672,7 @@ impl FuncRunner {
         // and in order to time the function's preparation vs. execution timings.
         #[instrument(
             name = "func_runner.run_attribute_value.prepare",
-            level = "debug",
+            level = "info",
             skip_all,
             fields()
         )]
@@ -686,35 +687,6 @@ impl FuncRunner {
             let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
             let function_args: CasValue = args.clone().into();
-            let (function_args_cas_address, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(function_args.into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
-
-            let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
-                let code_json_value: serde_json::Value = code.clone().into();
-                let code_cas_value: CasValue = code_json_value.into();
-                let (hash, _) = ctx
-                    .layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(code_cas_value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?;
-                hash
-            } else {
-                // Why are we doing this? Because the struct gods demand it. I have feelings.
-                ContentHash::new("".as_bytes())
-            };
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             let before = FuncRunner::before_funcs(ctx, component_id).await?;
@@ -723,7 +695,9 @@ impl FuncRunner {
             let attribute_value_id = attribute_value_id.into();
 
             let func_run_create_time = Utc::now();
-            let func_run_inner = FuncRunBuilder::default()
+            let mut func_run_builder = FuncRunBuilder::default();
+
+            func_run_builder
                 .actor(ctx.events_actor())
                 .tenancy(ctx.events_tenancy())
                 .backend_kind(func.backend_kind.into())
@@ -733,13 +707,51 @@ impl FuncRunner {
                 .function_display_name(func.display_name.clone())
                 .function_description(func.description.clone())
                 .function_link(func.link.clone())
-                .function_args_cas_address(function_args_cas_address)
-                .function_code_cas_address(code_cas_hash)
                 .attribute_value_id(Some(attribute_value_id))
                 .component_id(Some(component_id))
                 .created_at(func_run_create_time)
-                .updated_at(func_run_create_time)
-                .build()?;
+                .updated_at(func_run_create_time);
+
+            if !func.is_intrinsic() {
+                let (function_args_cas_address, _) = ctx
+                    .layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(function_args.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+
+                let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+                    let code_json_value: serde_json::Value = code.clone().into();
+                    let code_cas_value: CasValue = code_json_value.into();
+                    let (hash, _) = ctx
+                        .layer_db()
+                        .cas()
+                        .write(
+                            Arc::new(code_cas_value.into()),
+                            None,
+                            ctx.events_tenancy(),
+                            ctx.events_actor(),
+                        )
+                        .await?;
+                    hash
+                } else {
+                    ContentHash::new("".as_bytes())
+                };
+
+                func_run_builder.function_args_cas_address(function_args_cas_address);
+                func_run_builder.function_code_cas_address(code_cas_hash);
+            } else {
+                // We could turn these into an option, except we postcard
+                // serialize this data so we'd have to create a new type
+                func_run_builder.function_args_cas_address(ContentHash::new("".as_bytes()));
+                func_run_builder.function_code_cas_address(ContentHash::new("".as_bytes()));
+            }
+
+            let func_run_inner = func_run_builder.build()?;
 
             if !parent_span.is_disabled() {
                 let mut id_buf = FuncRunId::array_to_str_buf();
@@ -773,15 +785,17 @@ impl FuncRunner {
 
             let func_run = Arc::new(func_run_inner);
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            if !func.is_intrinsic() {
+                ctx.layer_db()
+                    .func_run()
+                    .write(
+                        func_run.clone(),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+            }
 
             Ok(FuncRunner {
                 func_run,
@@ -1133,7 +1147,17 @@ impl FuncRunner {
                 .ok_or(SecretError::EncryptedSecretNotFound(key))?;
 
             // Decrypt message from EncryptedSecret
-            let mut arg = encrypted_secret.decrypt(ctx).await?.message().into_inner();
+            // Skip secret if unauthorized
+            // Skip secret if we can't find keypair
+            let decrypted_secret = match encrypted_secret.decrypt(ctx).await {
+                Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess))
+                | Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_))) => {
+                    continue;
+                }
+                other_result => other_result,
+            }?;
+
+            let mut arg = decrypted_secret.message().into_inner();
 
             Self::inject_workspace_token(ctx, &mut arg).await?;
 
@@ -1478,29 +1502,23 @@ impl FuncRunnerExecutionTask {
         let mut running_state_func_run_inner = Arc::unwrap_or_clone(self.func_run.clone());
         running_state_func_run_inner.set_state_to_running();
         let running_state_func_run = Arc::new(running_state_func_run_inner);
-        self.ctx
-            .layer_db()
-            .func_run()
-            .write(
-                running_state_func_run.clone(),
-                None,
-                self.ctx.events_tenancy(),
-                self.ctx.events_actor(),
-            )
-            .await?;
+
+        if !self.func.is_intrinsic() {
+            self.ctx
+                .layer_db()
+                .func_run()
+                .write(
+                    running_state_func_run.clone(),
+                    None,
+                    self.ctx.events_tenancy(),
+                    self.ctx.events_actor(),
+                )
+                .await?;
+        }
 
         let execution_result = match self.func_run.backend_kind().into() {
             FuncBackendKind::JsAction => {
                 FuncBackendJsAction::create_and_execute(
-                    self.func_dispatch_context,
-                    &self.func,
-                    &self.args,
-                    self.before,
-                )
-                .await
-            }
-            FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(
                     self.func_dispatch_context,
                     &self.func,
                     &self.args,
@@ -1555,6 +1573,11 @@ impl FuncRunnerExecutionTask {
                 )
                 .await
             }
+            FuncBackendKind::JsReconciliation => {
+                return Err(FuncRunnerError::ReconciliationFuncsNoLongerSupported(
+                    self.func.id,
+                ))
+            }
             FuncBackendKind::JsValidation => {
                 return Err(FuncRunnerError::DirectValidationFuncsNoLongerSupported(
                     self.func.id,
@@ -1596,16 +1619,20 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_post_processing();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
+
                 let _ = self.result_tx.send(Ok(FuncRunValue::new(
                     next_state.id(),
                     unprocessed_value,
@@ -1620,16 +1647,18 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_failure();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
 
                 let _ = self.result_tx.send(Err(FuncRunnerError::ResultFailure {
                     kind,
@@ -1641,16 +1670,20 @@ impl FuncRunnerExecutionTask {
                 let mut next_state_inner = Arc::unwrap_or_clone(running_state_func_run.clone());
                 next_state_inner.set_state_to_failure();
                 let next_state = Arc::new(next_state_inner);
-                self.ctx
-                    .layer_db()
-                    .func_run()
-                    .write(
-                        next_state.clone(),
-                        None,
-                        self.ctx.events_tenancy(),
-                        self.ctx.events_actor(),
-                    )
-                    .await?;
+
+                if !self.func.is_intrinsic() {
+                    self.ctx
+                        .layer_db()
+                        .func_run()
+                        .write(
+                            next_state.clone(),
+                            None,
+                            self.ctx.events_tenancy(),
+                            self.ctx.events_actor(),
+                        )
+                        .await?;
+                }
+
                 let _ = self.result_tx.send(Err(err.into()));
             }
         }

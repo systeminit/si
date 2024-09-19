@@ -174,6 +174,15 @@ export const useAssetStore = () => {
             this.selectedFuncs = [];
           }
         },
+        removeSchemaVariantSelection(id: SchemaVariantId) {
+          const thisAssetIdx = this.selectedSchemaVariants.findIndex(
+            (thisId) => thisId === id,
+          );
+          if (thisAssetIdx !== -1) {
+            this.selectedSchemaVariants.splice(thisAssetIdx, 1);
+            this.syncSelectionIntoUrl();
+          }
+        },
         setSchemaVariantSelection(id: SchemaVariantId) {
           this.setFuncSelection(undefined);
 
@@ -477,6 +486,8 @@ export const useAssetStore = () => {
 
               if (savedAssetIdx === -1) this.variantList.push(variant);
               else this.variantList.splice(savedAssetIdx, 1, variant);
+
+              this.setSchemaVariantSelection(variant.schemaVariantId);
             },
           });
         },
@@ -602,7 +613,47 @@ export const useAssetStore = () => {
               const savedAssetIdx = this.variantList.findIndex(
                 (a) => a.schemaVariantId === variant.schemaVariantId,
               );
-              this.variantList.splice(savedAssetIdx, 1, variant);
+
+              if (variant?.assetFuncId)
+                funcStore.FETCH_CODE(variant.assetFuncId);
+
+              if (savedAssetIdx !== -1) {
+                this.variantList.splice(savedAssetIdx, 1, variant);
+              } else this.variantList.push(variant);
+            },
+          },
+          {
+            eventType: "SchemaVariantReplaced",
+            callback: (
+              {
+                newSchemaVariant: newVariant,
+                oldSchemaVariantId: oldVariantId,
+              },
+              metadata,
+            ) => {
+              if (metadata.change_set_id !== changeSetId) return;
+
+              const oldAssetIdx = this.variantList.findIndex(
+                (a) => a.schemaVariantId === oldVariantId,
+              );
+              if (oldAssetIdx !== -1) {
+                this.variantList.splice(oldAssetIdx, 1, newVariant);
+              } else this.variantList.push(newVariant);
+
+              if (this.selectedSchemaVariants.includes(oldVariantId)) {
+                if (this.selectedSchemaVariants.length === 1) {
+                  const selectedFuncs = _.clone(this.selectedFuncs);
+                  this.setSchemaVariantSelection(newVariant.schemaVariantId);
+                  // Right now you can't multi select functions but they're in an array,
+                  // so we just set the values in the array, which will leave the last one selected
+                  for (const funcId of selectedFuncs) {
+                    this.setFuncSelection(funcId);
+                  }
+                } else {
+                  this.removeSchemaVariantSelection(oldVariantId);
+                  this.addSchemaVariantSelection(newVariant.schemaVariantId);
+                }
+              }
             },
           },
           {

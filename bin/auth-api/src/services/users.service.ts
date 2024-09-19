@@ -153,6 +153,7 @@ export async function createOrUpdateUserFromAuth0Details(
         SAAS_WORKSPACE_URL,
         `${user.nickname}'s  Production Workspace`,
         true,
+        "",
       );
     } else {
       await createWorkspace(
@@ -161,6 +162,7 @@ export async function createOrUpdateUserFromAuth0Details(
         LOCAL_WORKSPACE_URL,
         `${user.nickname}'s  Dev Workspace`,
         false,
+        "",
       );
     }
 

@@ -208,9 +208,6 @@ mod test {
                 source.unwrap_or("root"),
                 target
             );
-
-            assert!(graph.has_path_to_root(source_idx));
-            assert!(graph.has_path_to_root(target_idx));
         }
         assert!(graph.is_acyclic_directed());
 

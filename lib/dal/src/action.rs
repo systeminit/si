@@ -78,7 +78,7 @@ impl From<ActionPrototypeId> for si_events::ActionPrototypeId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum ActionState {
     /// Action has been determined to be eligible to run, and has had its job sent to the job
@@ -515,8 +515,8 @@ impl Action {
     /// hold, we will not dispatch the action
     #[instrument(
         name = "action.get_hold_status_influenced_by",
-        level = "debug",
-        skip(ctx)
+        level = "info",
+        skip(ctx, action_dependency_graph)
     )]
     pub async fn get_hold_status_influenced_by(
         ctx: &DalContext,
@@ -524,6 +524,8 @@ impl Action {
         for_action_id: ActionId,
     ) -> ActionResult<Vec<ActionId>> {
         let mut reasons_for_hold = vec![];
+
+        let mut seen_list = HashSet::new();
 
         let mut work_queue =
             VecDeque::from(action_dependency_graph.direct_dependencies_of(for_action_id));
@@ -533,7 +535,12 @@ impl Action {
                 ActionState::Failed | ActionState::OnHold => reasons_for_hold.push(act.id()),
                 _ => (),
             }
-            work_queue.extend(action_dependency_graph.direct_dependencies_of(action_id));
+            seen_list.insert(action_id);
+            for direct_dependency in action_dependency_graph.direct_dependencies_of(action_id) {
+                if !seen_list.contains(&direct_dependency) {
+                    work_queue.push_back(direct_dependency);
+                }
+            }
         }
         Ok(reasons_for_hold)
     }

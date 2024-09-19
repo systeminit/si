@@ -29,7 +29,7 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     workspace_snapshot::DependentValueRoot,
-    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext,
+    AccessBuilder, AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
     TransactionsError, Visibility, WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
@@ -325,7 +325,7 @@ impl DependentValuesUpdate {
                 metric!(counter.dvu.function_execution = -1);
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
-                        Ok(execution_values) => {
+                        Ok((execution_values, func)) => {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
@@ -351,6 +351,7 @@ impl DependentValuesUpdate {
                                     ctx,
                                     finished_value_id,
                                     execution_values,
+                                    func,
                                 )
                                 .await
                                 {
@@ -402,13 +403,11 @@ impl DependentValuesUpdate {
         }
 
         let snap = ctx.workspace_snapshot()?;
-        let mut has_unfinished_values = false;
         for value_id in &independent_value_ids {
             if spawned_ids.contains(value_id) {
                 snap.add_dependent_value_root(DependentValueRoot::Finished(value_id.into()))
                     .await?;
             } else {
-                has_unfinished_values = true;
                 snap.add_dependent_value_root(DependentValueRoot::Unfinished(value_id.into()))
                     .await?;
             }
@@ -418,8 +417,7 @@ impl DependentValuesUpdate {
         // not process the downstream attributes and thus will fail to send the
         // "finish" update. So we send the "finish" update here to ensure the
         // frontend can continue to work on the snapshot.
-        if !has_unfinished_values && !independent_value_ids.is_empty() {
-            info!("here");
+        if independent_value_ids.is_empty() {
             for status_update in tracker.finish_remaining() {
                 if let Err(err) = send_status_update(ctx, status_update).await {
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
@@ -475,7 +473,7 @@ async fn values_from_prototype_function_execution(
     attribute_value_id: AttributeValueId,
     set_value_lock: Arc<RwLock<()>>,
     status_update: Option<StatusUpdate>,
-) -> (Ulid, DependentValueUpdateResult<FuncRunValue>) {
+) -> (Ulid, DependentValueUpdateResult<(FuncRunValue, Func)>) {
     metric!(counter.dvu.function_execution = 1);
 
     if let Some(status_update) = status_update {

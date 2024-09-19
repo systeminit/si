@@ -27,6 +27,7 @@
     while_true
 )]
 
+use dal::DedicatedExecutorInitializeError;
 use dvu_debouncer_task::DvuDebouncerTaskError;
 use thiserror::Error;
 
@@ -40,7 +41,6 @@ mod server;
 pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
 };
-pub use rebaser_core::RebaserMessagingConfig;
 pub use server::{Server, ServerMetadata};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
@@ -48,12 +48,18 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    /// When a compute executor fails to initialize
+    #[error("compute executor initialization error: {0}")]
+    ComputeExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     /// When a Cyclone encryption key failed to be loaded
     #[error("error when loading encryption key: {0}")]
     CycloneEncryptionKey(#[source] si_crypto::VeritechEncryptionKeyError),
     /// When the DAL library fails to be initialized
     #[error("dal initialization error: {0}")]
     DalInitialization(#[from] dal::InitializationError),
+    /// When we fail to get or create inner NATS Jetstream streams
+    #[error("dal jetstream streams error: {0}")]
+    DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
     /// When failing to determine open change sets from calling DAL code
     #[error("dal open change sets error: {0}")]
     DalOpenChangeSets(#[source] si_data_pg::PgError),
@@ -72,6 +78,9 @@ pub enum ServerError {
     /// When attempting to launch a change set task but one is already running
     #[error("existing change set task already running for id: {0}")]
     ExistingChangeSetTask(si_events::ChangeSetId),
+    /// When a NATS Jetstream stream could not be created
+    #[error("jetstream create stream error: {0}")]
+    JetstreamCreateStream(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
     /// When failing to create or fetch a Jetstream consumer
     #[error("jetstream consumer error: {0}")]
     JsConsumer(#[from] si_data_nats::async_nats::jetstream::stream::ConsumerError),

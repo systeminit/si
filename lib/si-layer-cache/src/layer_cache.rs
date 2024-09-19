@@ -4,6 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::PgPool;
+use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 
 use crate::db::serialize;
@@ -21,6 +22,8 @@ where
     memory_cache: MemoryCache<V>,
     disk_cache: DiskCache,
     pg: PgLayer,
+    #[allow(dead_code)] // TODO(fnichol): remove once in use
+    compute_executor: DedicatedExecutor,
 }
 
 impl<V> LayerCache<V>
@@ -32,6 +35,7 @@ where
         disk_path: impl Into<PathBuf>,
         pg_pool: PgPool,
         memory_cache_config: MemoryCacheConfig,
+        compute_executor: DedicatedExecutor,
     ) -> LayerDbResult<Self> {
         let disk_cache = DiskCache::new(disk_path, name)?;
 
@@ -41,6 +45,7 @@ where
             memory_cache: MemoryCache::new(memory_cache_config),
             disk_cache,
             pg,
+            compute_executor,
         })
     }
 
@@ -164,8 +169,9 @@ where
     }
 
     pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
-        tokio::task::spawn_blocking(move || serialize::from_bytes(&bytes).map_err(Into::into))
-            .await?
+        serialize::from_bytes_async(&bytes)
+            .await
+            .map_err(Into::into)
     }
 
     pub fn memory_cache(&self) -> MemoryCache<V> {
@@ -197,10 +203,11 @@ where
     pub async fn insert_from_cache_updates(
         &self,
         key: Arc<str>,
-        memory_value: V,
         serialize_value: Vec<u8>,
     ) -> LayerDbResult<()> {
-        self.memory_cache.insert(key.clone(), memory_value).await;
+        self.memory_cache
+            .insert_raw_bytes(key.clone(), serialize_value.clone())
+            .await;
         self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
             .await
     }
@@ -212,12 +219,9 @@ where
     pub async fn insert_or_update_from_cache_updates(
         &self,
         key: Arc<str>,
-        memory_value: V,
         serialize_value: Vec<u8>,
     ) -> LayerDbResult<()> {
-        self.insert_or_update(key.clone(), memory_value).await;
-        self.spawn_disk_cache_write_vec(key.clone(), serialize_value)
-            .await
+        self.insert_from_cache_updates(key, serialize_value).await
     }
 
     pub async fn evict_from_cache_updates(&self, key: Arc<str>) -> LayerDbResult<()> {

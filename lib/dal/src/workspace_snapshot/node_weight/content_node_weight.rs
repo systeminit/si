@@ -1,16 +1,24 @@
+use std::collections::HashMap;
+
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::{ulid::Ulid, ContentHash};
 
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedContentNodeWeightV1;
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    graph::LineageId,
-    node_weight::traits::CorrectTransforms,
-    node_weight::{NodeWeightError, NodeWeightResult},
+use crate::{
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detect_updates::Update, LineageId},
+        node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
+        NodeInformation,
+    },
+    ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphV3,
 };
-use crate::EdgeWeightKindDiscriminants;
+
+use super::{
+    traits::{CorrectTransformsResult, SiVersionedNodeWeight},
+    NodeWeight,
+};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ContentNodeWeight {
@@ -177,4 +185,122 @@ impl From<DeprecatedContentNodeWeightV1> for ContentNodeWeight {
     }
 }
 
-impl CorrectTransforms for ContentNodeWeight {}
+fn remove_outgoing_prototype_argument_value_targets_to_dest(
+    graph: &WorkspaceSnapshotGraphV3,
+    prototype_idx: NodeIndex,
+    source: NodeInformation,
+    destination_component_id: ComponentId,
+) -> impl Iterator<Item = Update> + '_ {
+    graph
+        .edges_directed(prototype_idx, Outgoing)
+        .filter(move |edge_ref| {
+            EdgeWeightKindDiscriminants::PrototypeArgument == edge_ref.weight().kind().into()
+        })
+        .filter_map(move |edge_ref| {
+            graph
+                .get_node_weight_opt(edge_ref.target())
+                .and_then(|weight| match weight {
+                    NodeWeight::AttributePrototypeArgument(apa_inner) => {
+                        apa_inner.targets().and_then(|targets| {
+                            (targets.destination_component_id == destination_component_id)
+                                .then_some(weight)
+                        })
+                    }
+                    _ => None,
+                })
+                .map(|target_weight| Update::RemoveEdge {
+                    source,
+                    destination: target_weight.into(),
+                    edge_kind: EdgeWeightKindDiscriminants::PrototypeArgument,
+                })
+        })
+}
+
+fn protect_arity_for_input_socket(
+    graph: &WorkspaceSnapshotGraphV3,
+    mut updates: Vec<Update>,
+    self_node: &ContentNodeWeight,
+) -> Vec<Update> {
+    let mut new_updates = vec![];
+
+    if let Some(self_idx) = graph.get_node_index_by_id_opt(self_node.id()) {
+        if let Some(input_socket_inner) = graph
+            .edges_directed(self_idx, Incoming)
+            .filter(|edge_ref| {
+                EdgeWeightKindDiscriminants::Prototype == edge_ref.weight().kind().into()
+            })
+            .filter_map(|edge_ref| graph.get_node_weight_opt(edge_ref.source()))
+            .next()
+            .and_then(|node_weight| match node_weight {
+                NodeWeight::InputSocket(inner) => Some(inner.inner()),
+                _ => None,
+            })
+        {
+            if input_socket_inner.arity() != SocketArity::One {
+                return updates;
+            }
+
+            let mut new_node_map = HashMap::new();
+
+            for update in &updates {
+                match update {
+                    Update::NewNode { node_weight } => {
+                        if let NodeWeight::AttributePrototypeArgument(apa_inner) = node_weight {
+                            new_node_map.insert(node_weight.id(), apa_inner);
+                        }
+                    }
+                    Update::NewEdge {
+                        source,
+                        destination,
+                        edge_weight,
+                    } => {
+                        if source.id == self_node.id().into()
+                            && EdgeWeightKindDiscriminants::PrototypeArgument
+                                == edge_weight.kind().into()
+                        {
+                            if let Some(&new_apa) = new_node_map.get(&destination.id.into()) {
+                                let targets = match new_apa.targets() {
+                                    Some(targets) => targets,
+                                    None => {
+                                        // No targets, then we don't want you
+                                        continue;
+                                    }
+                                };
+
+                                new_updates.extend(
+                                    remove_outgoing_prototype_argument_value_targets_to_dest(
+                                        graph,
+                                        self_idx,
+                                        *source,
+                                        targets.destination_component_id,
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    updates.extend(new_updates);
+
+    updates
+}
+
+impl CorrectTransforms for ContentNodeWeight {
+    fn correct_transforms(
+        &self,
+        graph: &WorkspaceSnapshotGraphV3,
+        updates: Vec<Update>,
+        _from_different_change_set: bool,
+    ) -> CorrectTransformsResult<Vec<Update>> {
+        Ok(match self.content_address_discriminants() {
+            ContentAddressDiscriminants::AttributePrototype => {
+                protect_arity_for_input_socket(graph, updates, self)
+            }
+            _ => updates,
+        })
+    }
+}

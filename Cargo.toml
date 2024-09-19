@@ -5,6 +5,7 @@ debug = true
 resolver = "2"
 members = [
     "bin/cyclone",
+    "bin/forklift",
     "bin/module-index",
     "bin/pinga",
     "bin/rebaser",
@@ -12,7 +13,6 @@ members = [
     "bin/veritech",
     "lib/auth-api-client",
     "lib/billing-events",
-    "lib/billing-events-server",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
@@ -21,6 +21,8 @@ members = [
     "lib/cyclone-server",
     "lib/dal",
     "lib/dal-test",
+    "lib/data-warehouse-stream-client",
+    "lib/forklift-server",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-multiplexer",
@@ -31,7 +33,6 @@ members = [
     "lib/object-tree",
     "lib/pinga-core",
     "lib/pinga-server",
-    "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
     "lib/si-crypto",
@@ -71,9 +72,11 @@ rust-version = "1.78"
 publish = false
 
 [workspace.dependencies]
-async-nats = { version = "0.35.1", features = ["service"] }
+async-nats = { version = "0.36.0", features = ["service"] }
 async-recursion = "1.0.5"
 async-trait = "0.1.79"
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+aws-sdk-firehose = "1.46.0"
 axum = { version = "0.6.20", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
 base64 = "0.22.0"
 blake3 = "1.5.1"
@@ -199,9 +202,6 @@ y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }
 
 [patch.crates-io]
-# pending a potential merge and release of
-# https://github.com/nats-io/nats.rs/pull/1301
-async-nats = { git = "https://github.com/systeminit/nats.rs.git", branch = "si/stable" }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }

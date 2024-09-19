@@ -37,7 +37,7 @@ async fn kill_execution_works(ctx: &mut DalContext) {
     .await
     .expect("could new leaf func");
     let code = "async function main() {
-        const ms = 30 * 1000;
+        const ms = 240 * 1000;
         const sleep = new Promise((resolve) => setTimeout(resolve, ms));
         await sleep;
         return { payload: { \"poop\": true }, status: \"ok\" };

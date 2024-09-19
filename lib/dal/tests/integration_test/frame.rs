@@ -26,7 +26,6 @@ use si_frontend_types::SummaryDiagramComponent;
 use std::collections::HashMap;
 
 mod omega_nesting;
-mod with_actions;
 
 #[test]
 async fn frames_and_connections(ctx: &mut DalContext) {

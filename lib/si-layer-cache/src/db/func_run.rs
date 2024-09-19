@@ -5,6 +5,7 @@ use si_events::{
     ActionId, ActionResultState, Actor, AttributeValueId, ContentHash, FuncRun, FuncRunId, Tenancy,
     WebEvent, WorkspacePk,
 };
+use telemetry::prelude::*;
 
 use crate::event::LayeredEventPayload;
 use crate::pg::PgLayer;
@@ -85,6 +86,7 @@ impl FuncRunDb {
         Ok(result)
     }
 
+    #[instrument(level = "info", skip_all)]
     pub async fn get_last_run_for_action_id(
         &self,
         workspace_pk: WorkspacePk,

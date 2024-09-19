@@ -742,18 +742,33 @@ impl VariantAuthoringClient {
         let variant_description = description.clone();
         let variant_link = link.clone();
         let display_name = &display_name.into();
+        let color = &color.into();
 
-        schema_variant
+        // cache default values to compare and update
+        let original_color = schema_variant.color.clone();
+        let original_type = schema_variant.component_type;
+
+        let schema_variant = schema_variant
             .modify(ctx, |sv| {
                 sv.description = variant_description;
                 sv.link = variant_link;
                 sv.category.clone_from(&category.into());
                 sv.component_type = component_type;
-                sv.color.clone_from(&color.into());
+                sv.color.clone_from(color);
                 sv.display_name.clone_from(display_name);
                 Ok(())
             })
             .await?;
+
+        // now need to update the default values for the schema variant so newly created components get the latest values
+        if original_color != *color {
+            schema_variant.set_color(ctx, color).await?;
+        }
+        if original_type != component_type {
+            schema_variant
+                .set_type(ctx, component_type.to_string())
+                .await?;
+        }
 
         let code_base64 = code.map(|c| general_purpose::STANDARD_NO_PAD.encode(c.into()));
         let current_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;

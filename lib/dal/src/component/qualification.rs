@@ -5,7 +5,7 @@ use crate::component::ComponentResult;
 use crate::qualification::{QualificationSubCheckStatus, QualificationView};
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::ws_event::WsEvent;
-use crate::{AttributeValueId, DalContext};
+use crate::{AttributeValue, AttributeValueId, DalContext};
 use crate::{Component, ComponentError, ComponentId};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
@@ -17,6 +17,53 @@ pub struct QualificationEntry {
 }
 
 impl Component {
+    pub async fn list_qualification_avs(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<AttributeValue>> {
+        let qualification_map_value_id =
+            Self::find_qualification_map_attribute_value_id(ctx, component_id).await?;
+
+        let qualification_av_ids =
+            AttributeValue::get_child_av_ids_in_order(ctx, qualification_map_value_id).await?;
+
+        let mut avs = vec![];
+        for av_id in qualification_av_ids {
+            let attribute_value = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
+            avs.push(attribute_value);
+        }
+
+        Ok(avs)
+    }
+    pub async fn list_qualification_statuses(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<Option<QualificationSubCheckStatus>>> {
+        let mut statuses = vec![];
+
+        let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
+
+        for qualification_av in qualification_avs {
+            let Some(qual_value) = qualification_av.view(ctx).await? else {
+                continue;
+            };
+
+            let qualification_entry: QualificationEntry = serde_json::from_value(qual_value)?;
+
+            statuses.push(qualification_entry.result);
+        }
+
+        if let Some(view) = QualificationView::new_for_validations(ctx, component_id).await? {
+            if let Some(result) = view.result {
+                statuses.push(Some(result.status))
+            } else {
+                statuses.push(None)
+            }
+        }
+
+        Ok(statuses)
+    }
+
     #[instrument(skip_all)]
     pub async fn list_qualifications(
         ctx: &DalContext,
@@ -24,27 +71,10 @@ impl Component {
     ) -> ComponentResult<Vec<QualificationView>> {
         let mut qualification_views = vec![];
 
-        let qualification_map_value_id =
-            Self::find_qualification_map_attribute_value_id(ctx, component_id).await?;
+        let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
 
-        let qualification_attribute_value_ids = match ctx
-            .workspace_snapshot()?
-            .ordered_children_for_node(qualification_map_value_id)
-            .await?
-        {
-            Some(value_ids) => value_ids,
-            None => {
-                return Err(ComponentError::QualificationNoOrderingNode(
-                    qualification_map_value_id,
-                    component_id,
-                ))
-            }
-        };
-
-        for qualification_attribute_value_id in qualification_attribute_value_ids {
-            if let Some(view) =
-                QualificationView::new(ctx, qualification_attribute_value_id.into()).await?
-            {
+        for qualification_av in qualification_avs {
+            if let Some(view) = QualificationView::new(ctx, qualification_av).await? {
                 qualification_views.push(view);
             }
         }

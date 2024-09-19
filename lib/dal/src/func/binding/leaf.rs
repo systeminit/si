@@ -40,6 +40,10 @@ impl LeafBinding {
             let eventual_parent =
                 AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
 
+            if let EventualParent::Component(_) = eventual_parent {
+                // skip components for now
+                continue;
+            }
             let binding = match leaf_kind {
                 LeafKind::CodeGeneration => FuncBinding::CodeGeneration(LeafBinding {
                     func_id,

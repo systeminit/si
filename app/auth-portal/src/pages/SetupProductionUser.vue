@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden">
+  <div class="overflow-scroll">
     <template v-if="featureFlagsStore.ADMIN_PAGE">
       <div>
         <h3 class="pb-md font-bold">

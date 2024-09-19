@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
-use billing_events::{BillingEventsError, BillingEventsWorkQueue};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
-use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
+use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::WorkspaceSnapshotAddress;
@@ -16,6 +15,7 @@ use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
 use si_layer_cache::event::LayeredEventMetadata;
 use si_layer_cache::LayerDbError;
+use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -24,6 +24,7 @@ use tokio::time::Instant;
 use veritech_client::Client as VeritechClient;
 
 use crate::feature_flags::FeatureFlagService;
+use crate::jetstream_streams::JetstreamStreams;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
@@ -56,8 +57,8 @@ pub struct ServicesContext {
     pg_pool: PgPool,
     /// A connected NATS client
     nats_conn: NatsClient,
-    /// NATS streams we need to publish to or consume
-    nats_streams: NatsStreams,
+    /// NATS Jetstream streams that we need to publish to or consume from.
+    jetstream_streams: JetstreamStreams,
     /// A connected job processor client
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A Veritech client, connected via a NATS connection.
@@ -74,6 +75,8 @@ pub struct ServicesContext {
     layer_db: DalLayerDb,
     /// The service that stores feature flags
     feature_flag_service: FeatureFlagService,
+    /// Dedicated executor for running CPU-intensive tasks
+    compute_executor: DedicatedExecutor,
 }
 
 impl ServicesContext {
@@ -82,7 +85,7 @@ impl ServicesContext {
     pub fn new(
         pg_pool: PgPool,
         nats_conn: NatsClient,
-        nats_streams: NatsStreams,
+        jetstream_streams: JetstreamStreams,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: Arc<VeritechEncryptionKey>,
@@ -91,11 +94,12 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         layer_db: DalLayerDb,
         feature_flag_service: FeatureFlagService,
+        compute_executor: DedicatedExecutor,
     ) -> Self {
         Self {
             pg_pool,
             nats_conn,
-            nats_streams,
+            jetstream_streams,
             job_processor,
             veritech,
             encryption_key,
@@ -104,6 +108,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             layer_db,
             feature_flag_service,
+            compute_executor,
         }
     }
 
@@ -126,9 +131,9 @@ impl ServicesContext {
         &self.nats_conn
     }
 
-    /// Gets a reference to the NATS streams we need.
-    pub fn nats_streams(&self) -> &NatsStreams {
-        &self.nats_streams
+    /// Gets a reference to the NATS Jetstream streams' contexts.
+    pub fn jetstream_streams(&self) -> &JetstreamStreams {
+        &self.jetstream_streams
     }
 
     /// Gets a reference to the Veritech client.
@@ -165,6 +170,11 @@ impl ServicesContext {
         &self.feature_flag_service
     }
 
+    /// Gets a reference to the dedicated compute executor
+    pub fn compute_executor(&self) -> &DedicatedExecutor {
+        &self.compute_executor
+    }
+
     /// Builds and returns a new [`Connections`].
     pub async fn connections(&self) -> PgPoolResult<Connections> {
         let pg_conn = self.pg_pool.get().await?;
@@ -172,32 +182,6 @@ impl ServicesContext {
         let job_processor = self.job_processor.clone();
 
         Ok(Connections::new(pg_conn, nats_conn, job_processor))
-    }
-}
-
-/// Ensures NATS streams we need have been created and are accessible.
-#[derive(Clone, Debug)]
-pub struct NatsStreams {
-    /// Billing events work queue
-    billing_events: BillingEventsWorkQueue,
-}
-
-impl NatsStreams {
-    /// Get or create the streams we need.
-    pub async fn get_or_create(client: &NatsClient) -> TransactionsResult<Self> {
-        Ok(Self::new(
-            BillingEventsWorkQueue::get_or_create(jetstream::new(client.clone())).await?,
-        ))
-    }
-
-    /// Create with existing streams.
-    pub fn new(billing_events: BillingEventsWorkQueue) -> Self {
-        Self { billing_events }
-    }
-
-    /// Get the billing events work queue
-    pub fn billing_events(&self) -> &BillingEventsWorkQueue {
-        &self.billing_events
     }
 }
 
@@ -496,7 +480,7 @@ impl DalContext {
             .write_current_rebase_batch()
             .await?
             .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
             });
 
         if self.blocking {
@@ -581,7 +565,7 @@ impl DalContext {
             .write_current_rebase_batch()
             .await?
             .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address)
+                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
             });
 
         info!("rebase_request: {:?}", rebase_request);
@@ -1098,8 +1082,6 @@ pub enum TransactionsError {
     /// was specified.
     #[error("Bad Workspace & Change Set")]
     BadWorkspaceAndChangeSet,
-    #[error("billing events error: {0}")]
-    BillingEvents(#[from] BillingEventsError),
     #[error("change set error: {0}")]
     ChangeSet(String),
     #[error("change set not found for change set id: {0}")]
@@ -1227,16 +1209,19 @@ pub struct Transactions {
 pub struct RebaseRequest {
     pub to_rebase_change_set_id: ChangeSetId,
     pub rebase_batch_address: RebaseBatchAddress,
+    pub from_change_set_id: Option<ChangeSetId>,
 }
 
 impl RebaseRequest {
     pub fn new(
         to_rebase_change_set_id: ChangeSetId,
         rebase_batch_address: RebaseBatchAddress,
+        from_change_set_id: Option<ChangeSetId>,
     ) -> Self {
         Self {
             to_rebase_change_set_id,
             rebase_batch_address,
+            from_change_set_id,
         }
     }
 }
@@ -1296,6 +1281,7 @@ async fn rebase(
         .rebase()
         .rebase_and_wait(
             rebase_request.to_rebase_change_set_id.into(),
+            rebase_request.from_change_set_id.map(Into::into),
             rebase_request.rebase_batch_address,
             metadata,
         )

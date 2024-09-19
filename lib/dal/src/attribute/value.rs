@@ -38,7 +38,7 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use async_recursion::async_recursion;
@@ -414,6 +414,13 @@ impl AttributeValue {
         Ok(av)
     }
 
+    #[instrument(
+        name = "attribute_value.update", 
+        level = "info",
+        skip_all,
+        fields(
+            attribute_value.id = ?attribute_value_id
+        ))]
     pub async fn update(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -504,7 +511,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
-    ) -> AttributeValueResult<FuncRunValue> {
+    ) -> AttributeValueResult<(FuncRunValue, Func)> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
         // that is in the process of being mutated on another thread, since it
@@ -597,18 +604,21 @@ impl AttributeValue {
             None => None,
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_values_and_set_state_to_success(
-                func_values.func_run_id(),
-                unprocessed_value_address,
-                value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let func = Func::get_by_id_or_error(ctx, prototype_func_id).await?;
+        if !func.is_intrinsic() {
+            ctx.layer_db()
+                .func_run()
+                .set_values_and_set_state_to_success(
+                    func_values.func_run_id(),
+                    unprocessed_value_address,
+                    value_address,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+        }
 
-        Ok(func_values)
+        Ok((func_values, func))
     }
 
     #[instrument(level = "debug" skip(ctx))]
@@ -874,6 +884,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         func_run_value: FuncRunValue,
+        func: Func,
     ) -> AttributeValueResult<()> {
         // We need to ensure the parent value tree for this value is set. But we don't want to
         // vivify the current attribute value since that would override the function which sets it
@@ -897,7 +908,7 @@ impl AttributeValue {
 
         let unprocessed_value = func_run_value.unprocessed_value().cloned();
 
-        Self::set_real_values(ctx, attribute_value_id, func_run_value).await?;
+        Self::set_real_values(ctx, attribute_value_id, func_run_value, func).await?;
 
         if should_populate_nested {
             Self::populate_nested_values(ctx, attribute_value_id, unprocessed_value).await?;
@@ -914,11 +925,16 @@ impl AttributeValue {
         // this lock is never locked for writing so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
         // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
-        let execution_result =
+        let (execution_result, func) =
             AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
-        AttributeValue::set_values_from_func_run_value(ctx, attribute_value_id, execution_result)
-            .await?;
+        AttributeValue::set_values_from_func_run_value(
+            ctx,
+            attribute_value_id,
+            execution_result,
+            func,
+        )
+        .await?;
 
         Ok(())
     }
@@ -1270,6 +1286,27 @@ impl AttributeValue {
         }
 
         Ok(())
+    }
+
+    /// Return a hashset of all the keys contained by this attribute value (if any)
+    pub async fn child_keys_for_id(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<HashSet<String>> {
+        let snapshot = ctx.workspace_snapshot()?;
+
+        Ok(snapshot
+            .edges_directed_for_edge_weight_kind(id, Outgoing, EdgeWeightKindDiscriminants::Contain)
+            .await?
+            .iter()
+            .filter_map(|(edge_weight, _, _)| {
+                if let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() {
+                    Some(key.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     #[async_recursion]
@@ -1864,6 +1901,13 @@ impl AttributeValue {
         Ok(())
     }
 
+    #[instrument(
+        name = "attribute_value.set_value", 
+        level = "info",
+        skip_all,
+        fields(
+            attribute_value.id = ?attribute_value_id
+        ))]
     pub async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1907,6 +1951,7 @@ impl AttributeValue {
             }
         };
         let func_id = Func::find_intrinsic(ctx, intrinsic_func).await?;
+        let func = Func::get_by_id_or_error(ctx, func_id).await?;
         let prototype = AttributePrototype::new(ctx, func_id).await?;
 
         Self::set_component_prototype_id(ctx, attribute_value_id, prototype.id(), None).await?;
@@ -1939,17 +1984,20 @@ impl AttributeValue {
             }
             None => serde_json::Value::Null,
         };
+        let total_start = std::time::Instant::now();
 
         let result_channel =
             FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args)
                 .await
                 .map_err(Box::new)?;
+        info!("Getting channel took: {:?}", total_start.elapsed());
         let func_values = result_channel
             .await
             .map_err(|_| AttributeValueError::FuncRunnerSend)?
             .map_err(Box::new)?;
+        info!("Waiting for values took: {:?}", total_start.elapsed());
 
-        Self::set_real_values(ctx, attribute_value_id, func_values).await?;
+        Self::set_real_values(ctx, attribute_value_id, func_values, func).await?;
         Ok(())
     }
 
@@ -1957,6 +2005,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         func_run_value: FuncRunValue,
+        func: Func,
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let av_node_weight = workspace_snapshot
@@ -2001,16 +2050,18 @@ impl AttributeValue {
             None => None,
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_values_and_set_state_to_success(
-                func_run_value.func_run_id(),
-                unprocessed_value_address,
-                value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        if !func.is_intrinsic() {
+            ctx.layer_db()
+                .func_run()
+                .set_values_and_set_state_to_success(
+                    func_run_value.func_run_id(),
+                    unprocessed_value_address,
+                    value_address,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+        }
 
         let mut new_av_node_weight = av_node_weight.clone();
 

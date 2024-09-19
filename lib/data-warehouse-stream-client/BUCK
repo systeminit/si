@@ -1,0 +1,17 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "data-warehouse-stream-client",
+    deps = [
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:aws-config",
+        "//third-party/rust:aws-sdk-firehose",
+        "//third-party/rust:base64",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

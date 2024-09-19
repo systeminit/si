@@ -18,7 +18,6 @@ export type SideAndCornerIdentifiers =
   | "top-left"
   | "bottom-right"
   | "bottom-left";
-export type EdgeDisplayMode = "EDGES_OVER" | "EDGES_UNDER";
 
 export type DiagramElementUniqueKey = string;
 
@@ -280,7 +279,8 @@ export type MoveElementsState = {
 export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
   | { type: "socket"; socket: DiagramSocketData }
-  | { type: "parent" };
+  | { type: "parent" }
+  | { type: "rename" };
 
 export type RightClickElementEvent = {
   element: DiagramElementData;

@@ -1,11 +1,9 @@
-import _ from "lodash";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { InstanceEnvType } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import {
-  getUserByEmail,
   getUserById,
   refreshUserAuth0Profile,
 } from "../services/users.service";
@@ -21,13 +19,14 @@ import {
   userRoleForWorkspace,
   LOCAL_WORKSPACE_URL,
   SAAS_WORKSPACE_URL,
+  changeWorkspaceMembership,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
-import { extractAdminAuthUser, extractAuthUser, router } from ".";
+import { extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
   const authUser = extractAuthUser(ctx);
@@ -35,7 +34,7 @@ router.get("/workspaces", async (ctx) => {
 });
 
 // :workspaceId named param handler - little easier for TS this way than using router.param
-async function extractWorkspaceIdParam(ctx: CustomRouteContext) {
+export async function extractWorkspaceIdParam(ctx: CustomRouteContext) {
   if (!ctx.params.workspaceId) {
     throw new Error(
       "Only use this fn with routes containing :workspaceId param",
@@ -69,106 +68,18 @@ router.get("/workspaces/:workspaceId", async (ctx) => {
 });
 
 router.delete("/workspaces/:workspaceId", async (ctx) => {
+  const authUser = extractAuthUser(ctx);
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   await deleteWorkspace(workspace.id);
 
+  tracker.trackEvent(authUser, "workspace_deleted", {
+    workspaceId: workspace.id,
+    workspaceDeletedAt: new Date(),
+    workspaceDeletedBy: authUser.email,
+  });
+
   ctx.body = "";
-});
-
-export type WorkspaceLookup = {
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
-  displayName: string;
-  instanceUrl: string | null;
-};
-router.get("/workspaces/admin-lookup/:workspaceId", async (ctx) => {
-  // Just for authorization, result is discarded
-  extractAdminAuthUser(ctx);
-
-  const workspace = await extractWorkspaceIdParam(ctx);
-  const user = await getUserById(workspace.creatorUserId);
-
-  const workspaceDetails: WorkspaceLookup = {
-    firstName: user?.firstName,
-    lastName: user?.lastName,
-    email: user?.email,
-    displayName: workspace.displayName,
-    instanceUrl: workspace.instanceUrl,
-  };
-
-  ctx.body = workspaceDetails;
-});
-
-router.post("/workspaces/setup-production-workspace", async (ctx) => {
-  // Just for authorization, result is discarded
-  extractAdminAuthUser(ctx);
-
-  const reqBody = validate(
-    ctx.request.body,
-    z.object({
-      userEmail: z.string(),
-    }),
-  );
-
-  const user = await getUserByEmail(reqBody.userEmail);
-  if (user) {
-    const userWorkspaces = await getUserWorkspaces(user.id);
-    const hasDefaultWorkspace = _.head(
-      _.filter(
-        userWorkspaces,
-        (w) => w.isDefault && w.creatorUserId === user.id,
-      ),
-    );
-
-    const workspaceDetails = await createWorkspace(
-      user,
-      InstanceEnvType.SI,
-      SAAS_WORKSPACE_URL,
-      `${user.nickname}'s Production Workspace`,
-      hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
-    );
-
-    ctx.body = {
-      newWorkspace: workspaceDetails,
-    };
-  }
-});
-
-router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
-  // Just for authorization, result is discarded
-  extractAdminAuthUser(ctx);
-
-  const reqBody = validate(
-    ctx.request.body,
-    z.object({
-      userId: z.string(),
-    }),
-  );
-
-  const user = await getUserById(reqBody.userId);
-  if (user) {
-    const userWorkspaces = await getUserWorkspaces(user.id);
-    const hasDefaultWorkspace = _.head(
-      _.filter(
-        userWorkspaces,
-        (w) => w.isDefault && w.creatorUserId === user.id,
-      ),
-    );
-
-    const workspaceDetails = await createWorkspace(
-      user,
-      InstanceEnvType.SI,
-      SAAS_WORKSPACE_URL,
-      `${user.nickname}'s Production Workspace`,
-      hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
-    );
-
-    ctx.body = {
-      newWorkspace: workspaceDetails,
-    };
-  }
 });
 
 router.post("/workspaces/new", async (ctx) => {
@@ -180,6 +91,7 @@ router.post("/workspaces/new", async (ctx) => {
       instanceUrl: z.string().url(),
       displayName: z.string(),
       isDefault: z.boolean(),
+      description: z.string(),
     }),
   );
 
@@ -198,6 +110,7 @@ router.post("/workspaces/new", async (ctx) => {
     reqBody.instanceUrl,
     reqBody.displayName,
     reqBody.isDefault,
+    reqBody.description,
   );
 
   ctx.body = {
@@ -216,6 +129,7 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     z.object({
       instanceUrl: z.string().url(),
       displayName: z.string(),
+      description: z.string(),
     }),
   );
 
@@ -224,46 +138,15 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     reqBody.instanceUrl,
     reqBody.displayName,
     workspace.quarantinedAt,
+    reqBody.description,
+    workspace.isFavourite,
   );
 
-  ctx.body = await getUserWorkspaces(authUser.id);
-});
-
-router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
-  const authUser = extractAdminAuthUser(ctx);
-
-  const workspace = await extractWorkspaceIdParam(ctx);
-
-  const reqBody = validate(
-    ctx.request.body,
-    z.object({
-      isQuarantined: z.boolean(),
-    }),
-  );
-
-  const quarantineDate = new Date();
-  if (reqBody.isQuarantined) {
-    tracker.trackEvent(authUser, "quarantine_workspace", {
-      quarantinedBy: authUser.email,
-      quarantinedAt: quarantineDate,
-      workspaceId: workspace.id,
-    });
-  } else {
-    tracker.trackEvent(authUser, "unquarantine_workspace", {
-      unQuarantinedBy: authUser.email,
-      unQuarantinedAt: quarantineDate,
-      workspaceId: workspace.id,
-    });
-  }
-
-  const quarantinedAt = reqBody.isQuarantined ? quarantineDate : null;
-
-  await patchWorkspace(
-    workspace.id,
-    workspace.instanceUrl,
-    workspace.displayName,
-    quarantinedAt,
-  );
+  tracker.trackEvent(authUser, "workspace_updated", {
+    workspaceId: workspace.id,
+    workspaceUpdatedAt: new Date(),
+    workspaceUpdatedBy: authUser.email,
+  });
 
   ctx.body = await getUserWorkspaces(authUser.id);
 });
@@ -296,20 +179,27 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
-router.post("/workspace/:workspaceId/members", async (ctx) => {
+router.post("/workspace/:workspaceId/membership", async (ctx) => {
   // user must be logged in
-  extractAuthUser(ctx);
+  const authUser = extractAuthUser(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
   const reqBody = validate(
     ctx.request.body,
     z.object({
-      email: z.string(),
+      userId: z.string(),
+      role: z.string(),
     }),
   );
 
-  await inviteMember(reqBody.email, workspace.id);
+  tracker.trackEvent(authUser, "workspace_membership_roles_changed", {
+    role: reqBody.role,
+    userId: reqBody.userId,
+    workspaceId: workspace.id,
+  });
+
+  await changeWorkspaceMembership(workspace.id, reqBody.userId, reqBody.role);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
@@ -327,9 +217,46 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
+router.post("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  const authUser = extractAuthUser(ctx);
+
+  const workspace = await extractOwnWorkspaceIdParam(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      email: z.string(),
+    }),
+  );
+
+  await inviteMember(authUser, reqBody.email, workspace.id);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  tracker.trackEvent(authUser, "workspace_user_invited", {
+    workspaceId: workspace.id,
+    memberAdded: reqBody.email,
+    memberAddedAt: new Date(),
+  });
+
+  ctx.body = members;
+});
+
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
-  extractAuthUser(ctx);
+  const authUser = extractAuthUser(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
@@ -354,7 +281,52 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
     });
   });
 
+  tracker.trackEvent(authUser, "workspace_user_removed", {
+    workspaceId: workspace.id,
+    memberRemoved: reqBody.email,
+    memberRemovedAt: new Date(),
+  });
+
   ctx.body = members;
+});
+
+router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
+  const authUser = extractAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      isFavourite: z.boolean(),
+    }),
+  );
+
+  const favouriteDate = new Date();
+  if (reqBody.isFavourite) {
+    tracker.trackEvent(authUser, "favourite_workspace", {
+      favouritedBy: authUser.email,
+      favouriteDate,
+      workspaceId: workspace.id,
+    });
+  } else {
+    tracker.trackEvent(authUser, "unfavourite_workspace", {
+      unFavouritedBy: authUser.email,
+      unFavouriteDate: favouriteDate,
+      workspaceId: workspace.id,
+    });
+  }
+
+  await patchWorkspace(
+    workspace.id,
+    workspace.instanceUrl,
+    workspace.displayName,
+    workspace.quarantinedAt,
+    workspace.description,
+    reqBody.isFavourite,
+  );
+
+  ctx.body = await getUserWorkspaces(authUser.id);
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {

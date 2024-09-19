@@ -16,6 +16,7 @@ color-eyre = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 derive_more = { workspace = true }
+forklift-server = { path = "../../lib/forklift-server" }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }
@@ -31,6 +32,7 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
+si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 sodiumoxide = { workspace = true }

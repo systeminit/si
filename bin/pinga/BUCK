@@ -10,12 +10,7 @@ rust_binary(
     deps = [
         "//lib/pinga-server:pinga-server",
         "//lib/si-service:si-service",
-        "//lib/si-std:si-std",
-        "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
-        "//third-party/rust:color-eyre",
-        "//third-party/rust:tokio",
-        "//third-party/rust:tokio-util",
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "pinga"},

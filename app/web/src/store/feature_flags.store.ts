@@ -10,6 +10,7 @@ const FLAG_MAPPING = {
   FIRST_TIME_TUTORIAL_MODAL: "first_time_tutorial_modal",
   DEV_SLICE_REBASING: "dev-slice-rebasing",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
+  SHOW_INTRINSIC_EDITING: "asset_detail_intrinsic_editing",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

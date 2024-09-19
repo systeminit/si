@@ -13,7 +13,7 @@ use crate::{
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext,
-    EdgeWeightKind, Func, FuncId, OutputSocket, Prop, WorkspaceSnapshotError,
+    EdgeWeightKind, Func, FuncBackendKind, FuncId, OutputSocket, Prop, WorkspaceSnapshotError,
 };
 
 use super::{
@@ -80,8 +80,8 @@ impl AttributeBinding {
             AttributePrototypeEventualParent::SchemaVariantFromProp(_, prop_id) => {
                 AttributeFuncDestination::Prop(prop_id)
             }
-            AttributePrototypeEventualParent::SchemaVariantFromInputSocket(_, _) => {
-                return Err(FuncBindingError::MalformedInput("()".to_owned()));
+            AttributePrototypeEventualParent::SchemaVariantFromInputSocket(_, input_socket_id) => {
+                AttributeFuncDestination::InputSocket(input_socket_id)
             }
         };
         Ok(output_location)
@@ -131,6 +131,62 @@ impl AttributeBinding {
         Ok(output_location)
     }
 
+    /// assemble bindings for an [`IntrinsicFunc`]
+    /// This filters out Component specific bindings and bindings for input sockets
+    /// as we don't want users to be able to set prototypes for input sockets and we're
+    /// not supported component specific bindings just yet
+    pub(crate) async fn assemble_intrinsic_bindings(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        let mut bindings = vec![];
+        let intrinsic_func_kind: IntrinsicFunc =
+            Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
+
+        for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func_id).await?
+        {
+            let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
+            // skip this binding if it's for a component (until we support component specific bindings)
+            if let EventualParent::Component(component_id) = eventual_parent {
+                trace!(
+                    "skipping component {} for intrinsic {}",
+                    component_id,
+                    intrinsic_func_kind
+                );
+                continue;
+            }
+            let output_location = Self::find_output_location(ctx, attribute_prototype_id).await?;
+            // skip this binding if it's for an input socket as we don't let users change bindings for input sockets
+            if let AttributeFuncDestination::InputSocket(input_socket_id) = output_location {
+                trace!(
+                    "skipping input socket {} for intrinsic {}",
+                    input_socket_id,
+                    intrinsic_func_kind
+                );
+                continue;
+            }
+            let attribute_prototype_argument_ids =
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id)
+                    .await?;
+
+            let mut argument_bindings = Vec::with_capacity(attribute_prototype_argument_ids.len());
+            for attribute_prototype_argument_id in attribute_prototype_argument_ids {
+                argument_bindings.push(
+                    AttributeArgumentBinding::assemble(ctx, attribute_prototype_argument_id)
+                        .await?,
+                );
+            }
+            bindings.push(FuncBinding::Attribute(AttributeBinding {
+                func_id,
+                attribute_prototype_id,
+                eventual_parent,
+                output_location,
+                argument_bindings,
+            }));
+        }
+        Ok(bindings)
+    }
+
     pub(crate) async fn assemble_attribute_bindings(
         ctx: &DalContext,
         func_id: FuncId,
@@ -173,6 +229,7 @@ impl AttributeBinding {
     /// Collect impacted AttributeValues and enqueue them for DependentValuesUpdate
     /// so the functions run upon being attached.
     /// Returns an error if we're trying to upsert an attribute binding for a locked [`SchemaVariant`]
+    /// This is also used for Intrinsics, and we return an error if incorrect config values are passed in
     pub async fn upsert_attribute_binding(
         ctx: &DalContext,
         func_id: FuncId,
@@ -181,9 +238,13 @@ impl AttributeBinding {
         prototype_arguments: Vec<AttributeArgumentBinding>,
     ) -> FuncBindingResult<AttributePrototype> {
         let func = Func::get_by_id_or_error(ctx, func_id).await?;
-        if func.kind != FuncKind::Attribute {
-            return Err(FuncBindingError::UnexpectedFuncKind(func.kind));
-        }
+
+        let needs_validate_intrinsic_input = match func.kind {
+            FuncKind::Attribute => false,
+            FuncKind::Intrinsic => true,
+            kind => return Err(FuncBindingError::UnexpectedFuncKind(kind)),
+        };
+
         // if a parent was specified, use it. otherwise find the schema variant
         // for the output location
         let eventual_parent = match eventual_parent {
@@ -193,9 +254,23 @@ impl AttributeBinding {
         // return an error if the parent is a schema variant and it's locked
         eventual_parent.error_if_locked(ctx).await?;
 
+        if needs_validate_intrinsic_input {
+            validate_intrinsic_inputs(
+                ctx,
+                func_id,
+                eventual_parent,
+                output_location,
+                prototype_arguments.clone(),
+            )
+            .await?;
+        }
+
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
         let attribute_prototype_id = attribute_prototype.id;
 
+        // cache attribute values that need to be updated from their prototype func after
+        // we update the prototype
+        let mut attribute_values_to_update = vec![];
         match output_location {
             AttributeFuncDestination::Prop(prop_id) => {
                 match eventual_parent {
@@ -203,6 +278,16 @@ impl AttributeBinding {
                         if let Some(existing_prototype_id) =
                             AttributePrototype::find_for_prop(ctx, prop_id, &None).await?
                         {
+                            // if we're setting this to unset, need to also clear any existing attribute values
+                            if func.backend_kind == FuncBackendKind::Unset {
+                                let attribute_value_ids = AttributePrototype::attribute_value_ids(
+                                    ctx,
+                                    existing_prototype_id,
+                                )
+                                .await?;
+                                attribute_values_to_update.extend(attribute_value_ids);
+                            }
+
                             // remove existing attribute prototype and arguments before we add the
                             // edge to the new one
 
@@ -221,6 +306,10 @@ impl AttributeBinding {
                         let attribute_value_ids =
                             Component::attribute_values_for_prop_id(ctx, component_id, prop_id)
                                 .await?;
+                        // if we're setting this to unset, need to also clear any existing attribute values
+                        if func.backend_kind == FuncBackendKind::Unset {
+                            attribute_values_to_update.extend(attribute_value_ids.clone());
+                        }
 
                         for attribute_value_id in attribute_value_ids {
                             AttributeValue::set_component_prototype_id(
@@ -238,11 +327,22 @@ impl AttributeBinding {
                 // remove existing attribute prototype and arguments
                 match eventual_parent {
                     EventualParent::SchemaVariant(_) => {
-                        if let Some(existing_proto) =
+                        if let Some(existing_prototype_id) =
                             AttributePrototype::find_for_output_socket(ctx, output_socket_id)
                                 .await?
                         {
-                            Self::delete_attribute_prototype_and_args(ctx, existing_proto).await?;
+                            // if we're setting this to unset, need to also clear any existing attribute values
+                            if func.backend_kind == FuncBackendKind::Unset {
+                                let attribute_value_ids = AttributePrototype::attribute_value_ids(
+                                    ctx,
+                                    existing_prototype_id,
+                                )
+                                .await?;
+                                attribute_values_to_update.extend(attribute_value_ids);
+                            }
+
+                            Self::delete_attribute_prototype_and_args(ctx, existing_prototype_id)
+                                .await?;
                         }
                         OutputSocket::add_edge_to_attribute_prototype(
                             ctx,
@@ -260,6 +360,10 @@ impl AttributeBinding {
                                 component_id,
                             )
                             .await?;
+                        // if we're setting this to unset, need to also clear any existing attribute values
+                        if func.backend_kind == FuncBackendKind::Unset {
+                            attribute_values_to_update.push(attribute_value_id);
+                        }
                         AttributeValue::set_component_prototype_id(
                             ctx,
                             attribute_value_id,
@@ -270,6 +374,17 @@ impl AttributeBinding {
                     }
                 }
             }
+            // we don't let users configure this right now
+            AttributeFuncDestination::InputSocket(_) => {
+                return Err(FuncBindingError::InvalidAttributePrototypeDestination(
+                    output_location,
+                ));
+            }
+        }
+
+        // if there are attribute values that need to be updated from prototype function - do it here!
+        for attribute_value in attribute_values_to_update {
+            AttributeValue::update_from_prototype_function(ctx, attribute_value).await?;
         }
 
         for arg in &prototype_arguments {
@@ -287,28 +402,51 @@ impl AttributeBinding {
                 }
             }
 
-            let attribute_prototype_argument =
-                AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
-                    .await?;
             match &arg.attribute_func_input_location {
                 super::AttributeFuncArgumentSource::Prop(prop_id) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
                         .set_value_from_prop_id(ctx, *prop_id)
-                        .await?
+                        .await?;
                 }
                 super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
                         .set_value_from_input_socket_id(ctx, *input_socket_id)
-                        .await?
+                        .await?;
                 }
                 // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
                 super::AttributeFuncArgumentSource::StaticArgument(value) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
-                        .set_value_from_static_value(
-                            ctx,
-                            serde_json::from_str::<serde_json::Value>(value.as_str())?,
-                        )
-                        .await?
+                        .set_value_from_static_value(ctx, value.clone())
+                        .await?;
+                }
+                // we do not allow users to manually set these as inputs right now
+                super::AttributeFuncArgumentSource::Secret(secret_id) => {
+                    return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
+                        AttributeFuncArgumentSource::Secret(*secret_id),
+                    ))
+                }
+                super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
+                    return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
+                        AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
+                    ))
                 }
             };
         }
@@ -334,6 +472,18 @@ impl AttributeBinding {
         eventual_parent.error_if_locked(ctx).await?;
 
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+        // if this func is intrinsic, make sure everything looks good
+        if (Func::get_intrinsic_kind_by_id(ctx, func_id).await?).is_some() {
+            let output_location = Self::find_output_location(ctx, attribute_prototype_id).await?;
+            validate_intrinsic_inputs(
+                ctx,
+                func_id,
+                eventual_parent,
+                output_location,
+                prototype_arguments.clone(),
+            )
+            .await?;
+        };
         //remove existing arguments first
         Self::delete_attribute_prototype_args(ctx, attribute_prototype_id).await?;
 
@@ -352,27 +502,51 @@ impl AttributeBinding {
                 }
             }
 
-            let attribute_prototype_argument =
-                AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
-                    .await?;
             match &arg.attribute_func_input_location {
                 super::AttributeFuncArgumentSource::Prop(prop_id) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
                         .set_value_from_prop_id(ctx, *prop_id)
-                        .await?
+                        .await?;
                 }
                 super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
                         .set_value_from_input_socket_id(ctx, *input_socket_id)
-                        .await?
+                        .await?;
                 }
+                // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
                 super::AttributeFuncArgumentSource::StaticArgument(value) => {
+                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                    )
+                    .await?;
                     attribute_prototype_argument
-                        .set_value_from_static_value(
-                            ctx,
-                            serde_json::from_str::<serde_json::Value>(value.as_str())?,
-                        )
-                        .await?
+                        .set_value_from_static_value(ctx, value.clone())
+                        .await?;
+                }
+                // we do not allow users to manually set these as inputs right now
+                super::AttributeFuncArgumentSource::Secret(secret_id) => {
+                    return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
+                        AttributeFuncArgumentSource::Secret(*secret_id),
+                    ))
+                }
+                super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
+                    return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
+                        AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
+                    ))
                 }
             };
         }
@@ -420,7 +594,7 @@ impl AttributeBinding {
     )]
     /// For a given [`AttributePrototypeId`], remove the existing [`AttributePrototype`] and [`AttributePrototypeArgument`]s
     /// For a [`Component`], we'll reset the prototype to what is defined for the [`SchemaVariant`], and for now, reset the
-    /// [`SchemaVariant`]'s prototype to be the Identity Func. When the user regenerates the schema, we'll re-apply whatever has
+    /// [`SchemaVariant`]'s prototype to be the si:Unset. When the user regenerates the schema, we'll re-apply whatever has
     /// been configured in the Schema Def function. This is a hold over until we remove this behavior from being configured in the
     /// definition func and enable users to set intrinsic funcs via the UI.
     pub async fn reset_attribute_binding(
@@ -436,12 +610,12 @@ impl AttributeBinding {
         {
             AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
         } else {
-            // let's set the prototype to identity so that when we regenerate,
+            // let's set the prototype to unset so that when we regenerate,
             // the socket or prop's prototype can get reset to the value from (if that is where it was coming from)
             // or the default value as defined in the schema variant def
 
-            let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-            AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, identity_func_id)
+            let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+            AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, unset_func_id)
                 .await?;
 
             // loop through and delete all existing attribute prototype arguments
@@ -573,4 +747,89 @@ impl AttributeBinding {
 
         FuncBinding::for_func_id(ctx, new_func_id).await
     }
+}
+
+async fn validate_intrinsic_inputs(
+    ctx: &DalContext,
+    func_id: FuncId,
+    eventual_parent: EventualParent,
+    output_location: AttributeFuncDestination,
+    prototype_arguments: Vec<AttributeArgumentBinding>,
+) -> FuncBindingResult<()> {
+    let intrinsic_kind = Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
+    if let EventualParent::Component(component_id) = eventual_parent {
+        return Err(FuncBindingError::CannotSetIntrinsicForComponent(
+            component_id,
+        ));
+    }
+    match intrinsic_kind {
+        IntrinsicFunc::Identity => {
+            // for now we only support configuring one input location at a time
+            if prototype_arguments.len() > 1 {
+                return Err(FuncBindingError::InvalidIntrinsicBinding);
+            }
+            match output_location {
+                // props can only take input from other props and input sockets
+                AttributeFuncDestination::Prop(_) => {
+                    let mut maybe_invalid_inputs = prototype_arguments.clone();
+                    maybe_invalid_inputs.retain(|arg| match arg.attribute_func_input_location {
+                        AttributeFuncArgumentSource::Prop(_) => false,
+                        AttributeFuncArgumentSource::InputSocket(_) => false,
+                        AttributeFuncArgumentSource::StaticArgument(_) => true,
+                        AttributeFuncArgumentSource::OutputSocket(_) => true,
+                        AttributeFuncArgumentSource::Secret(_) => true,
+                    });
+                    if !maybe_invalid_inputs.is_empty() {
+                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                    }
+                }
+                // output sockets can take input from props or input sockets
+                AttributeFuncDestination::OutputSocket(_) => {
+                    let mut maybe_invalid_inputs = prototype_arguments.clone();
+                    maybe_invalid_inputs.retain(|arg| match arg.attribute_func_input_location {
+                        AttributeFuncArgumentSource::Prop(_) => false,
+                        AttributeFuncArgumentSource::InputSocket(_) => false,
+                        AttributeFuncArgumentSource::StaticArgument(_) => true,
+                        AttributeFuncArgumentSource::OutputSocket(_) => true,
+                        AttributeFuncArgumentSource::Secret(_) => true,
+                    });
+                    if !maybe_invalid_inputs.is_empty() {
+                        return Err(FuncBindingError::InvalidIntrinsicBinding);
+                    }
+                }
+                // input sockets can't take input from anything this way
+                AttributeFuncDestination::InputSocket(_) => {
+                    return Err(FuncBindingError::InvalidAttributePrototypeDestination(
+                        output_location,
+                    ))
+                }
+            }
+        }
+        IntrinsicFunc::Unset => {
+            // ensure no args are sent
+            if !prototype_arguments.is_empty() {
+                return Err(FuncBindingError::InvalidIntrinsicBinding);
+            }
+            match output_location {
+                AttributeFuncDestination::Prop(_) | AttributeFuncDestination::OutputSocket(_) => {}
+                AttributeFuncDestination::InputSocket(_) => {
+                    return Err(FuncBindingError::InvalidIntrinsicBinding)
+                }
+            }
+        }
+        IntrinsicFunc::SetArray
+        | IntrinsicFunc::SetBoolean
+        | IntrinsicFunc::SetInteger
+        | IntrinsicFunc::SetJson
+        | IntrinsicFunc::SetMap
+        | IntrinsicFunc::SetObject
+        | IntrinsicFunc::SetString => {
+            // ensure there's only one value
+            if prototype_arguments.len() > 1 {
+                return Err(FuncBindingError::InvalidIntrinsicBinding);
+            }
+        }
+        IntrinsicFunc::Validation => return Err(FuncBindingError::InvalidIntrinsicBinding),
+    };
+    Ok(())
 }

@@ -155,7 +155,7 @@ impl SiNodeWeight for InputSocketNodeWeightV1 {
     fn node_hash(&self) -> ContentHash {
         let mut content_hasher = ContentHash::hasher();
         content_hasher.update(self.arity.to_string().as_bytes());
-        content_hasher.update(self.content_address.to_string().as_bytes());
+        content_hasher.update(self.content_address.content_hash().as_bytes());
 
         content_hasher.finalize()
     }

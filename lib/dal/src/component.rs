@@ -62,7 +62,7 @@ use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
+    StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
 
@@ -297,7 +297,7 @@ pub struct ComponentGeometry {
     pub height: Option<String>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ControllingFuncData {
     pub func_id: FuncId,
     pub av_id: AttributeValueId,
@@ -414,6 +414,13 @@ impl Component {
         result: ComponentResult,
     );
 
+    #[instrument(
+        name = "component.new", 
+        level = "info",
+        skip_all,
+        fields(
+            schema_variant.id = ?schema_variant_id
+        ))]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -568,6 +575,15 @@ impl Component {
         .await?;
 
         component.set_name(ctx, &name).await?;
+
+        //set a component specific prototype for the root/si/type as we don't want it to ever change other than manually
+        let sv_type = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+            .await?
+            .get_type(ctx)
+            .await?;
+        if let Some(sv_type) = sv_type {
+            component.set_type(ctx, sv_type).await?;
+        }
 
         let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
         let leaf_value_ids = component_graph.independent_values();
@@ -751,14 +767,15 @@ impl Component {
                             // (because Components can't have children).
                             //
                             // For properties like this, we check whether the value has
-                            // changed between the old and new schema variant, and if so,
+                            // changed between the current component's value
+                            // and new schema variant's default, and if so,
                             // we explicitly set the value on the component to the old
                             // value it used to have, as if the user had explicitly set it
                             // themselves. (You could argue they basically implicitly set
                             // the value of root/si/type when they created the child
                             // components.)
                             if prop_path == ["root", "si", "type"] {
-                                let old_value = Prop::default_value(ctx, old_prop_id).await?;
+                                let old_value = old_av.value(ctx).await?;
                                 let new_value = Prop::default_value(ctx, new_prop_id).await?;
                                 if old_value != new_value {
                                     // Even if the value was set to a dynamic function, we want
@@ -1292,6 +1309,32 @@ impl Component {
         Ok(None)
     }
 
+    /// List all IDs for all [`Components`](Component) in the workspace.
+    pub async fn list_ids(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let component_category_node_id = workspace_snapshot
+            .get_category_node_or_err(None, CategoryNodeKind::Component)
+            .await?;
+
+        let component_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+
+        let mut component_ids = Vec::with_capacity(component_node_indices.len());
+        for index in component_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)
+                .await?
+                .get_component_node_weight()?;
+            component_ids.push(node_weight.id.into())
+        }
+        Ok(component_ids)
+    }
+
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -1497,10 +1540,17 @@ impl Component {
         Ok(())
     }
 
+    /// Finds the [`ResourceData`] for a given [`Component`].
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Option<ResourceData>> {
-        let value_id = self
-            .attribute_value_for_prop(ctx, &["root", "resource"])
-            .await?;
+        Self::resource_by_id(ctx, self.id).await
+    }
+
+    /// Finds the [`ResourceData`] for a given [`ComponentId`](Component).
+    pub async fn resource_by_id(
+        ctx: &DalContext,
+        id: ComponentId,
+    ) -> ComponentResult<Option<ResourceData>> {
+        let value_id = Self::attribute_value_for_prop_by_id(ctx, id, &["root", "resource"]).await?;
 
         let av = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
 
@@ -1521,10 +1571,10 @@ impl Component {
         }
     }
 
-    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
-        let name_value_id = self
-            .attribute_value_for_prop(ctx, &["root", "si", "name"])
-            .await?;
+    /// Returns the name of a [`Component`] for a given [`ComponentId`](Component).
+    pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<String> {
+        let name_value_id =
+            Self::attribute_value_for_prop_by_id(ctx, id, &["root", "si", "name"]).await?;
 
         let name_av = AttributeValue::get_by_id_or_error(ctx, name_value_id).await?;
 
@@ -1532,6 +1582,11 @@ impl Component {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
+    }
+
+    /// Returns the name of the [`Component`].
+    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
+        Self::name_by_id(ctx, self.id).await
     }
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
@@ -3316,7 +3371,8 @@ pub struct ComponentSetPosition {
 pub struct ComponentSetPositionPayload {
     change_set_id: ChangeSetId,
     positions: Vec<ComponentSetPosition>,
-    user_pk: Option<UserPk>,
+    // Used so the client can ignore the messages it caused. created by the frontend, and not stored
+    client_ulid: Option<ulid::Ulid>,
 }
 
 impl ComponentSetPositionPayload {
@@ -3397,7 +3453,7 @@ impl WsEvent {
         ctx: &DalContext,
         change_set_id: ChangeSetId,
         components: Vec<Component>,
-        user_pk: Option<UserPk>,
+        client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];
         for component in components {
@@ -3420,7 +3476,7 @@ impl WsEvent {
             WsPayload::SetComponentPosition(ComponentSetPositionPayload {
                 change_set_id,
                 positions,
-                user_pk,
+                client_ulid,
             }),
         )
         .await

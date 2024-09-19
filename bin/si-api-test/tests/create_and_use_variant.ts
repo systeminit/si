@@ -6,8 +6,10 @@ export default async function create_variant(sdfApiClient: SdfApiClient) {
   return runWithTemporaryChangeset(sdfApiClient, create_variant_inner);
 }
 
-export async function create_variant_inner(sdfApiClient: SdfApiClient, changeSetId: string) {
-
+export async function create_variant_inner(
+  sdfApiClient: SdfApiClient,
+  changeSetId: string,
+) {
   const startTime = new Date();
   const variantName = `Test_Variant - ${startTime.toISOString()}`;
 
@@ -19,7 +21,8 @@ export async function create_variant_inner(sdfApiClient: SdfApiClient, changeSet
   };
 
   const createVariantResp = await sdfApiClient.call({
-    route: "create_variant", routeVars: {
+    route: "create_variant",
+    routeVars: {
       workspaceId: sdfApiClient.workspaceId,
     },
     body: createVariantPayload,
@@ -34,12 +37,12 @@ export async function create_variant_inner(sdfApiClient: SdfApiClient, changeSet
     "x": "200",
     "y": "0",
     "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdfApiClient.workspaceId
+    "workspaceId": sdfApiClient.workspaceId,
   };
 
   const createInstanceResp = await sdfApiClient.call({
     route: "create_component",
-    body: createInstancePayload
+    body: createInstancePayload,
   });
 
   const newSchemaComponentId = createInstanceResp?.componentId;
@@ -51,14 +54,24 @@ export async function create_variant_inner(sdfApiClient: SdfApiClient, changeSet
     routeVars: {
       workspaceId: sdfApiClient.workspaceId,
       changeSetId,
-    }
+    },
   });
 
   assert(diagram?.components, "Expected components list on the diagram");
-  assert(diagram.components.length === 1, "Expected a single component on the diagram");
+  assert(
+    diagram.components.length === 1,
+    "Expected a single component on the diagram",
+  );
 
-  const regionComponentOnDiagram = diagram.components.find((c) => c.id === newSchemaComponentId);
-  assert(regionComponentOnDiagram, "Expected to find the new schema variant on the diagram");
-  assert(regionComponentOnDiagram?.schemaVariantId === schemaVariantId, "Expected diagram component schema variant id to be correct");
-
+  const regionComponentOnDiagram = diagram.components.find((c) =>
+    c.id === newSchemaComponentId
+  );
+  assert(
+    regionComponentOnDiagram,
+    "Expected to find the new schema variant on the diagram",
+  );
+  assert(
+    regionComponentOnDiagram?.schemaVariantId === schemaVariantId,
+    "Expected diagram component schema variant id to be correct",
+  );
 }

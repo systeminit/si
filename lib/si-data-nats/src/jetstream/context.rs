@@ -4,13 +4,14 @@ use async_nats::{
     header::{self, IntoHeaderName, IntoHeaderValue},
     jetstream::{
         account::Account,
-        consumer::{FromConsumer, IntoConsumerConfig},
+        consumer::{Consumer, FromConsumer, IntoConsumerConfig},
         context::{
             AccountError, CreateKeyValueError, CreateObjectStoreError, CreateStreamError,
-            DeleteObjectStore, DeleteStreamError, GetStreamError, KeyValueError, ObjectStoreError,
-            PublishAckFuture, PublishError, RequestError, UpdateStreamError,
+            DeleteObjectStore, DeleteStreamError, GetStreamByNameError, GetStreamError,
+            KeyValueError, ObjectStoreError, PublishAckFuture, PublishError, RequestError,
+            UpdateStreamError,
         },
-        stream::{Config, ConsumerError, DeleteStatus},
+        stream::{Config, ConsumerError, DeleteStatus, Info, Stream},
     },
     subject::ToSubject,
     HeaderMap, HeaderValue,
@@ -63,8 +64,9 @@ impl Context {
         Self { inner, metadata }
     }
 
-    /// Publishes [jetstream::Message][super::message::Message] to the [Stream] without waiting for
-    /// acknowledgment from the server that the message has been successfully delivered.
+    /// Publishes [`jetstream::Message`][async_nats::jetstream::message::Message] to the [`Stream`]
+    /// without waiting for acknowledgment from the server that the message has been successfully
+    /// delivered.
     ///
     /// Acknowledgment future that can be polled is returned instead.
     ///
@@ -356,9 +358,9 @@ impl Context {
         Ok(account)
     }
 
-    /// Create a JetStream [Stream] with given config and return a handle to it.
+    /// Create a JetStream [`Stream`] with given config and return a handle to it.
     ///
-    /// That handle can be used to manage and use [Consumer].
+    /// That handle can be used to manage and use [`Consumer`].
     ///
     /// # Examples
     ///
@@ -411,7 +413,7 @@ impl Context {
     pub async fn create_stream<S>(
         &self,
         stream_config: S,
-    ) -> Result<async_nats::jetstream::stream::Stream, CreateStreamError>
+    ) -> Result<Stream<Info>, CreateStreamError>
     where
         Config: From<S>,
     {
@@ -427,8 +429,71 @@ impl Context {
         Ok(stream)
     }
 
-    /// Checks for [Stream] existence on the server and returns handle to it.
-    /// That handle can be used to manage and use [Consumer].
+    /// Checks for [`Stream`] existence on the server and returns handle to it.
+    ///
+    /// That handle can be used to manage and use [`Consumer`]. This variant does not fetch
+    /// [`Stream`] info from the server. It means it does not check if the stream actually exists.
+    /// If you run more operations on few streams, it is better to use [`Context::get_stream`]
+    /// instead. If you however run single operations on many streams, this method is more
+    /// efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = Client::connect_with_options(
+    ///     "localhost:4222",
+    ///     None,
+    ///     ConnectOptions::default(),
+    /// ).await?;
+    /// let jetstream = si_data_nats::jetstream::new(client);
+    ///
+    /// let stream = jetstream.get_stream_no_info("events").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "context.get_stream_no_info",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Internal.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        )
+    )]
+    pub async fn get_stream_no_info<T: AsRef<str>>(
+        &self,
+        stream: T,
+    ) -> Result<Stream<()>, GetStreamError> {
+        let span = Span::current();
+
+        let stream = self
+            .inner
+            .get_stream_no_info(stream)
+            .await
+            .map_err(|err| span.record_err(err))?;
+
+        span.record_ok();
+        Ok(stream)
+    }
+
+    /// Checks for [`Stream`] existence on the server and returns handle to it.
+    /// That handle can be used to manage and use [`Consumer`].
     ///
     /// # Examples
     ///
@@ -469,10 +534,7 @@ impl Context {
             server.port = self.metadata.server_port(),
         )
     )]
-    pub async fn get_stream<T: AsRef<str>>(
-        &self,
-        stream: T,
-    ) -> Result<async_nats::jetstream::stream::Stream, GetStreamError> {
+    pub async fn get_stream<T: AsRef<str>>(&self, stream: T) -> Result<Stream, GetStreamError> {
         let span = Span::current();
 
         let stream = self
@@ -541,7 +603,7 @@ impl Context {
     pub async fn get_or_create_stream<S>(
         &self,
         stream_config: S,
-    ) -> Result<async_nats::jetstream::stream::Stream, CreateStreamError>
+    ) -> Result<Stream, CreateStreamError>
     where
         S: Into<Config>,
     {
@@ -560,7 +622,7 @@ impl Context {
         Ok(stream)
     }
 
-    /// Deletes a [Stream] with a given name.
+    /// Deletes a [`Stream`] with a given name.
     ///
     /// # Examples
     ///
@@ -618,7 +680,7 @@ impl Context {
         Ok(status)
     }
 
-    /// Updates a [Stream] with a given config. If specific field cannot be updated, error is
+    /// Updates a [`Stream`] with a given config. If specific field cannot be updated, error is
     /// returned.
     ///
     /// # Examples
@@ -686,6 +748,67 @@ impl Context {
 
         span.record_ok();
         Ok(info)
+    }
+
+    /// Looks up Stream that contains provided subject.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// use futures::TryStreamExt;
+    /// let client = Client::connect_with_options(
+    ///     "localhost:4222",
+    ///     None,
+    ///     ConnectOptions::default(),
+    /// ).await?;
+    /// let jetstream = si_data_nats::jetstream::new(client);
+    /// let stream_name = jetstream.stream_by_subject("foo.>");
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "context.stream_by_subject",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.destination.name = Empty,
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Internal.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        )
+    )]
+    pub async fn stream_by_subject<T: Into<String>>(
+        &self,
+        subject: T,
+    ) -> Result<String, GetStreamByNameError> {
+        let span = Span::current();
+
+        let subject = subject.into();
+        span.record("messaging.destination.name", subject.as_str());
+
+        let name = self
+            .inner
+            .stream_by_subject(subject)
+            .await
+            .map_err(|err| span.record_err(err))?;
+
+        span.record_ok();
+        Ok(name)
     }
 
     /// Lists names of all streams for current context.
@@ -920,11 +1043,10 @@ impl Context {
         Ok(status)
     }
 
-    /// Get a [crate::jetstream::consumer::Consumer] straight from [Context], without binding to a
-    /// [Stream] first.
+    /// Get a [`Consumer`] straight from [`Context`], without binding to a [`Stream`] first.
     ///
     /// It has one less interaction with the server when binding to only one
-    /// [crate::jetstream::consumer::Consumer].
+    /// [`Consumer`].
     ///
     /// # Examples:
     ///
@@ -974,7 +1096,7 @@ impl Context {
         &self,
         consumer: C,
         stream: S,
-    ) -> Result<async_nats::jetstream::consumer::Consumer<T>, ConsumerError>
+    ) -> Result<Consumer<T>, ConsumerError>
     where
         T: FromConsumer + IntoConsumerConfig,
         S: AsRef<str>,
@@ -992,11 +1114,9 @@ impl Context {
         Ok(consumer)
     }
 
-    /// Delete a [crate::jetstream::consumer::Consumer] straight from [Context], without binding to
-    /// a [Stream] first.
+    /// Delete a [`Consumer`] straight from [`Context`], without binding to a [`Stream`] first.
     ///
-    /// It has one less interaction with the server when binding to only one
-    /// [crate::jetstream::consumer::Consumer].
+    /// It has one less interaction with the server when binding to only one [`Consumer`].
     ///
     /// # Examples:
     ///
@@ -1060,7 +1180,7 @@ impl Context {
     }
 
     /// Create a new `Durable` or `Ephemeral` Consumer (if `durable_name` was not provided) and
-    /// returns the info from the server about created [Consumer] without binding to a [Stream]
+    /// returns the info from the server about created [`Consumer`] without binding to a [`Stream`]
     /// first.
     ///
     /// # Examples
@@ -1115,7 +1235,7 @@ impl Context {
         &self,
         config: C,
         stream: S,
-    ) -> Result<async_nats::jetstream::consumer::Consumer<C>, ConsumerError> {
+    ) -> Result<Consumer<C>, ConsumerError> {
         let span = Span::current();
 
         let consumer = self
@@ -1131,7 +1251,7 @@ impl Context {
     /// Send a request to the jetstream JSON API.
     ///
     /// This is a low level API used mostly internally, that should be used only in specific cases
-    /// when this crate API on [Consumer] or [Stream] does not provide needed functionality.
+    /// when this crate API on [`Consumer`] or [`Stream`] does not provide needed functionality.
     ///
     /// # Examples
     ///

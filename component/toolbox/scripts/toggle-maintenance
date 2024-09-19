@@ -32,7 +32,7 @@ usage() {
     echo "Usage: toggle-maintenance [-p profile] [-r region] [-a automatic] [-s service] [-m maintenance]"
     echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
     echo "  -r region         AWS region to use"
-    echo "  -s service        [sdf/rebaser/pinga/veritech] SI Service to filter by, defaults to all"
+    echo "  -s service        [sdf/rebaser/pinga/veritech/forklift] SI Service to filter by, defaults to all"
     echo "  -a automatic      [Y/N] Run through automatically/no-interact"
     echo "  -m maintenance    [Y/N] Whether maintenance should be on"
     echo "----------------------------------"

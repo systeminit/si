@@ -273,7 +273,7 @@ To use LocalStack with "AWS Credential", do the following:
 
 1. Create a `Component` using the `SchemaVariant`.
 1. Create a `Secret` and use it in the property editor.
-1. Populate `http://localhost:4566` in the "Endpoint" field for the `Secret`.
+1. Populate `http://localhost:4566` (or `http://0.0.0.0:4566`, depending on your system) in the "Endpoint" field for the `Secret`.
 
 Now, you can use LocalStack in your development setup.
 
@@ -408,10 +408,10 @@ Then, it pipes that output into `buck2 build`.
 ## How do I build all runnable services written in Rust with `buck2`?
 
 If you intend to run these services with optimial performance, you need to build with release mode.
-Here is an example building `sdf`, `pinga`, `veritech` and `rebaser` from the repository root:
+Here is an example building `sdf`, `pinga`, `veritech`, `rebaser` and `forklift` from the repository root:
 
 ```shell
-buck2 build @//mode/release bin/sdf bin/pinga bin/veritech bin/rebaser
+buck2 build @//mode/release bin/sdf bin/pinga bin/veritech bin/rebaser bin/forklift
 ```
 
 ## What are modes used in `buck2` builds?
@@ -702,6 +702,7 @@ aforementioned action(s) without spending too much time thinking about them.
 
 This section contains the paths and brief definitions of the services that run in the System Initiative software stack.
 
+- **[forklift](bin/forklift/):** the service that forklifts data from SI to a data warehouse (or perform an "ack and no-op")
 - **[pinga](bin/pinga/):** the job queueing and execution service used to execute non-trivial jobs
 - **[rebaser](bin/rebaser/):** where all workspace-level changes are persisted and conflicts are detected based on proposed changes
 - **[sdf](bin/sdf/):** the backend webserver for communicating with `web` that contains the majority of the "business logic"

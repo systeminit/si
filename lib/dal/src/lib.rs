@@ -23,6 +23,7 @@ pub mod action;
 pub mod actor_view;
 pub mod attribute;
 pub mod authentication_prototype;
+pub mod billing_publish;
 pub mod builtins;
 pub mod change_set;
 pub mod change_status;
@@ -35,6 +36,7 @@ pub mod feature_flags;
 pub mod func;
 pub mod history_event;
 pub mod input_sources;
+pub mod jetstream_streams;
 pub mod job;
 pub mod jwt_key;
 pub mod key_pair;
@@ -45,6 +47,7 @@ pub mod pkg;
 pub mod prop;
 pub mod property_editor;
 pub mod qualification;
+pub mod resource_metadata;
 pub mod schema;
 pub mod secret;
 pub mod serde_impls;
@@ -87,6 +90,7 @@ pub use func::{
     Func, FuncError, FuncId,
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
+pub use jetstream_streams::{JetstreamStreams, JetstreamStreamsError};
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
 pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
@@ -131,6 +135,11 @@ pub use workspace_snapshot::{
 };
 pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
+
+pub use si_runtime::{
+    compute_executor, DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
+    DedicatedExecutorJoinError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -261,6 +270,14 @@ impl MigrationMode {
     #[must_use]
     pub const fn variants() -> &'static [&'static str] {
         <MigrationMode as strum::VariantNames>::VARIANTS
+    }
+
+    pub fn is_run(&self) -> bool {
+        matches!(self, Self::Run)
+    }
+
+    pub fn is_run_and_quit(&self) -> bool {
+        matches!(self, Self::RunAndQuit)
     }
 }
 

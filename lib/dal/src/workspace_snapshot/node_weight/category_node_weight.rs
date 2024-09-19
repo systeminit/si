@@ -72,7 +72,10 @@ impl CategoryNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![self.kind])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.kind.to_string().as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {

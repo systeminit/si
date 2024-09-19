@@ -74,12 +74,19 @@ impl ActionPrototypeNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "id": self.id,
-            "kind": self.kind,
-            "name": self.name,
-            "description": self.description,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(&self.id.inner().to_bytes());
+        content_hasher.update(self.kind.to_string().as_bytes());
+        content_hasher.update(self.name.as_bytes());
+        content_hasher.update(
+            &self
+                .description
+                .as_ref()
+                .map(|d| d.as_bytes().to_owned())
+                .unwrap_or_else(|| vec![0x00]),
+        );
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

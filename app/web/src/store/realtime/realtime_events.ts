@@ -52,7 +52,7 @@ export interface OnlineRequest {
 export interface ComponentPositionRequest {
   kind: "ComponentSetPosition";
   data: {
-    userPk: UserId;
+    clientUlid?: string;
     changeSetId: string | null;
     positions: ComponentGeometry[];
   };
@@ -78,7 +78,7 @@ export type WsEventPayloadMap = {
 
   SetComponentPosition: {
     changeSetId: ChangeSetId;
-    userPk: UserId;
+    clientUlid: string;
     positions: [
       {
         componentId: ComponentId;
@@ -242,6 +242,10 @@ export type WsEventPayloadMap = {
     actionId: ActionId;
     changeSetId: ChangeSetId;
   };
+  SecretDeleted: {
+    secretId: SecretId;
+    changeSetId: ChangeSetId;
+  };
   SecretUpdated: {
     secretId: SecretId;
     changeSetId: ChangeSetId;
@@ -257,6 +261,12 @@ export type WsEventPayloadMap = {
   };
   SchemaVariantCreated: SchemaVariant;
   SchemaVariantUpdated: SchemaVariant;
+  SchemaVariantReplaced: {
+    schemaId: SchemaId;
+    oldSchemaVariantId: SchemaVariantId;
+    newSchemaVariant: SchemaVariant;
+    changeSetId: ChangeSetId;
+  };
   SchemaVariantCloned: {
     schemaVariantId: string;
     changeSetId: ChangeSetId;

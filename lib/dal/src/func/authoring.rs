@@ -239,6 +239,7 @@ impl FuncAuthoringClient {
             }
         }
 
+        let is_intrinsic = func.is_intrinsic();
         let (func_run_id, result_channel) =
             FuncRunner::run_test(ctx, func, args, component_id).await?;
 
@@ -283,16 +284,18 @@ impl FuncAuthoringClient {
             None => None,
         };
 
-        ctx.layer_db()
-            .func_run()
-            .set_values_and_set_state_to_success(
-                func_run_value.func_run_id(),
-                unprocessed_value_address,
-                value_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        if !is_intrinsic {
+            ctx.layer_db()
+                .func_run()
+                .set_values_and_set_state_to_success(
+                    func_run_value.func_run_id(),
+                    unprocessed_value_address,
+                    value_address,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+        }
 
         Ok(func_run_id)
     }

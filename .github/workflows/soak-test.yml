@@ -1,0 +1,173 @@
+name: Soak Test
+
+run-name: Running ${{ inputs.test }} for ${{ inputs.maxDuration }}s every ${{ inputs.rate }}ms on ${{ inputs.executors }} instances
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to test"
+        default: "tools"
+        options:
+          - tools
+          - production
+      executors:
+        type: number
+        required: true
+        description: "Number of instances of all tests to run"
+        default: 1
+      maxDuration:
+        type: number
+        required: true
+        description: "How long to test for in seconds"
+        default: 10
+      rate:
+        type: number
+        required: true
+        description: "Time between tests in milliseconds"
+        default: 1000
+      test:
+        type: choice
+        required: true
+        description: "Which test to run"
+        options:
+          - create_two_components_connect_and_propagate
+          - create_and_delete_component
+          - create_and_use_variant
+      useJitter:
+        type: boolean
+        required: true
+        description: "Insert random time of 0-1 seconds between test runs"
+        default: true
+
+env:
+  DENO_DIR: bin/si-api-test
+
+jobs:
+  define-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      executors: ${{ steps.executors.outputs.executors }}
+    steps:
+      - id: executors
+        run: |
+          echo "executors=$(jq -nc '[range(0; $num)]' --argjson num ${{ inputs.executors }})" >> "$GITHUB_OUTPUT"
+
+  login:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      token: ${{ steps.token.outputs.token }}
+    steps:
+      - id: token
+        run: |
+          # getting and encrypting an access token so it can be safely passed
+          # without spamming auth0
+          token=$(curl -X POST "${{ vars.AUTH_API_URL }}/auth/login" \
+                  -H "Content-Type: application/json" \
+                  -d '{"email": "${{ secrets.API_TEST_EMAIL }}", "password": "${{ secrets.API_TEST_PASSWORD }}", "workspaceId": "${{ vars.API_TEST_WORKSPACE_ID }}" }' \
+                  | jq -r '.token' \
+                  | openssl enc -aes-256-cbc -pbkdf2 -salt -k "${{ secrets.ENCRYPTION_PASSWORD }}" \
+                  | base64 -w0)
+          if [[ -z "$token" || "$token" == "null" ]]; then
+            echo "Error: Failed to retrieve token."
+            exit 1
+          fi
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+  start-marker:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - run: |
+          curl https://api.honeycomb.io/1/markers/sdf -X POST \
+             -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -d '{"message":" '"Beginning soak test in ${{ inputs.environment }}."' ", "type":"soak-test-start"}'
+
+  api-test:
+    name: API Test SDF
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs:
+      - define-test-matrix
+      - login
+      - start-marker
+    outputs:
+      report: ${{ steps.runTest.outputs.report }}
+    strategy:
+      # don't fail the entire matrix on failure
+      fail-fast: false
+      matrix:
+        tests: ${{ fromJSON(needs.define-test-matrix.outputs.executors) }}
+    env:
+      SDF_API_URL: ${{ vars.SDF_API_URL }}
+      AUTH_API_URL: ${{ vars.AUTH_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DENO_DIR }}
+          key: ${{ hashFiles('./bin/si-api-test/*') }}
+
+      - name: Run the deno exec
+        id: runTest
+        working-directory: bin/si-api-test
+        run: |
+          TOKEN=$(echo "${{ needs.login.outputs.token }}" \
+          | base64 -d \
+          | openssl enc -aes-256-cbc -pbkdf2 -d -salt -k "${{ secrets.ENCRYPTION_PASSWORD }}")
+
+          deno task run \
+          --workspaceId "${{ vars.API_TEST_WORKSPACE_ID }}" \
+          --token "$TOKEN" \
+          --tests "${{ inputs.test }}" \
+          --profile '{"maxDuration":${{ inputs.maxDuration }}, "rate": ${{ inputs.rate }}, "useJitter": ${{ inputs.useJitter }} }' \
+          --reportFile report-${{ matrix.tests }}.json
+
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-${{ matrix.tests }}
+          path: ./**/report-${{ matrix.tests }}.json
+
+  gather-reports:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: api-test
+    if: always()
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v4
+      with:
+        path: ./reports
+        merge-multiple: true
+
+    - name: Concatenate reports
+      run: |
+        cat ./reports/bin/si-api-test/*.json | jq -s '
+          {
+            total_success: flatten | map(select(.test_result == "success")) | length,
+            total_failure: flatten | map(select(.test_result == "failure")) | length,
+            average_duration: (flatten | map(.test_duration | sub("ms"; "") | tonumber) | add / length)
+          }'
+
+  stop-marker:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: api-test
+    if: always()
+    steps:
+      - run: |
+          curl https://api.honeycomb.io/1/markers/sdf -X POST \
+             -H "X-Honeycomb-Team: ${{ secrets.HONEYCOMB_API_KEY }}" \
+             -d '{"message":" '"Completing soak test in ${{ inputs.environment }}."' ", "type":"soak-test-stop"}'

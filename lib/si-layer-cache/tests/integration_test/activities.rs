@@ -10,7 +10,9 @@ use si_layer_cache::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{disk_cache_path, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 
@@ -25,11 +27,14 @@ async fn activities() {
 
     let db = setup_pg_db("activities").await;
 
+    let compute_executor = setup_compute_executor();
+
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
+        compute_executor.clone(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -42,6 +47,7 @@ async fn activities() {
         tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
+        compute_executor,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -87,11 +93,14 @@ async fn activities_subscribe_partial() {
     let tempdir_axl = disk_cache_path(&tempdir, "axl");
     let db = setup_pg_db("activities_subscribe_partial").await;
 
+    let compute_executor = setup_compute_executor();
+
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
         tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        compute_executor.clone(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -104,6 +113,7 @@ async fn activities_subscribe_partial() {
         tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
+        compute_executor,
         MemoryCacheConfig::default(),
         token.clone(),
     )

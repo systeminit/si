@@ -6,7 +6,7 @@ export interface AdminWorkspace {
   id: string;
   name: string;
   defaultChangeSetId: string;
-  componentConcurrencyLimit: number;
+  componentConcurrencyLimit?: number;
   snapshotVersion: string;
 }
 
@@ -20,9 +20,10 @@ export interface AdminChangeSet {
   mergeRequestedByUserId?: string;
 }
 
-interface AdminState {
-  workspaces: { [key: string]: AdminWorkspace };
-  changeSetsByWorkspaceId: { [key: string]: { [key: string]: AdminChangeSet } };
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
 }
 
 export const useAdminStore = () => {
@@ -32,20 +33,18 @@ export const useAdminStore = () => {
     null,
     null,
     defineStore(`wsNONE/admin`, {
-      state: (): AdminState => ({
-        workspaces: {},
-        changeSetsByWorkspaceId: {},
-      }),
+      state: () => ({}),
       actions: {
-        async LIST_WORKSPACES() {
-          return new ApiRequest<{
-            workspaces: { [key: string]: AdminWorkspace };
-          }>({
-            method: "get",
-            url: `${API_PREFIX}/workspaces`,
-            onSuccess: (response) => {
-              this.workspaces = response.workspaces;
+        async SEARCH_WORKSPACES(query?: string) {
+          return new ApiRequest<
+            {
+              workspaces: AdminWorkspace[];
             },
+            { query?: string }
+          >({
+            method: "get",
+            params: { query },
+            url: `${API_PREFIX}/workspaces`,
           });
         },
         async LIST_CHANGE_SETS(workspaceId: string) {
@@ -55,15 +54,45 @@ export const useAdminStore = () => {
             keyRequestStatusBy: workspaceId,
             method: "get",
             url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets`,
-            onSuccess: (response) => {
-              this.changeSetsByWorkspaceId[workspaceId] = response.changeSets;
-            },
           });
         },
-        async FETCH_SNAPSHOT(workspaceId: string, changeSetId: string) {
+        async LIST_WORKSPACE_USERS(workspaceId: string) {
+          return new ApiRequest<{ users: AdminUser[] }>({
+            method: "get",
+            url: `${API_PREFIX}/workspaces/${workspaceId}/users`,
+          });
+        },
+        async GET_SNAPSHOT(workspaceId: string, changeSetId: string) {
           return new ApiRequest<string>({
             method: "get",
             url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/get_snapshot`,
+          });
+        },
+        async SET_SNAPSHOT(
+          workspaceId: string,
+          changeSetId: string,
+          snapshot: Blob,
+        ) {
+          const formData = new FormData();
+          formData.append("snapshot", snapshot);
+
+          return new ApiRequest<{ workspaceSnapshotAddress: string }>({
+            method: "post",
+            url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/set_snapshot`,
+            formData,
+          });
+        },
+        async SET_CONCURRENCY_LIMIT(
+          workspaceId: string,
+          concurrencyLimit?: number,
+        ) {
+          return new ApiRequest<
+            { concurrencyLimit?: number },
+            { concurrencyLimit?: number }
+          >({
+            method: "post",
+            url: `${API_PREFIX}/workspaces/${workspaceId}/set_concurrency_limit`,
+            params: { concurrencyLimit },
           });
         },
         async KILL_EXECUTION(funcRunId: FuncRunId) {
@@ -74,7 +103,6 @@ export const useAdminStore = () => {
         },
       },
       onActivated() {
-        this.LIST_WORKSPACES();
         return () => {};
       },
     }),

@@ -95,10 +95,11 @@ impl ComponentNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "content_address": self.content_address,
-            "to_delete": self.to_delete,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.content_address.content_hash().as_bytes());
+        content_hasher.update(&[u8::from(self.to_delete)]);
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

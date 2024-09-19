@@ -8,7 +8,6 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
@@ -182,7 +181,7 @@ impl AttributePrototypeArgument {
 
     implement_add_edge_to!(
         source_id: AttributePrototypeArgumentId,
-        destination_id: Ulid,
+        destination_id: ValueSource,
         add_fn: add_edge_to_value,
         discriminant: EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         result: AttributePrototypeArgumentResult,
@@ -341,21 +340,18 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         func_argument_id: FuncArgumentId,
         ap_id: AttributePrototypeId,
-    ) -> AttributePrototypeArgumentResult<AttributePrototypeArgumentId> {
+    ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentId>> {
         // AP --> APA --> Func Arg
 
         for apa_id in AttributePrototype::list_arguments_for_id(ctx, ap_id).await? {
             let this_func_arg_id = Self::func_argument_id_by_id(ctx, apa_id).await?;
 
             if this_func_arg_id == func_argument_id {
-                return Ok(apa_id);
+                return Ok(Some(apa_id));
             }
         }
 
-        Err(AttributePrototypeArgumentError::NotFoundForApAndFuncArg(
-            ap_id,
-            func_argument_id,
-        ))
+        Ok(None)
     }
 
     pub async fn value_source(
@@ -450,7 +446,7 @@ impl AttributePrototypeArgument {
         Self::add_edge_to_value(
             ctx,
             apa_id,
-            value_source.into_inner_id().into(),
+            value_source,
             EdgeWeightKind::PrototypeArgumentValue,
         )
         .await?;

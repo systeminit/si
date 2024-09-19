@@ -39,7 +39,16 @@ you can pass in options as props too */
     <slot name="prompt">
       <div class="vorm-input__prompt pb-xs text-sm">{{ prompt }}</div>
     </slot>
-    <div class="vorm-input__input-and-instructions-wrap">
+    <div
+      :class="
+        clsx(
+          'vorm-input__input-and-instructions-wrap',
+          compact && !noLabel && 'w-[45%] shrink',
+          compact && noLabel && 'flex-1',
+          compact && !rename && 'min-h-[30px]',
+        )
+      "
+    >
       <div
         v-tooltip="
           compact
@@ -160,7 +169,19 @@ you can pass in options as props too */
             :id="formInputId"
             ref="inputRef"
             :value="modelValue"
-            :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
+            :class="
+              clsx(
+                compact ? 'vorm-input-compact__input' : 'vorm-input__input',
+                compact && rename && 'vorm-input-compact__input__rename',
+              )
+            "
+            :style="
+              compact && rename
+                ? `font-size: ${
+                    renameZoom > 1 ? 12 * renameZoom : 12
+                  }px; height: ${renameZoom > 1 ? 26 * renameZoom : 26}px;`
+                : ''
+            "
             :autocomplete="autocomplete"
             :name="name"
             :type="nativeInputTagTypeProp"
@@ -318,6 +339,10 @@ const props = defineProps({
 
   // new compact styling for VormInput
   compact: Boolean,
+
+  // special styles for renaming on the ModelingDiagram
+  rename: Boolean,
+  renameZoom: { type: Number, default: 1 },
 });
 
 const wrapperRef = ref<HTMLDivElement>(); // template ref
@@ -561,7 +586,7 @@ function onChange(event: Event) {
 function onKeyboardEvent(event: KeyboardEvent) {
   const key = event.key;
   if (key === "Enter") {
-    onBlur();
+    inputRef.value?.blur();
     emit("enterPressed");
   }
 
@@ -682,7 +707,8 @@ function focus() {
     const inputEls = wrapperRef?.value?.getElementsByTagName("input");
     inputEls?.item(0)?.focus();
   } else {
-    if (inputRef.value?.focus) inputRef.value.focus();
+    if (inputRef.value?.focus)
+      inputRef.value.focus({ preventScroll: props.rename });
   }
 }
 
@@ -1043,9 +1069,6 @@ defineExpose({
 .vorm-input-compact > .vorm-input__input-and-instructions-wrap {
   position: relative;
   border: 1px solid var(--input-border-color);
-  min-height: 30px;
-  width: 45%;
-  flex-shrink: 0;
   background: var(--input-bg-color);
   font-family: monospace;
   font-size: 13px;
@@ -1054,6 +1077,11 @@ defineExpose({
   .attributes-panel-item.--focus & {
     background: var(--input-focus-bg-color);
     z-index: 101;
+  }
+
+  .vorm-input-compact__input__rename {
+    font-family: "Inter";
+    padding: 4px 4px;
   }
 
   input,

@@ -11,15 +11,23 @@ use dal::{
         },
     },
     prop::PropPath,
+    property_editor::values::PropertyEditorValues,
     schema::variant::{
         authoring::VariantAuthoringClient,
         leaves::{LeafInputLocation, LeafKind},
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    AttributePrototype, DalContext, Func, Prop, Schema, SchemaVariant, SchemaVariantError,
-    WorkspaceSnapshotError,
+    AttributePrototype, Component, DalContext, Func, InputSocket, OutputSocket, Prop, Schema,
+    SchemaVariant, SchemaVariantError, Secret, WorkspaceSnapshotError,
 };
-use dal_test::{helpers::create_unlocked_variant_copy_for_schema_name, test};
+use dal_test::{
+    helpers::{
+        create_component_for_default_schema_name, create_unlocked_variant_copy_for_schema_name,
+        encrypt_message, ChangeSetTestHelpers,
+    },
+    test, WorkspaceSignup,
+};
+use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
 
 mod action;
@@ -39,7 +47,6 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
     let mut bindings = FuncBinding::for_func_id(ctx, func_id)
         .await
         .expect("found func bindings");
-    dbg!(&bindings);
     assert_eq!(bindings.len(), 1);
 
     let binding = bindings.pop().expect("has a binding");
@@ -76,11 +83,10 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
     );
 
     for binding in new_bindings {
-        let sv =
+        let _sv =
             SchemaVariant::get_by_id_or_error(ctx, binding.get_schema_variant().expect("has sv"))
                 .await
                 .expect("has sv");
-        dbg!(sv);
     }
 
     // now we should have 1 unlocked func binding
@@ -116,7 +122,6 @@ async fn get_bindings_for_latest_schema_variants(ctx: &mut DalContext) {
         .await
         .expect("got latest for default");
 
-    dbg!(&latest_sv);
     assert_eq!(1, latest_sv.len());
 
     // latest sv should be the new one!
@@ -471,6 +476,208 @@ async fn for_attribute_with_input_socket_input(ctx: &mut DalContext) {
     assert_eq!(FuncArgumentKind::Array, func_argument.kind);
     assert_eq!(Some(FuncArgumentKind::Object), func_argument.element_kind);
 }
+#[test]
+async fn for_intrinsics(ctx: &mut DalContext) {
+    let schema = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("unable to get schema")
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .get_default_schema_variant_id(ctx)
+        .await
+        .expect("unable to get schema variant")
+        .expect("schema variant not found");
+    let all_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id)
+        .await
+        .expect("unable to get all funcs");
+    let mut unset_props = Vec::from([
+        PropPath::new(["root"]),
+        PropPath::new(["root", "si", "protected"]),
+        PropPath::new(["root", "si"]),
+        PropPath::new(["root", "si", "protected"]),
+        PropPath::new(["root", "secrets"]),
+        PropPath::new(["root", "resource"]),
+        PropPath::new(["root", "resource", "message"]),
+        PropPath::new(["root", "resource", "last_synced"]),
+        PropPath::new(["root", "resource", "payload"]),
+        PropPath::new(["root", "resource", "status"]),
+        PropPath::new(["root", "code"]),
+        PropPath::new(["root", "code", "codeItem"]),
+        PropPath::new(["root", "code", "codeItem", "format"]),
+        PropPath::new(["root", "code", "codeItem", "code"]),
+        PropPath::new(["root", "qualification"]),
+        PropPath::new(["root", "qualification", "qualificationItem"]),
+        PropPath::new(["root", "qualification", "qualificationItem", "result"]),
+        PropPath::new(["root", "qualification", "qualificationItem", "message"]),
+        PropPath::new(["root", "domain", "universe"]),
+        PropPath::new(["root", "domain"]),
+        PropPath::new(["root", "domain", "universe", "galaxies", "galaxy"]),
+        PropPath::new([
+            "root", "domain", "universe", "galaxies", "galaxy", "planets",
+        ]),
+        PropPath::new(["root", "domain", "universe", "galaxies", "galaxy", "sun"]),
+        PropPath::new(["root", "domain", "possible_world_b"]),
+        PropPath::new(["root", "domain", "possible_world_b", "wormhole_1"]),
+        PropPath::new([
+            "root",
+            "domain",
+            "possible_world_b",
+            "wormhole_1",
+            "wormhole_2",
+        ]),
+        PropPath::new([
+            "root",
+            "domain",
+            "possible_world_b",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+        ]),
+        PropPath::new([
+            "root",
+            "domain",
+            "possible_world_a",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+            "rigid_designator",
+        ]),
+        PropPath::new(["root", "domain", "possible_world_a"]),
+        PropPath::new(["root", "domain", "possible_world_a", "wormhole_1"]),
+        PropPath::new([
+            "root",
+            "domain",
+            "possible_world_a",
+            "wormhole_1",
+            "wormhole_2",
+        ]),
+        PropPath::new([
+            "root",
+            "domain",
+            "possible_world_a",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+        ]),
+        PropPath::new(["root", "domain", "freestar"]),
+        PropPath::new(["root", "domain", "hidden_prop"]),
+        PropPath::new(["root", "deleted_at"]),
+    ]);
+    for func in all_funcs {
+        match func.backend_kind {
+            dal::FuncBackendKind::Unset => {
+                let attribute_bindings: Vec<AttributeBinding> =
+                    FuncBinding::get_attribute_bindings_for_func_id(ctx, func.id)
+                        .await
+                        .expect("could not get attribute bindings")
+                        .into_iter()
+                        .filter(|binding| {
+                            binding.eventual_parent
+                                == EventualParent::SchemaVariant(schema_variant_id)
+                        })
+                        .collect();
+                let mut prop_paths_for_bindings: Vec<PropPath> = vec![];
+                for binding in attribute_bindings {
+                    let AttributeFuncDestination::Prop(prop_id) = binding.output_location else {
+                        panic!("Non-Prop is set to unset, which is unexpected!")
+                    };
+                    let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                        .await
+                        .expect("couldn't get prop");
+                    let path = prop.path(ctx).await.expect("could not get prop path");
+                    prop_paths_for_bindings.push(path);
+                }
+                // prop_paths_for_bindings.retain(|binding| !unset_props.contains(binding));
+                prop_paths_for_bindings.retain(|prop_path| {
+                    if unset_props.contains(prop_path) {
+                        unset_props.retain(|p| p != prop_path);
+                        false
+                    } else {
+                        true
+                    }
+                });
+                assert!(prop_paths_for_bindings.is_empty());
+            }
+            dal::FuncBackendKind::Identity => {
+                let attribute_bindings: Vec<AttributeBinding> =
+                    FuncBinding::get_attribute_bindings_for_func_id(ctx, func.id)
+                        .await
+                        .expect("could not get attribute bindings")
+                        .into_iter()
+                        .filter(|binding| {
+                            binding.eventual_parent
+                                == EventualParent::SchemaVariant(schema_variant_id)
+                        })
+                        .collect();
+                assert_eq!(2, attribute_bindings.len());
+                for binding in attribute_bindings {
+                    if let AttributeFuncDestination::Prop(prop_id) = binding.output_location {
+                        let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                            .await
+                            .expect("couldn't get prop");
+                        let path = prop.path(ctx).await.expect("bad");
+                        match path.with_replaced_sep("/").as_str() {
+                            "root/domain/name" => {
+                                let arg_bindings: AttributeFuncArgumentSource = binding
+                                    .clone()
+                                    .argument_bindings
+                                    .into_iter()
+                                    .map(|binding| binding.attribute_func_input_location)
+                                    .collect_vec()
+                                    .pop()
+                                    .expect("has a value");
+                                let AttributeFuncArgumentSource::Prop(prop_id) = arg_bindings
+                                else {
+                                    panic!("Non-Prop is set to unset, which is unexpected!")
+                                };
+                                let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                                    .await
+                                    .expect("couldn't get prop");
+                                let path = prop
+                                    .path(ctx)
+                                    .await
+                                    .expect("couldn't get prop path")
+                                    .with_replaced_sep("/");
+                                // ensure root/domain/name takes its value from root/si/name
+                                assert_eq!("root/si/name", path);
+                            }
+                            "root/domain/attributes" => {
+                                let arg_bindings: AttributeFuncArgumentSource = binding
+                                    .clone()
+                                    .argument_bindings
+                                    .into_iter()
+                                    .map(|binding| binding.attribute_func_input_location)
+                                    .collect_vec()
+                                    .pop()
+                                    .expect("has a value");
+                                let AttributeFuncArgumentSource::InputSocket(input_socket_id) =
+                                    arg_bindings
+                                else {
+                                    panic!("Non-Prop is set to unset, which is unexpected!")
+                                };
+                                let input_socket = InputSocket::get_by_id(ctx, input_socket_id)
+                                    .await
+                                    .expect("couldn't get prop");
+                                // ensure root/domain/attributes takes its value from the bethesda socket
+                                assert_eq!("bethesda", input_socket.name())
+                            }
+                            _ => panic!("unexpected prop set to identity"),
+                        }
+                    };
+                    if let AttributeFuncDestination::InputSocket(_) = binding.output_location {
+                        panic!("unexpected input socket set to identity")
+                    }
+                }
+            }
+            dal::FuncBackendKind::JsAttribute | dal::FuncBackendKind::JsAction => {} // not testing these right now
+            _ => {
+                panic!("there should not be any other funcs returned for this variant");
+            }
+        }
+    }
+    // make sure we found all of the expected props/sockets associated with intrinsics we care about (unset + identity)
+    assert!(unset_props.is_empty());
+}
 
 #[test]
 async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
@@ -523,5 +730,323 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
             ),
         ))) => {}
         _ => panic!("Test should fail if we don't get this error"),
+    }
+}
+
+#[test]
+async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+    // create two components and draw an edge between them
+    // one is a secret defining component
+    // create a complicated component too
+    // ensure we're returning the right data
+    let _starfield = create_component_for_default_schema_name(ctx, "starfield", "starfield")
+        .await
+        .expect("could not create component");
+    let source_component = create_component_for_default_schema_name(ctx, "dummy-secret", "source")
+        .await
+        .expect("could not create component");
+    let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
+        .await
+        .expect("could not get schema variant id for component");
+    let destination_component =
+        create_component_for_default_schema_name(ctx, "fallout", "destination")
+            .await
+            .expect("could not create component");
+    let destination_schema_variant_id =
+        Component::schema_variant_id(ctx, destination_component.id())
+            .await
+            .expect("could not get schema variant id for component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Cache the name of the secret definition from the test exclusive schema. Afterward, cache the
+    // prop we need for attribute value update.
+    let secret_definition_name = "dummy";
+    let reference_to_secret_prop = Prop::find_prop_by_path(
+        ctx,
+        source_schema_variant_id,
+        &PropPath::new(["root", "secrets", secret_definition_name]),
+    )
+    .await
+    .expect("could not find prop by path");
+
+    // Connect the two components to propagate the secret value and commit.
+    let source_output_socket = OutputSocket::find_with_name(ctx, "dummy", source_schema_variant_id)
+        .await
+        .expect("could not perform find with name")
+        .expect("output socket not found by name");
+    let destination_input_socket =
+        InputSocket::find_with_name(ctx, "dummy", destination_schema_variant_id)
+            .await
+            .expect("could not perform find with name")
+            .expect("input socket not found by name");
+    Component::connect(
+        ctx,
+        source_component.id(),
+        source_output_socket.id(),
+        destination_component.id(),
+        destination_input_socket.id(),
+    )
+    .await
+    .expect("could not connect");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Create the secret and commit.
+    let secret = Secret::new(
+        ctx,
+        "johnqt",
+        secret_definition_name.to_string(),
+        None,
+        &encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+            .await
+            .expect("could not encrypt message"),
+        nw.key_pair.pk(),
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // Use the secret in the source component and commit.
+    let property_values = PropertyEditorValues::assemble(ctx, source_component.id())
+        .await
+        .expect("unable to list prop values");
+    let reference_to_secret_attribute_value_id = property_values
+        .find_by_prop_id(reference_to_secret_prop.id)
+        .expect("could not find attribute value");
+    Secret::attach_for_attribute_value(
+        ctx,
+        reference_to_secret_attribute_value_id,
+        Some(secret.id()),
+    )
+    .await
+    .expect("could not attach secret");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // now lets get bindings and ensure nothing explodes
+    let funcs = Func::list_all(ctx).await.expect("could not get funcs");
+    for func in funcs {
+        let bindings = FuncBinding::for_func_id(ctx, func.id)
+            .await
+            .expect("could not get func bindings");
+        let intrinsic = Func::get_intrinsic_kind_by_id_or_error(ctx, func.id).await;
+        let maybe_intrinsic = match intrinsic {
+            Ok(intrinsic_kind) => Some(intrinsic_kind),
+            Err(_) => None,
+        };
+
+        for binding in bindings {
+            match binding {
+                FuncBinding::Attribute(attribute_binding) => {
+                    match attribute_binding.output_location {
+                        AttributeFuncDestination::Prop(_) => {
+                            // if the output location is a prop and the func is intrinsic, there are special things
+                            if let Some(intrinsic) = maybe_intrinsic {
+                                match intrinsic {
+                                    dal::func::intrinsics::IntrinsicFunc::Identity => {
+                                        // Props only take inputs from input sockets or other props
+                                        let mut maybe_invalid_args =
+                                            attribute_binding.argument_bindings.clone();
+                                        let mut maybe_valid_args =
+                                            attribute_binding.argument_bindings.clone();
+                                        maybe_invalid_args.retain(|arg| {
+                                            match arg.attribute_func_input_location {
+                                                AttributeFuncArgumentSource::Prop(_) => false,
+                                                AttributeFuncArgumentSource::InputSocket(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::StaticArgument(_) => {
+                                                    false // is this allowed? todo
+                                                }
+                                                AttributeFuncArgumentSource::OutputSocket(_) => {
+                                                    true
+                                                }
+                                                AttributeFuncArgumentSource::Secret(_) => true,
+                                            }
+                                        });
+                                        assert!(maybe_invalid_args.is_empty());
+                                        maybe_valid_args.retain(|arg| {
+                                            match arg.attribute_func_input_location {
+                                                AttributeFuncArgumentSource::Prop(_) => true,
+                                                AttributeFuncArgumentSource::InputSocket(_) => true,
+                                                AttributeFuncArgumentSource::StaticArgument(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::OutputSocket(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::Secret(_) => false,
+                                            }
+                                        });
+                                        // should only be one input right now
+                                        assert_eq!(maybe_valid_args.len(), 1);
+                                    }
+                                    dal::func::intrinsics::IntrinsicFunc::Unset => {
+                                        assert!(attribute_binding.argument_bindings.is_empty());
+                                    }
+                                    dal::func::intrinsics::IntrinsicFunc::SetArray
+                                    | dal::func::intrinsics::IntrinsicFunc::SetBoolean
+                                    | dal::func::intrinsics::IntrinsicFunc::SetInteger
+                                    | dal::func::intrinsics::IntrinsicFunc::SetJson
+                                    | dal::func::intrinsics::IntrinsicFunc::SetMap
+                                    | dal::func::intrinsics::IntrinsicFunc::SetObject
+                                    | dal::func::intrinsics::IntrinsicFunc::SetString
+                                    | dal::func::intrinsics::IntrinsicFunc::Validation => {
+                                        assert_eq!(attribute_binding.argument_bindings.len(), 1);
+                                    }
+                                }
+                            }
+                        }
+                        AttributeFuncDestination::OutputSocket(_) => {
+                            if let Some(intrinsic) = maybe_intrinsic {
+                                match intrinsic {
+                                    dal::func::intrinsics::IntrinsicFunc::Identity => {
+                                        // Output Sockets only take inputs from input sockets or props
+                                        let mut maybe_invalid_args =
+                                            attribute_binding.argument_bindings.clone();
+                                        let mut maybe_valid_args =
+                                            attribute_binding.argument_bindings.clone();
+                                        maybe_invalid_args.retain(|arg| {
+                                            match arg.attribute_func_input_location {
+                                                AttributeFuncArgumentSource::Prop(_) => false,
+                                                AttributeFuncArgumentSource::InputSocket(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::StaticArgument(_) => {
+                                                    true
+                                                }
+                                                AttributeFuncArgumentSource::OutputSocket(_) => {
+                                                    true
+                                                }
+                                                AttributeFuncArgumentSource::Secret(_) => true,
+                                            }
+                                        });
+                                        assert!(maybe_invalid_args.is_empty());
+                                        maybe_valid_args.retain(|arg| {
+                                            match arg.attribute_func_input_location {
+                                                AttributeFuncArgumentSource::Prop(_) => true,
+                                                AttributeFuncArgumentSource::InputSocket(_) => true,
+                                                AttributeFuncArgumentSource::StaticArgument(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::OutputSocket(_) => {
+                                                    false
+                                                }
+                                                AttributeFuncArgumentSource::Secret(_) => false,
+                                            }
+                                        });
+                                        // should only be one or zero input right now
+                                        assert!(maybe_valid_args.len() < 2);
+                                    }
+                                    // unset has no args
+                                    dal::func::intrinsics::IntrinsicFunc::Unset => {
+                                        assert!(attribute_binding.argument_bindings.is_empty());
+                                    }
+                                    // these intrinsics only have one arg
+                                    dal::func::intrinsics::IntrinsicFunc::SetArray
+                                    | dal::func::intrinsics::IntrinsicFunc::SetBoolean
+                                    | dal::func::intrinsics::IntrinsicFunc::SetInteger
+                                    | dal::func::intrinsics::IntrinsicFunc::SetJson
+                                    | dal::func::intrinsics::IntrinsicFunc::SetMap
+                                    | dal::func::intrinsics::IntrinsicFunc::SetObject
+                                    | dal::func::intrinsics::IntrinsicFunc::SetString
+                                    | dal::func::intrinsics::IntrinsicFunc::Validation => {
+                                        assert_eq!(attribute_binding.argument_bindings.len(), 1);
+                                    }
+                                }
+                            }
+                        }
+
+                        AttributeFuncDestination::InputSocket(_) => {
+                            panic!("should not be seeing input sockets for output locations")
+                        }
+                    }
+                }
+
+                FuncBinding::Authentication(_)
+                | FuncBinding::Action(_)
+                | FuncBinding::CodeGeneration(_)
+                | FuncBinding::Qualification(_) => {} // nothing really to check here
+            }
+        }
+
+        let func_summary = func
+            .into_frontend_type(ctx)
+            .await
+            .expect("could not get front end type");
+        for binding in func_summary.bindings.bindings {
+            match binding {
+                si_frontend_types::FuncBinding::Action {
+                    schema_variant_id,
+                    action_prototype_id,
+                    func_id,
+                    kind,
+                } => {
+                    assert!(kind.is_some());
+                    assert!(schema_variant_id.is_some());
+                    assert!(func_id.is_some());
+                    assert!(action_prototype_id.is_some());
+                }
+                si_frontend_types::FuncBinding::Attribute {
+                    component_id,
+                    schema_variant_id,
+                    prop_id,
+                    output_socket_id,
+                    func_id,
+                    attribute_prototype_id,
+                    ..
+                } => {
+                    assert!(component_id.is_none());
+                    assert!(schema_variant_id.is_some());
+                    match prop_id {
+                        Some(_) => {
+                            assert!(output_socket_id.is_none());
+                        }
+                        None => assert!(output_socket_id.is_some()),
+                    }
+
+                    assert!(func_id.is_some());
+                    assert!(attribute_prototype_id.is_some());
+                }
+                si_frontend_types::FuncBinding::CodeGeneration {
+                    schema_variant_id,
+                    component_id,
+                    inputs,
+                    func_id,
+                    attribute_prototype_id,
+                } => {
+                    assert!(schema_variant_id.is_some());
+                    assert!(component_id.is_none());
+                    for input in inputs {
+                        assert!(input != LeafInputLocation::Code.into())
+                    }
+                    assert!(func_id.is_some());
+                    assert!(attribute_prototype_id.is_some());
+                }
+                si_frontend_types::FuncBinding::Qualification {
+                    schema_variant_id,
+                    component_id,
+                    func_id,
+                    attribute_prototype_id,
+                    ..
+                } => {
+                    assert!(schema_variant_id.is_some());
+                    assert!(component_id.is_none());
+                    assert!(func_id.is_some());
+                    assert!(attribute_prototype_id.is_some());
+                }
+                si_frontend_types::FuncBinding::Authentication { func_id, .. } => {
+                    assert!(func_id.is_some());
+                }
+            }
+        }
     }
 }

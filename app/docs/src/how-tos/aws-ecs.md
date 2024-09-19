@@ -147,7 +147,7 @@ Set the `Description` to `IAM Role to allow ECS to spawn tasks`.
 
 Set the `Path` to `/si-tutorial/`.
 
-### Create an Assume Role Policy
+### Create an AWS IAM Policy Statement
 
 Add an `AWS IAM Policy Statement` within the `ecs-tasks-service` AWS IAM Role
 frame.

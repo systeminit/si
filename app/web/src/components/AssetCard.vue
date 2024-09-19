@@ -37,19 +37,17 @@
             icon="cloud-upload"
             tooltip="Contribute"
             tooltipPlacement="top"
-            variant="simple"
             @click="contributeAsset"
           />
 
           <IconButton
             v-if="canUpdate"
+            :loading="installStatus.isPending"
             class="hover:scale-125"
             icon="code-deployed"
+            loadingIcon="loader"
             tooltip="Update"
             tooltipPlacement="top"
-            variant="simple"
-            :loading="installStatus.isPending"
-            loadingIcon="loader"
             @click="updateAsset"
           />
 
@@ -59,17 +57,16 @@
             icon="trash"
             tooltip="Delete Unlocked Variant"
             tooltipPlacement="top"
-            variant="simple"
             @click="deleteUnlockedVariant"
           />
 
           <IconButton
             v-if="asset.isLocked && editingVersionDoesNotExist"
+            :requestStatus="createUnlockedVariantReqStatus"
             class="hover:scale-125"
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"
-            variant="simple"
             @click="unlock"
           />
           <Icon v-if="!asset.isLocked" name="sliders-vertical" tone="action" />
@@ -200,7 +197,7 @@ const canUpdate = computed(
 
 const canContribute = computed(() => {
   return (
-    !!moduleStore.contributableModules.includes(
+    moduleStore.contributableModules.includes(
       asset.value?.schemaVariantId ?? "",
     ) || asset.value?.canContribute
   );
@@ -248,6 +245,11 @@ const componentNameTooltip = computed(() => {
     return {};
   }
 });
+
+const createUnlockedVariantReqStatus = assetStore.getRequestStatus(
+  "CREATE_UNLOCKED_COPY",
+  asset.value?.schemaVariantId,
+);
 
 const unlock = async () => {
   if (asset.value) {

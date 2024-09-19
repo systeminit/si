@@ -18,6 +18,14 @@ pub struct SecretUpdatedPayload {
     change_set_id: ChangeSetId,
 }
 
+#[allow(missing_docs)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretDeletedPayload {
+    secret_id: SecretId,
+    change_set_id: ChangeSetId,
+}
+
 impl WsEvent {
     #[allow(missing_docs)]
     pub async fn secret_created(ctx: &DalContext, secret_id: SecretId) -> WsEventResult<Self> {
@@ -36,6 +44,18 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::SecretUpdated(SecretUpdatedPayload {
+                secret_id,
+                change_set_id: ctx.change_set_id(),
+            }),
+        )
+        .await
+    }
+
+    #[allow(missing_docs)]
+    pub async fn secret_deleted(ctx: &DalContext, secret_id: SecretId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SecretDeleted(SecretDeletedPayload {
                 secret_id,
                 change_set_id: ctx.change_set_id(),
             }),

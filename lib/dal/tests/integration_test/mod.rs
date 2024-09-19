@@ -17,6 +17,7 @@ mod prop;
 mod property_editor;
 mod qualifications;
 mod rebaser;
+mod resource_metadata;
 mod schema;
 mod secret;
 mod validations;

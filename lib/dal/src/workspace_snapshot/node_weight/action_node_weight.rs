@@ -70,12 +70,13 @@ impl ActionNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "id": self.id,
-            "lineage_id": self.lineage_id,
-            "state": self.state,
-            "originating_changeset_id": self.originating_change_set_id,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(&self.id.inner().to_bytes());
+        content_hasher.update(&self.lineage_id.inner().to_bytes());
+        content_hasher.update(self.state.to_string().as_bytes());
+        content_hasher.update(self.originating_change_set_id.to_string().as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

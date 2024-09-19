@@ -169,18 +169,6 @@ services:
     depends_on:
       - otelcol
 
-  process-exporter:
-    #<<: *loki-logged-service
-    image: ncabatoff/process-exporter
-    command:
-      - '-procfs=/host/proc'
-      - '-config.path=/config/config.yml'
-    ports:
-      - "9256:9256"
-    volumes:
-      - "./process-exporter-config/config.yml:/config/config.yml"
-      - "/proc:/host/proc:ro"
-
   localstack:
     #<<: *loki-logged-service
     image: localstack/localstack

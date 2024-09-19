@@ -25,7 +25,6 @@
             size="sm"
             tooltip="Edit"
             tooltipPlacement="top"
-            variant="simple"
             @click="unlock"
           />
           <IconButton

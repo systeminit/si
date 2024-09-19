@@ -6,8 +6,8 @@
       x: position.x,
       y: position.y,
     }"
-    @mouseout="onMouseOut"
     @mouseover="onMouseOver"
+    @mouseout="onMouseOut"
   >
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
       <!-- drop shadow -->
@@ -40,7 +40,23 @@
       />
 
       <!-- header text -->
+
+      <!-- rename hitbox -->
+      <v-rect
+        :config="{
+          ...renameHitbox,
+          ...(debug && { fill: 'red' }),
+        }"
+        @mouseout="mouseOutRename"
+        @mousemove="mouseOverRename"
+        @mouseover="mouseOverRename"
+        @click="renameIfSelected"
+        @dblclick="rename"
+      />
+
+      <!-- component name -->
       <v-text
+        v-if="!renaming"
         ref="titleTextRef"
         :config="{
           x: -halfWidth + 10,
@@ -48,15 +64,16 @@
           verticalAlign: 'top',
           align: 'left',
           text: truncatedNodeTitle,
-          width: nodeWidth - 24 - 24 - 8,
+          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
           padding: 0,
-          fill: colors.headerText,
-          fontStyle: 'bold',
+          fill: renameHovered ? SELECTION_COLOR : colors.headerText,
+          fontStyle: renameHovered ? 'italic bold' : 'bold',
           fontFamily: DIAGRAM_FONT_FAMILY,
           listening: false,
         }"
       />
 
+      <!-- component type -->
       <v-text
         ref="subtitleTextRef"
         :config="{
@@ -65,7 +82,7 @@
           verticalAlign: 'top',
           align: 'left',
           text: node.def.subtitle,
-          width: nodeWidth - 24 - 24 - 8,
+          width: nodeWidth - NODE_HEADER_MARGIN_RIGHT,
           padding: 0,
           fill: colors.bodyText,
           fontFamily: DIAGRAM_FONT_FAMILY,
@@ -74,6 +91,8 @@
           listening: false,
         }"
       />
+
+      <!-- end header text -->
 
       <!-- parent frame attachment indicator -->
       <DiagramIcon
@@ -259,7 +278,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, PropType, ref, watch } from "vue";
+import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -276,6 +295,7 @@ import {
   DiagramElementUniqueKey,
   DiagramNodeData,
   DiagramSocketData,
+  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -289,9 +309,9 @@ import {
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
   SOCKET_SIZE,
+  NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const props = defineProps({
   node: {
@@ -308,10 +328,12 @@ const props = defineProps({
   qualificationStatus: {
     type: String as PropType<QualificationStatus>,
   },
+  debug: Boolean,
 });
 
 const emit = defineEmits<{
   (e: "resize"): void;
+  (e: "rename", v: () => void): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -330,9 +352,6 @@ const statusIconHovers = ref(
 );
 
 const { theme } = useTheme();
-
-const diagramContext = useDiagramContext();
-const { edgeDisplayMode } = diagramContext;
 
 const isDeleted = computed(
   () =>
@@ -474,8 +493,6 @@ const colors = computed(() => {
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
   const bodyBg = tinycolor(bodyBgHsl);
 
-  if (edgeDisplayMode.value === "EDGES_UNDER") bodyBg.setAlpha(0.5);
-
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
     border: primaryColor.toRgbString(),
@@ -501,11 +518,11 @@ watch([() => props.isLoading, overlay], () => {
   transition.play();
 });
 
-function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: "parent") {
+function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: string) {
   evt.cancelBubble = true;
   componentsStore.setHoveredComponentId(
     componentId.value,
-    type ? { type } : undefined,
+    type ? ({ type } as ElementHoverMeta) : undefined,
   );
 }
 
@@ -527,6 +544,100 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
 function onClick(detailsTabSlug: string) {
   componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
+  });
+}
+
+// RENAME ON DIAGRAM STUFF
+const renameHitboxSelfRect = ref();
+
+onUpdated(() => {
+  renameHitboxSelfRect.value = titleTextRef.value?.getNode()?.getSelfRect();
+});
+
+const renameHitbox = computed(() => {
+  if (titleTextRef.value) {
+    const raw =
+      renameHitboxSelfRect.value ||
+      titleTextRef.value?.getNode()?.getSelfRect();
+    if (raw) {
+      const box = { ...raw, x: -halfWidth.value + 10, y: 4 };
+      box.width -= 3;
+      box.height += 1;
+      return box;
+    }
+  }
+
+  // we only reach this point if the rename input field is active
+  return {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  };
+});
+
+const renaming = ref(false);
+const renameHoverState = ref(false);
+const fixCursorToText = ref(false);
+
+const renameHovered = computed(
+  () =>
+    (componentsStore.hoveredComponentMeta?.type === "rename" &&
+      componentsStore.hoveredComponentId === props.node.def.id) ||
+    renameHoverState.value,
+);
+
+const selectedAndRenameHovered = computed(
+  () =>
+    props.isSelected &&
+    componentsStore.hoveredComponentMeta?.type === "rename" &&
+    componentsStore.hoveredComponentId === props.node.def.id &&
+    renameHoverState.value,
+);
+
+watch(
+  () => props.isSelected,
+  (isSelected) => {
+    if (isSelected && renameHovered.value) {
+      fixCursorToText.value = true;
+    }
+  },
+);
+
+function mouseOverRename(evt: KonvaEventObject<MouseEvent>) {
+  if (props.isSelected) {
+    onMouseOver(evt, "rename");
+  }
+  renameHoverState.value = true;
+}
+
+function mouseOutRename() {
+  if (props.isSelected) {
+    onMouseOut();
+  }
+  renameHoverState.value = false;
+  fixCursorToText.value = false;
+}
+
+function renameIfSelected(e: KonvaEventObject<MouseEvent>) {
+  if (e.evt.button === 0 && selectedAndRenameHovered.value) {
+    rename();
+  } else if (fixCursorToText.value) {
+    fixCursorToText.value = false;
+    componentsStore.setHoveredComponentId(componentId.value, {
+      type: "rename",
+    } as ElementHoverMeta);
+  }
+}
+
+function rename() {
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "rename",
+  });
+  renaming.value = true;
+  fixCursorToText.value = false;
+  emit("rename", () => {
+    renaming.value = false;
   });
 }
 </script>

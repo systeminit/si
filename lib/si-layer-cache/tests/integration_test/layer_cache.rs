@@ -14,6 +14,7 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
         tempdir.path(),
         super::setup_pg_db(db_name).await,
         MemoryCacheConfig::default(),
+        super::setup_compute_executor(),
     )
     .expect("cannot create layer cache");
     layer_cache.pg().migrate().await.expect("migrate");

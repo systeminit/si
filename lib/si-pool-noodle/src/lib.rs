@@ -24,10 +24,9 @@ pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
     FunctionResult, FunctionResultFailure, FunctionResultFailureError,
     FunctionResultFailureErrorKind, KillExecutionRequest, OutputStream, ProgressMessage,
-    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
-    ValidationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
+    ValidationRequest, ValidationResultSuccess,
 };
 
 /// [`PoolNoodleError`] implementations.
@@ -75,7 +74,8 @@ mod tests {
                 shutdown_token,
                 spec: spec.clone(),
                 ..Default::default()
-            });
+            })
+            .await;
         pool.run().expect("failed to start");
 
         let mut instance = pool.get().await.expect("pool is empty!");
@@ -119,7 +119,8 @@ mod tests {
                 shutdown_token,
                 spec: spec.clone(),
                 ..Default::default()
-            });
+            })
+            .await;
         pool.run().expect("failed to start");
         let mut instance = pool.get().await.expect("pool is empty!");
 
@@ -177,7 +178,8 @@ mod tests {
                 shutdown_token,
                 spec: spec.clone(),
                 ..Default::default()
-            });
+            })
+            .await;
         pool.run().expect("failed to start");
         let mut instance = pool.get().await.expect("should be able to get an instance");
         instance.ensure_healthy().await.expect("failed healthy");

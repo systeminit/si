@@ -32,3 +32,8 @@ scrape_configs:
     labels:
       job: rebaser
       __path__: /logs/rebaser
+  - targets:
+      - localhost
+    labels:
+      job: forklift
+      __path__: /logs/forklift

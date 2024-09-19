@@ -58,6 +58,22 @@
       </div>
       <div class="flex flex-row items-center gap-xs">
         <div class="w-12 flex flex-row items-center justify-center">
+          <div class="text-xl font-bold leading-none flex-grow text-center">
+            R
+          </div>
+        </div>
+        <div>Press R to refresh the resource for a component or frame.</div>
+      </div>
+      <div class="flex flex-row items-center gap-xs">
+        <div class="w-12 flex flex-row items-center justify-center">
+          <div class="text-xl font-bold leading-none flex-grow text-center">
+            N
+          </div>
+        </div>
+        <div>Press N to rename a component or frame.</div>
+      </div>
+      <div class="flex flex-row items-center gap-xs">
+        <div class="w-12 flex flex-row items-center justify-center">
           <Icon name="command" />
           <div class="text-xl font-bold leading-none flex-grow text-center">
             C

@@ -23,7 +23,6 @@
             size="sm"
             tooltip="Check For Asset Updates Or Install New Assets"
             tooltipPlacement="top"
-            variant="simple"
             @click="syncModules"
           />
           <IconButton
@@ -35,7 +34,6 @@
             size="sm"
             tooltip="New Asset"
             tooltipPlacement="top"
-            variant="simple"
             @click="() => newAssetModalRef?.modal?.open()"
           />
           <IconButton
@@ -45,7 +43,6 @@
             size="sm"
             tooltip="Update All"
             tooltipPlacement="top"
-            variant="simple"
             :loading="updateModulesReqStatus.isPending"
             loadingIcon="loader"
             @click="updateAllAssets"

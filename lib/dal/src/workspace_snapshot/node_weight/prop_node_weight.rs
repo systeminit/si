@@ -105,11 +105,12 @@ impl PropNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "content_address": self.content_address,
-            "kind": self.kind,
-            "name": self.name,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.content_address.content_hash().as_bytes());
+        content_hasher.update(self.kind.to_string().as_bytes());
+        content_hasher.update(self.name.as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {

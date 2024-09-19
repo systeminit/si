@@ -70,6 +70,12 @@ impl Message {
         (self.inner, self.metadata)
     }
 
+    /// Consumes the message and returns the inner message.
+    #[must_use]
+    pub fn into_inner(self) -> InnerMessage {
+        self.inner
+    }
+
     /// Get a reference to the connection metadata.
     pub fn metadata(&self) -> Arc<ConnectionMetadata> {
         self.metadata.clone()

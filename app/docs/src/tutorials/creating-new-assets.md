@@ -7,14 +7,20 @@ You will need to know basic programming concepts to follow along.
 
 ## Create a new change set
 
+![create new change set](./creating-new-assets/create-new-changeset.png)
+
 Create a new change set called `My AWS ARN`.
 
 ## Go to the customize screen
+
+![go to customize screen](./creating-new-assets/go-to-customize-screen.png)
 
 Go to the customize screen by clicking on the Beaker icon. This is where you can
 create new assets, or customize existing assets.
 
 ## Create a new asset
+
+![create new asset](./creating-new-assets/create-new-asset.png)
 
 In the upper-left side of your screen is an panel containing all the Assets in
 your workspace. Click the + icon to create a new asset - name it `My ARN` and
@@ -22,10 +28,14 @@ click Create Asset.
 
 ## Give your asset a Category
 
+![give-your-asset-a-category](./creating-new-assets/give-your-asset-a-category.png)
+
 The properties for your new Asset appear in the right side panel. Set the
 category property for your asset to `Asset Tutorial`.
 
 ## Select a color
+
+![select-a-color](./creating-new-assets/select-a-color.png)
 
 Select a color you like by clicking the `color` property.
 
@@ -64,6 +74,7 @@ which are meaningful:
 
 ## Adding the partition attribute
 
+![new-prop-snippet](./creating-new-assets/new-prop-snippet.png)
 `To add your partition attribute, click on line 3, then type`new`. You will see an auto-complete dropdown. Select`New
 Prop Snippet` by clicking or pressing the down arrow and then enter.
 
@@ -89,6 +100,7 @@ function to `"partition"`.
 Then add your new prop to your asset. First, rename the variable from `propName`
 to `partition`. Then, below the semicolon that ends your property definition,
 add `asset.addProp(partition)`.
+![adding-the-partition-attribute](./creating-new-assets/adding-the-partition-attribute.png)
 
 ```typescript
 function main() {
@@ -107,10 +119,14 @@ function main() {
 
 ## Regenerate your updated schema
 
+![regenerate-your-updated-schema](./creating-new-assets/regenerate-your-updated-schema.png)
+
 Execute your updated schema definition function by clicking the
 `Regenerate Asset` button.
 
 ## Check your work
+
+![check-your-work](./creating-new-assets/check-your-work.png)
 
 You can check your work by going to the Model screen. Then add a new `My ARN`
 component to the configuration diagram. It will have only one attribute -

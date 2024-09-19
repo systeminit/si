@@ -2,7 +2,7 @@
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <div
-        class="flex flex-row gap-sm align-middle items-center justify-between"
+        class="flex flex-row gap-sm align-middle items-start justify-between"
       >
         <div
           ref="workspaceNameRef"
@@ -14,13 +14,24 @@
             (createMode ? "Create New Workspace" : "Workspace Details")
           }}
         </div>
-        <RouterLink
-          :to="{
-            name: 'workspaces',
-          }"
-        >
-          <VButton label="Return To Workspaces" tone="neutral" />
-        </RouterLink>
+        <div class="flex flex-col items-end relative">
+          <RouterLink
+            :to="{
+              name: 'workspaces',
+            }"
+          >
+            <VButton label="Return To Workspaces" tone="neutral" />
+          </RouterLink>
+          <div
+            class="absolute -bottom-10 left-0 right-0 flex justify-center cursor-not-allowed opacity-50"
+            @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
+          >
+            <Icon
+              :name="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
+              size="xl"
+            />
+          </div>
+        </div>
       </div>
       <div class="mt-sm pb-md">
         <div>
@@ -64,7 +75,15 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
+          :disabled="!isWorkspaceOwner"
+        />
+
+        <VormInput
+          v-model="draftWorkspace.description"
+          label="Description"
+          placeholder="A description for this workspace"
           :disabled="!isWorkspaceOwner && !createMode"
+          :required="false"
         />
 
         <VButton
@@ -105,8 +124,8 @@
                   >
                     <th scope="col">Email</th>
                     <th scope="col">Role</th>
-                    <!-- <th scope="col">Invite Accepted?</th> -->
-                    <th scope="col" />
+                    <th scope="col">Remove User</th>
+                    <th scope="col">Change Workspace Role</th>
                   </tr>
                 </thead>
                 <tbody
@@ -136,6 +155,24 @@
                       >
                         <Icon name="trash" />
                       </div>
+                    </td>
+                    <td class="normal-case">
+                      <ErrorMessage :requestStatus="changeMembershipReq" />
+                      <VButton
+                        v-if="memUser.role === 'OWNER'"
+                        :disabled="hasOnlyOneOwner"
+                        label="Make Editor"
+                        tone="action"
+                        variant="solid"
+                        @click="changeMembership(memUser.userId, 'EDITOR')"
+                      />
+                      <VButton
+                        v-else
+                        label="Make Owner"
+                        tone="action"
+                        variant="solid"
+                        @click="changeMembership(memUser.userId, 'OWNER')"
+                      />
                     </td>
                   </tr>
                 </tbody>
@@ -251,6 +288,8 @@ const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
   isDefault: false,
+  description: "",
+  isFavourite: false,
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
@@ -269,6 +308,13 @@ const inviteUserReqStatus = workspacesStore.getRequestStatus(
 );
 const deleteWorkspaceReqStatus =
   workspacesStore.getRequestStatus("DELETE_WORKSPACE");
+
+const hasOnlyOneOwner = computed(() => {
+  const ownerCount = members.value.filter(
+    (member) => member.role === "OWNER",
+  ).length;
+  return ownerCount === 1;
+});
 
 const createMode = computed(() => props.workspaceId === "new");
 const isWorkspaceOwner = computed(
@@ -360,6 +406,17 @@ const editWorkspace = async () => {
   }
 };
 
+const favouriteWorkspace = async (isFavourite: boolean) => {
+  if (!props.workspaceId) return;
+
+  await workspacesStore.SET_FAVOURITE_QUARANTINE(
+    props.workspaceId,
+    isFavourite,
+  );
+
+  draftWorkspace.isFavourite = isFavourite;
+};
+
 const deleteWorkspace = async () => {
   const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);
   if (res.result.success) {
@@ -389,17 +446,20 @@ const deleteUserHandler = async (email: string) => {
   }
 };
 
+const changeMembershipReq =
+  workspacesStore.getRequestStatus("CHANGE_MEMBERSHIP");
+const changeMembership = async (userId: string, role: string) => {
+  if (userId === "" || role === "") return;
+  await workspacesStore.CHANGE_MEMBERSHIP(props.workspaceId, userId, role);
+
+  await workspacesStore.LOAD_WORKSPACE_MEMBERS(props.workspaceId);
+};
+
 const inviteButtonHandler = async () => {
   if (newMember.email === "") return;
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
-    tracker.trackEvent("workspace_invitation", {
-      inviteeEmail: newMember.email,
-      workspaceId: props.workspaceId,
-      inviterName: authStore.invitersName,
-      workspaceName: draftWorkspace.displayName,
-    });
     newMember.email = "";
   }
 };

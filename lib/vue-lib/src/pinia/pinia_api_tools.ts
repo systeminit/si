@@ -197,6 +197,8 @@ export type ApiRequestDescription<
   url?: string | URLPattern;
   /** request data, passed as querystring for GET, body for everything else */
   params?: RequestParams;
+  /** if a multipart form is being sent in a put/post/patch */
+  formData?: FormData;
   /** additional args to key the request status */
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
@@ -323,7 +325,15 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         optimisticRollbackFn = requestSpec.optimistic(requestUlid);
       }
 
-      const { method, url, params, options, onSuccess, onFail } = requestSpec;
+      const {
+        method,
+        url,
+        params: requestParams,
+        options,
+        formData,
+        onSuccess,
+        onFail,
+      } = requestSpec;
       let { headers } = requestSpec;
       let _url: string;
 
@@ -345,7 +355,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         const dns_duration = time.domainLookupEnd - time.domainLookupStart;
         const tcp_duration = time.connectEnd - time.connectStart;
         span.setAttributes({
-          "http.body": JSON.stringify(requestSpec.params),
+          "http.body": formData
+            ? "multipart form"
+            : JSON.stringify(requestParams),
           "http.url": _url,
           "http.method": method,
           "si.requestUlid": requestUlid,
@@ -353,6 +365,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           tcp_duration,
           "si.workspace.id": store.workspaceId,
           "si.change_set.id": store.changeSetId,
+          ...(formData && requestParams
+            ? { "http.params": JSON.stringify(requestParams) }
+            : {}),
         });
         try {
           if (!headers) headers = {};
@@ -378,13 +393,40 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
           // actually trigger the API request (uses the axios instance that was passed in)
           // may need to handle registering multiple apis if we need to hit more than 1
-          const request = await api({
-            method,
-            url: _url,
-            ...(headers && { headers }),
-            ...(method === "get" ? { params } : { data: params }),
-            ...options,
-          });
+
+          let request;
+          if (method === "get") {
+            request = await api({
+              method,
+              url: _url,
+              ...(headers && { headers }),
+              params: requestParams,
+              ...options,
+            });
+          } else {
+            // delete, post, patch, put. Axios's types forbid formData on the
+            // request if method is not one of these , so we have to do branch
+            // on the method types to make a formData request
+            if (formData) {
+              headers["Content-Type"] = "multipart/form-data";
+              request = await api({
+                method,
+                url: _url,
+                ...(headers && { headers }),
+                data: formData,
+                params: requestParams,
+                ...options,
+              });
+            } else {
+              request = await api({
+                method,
+                url: _url,
+                ...(headers && { headers }),
+                data: requestParams,
+                ...options,
+              });
+            }
+          }
 
           // request was successful if reaching here
           // because axios throws an error if http status >= 400, timeout, etc

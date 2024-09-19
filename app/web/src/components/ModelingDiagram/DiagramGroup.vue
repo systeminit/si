@@ -77,109 +77,108 @@
     />
 
     <!-- resize handles -->
-    <!--  left side handle  -->
-    <v-line
-      v-if="!collapsed"
-      :config="{
-        points: [
-          -nodeWidth / 2,
-          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-          -nodeWidth / 2,
-          nodeBodyHeight,
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- right side handle   -->
-    <v-line
-      v-if="!collapsed"
-      :config="{
-        points: [
-          nodeWidth / 2,
-          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-          nodeWidth / 2,
-          nodeBodyHeight,
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('right', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Handle -->
-    <v-line
-      v-if="!collapsed"
-      :config="{
-        points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('bottom', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Left Handle -->
-    <v-circle
-      v-if="!collapsed"
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: -nodeWidth / 2,
-        y: nodeBodyHeight,
-      }"
-      @mouseover="onResizeHover('bottom-left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Bottom Right Handle -->
-    v-if="!collapsed"
-    <v-circle
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: nodeWidth / 2,
-        y: nodeBodyHeight,
-      }"
-      @mouseover="onResizeHover('bottom-right', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Handle -->
-    <v-line
-      v-if="!collapsed"
-      :config="{
-        points: [
-          -nodeWidth / 2,
-          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-          nodeWidth / 2,
-          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-        ],
-        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-      }"
-      @mouseover="onResizeHover('top', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Left Handle -->
-    <v-circle
-      v-if="!collapsed"
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: -nodeWidth / 2,
-        y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-      }"
-      @mouseover="onResizeHover('top-left', $event)"
-      @mouseout="onMouseOut"
-    />
-    <!-- Top Right Handle -->
-    <v-circle
-      v-if="!collapsed"
-      :config="{
-        width: GROUP_RESIZE_HANDLE_SIZE,
-        height: GROUP_RESIZE_HANDLE_SIZE,
-        x: nodeWidth / 2,
-        y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-      }"
-      @mouseover="onResizeHover('top-right', $event)"
-      @mouseout="onMouseOut"
-    />
+    <template v-if="!collapsed">
+      <!--  left side handle  -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            -nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- right side handle   -->
+      <v-line
+        :config="{
+          points: [
+            nodeWidth / 2,
+            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('right', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Handle -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            nodeBodyHeight,
+            nodeWidth / 2,
+            nodeBodyHeight,
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('bottom', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Left Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: -nodeWidth / 2,
+          y: nodeBodyHeight,
+        }"
+        @mouseover="onResizeHover('bottom-left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Bottom Right Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: nodeWidth / 2,
+          y: nodeBodyHeight,
+        }"
+        @mouseover="onResizeHover('bottom-right', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Handle -->
+      <v-line
+        :config="{
+          points: [
+            -nodeWidth / 2,
+            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            nodeWidth / 2,
+            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          ],
+          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+        }"
+        @mouseover="onResizeHover('top', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Left Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: -nodeWidth / 2,
+          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+        }"
+        @mouseover="onResizeHover('top-left', $event)"
+        @mouseout="onMouseOut"
+      />
+      <!-- Top Right Handle -->
+      <v-circle
+        :config="{
+          width: GROUP_RESIZE_HANDLE_SIZE,
+          height: GROUP_RESIZE_HANDLE_SIZE,
+          x: nodeWidth / 2,
+          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+        }"
+        @mouseover="onResizeHover('top-right', $event)"
+        @mouseout="onMouseOut"
+      />
+    </template>
 
     <!-- sockets -->
     <v-group
@@ -264,6 +263,25 @@
       />
 
       <!-- header text -->
+
+      <!-- rename hitbox -->
+      <v-rect
+        v-if="!collapsed"
+        :config="{
+          ...renameHitbox,
+          ...(debug && { fill: 'red' }),
+          cornerRadius: 2,
+          strokeWidth: 2,
+          stroke: renameHovered ? SELECTION_COLOR : 'transparent',
+        }"
+        @mouseout="mouseOutRename"
+        @mousemove="mouseOverRename"
+        @mouseover="mouseOverRename"
+        @click="renameIfSelected"
+        @dblclick="rename"
+      />
+
+      <!-- component name -->
       <v-text
         ref="titleTextRef"
         :config="{
@@ -276,7 +294,7 @@
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
-          fontStyle: 'bold',
+          fontStyle: renameHovered ? 'italic bold' : 'bold',
           fontFamily: DIAGRAM_FONT_FAMILY,
           listening: false,
           wrap: 'none',
@@ -284,9 +302,9 @@
         }"
       />
 
-      <!-- subtitle text -->
+      <!-- component type and child count -->
       <v-text
-        ref="titleTextRef"
+        ref="subtitleTextRef"
         :config="{
           x: 30 + GROUP_HEADER_ICON_SIZE - 2,
           y: 20,
@@ -466,7 +484,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, PropType, ref, watch } from "vue";
+import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -502,6 +520,7 @@ import {
   DiagramElementUniqueKey,
   DiagramGroupData,
   DiagramSocketData,
+  ElementHoverMeta,
   SideAndCornerIdentifiers,
 } from "./diagram_types";
 import { useDiagramContext } from "./ModelingDiagram.vue";
@@ -527,6 +546,7 @@ const props = defineProps({
     required: false,
   },
   collapsed: Boolean,
+  debug: Boolean,
 });
 
 const diagramContext = useDiagramContext();
@@ -548,11 +568,13 @@ const statusIconHovers = ref(
 
 const emit = defineEmits<{
   (e: "resize"): void;
+  (e: "rename", v: () => void): void;
 }>();
 
 const { theme } = useTheme();
 
 const titleTextRef = ref();
+const subtitleTextRef = ref();
 const groupRef = ref();
 
 const componentsStore = useComponentsStore();
@@ -597,9 +619,9 @@ const childCount = computed(() => {
 });
 
 const nodeWidth = computed(() =>
-  !props.collapsed
-    ? Math.max(size.value.width, MIN_NODE_DIMENSION)
-    : size.value.width,
+  props.collapsed
+    ? size.value.width
+    : Math.max(size.value.width, MIN_NODE_DIMENSION),
 );
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
@@ -700,11 +722,11 @@ const colors = computed(() => {
   };
 });
 
-function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: "parent") {
+function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: string) {
   evt.cancelBubble = true;
   componentsStore.setHoveredComponentId(
     componentId.value,
-    type ? { type } : undefined,
+    type ? ({ type } as ElementHoverMeta) : undefined,
   );
 }
 
@@ -730,7 +752,7 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
   componentsStore.setHoveredComponentId(null);
 }
 
-function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
+function onMouseOut() {
   componentsStore.setHoveredComponentId(null);
 }
 
@@ -786,4 +808,114 @@ const toggleChevron = () => {
     });
   }
 };
+
+// RENAME ON DIAGRAM STUFF
+const renameHitboxSelfRect = ref();
+
+onUpdated(() => {
+  renameHitboxSelfRect.value = titleTextRef.value?.getNode()?.getSelfRect();
+});
+
+const renameHitbox = computed(() => {
+  if (titleTextRef.value) {
+    const raw =
+      renameHitboxSelfRect.value ||
+      titleTextRef.value?.getNode()?.getSelfRect();
+
+    if (raw) {
+      const textWidth = titleTextRef.value?.getNode()?.getTextWidth();
+
+      const width = textWidth ? textWidth + 4 : raw.width;
+
+      const box = {
+        ...raw,
+        width,
+        height: GROUP_TITLE_FONT_SIZE + 6,
+        x: 32 + GROUP_HEADER_ICON_SIZE,
+        y: 4,
+      };
+      return box;
+    }
+
+    // we only reach this point if the rename input field is active
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    };
+  }
+
+  return {
+    x: 32 + GROUP_HEADER_ICON_SIZE,
+    y: 4,
+    width: headerWidth.value - 14 - GROUP_HEADER_ICON_SIZE * 2,
+    height: GROUP_TITLE_FONT_SIZE + 6,
+  };
+});
+
+const renaming = ref(false);
+const renameHoverState = ref(false);
+const fixCursorToText = ref(false);
+
+const renameHovered = computed(
+  () =>
+    (componentsStore.hoveredComponentMeta?.type === "rename" &&
+      componentsStore.hoveredComponentId === props.group.def.id) ||
+    renameHoverState.value,
+);
+
+const selectedAndRenameHovered = computed(
+  () =>
+    props.isSelected &&
+    componentsStore.hoveredComponentMeta?.type === "rename" &&
+    componentsStore.hoveredComponentId === props.group.def.id &&
+    renameHoverState.value,
+);
+
+watch(
+  () => props.isSelected,
+  (isSelected) => {
+    if (isSelected && renameHovered.value) {
+      fixCursorToText.value = true;
+    }
+  },
+);
+
+function mouseOverRename(evt: KonvaEventObject<MouseEvent>) {
+  if (props.isSelected) {
+    onMouseOver(evt, "rename");
+  }
+  renameHoverState.value = true;
+}
+
+function mouseOutRename() {
+  if (props.isSelected) {
+    onMouseOut();
+  }
+  renameHoverState.value = false;
+  fixCursorToText.value = false;
+}
+
+function renameIfSelected(e: KonvaEventObject<MouseEvent>) {
+  if (e.evt.button === 0 && selectedAndRenameHovered.value) {
+    rename();
+  } else if (fixCursorToText.value) {
+    fixCursorToText.value = false;
+    componentsStore.setHoveredComponentId(componentId.value, {
+      type: "rename",
+    } as ElementHoverMeta);
+  }
+}
+
+function rename() {
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "rename",
+  });
+  renaming.value = true;
+  fixCursorToText.value = false;
+  emit("rename", () => {
+    renaming.value = false;
+  });
+}
 </script>

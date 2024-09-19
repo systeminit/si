@@ -99,11 +99,12 @@ impl FuncNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        ContentHash::from(&serde_json::json![{
-            "content_address": self.content_address,
-            "name": self.name,
-            "func_kind": self.func_kind,
-        }])
+        let mut content_hasher = ContentHash::hasher();
+        content_hasher.update(self.content_address.content_hash().as_bytes());
+        content_hasher.update(self.name.as_bytes());
+        content_hasher.update(self.func_kind.to_string().as_bytes());
+
+        content_hasher.finalize()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {

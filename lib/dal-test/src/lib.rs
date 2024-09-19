@@ -36,10 +36,10 @@ use std::{
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
-    context::NatsStreams,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
+    DalContext, DalLayerDb, JetstreamStreams, JwtPublicSigningKey, ModelResult, ServicesContext,
+    Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -51,6 +51,7 @@ use si_crypto::{
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::{memory_cache::MemoryCacheConfig, CaCacheTempFile};
+use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
@@ -264,7 +265,7 @@ pub struct TestContext {
     /// A connected NATS client
     nats_conn: NatsClient,
     /// Required NATS streams
-    nats_streams: NatsStreams,
+    nats_streams: JetstreamStreams,
     /// A [`JobQueueProcessor`] impl
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
@@ -275,6 +276,8 @@ pub struct TestContext {
     layer_db_pg_pool: PgPool,
     /// The disk cache path for the layer db
     layer_db_cache_path: CaCacheTempFile,
+    /// Dedicated executor for running CPU-intensive tasks
+    compute_executor: DedicatedExecutor,
 }
 
 impl TestContext {
@@ -372,6 +375,7 @@ impl TestContext {
             self.layer_db_cache_path.tempdir.path(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
+            self.compute_executor.clone(),
             MemoryCacheConfig::default(),
             token,
         )
@@ -391,6 +395,7 @@ impl TestContext {
             self.symmetric_crypto_service.clone(),
             layer_db,
             FeatureFlagService::default(),
+            self.compute_executor.clone(),
         )
     }
 
@@ -465,7 +470,7 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&nats_config)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let nats_streams = NatsStreams::get_or_create(&nats_conn)
+        let nats_streams = JetstreamStreams::new(nats_conn.clone())
             .await
             .wrap_err("failed to create NatsStreams")?;
         let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
@@ -474,6 +479,8 @@ impl TestContextBuilder {
         let symmetric_crypto_service =
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
+
+        let compute_executor = si_runtime::compute_executor("dal-test")?;
 
         Ok(TestContext {
             config,
@@ -485,6 +492,7 @@ impl TestContextBuilder {
             symmetric_crypto_service,
             layer_db_pg_pool,
             layer_db_cache_path: si_layer_cache::disk_cache::default_cacache_path()?,
+            compute_executor,
         })
     }
 
@@ -611,7 +619,7 @@ pub async fn pinga_server(
 
 /// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
 /// object-related tests.
-pub fn rebaser_server(
+pub async fn rebaser_server(
     services_context: ServicesContext,
     shutdown_token: CancellationToken,
 ) -> Result<rebaser_server::Server> {
@@ -626,6 +634,7 @@ pub fn rebaser_server(
         // a huge interval, to prevent dvu debouncer from running dvus in tests
         std::time::Duration::from_secs(10000),
     )
+    .await
     .wrap_err("failed to create Rebaser server")?;
 
     Ok(server)
@@ -640,7 +649,7 @@ pub async fn veritech_server_for_uds_cyclone(
     let config: veritech_server::Config = {
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         config_file.nats = nats_config;
-        config_file.cyclone.set_pool_size(50);
+        config_file.cyclone.set_pool_size(4);
         veritech_server::detect_and_configure_development(&mut config_file)
             .wrap_err("failed to detect and configure Veritech ConfigFile")?;
         config_file
@@ -651,6 +660,27 @@ pub async fn veritech_server_for_uds_cyclone(
     let server = veritech_server::Server::from_config(config, token)
         .await
         .wrap_err("failed to create Veritech server")?;
+
+    Ok(server)
+}
+
+/// Configures and builds a [`forklift_server::Server`] suitable for running alongside DAL
+/// object-related tests.
+pub async fn forklift_server(
+    nats_config: NatsConfig,
+    token: CancellationToken,
+) -> Result<forklift_server::Server> {
+    let config: forklift_server::Config = {
+        let mut config_file = forklift_server::ConfigFile::default();
+        config_file.nats = nats_config;
+        config_file
+            .try_into()
+            .wrap_err("failed to build forklift server config")?
+    };
+
+    let server = forklift_server::Server::from_config(config, token)
+        .await
+        .wrap_err("failed to create forklift server")?;
 
     Ok(server)
 }
@@ -733,6 +763,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to migrate layerdb")?;
 
+    // Startup up a Forklift server exclusively for migrations
+    info!("starting Forklift server for initial migrations");
+    let forklift_server = forklift_server(test_context.config.nats.clone(), token.clone()).await?;
+    tracker.spawn(forklift_server.run());
+
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");
     let srv_services_ctx = test_context
@@ -746,7 +781,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let srv_services_ctx = test_context
         .create_services_context(token.clone(), tracker.clone())
         .await;
-    let rebaser_server = rebaser_server(srv_services_ctx, token.clone())?;
+    let rebaser_server = rebaser_server(srv_services_ctx, token.clone()).await?;
     tracker.spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
@@ -768,7 +803,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     migrate_local_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
-        services_ctx.nats_streams(),
+        services_ctx.jetstream_streams(),
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
@@ -777,6 +812,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.symmetric_crypto_service(),
         services_ctx.layer_db().clone(),
         services_ctx.feature_flags_service().clone(),
+        services_ctx.compute_executor().clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -795,7 +831,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 async fn migrate_local_builtins(
     dal_pg: &PgPool,
     nats: &NatsClient,
-    nats_streams: &NatsStreams,
+    nats_streams: &JetstreamStreams,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &VeritechEncryptionKey,
@@ -804,6 +840,7 @@ async fn migrate_local_builtins(
     symmetric_crypto_service: &SymmetricCryptoService,
     layer_db: DalLayerDb,
     feature_flag_service: FeatureFlagService,
+    compute_executor: DedicatedExecutor,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -817,6 +854,7 @@ async fn migrate_local_builtins(
         symmetric_crypto_service.clone(),
         layer_db.clone(),
         feature_flag_service,
+        compute_executor,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

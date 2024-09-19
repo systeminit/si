@@ -238,7 +238,7 @@ impl ActivityMultiplexer {
             has_filter_array,
         )
         .await?;
-        let (tx, rx) = broadcast::channel(1000); // the 1_000_000 here is the depth the channel will
+        let (tx, rx) = broadcast::channel(1000000); // the 1_000_000 here is the depth the channel will
 
         let mut amx_task = ActivityMultiplexerTask::new(activity_stream, tx.clone());
         let amx_shutdown_token = self.shutdown_token.clone();
@@ -364,6 +364,7 @@ impl ActivityStream {
         let mut config = jetstream::consumer::pull::Config {
             name: Some(name),
             description: Some(description),
+            // NOTE(nick,fletcher): we may need to tune this for long-running change sets.
             deliver_policy: jetstream::consumer::DeliverPolicy::All,
             max_bytes: MAX_BYTES,
             inactive_threshold: Duration::from_secs(180),

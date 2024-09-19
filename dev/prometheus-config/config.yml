@@ -5,7 +5,3 @@ scrape_configs:
    static_configs:
     - targets:
        - otelcol:9090
- - job_name: firecracker
-   static_configs:
-    - targets:
-       - process-exporter:9256

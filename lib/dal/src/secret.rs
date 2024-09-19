@@ -53,6 +53,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::key_pair::KeyPairPk;
 use crate::layer_db_types::{SecretContent, SecretContentV1};
 use crate::prop::PropError;
+use crate::schema::variant::root_prop::RootPropChild;
 use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
@@ -62,9 +63,9 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
-    ChangeSetError, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor,
-    HistoryEventError, KeyPair, KeyPairError, SchemaVariantError, StandardModelError, Timestamp,
-    TransactionsError, UserPk,
+    ChangeSetError, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError,
+    HistoryActor, HistoryEventError, KeyPair, KeyPairError, Prop, SchemaVariant,
+    SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
 };
 use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 
@@ -78,6 +79,7 @@ pub use algorithm::SecretVersion;
 pub use definition_view::SecretDefinitionView;
 pub use definition_view::SecretDefinitionViewError;
 pub use event::SecretCreatedPayload;
+pub use event::SecretDeletedPayload;
 pub use event::SecretUpdatedPayload;
 pub use view::SecretView;
 pub use view::SecretViewError;
@@ -95,6 +97,8 @@ pub enum SecretError {
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
@@ -313,6 +317,22 @@ impl Secret {
     /// Returns the key corresponding to the corresponding [`EncryptedSecret`].
     pub fn encrypted_secret_key(&self) -> EncryptedSecretKey {
         self.encrypted_secret_key
+    }
+
+    /// Returns if the secret can be decrypted in this workspace
+    pub async fn can_be_decrypted(&self, ctx: &DalContext) -> SecretResult<bool> {
+        let key = self.encrypted_secret_key;
+
+        let Some(encrypted_secret) = EncryptedSecret::get_by_key(ctx, key).await? else {
+            return Ok(false);
+        };
+
+        match encrypted_secret.key_pair(ctx).await {
+            Ok(_) => Ok(true),
+            Err(SecretError::KeyPair(KeyPairError::KeyPairNotFound(_)))
+            | Err(SecretError::KeyPair(KeyPairError::UnauthorizedKeyAccess)) => Ok(false),
+            Err(err) => Err(err),
+        }
     }
 
     /// Attach a [`Secret`] to a given [`AttributeValue`] corresponding to a
@@ -594,6 +614,54 @@ impl Secret {
             Ok(())
         })
         .await
+    }
+
+    /// Finds all the connected component Ids for the [`Secret`]
+    pub async fn find_connected_components(
+        self,
+        ctx: &DalContext,
+    ) -> SecretResult<Vec<ComponentId>> {
+        let secret_details = self.encrypted_secret_key().to_string();
+        let mut connected_components = Vec::new();
+        let mut secret_props = Vec::new();
+        let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
+        for schema_variant in schema_variants {
+            let secrets_prop = Prop::find_prop_by_path(
+                ctx,
+                schema_variant.schema_variant_id.into(),
+                &RootPropChild::Secrets.prop_path(),
+            )
+            .await?;
+            let secret_props_children =
+                Prop::direct_child_props_ordered(ctx, secrets_prop.clone().id()).await?;
+            for secret_child in secret_props_children {
+                secret_props.push(secret_child.clone());
+            }
+        }
+
+        for secret_prop in secret_props {
+            let all_connected_attribute_values =
+                Prop::all_attribute_values_everywhere_for_prop_id(ctx, secret_prop.id()).await?;
+            for connected_av in all_connected_attribute_values {
+                let av = AttributeValue::get_by_id_or_error(ctx, connected_av).await?;
+                if let Some(val) = av.value(ctx).await? {
+                    if val == secret_details {
+                        let connected_component =
+                            AttributeValue::component_id(ctx, connected_av).await?;
+                        connected_components.push(connected_component)
+                    }
+                }
+            }
+        }
+        Ok(connected_components)
+    }
+
+    /// Deletes the secret node.
+    pub async fn delete(self, ctx: &DalContext) -> SecretResult<()> {
+        //TODO: Doesn't delete from layer_db or memory at this time!
+        ctx.workspace_snapshot()?.remove_node_by_id(self.id).await?;
+
+        Ok(())
     }
 
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> SecretResult<Self>

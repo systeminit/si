@@ -16,6 +16,9 @@ on:
         options:
           - tools
           - production
+  repository_dispatch:
+    types:
+      - webhook
 
 jobs:
   define-test-matrix:
@@ -61,7 +64,11 @@ jobs:
         run: |
           cd bin/si-api-test
           echo ${{ github.ref }}
-          deno task run ${{ vars.API_TEST_WORKSPACE_ID }} ${{ secrets.API_TEST_EMAIL }} ${{ secrets.API_TEST_PASSWORD }} ${{ matrix.tests }}
+          deno task run \
+          --workspaceId ${{ vars.API_TEST_WORKSPACE_ID }} \
+          --userId ${{ secrets.API_TEST_EMAIL }} \
+          --password ${{ secrets.API_TEST_PASSWORD }} \
+          --tests ${{ matrix.tests }}
 
   on-failure:
     runs-on: ubuntu-latest

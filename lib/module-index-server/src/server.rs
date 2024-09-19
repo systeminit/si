@@ -16,6 +16,7 @@ use tokio::{
     signal,
     sync::{broadcast, mpsc, oneshot},
 };
+use tokio_util::sync::CancellationToken;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
@@ -180,7 +181,10 @@ impl Server<(), ()> {
     }
 
     pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
-        let (posthog_client, posthog_sender) = si_posthog::from_config(config)?;
+        // TODO(fnichol): this should be threaded through
+        let token = CancellationToken::new();
+
+        let (posthog_sender, posthog_client) = si_posthog::from_config(config, token)?;
 
         drop(tokio::spawn(posthog_sender.run()));
 

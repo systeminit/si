@@ -53,6 +53,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
+tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 ulid = { workspace = true }

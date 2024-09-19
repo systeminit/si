@@ -2,13 +2,15 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::history_event::HistoryEventMetadata;
-use crate::StandardModelError;
 use crate::{ActorView, DalContext, HistoryActor, Secret, SecretId};
+use crate::{ComponentId, SecretError, StandardModelError};
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretViewError {
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 }
@@ -33,6 +35,10 @@ pub struct SecretView {
     pub created_info: HistoryEventMetadata,
     /// The "updated" information for a [`Secret`].
     pub updated_info: Option<HistoryEventMetadata>,
+    /// The list of component Ids connected to the secret [`Secret`].
+    pub connected_components: Vec<ComponentId>,
+    /// If the secret can be used on this workspace
+    pub is_usable: bool,
 }
 
 impl SecretView {
@@ -70,6 +76,9 @@ impl SecretView {
             }
         };
 
+        let is_usable = secret.can_be_decrypted(ctx).await?;
+        let connected_components = secret.clone().find_connected_components(ctx).await?;
+
         Ok(Self {
             id: secret.id,
             name: secret.name,
@@ -77,6 +86,8 @@ impl SecretView {
             description: secret.description,
             created_info,
             updated_info,
+            connected_components,
+            is_usable,
         })
     }
 }

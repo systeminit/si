@@ -40,7 +40,7 @@ overflow hidden */
     >
       <!-- DEBUG BAR-->
       <div
-        v-if="showDebugBar"
+        v-if="enableDebugMode"
         class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
       >
         <div>fonts loaded? {{ customFontsLoaded }}</div>
@@ -55,7 +55,10 @@ overflow hidden */
         </div>
       </div>
 
-      <DiagramControls @open:help="helpModalRef.open()" />
+      <DiagramControls
+        @downloadCanvasScreenshot="downloadCanvasScreenshot"
+        @open:help="helpModalRef.open()"
+      />
 
       <!-- MAIN V-STAGE -->
       <v-stage
@@ -75,39 +78,40 @@ overflow hidden */
           <DiagramGroup
             v-for="group in groups"
             :key="group.uniqueKey"
+            :collapsed="
+              componentsStore.collapsedComponents.has(group.uniqueKey)
+            "
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+            :debug="enableDebugMode"
             :group="group"
             :isHovered="elementIsHovered(group)"
             :isSelected="elementIsSelected(group)"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(group.def.id)
             "
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
+            @rename="
+              (f) => {
+                renameOnDiagram(group, f);
+              }
             "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
-          <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
-            <DiagramEdge
-              v-for="edge in edges"
-              :key="edge.uniqueKey"
-              :edge="edge"
-              :fromPoint="edge.fromPoint?.center"
-              :isHovered="elementIsHovered(edge)"
-              :isSelected="elementIsSelected(edge)"
-              :toPoint="edge.toPoint?.center"
-            />
-          </template>
           <DiagramNode
             v-for="node in nodes"
             :key="node.uniqueKey"
             :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+            :debug="enableDebugMode"
             :isHovered="elementIsHovered(node)"
-            :isSelected="elementIsSelected(node)"
             :isLoading="statusStore.componentIsLoading(node.def.id)"
+            :isSelected="elementIsSelected(node)"
             :node="node"
             :qualificationStatus="
               qualificationStore.qualificationStatusForComponentId(node.def.id)
+            "
+            @rename="
+              (f) => {
+                renameOnDiagram(node, f);
+              }
             "
             @resize="onNodeLayoutOrLocationChange(node)"
           />
@@ -116,24 +120,22 @@ overflow hidden */
             :key="mouseCursor.userId"
             :cursor="mouseCursor"
           />
-          <template v-if="edgeDisplayMode === 'EDGES_OVER'">
-            <DiagramEdge
-              v-for="edge in edges"
-              :key="edge.uniqueKey"
-              :edge="edge"
-              :fromPoint="getSocketLocationInfo('from', edge)?.center"
-              :isHovered="elementIsHovered(edge)"
-              :isSelected="elementIsSelected(edge)"
-              :toPoint="getSocketLocationInfo('to', edge)?.center"
-            />
-          </template>
+          <DiagramEdge
+            v-for="edge in edges"
+            :key="edge.uniqueKey"
+            :edge="edge"
+            :fromPoint="getSocketLocationInfo('from', edge)?.center"
+            :isHovered="elementIsHovered(edge)"
+            :isSelected="elementIsSelected(edge)"
+            :toPoint="getSocketLocationInfo('to', edge)?.center"
+          />
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
-            :group="group"
             :collapsed="
               componentsStore.collapsedComponents.has(group.uniqueKey)
             "
+            :group="group"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
 
@@ -215,6 +217,19 @@ overflow hidden */
       </v-stage>
 
       <DiagramHelpModal ref="helpModalRef" />
+
+      <div ref="renameInputWrapperRef" class="absolute">
+        <VormInput
+          ref="renameInputRef"
+          v-model="renameInputValue"
+          :renameZoom="zoomLevel"
+          compact
+          noLabel
+          rename
+          @blur="onRenameSubmit"
+          @keydown="onRenameKeyDown"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -223,8 +238,6 @@ overflow hidden */
 type DiagramContext = {
   zoomLevel: Ref<number>;
   setZoomLevel: (newZoom: number) => void;
-  edgeDisplayMode: Ref<EdgeDisplayMode>;
-  toggleEdgeDisplayMode: () => void;
   drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
   moveElementsState: ComputedRef<MoveElementsState>;
   gridRect: ComputedRef<IRect>;
@@ -258,15 +271,21 @@ import {
   toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
+import Konva from "konva";
 import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
-import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
+import {
+  LoadingMessage,
+  getToneColorHex,
+  VormInput,
+} from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
 import { useRoute } from "vue-router";
 import { useToast } from "vue-toastification";
+import { ulid } from "ulid";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -301,7 +320,6 @@ import {
   Size2D,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
-  EdgeDisplayMode,
   MoveElementsState,
   SocketLocationInfo,
 } from "./diagram_types";
@@ -321,6 +339,8 @@ import {
   GROUP_INNER_Y_BOUNDARY_OFFSET,
   MIN_NODE_DIMENSION,
   GROUP_HEADER_BOTTOM_MARGIN,
+  NODE_TITLE_HEADER_MARGIN_RIGHT,
+  GROUP_HEADER_ICON_SIZE,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -370,23 +390,17 @@ const componentsStore = useComponentsStore();
 const statusStore = useStatusStore();
 const modelingEventBus = componentsStore.eventBus;
 
-const edgeDisplayMode = ref<EdgeDisplayMode>("EDGES_OVER");
-
-const toggleEdgeDisplayMode = () => {
-  edgeDisplayMode.value =
-    edgeDisplayMode.value === "EDGES_OVER" ? "EDGES_UNDER" : "EDGES_OVER";
-};
-
 const fetchDiagramReqStatus =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
 
-const showDebugBar = false;
+const enableDebugMode = false;
 
 const customFontsLoaded = useCustomFontsLoaded();
 
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
+const diagramUlid = computed(() => ulid());
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -436,6 +450,13 @@ function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
   return {
     x: gridMinX.value + v.x / zoomLevel.value,
     y: gridMinY.value + v.y / zoomLevel.value,
+  };
+}
+
+function convertGridCoordsToContainerCoords(v: Vector2d): Vector2d {
+  return {
+    x: (v.x - gridMinX.value) * zoomLevel.value,
+    y: (v.y - gridMinY.value) * zoomLevel.value,
   };
 }
 
@@ -493,6 +514,7 @@ function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
       y: gridOrigin.value.y + e.evt.deltaY * panFactor,
     };
   }
+  fixRenameInputPosition();
 }
 
 function zoomAtPoint(delta: number, zoomPos: Vector2d, isPinchToZoom = false) {
@@ -627,9 +649,9 @@ watch(
       [
         {
           eventType: "SetComponentPosition",
-          callback: ({ changeSetId, userPk, positions }) => {
+          callback: ({ changeSetId, clientUlid, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-            if (userPk === authStore.userPk) return;
+            if (clientUlid === diagramUlid.value) return;
 
             const elements: elementPositionAndSize[] = [];
             for (const { componentId, position, size } of positions) {
@@ -648,7 +670,11 @@ watch(
                 });
               }
             }
-            updateElementPositionAndSize({ elements });
+            updateElementPositionAndSize({
+              elements,
+              writeToChangeSet: false,
+              broadcastToClients: false,
+            });
           },
         },
       ],
@@ -656,6 +682,76 @@ watch(
   },
   { immediate: true },
 );
+
+function downloadCanvasScreenshot() {
+  const stage = stageRef.value.getNode() as Konva.Stage;
+  if (!stage || typeof stage.getLayers !== "function") return;
+
+  // Find the bounding box of all shapes on the stage
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  stage.find("Shape, Text, Image").forEach((node) => {
+    const box = node.getClientRect();
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxX = Math.max(maxX, box.x + box.width);
+    maxY = Math.max(maxY, box.y + box.height);
+  });
+
+  // Add a small padding around the components on the graph (adjust as needed)
+  const padding = 10;
+  minX -= padding;
+  minY -= padding;
+  maxX += padding;
+  maxY += padding;
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Create a temporary layer for the background
+  const tempLayer = new Konva.Layer();
+  stage.add(tempLayer);
+
+  const bgRect = new Konva.Rect({
+    x: minX,
+    y: minY,
+    width,
+    height,
+    fill: "black",
+  });
+  tempLayer.add(bgRect);
+  tempLayer.moveToBottom();
+
+  // Capture the content
+  const dataURL = stage.toDataURL({
+    x: minX,
+    y: minY,
+    width,
+    height,
+    pixelRatio: 10, // Increase for higher resolution
+  });
+
+  // Remove the temporary layer
+  tempLayer.destroy();
+
+  // Generate filename with current date
+  const currentDate = new Date();
+  const dateString = currentDate.toISOString().split("T")[0];
+  const fileName = `canvas-screenshot-${dateString}.png`;
+
+  // Create a link element
+  const link = document.createElement("a");
+  link.download = fileName;
+  link.href = dataURL;
+
+  // Trigger download
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 onBeforeUnmount(() => {
   // this fires when you change the change set from the drop down
@@ -762,6 +858,7 @@ async function onKeyDown(e: KeyboardEvent) {
   // TODO: escape will probably have more complex behaviour
   if (e.key === "Escape") {
     clearSelection();
+    renameHide();
     if (insertElementActive.value) componentsStore.cancelInsert();
     componentsStore.copyingFrom = null;
     if (dragSelectActive.value) endDragSelect(false);
@@ -793,6 +890,16 @@ async function onKeyDown(e: KeyboardEvent) {
     } else {
       // collapse selected
       componentsStore.toggleSelectedCollapse("hotkey");
+    }
+  }
+  if (!props.readOnly && e.key === "n" && componentsStore.selectedComponentId) {
+    // rename component
+    const collapsed = componentsStore.collapsedComponents.has(
+      `g-${componentsStore.selectedComponentId}`,
+    );
+    if (!collapsed) {
+      e.preventDefault();
+      renameOnDiagramByComponentId(componentsStore.selectedComponentId);
     }
   }
 }
@@ -1036,6 +1143,9 @@ const cursor = computed(() => {
   }
 
   if (hoveredElement.value) {
+    if (hoveredElementMeta.value?.type === "rename") {
+      return "text";
+    }
     return "pointer";
   }
   return "auto";
@@ -1434,7 +1544,10 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
 
   if (componentUpdate.length > 0) {
     if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_GEOMETRY(componentUpdate);
+      componentsStore.SET_COMPONENT_GEOMETRY(
+        componentUpdate,
+        diagramUlid.value,
+      );
     }
 
     if (
@@ -1446,7 +1559,7 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
         kind: "ComponentSetPosition",
         data: {
           positions: _.map(componentUpdate, (c) => c.geometry),
-          userPk: authStore.userPk,
+          clientUlid: diagramUlid.value,
           changeSetId: changeSetsStore.selectedChangeSetId,
         },
       });
@@ -2906,7 +3019,6 @@ type ToFrom = { to: Vector2d; from: Vector2d };
 const edges = computed(() => {
   const points: ToFrom[] = [];
   return componentsStore.diagramEdges
-    .filter((e) => !e.isInferred)
     .map((edgeDef) => new DiagramEdgeData(edgeDef))
     .filter((e) => {
       // filter out edges connected between components when one is not rendered
@@ -3070,22 +3182,140 @@ function recenterOnElement(panTarget: DiagramElementData) {
   }
 }
 
+const renameInputRef = ref<InstanceType<typeof VormInput>>();
+const renameInputWrapperRef = ref();
+const renameInputValue = ref("");
+const renameElement = ref();
+const renameEndFunc = ref();
+
+function fixRenameInputPosition() {
+  if (renameElement.value) {
+    const componentBox =
+      componentsStore.renderedGeometriesByComponentId[
+        renameElement.value.def.id
+      ];
+    if (componentBox && renameInputWrapperRef.value) {
+      const { x, y } = convertGridCoordsToContainerCoords(componentBox);
+      const z = zoomLevel.value;
+
+      if (renameElement.value instanceof DiagramNodeData) {
+        // moving the input box for a Node
+        const top = y + 3 * z;
+        const left =
+          z > 0.5
+            ? x + 8 * z - (componentBox.width * z) / 2
+            : x - (componentBox.width * z) / 2;
+        const width =
+          z > 0.5
+            ? (componentBox.width - NODE_TITLE_HEADER_MARGIN_RIGHT) * z
+            : componentBox.width * z;
+
+        renameInputWrapperRef.value.style.top = `${top}px`;
+        renameInputWrapperRef.value.style.left = `${left}px`;
+        renameInputWrapperRef.value.style.width = `${width}px`;
+      } else if (renameElement.value instanceof DiagramGroupData) {
+        // moving the input box for a Group
+        const diffIcon =
+          !renameElement.value.def.changeStatus ||
+          renameElement.value.def.changeStatus === "unmodified";
+        const width =
+          z > 0.5
+            ? (diffIcon
+                ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE * 2
+                : componentBox.width - 18 - GROUP_HEADER_ICON_SIZE * 3) * z
+            : componentBox.width * z;
+        const top = y - 58 * z;
+        const left =
+          z > 0.5 ? x - width / 2 + (diffIcon ? 30 : 4) * z : x - width / 2;
+
+        renameInputWrapperRef.value.style.top = `${top}px`;
+        renameInputWrapperRef.value.style.left = `${left}px`;
+        renameInputWrapperRef.value.style.width = `${width}px`;
+      }
+    }
+  }
+}
+
+function renameOnDiagramByComponentId(componentId: ComponentId) {
+  const key = getDiagramElementKeyForComponentId(componentId);
+  if (!key) return;
+  const el = allElementsByKey.value[key];
+  if (!el) return;
+
+  const nodeRect = nodesLocationInfo[el.uniqueKey];
+  if (!nodeRect) return;
+
+  if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+    // TODO - for now, renaming from the event bus resets the zoom level
+    gridOrigin.value = getRectCenter(nodeRect);
+    setZoomLevel(1);
+    renameOnDiagram(el, () => {});
+  }
+}
+
+function renameOnDiagram(
+  el: DiagramNodeData | DiagramGroupData,
+  endFunc: () => void,
+) {
+  const componentBox =
+    componentsStore.renderedGeometriesByComponentId[el.def.id];
+
+  if (componentBox && renameInputWrapperRef.value && renameInputRef.value) {
+    renameElement.value = el;
+    renameEndFunc.value = endFunc;
+    renameInputValue.value = el.def.title;
+    fixRenameInputPosition();
+    renameInputRef.value.focus();
+  }
+}
+
+function onRenameSubmit() {
+  if (
+    renameInputValue.value &&
+    renameElement.value.def.title !== renameInputValue.value &&
+    renameInputValue.value.length > 0
+  ) {
+    componentsStore.RENAME_COMPONENT(
+      renameElement.value.def.id,
+      renameInputValue.value,
+    );
+  }
+  renameHide();
+}
+
+function renameHide() {
+  if (renameInputWrapperRef.value && renameEndFunc.value) {
+    renameInputWrapperRef.value.style.removeProperty("top");
+    renameInputWrapperRef.value.style.removeProperty("left");
+    renameInputWrapperRef.value.style.removeProperty("width");
+    renameEndFunc.value(renameInputValue.value); // tells the component to show its title again!
+    renameInputValue.value = "";
+    renameElement.value = undefined;
+  }
+}
+
+function onRenameKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape") {
+    renameHide();
+  }
+}
+
 const helpModalRef = ref();
 
 onMounted(() => {
   componentsStore.copyingFrom = null;
   componentsStore.eventBus.on("panToComponent", panToComponent);
+  modelingEventBus.on("rename", renameOnDiagramByComponentId);
 });
 onBeforeUnmount(() => {
   componentsStore.eventBus.off("panToComponent", panToComponent);
+  modelingEventBus.off("rename", renameOnDiagramByComponentId);
 });
 
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {
   zoomLevel,
   setZoomLevel,
-  edgeDisplayMode,
-  toggleEdgeDisplayMode,
   drawEdgeState,
   moveElementsState,
   gridRect,

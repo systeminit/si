@@ -8,18 +8,12 @@ load(
 rust_binary(
     name = "sdf",
     deps = [
-        "//lib/billing-events-server:billing-events-server",
-        "//lib/nats-multiplexer:nats-multiplexer",
         "//lib/sdf-server:sdf-server",
         "//lib/si-service:si-service",
-        "//lib/si-std:si-std",
-        "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
-        "//third-party/rust:color-eyre",
-        "//third-party/rust:tokio",
-        "//third-party/rust:tokio-util",
     ],
     srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "sdf"},
     resources = {
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",

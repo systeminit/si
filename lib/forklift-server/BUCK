@@ -1,0 +1,23 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "forklift-server",
+    deps = [
+        "//lib/billing-events:billing-events",
+        "//lib/data-warehouse-stream-client:data-warehouse-stream-client",
+        "//lib/naxum:naxum",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-settings:si-settings",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

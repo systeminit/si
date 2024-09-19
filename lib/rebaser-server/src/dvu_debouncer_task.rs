@@ -539,7 +539,6 @@ impl DvuDebouncerTask {
                     si.change_set.id = %self.change_set_id,
                     "change set no longer open, not enqueuing dependent values updates",
                 );
-
                 return Ok(None);
             }
         }

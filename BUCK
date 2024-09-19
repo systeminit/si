@@ -9,6 +9,11 @@ load(
 )
 
 alias(
+    name = "forklift",
+    actual = "//bin/forklift:forklift",
+)
+
+alias(
     name = "module-index",
     actual = "//bin/module-index:module-index",
 )
