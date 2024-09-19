@@ -28,6 +28,10 @@ impl MaintainProgressTask {
 
     pub async fn run(mut self) {
         trace!(task = Self::NAME, "running task");
+        debug!(task = Self::NAME, "first ack message");
+        if let Err(err) = self.acker.ack_with(jetstream::AckKind::Progress).await {
+            warn!(error = ?err, "failed initial ack");
+        }
 
         loop {
             tokio::select! {
