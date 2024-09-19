@@ -7,10 +7,10 @@ use telemetry::prelude::*;
 use crate::{
     attribute::{prototype::argument::AttributePrototypeArgument, value::ValueIsFor},
     AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    InputSocketId, OutputSocketId,
+    InputSocketId, OutputSocket, OutputSocketId,
 };
 
-use super::{inferred_connection_graph::InferredConnectionGraph, ComponentError, ComponentResult};
+use super::{ComponentError, ComponentResult};
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
 /// (non-unique) [`InputSocketId`] and unique [`AttributeValueId`]
@@ -59,24 +59,32 @@ impl ComponentOutputSocket {
         };
         let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
 
-        let mut connections: Vec<ComponentInputSocket> = match ctx
-            .workspace_snapshot()?
-            .get_cached_inferred_connection_graph()
-            .await
-            .as_ref()
-        {
-            Some(cached_graph) => cached_graph
-                .get_component_connections_to_output_socket(component_id, output_socket_id),
-            None => InferredConnectionGraph::assemble(ctx, component_id)
-                .await?
-                .get_component_connections_to_output_socket(component_id, output_socket_id),
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut inferred_connection_graph =
+            workspace_snapshot.inferred_connection_graph(ctx).await?;
+        let mut connections = inferred_connection_graph
+            .inferred_connections_for_component_stack(ctx, component_id)
+            .await?;
+        connections.retain(|inferred_connection| {
+            inferred_connection.source_component_id == component_id
+                && inferred_connection.output_socket_id == output_socket_id
+        });
+        let mut input_sockets = Vec::new();
+        for connection in connections {
+            if let Some(input_socket) = ComponentInputSocket::get_by_ids(
+                ctx,
+                connection.destination_component_id,
+                connection.input_socket_id,
+            )
+            .await?
+            {
+                input_sockets.push(input_socket);
+            }
         }
-        .into_iter()
-        .collect();
 
         // sort by component id for consistent ordering
-        connections.sort_by_key(|input| input.component_id);
-        Ok(connections)
+        input_sockets.sort_by_key(|input| input.component_id);
+        Ok(input_sockets)
     }
 
     /// Given a [`ComponentId`] and [`OutputSocketId`] find the [`ComponentOutputSocket`]
@@ -187,27 +195,30 @@ impl ComponentInputSocket {
         ctx: &DalContext,
         component_input_socket: ComponentInputSocket,
     ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        let mut connections: Vec<_> = match ctx
-            .workspace_snapshot()?
-            .get_cached_inferred_connection_graph()
-            .await
-            .as_ref()
-        {
-            Some(cached_graph) => cached_graph
-                .get_component_connections_to_input_socket(component_input_socket)
-                .into_iter()
-                .collect(),
-            None => InferredConnectionGraph::assemble_incoming_only(
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut inferred_connection_graph =
+            workspace_snapshot.inferred_connection_graph(ctx).await?;
+        let mut connections = Vec::new();
+        for inferred_connection in inferred_connection_graph
+            .inferred_connections_for_input_socket(
                 ctx,
                 component_input_socket.component_id,
+                component_input_socket.input_socket_id,
             )
             .await?
-            .get(&component_input_socket)
-            .unwrap_or(&vec![])
-            .clone()
-            .into_iter()
-            .collect_vec(),
-        };
+        {
+            let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+                ctx,
+                inferred_connection.output_socket_id,
+                inferred_connection.source_component_id,
+            )
+            .await?;
+            connections.push(ComponentOutputSocket {
+                component_id: inferred_connection.source_component_id,
+                output_socket_id: inferred_connection.output_socket_id,
+                attribute_value_id,
+            });
+        }
 
         connections.sort_by_key(|output| output.component_id);
 

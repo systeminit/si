@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use axum::{response::IntoResponse, Json};
 use dal::{
-    component::{frame::Frame, ComponentGeometry},
+    component::{frame::Frame, ComponentGeometry, InferredConnection},
     diagram::SummaryDiagramInferredEdge,
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
 };
@@ -64,19 +64,33 @@ pub async fn set_component_position(
             // Queue new implicit edges to send to frontend
             {
                 let component = Component::get_by_id(&ctx, new_parent).await?;
-                for inferred_incoming_connection in
-                    component.inferred_incoming_connections(&ctx).await?
+                let workspace_snapshot = ctx.workspace_snapshot()?;
+                let mut inferred_connection_graph =
+                    workspace_snapshot.inferred_connection_graph(&ctx).await?;
+                for inferred_connection in inferred_connection_graph
+                    .inferred_connections_for_component_stack(&ctx, component.id())
+                    .await?
                 {
-                    diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
-                        inferred_incoming_connection,
-                    )?)
-                }
-                for inferred_outgoing_connection in
-                    component.inferred_outgoing_connections(&ctx).await?
-                {
-                    diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
-                        inferred_outgoing_connection,
-                    )?)
+                    if inferred_connection.source_component_id == component.id()
+                        || inferred_connection.destination_component_id == component.id()
+                    {
+                        let to_delete = !Component::should_data_flow_between_components(
+                            &ctx,
+                            inferred_connection.destination_component_id,
+                            inferred_connection.source_component_id,
+                        )
+                        .await?;
+                        let inferred_stack_connection = InferredConnection {
+                            to_component_id: inferred_connection.destination_component_id,
+                            to_input_socket_id: inferred_connection.input_socket_id,
+                            from_component_id: inferred_connection.source_component_id,
+                            from_output_socket_id: inferred_connection.output_socket_id,
+                            to_delete,
+                        };
+                        diagram_inferred_edges.push(SummaryDiagramInferredEdge::assemble(
+                            inferred_stack_connection,
+                        )?)
+                    }
                 }
             }
         }

@@ -18,7 +18,6 @@ use ulid::Ulid;
 
 use crate::{
     attribute::value::{dependent_value_graph::DependentValueGraph, AttributeValueError},
-    component::inferred_connection_graph::InferredConnectionGraph,
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -252,12 +251,6 @@ impl DependentValuesUpdate {
             unfinished_values.clone_from(&finished_values);
             finished_values.clear();
         }
-
-        // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
-        let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
-        ctx.workspace_snapshot()?
-            .set_cached_inferred_connection_graph(Some(inferred_connection_graph))
-            .await;
 
         let concurrency_limit = ctx.get_workspace().await?.component_concurrency_limit() as usize;
 

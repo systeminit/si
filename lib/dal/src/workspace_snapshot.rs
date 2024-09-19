@@ -53,8 +53,10 @@ use tokio::task::JoinError;
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
-use crate::component::inferred_connection_graph::InferredConnectionGraph;
-use crate::component::IncomingConnection;
+use crate::component::inferred_connection_graph::{
+    InferredConnectionGraph, InferredConnectionGraphError,
+};
+use crate::component::{ComponentResult, IncomingConnection};
 use crate::slow_rt::{self, SlowRuntimeError};
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
@@ -108,6 +110,8 @@ pub enum WorkspaceSnapshotError {
     Component(#[from] Box<ComponentError>),
     #[error("error correcting transforms: {0}")]
     CorrectTransforms(#[from] CorrectTransformsError),
+    #[error("InferredConnectionGraph error: {0}")]
+    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
@@ -277,6 +281,47 @@ impl<'a> std::ops::DerefMut for SnapshotWriteGuard<'a> {
         let option: &mut Option<WorkspaceSnapshotGraphVCurrent> =
             &mut self.working_copy_write_guard;
         &mut *option.as_mut().expect("attempted to DerefMut a snapshot without copying contents into the mutable working copy")
+    }
+}
+
+#[must_use = "if unused the lock will be released immediately"]
+pub struct InferredConnectionsReadGuard<'a> {
+    inferred_connection_graph: RwLockReadGuard<'a, Option<InferredConnectionGraph>>,
+}
+
+#[must_use = "if unused the lock will be released immediately"]
+pub struct InferredConnectionsWriteGuard<'a> {
+    inferred_connection_graph: RwLockWriteGuard<'a, Option<InferredConnectionGraph>>,
+}
+
+impl<'a> std::ops::Deref for InferredConnectionsReadGuard<'a> {
+    type Target = InferredConnectionGraph;
+
+    fn deref(&self) -> &Self::Target {
+        let maybe = &*self.inferred_connection_graph;
+        maybe
+            .as_ref()
+            .expect("attempted to Deref inferred connection graph without creating it first")
+    }
+}
+
+impl<'a> std::ops::Deref for InferredConnectionsWriteGuard<'a> {
+    type Target = InferredConnectionGraph;
+
+    fn deref(&self) -> &Self::Target {
+        let maybe = &*self.inferred_connection_graph;
+        maybe
+            .as_ref()
+            .expect("attempted to Deref inferred connection graph without creating it first")
+    }
+}
+
+impl<'a> std::ops::DerefMut for InferredConnectionsWriteGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        let maybe: &mut Option<InferredConnectionGraph> = &mut self.inferred_connection_graph;
+        &mut *maybe
+            .as_mut()
+            .expect("attempted to DerefMut inferred connection graph without creating it first")
     }
 }
 
@@ -648,10 +693,12 @@ impl WorkspaceSnapshot {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        Ok(self
-            .working_copy_mut()
-            .await
-            .add_edge(from_node_index, edge_weight, to_node_index)?)
+        let edge_index =
+            self.working_copy_mut()
+                .await
+                .add_edge(from_node_index, edge_weight, to_node_index)?;
+
+        Ok(edge_index)
     }
 
     pub async fn add_ordered_edge(
@@ -1179,11 +1226,13 @@ impl WorkspaceSnapshot {
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<()> {
-        Ok(self.working_copy_mut().await.remove_edge(
+        self.working_copy_mut().await.remove_edge(
             source_node_index,
             target_node_index,
             edge_kind,
-        )?)
+        )?;
+
+        Ok(())
     }
 
     pub async fn find_edge(
@@ -1532,21 +1581,6 @@ impl WorkspaceSnapshot {
         Ok(roots)
     }
 
-    /// There are cases where we want to cache this connection graph to avoid calculating
-    /// it more than once for the workspace. In those cases, the graph will be `Some` here.
-    pub async fn get_cached_inferred_connection_graph(
-        &self,
-    ) -> RwLockReadGuard<Option<InferredConnectionGraph>> {
-        self.inferred_connection_graph.read().await
-    }
-
-    pub async fn set_cached_inferred_connection_graph(
-        &self,
-        maybe_graph: Option<InferredConnectionGraph>,
-    ) {
-        *self.inferred_connection_graph.write().await = maybe_graph;
-    }
-
     /// If this node is associated to a single av, return it
     pub async fn associated_attribute_value_id(
         &self,
@@ -1632,5 +1666,44 @@ impl WorkspaceSnapshot {
             .await
             .schema_id_for_schema_variant_id(schema_variant_id)
             .map_err(Into::into)
+    }
+
+    pub async fn schema_variant_id_for_component_id(
+        &self,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaVariantId> {
+        self.working_copy()
+            .await
+            .schema_variant_id_for_component_id(component_id)
+    }
+
+    pub async fn frame_contains_components(
+        &self,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        self.working_copy()
+            .await
+            .frame_contains_components(component_id)
+            .map_err(Into::into)
+    }
+
+    pub async fn inferred_connection_graph(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
+        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
+        if inferred_connection_write_guard.is_none() {
+            *inferred_connection_write_guard =
+                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
+        }
+
+        Ok(InferredConnectionsWriteGuard {
+            inferred_connection_graph: inferred_connection_write_guard,
+        })
+    }
+
+    pub async fn clear_inferred_connection_graph(&self) {
+        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
+        *inferred_connection_write_guard = None;
     }
 }

@@ -15,6 +15,7 @@ use crate::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
     },
     attribute::value::{AttributeValueError, DependentValueGraph},
+    component::inferred_connection_graph::InferredConnectionGraphError,
     func::FuncExecutionPk,
     id, implement_add_edge_to,
     job::definition::ActionJob,
@@ -44,6 +45,8 @@ pub enum ActionError {
     ComponentNotFoundForAction(ActionId),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("InferredConnectionGraph error: {0}")]
+    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("Layer DB error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]

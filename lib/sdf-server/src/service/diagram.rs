@@ -6,6 +6,7 @@ use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
 use dal::attribute::value::AttributeValueError;
 use dal::cached_module::CachedModuleError;
+use dal::component::inferred_connection_graph::InferredConnectionGraphError;
 use dal::component::ComponentError;
 use dal::pkg::PkgError;
 use dal::slow_rt::SlowRuntimeError;
@@ -73,6 +74,8 @@ pub enum DiagramError {
     FrameSocketNotFound(SchemaVariantId),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
+    #[error("InferredConnectionGraph error: {0}")]
+    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("invalid request: {0}")]

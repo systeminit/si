@@ -42,7 +42,7 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
         let value_idx = self.add_id(id);
         let depends_on_idx = self.add_id(depends_on_id);
 
-        self.graph.add_edge(value_idx, depends_on_idx, ());
+        self.graph.update_edge(value_idx, depends_on_idx, ());
     }
 
     pub fn contains_id(&self, id: T) -> bool {
