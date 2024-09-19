@@ -16,15 +16,21 @@ impl Response {
         }
     }
 
-    pub fn server_error() -> Self {
+    pub fn bad_request() -> Self {
+        Self {
+            status: StatusCode::from_u16(400).expect("status code is in valid range"),
+        }
+    }
+
+    pub fn internal_server_error() -> Self {
         Self {
             status: StatusCode::from_u16(500).expect("status code is in valid range"),
         }
     }
 
-    pub fn bad_request() -> Self {
+    pub fn service_unavailable() -> Self {
         Self {
-            status: StatusCode::from_u16(400).expect("status code is in valid range"),
+            status: StatusCode::from_u16(503).expect("status code is in valid range"),
         }
     }
 

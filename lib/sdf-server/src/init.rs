@@ -4,6 +4,7 @@ use dal::{
     feature_flags::FeatureFlagService, jwt_key::JwtConfig, DalLayerDb, DedicatedExecutor,
     JetstreamStreams, JobQueueProcessor, JwtPublicSigningKey, NatsProcessor, ServicesContext,
 };
+use rebaser_client::RebaserClient;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
     VeritechEncryptionKey,
@@ -40,6 +41,8 @@ pub enum InitError {
     PgPool(#[from] Box<si_data_pg::PgPoolError>),
     #[error("posthog client error: {0}")]
     Posthog(#[from] si_posthog::PosthogError),
+    #[error("rebaser client error: {0}")]
+    Rebaser(#[from] rebaser_client::ClientError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCryptoService(#[from] si_crypto::SymmetricCryptoError),
     #[error("error when loading cyclone encryption key: {0}")]
@@ -63,6 +66,7 @@ pub(crate) async fn services_context_from_config(
     let nats = connect_to_nats(config.nats()).await?;
     let jetstream_streams = get_or_create_jetstream_streams(nats.clone()).await?;
     let pg_pool = create_pg_pool(config.pg_pool()).await?;
+    let rebaser = create_rebaser_client(nats.clone()).await?;
     let veritech = create_veritech_client(nats.clone());
     let job_processor = create_job_processor(nats.clone());
     let symmetric_crypto_service =
@@ -86,6 +90,7 @@ pub(crate) async fn services_context_from_config(
         nats.clone(),
         jetstream_streams,
         job_processor,
+        rebaser,
         veritech,
         encryption_key,
         Some(pkgs_path),
@@ -137,6 +142,13 @@ pub(crate) async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> InitResult<
     let pool = PgPool::new(pg_pool_config).await?;
     debug!("successfully started pg pool (note that not all connections may be healthy)");
     Ok(pool)
+}
+
+#[instrument(name = "sdf.init.create_rebaser_client", level = "info", skip_all)]
+async fn create_rebaser_client(nats: NatsClient) -> InitResult<RebaserClient> {
+    let client = RebaserClient::new(nats).await?;
+    debug!("successfully initialized the rebaser client");
+    Ok(client)
 }
 
 pub(crate) fn create_veritech_client(nats: NatsClient) -> veritech_client::Client {

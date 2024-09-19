@@ -4,7 +4,7 @@ use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
-use dal::{context::RebaseRequest, ChangeSet, Visibility, WorkspaceSnapshot, WsEvent};
+use dal::{ChangeSet, Visibility, WorkspaceSnapshot, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -56,9 +56,10 @@ pub async fn rebase_on_base(
     )
     .await?
     {
-        let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
-        let rebase_request = RebaseRequest::new(ctx.change_set_id(), rebase_batch_address, None);
-        ctx.do_rebase_request(rebase_request).await?;
+        let updates_address = ctx.write_rebase_batch(rebase_batch).await?;
+
+        ctx.run_rebase_with_reply(ctx.workspace_pk()?, ctx.change_set_id(), updates_address)
+            .await?;
     }
 
     let user = ChangeSet::extract_userid_from_context(&ctx).await;

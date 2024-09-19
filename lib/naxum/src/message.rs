@@ -22,7 +22,7 @@ impl error::Error for FromPartsError {}
 
 impl IntoResponse for FromPartsError {
     fn into_response(self) -> Response {
-        Response::server_error()
+        Response::internal_server_error()
     }
 }
 

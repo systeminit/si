@@ -25,7 +25,7 @@ type HandlerResult<T> = Result<T, HandlerError>;
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         error!(si.error.message = ?self, "failed to process message");
-        Response::server_error()
+        Response::internal_server_error()
     }
 }
 

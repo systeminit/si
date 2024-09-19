@@ -83,6 +83,9 @@ macro_rules! id {
         }
 
         impl $name {
+            /// Length of a string-encoded ID in bytes.
+            pub const ID_LEN: usize = ::ulid::ULID_LEN;
+
             /// Generates a new key which is virtually guaranteed to be unique.
             pub fn generate() -> Self {
                 Self(::ulid::Ulid::new())

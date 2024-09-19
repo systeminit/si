@@ -1,36 +1,39 @@
+use core::fmt;
 use std::{
-    collections::{HashMap, HashSet},
-    future::IntoFuture,
+    future::{Future, IntoFuture},
+    io,
     sync::Arc,
     time::Duration,
 };
 
-use dal::{feature_flags::FeatureFlagService, DedicatedExecutor, JetstreamStreams};
 use dal::{
-    ChangeSetStatus, DalContext, DalContextBuilder, DalLayerDb, JobQueueProcessor, NatsProcessor,
-    ServicesContext,
+    feature_flags::FeatureFlagService, DalContext, DalLayerDb, DedicatedExecutor, JetstreamStreams,
+    JobQueueProcessor, NatsProcessor, ServicesContext,
 };
-use futures::StreamExt;
+use naxum::{
+    handler::Handler as _,
+    middleware::{
+        ack::AckLayer,
+        trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    },
+    ServiceExt as _,
+};
+use rebaser_client::RebaserClient;
+use rebaser_core::nats;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
     VeritechEncryptionKey,
 };
-use si_data_nats::{async_nats::jetstream, NatsClient, NatsConfig};
-use si_data_pg::{InstrumentedClient, PgPool, PgPoolConfig};
-use si_events::{ChangeSetId, WorkspacePk};
-use si_layer_cache::activities::{Activity, ActivityPayload};
+use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig};
+use si_data_pg::{PgPool, PgPoolConfig};
 use telemetry::prelude::*;
-use tokio::task::JoinHandle;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tower::ServiceBuilder;
 use veritech_client::Client as VeritechClient;
 
-use crate::{
-    change_set_requests::ChangeSetRequestsTask, Config, ServerError as Error, ServerResult,
-};
+use crate::{app_state::AppState, handlers, Config, Error, Result};
 
-const CONSUMER_NAME: &str = "rebaser-requests";
-const DEBOUNCER_BUCKET_NAME: &str = "REBASER_DEBOUNCER";
-const NATS_KV_MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
+const TASKS_CONSUMER_NAME: &str = "rebaser-tasks";
 
 /// Server metadata, used with telemetry.
 #[derive(Clone, Debug)]
@@ -54,14 +57,17 @@ impl ServerMetadata {
 ///
 /// An activity stream of all rebaser requests is processed in the main loop to determine if new
 /// change set tasks should be spawned.
-#[derive(Debug)]
 pub struct Server {
     metadata: Arc<ServerMetadata>,
-    ctx_builder: DalContextBuilder,
-    change_set_tasks: HashMap<ChangeSetId, RunningTask>,
-    shutdown_token: CancellationToken,
-    dvu_interval: Duration,
-    stream: jetstream::stream::Stream,
+    inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+}
+
+impl fmt::Debug for Server {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Server")
+            .field("metadata", &self.metadata)
+            .finish()
+    }
 }
 
 impl Server {
@@ -72,13 +78,14 @@ impl Server {
         shutdown_token: CancellationToken,
         layer_db_tracker: &TaskTracker,
         layer_db_token: CancellationToken,
-    ) -> ServerResult<Self> {
+    ) -> Result<Self> {
         dal::init()?;
 
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let jetstream_streams = JetstreamStreams::new(nats.clone()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let rebaser = Self::create_rebaser_client(nats.clone()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -98,6 +105,7 @@ impl Server {
             nats.clone(),
             jetstream_streams,
             job_processor,
+            rebaser,
             veritech.clone(),
             encryption_key,
             None,
@@ -110,9 +118,10 @@ impl Server {
 
         Self::from_services(
             config.instance_id().to_string(),
+            config.concurrency_limit(),
             services_context,
+            config.quiescent_period(),
             shutdown_token,
-            config.dvu_interval(),
         )
         .await
     }
@@ -121,309 +130,89 @@ impl Server {
     #[instrument(name = "rebaser.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
         instance_id: impl Into<String>,
+        concurrency_limit: Option<usize>,
         services_context: ServicesContext,
+        quiescent_period: Duration,
         shutdown_token: CancellationToken,
-        dvu_interval: Duration,
-    ) -> ServerResult<Self> {
-        dal::init()?;
-
-        let metadata = ServerMetadata {
+    ) -> Result<Self> {
+        let metadata = Arc::new(ServerMetadata {
             instance_id: instance_id.into(),
-        };
+        });
 
-        let stream = {
-            let subject_prefix = services_context.nats_conn().metadata().subject_prefix();
-            let context = si_data_nats::jetstream::new(services_context.nats_conn().clone());
-            si_layer_cache::external::rebaser_server::rebaser_requests_work_queue_stream(
-                &context,
-                subject_prefix,
-            )
+        let nats = services_context.nats_conn().clone();
+        let context = jetstream::new(nats.clone());
+
+        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
+        let tasks = nats::rebaser_tasks_jetstream_stream(&context)
             .await?
-        };
+            .create_consumer(Self::rebaser_tasks_consumer_config(prefix.as_deref()))
+            .await?
+            .messages()
+            .await?;
+
+        let requests_stream = nats::rebaser_requests_jetstream_stream(&context).await?;
 
         let ctx_builder = DalContext::builder(services_context, false);
 
-        Ok(Self {
-            metadata: Arc::new(metadata),
+        let state = AppState::new(
+            metadata.clone(),
+            nats,
+            requests_stream,
             ctx_builder,
-            change_set_tasks: HashMap::default(),
-            shutdown_token,
-            dvu_interval,
-            stream,
-        })
+            quiescent_period,
+            shutdown_token.clone(),
+        );
+
+        let app = ServiceBuilder::new()
+            .layer(
+                TraceLayer::new()
+                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
+                    .on_response(DefaultOnResponse::new().level(Level::TRACE)),
+            )
+            .layer(AckLayer::new())
+            .service(handlers::default.with_state(state));
+
+        let inner = match concurrency_limit {
+            Some(concurrency_limit) => Box::new(
+                naxum::serve_with_incoming_limit(tasks, app.into_make_service(), concurrency_limit)
+                    .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()))
+                    .into_future(),
+            ),
+            None => Box::new(
+                naxum::serve(tasks, app.into_make_service())
+                    .with_graceful_shutdown(naxum::wait_on_cancelled(shutdown_token.clone()))
+                    .into_future(),
+            ),
+        };
+
+        Ok(Self { metadata, inner })
     }
 
     /// Runs the service to completion or until the first internal error is encountered.
     #[inline]
     pub async fn run(self) {
         if let Err(err) = self.try_run().await {
-            error!(error = ?err, "error while running main loop");
+            error!(error = ?err, "error while running rebaser main loop");
         }
     }
 
     /// Runs the service to completion, returning its result (i.e. whether it successful or an
     /// internal error was encountered).
-    pub async fn try_run(mut self) -> ServerResult<()> {
-        // TODO(fnichol): while it would be great to query the database on launch to get the active
-        // change sets, in an initial cluster deployment, the database may not yet be created or
-        // migrated. This is an outstanding issue and a micro-service "smell" as the Rebaser is not
-        // the logical owner of the database that it wants to query. As we are evolving the LayerDb
-        // infrastructure, it's more likely that a LayerDb instance with active change sets will
-        // be the path forward, but for now I'm leaving this skeleton implementation (which is also
-        // commented out) as a marker of what we *should* be doing, once we've properly figured
-        // that out ;)
-        //
-        // self.launch_initial_change_set_tasks().await?;
-
-        // Set up an activity stream with change set-related messages
-        let mut activities = self
-            .ctx_builder
-            .layer_db()
-            .activity()
-            .rebase()
-            .rebaser_activity_stream()
-            .await?;
-
-        // Consume and process messages from the activity stream until a shutdown is signaled...
-        loop {
-            tokio::select! {
-                // Graceful shutdown has been signaled, so cleanly end the processing loop
-                _ = self.shutdown_token.cancelled() => {
-                    debug!("main loop received cancellation");
-                    break;
-                }
-                // New activity message from the stream
-                maybe_result = activities.next() => {
-                    match maybe_result {
-                        // Successfully received a new activity message
-                        Some(Ok(activity)) => {
-                            if let Err(err) = self.process_activity(activity).await {
-                                warn!(error = ?err, "failed to process an activity message");
-                            }
-                        }
-                        // Error on next activity message. This is from a Broadcast channel, so an
-                        // error indicates we are a slow consumer and are lagging behind the
-                        // capacity of the channel. This also means that we will miss/skip
-                        // messages.
-                        Some(Err(lagged_err)) => {
-                            warn!(
-                                error = ?lagged_err,
-                                "lagged error, messages have been skipped",
-                            );
-                        }
-                        // Stream has closed, so cleanly end the processing loop
-                        None => {
-                            trace!("activities stream has closed");
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        self.terminate_all_change_set_tasks().await?;
-
-        info!("main loop shutdown complete");
+    pub async fn try_run(self) -> Result<()> {
+        self.inner.await.map_err(Error::Naxum)?;
+        info!("rebaser main loop shutdown complete");
         Ok(())
     }
 
     #[inline]
-    async fn process_activity(&mut self, activity: Activity) -> ServerResult<()> {
-        match activity.payload {
-            // A rebase request implies a work queue should be set up for the associated change
-            // set, so we'll launch a task to process from this queue.
-            ActivityPayload::RebaseRequest(req) => {
-                let workspace_id = activity.metadata.tenancy.workspace_pk;
-                let change_set_id = req.to_rebase_change_set_id.into();
-                trace!(%workspace_id, %change_set_id, "processing rebase request activity");
-
-                if !self.running_change_set_task(change_set_id) {
-                    self.launch_change_set_task(workspace_id, change_set_id)
-                        .await?;
-                }
-            }
-            // Exhaustively match variants so we catch future new variants
-            ActivityPayload::RebaseFinished(_)
-            | ActivityPayload::IntegrationTest(_)
-            | ActivityPayload::IntegrationTestAlt(_) => {
-                trace!(payload = ?activity.payload, "ignoring activity message type");
-            }
-        }
-
-        Ok(())
-    }
-
-    fn running_change_set_task(&self, change_set_id: ChangeSetId) -> bool {
-        self.change_set_tasks.contains_key(&change_set_id)
-    }
-
-    async fn launch_initial_change_set_tasks(&mut self) -> ServerResult<()> {
-        let ctx = self.ctx_builder.build_default().await?;
-        let pg = ctx.pg_pool().get().await.map_err(Error::dal_pg_pool)?;
-        let ids = Self::all_open_change_sets(&pg).await?;
-
-        for (workspace_id, change_set_id) in ids {
-            self.launch_change_set_task(workspace_id, change_set_id)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    #[instrument(
-        name = "rebaser.launch_change_set_task",
-        level = "debug",
-        skip_all,
-        fields(
-            si.change_set.id = %change_set_id,
-            si.workspace.id = %workspace_id,
-        )
-    )]
-    async fn launch_change_set_task(
-        &mut self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-    ) -> ServerResult<()> {
-        if self.running_change_set_task(change_set_id) {
-            return Err(Error::ExistingChangeSetTask(change_set_id));
-        }
-
-        let prefix = self.ctx_builder.nats_conn().metadata().subject_prefix();
-
-        let incoming = self
-            .stream
-            .create_consumer(Self::consumer_config(prefix, workspace_id, change_set_id))
-            .await?
-            .messages()
-            .await?;
-
-        let kv = {
-            let context = si_data_nats::jetstream::new(self.ctx_builder.nats_conn().clone());
-            crate::nats::get_or_create_key_value(&context, Self::debouncer_kv_config(prefix))
-                .await?
-        };
-
-        let token = CancellationToken::new();
-        let task = ChangeSetRequestsTask::create(
-            self.metadata.clone(),
-            workspace_id,
-            change_set_id,
-            incoming,
-            kv,
-            self.ctx_builder.clone(),
-            token.clone(),
-            self.dvu_interval,
-        )?;
-        let handle = tokio::spawn(task.run());
-        let running_task = RunningTask { handle, token };
-
-        self.change_set_tasks.insert(change_set_id, running_task);
-
-        Ok(())
-    }
-
-    async fn terminate_all_change_set_tasks(&mut self) -> ServerResult<()> {
-        let change_set_ids: Vec<_> = self.change_set_tasks.keys().copied().collect();
-
-        // Signal all running change set tasks to shut down and await their graceful shutdowns. As
-        // we have the Tokio task's `Handle` which `impl Future` we'll use a `TaskTracker` to track
-        // the resolving of all `Handle`s. Nice!
-        let tracker = TaskTracker::new();
-        for change_set_id in change_set_ids {
-            tracker.spawn(self.terminate_change_set_task(change_set_id)?);
-        }
-        tracker.close();
-        tracker.wait().await;
-
-        Ok(())
-    }
-
-    #[instrument(
-        name = "rebaser.terminate_change_set_task",
-        level = "debug",
-        skip_all,
-        fields(
-            si.change_set.id = %change_set_id,
-        )
-    )]
-    fn terminate_change_set_task(
-        &mut self,
-        change_set_id: ChangeSetId,
-    ) -> ServerResult<JoinHandle<()>> {
-        let task = self
-            .change_set_tasks
-            .remove(&change_set_id)
-            // Error if a task is not being tracked
-            .ok_or(Error::MissingChangeSetTask(change_set_id))?;
-        task.token.cancel();
-
-        // Return an optional await-able future that corresponds that resolves when the task has
-        // completely shutdown
-        Ok(task.handle.into_future())
-    }
-
-    #[instrument(name = "rebaser.all_open_change_sets", level = "debug", skip_all)]
-    async fn all_open_change_sets(
-        pg: &InstrumentedClient,
-    ) -> ServerResult<HashSet<(WorkspacePk, ChangeSetId)>> {
-        const SQL_OPEN_CHANGE_SETS: &str =
-            "SELECT id, workspace_id from change_set_pointers WHERE status IN ($1, $2, $3)";
-
-        let rows = pg
-            .query(
-                SQL_OPEN_CHANGE_SETS,
-                &[
-                    &ChangeSetStatus::Open.as_ref(),
-                    &ChangeSetStatus::NeedsApproval.as_ref(),
-                    &ChangeSetStatus::NeedsAbandonApproval.as_ref(),
-                ],
-            )
-            .await
-            .map_err(Error::DalOpenChangeSets)?;
-
-        let mut ids = HashSet::with_capacity(rows.len());
-        for row in rows {
-            let change_set_id: dal::ChangeSetId =
-                row.try_get("id").map_err(Error::DalOpenChangeSets)?;
-            let workspace_id: dal::WorkspacePk = row
-                .try_get("workspace_id")
-                .map_err(Error::DalOpenChangeSets)?;
-            ids.insert((workspace_id.into(), change_set_id.into()));
-        }
-
-        Ok(ids)
-    }
-
-    #[inline]
-    fn consumer_config(
+    fn rebaser_tasks_consumer_config(
         subject_prefix: Option<&str>,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-    ) -> jetstream::consumer::pull::Config {
-        jetstream::consumer::pull::Config {
-            durable_name: Some(format!("{CONSUMER_NAME}-{workspace_id}-{change_set_id}")),
-            // Ensure that only *one* message is processed before the next message is processed.
-            // Note that the consumer is shared across potentially multiple connected clients,
-            // meaning they all share this behavior (i.e. only one service processes one message
-            // at a time, thus guarenteeing queue is processed serially, in order).
-            filter_subject: si_layer_cache::external::rebaser_server::for_rebaser_requests(
-                subject_prefix,
-                workspace_id,
-                change_set_id,
-            )
-            .to_string(),
-            max_ack_pending: 1,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    fn debouncer_kv_config(prefix: Option<&str>) -> jetstream::kv::Config {
-        jetstream::kv::Config {
-            bucket: crate::nats::nats_stream_name(prefix, DEBOUNCER_BUCKET_NAME),
-            description: "Rebaser dvu debouncers coordination".to_owned(),
-            max_age: Duration::from_secs(5),
-            max_bytes: NATS_KV_MAX_BYTES,
+    ) -> async_nats::jetstream::consumer::pull::Config {
+        async_nats::jetstream::consumer::pull::Config {
+            durable_name: Some(TASKS_CONSUMER_NAME.to_owned()),
+            filter_subject: nats::subject::tasks_incoming(subject_prefix).to_string(),
             ..Default::default()
         }
     }
@@ -431,7 +220,7 @@ impl Server {
     #[instrument(name = "rebaser.init.load_encryption_key", level = "info", skip_all)]
     async fn load_encryption_key(
         crypto_config: VeritechCryptoConfig,
-    ) -> ServerResult<Arc<VeritechEncryptionKey>> {
+    ) -> Result<Arc<VeritechEncryptionKey>> {
         Ok(Arc::new(
             VeritechEncryptionKey::from_config(crypto_config)
                 .await
@@ -440,19 +229,26 @@ impl Server {
     }
 
     #[instrument(name = "rebaser.init.connect_to_nats", level = "info", skip_all)]
-    async fn connect_to_nats(nats_config: &NatsConfig) -> ServerResult<NatsClient> {
+    async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
     }
 
     #[instrument(name = "rebaser.init.create_pg_pool", level = "info", skip_all)]
-    async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
+    async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config)
             .await
             .map_err(Error::dal_pg_pool)?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
+    }
+
+    #[instrument(name = "rebaser.init.create_rebaser_client", level = "info", skip_all)]
+    async fn create_rebaser_client(nats: NatsClient) -> Result<RebaserClient> {
+        let client = RebaserClient::new(nats).await?;
+        debug!("successfully initialized the rebaser client");
+        Ok(client)
     }
 
     #[instrument(name = "rebaser.init.create_veritech_client", level = "info", skip_all)]
@@ -472,7 +268,7 @@ impl Server {
     )]
     async fn create_symmetric_crypto_service(
         config: &SymmetricCryptoServiceConfig,
-    ) -> ServerResult<SymmetricCryptoService> {
+    ) -> Result<SymmetricCryptoService> {
         SymmetricCryptoService::from_config(config)
             .await
             .map_err(Into::into)
@@ -483,13 +279,7 @@ impl Server {
         level = "info",
         skip_all
     )]
-    fn create_compute_executor() -> ServerResult<DedicatedExecutor> {
+    fn create_compute_executor() -> Result<DedicatedExecutor> {
         dal::compute_executor("rebaser").map_err(Into::into)
     }
-}
-
-#[derive(Debug)]
-struct RunningTask {
-    handle: JoinHandle<()>,
-    token: CancellationToken,
 }

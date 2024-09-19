@@ -51,7 +51,7 @@ enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         error!(error = ?self, "failed to process message");
-        Response::server_error()
+        Response::internal_server_error()
     }
 }
 

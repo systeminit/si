@@ -1,7 +1,12 @@
 use std::collections::HashSet;
+use std::time::Duration;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
+use futures::future::BoxFuture;
 use futures::Future;
+use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
+use rebaser_client::api_types::enqueue_updates_response::EnqueueUpdatesResponse;
+use rebaser_client::{RebaserClient, RequestId};
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
@@ -9,18 +14,15 @@ use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::WorkspaceSnapshotAddress;
-use si_layer_cache::activities::rebase::RebaseStatus;
-use si_layer_cache::activities::ActivityPayload;
 use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
-use si_layer_cache::event::LayeredEventMetadata;
 use si_layer_cache::LayerDbError;
 use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
-use tokio::time::Instant;
+use tokio::time;
 use veritech_client::Client as VeritechClient;
 
 use crate::feature_flags::FeatureFlagService;
@@ -28,7 +30,6 @@ use crate::jetstream_streams::JetstreamStreams;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
 use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
-use crate::workspace_snapshot::graph::detect_updates::Update;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::DependentValueRoot;
 use crate::{
@@ -61,6 +62,8 @@ pub struct ServicesContext {
     jetstream_streams: JetstreamStreams,
     /// A connected job processor client
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    /// A Rebaser client, connected via a NATS connection.
+    rebaser: RebaserClient,
     /// A Veritech client, connected via a NATS connection.
     veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
@@ -87,6 +90,7 @@ impl ServicesContext {
         nats_conn: NatsClient,
         jetstream_streams: JetstreamStreams,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        rebaser: RebaserClient,
         veritech: VeritechClient,
         encryption_key: Arc<VeritechEncryptionKey>,
         pkgs_path: Option<PathBuf>,
@@ -101,6 +105,7 @@ impl ServicesContext {
             nats_conn,
             jetstream_streams,
             job_processor,
+            rebaser,
             veritech,
             encryption_key,
             pkgs_path,
@@ -134,6 +139,11 @@ impl ServicesContext {
     /// Gets a reference to the NATS Jetstream streams' contexts.
     pub fn jetstream_streams(&self) -> &JetstreamStreams {
         &self.jetstream_streams
+    }
+
+    /// Gets a reference to the Rebaser client.
+    pub fn rebaser(&self) -> &RebaserClient {
+        &self.rebaser
     }
 
     /// Gets a reference to the Veritech client.
@@ -226,27 +236,27 @@ impl ConnectionState {
         }
     }
 
-    async fn commit(
-        self,
-        tenancy: &Tenancy,
-        layer_db: &DalLayerDb,
-        rebase_request: Option<RebaseRequest>,
-    ) -> TransactionsResult<Self> {
+    async fn commit(self, maybe_rebase: DelayedRebaseWithReply<'_>) -> TransactionsResult<Self> {
         let conns = match self {
             Self::Connections(conns) => {
                 // We need to rebase and wait for the rebaser to update the change set
                 // pointer, even if we are not in a "transactions" state
-                if let Some(rebase_request) = rebase_request {
-                    rebase(tenancy, layer_db, rebase_request).await?;
+                if let DelayedRebaseWithReply::WithUpdates {
+                    rebaser,
+                    workspace_pk,
+                    change_set_id,
+                    updates_address,
+                } = maybe_rebase
+                {
+                    rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address)
+                        .await?;
                 }
 
                 trace!("no active transactions present when commit was called");
                 Ok(Self::Connections(conns))
             }
             Self::Transactions(txns) => {
-                let conns = txns
-                    .commit_into_conns(tenancy, layer_db, rebase_request)
-                    .await?;
+                let conns = txns.commit_into_conns(maybe_rebase).await?;
                 Ok(Self::Connections(conns))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -257,9 +267,7 @@ impl ConnectionState {
 
     async fn blocking_commit(
         self,
-        tenancy: &Tenancy,
-        layer_db: &DalLayerDb,
-        rebase_request: Option<RebaseRequest>,
+        maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<Self> {
         match self {
             Self::Connections(conns) => {
@@ -267,16 +275,21 @@ impl ConnectionState {
 
                 // Even if there are no open dal transactions, we may have written to the layer db
                 // and we need to perform a rebase if one is requested
-                if let Some(rebase_request) = rebase_request {
-                    rebase(tenancy, layer_db, rebase_request).await?;
+                if let DelayedRebaseWithReply::WithUpdates {
+                    rebaser,
+                    workspace_pk,
+                    change_set_id,
+                    updates_address,
+                } = maybe_rebase
+                {
+                    rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address)
+                        .await?;
                 }
 
                 Ok(Self::Connections(conns))
             }
             Self::Transactions(txns) => {
-                let conns = txns
-                    .blocking_commit_into_conns(tenancy, layer_db, rebase_request)
-                    .await?;
+                let conns = txns.blocking_commit_into_conns(maybe_rebase).await?;
                 Ok(Self::Connections(conns))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -396,23 +409,63 @@ impl DalContext {
         }
     }
 
-    pub async fn do_rebase_request(&self, rebase_request: RebaseRequest) -> TransactionsResult<()> {
-        rebase(&self.tenancy, &self.layer_db(), rebase_request).await?;
-        Ok(())
+    pub async fn run_rebase_with_reply(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        updates_address: RebaseBatchAddress,
+    ) -> TransactionsResult<()> {
+        rebase_with_reply(self.rebaser(), workspace_pk, change_set_id, updates_address).await
+    }
+
+    pub async fn run_async_rebase_from_change_set(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        updates_address: RebaseBatchAddress,
+        from_change_set_id: ChangeSetId,
+    ) -> TransactionsResult<RequestId> {
+        self.rebaser()
+            .enqueue_updates_from_change_set(
+                workspace_pk.into(),
+                change_set_id.into(),
+                updates_address,
+                from_change_set_id.into(),
+            )
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn run_rebase_from_change_set_with_reply(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        updates_address: RebaseBatchAddress,
+        from_change_set_id: ChangeSetId,
+    ) -> TransactionsResult<(
+        RequestId,
+        BoxFuture<'static, Result<EnqueueUpdatesResponse, rebaser_client::ClientError>>,
+    )> {
+        self.rebaser()
+            .enqueue_updates_from_change_set_with_reply(
+                workspace_pk.into(),
+                change_set_id.into(),
+                updates_address,
+                from_change_set_id.into(),
+            )
+            .await
+            .map_err(Into::into)
     }
 
     async fn commit_internal(
         &self,
-        rebase_request: Option<RebaseRequest>,
+        maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<()> {
         if self.blocking {
-            self.blocking_commit_internal(rebase_request).await?;
+            self.blocking_commit_internal(maybe_rebase).await?;
         } else {
             let mut guard = self.conns_state.lock().await;
-            *guard = guard
-                .take()
-                .commit(&self.tenancy, &self.layer_db(), rebase_request)
-                .await?;
+            *guard = guard.take().commit(maybe_rebase).await?;
         };
 
         Ok(())
@@ -420,13 +473,10 @@ impl DalContext {
 
     async fn blocking_commit_internal(
         &self,
-        rebase_request: Option<RebaseRequest>,
+        maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<()> {
         let mut guard = self.conns_state.lock().await;
-        *guard = guard
-            .take()
-            .blocking_commit(&self.tenancy, &self.layer_db(), rebase_request)
-            .await?;
+        *guard = guard.take().blocking_commit(maybe_rebase).await?;
 
         Ok(())
     }
@@ -460,7 +510,7 @@ impl DalContext {
         Ok(rebase_batch_address)
     }
 
-    pub async fn write_current_rebase_batch(
+    async fn write_current_rebase_batch(
         &self,
     ) -> Result<Option<RebaseBatchAddress>, TransactionsError> {
         Ok(if let Some(snapshot) = &self.workspace_snapshot {
@@ -476,28 +526,37 @@ impl DalContext {
 
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> TransactionsResult<()> {
-        let rebase_request = self
-            .write_current_rebase_batch()
-            .await?
-            .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
-            });
+        let maybe_rebase = match self.write_current_rebase_batch().await? {
+            Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
+                rebaser: self.rebaser(),
+                workspace_pk: self.workspace_pk()?,
+                change_set_id: self.change_set_id(),
+                updates_address,
+            },
+            None => DelayedRebaseWithReply::NoUpdates,
+        };
 
         if self.blocking {
-            self.blocking_commit_internal(rebase_request).await
+            self.blocking_commit_internal(maybe_rebase).await
         } else {
-            self.commit_internal(rebase_request).await
+            self.commit_internal(maybe_rebase).await
         }
     }
 
     pub async fn commit_no_rebase(&self) -> TransactionsResult<()> {
         if self.blocking {
-            self.blocking_commit_internal(None).await?;
+            self.blocking_commit_internal(DelayedRebaseWithReply::NoUpdates)
+                .await?;
         } else {
-            self.commit_internal(None).await?;
+            self.commit_internal(DelayedRebaseWithReply::NoUpdates)
+                .await?;
         }
 
         Ok(())
+    }
+
+    pub fn workspace_pk(&self) -> TransactionsResult<WorkspacePk> {
+        self.tenancy.workspace_pk().map_err(Into::into)
     }
 
     pub fn change_set_id(&self) -> ChangeSetId {
@@ -561,20 +620,22 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> TransactionsResult<()> {
-        let rebase_request = self
-            .write_current_rebase_batch()
-            .await?
-            .map(|rebase_batch_address| {
-                RebaseRequest::new(self.change_set_id(), rebase_batch_address, None)
-            });
+        let maybe_rebase = match self.write_current_rebase_batch().await? {
+            Some(updates_address) => DelayedRebaseWithReply::WithUpdates {
+                rebaser: self.rebaser(),
+                workspace_pk: self.workspace_pk()?,
+                change_set_id: self.change_set_id(),
+                updates_address,
+            },
+            None => DelayedRebaseWithReply::NoUpdates,
+        };
 
-        info!("rebase_request: {:?}", rebase_request);
-
-        self.blocking_commit_internal(rebase_request).await
+        self.blocking_commit_internal(maybe_rebase).await
     }
 
     pub async fn blocking_commit_no_rebase(&self) -> TransactionsResult<()> {
-        self.blocking_commit_internal(None).await?;
+        self.blocking_commit_internal(DelayedRebaseWithReply::NoUpdates)
+            .await?;
         Ok(())
     }
 
@@ -812,6 +873,13 @@ impl DalContext {
     /// Gets a reference to the DAL context's Veritech client.
     pub fn veritech(&self) -> &VeritechClient {
         &self.services_context.veritech
+    }
+
+    // Gets a reference to the DAL context's Rebaser client.
+    //
+    // **NOTE**: Internal API
+    fn rebaser(&self) -> &RebaserClient {
+        &self.services_context.rebaser
     }
 
     /// Gets a reference to the DAL context's encryption key.
@@ -1146,6 +1214,10 @@ pub enum TransactionsError {
     PgPool(#[from] PgPoolError),
     #[error("rebase of batch {0} for change set id {1} failed: {2}")]
     RebaseFailed(RebaseBatchAddress, ChangeSetId, String),
+    #[error("rebaser client error: {0}")]
+    Rebaser(#[from] rebaser_client::ClientError),
+    #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
+    RebaserReplyDeadlineElasped(Duration, RequestId),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow rt error: {0}")]
@@ -1247,114 +1319,6 @@ pub struct Transactions {
     job_queue: JobQueue,
 }
 
-#[derive(Clone, Debug)]
-pub struct RebaseRequest {
-    pub to_rebase_change_set_id: ChangeSetId,
-    pub rebase_batch_address: RebaseBatchAddress,
-    pub from_change_set_id: Option<ChangeSetId>,
-}
-
-impl RebaseRequest {
-    pub fn new(
-        to_rebase_change_set_id: ChangeSetId,
-        rebase_batch_address: RebaseBatchAddress,
-        from_change_set_id: Option<ChangeSetId>,
-    ) -> Self {
-        Self {
-            to_rebase_change_set_id,
-            rebase_batch_address,
-            from_change_set_id,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Updates {
-    pub updates_found: Vec<Update>,
-}
-
-// TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
-// the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
-// not want it long term.
-#[instrument(
-    level="info",
-    skip_all,
-    fields(
-            si.change_set.id = Empty,
-            si.workspace.id = Empty,
-            si.conflicts = Empty,
-            si.updates = Empty,
-            si.conflicts.count = Empty,
-            si.updates.count = Empty,
-        ),
-    )]
-async fn rebase(
-    tenancy: &Tenancy,
-    layer_db: &DalLayerDb,
-    rebase_request: RebaseRequest,
-) -> TransactionsResult<()> {
-    let start = Instant::now();
-    let span = Span::current();
-
-    let metadata = LayeredEventMetadata::new(
-        si_events::Tenancy::new(
-            tenancy
-                .workspace_pk_opt()
-                .unwrap_or(WorkspacePk::NONE)
-                .into(),
-            rebase_request.to_rebase_change_set_id.into(),
-        ),
-        si_events::Actor::System,
-    );
-    span.record(
-        "si.change_set.id",
-        rebase_request.to_rebase_change_set_id.to_string(),
-    );
-    span.record(
-        "si.workspace.id",
-        tenancy
-            .workspace_pk_opt()
-            .unwrap_or(WorkspacePk::NONE)
-            .to_string(),
-    );
-    info!("requesting rebase: {:?}", start.elapsed());
-    let rebase_finished_activity = layer_db
-        .activity()
-        .rebase()
-        .rebase_and_wait(
-            rebase_request.to_rebase_change_set_id.into(),
-            rebase_request.from_change_set_id.map(Into::into),
-            rebase_request.rebase_batch_address,
-            metadata,
-        )
-        .await?;
-    info!("got response from rebaser: {:?}", start.elapsed());
-    debug!(
-        "rebaser response payload: {:?}",
-        rebase_finished_activity.payload
-    );
-    match rebase_finished_activity.payload {
-        ActivityPayload::RebaseFinished(rebase_finished) => match rebase_finished.status() {
-            RebaseStatus::Success {
-                updates_performed: _,
-            } => {
-                //span.record("si.updates", updates_performed);
-                //span.record("si.updates.count", updates.updates_found.len().to_string());
-                Ok(())
-            }
-            RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
-                rebase_request.rebase_batch_address,
-                rebase_request.to_rebase_change_set_id,
-                message.to_string(),
-            )),
-        },
-        p => Err(TransactionsError::BadActivity(
-            ActivityPayloadDiscriminants::RebaseFinished,
-            p.into(),
-        )),
-    }
-}
-
 impl Transactions {
     /// Creates and returns a new `Transactions` instance.
     fn new(
@@ -1382,44 +1346,27 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
-    #[instrument(
-        name = "transactions.commit_into_conns",
-        level = "info",
-        skip_all,
-        fields(
-            si.change_set.id = Empty,
-            si.workspace.id = Empty,
-        )
-    )]
+    #[instrument(name = "transactions.commit_into_conns", level = "info", skip_all)]
     pub async fn commit_into_conns(
         self,
-        tenancy: &Tenancy,
-        layer_db: &DalLayerDb,
-        rebase_request: Option<RebaseRequest>,
+        maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<Connections> {
-        let span = Span::current();
-        span.record(
-            "si.workspace.id",
-            tenancy
-                .workspace_pk_opt()
-                .unwrap_or(WorkspacePk::NONE)
-                .to_string(),
-        );
         let pg_conn = self.pg_txn.commit_into_conn().await?;
 
-        if let Some(rebase_request) = rebase_request {
-            span.record(
-                "si.change_set.id",
-                rebase_request.to_rebase_change_set_id.to_string(),
-            );
-
+        if let DelayedRebaseWithReply::WithUpdates {
+            rebaser,
+            workspace_pk,
+            change_set_id,
+            updates_address,
+        } = maybe_rebase
+        {
             // remove the dependent value job since it will be handled by the rebaser
             let _ = self
                 .job_queue
-                .take_dependent_values_for_change_set(rebase_request.to_rebase_change_set_id)
+                .take_dependent_values_for_change_set(change_set_id)
                 .await;
-            rebase(tenancy, layer_db, rebase_request).await?;
-        };
+            rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address).await?;
+        }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue(self.job_queue).await?;
@@ -1440,26 +1387,22 @@ impl Transactions {
     )]
     pub async fn blocking_commit_into_conns(
         self,
-        tenancy: &Tenancy,
-        layer_db: &DalLayerDb,
-        rebase_request: Option<RebaseRequest>,
+        maybe_rebase: DelayedRebaseWithReply<'_>,
     ) -> TransactionsResult<Connections> {
         let span = Span::current();
-        span.record(
-            "si.workspace.id",
-            tenancy
-                .workspace_pk_opt()
-                .unwrap_or(WorkspacePk::NONE)
-                .to_string(),
-        );
+
         let pg_conn = self.pg_txn.commit_into_conn().await?;
 
-        if let Some(rebase_request) = rebase_request {
-            span.record(
-                "si.change_set.id",
-                rebase_request.to_rebase_change_set_id.to_string(),
-            );
-            rebase(tenancy, layer_db, rebase_request).await?;
+        if let DelayedRebaseWithReply::WithUpdates {
+            rebaser,
+            workspace_pk,
+            change_set_id,
+            updates_address,
+        } = maybe_rebase
+        {
+            span.record("si.change_set.id", change_set_id.to_string());
+            span.record("si.workspace.id", workspace_pk.to_string());
+            rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address).await?;
         }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;
@@ -1492,5 +1435,61 @@ impl Transactions {
     pub async fn rollback(self) -> TransactionsResult<()> {
         let _ = self.rollback_into_conns().await?;
         Ok(())
+    }
+}
+
+/// The madness needs to end soon.
+///
+/// We are *obsessed* with possibly submitting work to the Rebaser in this module. This type
+/// attempts to stick *one* data type through the context world for the moment in the hopes this
+/// will make future refactoring a little easier.
+#[derive(Debug)]
+enum DelayedRebaseWithReply<'a> {
+    NoUpdates,
+    WithUpdates {
+        rebaser: &'a RebaserClient,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        updates_address: RebaseBatchAddress,
+    },
+}
+
+#[instrument(
+    level="info",
+    skip_all,
+    fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_pk,
+            si.rebaser.updates_address = %updates_address,
+        ),
+    )]
+#[inline]
+async fn rebase_with_reply(
+    rebaser: &RebaserClient,
+    workspace_pk: WorkspacePk,
+    change_set_id: ChangeSetId,
+    updates_address: RebaseBatchAddress,
+) -> TransactionsResult<()> {
+    let timeout = Duration::from_secs(60);
+
+    let (request_id, reply_fut) = rebaser
+        .enqueue_updates_with_reply(workspace_pk.into(), change_set_id.into(), updates_address)
+        .await?;
+
+    // Wait on response from Rebaser after request has processed
+    let reply = time::timeout(timeout, reply_fut)
+        .await
+        .map_err(|_elapsed| {
+            TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
+        })??;
+
+    match &reply.status {
+        RebaseStatus::Success { .. } => Ok(()),
+        // Return a specific error if the Rebaser reports that it failed to process the request
+        RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
+            updates_address,
+            change_set_id,
+            message.clone(),
+        )),
     }
 }

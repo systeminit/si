@@ -30,6 +30,7 @@ nix = { workspace = true }
 once_cell = { workspace = true }
 pathdiff = { workspace = true }
 rand = { workspace = true }
+rebaser-client = { path = "../../lib/rebaser-client" }
 remain = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
