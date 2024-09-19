@@ -36,9 +36,11 @@ Start in a change set named `ECS How-to`.
 When you are through with this guide, you should have components that look like
 this in your diagram:
 
-![AWS ECS Diagram](./aws-ecs-howto-complete.png)
+![AWS ECS Diagram](./aws-ecs/aws-ecs-complete.png)
 
 ### Create a Loadbalancer component
+
+![Create Loadbalancer](./aws-ecs/create-loadbalancer.png)
 
 Add a `Loadbalancer` to your `VPC How-to` vpc frame.
 
@@ -57,7 +59,9 @@ Set the `Scheme` to be `internet-facing`.
 Connect the `Subnet ID` output socket of each of the public subnet components to
 the `Subnet ID` input socket of the `application-alb` component.
 
-### Create an EC2 security group component for the Loadbalancer
+### Create a Security Group component for the Loadbalancer
+
+![Create Security Group](./aws-ecs/create-ec2-security-group.png)
 
 Add a `Security Group` to your `VPC How-to` vpc frame.
 
@@ -70,7 +74,9 @@ Set the `Description` to be `Security Group to allow access to the Loadbalancer`
 Connect the `Security Group ID` output socket of `alb-sg` component to the
 `Security Group ID` input socket of the `application-alb` frame.
 
-### Create an Ec2 Ingress Rule component
+### Create an Ingress Rule component
+
+![Create Ingress Rule](./aws-ecs/create-security-group-ingress.png)
 
 Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
 
@@ -90,6 +96,8 @@ Connect the `Security Group ID` output socket of `alb-sg` component to the
 
 ### Create a Listener component
 
+![Create Listener](./aws-ecs/create-listener.png)
+
 Add a `Listener` component to your `application-alb` loadbalancer frame.
 
 Set the component name to `HTTP:80`.
@@ -101,6 +109,8 @@ Set the `Protocol` to be `HTTP`.
 Resize the frame to be large enough to fit another component.
 
 ### Create a Target Group
+
+![Create Target Group](./aws-ecs/create-target-group.png)
 
 Add a `Target Group` component to your `Listener` frame.
 
@@ -137,6 +147,8 @@ Connect the `Target Group ARN` output socket of `app-tg` component to the
 
 ### Create an IAM Role
 
+![Create IAM Role](./aws-ecs/create-iam-role.png)
+
 Add an `AWS IAM Role` component to your `VPC How-to` vpc frame.
 
 Set the component name to `ecs-tasks-service`.
@@ -148,6 +160,8 @@ Set the `Description` to `IAM Role to allow ECS to spawn tasks`.
 Set the `Path` to `/si-tutorial/`.
 
 ### Create an AWS IAM Policy Statement
+
+![Create IAM Policy Statement](./aws-ecs/create-iam-policy-statement.png)
 
 Add an `AWS IAM Policy Statement` within the `ecs-tasks-service` AWS IAM Role
 frame.
@@ -162,6 +176,8 @@ Set the `[0]` value for the `Action` array to `sts:AssumeRole`.
 
 ### Create an AWS IAM AWS Service Principal
 
+![Create Service Principal](./aws-ecs/create-iam-service-principal.png)
+
 Add an `AWS IAM Service Principal` within the `ecs-tasks-service` AWS IAM Role
 frame.
 
@@ -175,6 +191,8 @@ AWS Service Principal to the `Principal` input socket of your
 
 ### Create a Security Group component for the Application
 
+![create-security-group-for-application](./aws-ecs/create-security-group-for-application.png)
+
 Add a `Security Group` to your `VPC How-to` vpc frame.
 
 Set the component name to `container-sg`
@@ -183,7 +201,9 @@ Set the `GroupName` to `container-sg`.
 
 Set the `Description` to be `Container Security Group`
 
-### Create an Ec2 Ingress Rule component
+### Create an Ingress Rule component for the Application
+
+![create-ingress-rule-for-application.png](./aws-ecs/create-ingress-rule-for-application.png)
 
 Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
 
@@ -202,6 +222,8 @@ component.
 
 ### Create an ECS Cluster
 
+![Create ECS Cluster](./aws-ecs/create-ecs-cluster.png)
+
 Add an `ECS Cluster` to your `VPC How-to` vpc frame.
 
 Set the component type to be `Configuration Frame (down)`.
@@ -213,6 +235,8 @@ Set the `ClusterName` to `application-cluster`.
 Set the `Description` to be `Cluster to run the Tutorial App`
 
 ### Create an ECS Service
+
+![Create ECS Service](./aws-ecs/create-ecs-service.png)
 
 Add an `ECS Service` to your `application-cluster` cluster frame.
 
@@ -232,6 +256,8 @@ Connect the `Security Group ID` output socket of `container-sg` component to the
 
 ### Create an ECS Task Definition
 
+![Create Task Definition](./aws-ecs/create-task-definition.png)
+
 Add an `ECS Task Definition` to your `demo-service` service frame.
 
 Set the component type to be `Configuration Frame (up)`.
@@ -245,9 +271,11 @@ Set `cpu` to be `0.25 vCPU`.
 Set `memory` to be `.5 GB`.
 
 Connect the `ARN` output socket of the `ecs-tasks-service` AWS IAM Role to the
-`taskRoleArn` input socket of your `demo-app` ECS Task Definition.
+`Task Role ARN` input socket of your `demo-app` ECS Task Definition.
 
 ### Create a Container Definition
+
+![Create Container Definition](./aws-ecs/create-container-definition.png)
 
 Add a `Container Definition` to your `demo-app` frame.
 
@@ -258,6 +286,8 @@ Set `Name` to `hello-world`.
 Set `Essential` to be selected.
 
 ### Create a Docker Image
+
+![Create Docker Image](./aws-ecs/create-docker-image.png)
 
 Add a `Docker Image` to your `demo-app` frame.
 
@@ -270,6 +300,8 @@ Image to the `Container Image` input socket of the `hello-world` Container
 Defintion.
 
 ### Create an ECS Container Definition Port Mapping
+
+![create-port-mapping](./aws-ecs/create-port-mapping.png)
 
 Add a `ECS Container Definition Port Mapping` to the `demo-app` frame.
 
@@ -289,6 +321,8 @@ Defintion.
 
 ### Create a ECS Load Balancer Configuration
 
+![create-ecs-lb-config](./aws-ecs/create-ecs-lb-config.png)
+
 Add a `ECS Load Balancer Configuration` to the `demo-service` frame.
 
 Set the component name to be `lb-config`.
@@ -303,6 +337,8 @@ Connect the `Container Port` output socket of the `http` ECS Container Defintion
 Port Mapping to the `Container Port` input socket of this `lb-config` component.
 
 ### Apply your Change Set
+
+![Apply Change Set](./aws-ecs/apply.png)
 
 Press `Escape` or click anywhere on the canvas background to select the
 Workspace.
