@@ -735,10 +735,21 @@ impl DalContext {
         Ok(())
     }
 
+    #[instrument(
+    level="info",
+    skip_all,
+    fields(
+            si.change_set.id = Empty,
+            si.attribute_value_id,
+        ),
+    )]
     pub async fn enqueue_compute_validations(
         &self,
         attribute_value_id: AttributeValueId,
     ) -> TransactionsResult<()> {
+        let span = Span::current();
+        span.record("si.change_set.id", &self.change_set_id().to_string());
+
         self.txns()
             .await?
             .job_queue
@@ -1391,7 +1402,10 @@ impl Transactions {
         name = "transactions.blocking_commit_into_conns",
         level = "info",
         skip_all,
-        fields()
+        fields(
+            si.change_set.id = Empty,
+            si.workspace.id = Empty,
+        )
     )]
     pub async fn blocking_commit_into_conns(
         self,
@@ -1399,9 +1413,21 @@ impl Transactions {
         layer_db: &DalLayerDb,
         rebase_request: Option<RebaseRequest>,
     ) -> TransactionsResult<Connections> {
+        let span = Span::current();
+        span.record(
+            "si.workspace.id",
+            tenancy
+                .workspace_pk_opt()
+                .unwrap_or(WorkspacePk::NONE)
+                .to_string(),
+        );
         let pg_conn = self.pg_txn.commit_into_conn().await?;
 
         if let Some(rebase_request) = rebase_request {
+            span.record(
+                "si.change_set.id",
+                rebase_request.to_rebase_change_set_id.to_string(),
+            );
             rebase(tenancy, layer_db, rebase_request).await?;
         }
 
