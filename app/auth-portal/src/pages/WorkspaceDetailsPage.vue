@@ -355,6 +355,9 @@ watch(
   { immediate: true },
 );
 const createWorkspace = async () => {
+  if (!draftWorkspace.description) {
+    draftWorkspace.description = "";
+  }
   if (createWorkspaceType.value === "saas") {
     draftWorkspace.instanceUrl = "https://app.systeminit.com";
   } else if (createWorkspaceType.value === "local") {
