@@ -7,39 +7,23 @@
     }"
     :class="
       clsx(
-        'cursor-pointer',
-        variant === 'classic' && [
-          'rounded-md',
-          disableClicking
-            ? 'border border-transparent p-[1px] opacity-50'
-            : [
-                !noBorderOnHover && 'border border-transparent p-[1px]',
-                !noBorderOnHover && !selectedOrActive && borderHoverColorClass,
-                selectedOrActive
-                  ? `text-shade-0 ${getToneBgColorClass(iconTone)}`
-                  : iconIdleTone
-                  ? hover
-                    ? getToneTextColorClass(iconTone)
-                    : getToneTextColorClass(iconIdleTone)
-                  : getToneTextColorClass(iconTone),
-              ],
-        ],
-        variant === 'simple' && [
-          'rounded p-[2px]',
-          disabled
-            ? `opacity-50 ${getToneTextColorClass(iconTone)}`
-            : [
-                selectedOrActive
-                  ? `text-shade-0 ${getToneBgColorClass(iconTone)}`
-                  : getToneTextColorClass(iconTone),
-                !selectedOrActive &&
-                  hover &&
-                  !disableClicking &&
-                  (iconIdleTone
-                    ? getToneTextColorClass(iconIdleTone)
-                    : 'bg-neutral-200 dark:bg-neutral-600'),
-              ],
-        ],
+        'cursor-pointer rounded p-[2px] group/iconbutton',
+        disableClicking
+          ? `opacity-50 ${getToneTextColorClass(iconToneDefault)}`
+          : [
+              selectedOrActive
+                ? `text-shade-0 ${getToneBgColorClass(iconTone)}`
+                : [
+                    hover
+                      ? [
+                          iconIdleTone
+                            ? getToneTextColorClass(iconTone)
+                            : getToneTextColorClass(iconToneDefault),
+                          'bg-neutral-200 dark:bg-neutral-600',
+                        ]
+                      : getToneTextColorClass(iconToneDefault),
+                  ],
+            ],
       )
     "
     @mousedown="startActive"
@@ -48,7 +32,12 @@
     @mouseup="endActive"
     @click.stop="onClick"
   >
-    <Icon :name="iconShowing" :rotate="rotate" :size="size" />
+    <Icon
+      class="group-hover/iconbutton:scale-110"
+      :name="iconShowing"
+      :rotate="rotate"
+      :size="size"
+    />
 
     <!-- Slot is for dropdown menus or modals to go in only! -->
     <slot />
@@ -57,7 +46,6 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { tw } from "@si/vue-lib";
 import {
   Icon,
   IconNames,
@@ -71,15 +59,12 @@ import clsx from "clsx";
 import { Placement } from "floating-vue";
 import { PropType, computed, ref } from "vue";
 
-export type IconButtonVariant = "classic" | "simple";
-
 const props = defineProps({
   size: { type: String as PropType<SpacingSizes>, default: "md" },
   icon: { type: String as PropType<IconNames>, required: true },
   iconHover: { type: String as PropType<IconNames> },
   iconTone: { type: String as PropType<Tones>, default: "action" },
   iconIdleTone: { type: String as PropType<Tones> },
-  noBorderOnHover: { type: Boolean },
   selected: { type: Boolean },
   tooltip: { type: String },
   tooltipPlacement: { type: String as PropType<Placement>, default: "left" },
@@ -91,7 +76,6 @@ const props = defineProps({
   loading: { type: Boolean },
   loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
   loadingTooltip: { type: String },
-  variant: { type: String as PropType<IconButtonVariant>, default: "simple" },
   requestStatus: {
     type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
   },
@@ -140,10 +124,7 @@ const iconShowing = computed(() => {
       : props.icon;
 });
 
-const borderHoverColorClass = computed(() => {
-  if (props.iconTone === "destructive") return tw`hover:border-destructive-500`;
-  else if (props.iconTone === "warning") return tw`hover:border-warning-500`;
-  else if (props.iconTone === "success") return tw`hover:border-success-500`;
-  else return tw`hover:border-action-500`;
-});
+const iconToneDefault = computed(() =>
+  props.iconIdleTone ? props.iconIdleTone : props.iconTone,
+);
 </script>

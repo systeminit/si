@@ -2,6 +2,7 @@
   <Modal
     ref="modalRef"
     :noExit="addingSecret"
+    :capitalizeTitle="false"
     class="bg-neutral-100 dark:bg-neutral-700 text-shade-100 dark:text-shade-0"
     noInnerPadding
     titleClasses="bg-shade-0 dark:bg-shade-100 text-shade-100 dark:text-shade-0"
@@ -49,12 +50,13 @@
           :requestStatus="loadSecretsReq"
           loadingMessage="Loading Secrets"
         />
-        <div v-else-if="secrets.length > 0" class="flex flex-col gap-xs">
+        <div v-else-if="secrets.length > 0" class="flex flex-col gap-2xs p-2xs">
           <SecretCard
             v-for="secret in secrets"
             :key="secret.id"
             :secret="secret"
-            @click="secretCardClick(secret)"
+            variant="detailed"
+            @select="secretCardClick(secret)"
           />
         </div>
         <div v-else class="flex flex-row items-center h-full">

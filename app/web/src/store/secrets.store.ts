@@ -2,6 +2,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 
+import { POSITION, useToast } from "vue-toastification";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -10,6 +11,7 @@ import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
+import SecretUpdate from "../components/toasts/SecretUpdate.vue";
 
 /**
  * A public key with metadata, used to encrypt secrets
@@ -106,7 +108,7 @@ export type SecretsDefinitionHashMap = Record<
 export function useSecretsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
-
+  const toast = useToast();
   const changeSetsStore = useChangeSetsStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
@@ -279,6 +281,7 @@ export function useSecretsStore() {
               };
             }
 
+            let toastID: number | string;
             return new ApiRequest<Secret>({
               method: "patch",
               url: "secret",
@@ -308,6 +311,17 @@ export function useSecretsStore() {
                 });
                 this.secretIsTransitioning[id] = true;
 
+                toastID = toast(
+                  {
+                    component: SecretUpdate,
+                    props: { secretName: name },
+                  },
+                  {
+                    position: POSITION.TOP_CENTER,
+                    toastClassName: "si-toast-no-defaults",
+                  },
+                );
+
                 return () => {
                   const definition = this.secretDefinitionByDefinitionId[id];
 
@@ -321,6 +335,18 @@ export function useSecretsStore() {
               },
               onSuccess: (response) => {
                 const definition = this.secretDefinitionByDefinitionId[id];
+
+                toast.update(toastID, {
+                  content: {
+                    props: { secretName: name, success: true },
+                    component: SecretUpdate,
+                  },
+                  options: {
+                    position: POSITION.TOP_CENTER,
+                    toastClassName: "si-toast-no-defaults",
+                    timeout: 500,
+                  },
+                });
 
                 if (definition === undefined) return;
 
@@ -379,6 +405,7 @@ export function useSecretsStore() {
 
             const crypted = await encryptMessage(value, this.publicKey);
 
+            let toastID: number | string;
             return new ApiRequest<Secret>({
               method: "post",
               url: "secret",
@@ -411,6 +438,17 @@ export function useSecretsStore() {
                 });
                 this.secretIsTransitioning[tempId] = true;
 
+                toastID = toast(
+                  {
+                    component: SecretUpdate,
+                    props: { secretName: name, newSecret: true },
+                  },
+                  {
+                    position: POSITION.TOP_CENTER,
+                    toastClassName: "si-toast-no-defaults",
+                  },
+                );
+
                 return () => {
                   const definition =
                     this.secretDefinitionByDefinitionId[definitionId];
@@ -426,6 +464,18 @@ export function useSecretsStore() {
               onSuccess: (response) => {
                 const definition =
                   this.secretDefinitionByDefinitionId[definitionId];
+
+                toast.update(toastID, {
+                  content: {
+                    props: { secretName: name, success: true, newSecret: true },
+                    component: SecretUpdate,
+                  },
+                  options: {
+                    position: POSITION.TOP_CENTER,
+                    toastClassName: "si-toast-no-defaults",
+                    timeout: 500,
+                  },
+                });
 
                 if (definition === undefined) return;
 

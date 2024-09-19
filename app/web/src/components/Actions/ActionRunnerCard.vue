@@ -53,7 +53,6 @@
           rotate="down"
           icon="code-pop"
           iconHover="code-pop-square"
-          noBorderOnHover
           :selected="codeViewerShowing"
           @click="toggleCodeViewerShowing"
         />

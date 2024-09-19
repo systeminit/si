@@ -13,8 +13,6 @@
             <IconButton
               class="flex-none"
               icon="dots-vertical"
-              variant="classic"
-              noBorderOnHover
               iconIdleTone="neutral"
               :selected="codeMenuRef?.isOpen"
               @click="codeMenuRef?.open"

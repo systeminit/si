@@ -1,42 +1,26 @@
 <template>
-  <Teleport to=".si-panel-right">
-    <Transition
-      enterActiveClass="duration-100 ease-out"
-      enterFromClass="translate-x-[500px]"
-      leaveActiveClass="duration-100 ease-in"
-      leaveToClass="translate-x-[500px]"
-    >
-      <div
-        v-if="props.selectedAction"
-        class="absolute w-[500px] h-full left-[-500px] bg-neutral-800 z-[-10]"
-      >
-        <TabGroup ref="tabGroupRef" @closeButtonTabClicked="props.close">
-          <TabGroupCloseButton />
-          <ChangesPanelHistorySubpanelTab
-            label="Arguments"
-            slug="arguments"
-            :data="args"
-          />
-          <ChangesPanelHistorySubpanelTab
-            label="Code Executed"
-            slug="codeExecuted"
-            :data="code"
-          />
-          <ChangesPanelHistorySubpanelTab
-            label="Result"
-            slug="resourceResult"
-            emptyStateSecondaryTextNeedsAnA
-            :data="result"
-          />
-          <ChangesPanelHistorySubpanelTab
-            label="Logs"
-            slug="logs"
-            :data="logs"
-          />
-        </TabGroup>
-      </div>
-    </Transition>
-  </Teleport>
+  <RightPanelDrawer :open="!!props.selectedAction">
+    <TabGroup ref="tabGroupRef" @closeButtonTabClicked="props.close">
+      <TabGroupCloseButton />
+      <ChangesPanelHistorySubpanelTab
+        label="Arguments"
+        slug="arguments"
+        :data="args"
+      />
+      <ChangesPanelHistorySubpanelTab
+        label="Code Executed"
+        slug="codeExecuted"
+        :data="code"
+      />
+      <ChangesPanelHistorySubpanelTab
+        label="Result"
+        slug="resourceResult"
+        emptyStateSecondaryTextNeedsAnA
+        :data="result"
+      />
+      <ChangesPanelHistorySubpanelTab label="Logs" slug="logs" :data="logs" />
+    </TabGroup>
+  </RightPanelDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -45,6 +29,7 @@ import { TabGroup, TabGroupCloseButton } from "@si/vue-lib/design-system";
 import { FuncRun } from "@/store/func_runs.store";
 import { ActionHistoryView } from "@/store/actions.store";
 import ChangesPanelHistorySubpanelTab from "../ChangesPanelHistorySubpanelTab.vue";
+import RightPanelDrawer from "../RightPanelDrawer.vue";
 
 type clickFn = () => void;
 

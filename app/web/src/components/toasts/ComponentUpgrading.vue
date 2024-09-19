@@ -4,7 +4,7 @@
   >
     <template v-if="!props.success">
       <Icon name="loader" size="md" tone="action" />
-      <p class="text-md">Updating {{ props.componentName }}</p>
+      <p class="text-md">Updating "{{ props.componentName }}"</p>
     </template>
     <template v-else>
       <Icon name="check-hex-outline" size="md" tone="success" />

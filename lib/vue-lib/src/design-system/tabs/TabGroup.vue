@@ -241,16 +241,22 @@ const variantStyles = (slug: string) => {
     default: // PRIMARY
       return [
         "font-bold",
-        slug === selectedTabSlug.value && slug !== "closeButton"
+        slug === "closeButton"
           ? themeClasses(
-              "bg-shade-0 text-action-500",
-              "bg-neutral-800 text-action-300",
+              "bg-shade-0 hover:text-action-500",
+              "bg-neutral-800 hover:text-action-300",
             )
-          : themeClasses(
-              "bg-neutral-200 text-neutral-600 hover:text-action-500",
-              "bg-neutral-700 text-neutral-300 hover:text-action-300",
-            ),
-        slug === "closeButton" && themeClasses("bg-shade-0", "bg-neutral-800"),
+          : [
+              slug === selectedTabSlug.value && slug !== "closeButton"
+                ? themeClasses(
+                    "bg-shade-0 text-action-500",
+                    "bg-neutral-800 text-action-300",
+                  )
+                : themeClasses(
+                    "bg-neutral-200 text-neutral-600 hover:text-action-500",
+                    "bg-neutral-700 text-neutral-300 hover:text-action-300",
+                  ),
+            ],
       ];
   }
 };

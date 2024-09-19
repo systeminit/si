@@ -15,11 +15,10 @@
         icon="func"
         variant="subtitle"
       >
-        <div class="flex flex-row">
+        <div class="flex flex-row gap-xs">
           <EditingPill v-if="!editingFunc.isLocked" color="#666"></EditingPill>
           <IconButton
             v-if="canBeEdited && editingFunc.isLocked"
-            :class="clsx(!unlocking && 'hover:scale-125')"
             :loading="unlocking"
             icon="sliders-vertical"
             size="sm"
@@ -29,7 +28,6 @@
           />
           <IconButton
             v-if="!editingFunc.isLocked"
-            :class="clsx('mx-xs', !isDeleting && 'hover:scale-125')"
             :loading="isDeleting"
             icon="trash"
             iconTone="destructive"
