@@ -4,7 +4,6 @@
       tooltip="see more"
       icon="logs-pop"
       iconHover="logs-pop-square"
-      noBorderOnHover
       :selected="modalRef?.isOpen"
       @click="modalRef.open()"
     />

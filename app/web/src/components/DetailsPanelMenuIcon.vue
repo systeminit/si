@@ -1,8 +1,6 @@
 <template>
   <IconButton
     icon="dots-vertical"
-    variant="classic"
-    noBorderOnHover
     iconIdleTone="neutral"
     :selected="selected"
   />

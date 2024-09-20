@@ -16,7 +16,6 @@
         <div class="flex flex-row gap-xs items-center">
           <IconButton
             :requestStatus="syncModulesReqStatus"
-            class="hover:scale-125"
             icon="refresh"
             loadingIcon="loader"
             loadingTooltip="Checking For Asset Updates And For New Assets..."
@@ -27,7 +26,6 @@
           />
           <IconButton
             :requestStatus="createAssetReqStatus"
-            class="hover:scale-125"
             icon="plus"
             loadingIcon="loader"
             loadingTooltip="Creating Asset..."
@@ -38,7 +36,6 @@
           />
           <IconButton
             v-if="canUpdate"
-            class="hover:scale-125"
             icon="code-deployed"
             size="sm"
             tooltip="Update All"

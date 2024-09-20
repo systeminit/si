@@ -2,157 +2,177 @@
   <div
     :class="
       clsx(
-        'flex flex-row flex-none items-center overflow-hidden text-shade-100 dark:text-shade-0',
-        detailedListItem
-          ? 'border-b border-neutral-200 dark:border-neutral-500'
-          : 'border rounded h-[90px]',
-        !detailedListItem && secret.isUsable
-          ? 'cursor-pointer border-neutral-500 dark:hover:bg-action-700 hover:bg-action-100 dark:hover:outline-action-300 hover:outline-action-500 hover:outline -outline-offset-1'
-          : 'cursor-default border-destructive-600',
+        'flex items-center px-xs py-[1px] cursor-pointer border group/secretcard',
+        variant === 'minimal'
+          ? [
+              'flex-row border-transparent',
+              themeClasses(
+                'hover:border-action-500 hover:text-action-500 text-black',
+                'hover:border-action-300 hover:text-action-300 text-white',
+              ),
+            ]
+          : [
+              'flex-col rounded',
+              themeClasses('border-neutral-400', 'border-neutral-400'),
+              isUsable
+                ? themeClasses(
+                    'hover:border-action-500 hover:text-action-500 text-black',
+                    'hover:border-action-300 hover:text-action-300 text-white',
+                  )
+                : themeClasses(
+                    'hover:border-destructive-600 text-black hover:text-destructive-600 bg-caution-lines-light',
+                    'hover:border-destructive-500 text-white hover:text-destructive-500 bg-caution-lines-dark',
+                  ),
+            ],
+        selected &&
+          themeClasses(
+            'bg-action-100 border-action-500',
+            'bg-action-900  border-action-300',
+          ),
       )
     "
+    @click="emit('select')"
   >
-    <div class="flex flex-col gap-1 px-sm py-xs grow capsize overflow-hidden">
-      <div
-        :class="
-          clsx(
-            'text-md font-bold leading-tight',
-            detailedListItem ? 'break-words' : 'truncate',
-            secret.isUsable
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-destructive-500 font-bold',
-          )
-        "
-      >
+    <!-- Minimal view, used in SecretsPanel -->
+    <template v-if="variant === 'minimal'">
+      <div class="flex-grow text-xs truncate">
         {{ secret.name }}
       </div>
-      <div
-        v-if="secret.updatedInfo"
-        :class="
-          clsx(
-            'text-xs text-neutral-500 dark:text-neutral-300',
-            !detailedListItem && 'truncate',
-          )
-        "
-      >
-        Updated:
-        <Timestamp
-          :date="new Date(secret.updatedInfo.timestamp)"
-          :relative="!detailedListItem"
-          :size="detailedListItem ? 'extended' : 'normal'"
+      <IconButton
+        v-if="variant === 'minimal'"
+        size="sm"
+        class="flex-none"
+        icon="dots-vertical"
+        iconIdleTone="neutral"
+        :selected="menuRef?.isOpen"
+        @click="onClick"
+      />
+      <DropdownMenu ref="menuRef">
+        <DropdownMenuItem
+          icon="cursor"
+          label="Replace Secret"
+          @select="emit('edit')"
         />
-        by
-        {{ secret.updatedInfo.actor.label }}
-      </div>
+        <DropdownMenuItem
+          :disabled="secret.connectedComponents.length > 0"
+          icon="trash"
+          label="Delete"
+          @select="deleteSecret"
+        />
+      </DropdownMenu>
+    </template>
+
+    <!-- Detailed view, used in SecretsModal -->
+    <template v-else>
+      <TruncateWithTooltip class="w-full text-sm font-bold">
+        {{ secret.name }}
+      </TruncateWithTooltip>
+
       <div
-        v-if="!secret.updatedInfo || detailedListItem"
+        v-if="!isUsable"
         :class="
           clsx(
-            'text-xs',
-            !detailedListItem && 'truncate',
-            secret.isUsable
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-destructive-500 font-bold',
+            'w-full text-xs font-bold',
+            themeClasses('text-destructive-600', 'text-destructive-500'),
           )
         "
       >
-        <template v-if="secret.isUsable">
-          Created:
+        Created in another workspace, cannot use this secret.
+      </div>
+      <div v-else-if="secret.updatedInfo" :class="detailClasses">
+        Updated:
+        <span class="italic">
+          <Timestamp
+            :date="new Date(secret.updatedInfo.timestamp)"
+            relative
+            size="normal"
+          />
+          by
+          {{ secret.updatedInfo.actor.label }}
+        </span>
+      </div>
+      <div v-else :class="detailClasses">
+        Created:
+        <span class="italic">
           <Timestamp
             :date="new Date(secret.createdInfo.timestamp)"
-            :relative="!detailedListItem"
-            :size="detailedListItem ? 'extended' : 'normal'"
+            relative
+            size="normal"
           />
           by
           {{ secret.createdInfo.actor.label }}
+        </span>
+      </div>
+
+      <div v-if="secret.connectedComponents.length > 0" :class="detailClasses">
+        Connected Components: {{ secret.connectedComponents.length }}
+      </div>
+
+      <div :class="detailClasses" class="line-clamp-2">
+        <template v-if="secret.description">
+          Description: <span class="italic">{{ secret.description }}</span>
         </template>
-        <template v-else>
-          Created in another workspace. Edit secret to be able to use it.
-        </template>
+        <template v-else> No Description Found </template>
       </div>
-      <div class="grow flex flex-row items-center">
-        <div
-          :class="
-            clsx(
-              'italic text-xs text-neutral-400',
-              !detailedListItem && 'line-clamp-2',
-            )
-          "
-        >
-          Connected Components: {{ secret.connectedComponents.length }}
-        </div>
-      </div>
-      <!-- TODO(Wendy) - eventually we will add expiry to secrets, here's the code to display it! -->
-      <!-- <div
-      v-if="detailedListItem"
-      :class="
-        clsx(
-          'text-xs truncate',
-          detailedListItem
-            ? 'text-neutral-500 dark:text-neutral-300'
-            : 'text-neutral-300',
-        )
-      "
-    >
-      Expires: {{ secret.expiration || "Never" }}
-    </div> -->
-      <div class="grow flex flex-row items-center">
-        <div
-          :class="
-            clsx(
-              'italic text-xs text-neutral-400',
-              !detailedListItem && 'line-clamp-2',
-            )
-          "
-        >
-          <template v-if="secret.description">
-            <span class="font-bold">Description:</span> {{ secret.description }}
-          </template>
-          <template v-else>No Description Available</template>
-        </div>
-      </div>
-    </div>
-    <div v-if="detailedListItem" class="pr-sm flex flex-col gap-xs">
-      <IconButton
-        icon="edit"
-        iconIdleTone="neutral"
-        iconTone="action"
-        tooltip="Edit"
-        @click="emit('edit')"
-      />
-      <IconButton
-        :disabled="secret.connectedComponents.length > 0"
-        icon="trash"
-        iconIdleTone="neutral"
-        iconTone="destructive"
-        tooltip="Delete"
-        @click="deleteSecret"
-      />
-    </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { Timestamp } from "@si/vue-lib/design-system";
-import { PropType } from "vue";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  themeClasses,
+  Timestamp,
+} from "@si/vue-lib/design-system";
+import { computed, PropType, ref } from "vue";
 import clsx from "clsx";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
 import IconButton from "./IconButton.vue";
+import TruncateWithTooltip from "./TruncateWithTooltip.vue";
+
+// The "minimal" variant is used in the SecretsPanel and the "detailed" variant is used in the SecretsModal
+export type SecretCardVariant = "minimal" | "detailed";
 
 const props = defineProps({
   secret: { type: Object as PropType<Secret>, required: true },
-  detailedListItem: { type: Boolean },
+  selected: { type: Boolean },
+  variant: { type: String as PropType<SecretCardVariant>, default: "minimal" },
 });
 
+const isUsable = computed(() => props.secret.isUsable);
+
 const secretsStore = useSecretsStore();
+const menuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const onClick = (e: MouseEvent) => {
+  menuRef.value?.open(e);
+};
 
 const deleteSecret = async () => {
   if (!props.secret || !props.secret.id) return;
-
+  emit("deleted");
   await secretsStore.DELETE_SECRET(props.secret.id);
 };
 
+const detailClasses = computed(() =>
+  clsx(
+    "w-full text-xs",
+    isUsable.value
+      ? themeClasses(
+          "text-neutral-500 group-hover/secretcard:text-action-500",
+          "text-neutral-400 group-hover/secretcard:text-action-300",
+        )
+      : themeClasses(
+          "text-neutral-500 group-hover/secretcard:text-destructive-600",
+          "text-neutral-400 group-hover/secretcard:text-destructive-500",
+        ),
+  ),
+);
+
 const emit = defineEmits<{
+  (e: "select"): void;
   (e: "edit"): void;
+  (e: "deleted"): void;
 }>();
 </script>

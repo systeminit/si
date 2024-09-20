@@ -43,9 +43,12 @@ you can pass in options as props too */
       :class="
         clsx(
           'vorm-input__input-and-instructions-wrap',
-          compact && !noLabel && 'w-[45%] shrink',
-          compact && noLabel && 'flex-1',
-          compact && !rename && 'min-h-[30px]',
+          compact && [
+            noLabel
+              ? 'flex-1'
+              : ['flex-none', compactWide ? 'w-[70%]' : 'w-[45%]'],
+            !rename && 'min-h-[30px]',
+          ],
         )
       "
     >
@@ -53,7 +56,7 @@ you can pass in options as props too */
         v-tooltip="
           compact
             ? {
-                content: computedPlaceholder,
+                content: instructions,
                 theme: 'instant-show',
                 placement: 'left',
               }
@@ -148,7 +151,7 @@ you can pass in options as props too */
             ref="inputRef"
             :value="modelValueForTextArea"
             :class="compact ? 'vorm-input-compact__input' : 'vorm-input__input'"
-            :placeholder="compact ? undefined : computedPlaceholder"
+            :placeholder="computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :maxlength="maxLength"
             @focus="onFocus"
@@ -185,7 +188,7 @@ you can pass in options as props too */
             :autocomplete="autocomplete"
             :name="name"
             :type="nativeInputTagTypeProp"
-            :placeholder="compact ? undefined : computedPlaceholder"
+            :placeholder="computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :step.prop="nativeInputNumberStepProp"
             :minlength="minLength"
@@ -203,7 +206,7 @@ you can pass in options as props too */
         </template>
       </div>
 
-      <div class="vorm-input__instructions">
+      <div v-if="!compact" class="vorm-input__instructions">
         <slot name="instructions">{{ instructions }}</slot>
       </div>
 
@@ -339,6 +342,7 @@ const props = defineProps({
 
   // new compact styling for VormInput
   compact: Boolean,
+  compactWide: Boolean,
 
   // special styles for renaming on the ModelingDiagram
   rename: Boolean,

@@ -33,7 +33,6 @@
           <IconButton
             v-if="canContribute"
             :selected="contributeAssetModalRef?.isOpen || false"
-            class="hover:scale-125"
             icon="cloud-upload"
             tooltip="Contribute"
             tooltipPlacement="top"
@@ -43,7 +42,6 @@
           <IconButton
             v-if="canUpdate"
             :loading="installStatus.isPending"
-            class="hover:scale-125"
             icon="code-deployed"
             loadingIcon="loader"
             tooltip="Update"
@@ -53,7 +51,6 @@
 
           <IconButton
             v-if="!asset.isLocked && hasEditingVersion"
-            class="hover:scale-125"
             icon="trash"
             tooltip="Delete Unlocked Variant"
             tooltipPlacement="top"
@@ -63,7 +60,6 @@
           <IconButton
             v-if="asset.isLocked && editingVersionDoesNotExist"
             :requestStatus="createUnlockedVariantReqStatus"
-            class="hover:scale-125"
             icon="sliders-vertical"
             tooltip="Edit"
             tooltipPlacement="top"

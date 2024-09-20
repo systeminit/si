@@ -1,5 +1,5 @@
 <template>
-  <div :class="clsx('absolute flex left-4 bottom-4 z-20 h-8')">
+  <div :class="clsx('absolute flex left-4 bottom-4 z-10 h-8')">
     <div
       v-tooltip="'Zoom Out'"
       :class="getButtonClasses(zoomLevel <= MIN_ZOOM)"

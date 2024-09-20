@@ -71,7 +71,7 @@
           :disabled="editingAsset.isLocked"
           compact
           label="Asset Name"
-          placeholder="(mandatory) Provide the asset a name"
+          instructions="(mandatory) Provide the asset a name"
           type="text"
           @blur="updateAsset"
           @focus="focus"
@@ -83,7 +83,7 @@
           :disabled="editingAsset.isLocked"
           compact
           label="Display name"
-          placeholder="(optional) Provide the asset version a display name"
+          instructions="(optional) Provide the asset version a display name"
           type="text"
           @blur="updateAsset"
           @focus="focus"
@@ -94,7 +94,7 @@
           :disabled="editingAsset.isLocked"
           compact
           label="Category"
-          placeholder="(mandatory) Provide a category for the asset"
+          instructions="(mandatory) Provide a category for the asset"
           type="text"
           @blur="updateAsset"
           @focus="focus"
@@ -116,7 +116,7 @@
           :disabled="editingAsset.isLocked"
           compact
           label="Description"
-          placeholder="(optional) Provide a brief description of the asset"
+          instructions="(optional) Provide a brief description of the asset"
           type="textarea"
           @blur="updateAsset"
           @focus="focus"
@@ -140,7 +140,7 @@
           :disabled="editingAsset.isLocked"
           compact
           label="Documentation Link"
-          placeholder="(optional) Provide a documentation link for the asset"
+          instructions="(optional) Provide a documentation link for the asset"
           type="url"
           @blur="updateAsset"
           @focus="focus"

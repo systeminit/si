@@ -6,8 +6,8 @@
     :aria-disabled="noInteract === true ? true : undefined"
     :class="
       clsx(
-        'flex gap-xs items-center cursor-pointer select-none group',
-        noInteract && 'text-gray-500',
+        'flex gap-xs items-center select-none group',
+        noInteract ? 'text-gray-500' : 'cursor-pointer',
         !endLinkTo && 'children:pointer-events-none',
         header
           ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'

@@ -82,6 +82,7 @@
                 v-if="propIsEditable && (isChildOfArray || isChildOfMap)"
               >
                 <button
+                  v-tooltip="'Delete'"
                   class="attributes-panel-item__delete-child-button hover:scale-125 items-center pl-2xs"
                   @click="removeChildHandler"
                 >
@@ -266,6 +267,7 @@
         <div class="attributes-panel-item__static-icons">
           <button
             v-if="isChildOfMap || isChildOfArray"
+            v-tooltip="'Delete'"
             class="attributes-panel-item__delete-child-button hover:scale-125"
             @click="removeChildHandler"
           >
@@ -281,6 +283,7 @@
 
           <a
             v-if="fullPropDef.docLink"
+            v-tooltip="'View Documentation'"
             :href="fullPropDef.docLink"
             class="attributes-panel-item__docs-icon hover:scale-125"
             target="_blank"
@@ -445,8 +448,10 @@
               v-if="secret"
               :class="
                 clsx(
-                  'attributes-panel-item__secret-value',
-                  secret.isUsable ? 'bg-action-700' : 'bg-destructive-600',
+                  'attributes-panel-item__secret-value line-clamp-6',
+                  secret.isUsable
+                    ? themeClasses('bg-action-200', 'bg-action-700')
+                    : themeClasses('bg-destructive-400', 'bg-destructive-600'),
                 )
               "
             >
@@ -1664,7 +1669,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   padding: 4px;
 }
 .attributes-panel-item__secret-value {
-  display: inline-block;
   padding: 2px 10px;
   border-radius: 4px;
   line-height: 18px;

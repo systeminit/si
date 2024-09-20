@@ -124,6 +124,7 @@ const showFilters = ref(false);
 
 const toggleShowFilters = () => {
   showFilters.value = !showFilters.value;
+  if (!showFilters.value) resetFilters(); // if the filter panel is collapsed, reset all filters
 };
 
 const activeFilters = ref(
