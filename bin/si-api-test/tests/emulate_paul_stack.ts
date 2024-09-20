@@ -8,20 +8,16 @@ import {
 } from "../test_helpers.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
-export default async function emulate_paul_stack(
-  sdfApiClient: SdfApiClient,
-) {
-  await sleepBetween(500, 10000);
-  return runWithTemporaryChangeset(
-    sdfApiClient,
-    emulate_paul_stack_inner,
-  );
+export default async function emulate_paul_stack(sdfApiClient: SdfApiClient) {
+  await sleepBetween(0, 750);
+  return runWithTemporaryChangeset(sdfApiClient, emulate_paul_stack_inner);
 }
 
 async function emulate_paul_stack_inner(
   sdf: SdfApiClient,
   changeSetId: string,
 ) {
+  sdf.listenForDVUs();
   // LOAD INITIAL DATA
   const schemaVariants = await getSchemaVariants(sdf, changeSetId);
 
@@ -33,7 +29,7 @@ async function emulate_paul_stack_inner(
   const awsRegionVariantId = awsRegionVariant.schemaVariantId;
 
   const _diagram = await getDiagram(sdf, changeSetId);
-  await sleepBetween(2000, 10000);
+  //await sleepBetween(2000, 10000);
 
   // CREATE COMPONENTS
   // create region component
@@ -45,7 +41,7 @@ async function emulate_paul_stack_inner(
     0,
   );
 
-  await sleepBetween(3000, 6000);
+  //await sleepBetween(3000, 6000);
 
   await setComponentGeometry(
     sdf,
@@ -56,7 +52,7 @@ async function emulate_paul_stack_inner(
     1800,
     800,
   );
-  await sleepBetween(1000, 5000);
+  //await sleepBetween(1000, 5000);
 
   // UPDATE REGION
   const regionValue = "us-east-1";
@@ -65,18 +61,15 @@ async function emulate_paul_stack_inner(
     changeSetId,
     regionComponentId,
   );
-  await sleep(2000);
+  // await sleep(2000);
 
   {
-    const {
-      attributeValueId,
-      parentAttributeValueId,
-      propId,
-    } = attributeValueIdForPropPath(
-      "/root/domain/region",
-      awsRegionVariant.props,
-      RegionPropValues,
-    );
+    const { attributeValueId, parentAttributeValueId, propId } =
+      attributeValueIdForPropPath(
+        "/root/domain/region",
+        awsRegionVariant.props,
+        RegionPropValues,
+      );
 
     await setAttributeValue(
       sdf,
@@ -89,7 +82,7 @@ async function emulate_paul_stack_inner(
     );
   }
 
-  await sleepBetween(5000, 15000);
+  // await sleepBetween(5000, 15000);
 
   // CREATE VPC
   const vpcVariant = await extractSchemaVariant(
@@ -107,7 +100,7 @@ async function emulate_paul_stack_inner(
     0,
   );
 
-  await sleepBetween(1000, 2000);
+  // await sleepBetween(1000, 2000);
 
   await setComponentType(
     sdf,
@@ -129,7 +122,7 @@ async function emulate_paul_stack_inner(
     },
   );
 
-  await sleepBetween(1000, 5000);
+  await sleepBetween(0, 750);
 
   // CONFIGURE VPC
   const { values: vpcPropValues } = await getPropertyEditor(
@@ -146,15 +139,8 @@ async function emulate_paul_stack_inner(
       { p: "/root/domain/EnableDnsResolution", v: true },
     ]
   ) {
-    const {
-      attributeValueId,
-      parentAttributeValueId,
-      propId,
-    } = attributeValueIdForPropPath(
-      path,
-      vpcVariant.props,
-      vpcPropValues,
-    );
+    const { attributeValueId, parentAttributeValueId, propId } =
+      attributeValueIdForPropPath(path, vpcVariant.props, vpcPropValues);
 
     await setAttributeValue(
       sdf,
@@ -165,7 +151,7 @@ async function emulate_paul_stack_inner(
       propId,
       value,
     );
-    await sleepBetween(2000, 8000);
+    await sleepBetween(0, 750);
   }
 
   // Public Subnet Components
@@ -187,7 +173,7 @@ async function emulate_paul_stack_inner(
       sdf,
       changeSetId,
       subnetVariantId,
-      -550 + (550 * index),
+      -550 + 550 * index,
       150,
       vpcComponentId,
     );
@@ -216,15 +202,12 @@ async function emulate_paul_stack_inner(
         { p: "/root/domain/IsPublic", v: true },
       ]
     ) {
-      const {
-        attributeValueId,
-        parentAttributeValueId,
-        propId,
-      } = attributeValueIdForPropPath(
-        path,
-        subnetVariant.props,
-        subnetPropValues,
-      );
+      const { attributeValueId, parentAttributeValueId, propId } =
+        attributeValueIdForPropPath(
+          path,
+          subnetVariant.props,
+          subnetPropValues,
+        );
 
       await setAttributeValue(
         sdf,
@@ -235,9 +218,12 @@ async function emulate_paul_stack_inner(
         propId,
         value,
       );
-      await sleepBetween(3000, 10000);
+
+      // await sleepBetween(3000, 10000);
     }
   }
+
+  await sdf.waitForDVUs(2000);
 }
 
 // REQUEST HELPERS WITH VALIDATIONS
@@ -254,8 +240,8 @@ async function createComponent(
     schemaVariantId,
     x: x.toString(),
     y: y.toString(),
-    "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdf.workspaceId,
+    visibility_change_set_pk: changeSetId,
+    workspaceId: sdf.workspaceId,
     ...parentArgs,
   };
   const createResp = await sdf.call({
@@ -266,14 +252,12 @@ async function createComponent(
   assert(componentId, "Expected to get a component id after creation");
 
   // Run side effect calls
-  await Promise.all(
-    [
-      getQualificationSummary(sdf, changeSetId),
-      getActions(sdf, changeSetId),
-      getFuncs(sdf, changeSetId),
-      getPropertyEditor(sdf, changeSetId, componentId),
-    ],
-  );
+  await Promise.all([
+    getQualificationSummary(sdf, changeSetId),
+    getActions(sdf, changeSetId),
+    getFuncs(sdf, changeSetId),
+    getPropertyEditor(sdf, changeSetId, componentId),
+  ]);
 
   return componentId;
 }
@@ -293,21 +277,21 @@ async function setComponentGeometry(
 ) {
   const someParentArguments = parentArguments ?? {};
   const setPositionPayload = {
-    "dataByComponentId": {
+    dataByComponentId: {
       [componentId]: {
-        "geometry": {
-          "x": x.toString(),
-          "y": y.toString(),
-          "width": w.toString(),
-          "height": h.toString(),
+        geometry: {
+          x: x.toString(),
+          y: y.toString(),
+          width: w.toString(),
+          height: h.toString(),
         },
         detach: false,
         ...someParentArguments,
       },
     },
-    "diagramKind": "configuration",
-    "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdf.workspaceId,
+    diagramKind: "configuration",
+    visibility_change_set_pk: changeSetId,
+    workspaceId: sdf.workspaceId,
     requestUlid: changeSetId,
     clientUlid: ulid(),
   };
@@ -318,13 +302,11 @@ async function setComponentGeometry(
   });
 
   // Make side effect calls
-  await Promise.all(
-    [
-      getQualificationSummary(sdf, changeSetId),
-      getActions(sdf, changeSetId),
-      getFuncs(sdf, changeSetId),
-    ],
-  );
+  await Promise.all([
+    getQualificationSummary(sdf, changeSetId),
+    getActions(sdf, changeSetId),
+    getFuncs(sdf, changeSetId),
+  ]);
 
   return result;
 }
@@ -341,7 +323,7 @@ async function setComponentType(
   const payload = {
     componentId,
     componentType,
-    "visibility_change_set_pk": changeSetId,
+    visibility_change_set_pk: changeSetId,
     requestUlid: changeSetId,
   };
 
@@ -351,14 +333,12 @@ async function setComponentType(
   });
 
   // Make side effect calls
-  await Promise.all(
-    [
-      getQualificationSummary(sdf, changeSetId),
-      getActions(sdf, changeSetId),
-      getFuncs(sdf, changeSetId),
-      getPropertyEditor(sdf, changeSetId, componentId),
-    ],
-  );
+  await Promise.all([
+    getActions(sdf, changeSetId),
+    getFuncs(sdf, changeSetId),
+    getPropertyEditor(sdf, changeSetId, componentId),
+  ]);
+  const res = getQualificationSummary(sdf, changeSetId);
 
   return result;
 }
@@ -394,13 +374,13 @@ async function setAttributeValue(
   value: unknown,
 ) {
   const updateValuePayload = {
-    "visibility_change_set_pk": changeSetId,
+    visibility_change_set_pk: changeSetId,
     componentId,
     attributeValueId,
     parentAttributeValueId,
     propId,
     value,
-    "isForSecret": false,
+    isForSecret: false,
   };
 
   await sdf.call({
@@ -409,10 +389,7 @@ async function setAttributeValue(
   });
 }
 
-async function getSchemaVariants(
-  sdf: SdfApiClient,
-  changeSetId: string,
-) {
+async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
   const schemaVariants = await sdf.call({
     route: "schema_variants",
     routeVars: {
@@ -441,10 +418,7 @@ async function getPropertyEditor(
     },
   });
   assert(typeof values?.values === "object", "Expected prop values");
-  assert(
-    typeof values?.childValues === "object",
-    "Expected prop childValues:",
-  );
+  assert(typeof values?.childValues === "object", "Expected prop childValues:");
 
   const schema = await sdf.call({
     route: "get_property_schema",
@@ -455,10 +429,7 @@ async function getPropertyEditor(
   });
   assert(typeof schema?.rootPropId === "string", "Expected rootPropId");
   assert(typeof schema?.props === "object", "Expected props");
-  assert(
-    typeof schema?.childProps === "object",
-    "Expected childProps list",
-  );
+  assert(typeof schema?.childProps === "object", "Expected childProps list");
 
   return {
     values,
@@ -466,10 +437,7 @@ async function getPropertyEditor(
   };
 }
 
-async function getQualificationSummary(
-  sdf: SdfApiClient,
-  changeSetId: string,
-) {
+async function getQualificationSummary(sdf: SdfApiClient, changeSetId: string) {
   return await sdf.call({
     route: "qualification_summary",
     routeVars: {
@@ -479,10 +447,7 @@ async function getQualificationSummary(
   });
 }
 
-async function getActions(
-  sdf: SdfApiClient,
-  changeSetId: string,
-) {
+async function getActions(sdf: SdfApiClient, changeSetId: string) {
   return await sdf.call({
     route: "action_list",
     routeVars: {
@@ -492,10 +457,7 @@ async function getActions(
   });
 }
 
-async function getFuncs(
-  sdf: SdfApiClient,
-  changeSetId: string,
-) {
+async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
   return await sdf.call({
     route: "func_list",
     routeVars: {
@@ -511,8 +473,9 @@ function extractSchemaVariant(
   schemaName: string,
   category?: string,
 ) {
-  const variant = schemaVariants.find((sv) =>
-    sv.schemaName === schemaName && (!category || sv.category === category)
+  const variant = schemaVariants.find(
+    (sv) =>
+      sv.schemaName === schemaName && (!category || sv.category === category),
   );
 
   const awsRegionVariantId = variant?.schemaVariantId;
@@ -537,9 +500,7 @@ function attributeValueIdForPropPath(
 
   let attributeValueId;
   for (const attributeValue in attributeValuesView.values) {
-    if (
-      attributeValuesView.values[attributeValue]?.propId === prop.id
-    ) {
+    if (attributeValuesView.values[attributeValue]?.propId === prop.id) {
       attributeValueId = attributeValue;
     }
   }
@@ -552,14 +513,11 @@ function attributeValueIdForPropPath(
       parentAttributeValueId = attributeValue;
     }
   }
-  assert(
-    parentAttributeValueId,
-    "Expected parent of source attribute value",
-  );
+  assert(parentAttributeValueId, "Expected parent of source attribute value");
 
   return {
     attributeValueId,
     parentAttributeValueId,
-    "propId": prop.id,
+    propId: prop.id,
   };
 }

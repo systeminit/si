@@ -12,6 +12,7 @@ export function parseArgs(args: string[]) {
   const parsedArgs = parse(args, {
     string: [
       "workspaceId",
+      "changeSetId",
       "userId",
       "password",
       "profile",
@@ -22,6 +23,7 @@ export function parseArgs(args: string[]) {
     ],
     alias: {
       w: "workspaceId",
+      c: "changeSetId",
       u: "userId",
       p: "password",
       t: "tests",
@@ -43,6 +45,7 @@ Usage: deno run main.ts [options]
 
 Options:
   --workspaceId, -w   Workspace ID (required)
+  --changeSetId, -c   Change Set ID (optional)
   --userId, -u        User ID (required if token not set)
   --password, -p      User password (optional)
   --tests, -t         Test names to run (comma-separated, optional)
@@ -57,6 +60,7 @@ Options:
 
   // Extract parsed arguments
   const workspaceId = parsedArgs.workspaceId;
+  const changeSetId = parsedArgs.changeSetId || undefined;
   const userId = parsedArgs.userId || undefined;
   const password = parsedArgs.password || undefined;
   const token = parsedArgs.token || undefined;
@@ -85,6 +89,7 @@ Options:
 
   return {
     workspaceId,
+    changeSetId,
     userId,
     password,
     testsToRun,

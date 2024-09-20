@@ -18,6 +18,7 @@ if (import.meta.main) {
   // Parse args and check environment variables
   const {
     workspaceId,
+    changeSetId,
     userId,
     password,
     testsToRun,
@@ -25,9 +26,7 @@ if (import.meta.main) {
     token,
     reportFile,
     batchSize,
-  } = parseArgs(
-    Deno.args,
-  );
+  } = parseArgs(Deno.args);
   checkEnvironmentVariables(Deno.env.toObject());
 
   // Init the SDF Module
@@ -87,6 +86,7 @@ if (import.meta.main) {
           testName,
           testFuncs[testName],
           sdfApiClient,
+          changeSetId,
           testExecutionSequence++,
         );
         testPromises.push(testPromise);
@@ -95,11 +95,11 @@ if (import.meta.main) {
 
     elapsed = Date.now() - startTime;
 
-    const jitter = testProfile?.useJitter ? (Math.random() * 1000) : 0;
+    const jitter = testProfile?.useJitter ? Math.random() * 1000 : 0;
     const sleepAmount = testProfile?.rate ? testProfile.rate + jitter : 0;
 
     await sleep(sleepAmount);
-  } while (testProfile && elapsed < (testProfile.maxDuration * 1000));
+  } while (testProfile && elapsed < testProfile.maxDuration * 1000);
   console.log("Finished enqueuing jobs");
 
   await Promise.all(testPromises);
@@ -115,6 +115,7 @@ async function executeTest(
   testName: string,
   testFn: TestFunction,
   sdfApiClient: SdfApiClient,
+  changeSetId: string,
   sequence: number,
 ) {
   const testEntry = createDefaultTestReportEntry(testName);
@@ -122,7 +123,7 @@ async function executeTest(
   // Display progress bar immediately when the test is triggered (only if showProgressBar is true)
   try {
     const testStart = new Date();
-    await testFn(sdfApiClient);
+    await testFn(sdfApiClient, changeSetId);
     testEntry.test_result = "success";
     testEntry.finish_time = new Date().toISOString();
     testEntry.test_duration = `${new Date().getTime() - testStart.getTime()}ms`;

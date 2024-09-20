@@ -7,11 +7,19 @@ import {
 
 export default function create_two_components_connect_and_propagate(
   sdfApiClient: SdfApiClient,
+  changeSetId: string,
 ) {
-  return runWithTemporaryChangeset(
-    sdfApiClient,
-    create_two_components_connect_and_propagate_inner,
-  );
+  if (changeSetId) {
+    return create_two_components_connect_and_propagate_inner(
+      sdfApiClient,
+      changeSetId,
+    );
+  } else {
+    return runWithTemporaryChangeset(
+      sdfApiClient,
+      create_two_components_connect_and_propagate_inner,
+    );
+  }
 }
 
 async function create_two_components_connect_and_propagate_inner(
@@ -252,5 +260,16 @@ async function create_two_components_connect_and_propagate_inner(
       destinationRegionValue.value === regionValue,
       "Expected propagated value to match source",
     );
+  });
+
+  const deleteComponentPayload = {
+    componentIds: [instanceComponentId, regionComponentId],
+    forceErase: false,
+    visibility_change_set_pk: changeSetId,
+    workspaceId: sdf.workspaceId,
+  };
+  await sdf.call({
+    route: "delete_component",
+    body: deleteComponentPayload,
   });
 }

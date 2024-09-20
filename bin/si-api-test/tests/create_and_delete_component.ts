@@ -4,11 +4,16 @@ import { runWithTemporaryChangeset } from "../test_helpers.ts";
 
 export default async function create_and_delete_component(
   sdfApiClient: SdfApiClient,
+  changeSetId: string,
 ) {
-  return runWithTemporaryChangeset(
-    sdfApiClient,
-    create_and_delete_component_inner,
-  );
+  if (changeSetId) {
+    return await create_and_delete_component_inner(sdfApiClient, changeSetId);
+  } else {
+    return runWithTemporaryChangeset(
+      sdfApiClient,
+      create_and_delete_component_inner,
+    );
+  }
 }
 
 async function create_and_delete_component_inner(
