@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { z } from "zod";
+import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { ApiError } from "../lib/api-error";
 import { validate } from "../lib/validation-helpers";
 import {
@@ -335,7 +336,9 @@ router.get("/tos-details", async (ctx) => {
     throw new ApiError("Unauthorized", "You are not logged in");
   }
   const latestTosVersion = await findLatestTosForUser(ctx.state.authUser);
-  ctx.body = { tosVersion: latestTosVersion };
+
+  const tosVersion = ctx.state.authUser.agreedTosVersion === latestTosVersion ? null : latestTosVersion;
+  ctx.body = { tosVersion };
 });
 
 router.post("/tos-agreement", async (ctx) => {
@@ -344,11 +347,15 @@ router.post("/tos-agreement", async (ctx) => {
     throw new ApiError("Unauthorized", "You are not logged in");
   }
 
+  // Extract values of enum to array, and type cast it to the type zod needs to creat its enum validation
+  // the type casted to below just means the function expects at least one entry in the array,
+  // which we know we provide.
+  const tosVersionIds = Object.values(TosVersion) as [string, ...string[]];
+
   const reqBody = validate(
     ctx.request.body,
     z.object({
-      // TODO: validate the version is a real one... need to decide on format and how it will be stored
-      tosVersionId: z.string(),
+      tosVersionId: z.enum(tosVersionIds),
     }),
   );
 

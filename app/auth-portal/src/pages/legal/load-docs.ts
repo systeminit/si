@@ -1,7 +1,8 @@
 import { Tiles } from "@si/vue-lib/design-system";
 import { ComponentOptions } from "vue";
+import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 
-export const LEGAL_DOCS_CONTENT = {} as Record<
+type DocContents = Record<
   string,
   {
     title: string;
@@ -10,14 +11,31 @@ export const LEGAL_DOCS_CONTENT = {} as Record<
     component: ComponentOptions;
   }
 >;
-const docImports = import.meta.glob(`@/content/legal/2023-03-30/*.md`, {
+
+export const LEGAL_DOCS_CONTENT = {} as Record<TosVersion, DocContents>;
+
+const docImports = import.meta.glob(`@/content/legal/**/*.md`, {
   eager: true,
 });
 for (const fileName in docImports) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const importedDoc = docImports[fileName] as any;
-  const slug = fileName.replace(/.md$/, "").replace(/.*\/\d+-/, "");
-  LEGAL_DOCS_CONTENT[slug] = {
+  const { v: version, s: slug } =
+    fileName.match(/.*\/(?<v>.*)\/(?<s>.*)\.md/)?.groups ?? {};
+
+  const title = importedDoc.attributes?.title;
+
+  if (!version || !slug || !title) {
+    // eslint-disable-next-line no-console
+    console.error(`Error loading doc file ${fileName}`);
+    continue;
+  }
+
+  if (LEGAL_DOCS_CONTENT[version as TosVersion] === undefined) {
+    LEGAL_DOCS_CONTENT[version as TosVersion] = {};
+  }
+
+  LEGAL_DOCS_CONTENT[version as TosVersion][slug] = {
     title: importedDoc.attributes.title,
     slug,
     fileName,

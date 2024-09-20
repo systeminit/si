@@ -1,8 +1,10 @@
 import { ulid } from "ulidx";
 
-import { PrismaClient, User } from '@prisma/client';
-import { UserId, UserWithTosStatus } from './users.service';
+import { PrismaClient, User } from "@prisma/client";
+import { TosVersion } from "@si/ts-lib/src/terms-of-service";
+import { UserId } from "./users.service";
 import { tracker } from "../lib/tracker";
+import { posthog } from "../lib/posthog";
 
 const prisma = new PrismaClient();
 
@@ -26,12 +28,12 @@ export type TosVersions = {
   html?: string;
 };
 
-export const LATEST_TOS_VERSION_ID = '2023-03-30';
+export async function findLatestTosForUser(user: User) {
+  const saasReleaseEnabled = await posthog.isFeatureEnabled("auth_portal_saas_release", user.id);
 
-export async function findLatestTosForUser(user: UserWithTosStatus) {
-  // eventually this logic may be more complex...
-  if (user.agreedTosVersion === LATEST_TOS_VERSION_ID) return null;
-  return LATEST_TOS_VERSION_ID;
+  const latestTosVersion = saasReleaseEnabled ? TosVersion.v20240919 : TosVersion.v20230330;
+
+  return latestTosVersion;
 }
 
 export async function saveTosAgreement(
@@ -49,7 +51,7 @@ export async function saveTosAgreement(
       timestamp: new Date().toISOString(),
     },
   });
-  tracker.trackEvent(user, 'legal_agreed', { version: tosVersionId });
+  tracker.trackEvent(user, "legal_agreed", { version: tosVersionId });
 
   return newAgreement;
 }
