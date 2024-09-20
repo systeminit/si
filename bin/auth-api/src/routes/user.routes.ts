@@ -302,7 +302,20 @@ router.post("/users/:userId/complete-profile", async (ctx) => {
 
 router.post("/users/:userId/refresh-auth0-profile", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
-  await refreshUserAuth0Profile(user);
+  const refreshedUser = await refreshUserAuth0Profile(user);
+  if (refreshedUser.emailVerified && !user.emailVerified) {
+    // We want to capture when a user has refreshed their auth0 details
+    // this is usually because they are verifying their email so that
+    // they can use the platform
+    // We want to capture this now so that we can track them in hubspot
+    // PAUL: TODO - Add Lago data here
+    tracker.trackEvent(refreshedUser, "auth_connected", {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+  }
   ctx.body = { user };
 });
 router.post("/users/:userId/resend-email-verification", async (ctx) => {

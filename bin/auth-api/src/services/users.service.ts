@@ -139,12 +139,19 @@ export async function createOrUpdateUserFromAuth0Details(
   }
 
   if (isSignup) {
-    tracker.trackEvent(user, "auth_connected", {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    });
+    if (user.emailVerified) {
+      // We only want to send an auth connected event if a user
+      // has a verified email address
+      // This means we can stop bad customer data entering
+      // hubspot
+      // PAUL: TODO - Add Lago data here
+      tracker.trackEvent(user, "auth_connected", {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
+    }
 
     if (user.email.includes("@systeminit.com")) {
       await createWorkspace(
@@ -181,7 +188,7 @@ export async function refreshUserAuth0Profile(user: User) {
   }
   const auth0Details = await fetchAuth0Profile(user.auth0Id);
   setUserDataFromAuth0Details(user, auth0Details);
-  await saveUser(user);
+  return await saveUser(user);
 }
 
 function setUserDataFromAuth0Details(
