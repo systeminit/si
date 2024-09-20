@@ -29,9 +29,14 @@ export type TosVersions = {
 };
 
 export async function findLatestTosForUser(user: User) {
-  const saasReleaseEnabled = await posthog.isFeatureEnabled("auth_portal_saas_release", user.id);
+  const saasReleaseEnabled = await posthog.isFeatureEnabled(
+    "auth_portal_saas_release",
+    user.id,
+  );
 
-  const latestTosVersion = saasReleaseEnabled ? TosVersion.v20240919 : TosVersion.v20230330;
+  const latestTosVersion = saasReleaseEnabled
+    ? TosVersion.v20240925
+    : TosVersion.v20230330;
 
   return latestTosVersion;
 }

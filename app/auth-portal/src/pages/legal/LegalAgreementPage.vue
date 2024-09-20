@@ -146,7 +146,7 @@ const viewOnlyMode = route.name === "legal";
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
 const currentVersion = computed(() =>
-  featureFlagStore.SAAS_RELEASE ? TosVersion.v20240919 : TosVersion.v20230330,
+  featureFlagStore.SAAS_RELEASE ? TosVersion.v20240925 : TosVersion.v20230330,
 );
 
 const userAgreed = ref(false);
