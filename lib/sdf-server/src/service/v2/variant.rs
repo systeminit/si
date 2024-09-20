@@ -4,7 +4,7 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use dal::{ChangeSetError, SchemaVariantId, WsEventError};
+use dal::{cached_module::CachedModuleError, ChangeSetError, SchemaVariantId, WsEventError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -18,6 +18,8 @@ mod list_variants;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SchemaVariantsAPIError {
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("cannot delete locked schema variant: {0}")]
     CannotDeleteLockedSchemaVariant(SchemaVariantId),
     #[error("cannot delete a schema variant that has attached components")]

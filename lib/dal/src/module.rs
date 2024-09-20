@@ -319,7 +319,7 @@ impl Module {
                     inner.content_address().into();
 
                 if inner_addr_discrim == ContentAddressDiscriminants::Schema {
-                    let schema = Schema::get_by_id(ctx, inner.id().into()).await?;
+                    let schema = Schema::get_by_id_or_error(ctx, inner.id().into()).await?;
                     all_schemas.push(schema);
                 }
             }

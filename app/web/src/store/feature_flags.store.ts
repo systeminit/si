@@ -11,6 +11,7 @@ const FLAG_MAPPING = {
   DEV_SLICE_REBASING: "dev-slice-rebasing",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   SHOW_INTRINSIC_EDITING: "asset_detail_intrinsic_editing",
+  ON_DEMAND_ASSETS: "on_demand_assets",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

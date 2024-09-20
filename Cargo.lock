@@ -1698,6 +1698,7 @@ dependencies = [
  "itertools 0.12.1",
  "jwt-simple",
  "lazy_static",
+ "module-index-client",
  "nats-subscriber",
  "object-tree",
  "once_cell",

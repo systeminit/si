@@ -22,6 +22,7 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct AuthConnectRequest {
     pub code: String,
+    pub on_demand_assets: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -77,6 +78,7 @@ pub struct AuthApiConnectResponse {
 pub struct AuthApiReconnectResponse {
     pub user: AuthApiUser,
     pub workspace: AuthApiWorkspace,
+    pub on_demand_assets: Option<bool>,
 }
 
 // TODO: pull value from env vars / dotenv files
@@ -90,6 +92,7 @@ async fn find_or_create_user_and_workspace(
     auth_api_workspace: AuthApiWorkspace,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: &[String],
+    on_demand_assets: bool,
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
@@ -132,32 +135,7 @@ async fn find_or_create_user_and_workspace(
                 create_workspace_allowlist,
             )
             .await?;
-
-            if create_permission {
-                let workspace = Workspace::new(
-                    &mut ctx,
-                    auth_api_workspace.id,
-                    auth_api_workspace.display_name.clone(),
-                )
-                .await?;
-                let _key_pair = KeyPair::new(&ctx, "default").await?;
-
-                track(
-                    &posthog_client,
-                    &ctx,
-                    original_uri,
-                    host_name,
-                    "workspace_first_loaded",
-                    serde_json::json!({
-                        "change_set_id": ctx.change_set_id(),
-                        "workspace_id": workspace.pk(),
-                        "workspace_name": auth_api_workspace.display_name,
-                        "user_id": user.pk(),
-                    }),
-                );
-
-                workspace
-            } else {
+            if !create_permission {
                 warn!(
                     "user: {} has no permissions to create workspace: {:#?}",
                     &user.email(),
@@ -165,13 +143,48 @@ async fn find_or_create_user_and_workspace(
                 );
                 return Err(SessionError::WorkspacePermissions);
             }
+
+            let workspace = if on_demand_assets {
+                Workspace::new_for_on_demand_assets(
+                    &mut ctx,
+                    auth_api_workspace.id,
+                    auth_api_workspace.display_name.clone(),
+                )
+                .await?
+            } else {
+                Workspace::new_from_builtin(
+                    &mut ctx,
+                    auth_api_workspace.id,
+                    auth_api_workspace.display_name.clone(),
+                )
+                .await?
+            };
+
+            let _key_pair = KeyPair::new(&ctx, "default").await?;
+
+            track(
+                &posthog_client,
+                &ctx,
+                original_uri,
+                host_name,
+                "workspace_first_loaded",
+                serde_json::json!({
+                    "change_set_id": ctx.change_set_id(),
+                    "workspace_id": workspace.pk(),
+                    "workspace_name": auth_api_workspace.display_name,
+                    "user_id": user.pk(),
+                    "on_demand_assets": on_demand_assets,
+                }),
+            );
+
+            workspace
         }
     };
 
     // ensure workspace is associated to user
     user.associate_workspace(&ctx, *workspace.pk()).await?;
 
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
     Ok((user, workspace))
 }
@@ -214,6 +227,7 @@ pub async fn auth_connect(
         res_body.workspace,
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
+        request.on_demand_assets.unwrap_or(false),
     )
     .await?;
 
@@ -233,14 +247,14 @@ pub async fn auth_reconnect(
     State(state): State<AppState>,
 ) -> SessionResult<Json<AuthReconnectResponse>> {
     let client = reqwest::Client::new();
-    let res = client
+    let auth_response = client
         .get(format!("{}/auth-reconnect", state.auth_api_url()))
         .bearer_auth(&raw_access_token)
         .send()
         .await?;
 
-    if res.status() != reqwest::StatusCode::OK {
-        let res_err_body = res
+    if auth_response.status() != reqwest::StatusCode::OK {
+        let res_err_body = auth_response
             .json::<AuthApiErrBody>()
             .await
             .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
@@ -248,7 +262,7 @@ pub async fn auth_reconnect(
         return Err(SessionError::AuthApiError(res_err_body.message));
     }
 
-    let res_body = res.json::<AuthApiReconnectResponse>().await?;
+    let auth_response_body = auth_response.json::<AuthApiReconnectResponse>().await?;
 
     let ctx = builder.build_default().await?;
 
@@ -257,10 +271,11 @@ pub async fn auth_reconnect(
         &original_uri,
         &host_name,
         PosthogClient(posthog_client),
-        res_body.user,
-        res_body.workspace,
+        auth_response_body.user,
+        auth_response_body.workspace,
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
+        auth_response_body.on_demand_assets.unwrap_or(false),
     )
     .await?;
 

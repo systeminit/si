@@ -23,6 +23,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
     Eq,
     PartialEq,
     Serialize,
+    Default,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum ComponentType {
@@ -31,6 +32,7 @@ pub enum ComponentType {
     AggregationFrame,
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
+    #[default]
     Component,
     #[serde(
         alias = "ConfigurationFrameDown",

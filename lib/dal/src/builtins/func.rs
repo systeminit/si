@@ -46,3 +46,11 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
 
     Ok(())
 }
+
+#[instrument(skip_all)]
+pub async fn migrate_intrinsics_no_commit(ctx: &DalContext) -> BuiltinsResult<()> {
+    let intrinsics_pkg_spec = IntrinsicFunc::pkg_spec()?;
+    let intrinsics_pkg = SiPkg::load_from_spec(intrinsics_pkg_spec)?;
+    import_pkg_from_pkg(ctx, &intrinsics_pkg, None).await?;
+    Ok(())
+}

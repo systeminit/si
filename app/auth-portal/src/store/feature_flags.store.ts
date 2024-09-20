@@ -16,6 +16,7 @@ export const useFeatureFlagsStore = () => {
         SIMPLIFIED_SIGNUP: false,
         ADMIN_PAGE: false,
         SAAS_RELEASE: false,
+        ON_DEMAND_ASSETS: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
@@ -28,6 +29,7 @@ export const useFeatureFlagsStore = () => {
             flags.includes("edit_workspaces") || this.CREATE_WORKSPACES;
           this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
           this.SAAS_RELEASE = flags.includes("auth_portal_saas_release");
+          this.ON_DEMAND_ASSETS = flags.includes("on_demand_assets");
         });
       },
     }),

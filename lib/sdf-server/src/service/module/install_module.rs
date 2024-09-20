@@ -28,7 +28,6 @@ pub struct InstallModuleRequest {
     pub visibility: Visibility,
 }
 
-#[allow(clippy::panic)]
 pub async fn install_module(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -55,7 +54,7 @@ pub async fn install_module(
         let module_details = module_index_client.module_details(id).await?;
         let pkg_data = module_index_client.download_module(id).await?;
 
-        let pkg = SiPkg::load_from_bytes(pkg_data)?;
+        let pkg = SiPkg::load_from_bytes(&pkg_data)?;
 
         let (schema_id, past_module_hashes) = if pkg.schemas()?.len() > 1 {
             (None, None)

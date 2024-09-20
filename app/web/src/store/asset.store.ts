@@ -4,7 +4,12 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncId, FuncKind } from "@/api/sdf/dal/func";
-import { SchemaId, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  SchemaId,
+  SchemaVariant,
+  SchemaVariantId,
+  UninstalledVariant,
+} from "@/api/sdf/dal/schema";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
@@ -464,11 +469,14 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async LOAD_SCHEMA_VARIANT_LIST() {
-          return new ApiRequest<SchemaVariant[], Visibility>({
+          return new ApiRequest<
+            { installed: SchemaVariant[]; uninstalled: UninstalledVariant[] },
+            Visibility
+          >({
             url: API_PREFIX,
             params: { ...visibility },
             onSuccess: (response) => {
-              this.variantList = response;
+              this.variantList = response.installed;
             },
           });
         },

@@ -101,6 +101,12 @@ export const useAdminStore = () => {
             url: `${API_PREFIX}/func/runs/${funcRunId}/kill_execution`,
           });
         },
+        async UPDATE_MODULE_CACHE() {
+          return new ApiRequest<{ new_modules: object[] }>({
+            method: "post",
+            url: `${API_PREFIX}/update_module_cache`,
+          });
+        },
       },
       onActivated() {
         return () => {};

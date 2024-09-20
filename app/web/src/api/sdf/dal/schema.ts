@@ -43,6 +43,17 @@ export interface InputSocket {
   eligibleToSendData: boolean;
 }
 
+export interface UninstalledVariant {
+  schemaId: string;
+  schemaName: string;
+  displayName: string | null;
+  category: string;
+  color: string;
+  componentType: ComponentType;
+  link: string | null;
+  description: string | null;
+}
+
 export interface SchemaVariant {
   schemaVariantId: string;
   schemaName: string;

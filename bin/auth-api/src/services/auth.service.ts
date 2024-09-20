@@ -10,6 +10,7 @@ import { createJWT, verifyJWT } from "../lib/jwt";
 import { tryCatch } from "../lib/try-catch";
 import { getUserById } from "./users.service";
 import { getWorkspaceById } from "./workspaces.service";
+import { posthog } from "../lib/posthog";
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -134,5 +135,21 @@ export async function beginAuthConnect(workspace: Workspace, user: User) {
     userId: user.id,
   }, { expiresIn: 60 });
 
-  return `${workspace.instanceUrl}/auth-connect?code=${connectCode}`;
+  return await makeAuthConnectUrl(workspace, user, connectCode);
+}
+
+export async function makeAuthConnectUrl(workspace: Workspace, user: User, code: string, redirect?: string) {
+  const params: { [key: string]: string } = { code };
+
+  const onDemandAssets = await posthog.isFeatureEnabled("on_demand_assets", user.id);
+  if (onDemandAssets) {
+    params.onDemandAssets = `true`;
+  }
+  if (redirect) {
+    params.redirect = redirect;
+  }
+
+  const paramsString = Object.keys(params).map((key) => `${key}=${params[key]}`).join("&");
+
+  return `${workspace.instanceUrl}/auth-connect?${paramsString}`;
 }

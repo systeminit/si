@@ -7,9 +7,9 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use dal::{
-    func::runner::FuncRunnerError, workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants,
-    ChangeSet, ChangeSetId, ChangeSetStatus, User, UserPk, Workspace, WorkspacePk,
-    WorkspaceSnapshotAddress,
+    cached_module::CachedModuleError, func::runner::FuncRunnerError,
+    workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants, ChangeSet, ChangeSetId,
+    ChangeSetStatus, User, UserPk, Workspace, WorkspacePk, WorkspaceSnapshotAddress,
 };
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -24,6 +24,7 @@ mod list_workspace_users;
 mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
+mod update_module_cache;
 
 // 1GB
 const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 1024;
@@ -33,6 +34,8 @@ const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 1024;
 pub enum AdminAPIError {
     #[error("axum http error: {0}")]
     AxumHttp(#[from] axum::http::Error),
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set {0} not found")]
@@ -155,6 +158,10 @@ pub type AdminAPIResult<T> = Result<T, AdminAPIError>;
 
 pub fn v2_routes(state: AppState) -> Router<AppState> {
     Router::new()
+        .route(
+            "/update_module_cache",
+            post(update_module_cache::update_module_cache),
+        )
         .route(
             "/func/runs/:func_run_id/kill_execution",
             put(kill_execution::kill_execution),

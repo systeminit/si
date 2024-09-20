@@ -47,14 +47,14 @@ impl<T> ObjectTree<T> {
     /// - An expected file does not exist or cannot be opened
     /// - A node file fails to be correctly parsed
     /// - The resulting tree structure has no root node or multiple root nodes
-    pub fn read_from_tar<N>(tar_data: Vec<u8>) -> Result<ObjectTree<N>, TarReadError>
+    pub fn read_from_tar<N>(tar_data: &[u8]) -> Result<ObjectTree<N>, TarReadError>
     where
         N: ReadBytes,
     {
         let mut graph = Graph::new();
         let mut root_idx: Option<NodeIndex> = None;
 
-        let mut unpacked_tar = ::tar::Archive::new(tar_data.as_slice());
+        let mut unpacked_tar = ::tar::Archive::new(tar_data);
         let mut tar_data = HashMap::new();
         for maybe_tar_entry in unpacked_tar.entries()? {
             let mut tar_entry = maybe_tar_entry?;

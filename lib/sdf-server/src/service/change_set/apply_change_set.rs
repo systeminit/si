@@ -52,7 +52,7 @@ pub async fn apply_change_set(
 
     // Lock all unlocked variants
     for schema_id in Schema::list_ids(&ctx).await? {
-        let schema = Schema::get_by_id(&ctx, schema_id).await?;
+        let schema = Schema::get_by_id_or_error(&ctx, schema_id).await?;
         let Some(variant) = SchemaVariant::get_unlocked_for_schema(&ctx, schema_id).await? else {
             continue;
         };

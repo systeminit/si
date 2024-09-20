@@ -17,5 +17,5 @@ pub use crate::module::{
     BuiltinModules, LatestModule, ModuleContributeRequest, ModuleDetails, SyncedModules,
 };
 pub use crate::schema_variant::{
-    ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant,
+    ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant, UninstalledVariant,
 };

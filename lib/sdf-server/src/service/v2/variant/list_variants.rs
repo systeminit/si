@@ -2,7 +2,9 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::{ChangeSetId, SchemaVariant, WorkspacePk};
+use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
+use frontend_types::{SchemaVariant as FrontendVariant, UninstalledVariant};
+use serde::{Deserialize, Serialize};
 use si_frontend_types as frontend_types;
 
 use crate::{
@@ -11,6 +13,13 @@ use crate::{
     track,
 };
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListVariantsResponse {
+    installed: Vec<FrontendVariant>,
+    uninstalled: Vec<UninstalledVariant>,
+}
+
 pub async fn list_variants(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -18,12 +27,22 @@ pub async fn list_variants(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> Result<Json<Vec<frontend_types::SchemaVariant>>, SchemaVariantsAPIError> {
+) -> Result<Json<ListVariantsResponse>, SchemaVariantsAPIError> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let schema_variants = SchemaVariant::list_user_facing(&ctx).await?;
+    let installed = SchemaVariant::list_user_facing(&ctx).await?;
+    let uninstalled: Vec<UninstalledVariant> = CachedModule::latest_modules(&ctx)
+        .await?
+        .into_iter()
+        .filter(|module| {
+            !installed
+                .iter()
+                .any(|variant| variant.schema_id == module.schema_id.into())
+        })
+        .map(Into::into)
+        .collect();
 
     track(
         &posthog_client,
@@ -34,5 +53,8 @@ pub async fn list_variants(
         serde_json::json!({}),
     );
 
-    Ok(Json(schema_variants))
+    Ok(Json(ListVariantsResponse {
+        installed,
+        uninstalled,
+    }))
 }

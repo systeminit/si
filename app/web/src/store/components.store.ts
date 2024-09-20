@@ -21,6 +21,7 @@ import {
   ComponentType,
   SchemaVariant,
   SchemaVariantId,
+  UninstalledVariant,
 } from "@/api/sdf/dal/schema";
 import { ChangeSetId, ChangeStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
@@ -49,6 +50,7 @@ import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 type RequestUlid = string;
 
@@ -81,9 +83,25 @@ export type ComponentTreeNode = {
   statusIcons?: StatusIconsSet;
 } & FullComponent;
 
+export interface CategoryInstalledVariant {
+  type: "installed";
+  id: string;
+  variant: SchemaVariant;
+}
+
+export interface CategoryUninstalledVariant {
+  type: "uninstalled";
+  id: string;
+  variant: UninstalledVariant;
+}
+
+export type CategoryVariant =
+  | CategoryInstalledVariant
+  | CategoryUninstalledVariant;
+
 export type Categories = {
   displayName: string;
-  schemaVariants: SchemaVariant[];
+  schemaVariants: CategoryVariant[];
 }[];
 
 export interface AttributeDebugView {
@@ -295,6 +313,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           edgesById: {} as Record<EdgeId, Edge>,
           schemaVariantsById: {} as Record<SchemaVariantId, SchemaVariant>,
+          uninstalledVariants: [] as UninstalledVariant[],
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -305,8 +324,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           panTargetComponentId: null as ComponentId | null,
 
-          // used by the diagram to track which schema is selected for insertion
-          selectedInsertSchemaVariantId: null as SchemaVariantId | null,
+          // used by the diagram to track which schema is selected for
+          // insertion. These ids are unique to category variants and
+          // can only be used to look up the variant/uninstalled module
+          // in `categoryVariantById`
+          selectedInsertCategoryVariantId: null as string | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
@@ -571,24 +593,65 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           schemaVariants: (state) => _.values(state.schemaVariantsById),
 
           categories(): Categories {
-            const groups = _.groupBy(this.schemaVariants, "category");
-            return Object.keys(groups)
+            const featureFlagsStore = useFeatureFlagsStore();
+            const installedGroups = _.groupBy(this.schemaVariants, "category");
+            const uninstalledGroups = featureFlagsStore.ON_DEMAND_ASSETS
+              ? _.groupBy(this.uninstalledVariants, "category")
+              : {};
+
+            const mergedKeys = _.uniq([
+              ...Object.keys(installedGroups),
+              ...Object.keys(uninstalledGroups),
+            ]);
+
+            return mergedKeys
               .map((category) => {
-                const variants = groups[category];
-                if (!variants) return null;
+                const installedVariants: CategoryInstalledVariant[] =
+                  installedGroups[category]
+                    ?.filter((v) => v.canCreateNewComponents)
+                    .map((v) => ({
+                      type: "installed",
+                      id: `installed-${v.schemaVariantId}`,
+                      variant: v,
+                    })) ?? [];
+
+                const uninstalledVariants: CategoryUninstalledVariant[] =
+                  uninstalledGroups[category]?.map((v) => ({
+                    type: "uninstalled",
+                    id: `uninstalled-${v.schemaId}`,
+                    variant: v,
+                  })) ?? [];
+
+                const schemaVariants: CategoryVariant[] = [
+                  ...uninstalledVariants,
+                  ...installedVariants,
+                ];
+                schemaVariants.sort((a, b) =>
+                  (
+                    a.variant.displayName || a.variant.schemaName
+                  )?.localeCompare(
+                    b.variant.displayName || b.variant.schemaName,
+                  ),
+                );
+
                 return {
                   displayName: category,
-                  schemaVariants: variants
-                    .filter((v) => v.canCreateNewComponents)
-                    .sort((a, b) =>
-                      (a.displayName || a.schemaName)?.localeCompare(
-                        b.displayName || b.schemaName,
-                      ),
-                    ),
+                  schemaVariants,
                 };
               })
               .filter(nonNullable)
               .sort((a, b) => a.displayName.localeCompare(b.displayName));
+          },
+
+          // The "category variants", which include both installed and
+          // uninstalled, by their unique ids
+          categoryVariantById(): { [key: string]: CategoryVariant } {
+            return this.categories.reduce((accum, category) => {
+              category.schemaVariants.forEach((variant) => {
+                accum[variant.id] = variant;
+              });
+              return accum;
+            }, {} as { [key: string]: CategoryVariant });
           },
 
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
@@ -1013,7 +1076,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async FETCH_AVAILABLE_SCHEMAS() {
-            return new ApiRequest<Array<SchemaVariant>>({
+            return new ApiRequest<{
+              installed: SchemaVariant[];
+              uninstalled: UninstalledVariant[];
+            }>({
               url: [
                 "v2",
                 "workspaces",
@@ -1026,7 +1092,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                this.schemaVariantsById = _.keyBy(response, "schemaVariantId");
+                this.schemaVariantsById = _.keyBy(
+                  response.installed,
+                  "schemaVariantId",
+                );
+                this.uninstalledVariants = response.uninstalled;
               },
             });
           },
@@ -1223,16 +1293,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          setInsertSchema(schemaVariantId: SchemaVariantId) {
-            this.selectedInsertSchemaVariantId = schemaVariantId;
+          setInsertSchema(id: string) {
+            this.selectedInsertCategoryVariantId = id;
             this.setSelectedComponentId(null);
           },
           cancelInsert() {
-            this.selectedInsertSchemaVariantId = null;
+            this.selectedInsertCategoryVariantId = null;
           },
 
           async CREATE_COMPONENT(
-            schemaVariantId: SchemaVariantId,
+            categoryVariantId: string,
             position: Vector2d,
             parentId?: string,
             size?: Size2D,
@@ -1242,22 +1312,38 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
+            const categoryVariant = this.categoryVariantById[categoryVariantId];
+            if (!categoryVariant) {
+              return;
+            }
+
+            const idAndType =
+              categoryVariant.type === "installed"
+                ? {
+                    schemaType: "installed",
+                    schemaVariantId: categoryVariant.variant.schemaVariantId,
+                  }
+                : {
+                    schemaType: "uninstalled",
+                    schemaId: categoryVariant.variant.schemaId,
+                  };
+
             const tempInsertId = _.uniqueId("temp-insert-component");
 
             return new ApiRequest<{
               componentId: ComponentId;
-              nodeId: ComponentNodeId;
+              installedVariant?: SchemaVariant;
             }>({
               method: "post",
               url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
-                schemaVariantId,
                 parentId,
                 x: position.x.toString(),
                 y: position.y.toString(),
                 height: size?.height.toString(),
                 width: size?.width.toString(),
+                ...idAndType,
                 ...visibilityParams,
               },
               optimistic: () => {
@@ -1282,9 +1368,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 delete this.pendingInsertedComponents[tempInsertId];
+                if (
+                  categoryVariant.type === "uninstalled" &&
+                  response.installedVariant
+                ) {
+                  const installedVariant = response.installedVariant;
+                  this.uninstalledVariants = this.uninstalledVariants.filter(
+                    (variant) => variant.schemaId !== installedVariant.schemaId,
+                  );
+                  this.schemaVariantsById[installedVariant.schemaVariantId] =
+                    installedVariant;
+                }
               },
             });
           },
+
           async CREATE_COMPONENT_CONNECTION(
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },

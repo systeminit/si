@@ -24,9 +24,10 @@ import {
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
-import { createSdfAuthToken } from "../services/auth.service";
+import { makeAuthConnectUrl, createSdfAuthToken } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
+import { posthog } from "../lib/posthog";
 import { extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
@@ -366,8 +367,6 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
     }),
   );
 
-  const redirectArg = redirect ? `&redirect=${redirect}` : "";
-
   // generate a new single use authentication code that we will send to the instance
   const connectCode = nanoid(24);
   await setCache(
@@ -379,8 +378,10 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
     { expiresIn: 60 },
   );
 
+  const redirectUrl = await makeAuthConnectUrl(workspace, authUser, connectCode, redirect);
+
   // redirect to instance (frontend) with single use auth code
-  ctx.redirect(`${workspace.instanceUrl}/auth-connect?code=${connectCode}${redirectArg}`);
+  ctx.redirect(redirectUrl);
 });
 
 router.post("/complete-auth-connect", async (ctx) => {
@@ -418,8 +419,19 @@ router.get("/auth-reconnect", async (ctx) => {
     );
   }
 
-  ctx.body = {
+  const body: {
+    user: typeof authUser,
+    workspace: typeof ctx.state.authWorkspace
+    onDemandAssets?: boolean,
+  } = {
     user: authUser,
     workspace: ctx.state.authWorkspace,
   };
+
+  const onDemandAssets = await posthog.isFeatureEnabled("on_demand_assets", authUser.id);
+  if (onDemandAssets) {
+    body.onDemandAssets = true;
+  }
+
+  ctx.body = { ...body };
 });
