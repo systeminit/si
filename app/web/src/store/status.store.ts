@@ -142,6 +142,15 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
+          resetWhenChangingChangeset() {
+            this.activeComponents = {};
+            this.rebaseStatus = {
+              rebaseStart: undefined,
+              rebaseFinished: undefined,
+              count: 0,
+            };
+            this.dvuRootsCount = 0;
+          },
           async FETCH_DVU_ROOTS() {
             return new ApiRequest<{ count: number }>({
               url: "diagram/dvu_roots",

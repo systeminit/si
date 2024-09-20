@@ -17,6 +17,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
+import { useStatusStore } from "./status.store";
 
 const toast = useToast();
 
@@ -108,6 +109,9 @@ export function useChangeSetsStore() {
               changeSetId,
             },
           });
+
+          const statusStore = useStatusStore(changeSetId);
+          statusStore.resetWhenChangingChangeset();
         },
 
         async FETCH_CHANGE_SETS() {
@@ -161,6 +165,8 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
+              const statusStore = useStatusStore();
+              statusStore.resetWhenChangingChangeset();
             },
           });
         },
