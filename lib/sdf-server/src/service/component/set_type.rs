@@ -44,9 +44,9 @@ pub async fn set_type(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
+    Component::update_type_by_id(&ctx, component_id, component_type).await?;
     let mut component = Component::get_by_id(&ctx, component_id).await?;
 
-    component.set_type(&ctx, component_type).await?;
     if let Some(geometry) = overridden_geometry {
         component
             .set_geometry(

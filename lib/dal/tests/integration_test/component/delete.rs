@@ -5,10 +5,11 @@ use dal::action::Action;
 use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::{AttributeValue, Func, InputSocket, OutputSocket};
+use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, update_attribute_value_for_component,
+    create_component_for_default_schema_name, create_component_for_schema_name_with_type,
+    update_attribute_value_for_component,
 };
 use dal_test::helpers::{get_component_input_socket_value, ChangeSetTestHelpers};
 use dal_test::test;
@@ -564,18 +565,20 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
     // 2. Remove only the middle one (which is not really possible via the UI but that's ok)
     // 3. Make sure the component is re-parented to the outer most frame and that data flows as expected
     // create a frame
-    let outer_frame = create_component_for_default_schema_name(ctx, "large odd lego", "large odd")
-        .await
-        .expect("could not create component");
+    let outer_frame = create_component_for_schema_name_with_type(
+        ctx,
+        "large odd lego",
+        "large odd",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // cache id to use throughout the test
     let outer_frame_id = outer_frame.id();
-    outer_frame
-        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
-        .await
-        .expect("could not set type");
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -593,30 +596,32 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     // create another frame that won't pass data
-    let inner_frame = create_component_for_default_schema_name(ctx, "swifty", "swifty")
-        .await
-        .expect("could not create component");
+    let inner_frame = create_component_for_schema_name_with_type(
+        ctx,
+        "swifty",
+        "swifty",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
 
     let inner_frame_id = inner_frame.id();
-    inner_frame
-        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
-        .await
-        .expect("could not set type");
 
     Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
 
     // create a component that takes input from the top most
-    let component = create_component_for_default_schema_name(ctx, "large even lego", "large even")
-        .await
-        .expect("could not create component");
+    let component = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "large even",
+        ComponentType::Component,
+    )
+    .await
+    .expect("could not create component");
 
     let component_id = component.id();
-    component
-        .set_type(ctx, dal::ComponentType::Component)
-        .await
-        .expect("could not set type");
 
     Frame::upsert_parent(ctx, component.id(), inner_frame.id())
         .await
@@ -661,21 +666,21 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .await
         .expect("could not fork head");
     // create a frame
-    let outer_frame = create_component_for_default_schema_name(ctx, "large odd lego", "large odd")
-        .await
-        .expect("could not create component");
+    let outer_frame = create_component_for_schema_name_with_type(
+        ctx,
+        "large odd lego",
+        "large odd",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+    let outer_frame_id = outer_frame.id();
+
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
     // cache id to use throughout the test
-    let outer_frame_id = outer_frame.id();
-    outer_frame
-        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
-        .await
-        .expect("could not set type");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+
     // set a value on the outer frame that will pass to the component
     update_attribute_value_for_component(
         ctx,
@@ -699,33 +704,35 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     // create another frame that won't pass data
-    let inner_frame = create_component_for_default_schema_name(ctx, "swifty", "swifty")
-        .await
-        .expect("could not create component");
+    let inner_frame = create_component_for_schema_name_with_type(
+        ctx,
+        "swifty",
+        "swifty",
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
 
     let inner_frame_id = inner_frame.id();
-    inner_frame
-        .set_type(ctx, dal::ComponentType::ConfigurationFrameDown)
-        .await
-        .expect("could not set type");
 
     Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
 
     // create a component that takes input from the top most
-    let component = create_component_for_default_schema_name(ctx, "large even lego", "large even")
-        .await
-        .expect("could not create component");
+    let component = create_component_for_schema_name_with_type(
+        ctx,
+        "large even lego",
+        "large even",
+        ComponentType::Component,
+    )
+    .await
+    .expect("could not create component");
     component
         .set_resource(ctx, resource_data)
         .await
         .expect("could not set resource");
     let component_id = component.id();
-    component
-        .set_type(ctx, dal::ComponentType::Component)
-        .await
-        .expect("could not set type");
 
     Frame::upsert_parent(ctx, component.id(), inner_frame.id())
         .await

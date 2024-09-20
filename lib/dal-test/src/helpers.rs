@@ -119,7 +119,7 @@ pub async fn create_component_for_schema_name_with_type(
         .ok_or(eyre!("schema not found"))?;
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
     let component = Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?;
-    component.set_type(ctx, component_type).await?;
+    Component::set_type_by_id(ctx, component.id(), component_type).await?;
     Ok(component)
 }
 
