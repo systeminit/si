@@ -16,7 +16,7 @@ import ProfilePage from "./pages/ProfilePage.vue";
 import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
 import SetupProductionUser from "./pages/SetupProductionUser.vue";
 
-// normally we'd initialze a router directly, but instead we pass the options to ViteSSG
+// normally we'd initialize a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
   routes: [
     { path: "/", name: "home", redirect: { name: "login" } },

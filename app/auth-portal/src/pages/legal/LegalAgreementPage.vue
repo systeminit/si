@@ -21,7 +21,7 @@
       <div class="flex-none w-[220px]">
         <div class="sticky top-md flex flex-col gap-md">
           <div
-            v-for="doc in LEGAL_DOCS_CONTENT"
+            v-for="doc in LEGAL_DOCS_CONTENT[currentVersion]"
             :key="doc.fileName"
             :class="
               clsx(
@@ -68,7 +68,7 @@
         class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
       >
         <div
-          v-for="(doc, key, index) in LEGAL_DOCS_CONTENT"
+          v-for="(doc, key, index) in LEGAL_DOCS_CONTENT[currentVersion]"
           :key="key"
           :class="
             !viewOnlyMode ||
@@ -83,15 +83,15 @@
           </RichText>
           <div class="mt-md">
             <VButton
-              icon="download"
-              variant="soft"
-              tone="shade"
-              size="sm"
               :linkTo="{
                 name: 'print-legal',
-                params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
+                params: { docVersion: currentVersion, docSlug: doc.slug },
               }"
+              icon="download"
+              size="sm"
               target="_blank"
+              tone="shade"
+              variant="soft"
               >Print / Download
             </VButton>
           </div>
@@ -102,10 +102,10 @@
             >I have read and agree to the terms above
           </VormInput>
           <VButton
-            variant="solid"
-            icon="arrow--right"
             :disabled="disableContinueButton"
             :requestStatus="agreeTosReqStatus"
+            icon="arrow--right"
+            variant="solid"
             @click="agreeButtonHandler"
           >
             Agree & Continue
@@ -116,7 +116,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -130,10 +130,13 @@ import {
 import { RichText, Stack, VButton, VormInput } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useHead } from "@vueuse/head";
+import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { useAuthStore } from "@/store/auth.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { LEGAL_DOCS_CONTENT } from "./load-docs";
 
 const authStore = useAuthStore();
+const featureFlagStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -142,7 +145,9 @@ const viewOnlyMode = route.name === "legal";
 
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
-const CURRENT_VERSION = "2023-03-30";
+const currentVersion = computed(() =>
+  featureFlagStore.SAAS_RELEASE ? TosVersion.v20240919 : TosVersion.v20230330,
+);
 
 const userAgreed = ref(false);
 
@@ -168,7 +173,7 @@ watch(() => authStore.user?.needsTosUpdate, loadTosDetails, {
 
 async function agreeButtonHandler() {
   const isFirstAgreement = !authStore.user?.agreedTosVersion;
-  const agreeReq = await authStore.AGREE_TOS(CURRENT_VERSION);
+  const agreeReq = await authStore.AGREE_TOS(currentVersion.value);
   if (agreeReq.result.success) {
     await router.push({ name: isFirstAgreement ? "profile" : "login-success" });
   }
@@ -182,7 +187,7 @@ function scrollToDoc(slug: string) {
   scrollingToSlug.value = slug;
 }
 
-// track all intersecting secitons, and current one should be the last in the list
+// track all intersecting sections, and current one should be the last in the list
 const intersectingDocs = reactive<Record<string, boolean>>({});
 const activeDocSlug = ref("tos");
 const observer = new IntersectionObserver(
@@ -203,7 +208,7 @@ const observer = new IntersectionObserver(
 );
 watch(activeDocSlug, () => {
   /* eslint-disable @typescript-eslint/no-floating-promises */
-  router.replace({ ...route, params: { docSlug: activeDocSlug.value } });
+  router.replace({ ...route, hash: `#${activeDocSlug.value}` });
 });
 
 const enableObserver = () => {
@@ -224,8 +229,8 @@ onMounted(() => {
   });
 
   // if url refers to a specific doc, we'll scroll to it right away
-  if (route.params.docSlug) {
-    scrollToDoc(route.params.docSlug as string);
+  if (route.hash) {
+    scrollToDoc(route.hash.replace("#", ""));
   }
 });
 onBeforeUnmount(() => {

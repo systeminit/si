@@ -1,17 +1,20 @@
 <template>
   <div class="p-lg bg-white text-black">
     <RichText>
-      <Component :is="LEGAL_DOCS_CONTENT[urlDocSlug].component" />
+      <Component
+        :is="LEGAL_DOCS_CONTENT[urlDocVersion as TosVersion][urlDocSlug].component"
+      />
     </RichText>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { RichText } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { onMounted } from "vue";
 import { useRoute } from "vue-router";
 
+import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { LEGAL_DOCS_CONTENT } from "./load-docs";
 
 const route = useRoute();

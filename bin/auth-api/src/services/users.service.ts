@@ -8,10 +8,10 @@ import {
   LOCAL_WORKSPACE_URL,
   SAAS_WORKSPACE_URL,
 } from "./workspaces.service";
-import { LATEST_TOS_VERSION_ID } from "./tos.service";
 import { tracker } from "../lib/tracker";
 import { fetchAuth0Profile } from "./auth0.service";
 import { ApiError } from "../lib/api-error";
+import { findLatestTosForUser } from "./tos.service";
 
 const prisma = new PrismaClient();
 
@@ -35,7 +35,10 @@ export async function getUserById(id: UserId) {
   if (!userWithTosAgreement) return null;
 
   const agreedTosVersion = userWithTosAgreement?.TosAgreement?.[0]?.tosVersionId;
-  const needsTosUpdate = !agreedTosVersion || agreedTosVersion < LATEST_TOS_VERSION_ID;
+
+  const latestTosVersion = await findLatestTosForUser(userWithTosAgreement);
+
+  const needsTosUpdate = !agreedTosVersion || agreedTosVersion < latestTosVersion;
 
   return {
     ..._.omit(userWithTosAgreement, "TosAgreement"),
