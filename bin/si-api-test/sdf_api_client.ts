@@ -102,6 +102,12 @@ export const ROUTES = {
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs`,
     method: "GET",
   },
+
+  // Websockets -----------------------------------------
+  workspace_updates_ws: {
+    path: (vars: ROUTE_VARS) => `/ws/workspace_updates?token=${vars.token}`,
+    method: "GET", // Not really relevant for WebSocket, but keeps the structure consistent
+  },
   // Add more groups below ------------------------------------------------------
 } satisfies Record<string, API_DESCRIPTION>;
 
@@ -116,6 +122,7 @@ interface API_CALL {
 
 export class SdfApiClient {
   public readonly workspaceId: string;
+  public dvuListener: DVUListener;
   private readonly token: string;
   private readonly baseUrl: string;
 
@@ -220,6 +227,37 @@ export class SdfApiClient {
       method,
     });
   }
+
+  public listenForDVUs() {
+    const url = `${this.baseUrl}${
+      ROUTES.workspace_updates_ws.path({
+        token: `Bearer ${this.token}`,
+      })
+    }`;
+    const dvuListener = new DVUListener(url, this.workspaceId);
+    this.dvuListener = dvuListener;
+
+    console.log("Starting WebSocket listener for workspace updates...");
+    dvuListener.listen();
+  }
+
+  public async waitForDVUs(interval_ms: number): Promise<void> {
+    console.log(`Waiting on DVUs for ${this.workspaceId}...`);
+    return new Promise<void>((resolve) => {
+      const interval = setInterval(() => {
+        const remainingEvents = this.dvuListener.openEventCount();
+        if (remainingEvents === 0) {
+          console.log(`All DVUs for ${this.workspaceId} finished!`);
+          clearInterval(interval);
+          resolve();
+        } else {
+          console.log(
+            `Waiting for DVUs in workspace ${this.workspaceId} to finish, ${remainingEvents} remain...`,
+          );
+        }
+      }, interval_ms);
+    });
+  }
 }
 
 // Helper functions for JWT generation and fetching
@@ -298,4 +336,63 @@ function createJWTFromPrivateKey(
     privateKey,
     { algorithm: "RS256", subject: userId },
   );
+}
+
+class DVUListener {
+  private ws: WebSocket;
+  private workspace: string;
+  private events: {
+    componentId: string;
+    statusStarted: boolean;
+  }[] = [];
+
+  constructor(url: string, workspace: string) {
+    this.ws = new WebSocket(url);
+    this.workspace = workspace;
+  }
+
+  public listen() {
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
+    };
+
+    this.ws.onopen = () => {
+      console.log("WebSocket connection opened");
+    };
+
+    this.ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+  }
+
+  public openEventCount(): number {
+    return this.events.length;
+  }
+
+  private handleMessage(message: any) {
+    if (
+      message.workspace_pk == this.workspace &&
+      message.payload.kind === "StatusUpdate" &&
+      message.payload.data.kind == "dependentValueUpdate"
+    ) {
+      const { status, componentId } = message.payload.data;
+
+      if (status === "statusStarted") {
+        const event = {
+          componentId,
+          statusStarted: true,
+          statusFinished: false,
+        };
+        this.events.push(event);
+      } else if (status === "statusFinished") {
+        const eventIndex = this.events.findIndex(
+          (event) => event.componentId === componentId && event.statusStarted,
+        );
+        if (eventIndex !== -1) {
+          this.events.splice(eventIndex, 1);
+        }
+      }
+    }
+  }
 }
