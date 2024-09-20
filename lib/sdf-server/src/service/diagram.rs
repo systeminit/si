@@ -117,7 +117,22 @@ impl IntoResponse for DiagramError {
             | DiagramError::FrameSocketNotFound(_)
             | DiagramError::EdgeNotFound
             | DiagramError::SocketNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-
+            DiagramError::DuplicatedConnection => (StatusCode::NOT_MODIFIED, self.to_string()),
+            DiagramError::AttributePrototypeArgument(_)
+            | DiagramError::AttributeValue(_)
+            | DiagramError::ChangeSet(_)
+            | DiagramError::Component(_)
+            | DiagramError::AttributePrototype(_)
+            | DiagramError::Hyper(_)
+            | DiagramError::InputSocket(_)
+            | DiagramError::OutputSocket(_)
+            | DiagramError::Paste
+            | DiagramError::InvalidRequest
+            | DiagramError::InvalidSystem => (StatusCode::BAD_REQUEST, self.to_string()),
+            DiagramError::NotAuthorized => (StatusCode::FORBIDDEN, self.to_string()),
+            DiagramError::ParseFloat(_) | DiagramError::Serde(_) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
