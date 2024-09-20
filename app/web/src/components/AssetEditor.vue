@@ -79,7 +79,7 @@ const editingAsset = ref<string>(selectedAssetFuncCode.value ?? "");
 let loadAssetReqStatus: ComputedRef<ApiRequestStatus>;
 
 watch(
-  () => selectedAsset.value?.assetFuncId,
+  () => selectedAsset.value,
   () => {
     loadAssetReqStatus = funcStore.getRequestStatus(
       "FETCH_CODE",

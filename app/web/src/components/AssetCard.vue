@@ -94,6 +94,7 @@
     </div>
     <!-- FIXME(nick): this probably needs to be moved and de-duped with logic in AssetListPanel -->
     <AssetContributeModal
+      v-if="contributeRequest"
       ref="contributeAssetModalRef"
       :contributeRequest="contributeRequest"
       @contribute-success="onContributeAsset"
@@ -159,7 +160,7 @@ const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 const contributeAsset = () => contributeAssetModalRef.value?.open();
 const onContributeAsset = () => contributeAssetSuccessModalRef.value?.open();
 
-const contributeRequest = computed((): ModuleContributeRequest => {
+const contributeRequest = computed((): ModuleContributeRequest | null => {
   if (asset.value) {
     const version = dateFormat(Date.now(), "yyyyMMddkkmmss");
     return {
@@ -167,7 +168,7 @@ const contributeRequest = computed((): ModuleContributeRequest => {
       version,
       schemaVariantId: asset.value.schemaVariantId,
     };
-  } else throw new Error("cannot contribute: no asset selected");
+  } else return null;
 });
 
 const editingVersionDoesNotExist = computed<boolean>(
