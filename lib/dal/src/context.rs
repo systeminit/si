@@ -1344,6 +1344,10 @@ impl Transactions {
         &self.nats_txn
     }
 
+    pub fn job_queue(&self) -> &JobQueue {
+        &self.job_queue
+    }
+
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
     #[instrument(name = "transactions.commit_into_conns", level = "info", skip_all)]
@@ -1361,10 +1365,7 @@ impl Transactions {
         } = maybe_rebase
         {
             // remove the dependent value job since it will be handled by the rebaser
-            let _ = self
-                .job_queue
-                .take_dependent_values_for_change_set(change_set_id)
-                .await;
+            self.job_queue.remove_dependent_values_jobs().await;
             rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address).await?;
         }
 

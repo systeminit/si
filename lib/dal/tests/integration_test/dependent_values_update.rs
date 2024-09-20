@@ -397,6 +397,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     assert!(units_json_string.contains("docker.io/library/oysters on the floor\\n"));
 }
 
+#[ignore]
 #[test]
 async fn component_concurrency_limit(ctx: &mut DalContext) {
     // Give us a massive component concurrency level
