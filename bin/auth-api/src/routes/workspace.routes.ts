@@ -246,12 +246,6 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
     });
   });
 
-  tracker.trackEvent(authUser, "workspace_user_invited", {
-    workspaceId: workspace.id,
-    memberAdded: reqBody.email,
-    memberAddedAt: new Date(),
-  });
-
   ctx.body = members;
 });
 
