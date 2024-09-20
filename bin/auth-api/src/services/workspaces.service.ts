@@ -190,14 +190,14 @@ export async function inviteMember(
       memberAddedAt: new Date(),
       invitedBy: authUser.email,
     });
+  } else {
+    tracker.trackEvent(authUser, "workspace_existing_user_invited", {
+      workspaceId: id,
+      memberAdded: email,
+      memberAddedAt: new Date(),
+      invitedBy: authUser.email,
+    });
   }
-
-  tracker.trackEvent(authUser, "workspace_existing_user_invited", {
-    workspaceId: id,
-    memberAdded: email,
-    memberAddedAt: new Date(),
-    invitedBy: authUser.email,
-  });
 
   return await prisma.workspaceMembers.create({
     data: {
