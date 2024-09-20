@@ -17,7 +17,7 @@
   </RichText>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { onBeforeMount, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { RichText } from "@si/vue-lib/design-system";

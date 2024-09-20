@@ -49,7 +49,7 @@
         <header class="flex p-md items-center">
           <RouterLink
             id="header-logo"
-            :to="{ name: 'home' }"
+            :to="{ name: 'workspaces' }"
             class="mr-md shrink-0 relative"
           >
             <div id="header-logo-inner">
@@ -312,6 +312,10 @@ const hasCheckedOnboardingStatus = ref(false);
 // could make sense to live in the router, but easier to interact with the auth loading state here
 const router = useRouter();
 const route = useRoute();
+
+// onMounted for a component may run before this watch does,
+// So a component may override these redirects if itself redirects navigation
+// This can happen on DefaultWorkspacePage, for example
 watch([checkAuthReq, route], () => {
   // if we're still checking auth, do nothing
   if (!checkAuthReq.value.isRequested || checkAuthReq.value.isPending) return;
@@ -346,14 +350,12 @@ watch([checkAuthReq, route], () => {
   // Check that the user is not quarantined or suspended
   if (user.value.quarantinedAt) {
     if (!["quarantine-notice"].includes(currentRouteName)) {
-      saveLoginSuccessRedirect();
       return router.push({ name: "quarantine-notice" });
     }
     return;
   }
   if (user.value.suspendedAt) {
     if (!["suspension-notice"].includes(currentRouteName)) {
-      saveLoginSuccessRedirect();
       return router.push({ name: "suspension-notice" });
     }
     return;
@@ -361,18 +363,15 @@ watch([checkAuthReq, route], () => {
 
   // If the user is not quarantined or suspended, do not allow them to go to the quarantine notice
   if (currentRouteName === "quarantine-notice") {
-    saveLoginSuccessRedirect();
     return router.push({ name: "workspaces" });
   }
   if (currentRouteName === "suspension-notice") {
-    saveLoginSuccessRedirect();
     return router.push({ name: "workspaces" });
   }
 
   // check user has agreed to TOS
   if (user.value.needsTosUpdate) {
     if (currentRouteName !== "review-legal") {
-      saveLoginSuccessRedirect();
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       router.push({ name: "review-legal" });
     }

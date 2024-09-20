@@ -1,6 +1,6 @@
 <template><div>Redirect to default workspace</div></template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -16,9 +16,17 @@ onMounted(async () => {
   if (import.meta.env.SSR) return;
   if (
     !authStore.userIsLoggedIn ||
-    !authStore.user?.onboardingDetails?.reviewedProfile
+    !authStore.user ||
+    !authStore.user.onboardingDetails?.reviewedProfile
   )
     return;
+
+  if (authStore.user.needsTosUpdate) {
+    return router.push({
+      name: "review-legal",
+    });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   await workspacesStore.LOAD_WORKSPACES();
   if (defaultWorkspace.value) {

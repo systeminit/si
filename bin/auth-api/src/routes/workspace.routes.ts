@@ -26,6 +26,7 @@ import { validate } from "../lib/validation-helpers";
 import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
+import { findLatestTosForUser } from "../services/tos.service";
 import { extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
@@ -353,6 +354,15 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
         "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.",
       );
     }
+  }
+
+  const latestTos = await findLatestTosForUser(authUser);
+  if (latestTos > authUser.agreedTosVersion) {
+    throw new ApiError(
+      "Unauthorized",
+      "MissingTosAcceptance",
+      "Terms of Service have been updated, return to the SI auth portal to accept them.",
+    );
   }
 
   // generate a new single use authentication code that we will send to the instance
