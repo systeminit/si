@@ -220,11 +220,17 @@
                 }}
                 currently using
                 <span class="font-bold">"{{ editingSecret.name }}"</span>
+
+                <SiSearch
+                  ref="searchComponentsRef"
+                  placeholder="search components"
+                  @search="onComponentSearch"
+                />
               </div>
             </template>
             <div class="flex flex-col gap-xs p-xs">
               <ComponentCard
-                v-for="id in editingSecret.connectedComponents"
+                v-for="id in filteredComponents"
                 :key="id"
                 :componentId="id"
               />
@@ -302,6 +308,7 @@ import {
   SecretsOrderedArray,
   useSecretsStore,
 } from "@/store/secrets.store";
+import { useComponentsStore } from "@/store/components.store";
 import AddSecretForm from "./AddSecretForm.vue";
 import IconButton from "./IconButton.vue";
 import SiSearch, { Filter } from "./SiSearch.vue";
@@ -323,6 +330,8 @@ const secretDefinitionRefs = ref<
   Record<SecretId, InstanceType<typeof TreeNode>>
 >({});
 const drawerTabGroupRef = ref<InstanceType<typeof TabGroup>>();
+
+const componentStore = useComponentsStore();
 
 const openAddSecretForm = (
   secretId: SecretId,
@@ -366,9 +375,38 @@ const closeDrawerIfDeleted = (deleted: Secret) => {
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
 
+const searchComponentsRef = ref<InstanceType<typeof SiSearch>>();
+const searchComponentString = ref("");
+
 const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
+
+const onComponentSearch = (search: string) => {
+  searchComponentString.value = search.trim().toLocaleLowerCase();
+};
+
+const filteredComponents = computed(() => {
+  if (searchComponentString.value.length === 0)
+    return editingSecret.value?.connectedComponents;
+
+  return editingSecret.value?.connectedComponents.filter((componentId) => {
+    const component = componentStore.componentsById[componentId];
+    if (
+      component?.displayName
+        .toLocaleLowerCase()
+        .includes(searchComponentString.value)
+    )
+      return true;
+    if (
+      component?.schemaName
+        .toLocaleLowerCase()
+        .includes(searchComponentString.value)
+    )
+      return true;
+    return false;
+  });
+});
 
 const searchFiltersWithCounts = computed(() => {
   const searchFilters: Array<Filter> = [];
