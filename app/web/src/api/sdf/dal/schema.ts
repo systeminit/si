@@ -71,10 +71,12 @@ export interface SchemaVariant {
 }
 
 export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
-  const socketOptions = schemaVariant.outputSockets.map((socket) => ({
-    label: `Output Socket: ${socket.name}`,
-    value: `s_${socket.id}`,
-  }));
+  const socketOptions = schemaVariant.outputSockets
+    .map((socket) => ({
+      label: `Output Socket: ${socket.name}`,
+      value: `s_${socket.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // output
   const propOptions = schemaVariant.props
@@ -82,7 +84,8 @@ export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
     .map((p) => ({
       label: `Attribute: ${p.path}`,
       value: `p_${p.id}`,
-    }));
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   return { socketOptions, propOptions };
 };
 
@@ -97,7 +100,8 @@ export const inputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
     .map((p) => ({
       label: `Attribute: ${p.path}`,
       value: `p_${p.id}`,
-    }));
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return { socketOptions, propOptions };
 };
