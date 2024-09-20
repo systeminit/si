@@ -139,6 +139,8 @@ async fn inner_run(
 ) -> JobConsumerResult<Option<ActionRunResultSuccess>> {
     let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
+    let had_resource_before = Component::has_resource_by_id(ctx, component_id).await?;
+
     // Execute the action function
     let (maybe_resource, func_run_id) =
         ActionPrototype::run(ctx, prototype_id, component_id).await?;
@@ -170,15 +172,13 @@ async fn inner_run(
 
     ctx.commit().await?;
 
-    // Now that everything has passed, we can send billing events.
-    match prototype.kind {
-        ActionKind::Create => {
-            billing_publish::for_resource_create(ctx, component_id, func_run_id).await?;
-        }
-        ActionKind::Destroy => {
+    // If we created or deleted the resource, publish a billing event
+    if Component::has_resource_by_id(ctx, component_id).await? != had_resource_before {
+        if had_resource_before {
             billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;
+        } else {
+            billing_publish::for_resource_create(ctx, component_id, func_run_id).await?
         }
-        ActionKind::Manual | ActionKind::Refresh | ActionKind::Update => {}
     }
 
     Ok(maybe_resource)
