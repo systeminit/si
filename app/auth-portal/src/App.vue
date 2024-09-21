@@ -164,7 +164,7 @@
                     successText="Not Verified, Try Again"
                     tone="shade"
                     variant="transparent"
-                    @click="authStore.REFRESH_AUTH0_PROFILE"
+                    @click="verifyEmail()"
                   >
                     Already verified?
                   </VButton>
@@ -241,6 +241,7 @@ import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import storage from "local-storage-fallback";
+import { tracker } from "@/lib/posthog";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
@@ -396,6 +397,28 @@ function toggleTheme() {
   // TODO: could match our normal behaviour and allow setting to system/dark/light
   userOverrideTheme.value = rootTheme.value === "dark" ? "light" : "dark";
 }
+
+const storeUser = computed(() => authStore.user);
+const verifyEmail = async () => {
+  // if this is first time, we will take them off profile page after save
+  const verificationReq = await authStore.REFRESH_AUTH0_PROFILE();
+  if (verificationReq.result.success) {
+    if (storeUser.value && storeUser.value.emailVerified) {
+      // We only want to send this event when a user has signed up and
+      // we captured a verified email for them
+      // This means we won't ever be sending badly formed data to our CRM
+      // or billing
+      // This is also the place we would trigger the creation of a Billing user
+      tracker.trackEvent("user_email_manually_verified", {
+        email: storeUser.value?.email,
+        githubUsername: storeUser.value?.githubUsername,
+        discordUsername: storeUser.value?.discordUsername,
+        firstName: storeUser.value?.firstName,
+        lastName: storeUser.value?.lastName,
+      });
+    }
+  }
+};
 
 const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 </script>

@@ -219,13 +219,27 @@ const saveHandler = async () => {
   // if this is first time, we will take them off profile page after save
   const updateReq = await authStore.UPDATE_USER(draftUser.value!);
   if (updateReq.result.success && isOnboarding.value) {
-    tracker.trackEvent("initial_profile_set", {
-      email: draftUser.value?.email,
-      githubUsername: draftUser.value?.githubUsername,
-      discordUsername: draftUser.value?.discordUsername,
-      firstName: draftUser.value?.firstName,
-      lastName: draftUser.value?.lastName,
-    });
+    if (
+      storeUser.value &&
+      storeUser.value.emailVerified &&
+      !storeUser.value.auth0Id.startsWith("auth0")
+    ) {
+      // We only want to send this event when a user has signed up and
+      // we captured a verified email for them. We will only ever have a
+      // user with an auth0Id of auth0 if it's not using SSO. So we will
+      // force that user through a manual verification and capture the user
+      // at that stage
+      // This means we won't ever be sending badly formed data to our CRM
+      // or billing
+      // This is also the place we would trigger the creation of a Billing user
+      tracker.trackEvent("initial_profile_set", {
+        email: draftUser.value?.email,
+        githubUsername: draftUser.value?.githubUsername,
+        discordUsername: draftUser.value?.discordUsername,
+        firstName: draftUser.value?.firstName,
+        lastName: draftUser.value?.lastName,
+      });
+    }
 
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});
     if (completeProfileReq.result.success) {
