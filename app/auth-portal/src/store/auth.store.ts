@@ -11,9 +11,9 @@ export type UserId = string;
 // TODO: figure out good way to share this type with backend...
 export type User = {
   id: UserId;
-  externalId: string; // auth0 id - based on 3rd party
+  auth0Id: string; // auth0 id - based on 3rd party
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  externalDetails?: any; // json blob, just store auth0 details for now
+  auth0Details?: any; // json blob, just store auth0 details for now
   nickname: string;
   firstName: string | null;
   lastName: string | null;
