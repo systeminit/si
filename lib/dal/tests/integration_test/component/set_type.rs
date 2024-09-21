@@ -13,7 +13,7 @@ async fn set_type(ctx: &mut DalContext) {
         ComponentType::Component
     );
 
-    Component::update_type_by_id(ctx, component.id(), ComponentType::ConfigurationFrameUp)
+    Component::set_type_by_id(ctx, component.id(), ComponentType::ConfigurationFrameUp)
         .await
         .expect("could not update type");
 

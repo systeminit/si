@@ -63,7 +63,7 @@ impl Frame {
             Frame::get_all_inferred_connections_for_component_tree(ctx, reference_id, component_id)
                 .await?;
         // do it
-        Component::set_type_by_id(ctx, component_id, new_type).await?;
+        Component::set_type_by_id_unchecked(ctx, component_id, new_type).await?;
         let after_impacted_values =
             Frame::get_all_inferred_connections_for_component_tree(ctx, reference_id, component_id)
                 .await?;

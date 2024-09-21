@@ -1636,7 +1636,7 @@ impl Component {
     /// NOTE: This does NOT ensure that this change is valid, nor does it account for
     /// needing to update other attribute values in cases where the new type is an up or
     /// down frame
-    pub async fn set_type_by_id(
+    pub async fn set_type_by_id_unchecked(
         ctx: &DalContext,
         component_id: ComponentId,
         new_type: ComponentType,
@@ -1657,7 +1657,7 @@ impl Component {
 
     /// For the given [`ComponentId`], updates the type.  If the type is changing from or to an Up/Down Frame,
     /// this ensures we update the necessary values given the changing data flows
-    pub async fn update_type_by_id(
+    pub async fn set_type_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
         new_type: ComponentType,
@@ -1700,7 +1700,7 @@ impl Component {
             }
         } else {
             // this component stands alone, just set the type!
-            Self::set_type_by_id(ctx, component_id, new_type).await?;
+            Self::set_type_by_id_unchecked(ctx, component_id, new_type).await?;
         }
 
         Ok(())

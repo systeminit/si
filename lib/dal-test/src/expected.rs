@@ -388,7 +388,7 @@ impl ExpectComponent {
     }
 
     pub async fn set_type(self, ctx: &DalContext, component_type: ComponentType) {
-        Component::update_type_by_id(ctx, self.id(), component_type)
+        Component::set_type_by_id(ctx, self.id(), component_type)
             .await
             .expect("set type")
     }
