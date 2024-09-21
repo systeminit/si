@@ -3213,11 +3213,11 @@ async fn change_type_frames(ctx: &mut DalContext) {
     assert!(input_value.is_none());
 
     // now change the type of the parent to a component, it should fail
-    let response = Component::update_type_by_id(ctx, parent.id(), ComponentType::Component).await;
+    let response = Component::set_type_by_id(ctx, parent.id(), ComponentType::Component).await;
     assert!(response.is_err());
 
     // now change the type to a down frame and values should update
-    Component::update_type_by_id(ctx, parent.id(), ComponentType::ConfigurationFrameDown)
+    Component::set_type_by_id(ctx, parent.id(), ComponentType::ConfigurationFrameDown)
         .await
         .expect("could not update type");
 

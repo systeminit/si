@@ -104,7 +104,7 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
         .await
         .expect("could not fork change set");
 
-    Component::update_type_by_id(
+    Component::set_type_by_id(
         ctx,
         starfield_component.id(),
         ComponentType::ConfigurationFrameDown,
