@@ -5,7 +5,7 @@ use tower::Layer;
 use super::{on_failure::DefaultOnFailure, on_success::DefaultOnSuccess, service::Ack};
 
 // Default `ack_wait` period when unset is 30 seconds (a NATS server default)
-const DEFAULT_PROGRESS_PERIOD: Duration = Duration::from_secs(30 - 1);
+const DEFAULT_PROGRESS_PERIOD: Duration = Duration::from_secs(20);
 
 pub struct AckLayer<OnSuccess = DefaultOnSuccess, OnFailure = DefaultOnFailure> {
     pub(crate) on_success: OnSuccess,
