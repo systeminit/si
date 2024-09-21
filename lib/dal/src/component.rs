@@ -1575,15 +1575,6 @@ impl Component {
         }
     }
 
-    pub async fn has_resource_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
-        if let Some(component) = Self::try_get_by_id(ctx, id).await? {
-            if component.resource(ctx).await?.is_some() {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
     /// Returns the name of a [`Component`] for a given [`ComponentId`](Component).
     pub async fn name_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<String> {
         let name_value_id =

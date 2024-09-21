@@ -5,7 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_events::ActionResultState;
+use si_events::{ActionResultState, FuncRunId};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
@@ -139,14 +139,12 @@ async fn inner_run(
 ) -> JobConsumerResult<Option<ActionRunResultSuccess>> {
     let (prototype_id, component_id) = prepare_for_execution(ctx, action_id).await?;
 
-    let had_resource_before = Component::has_resource_by_id(ctx, component_id).await?;
-
     // Execute the action function
     let (maybe_resource, func_run_id) =
         ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
     // process the result
-    process_execution(ctx, maybe_resource.as_ref(), action_id).await?;
+    process_execution(ctx, maybe_resource.as_ref(), action_id, func_run_id).await?;
 
     // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
@@ -171,15 +169,6 @@ async fn inner_run(
     }
 
     ctx.commit().await?;
-
-    // If we created or deleted the resource, publish a billing event
-    if Component::has_resource_by_id(ctx, component_id).await? != had_resource_before {
-        if had_resource_before {
-            billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;
-        } else {
-            billing_publish::for_resource_create(ctx, component_id, func_run_id).await?
-        }
-    }
 
     Ok(maybe_resource)
 }
@@ -218,6 +207,7 @@ async fn process_execution(
     ctx: &mut DalContext,
     maybe_resource: Option<&ActionRunResultSuccess>,
     action_id: ActionId,
+    func_run_id: FuncRunId,
 ) -> JobConsumerResult<()> {
     let prototype_id = Action::prototype_id(ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
@@ -230,15 +220,26 @@ async fn process_execution(
         // Set the resource if we have a payload, regardless of status *and* assemble a
         // summary
         if resource.payload.is_some() {
+            // Send the create resource event if we're not updating an existing resource
+            if component.resource(ctx).await?.is_none() {
+                billing_publish::for_resource_create(ctx, component_id, func_run_id).await?;
+            }
+
             component.set_resource(ctx, resource.into()).await?;
         }
 
         if resource.status == ResourceStatus::Ok {
             // Remove `ActionId` from graph as the execution succeeded
             Action::remove_by_id(ctx, action_id).await?;
+
+            // Clear the resource if the status is ok and we don't have a payload. This could
+            // be from invoking a delete action directly, rather than deleting the component.
             if resource.payload.is_none() {
-                // Clear the resource if the status is ok and we don't have a payload. This could
-                // be from invoking a delete action directly, rather than deleting the component.
+                // Send the delete resource event if there is a resource to actually clear
+                if component.resource(ctx).await?.is_some() {
+                    billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;
+                }
+
                 component.clear_resource(ctx).await?;
 
                 if component.to_delete() {
