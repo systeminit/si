@@ -14,7 +14,7 @@ services:
 
   otelcol:
     container_name: otelcol
-    image: systeminit/otelcol:${SI_VERSION:-stable}
+    image: systeminit/otelcol:${INIT_VERSION:-stable}
     profiles: [forklift, rebaser, pinga, sdf, veritech]
     ports:
       - 4317:4317
