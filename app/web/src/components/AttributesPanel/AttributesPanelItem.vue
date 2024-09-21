@@ -314,7 +314,12 @@
         />
         <Icon
           v-if="unsetButtonShow"
-          class="attributes-panel-item__unset-button peer"
+          :class="
+            clsx(
+              'attributes-panel-item__unset-button peer',
+              `widget-${widgetKind}`,
+            )
+          "
           name="x-circle"
           @click="unsetHandler"
         />
@@ -1662,6 +1667,11 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   .attributes-panel-item.--input.--focus & {
     display: block;
   }
+}
+
+.attributes-panel-item__unset-button.widget-select,
+.attributes-panel-item__unset-button.widget-comboBox {
+  right: 20px;
 }
 
 // SECRETS
