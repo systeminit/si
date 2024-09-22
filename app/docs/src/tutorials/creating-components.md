@@ -25,8 +25,6 @@ pick it up.
 
 ## Create a change set
 
-![Create a change set](./creating-components/create-a-change-set.png)
-
 Click the create change set button.
 
 Name your new change set `Creating Components`
@@ -34,8 +32,6 @@ Name your new change set `Creating Components`
 Click the `Create change set` button.
 
 ## Switch to the Customize Screen
-
-![Switch to the Customize Screen](./creating-components/switch-to-the-customize-screen.png)
 
 Click the `Beaker` icon to switch to the customize screen.
 
@@ -60,8 +56,6 @@ synonymous with components.
 
 ## Set the Hello World meta-data
 
-![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
-
 Set the `Category` to `Tutorial`.
 
 Set the `Component Type` to `Component`.
@@ -71,8 +65,6 @@ Set the `Description` to `Hello World`.
 Set the `color` to `#6cdcf8`.
 
 ## Add properties to the Hello World schema
-
-![Add properties to the Hello World schema](./creating-components/add-properties-to-the-hello-world-schema.png)
 
 In the center of the screen is a text editor showing the empty schema of your
 `Hello World` component.
@@ -116,8 +108,6 @@ This will create a component with two properties:
 Here is how you would write it yourself, step by step.
 
 ### 1. Schema function
-
-![Schema function](./creating-components/schema-function.png)
 
 You define your components schema by writing a TypeScript function named
 `main()`. The function begins by creating a new `AssetBuilder()`, stored in a
