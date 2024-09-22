@@ -6,6 +6,11 @@ This a reference to all of the vocabulary used in System Initiative.
 
 Anything that can be used on the canvas.
 
+## Arity
+
+The number of arguments taken by a function. Most frequently used to specify how many edges can
+connect to a socket (either "one" or "many".)
+
 ## Component
 
 A component is the 'theoretical' half of a Model. It represents the configuration values you *want* something to have, while the Resource represents its real world values.
@@ -81,14 +86,22 @@ be applied successfully to the workspace. An example is the qualification
 function that checks if the Secret you have passed into your AWS Credential
 component are valid.
 
-# HEAD
+## HEAD
 
 HEAD is the change set that represents "the real world". It can only be altered by actions, refreshing resources, or applying change sets.
 
-# Configuration Frame (down)
+## Configuration Frame (down)
 
 A "down" frame is one where the output sockets of the frame will automatically connect to any components placed within the frame.
 
-# Configuration Frame (up)
+## Configuration Frame (up)
 
 An "up" frame is one where the output sockets of the components within the frame will connect to the input sockets of the frame.
+
+## Input Socket
+
+A socket that feeds data into a component. Appears on the left side of components.
+
+## Output Socket
+
+A socket that feeds data out of a component. Appears on the right side of components.

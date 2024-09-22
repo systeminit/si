@@ -34,4 +34,4 @@ Configure your colorpicker to have a color preset for #ffd41e. When making up a 
 
 Full screen shots should include the application, but not the browser.
 
-Name the images after the section they reference, in a sub-folder named after the documentation they are used in. For example, the image for the `Add a Secret` section of the [Getting Started](/tutorials/getting-started) tutorial is named `getting-started/add-a-secret.png`.
+Name the images after the section they reference, in a sub-folder named after the documentation they are used in. For example, the image for the `Add a Secret` section of the [Getting Started](./tutorials/getting-started) tutorial is named `getting-started/add-a-secret.png`.
