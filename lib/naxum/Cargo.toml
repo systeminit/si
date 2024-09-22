@@ -17,6 +17,7 @@ pin-project-lite = { workspace = true }
 serde = { workspace = true } # NOTE: if extracted, this is used for a json feature
 serde_json = { workspace = true } # NOTE: if extracted, this is used for a json feature
 serde_path_to_error = { workspace = true } # NOTE: if extracted, this is used for a json feature
+time = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 tower = { workspace = true }

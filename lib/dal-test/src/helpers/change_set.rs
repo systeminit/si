@@ -178,7 +178,32 @@ impl ChangeSetTestHelpers {
     }
 
     async fn blocking_commit(ctx: &DalContext) -> Result<()> {
+        // The rebaser has responsibility for executing dvu jobs, so we should
+        // prevent them from running in tests
+        let has_roots = ctx
+            .txns()
+            .await?
+            .job_queue()
+            .remove_dependent_values_jobs()
+            .await;
         ctx.blocking_commit().await?;
+
+        // But we have to wait until the dvu jobs complete
+        if has_roots {
+            loop {
+                let mut ctx_clone = ctx.clone();
+                ctx_clone.update_snapshot_to_visibility().await?;
+                if !ctx_clone
+                    .workspace_snapshot()?
+                    .has_dependent_value_roots()
+                    .await?
+                {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+        }
+
         Ok(())
     }
 }

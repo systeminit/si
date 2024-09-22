@@ -27,21 +27,21 @@
     while_true
 )]
 
-use dal::DedicatedExecutorInitializeError;
-use dvu_debouncer_task::DvuDebouncerTaskError;
 use thiserror::Error;
 
-pub mod change_set_requests;
+mod app_state;
+mod change_set_processor_task;
 mod config;
-pub mod dvu_debouncer_task;
-pub(crate) mod nats;
+pub mod extract;
+mod handlers;
 mod rebase;
+mod serial_dvu_task;
 mod server;
 
-pub use config::{
-    detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
+pub use self::{
+    config::{detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile},
+    server::{Server, ServerMetadata},
 };
-pub use server::{Server, ServerMetadata};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 /// An error than can be returned when a Rebaser service is running.
@@ -50,7 +50,7 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 pub enum ServerError {
     /// When a compute executor fails to initialize
     #[error("compute executor initialization error: {0}")]
-    ComputeExecutorInitialize(#[from] DedicatedExecutorInitializeError),
+    ComputeExecutorInitialize(#[from] dal::DedicatedExecutorInitializeError),
     /// When a Cyclone encryption key failed to be loaded
     #[error("error when loading encryption key: {0}")]
     CycloneEncryptionKey(#[source] si_crypto::VeritechEncryptionKeyError),
@@ -60,36 +60,18 @@ pub enum ServerError {
     /// When we fail to get or create inner NATS Jetstream streams
     #[error("dal jetstream streams error: {0}")]
     DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
-    /// When failing to determine open change sets from calling DAL code
-    #[error("dal open change sets error: {0}")]
-    DalOpenChangeSets(#[source] si_data_pg::PgError),
     /// When a database pool error occurs
     #[error("dal pg pool error: {0}")]
     DalPgPool(#[source] Box<si_data_pg::PgPoolError>),
-    /// When a DAL context fails to be created
-    #[error("dal transactions error: {0}")]
-    DalTransactions(#[from] dal::TransactionsError),
-    /// When a "dvu" debouncer task fails to be created
-    #[error("dvu debouncer error: {0}")]
-    DvuDebouncerTask(#[from] DvuDebouncerTaskError),
-    /// When a "dvu" debouncer task fails to shutdown cleanly
-    #[error("dvu debouncer task join error")]
-    DvuDebouncerTaskJoin,
-    /// When attempting to launch a change set task but one is already running
-    #[error("existing change set task already running for id: {0}")]
-    ExistingChangeSetTask(si_events::ChangeSetId),
-    /// When a NATS Jetstream stream could not be created
-    #[error("jetstream create stream error: {0}")]
-    JetstreamCreateStream(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
     /// When failing to create or fetch a Jetstream consumer
     #[error("jetstream consumer error: {0}")]
     JsConsumer(#[from] si_data_nats::async_nats::jetstream::stream::ConsumerError),
     /// When failing to create a Jetstream consumer `impl Stream` of messages
     #[error("consumer stream error: {0}")]
     JsConsumerStream(#[from] si_data_nats::async_nats::jetstream::consumer::StreamError),
-    /// When failing to get or create a NATS KV store
-    #[error("nats kv bucket get or create error: {0}")]
-    KvGetOrCreate(#[from] crate::nats::GetOrCreateKeyValueError),
+    /// When failing to create a Jetstream stream
+    #[error("stream create error: {0}")]
+    JsCreateStreamError(#[from] si_data_nats::async_nats::jetstream::context::CreateStreamError),
     /// When a LayerDb error occurs
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
@@ -102,6 +84,9 @@ pub enum ServerError {
     /// When a naxum-based service encounters an I/O error
     #[error("naxum error: {0}")]
     Naxum(#[source] std::io::Error),
+    /// When a rebaser client error occurs
+    #[error("rebaser client error: {0}")]
+    Rebaser(#[from] rebaser_client::ClientError),
     /// When a symmetric crypto service fails to be created
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] si_crypto::SymmetricCryptoError),
@@ -114,4 +99,6 @@ impl ServerError {
     }
 }
 
-type ServerResult<T> = std::result::Result<T, ServerError>;
+type Error = ServerError;
+
+type Result<T> = std::result::Result<T, ServerError>;

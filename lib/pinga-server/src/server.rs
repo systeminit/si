@@ -18,6 +18,7 @@ use naxum::{
     ServiceExt as _,
 };
 use pinga_core::{pinga_work_queue, subject};
+use rebaser_client::RebaserClient;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
     VeritechEncryptionKey,
@@ -83,6 +84,7 @@ impl Server {
         let nats = Self::connect_to_nats(config.nats()).await?;
         let nats_streams = JetstreamStreams::new(nats.clone()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let rebaser = Self::create_rebaser_client(nats.clone()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -102,6 +104,7 @@ impl Server {
             nats,
             nats_streams,
             job_processor,
+            rebaser,
             veritech,
             encryption_key,
             None,
@@ -213,6 +216,13 @@ impl Server {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
+    }
+
+    #[instrument(name = "pinga.init.create_rebaser_client", level = "info", skip_all)]
+    async fn create_rebaser_client(nats: NatsClient) -> ServerResult<RebaserClient> {
+        let client = RebaserClient::new(nats).await?;
+        debug!("successfully initialized the rebaser client");
+        Ok(client)
     }
 
     #[instrument(name = "pinga.init.create_veritech_client", level = "info", skip_all)]

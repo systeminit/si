@@ -1,0 +1,20 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "rebaser-core",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//third-party/rust:ciborium",
+        "//third-party/rust:derive_more",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:strum",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

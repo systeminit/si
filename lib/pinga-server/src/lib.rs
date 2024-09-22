@@ -41,6 +41,8 @@ pub enum ServerError {
     Naxum(#[source] io::Error),
     #[error("pg pool error: {0}")]
     PgPool(#[from] Box<PgPoolError>),
+    #[error("rebaser client error: {0}")]
+    Rebaser(#[from] rebaser_client::ClientError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCryptoService(#[from] si_crypto::SymmetricCryptoError),
     #[error("transactions error: {0}")]

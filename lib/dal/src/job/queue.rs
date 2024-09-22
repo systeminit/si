@@ -67,6 +67,23 @@ impl JobQueue {
 
     /// Grab the dependent value update set for a change set and remove it from
     /// the queue (for sending via a rebase request)
+    pub async fn remove_dependent_values_jobs(&self) -> bool {
+        let mut job_queue = self.attribute_value_based_jobs.lock().await;
+
+        if job_queue.contains_key(&AttributeValueBasedJobIdentifier::DependentValuesUpdate) {
+            if let Some(dvu_jobs) =
+                job_queue.get_mut(&AttributeValueBasedJobIdentifier::DependentValuesUpdate)
+            {
+                dvu_jobs.clear();
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Grab the dependent value update set for a change set and remove it from
+    /// the queue (for sending via a rebase request)
     pub async fn take_dependent_values_for_change_set(
         &self,
         change_set_id: ChangeSetId,

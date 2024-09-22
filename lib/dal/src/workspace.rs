@@ -99,6 +99,12 @@ impl From<WorkspacePk> for si_events::WorkspacePk {
     }
 }
 
+impl From<si_events::WorkspacePk> for WorkspacePk {
+    fn from(value: si_events::WorkspacePk) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
     pk: WorkspacePk,

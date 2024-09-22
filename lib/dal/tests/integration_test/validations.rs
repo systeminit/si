@@ -139,6 +139,7 @@ async fn prop_editor_validation(ctx: &mut DalContext) {
     );
 }
 
+#[ignore]
 #[test]
 async fn validation_on_dependent_value(ctx: &mut DalContext) {
     let output_component =

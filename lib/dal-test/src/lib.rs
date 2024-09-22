@@ -195,7 +195,7 @@ impl Config {
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
         //config.pg.pool_max_size *= 32;
-        config.pg.pool_max_size = 8;
+        config.pg.pool_max_size = 16;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
@@ -209,7 +209,7 @@ impl Config {
             .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
             .parse()?;
         //config.layer_cache_pg_pool.pool_max_size *= 32;
-        config.layer_cache_pg_pool.pool_max_size = 8;
+        config.layer_cache_pg_pool.pool_max_size = 16;
         config.layer_cache_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
 
@@ -369,6 +369,9 @@ impl TestContext {
         token: CancellationToken,
         tracker: TaskTracker,
     ) -> ServicesContext {
+        let rebaser = rebaser_client::Client::new(self.nats_conn.clone())
+            .await
+            .expect("failed to create rebaser client");
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
@@ -388,6 +391,7 @@ impl TestContext {
             self.nats_conn.clone(),
             self.nats_streams.clone(),
             self.job_processor.clone(),
+            rebaser,
             veritech,
             self.encryption_key.clone(),
             self.config.pkgs_path.to_owned(),
@@ -629,10 +633,10 @@ pub async fn rebaser_server(
 
     let server = rebaser_server::Server::from_services(
         config.instance_id(),
+        None,
         services_context,
+        config.quiescent_period(),
         shutdown_token,
-        // a huge interval, to prevent dvu debouncer from running dvus in tests
-        std::time::Duration::from_secs(10000),
     )
     .await
     .wrap_err("failed to create Rebaser server")?;
@@ -805,6 +809,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.nats_conn(),
         services_ctx.jetstream_streams(),
         services_ctx.job_processor(),
+        services_ctx.rebaser().clone(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
         pkgs_path,
@@ -833,6 +838,7 @@ async fn migrate_local_builtins(
     nats: &NatsClient,
     nats_streams: &JetstreamStreams,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    rebaser: rebaser_client::Client,
     veritech: veritech_client::Client,
     encryption_key: &VeritechEncryptionKey,
     pkgs_path: PathBuf,
@@ -847,6 +853,7 @@ async fn migrate_local_builtins(
         nats.clone(),
         nats_streams.clone(),
         job_processor,
+        rebaser,
         veritech,
         Arc::new(*encryption_key),
         Some(pkgs_path),

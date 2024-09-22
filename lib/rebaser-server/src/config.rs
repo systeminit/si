@@ -1,21 +1,25 @@
-use si_crypto::VeritechCryptoConfig;
-use si_layer_cache::db::LayerDbConfig;
-use std::{env, path::Path};
-use ulid::Ulid;
+use std::{env, path::Path, time::Duration};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
+use si_crypto::{
+    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, VeritechCryptoConfig,
+};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_layer_cache::error::LayerDbError;
+use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
-use crate::StandardConfig;
-use crate::StandardConfigFile;
+use crate::{StandardConfig, StandardConfigFile};
+
+const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
+
+const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 5;
+const DEFAULT_QUIESCENT_PERIOD: Duration = Duration::from_secs(DEFAULT_QUIESCENT_PERIOD_SECS);
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -62,8 +66,11 @@ pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
-    #[builder(default = "800")]
-    dvu_interval_millis: u64,
+    #[builder(default = "default_concurrency_limit()")]
+    concurrency_limit: Option<usize>,
+
+    #[builder(default = "default_quiescent_period()")]
+    quiescent_period: Duration,
 }
 
 impl StandardConfig for Config {
@@ -105,14 +112,19 @@ impl Config {
         &self.layer_db_config
     }
 
+    /// Gets the config's concurrency limit.
+    pub fn concurrency_limit(&self) -> Option<usize> {
+        self.concurrency_limit
+    }
+
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
     }
 
-    /// Gets the duration of the dvu interval
-    pub fn dvu_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_millis(self.dvu_interval_millis)
+    /// Gets the period of inactivity before a change set consuming stream will shut down
+    pub fn quiescent_period(&self) -> Duration {
+        self.quiescent_period
     }
 }
 
@@ -129,8 +141,12 @@ pub struct ConfigFile {
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default = "default_layer_db_config")]
     layer_db_config: LayerDbConfig,
+    #[serde(default = "default_concurrency_limit")]
+    concurrency_limit: Option<usize>,
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    #[serde(default = "default_quiescent_period_secs")]
+    quiescent_period_secs: u64,
 }
 
 impl Default for ConfigFile {
@@ -141,7 +157,9 @@ impl Default for ConfigFile {
             crypto: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             layer_db_config: default_layer_db_config(),
+            concurrency_limit: default_concurrency_limit(),
             instance_id: random_instance_id(),
+            quiescent_period_secs: default_quiescent_period_secs(),
         }
     }
 }
@@ -162,7 +180,9 @@ impl TryFrom<ConfigFile> for Config {
         config.crypto(value.crypto);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
+        config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
+        config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.build().map_err(Into::into)
     }
 }
@@ -179,8 +199,20 @@ fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     }
 }
 
+fn default_concurrency_limit() -> Option<usize> {
+    DEFAULT_CONCURRENCY_LIMIT
+}
+
 fn default_layer_db_config() -> LayerDbConfig {
     LayerDbConfig::default_for_service("rebaser")
+}
+
+fn default_quiescent_period() -> Duration {
+    DEFAULT_QUIESCENT_PERIOD
+}
+
+fn default_quiescent_period_secs() -> u64 {
+    DEFAULT_QUIESCENT_PERIOD_SECS
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]

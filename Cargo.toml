@@ -33,6 +33,8 @@ members = [
     "lib/object-tree",
     "lib/pinga-core",
     "lib/pinga-server",
+    "lib/rebaser-client",
+    "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/sdf-server",
     "lib/si-crypto",
@@ -174,11 +176,12 @@ tempfile = "3.10.1"
 test-log = { version = "0.2.15", default-features = false, features = ["trace"] }
 thiserror = "1.0.58"
 thread-priority = "1.1.0"
+time = "0.3.36"
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-postgres = { version = "0.7.10", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-postgres-rustls = { version = "0.11.1" }
 tokio-serde = { version = "0.9.0", features = ["json"] }
-tokio-stream = { version = "0.1.15", features = ["sync"] }
+tokio-stream = { version = "0.1.15", features = ["sync", "time"] }
 tokio-test = "0.4.4"
 tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alongside hyper/http/axum/tokio-tungstenite,tower-http
 tokio-util = { version = "0.7.10", features = ["codec", "rt"] }

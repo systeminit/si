@@ -22,6 +22,7 @@ pub use self::message::{Head, MessageHead};
 pub use self::serve::{serve, serve_with_incoming_limit};
 pub use self::service_ext::ServiceExt;
 
+pub use async_nats::StatusCode;
 pub use async_trait::async_trait;
 pub use tower::ServiceBuilder;
 

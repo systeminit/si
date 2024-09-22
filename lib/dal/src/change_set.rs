@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -9,9 +10,9 @@ use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time;
 
 use crate::billing_publish::BillingPublishError;
-use crate::context::RebaseRequest;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::{
@@ -59,10 +60,14 @@ pub enum ChangeSetError {
     NoBaseChangeSet(ChangeSetId),
     #[error("no tenancy set in context")]
     NoTenancySet,
+    #[error("no workspace_pk is set for change_set_id={0}")]
+    NoWorkspacePkSet(ChangeSetId),
     #[error("Changeset {0} does not have a workspace snapshot")]
     NoWorkspaceSnapshot(ChangeSetId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("rebaser client error: {0}")]
+    RebaserClient(#[from] rebaser_client::ClientError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
@@ -135,6 +140,12 @@ impl From<ChangeSetId> for si_events::ChangeSetId {
     fn from(value: ChangeSetId) -> Self {
         let id: ulid::Ulid = value.into();
         id.into()
+    }
+}
+
+impl From<si_events::ChangeSetId> for ChangeSetId {
+    fn from(value: si_events::ChangeSetId) -> Self {
+        Self(value.into_raw_id())
     }
 }
 
@@ -506,16 +517,32 @@ impl ChangeSet {
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
     async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        let workspace_id = self
+            .workspace_id
+            .ok_or(ChangeSetError::NoWorkspacePkSet(self.id))?;
         let base_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
 
         if let Some(rebase_batch) = self.detect_updates_that_will_be_applied(ctx).await? {
-            let rebase_batch_address = ctx.write_rebase_batch(rebase_batch).await?;
+            let updates_address = ctx.write_rebase_batch(rebase_batch).await?;
 
-            let rebase_request =
-                RebaseRequest::new(base_change_set_id, rebase_batch_address, Some(self.id));
-            ctx.do_rebase_request(rebase_request).await?;
+            let (request_id, reply_fut) = ctx
+                .run_rebase_from_change_set_with_reply(
+                    workspace_id,
+                    base_change_set_id,
+                    updates_address,
+                    self.id,
+                )
+                .await?;
+
+            // Wait on response from Rebaser after request has processed
+            let timeout = Duration::from_secs(60);
+            let _reply = time::timeout(timeout, reply_fut)
+                .await
+                .map_err(|_elapsed| {
+                    TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
+                })??;
         }
 
         self.update_status(ctx, ChangeSetStatus::Applied).await?;

@@ -9,6 +9,7 @@ rust_library(
         "//lib/nats-multiplexer-client:nats-multiplexer-client",
         "//lib/nats-multiplexer:nats-multiplexer",
         "//lib/nats-subscriber:nats-subscriber",
+        "//lib/rebaser-client:rebaser-client",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
