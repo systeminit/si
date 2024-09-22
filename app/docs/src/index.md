@@ -13,9 +13,11 @@ get help. The community is eager to answer your questions and to help.
 
 - [Tutorials](./tutorials/index.md) teach you to use System Initiative through
   using System Initiative.
-- [How-To Guides](./how-tos/index.md) show you how to accomplish tasks with System Initiative. They assume knowledge of both System Initiative and the task they are teaching.
-- [Reference guides](./reference/index.md) give you just the facts about APIs and
-  Vocabulary.
+- [How-To Guides](./how-tos/index.md) show you how to accomplish tasks with
+  System Initiative. They assume knowledge of both System Initiative and the
+  task they are teaching.
+- [Reference guides](./reference/index.md) give you just the facts about APIs
+  and Vocabulary.
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest
   features and weekly demos.
 
