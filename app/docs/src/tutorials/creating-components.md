@@ -14,10 +14,14 @@ This tutorial show you how to create and edit components and add functions to
 them. It's focus is on introducing you to the user interface and various high
 level concepts. For deeper details, it will link to the reference guides.
 
-::: tip While creating components and writing functions does require you to
-write TypeScript, don't worry if you aren't familiar with the language. System
+:::tip
+
+While creating components and writing functions does require you to write
+TypeScript, don't worry if you aren't familiar with the language. System
 Initiative functions tend to be quite short and easy to reason about. You'll
-pick it up. :::
+pick it up.
+
+:::
 
 ## Create a change set
 
@@ -47,10 +51,16 @@ Click `Create Asset`.
 Make sure the `Hello World` is selected in the Assets sub-panel of the left side
 of the screen.
 
-:::tip Assets are anything you might need to use in System Initiative - today,
-they are synonymous with components. :::
+:::tip
+
+Assets are anything you might need to use in System Initiative - today, they are
+synonymous with components.
+
+:::
 
 ## Set the Hello World meta-data
+
+![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
 
 Set the `Category` to `Tutorial`.
 
@@ -61,6 +71,8 @@ Set the `Description` to `Hello World`.
 Set the `color` to `#6cdcf8`.
 
 ## Add properties to the Hello World schema
+
+![Add properties to the Hello World schema](./creating-components/add-properties-to-the-hello-world-schema.png)
 
 In the center of the screen is a text editor showing the empty schema of your
 `Hello World` component.
@@ -105,13 +117,19 @@ Here is how you would write it yourself, step by step.
 
 ### 1. Schema function
 
+![Schema function](./creating-components/schema-function.png)
+
 You define your components schema by writing a TypeScript function named
 `main()`. The function begins by creating a new `AssetBuilder()`, stored in a
 variable named `asset`.
 
-:::tip This `builder` pattern is a recurring one in schema definition. You will
-create new `Builder` objects, then call functions to configure them, and finally
-call `.build()` to output the final definition. :::
+:::tip
+
+This `builder` pattern is a recurring one in schema definition. You will create
+new `Builder` objects, then call functions to configure them, and finally call
+`.build()` to output the final definition.
+
+:::
 
 ### 2. The Hello property
 
@@ -132,8 +150,12 @@ call functions on to configure your property.
 - `setValidationFormat` adds a validation that ensures the value of Hello is
   `world`.
 
-:::tip Hovering over a function will show you its definition. This can be very
-helpful for reminding yourself of the available options! :::
+:::tip
+
+Hovering over a function will show you its definition. This can be very helpful
+for reminding yourself of the available options!
+
+:::
 
 Finish your property definition by calling `.build()`.
 
@@ -155,8 +177,12 @@ PropBuilder.
 
 Finish your property definition by calling `.build()`.
 
-:::tip There is a `format` button in the upper left of the editor! Use it to
-auto-format your function as you go. :::
+:::tip
+
+There is a `format` button in the upper left of the editor! Use it to
+auto-format your function as you go.
+
+:::
 
 ### 4. Return the compiled asset
 
