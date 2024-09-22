@@ -37,6 +37,8 @@ Click the `Beaker` icon to switch to the customize screen.
 
 ## Create a new Hello World Component
 
+![Create a new Hello World Component](./creating-components/create-a-new-hello-world-component.png)
+
 Click the `New Asset` button (represented by a `+` icon) in the Assets pallete
 in the left side panel.
 
@@ -56,6 +58,8 @@ synonymous with components.
 
 ## Set the Hello World meta-data
 
+![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
+
 Set the `Category` to `Tutorial`.
 
 Set the `Component Type` to `Component`.
@@ -65,6 +69,8 @@ Set the `Description` to `Hello World`.
 Set the `color` to `#6cdcf8`.
 
 ## Add properties to the Hello World schema
+
+![Add properties](./creating-components/add-properties.png)
 
 In the center of the screen is a text editor showing the empty schema of your
 `Hello World` component.
@@ -181,12 +187,16 @@ asset definition with `return asset.build()`.
 
 ## Regenerate the asset
 
+![Regenerate Asset](./creating-components/regenerate-asset.png)
+
 Click the `Regenerate Asset` button in the right-side panel.
 
 This will execute your schema definition function and update System Initiative
 with the new schema.
 
 ## Check your new component
+
+![Check your component](./creating-components/check-your-component.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
@@ -202,6 +212,8 @@ You will see that you have the following properties:
 
 ## Add a qualification function
 
+![Add qualification function](./creating-components/add-qualification-function.png)
+
 Click the `Beaker` icon to switch back to the customize screen. Ensure you
 `Hello World` asset is selected.
 
@@ -215,9 +227,13 @@ Name your Qualification `helloWorldTags`.
 
 ## Set the qualifications meta-data
 
+![Qualification Metadata](./creating-components/qualification-metadata.png)
+
 Set the `Display Name` to `Hello World Tags`
 
 ## Write the qualification function
+
+![Write Qualification](./creating-components/write-qualification.png)
 
 Ensure that any `Hello World` components have a tag with the key `Super` and
 value is `Duper`.
@@ -262,6 +278,8 @@ helpful message.
 Finally, return the `result` and `message`.
 
 ## Check your new qualification function
+
+![Check Qualification](./creating-components/check-qualification.png)
 
 Click the `Graph` icon to switch to the modeling screen.
 
