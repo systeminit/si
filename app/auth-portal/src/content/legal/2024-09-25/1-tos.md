@@ -108,17 +108,12 @@ appropriate Data Processing Agreement with System Initiative (the “**DPA**”)
 which case, the processing of PII in connection with the Service shall be
 subject to the DPA.
 
-**1.10. Support and Up.** Subject to Customer’s payment of the corresponding
+**1.10. Support and Uptime SLA.** Subject to Customer’s payment of the corresponding
 fees, System Initiative will use commercially reasonable efforts to: (a) provide
 support for the Service according to the System Initiative Support Policy, and
 (b) to make the Service available according to the System Initiative Uptime SLA.
 The System Initiative Support Policy and Uptime SLA are specified in the
-applicable Service Description. Subject to Customer’s payment of the
-corresponding fees, System Initiative will use commercially reasonable efforts
-to: (a) provide support for the Service according to the System Initiative
-Support Policy, and (b) to make the Service available according to the System
-Initiative Uptime SLA. The System Initiative Support Policy and Uptime SLA are
-specified in the applicable Service Description.
+applicable Service Description. 
 
 **1.11. Service Suspension.** System Initiative may suspend Customer’s access to
 or use of the Service as follows: (a) immediately if System Initiative
@@ -309,7 +304,7 @@ NON-INFRINGEMENT OF THIRD-PARTY RIGHTS.
 
 ## 7. LIMITATIONS OF LIABILITY
 
-N NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY, LOST PROFITS, BUSINESS
+IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY, LOST PROFITS, BUSINESS
 INTERRUPTION, REPLACEMENT SERVICE OR OTHER SPECIAL, INCIDENTAL, CONSEQUENTIAL,
 PUNITIVE, OR INDIRECT DAMAGES, HOWEVER CAUSED AND REGARDLESS OF THEORY OF
 LIABILITY. SYSTEM INITIATIVE’S LIABILITY FOR ALL CLAIMS ARISING UNDER THIS
@@ -342,7 +337,7 @@ its rights under this Agreement without consent from the other party in
 connection with a change in control, acquisition or sale of all or substantially
 all of its assets.
 
-**8.4. Force Majeur.** Neither party shall be responsible for failure or delay
+**8.4. Force Majeure.** Neither party shall be responsible for failure or delay
 in performance by events out of their reasonable control, including but not
 limited to, acts of God, Internet outage, terrorism, war, fires, earthquakes and
 other disasters (each a “**Force Majeure**”). Notwithstanding the foregoing: (i)
