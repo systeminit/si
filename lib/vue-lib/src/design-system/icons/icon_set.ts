@@ -38,6 +38,10 @@ import Tilde from "./custom-icons/tilde.svg?raw";
 import TildeCircle from "./custom-icons/tilde-circle.svg?raw";
 import TildeSquare from "./custom-icons/tilde-square.svg?raw";
 
+import Socket from "./custom-icons/socket.svg?raw";
+import OutputSocket from "./custom-icons/output-socket.svg?raw";
+import InputSocket from "./custom-icons/input-socket.svg?raw";
+
 import QuestionMarkCircle from "~icons/heroicons-solid/question-mark-circle";
 import Play from "~icons/ion/play-sharp";
 
@@ -266,6 +270,7 @@ export const ICONS = Object.freeze({
   "git-merge": GitMerge,
   globe: Globe,
   hide: EyeOff,
+  "input-socket": InputSocket,
   "input-type-number": InputTypeNumber,
   "input-type-select": InputTypeSelect,
   "input-type-string": InputTypeString,
@@ -292,6 +297,7 @@ export const ICONS = Object.freeze({
   "nested-arrow-right": NestedArrowRight,
   none: EmptyIcon,
   option: MaterialSymbolsKeyboardOptionKey,
+  "output-socket": OutputSocket,
   password: Password,
   play: Play,
   plug: Plug,
@@ -317,6 +323,7 @@ export const ICONS = Object.freeze({
   show: Eye,
   slash: SlashForward,
   "sliders-vertical": SlidersVertical,
+  socket: Socket,
   spacebar: MaterialSymbolsSpaceBarRounded,
   star: Star,
   starOutline: StarOutline,

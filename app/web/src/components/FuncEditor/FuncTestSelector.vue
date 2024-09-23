@@ -40,7 +40,7 @@ import { useComponentsStore } from "@/store/components.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { outputSocketsAndPropsFor } from "@/api/sdf/dal/schema";
-import { Option } from "@/components/SelectMenu.vue";
+import { GroupedOptions } from "@/components/SelectMenu.vue";
 import { TestStatus } from "./FuncTest.vue";
 
 const componentsStore = useComponentsStore();
@@ -76,7 +76,7 @@ const disableTestButton = computed(
 
 // Only for attribute funcs, assemble prototypes that belong to the selected component.
 const prototypeAttributeOptions = computed(() => {
-  let options: Option[] = [];
+  let options: GroupedOptions = {};
 
   // Despite the fact that we can compile prototype options for _all_ components, we should wait until
   // the user selects a _single_ component.
@@ -103,9 +103,7 @@ const prototypeAttributeOptions = computed(() => {
             schemaVariant = componentsStore.schemaVariantsById[schemaVariantId];
         }
         if (schemaVariant) {
-          const { socketOptions, propOptions } =
-            outputSocketsAndPropsFor(schemaVariant);
-          options = [...socketOptions, ...propOptions];
+          options = outputSocketsAndPropsFor(schemaVariant);
         }
       },
     );
@@ -113,7 +111,7 @@ const prototypeAttributeOptions = computed(() => {
     return options;
   } else {
     // If the selected func is not an attribute func, there are no options to assemble.
-    return [];
+    return {};
   }
 });
 

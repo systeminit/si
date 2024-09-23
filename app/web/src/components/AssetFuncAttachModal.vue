@@ -178,7 +178,10 @@ import {
   inputSocketsAndPropsFor,
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
-import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import SelectMenu, {
+  Option,
+  GroupedOptions,
+} from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { nilId } from "@/utils/nilId";
@@ -264,7 +267,7 @@ const noneOutput = {
   value: nilId(),
 };
 const attributeOutputLocation = ref<Option>(noneOutput);
-const attributeOutputLocationOptions = ref<Option[]>([]);
+const attributeOutputLocationOptions = ref<GroupedOptions>({});
 
 const attrToValidate = ref<string | undefined>();
 
@@ -326,14 +329,12 @@ const open = async (
     existingFuncOptions.value.find((o) => o.value === funcId) || noneFunction;
   attrToValidate.value = undefined;
 
-  attributeOutputLocationOptions.value = [];
+  attributeOutputLocationOptions.value = {};
   if (props.schemaVariantId) {
     const schemaVariant = assetStore.variantFromListById[props.schemaVariantId];
     if (schemaVariant) {
-      const { socketOptions, propOptions } =
+      attributeOutputLocationOptions.value =
         outputSocketsAndPropsFor(schemaVariant);
-
-      attributeOutputLocationOptions.value = [...socketOptions, ...propOptions];
     }
   }
 
@@ -346,17 +347,15 @@ interface EditingBinding {
 }
 
 const editableBindings = ref<EditingBinding[]>([]);
-const inputSourceOptions = computed<Option[]>(() => {
-  let socketOptions: Option[] = [];
-  let propOptions: Option[] = [];
+const inputSourceOptions = computed<GroupedOptions>(() => {
   if (schemaVariantId.value) {
     const variant = assetStore.variantFromListById[schemaVariantId.value];
     if (variant) {
-      ({ socketOptions, propOptions } = inputSocketsAndPropsFor(variant));
+      return inputSocketsAndPropsFor(variant);
     }
   }
 
-  return socketOptions.concat(propOptions);
+  return {};
 });
 const funcArgumentName = (
   funcArgumentId: FuncArgumentId,
