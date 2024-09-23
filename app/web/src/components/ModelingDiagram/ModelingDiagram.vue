@@ -2169,6 +2169,7 @@ function onResizeMove() {
   if (!node.size) return;
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
+
   const sizeDelta: Vector2d = {
     x: Math.round(
       (containerPointerPos.value.x -
@@ -2810,6 +2811,10 @@ function fitChildInsideParentFrame(
   createAtSize.width -= DEFAULT_GUTTER_SIZE * 6;
   createAtSize.height -= HEADER_SIZE;
   createAtSize.height -= DEFAULT_GUTTER_SIZE * 4;
+
+  // we need just a bit more padding space between the parent to fix resizability
+  createAtPosition.y += 15;
+  createAtSize.height -= 30;
 
   // enforce minimums
   createAtSize.width = Math.max(createAtSize.width, MIN_NODE_DIMENSION);
