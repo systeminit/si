@@ -24,7 +24,7 @@ const thisDoc = computed(
 );
 
 const setPrintTitle = () => {
-  const title = thisDoc.value.title.replace(" ", "-");
+  const title = thisDoc.value.title.replaceAll(" ", "-");
   document.title = `${urlDocVersion}_SI-${title}`;
 };
 
