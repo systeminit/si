@@ -1101,6 +1101,7 @@ defineExpose({
     display: block;
     text-overflow: ellipsis;
     overflow: hidden;
+    overflow-y: auto;
 
     .attributes-panel-item.--input.--focus &,
     .attributes-panel-item.--input.--hover & {
