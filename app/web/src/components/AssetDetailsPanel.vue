@@ -494,6 +494,7 @@ watch(
     if (focusedFormField.value)
       delete data[focusedFormField.value as keyof SchemaVariant];
     if (editingAsset.value) Object.assign(editingAsset.value, data);
+    else editingAsset.value = data;
   },
   { deep: true },
 );
