@@ -279,6 +279,7 @@ interface PropDisplay {
   path: string;
   value?: PropId | InputSocketId;
   attributePrototypeId?: AttributePrototypeId;
+  // TODO UNSET: add funcId here
 }
 
 interface BindingWithBackendKindAndPropId extends BindingWithBackendKind {
@@ -291,6 +292,7 @@ const intrinsics = computed(() => {
     props.schemaVariantId,
   );
   if (!intrinsics) return [];
+  // TODO UNSET: remove this so we get unset in here
   return intrinsics.filter(
     (binding) => binding.backendKind === FuncBackendKind.Identity,
   );
@@ -323,6 +325,7 @@ const configurableProps = computed(() => {
       attributePrototypeId: AttributePrototypeId;
     }
   >;
+  // TODO UNSET: we've got to detect which funcId we're finding a binding for
   intrinsics.value
     .filter(
       (binding): binding is BindingWithBackendKindAndPropId => !!binding.propId,
@@ -368,6 +371,7 @@ interface IntrinsicDisplay {
   socketName: string;
   backendKind: FuncBackendKind;
   value: InputSocketId | PropId | undefined;
+  // TODO UNSET: add funcId here
 }
 
 // PSA: this is how to type guard filter so later operations know the field
@@ -378,6 +382,7 @@ interface BindingWithBackendKindAndOutputSocket extends BindingWithBackendKind {
 
 const outputSocketIntrinsics = computed(() => {
   const bindings: IntrinsicDisplay[] = [];
+  // TODO UNSET: we've got to detect which funcId we're finding a binding for
   intrinsics.value
     .filter(
       (binding): binding is BindingWithBackendKindAndOutputSocket =>
@@ -494,6 +499,7 @@ watch(
     if (focusedFormField.value)
       delete data[focusedFormField.value as keyof SchemaVariant];
     if (editingAsset.value) Object.assign(editingAsset.value, data);
+    else editingAsset.value = data;
   },
   { deep: true },
 );
