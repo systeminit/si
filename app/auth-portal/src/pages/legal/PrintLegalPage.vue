@@ -1,9 +1,7 @@
 <template>
   <div class="p-lg bg-white text-black">
     <RichText>
-      <Component
-        :is="LEGAL_DOCS_CONTENT[urlDocVersion as TosVersion][urlDocSlug].component"
-      />
+      <Component :is="thisDoc.component" />
     </RichText>
   </div>
 </template>
@@ -11,7 +9,7 @@
 <script lang="ts" setup>
 import { RichText } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 
 import { TosVersion } from "@si/ts-lib/src/terms-of-service";
@@ -21,15 +19,26 @@ const route = useRoute();
 const urlDocVersion = route.params.docVersion as string;
 const urlDocSlug = route.params.docSlug as string;
 
-onMounted(triggerPrint);
+const thisDoc = computed(
+  () => LEGAL_DOCS_CONTENT[urlDocVersion as TosVersion][urlDocSlug],
+);
 
-function triggerPrint() {
-  document.title = `system-initiative-${urlDocSlug}-${urlDocVersion}`;
-  window.print();
+const setPrintTitle = () => {
+  const title = thisDoc.value.title.replace(" ", "-");
+  document.title = `${urlDocVersion}_SI-${title}`;
+};
+
+onMounted(() => {
+  window.addEventListener("beforeprint", setPrintTitle);
+
+  // Load bearing gambiarra (victor): If window.print is called to quickly, the browser
+  // won't have time to set up the event listener that updates the document title
+  setTimeout(window.print, 500);
+
   window.onfocus = () => {
     window.close();
   };
-}
+});
 
 useHead({
   htmlAttrs: {

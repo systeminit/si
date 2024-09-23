@@ -6,7 +6,9 @@
     <RichText class="mb-xl">
       <template v-if="viewOnlyMode">
         <h1>System Initiative Legal Documents</h1>
-        <p><i>Last updated 2023-03-30</i></p>
+        <p>
+          <i>Last updated {{ currentVersion }}</i>
+        </p>
       </template>
       <template v-else>
         <h1>Review our legal docs:</h1>
@@ -21,7 +23,7 @@
       <div class="flex-none w-[220px]">
         <div class="sticky top-md flex flex-col gap-md">
           <div
-            v-for="doc in LEGAL_DOCS_CONTENT[currentVersion]"
+            v-for="doc in currentDocs"
             :key="doc.fileName"
             :class="
               clsx(
@@ -65,17 +67,11 @@
         </div>
       </div>
       <div
-        class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+        class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg flex flex-col gap-xl"
       >
         <div
-          v-for="(doc, key, index) in LEGAL_DOCS_CONTENT[currentVersion]"
+          v-for="(doc, key) in currentDocs"
           :key="key"
-          :class="
-            !viewOnlyMode ||
-            index !== Object.keys(LEGAL_DOCS_CONTENT).length - 1
-              ? 'mb-xl'
-              : ''
-          "
           :data-doc-slug="doc.slug"
         >
           <RichText class="text-sm">
@@ -127,7 +123,13 @@ import {
   ref,
   watch,
 } from "vue";
-import { RichText, Stack, VButton, VormInput } from "@si/vue-lib/design-system";
+import {
+  RichText,
+  Stack,
+  userOverrideTheme,
+  VButton,
+  VormInput,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { TosVersion } from "@si/ts-lib/src/terms-of-service";
@@ -148,6 +150,8 @@ const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 const currentVersion = computed(() =>
   featureFlagStore.SAAS_RELEASE ? TosVersion.v20240925 : TosVersion.v20230330,
 );
+
+const currentDocs = computed(() => LEGAL_DOCS_CONTENT[currentVersion.value]);
 
 const userAgreed = ref(false);
 
@@ -218,8 +222,24 @@ const enableObserver = () => {
   });
 };
 
+let title = document.title;
+const theme = userOverrideTheme.value;
+const setPrintTitle = () => {
+  title = document.title;
+  document.title = `${currentVersion.value}_SI-Legal-Documents`;
+  userOverrideTheme.value = "light";
+};
+
+const clearPrintTitle = () => {
+  document.title = title;
+  userOverrideTheme.value = theme;
+};
+
 onMounted(() => {
   enableObserver();
+
+  window.addEventListener("beforeprint", setPrintTitle);
+  window.addEventListener("afterprint", clearPrintTitle);
 
   window.addEventListener("scrollend", () => {
     if (scrollingToSlug.value) {
@@ -234,6 +254,9 @@ onMounted(() => {
   }
 });
 onBeforeUnmount(() => {
+  window.removeEventListener("beforeprint", setPrintTitle);
+  window.removeEventListener("afterprint", clearPrintTitle);
+
   observer.disconnect();
 });
 </script>
