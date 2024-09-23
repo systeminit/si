@@ -592,7 +592,7 @@
               @click="copyToClipboard"
             />
             <pre
-              class="text-center mt-xs cursor-pointer"
+              class="text-center mt-xs cursor-pointer overflow-y-auto break-all text-wrap max-h-[50vh]"
               @click="copyToClipboard"
               >{{ currentValue }}</pre
             >
