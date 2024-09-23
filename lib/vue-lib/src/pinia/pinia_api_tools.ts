@@ -203,6 +203,15 @@ export type ApiRequestDescription<
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
+  /**
+   * function to call that will run after a new changeset is created as a result of this function
+   * Note that in this scenario both funcs are being called on the "original" store,
+   * not the new store that will be constructed once you are routed to the new change set
+   */
+  onNewChangeSet?(
+    newChangeSetId: string,
+    response: Response,
+  ): Promise<void> | void;
   /** function to call if request fails (>=400) - not common */
   onFail?(response: any): any | void;
   /** additional headers to pass with request */
@@ -332,6 +341,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         options,
         formData,
         onSuccess,
+        onNewChangeSet,
         onFail,
       } = requestSpec;
       let { headers } = requestSpec;
@@ -427,6 +437,14 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
               });
             }
           }
+
+          if (request.headers.force_change_set_id)
+            if (typeof onNewChangeSet === "function")
+              await onNewChangeSet.call(
+                store,
+                request.headers.force_change_set_id,
+                request.data,
+              );
 
           // request was successful if reaching here
           // because axios throws an error if http status >= 400, timeout, etc
