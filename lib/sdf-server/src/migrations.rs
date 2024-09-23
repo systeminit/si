@@ -150,8 +150,6 @@ impl Migrator {
         builtins::func::migrate_intrinsics(&ctx)
             .await
             .map_err(MigratorError::migrate_builtins)?;
-        // info!("migrating builtin functions");
-        // builtins::func::migrate(&ctx).await?;
 
         let module_index_url = self
             .services_context
@@ -173,7 +171,7 @@ impl Migrator {
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
+                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating in progress...");
                 }
                 result = &mut install_builtins  => match result {
                     Ok(_) => {
@@ -197,9 +195,6 @@ async fn install_builtins(
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules: Vec<ModuleDetailsResponse> = module_list.modules;
-    // .into_iter()
-    // .filter(|module| module.name.contains("docker-image"))
-    // .collect();
 
     let total = modules.len();
 
@@ -237,13 +232,13 @@ async fn install_builtins(
                     Ok(_) => {
                         count += 1;
                         let elapsed = instant.elapsed().as_secs_f32();
-                        info!(
+                        debug!(
                             "pkg {pkg_name} install finished successfully and took {elapsed:.2} seconds ({count} of {total} installed)",
                             );
                     }
                     Err(PkgError::PackageAlreadyInstalled(hash)) => {
                         count += 1;
-                        warn!(%hash, "pkg {pkg_name} already installed ({count} of {total} installed)");
+                        debug!(%hash, "skipping pkg {pkg_name}: already installed ({count} of {total} installed)");
                     }
                     Err(err) => error!(?err, "pkg {pkg_name} install failed"),
                 }

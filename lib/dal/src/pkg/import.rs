@@ -189,7 +189,7 @@ async fn import_change_set(
 
         unseen.remove(normalized_name);
 
-        info!(
+        debug!(
             "installing schema '{}' from {}",
             schema_spec.name(),
             metadata.name(),
