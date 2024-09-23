@@ -426,7 +426,7 @@ impl PgPool {
     #[instrument(
         name = "pool.get",
         skip_all,
-        level = "debug",
+        level = "info",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
