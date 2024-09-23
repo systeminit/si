@@ -10,9 +10,10 @@ To follow along, you should:
 
 2. You should have your System Initiative workspace open in another window.
 
-This tutorial show you how to create and edit components and add functions to
-them. It's focus is on introducing you to the user interface and various high
-level concepts. For deeper details, it will link to the reference guides.
+This tutorial shows you how to create components and add functions to them.
+It's focus is on introducing you to the user interface and various high level
+concepts. For deeper details on writing specific function types, [see the
+reference guides](../reference/index.md).
 
 :::tip
 

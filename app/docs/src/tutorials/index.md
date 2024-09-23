@@ -12,3 +12,5 @@ rather than explaining why things work the way they do.
   manage your resources.
 - [Creating Components](./creating-components.md) - how to extend System
   Initiative by creating your own new assets.
+- [Editing, Updating, and Contributing Components](./editing-components-and-contributing.md) - how to edit, upgrade, update, install and contribute assets.
+
