@@ -9,6 +9,7 @@ import {
   SAAS_WORKSPACE_URL,
 } from "./workspaces.service";
 import { tracker } from "../lib/tracker";
+import { posthog } from "../lib/posthog";
 import { fetchAuth0Profile } from "./auth0.service";
 import { ApiError } from "../lib/api-error";
 import { findLatestTosForUser } from "./tos.service";
@@ -149,7 +150,11 @@ export async function createOrUpdateUserFromAuth0Details(
       lastName: user.lastName,
     });
 
-    if (user.email.includes("@systeminit.com")) {
+    const saasReleaseEnabled = await posthog.isFeatureEnabled(
+      "auth_portal_saas_release",
+      user.id,
+    );
+    if (saasReleaseEnabled) {
       await createWorkspace(
         user,
         InstanceEnvType.SI,
