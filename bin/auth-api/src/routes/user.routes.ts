@@ -10,6 +10,7 @@ import {
 
 import { CustomRouteContext } from "../custom-state";
 import {
+  create_lago_customer_records,
   getQuarantinedUsers,
   getSuspendedUsers,
   getUserById,
@@ -19,6 +20,7 @@ import {
 } from "../services/users.service";
 import { resendAuth0EmailVerification } from "../services/auth0.service";
 import { tracker } from "../lib/tracker";
+import { createProductionWorkspaceForUser } from "../services/workspaces.service";
 import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/whoami", async (ctx) => {
@@ -363,11 +365,30 @@ router.post("/tos-agreement", async (ctx) => {
   if (userAgreedVersion && userAgreedVersion > reqBody.tosVersionId) {
     throw new ApiError("Conflict", "Cannot agree to earlier version of TOS");
   }
+
   const agreement = await saveTosAgreement(
     ctx.state.authUser,
     reqBody.tosVersionId,
     ctx.state.clientIp,
   );
+
+  if (userAgreedVersion) {
+    // This means we have a user that has accepted an old ToS and is prompted for the latest ToS!
+    // We need to create them a production workspace if they don't already have one during the Cohort
+    await createProductionWorkspaceForUser(ctx.state.authUser.id);
+
+    // Map that a user has upgraded to the new ToS and opted in to being a customer
+    tracker.trackEvent(
+      ctx.state.authUser,
+      "existing_user_subscription_create",
+      {
+        signedUpAt: new Date(),
+      },
+    );
+    // Create the lago account and the billing user
+    await create_lago_customer_records(ctx.state.authUser);
+  }
+
   ctx.body = agreement;
 });
 
@@ -377,6 +398,14 @@ router.get("/users/:userId/firstTimeModal", async (ctx) => {
   ctx.body = {
     firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
   };
+});
+
+router.post("/users/:userId/create-billing-integration", async (ctx) => {
+  const user = await extractOwnUserIdParam(ctx);
+
+  await create_lago_customer_records(user);
+
+  ctx.body = { success: true };
 });
 
 router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {

@@ -1,15 +1,12 @@
 {
   "extends": "@si/tsconfig/tsconfig.node.json",
   "ts-node": {
-    "swc": true,
+    "swc": true
   },
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "./"
+    "rootDir": "./",
+    "lib": ["DOM", "ES2022"]
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "node_modules/@si/ts-lib/**/*.ts"
-  ],
+  "include": ["src/**/*.ts", "test/**/*.ts", "node_modules/@si/ts-lib/**/*.ts"]
 }

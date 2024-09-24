@@ -4,7 +4,12 @@ import {
 } from "@prisma/client";
 import { ulid } from "ulidx";
 import { tracker } from "../lib/tracker";
-import { createInvitedUser, getUserByEmail, UserId } from "./users.service";
+import {
+  createInvitedUser,
+  getUserByEmail,
+  getUserById,
+  UserId,
+} from "./users.service";
 
 export type WorkspaceId = string;
 export const LOCAL_WORKSPACE_URL = "http://localhost:8080";
@@ -231,4 +236,32 @@ export async function removeUser(email: string, workspaceId: WorkspaceId) {
       id: memberShip.id,
     },
   });
+}
+
+export async function createProductionWorkspaceForUser(userId: UserId) {
+  const user = await getUserById(userId);
+  if (user) {
+    const userWorkspaces = await getUserWorkspaces(user.id);
+    const hasDefaultWorkspace = _.head(
+      _.filter(
+        userWorkspaces,
+        (w) => w.isDefault && w.creatorUserId === user.id,
+      ),
+    );
+
+    if (!hasDefaultWorkspace) {
+      const workspaceDetails = await createWorkspace(
+        user,
+        InstanceEnvType.SI,
+        SAAS_WORKSPACE_URL,
+        `${user.nickname}'s Production Workspace`,
+        hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
+        "",
+      );
+
+      return workspaceDetails;
+    }
+  }
+
+  return null;
 }

@@ -239,6 +239,10 @@ const saveHandler = async () => {
         firstName: draftUser.value?.firstName,
         lastName: draftUser.value?.lastName,
       });
+
+      if (featureFlagsStore.SAAS_RELEASE) {
+        await authStore.BILLING_INTEGRATION();
+      }
     }
 
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});

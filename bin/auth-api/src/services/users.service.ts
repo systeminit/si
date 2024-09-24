@@ -13,6 +13,11 @@ import { posthog } from "../lib/posthog";
 import { fetchAuth0Profile } from "./auth0.service";
 import { ApiError } from "../lib/api-error";
 import { findLatestTosForUser } from "./tos.service";
+import {
+  createCustomer,
+  createPaidSubscription,
+  createTrialSubscription,
+} from "../lib/lago";
 
 const prisma = new PrismaClient();
 
@@ -173,11 +178,6 @@ export async function createOrUpdateUserFromAuth0Details(
         "",
       );
     }
-
-    // create a default saas workspace
-    // await createWorkspace(user, InstanceEnvType.SI, "https://app.systeminit.com", `${user.nickname}'s  Production Workspace`);
-    // we want to check if this is the first production workspace that a user has and if so, we are going to set it as the default
-    // when we launch this feature!
   }
 
   return user;
@@ -278,4 +278,29 @@ export async function saveUser(user: User) {
   });
   tracker.identifyUser(user);
   return user;
+}
+
+export async function create_lago_customer_records(user: User) {
+  await createCustomer(
+    user.id,
+    user.firstName || "",
+    user.lastName || "",
+    user.email,
+  );
+  tracker.trackEvent(user, "created_lago_customer", {
+    userPk: user.id,
+    createdAt: new Date(),
+  });
+  await createTrialSubscription(user.id);
+  tracker.trackEvent(user, "created_lago_trial_subscription", {
+    userPk: user.id,
+    createdAt: new Date(),
+    plan: "launch_trial",
+  });
+  await createPaidSubscription(user.id);
+  tracker.trackEvent(user, "created_lago_payg_subscription", {
+    userPk: user.id,
+    createdAt: new Date(),
+    plan: "launch_pay_as_you_go",
+  });
 }

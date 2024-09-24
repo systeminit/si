@@ -18,6 +18,7 @@ get help. The community is eager to answer your questions and to help.
   task they are teaching.
 - [Reference guides](./reference/index.md) give you just the facts about APIs
   and Vocabulary.
+- [Explanations](./explanations/index.md) gives you .
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest
   features and weekly demos.
 - The [Road Map](./roadmap/index.md) talks about where we are heading.

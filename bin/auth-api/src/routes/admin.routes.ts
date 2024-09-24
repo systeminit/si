@@ -3,6 +3,7 @@ import { z } from "zod";
 import { InstanceEnvType } from "@prisma/client";
 import { getUserByEmail, getUserById } from "../services/users.service";
 import {
+  createProductionWorkspaceForUser,
   createWorkspace,
   getUserWorkspaces,
   patchWorkspace,
@@ -85,27 +86,10 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
     }),
   );
 
-  const user = await getUserById(reqBody.userId);
-  if (user) {
-    const userWorkspaces = await getUserWorkspaces(user.id);
-    const hasDefaultWorkspace = _.head(
-      _.filter(
-        userWorkspaces,
-        (w) => w.isDefault && w.creatorUserId === user.id,
-      ),
-    );
-
-    const workspaceDetails = await createWorkspace(
-      user,
-      InstanceEnvType.SI,
-      SAAS_WORKSPACE_URL,
-      `${user.nickname}'s Production Workspace`,
-      hasDefaultWorkspace === null || hasDefaultWorkspace === undefined,
-      "",
-    );
-
+  const newWorkspace = await createProductionWorkspaceForUser(reqBody.userId);
+  if (newWorkspace) {
     ctx.body = {
-      newWorkspace: workspaceDetails,
+      newWorkspace,
     };
   }
 });

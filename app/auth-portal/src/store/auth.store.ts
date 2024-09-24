@@ -262,6 +262,15 @@ export const useAuthStore = defineStore("auth", {
       });
     },
 
+    async BILLING_INTEGRATION() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest({
+        method: "post",
+        url: `/users/${this.user.id}/create-billing-integration`,
+        onSuccess: () => {},
+      });
+    },
+
     // SIGNUP
   },
 });
