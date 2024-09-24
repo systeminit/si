@@ -77,7 +77,6 @@ impl DependentValueGraph {
 
         let mut values = Vec::new();
         for root in roots {
-            let unfinished = !root.is_finished();
             let root_ulid: Ulid = root.into();
             // It's possible that one or more of the initial ids provided by the enqueued
             // DependentValuesUpdate job may have been removed from the snapshot between when the
@@ -100,11 +99,7 @@ impl DependentValueGraph {
                 NodeWeightDiscriminants::AttributeValue => {
                     let initial_attribute_value_id: AttributeValueId = root_ulid.into();
 
-                    if unfinished
-                        && AttributeValue::is_set_by_dependent_function(
-                            ctx,
-                            initial_attribute_value_id,
-                        )
+                    if AttributeValue::is_set_by_dependent_function(ctx, initial_attribute_value_id)
                         .await?
                     {
                         self.values_that_need_to_execute_from_prototype_function

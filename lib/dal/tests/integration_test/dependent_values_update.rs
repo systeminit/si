@@ -397,7 +397,10 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
     assert!(units_json_string.contains("docker.io/library/oysters on the floor\\n"));
 }
 
-#[ignore]
+/// Until we have a better system for signalling that a DVU has run and
+/// finished, we can't actually verify that it executed these per-component. But
+/// we can ensure that with a concurrency limit: (1) the job finishes and (2) it
+/// produces the correct data
 #[test]
 async fn component_concurrency_limit(ctx: &mut DalContext) {
     // Give us a massive component concurrency level
@@ -449,7 +452,7 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
 
     let mut workspace = ctx.get_workspace().await.expect("get workspace");
     workspace
-        .set_component_concurrency_limit(ctx, Some(8))
+        .set_component_concurrency_limit(ctx, Some(2))
         .await
         .expect("set concurrency limit");
     ctx.commit_no_rebase().await.expect("commit");
@@ -471,23 +474,6 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
     rigid_designator.set(ctx, "hesperus").await;
 
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    assert!(
-        ctx.workspace_snapshot()
-            .expect("workspace_snapshot")
-            .has_dependent_value_roots()
-            .await
-            .expect("has dependent value roots"),
-        "not all dvu roots should be processed and removed"
-    );
-
-    // 16 / 4 = 4
-    for _ in 0..4 {
-        ctx.enqueue_dependent_values_update()
-            .await
-            .expect("enqueue dvu job");
-        expected::commit_and_update_snapshot_to_visibility(ctx).await;
-    }
 
     assert!(
         !ctx.workspace_snapshot()

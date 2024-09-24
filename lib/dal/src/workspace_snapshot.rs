@@ -1418,7 +1418,7 @@ impl WorkspaceSnapshot {
                     NodeWeight::new_finished_dependent_value_root(id, lineage_id, value_id)
                 }
                 DependentValueRoot::Unfinished(value_id) => {
-                    NodeWeight::new_finished_dependent_value_root(id, lineage_id, value_id)
+                    NodeWeight::new_dependent_value_root(id, lineage_id, value_id)
                 }
             };
 
