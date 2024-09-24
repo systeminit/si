@@ -275,7 +275,6 @@ impl CorrectTransforms for ComponentNodeWeight {
                             // never be more than one in a single batch, this makes it
                             // resilient against replaying multiple transform batches
                             // (in order). Last one wins!
-
                             valid_frame_contains_source = match valid_frame_contains_source {
                                 None => Some((i, source.id)),
                                 Some((last_index, _)) => {
@@ -332,56 +331,70 @@ impl CorrectTransforms for ComponentNodeWeight {
             }
         }
 
-        if !updates_to_remove.is_empty() {
-            let mut idx = 0;
-            // Vec::remove is O(n) for the updates, which will likely always be
-            // > than the size of updates_to_remove
-            updates.retain(|_| {
-                let should_retain = !updates_to_remove.contains(&idx);
-                idx += 1;
-                should_retain
-            })
-        }
-
-        // Add updates to remove any incoming FrameContains edges that don't
-        // have the source in valid_frame_contains_source. This ensures a
-        // component can only have one frame parent
-        if let Some((_, valid_frame_contains_source)) = valid_frame_contains_source {
-            if let (Some(valid_source), Some(self_index)) = (
-                graph.get_node_index_by_id_opt(valid_frame_contains_source),
-                graph.get_node_index_by_id_opt(self.id),
-            ) {
-                updates.extend(
-                    graph
-                        .edges_directed(self_index, Incoming)
-                        // We only want to find incoming FrameContains edges
-                        // that  are not from the current valid source
-                        .filter(|edge_ref| {
-                            EdgeWeightKindDiscriminants::FrameContains
-                                == edge_ref.weight().kind().into()
-                                && edge_ref.source() != valid_source
-                                && !existing_remove_edges.contains(&edge_ref.source())
-                        })
-                        .filter_map(|edge_ref| {
-                            graph
-                                .get_node_weight_opt(edge_ref.source())
-                                .map(|source_weight| Update::RemoveEdge {
-                                    source: source_weight.into(),
-                                    destination: self.into(),
-                                    edge_kind: EdgeWeightKindDiscriminants::FrameContains,
-                                })
-                        }),
-                );
-            }
-        }
-
         if component_will_be_deleted {
             if let Some(component_idx) = graph.get_node_index_by_id_opt(self.id) {
                 updates.extend(remove_hanging_socket_connections(
                     graph,
                     self.id,
                     component_idx,
-                )?)
+                )?);
+
+                // Also remove any incoming edges to the component in case there
+                // is a frame contains in another change set
+                updates.extend(graph.edges_directed(component_idx, Incoming).filter_map(
+                    |edge_ref| {
+                        graph
+                            .get_node_weight_opt(edge_ref.source())
+                            .map(|source_weight| Update::RemoveEdge {
+                                source: source_weight.into(),
+                                destination: self.into(),
+                                edge_kind: edge_ref.weight().kind().into(),
+                            })
+                    },
+                ));
+            }
+        } else {
+            if !updates_to_remove.is_empty() {
+                let mut idx = 0;
+                // Vec::remove is O(n) for the updates, which will likely always be
+                // > than the size of updates_to_remove
+                updates.retain(|_| {
+                    let should_retain = !updates_to_remove.contains(&idx);
+                    idx += 1;
+                    should_retain
+                })
+            }
+
+            // Add updates to remove any incoming FrameContains edges that don't
+            // have the source in valid_frame_contains_source. This ensures a
+            // component can only have one frame parent
+            if let Some((_, valid_frame_contains_source)) = valid_frame_contains_source {
+                if let (Some(valid_source), Some(self_index)) = (
+                    graph.get_node_index_by_id_opt(valid_frame_contains_source),
+                    graph.get_node_index_by_id_opt(self.id),
+                ) {
+                    updates.extend(
+                        graph
+                            .edges_directed(self_index, Incoming)
+                            // We only want to find incoming FrameContains edges
+                            // that  are not from the current valid source
+                            .filter(|edge_ref| {
+                                EdgeWeightKindDiscriminants::FrameContains
+                                    == edge_ref.weight().kind().into()
+                                    && edge_ref.source() != valid_source
+                                    && !existing_remove_edges.contains(&edge_ref.source())
+                            })
+                            .filter_map(|edge_ref| {
+                                graph
+                                    .get_node_weight_opt(edge_ref.source())
+                                    .map(|source_weight| Update::RemoveEdge {
+                                        source: source_weight.into(),
+                                        destination: self.into(),
+                                        edge_kind: EdgeWeightKindDiscriminants::FrameContains,
+                                    })
+                            }),
+                    );
+                }
             }
         }
 
