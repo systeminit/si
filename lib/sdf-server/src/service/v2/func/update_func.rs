@@ -1,3 +1,8 @@
+use super::FuncAPIResult;
+use crate::{
+    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    track,
+};
 use axum::{
     extract::{Host, OriginalUri, Path},
     response::IntoResponse,
@@ -7,18 +12,14 @@ use dal::{
     func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, FuncId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-
-use super::FuncAPIResult;
-use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
-    track,
-};
+use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFuncRequest {
     pub display_name: Option<String>,
     pub description: Option<String>,
+    client_ulid: Ulid,
 }
 
 pub async fn update_func(
@@ -41,7 +42,7 @@ pub async fn update_func(
             .into_frontend_type(&ctx)
             .await?;
 
-    WsEvent::func_updated(&ctx, updated_func.clone())
+    WsEvent::func_updated(&ctx, updated_func.clone(), Some(request.client_ulid))
         .await?
         .publish_on_commit(&ctx)
         .await?;

@@ -1,6 +1,7 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
+import { ulid } from "ulid";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   FuncArgument,
@@ -59,6 +60,7 @@ export interface DeleteFuncResponse {
 export interface AttributeWithVariant extends Attribute {
   schemaVariantId: NonNullable<SchemaVariantId>;
 }
+
 export interface BindingWithDisplayName extends Action {
   displayName?: string | null;
   name: string;
@@ -154,6 +156,8 @@ export const useFuncStore = () => {
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
+        // So we can ignore websocket update originated by this client
+        clientUlid: ulid(),
       }),
       getters: {
         selectedFuncSummary(state): FuncSummary | undefined {
@@ -330,6 +334,7 @@ export const useFuncStore = () => {
             params: {
               displayName: func.displayName,
               description: func.description,
+              clientUlid: this.clientUlid,
             },
             optimistic: () => {
               if (isHead) return () => {};
@@ -638,6 +643,12 @@ export const useFuncStore = () => {
             eventType: "FuncUpdated",
             callback: (data) => {
               if (data.changeSetId !== selectedChangeSetId) return;
+              // Requests that send client ID are assumed to update the state directly
+              // So we skip updating them from the websocket event
+              // This is implemented to fix funcSummary being wiped on high latency systems
+              // but possibly needs to be implemented for the other func update endpoints
+              if (data.clientUlid === this.clientUlid) return;
+
               this.funcsById[data.funcSummary.funcId] = data.funcSummary;
               const bindings = processBindings(data.funcSummary);
               this.actionBindings[data.funcSummary.funcId] =

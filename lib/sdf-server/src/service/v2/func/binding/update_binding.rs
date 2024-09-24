@@ -177,7 +177,7 @@ pub async fn update_binding(
         .await?
         .into_frontend_type(&ctx)
         .await?;
-    WsEvent::func_updated(&ctx, func_summary.clone())
+    WsEvent::func_updated(&ctx, func_summary.clone(), None)
         .await?
         .publish_on_commit(&ctx)
         .await?;

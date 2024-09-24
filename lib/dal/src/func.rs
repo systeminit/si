@@ -13,6 +13,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid as CoreUlid;
 
 use crate::change_set::ChangeSetError;
 use crate::func::argument::FuncArgumentId;
@@ -780,6 +781,7 @@ pub struct FuncWsEventPayload {
 pub struct FuncWsEventFuncSummary {
     change_set_id: ChangeSetId,
     func_summary: si_frontend_types::FuncSummary,
+    client_ulid: Option<CoreUlid>,
 }
 #[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -825,12 +827,14 @@ impl WsEvent {
     pub async fn func_updated(
         ctx: &DalContext,
         func_summary: si_frontend_types::FuncSummary,
+        client_ulid: Option<CoreUlid>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FuncUpdated(FuncWsEventFuncSummary {
                 change_set_id: ctx.change_set_id(),
                 func_summary,
+                client_ulid,
             }),
         )
         .await
@@ -845,6 +849,7 @@ impl WsEvent {
             WsPayload::FuncCreated(FuncWsEventFuncSummary {
                 change_set_id: ctx.change_set_id(),
                 func_summary,
+                client_ulid: None,
             }),
         )
         .await
