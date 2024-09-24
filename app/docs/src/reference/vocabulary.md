@@ -8,18 +8,8 @@ Anything that can be used on the canvas.
 
 ## Arity
 
-The number of arguments taken by a function. Most frequently used to specify how many edges can
-connect to a socket (either "one" or "many".)
-
-## Component
-
-A component is the 'theoretical' half of a Model. It represents the configuration values you *want* something to have, while the Resource represents its real world values.
-
-## Credential
-
-A credential is a type of component that stores secret data, and has
-authentication functions attached to it. They are used to provide access to
-cloud providers, etc.
+The number of arguments taken by a function. Most frequently used to specify how
+many edges can connect to a socket (either "one" or "many".)
 
 ## Change Set
 
@@ -52,6 +42,33 @@ HEAD, and any actions enqueued. Learn how to apply a change set in the
 Abandoning a change set essentially deletes it, and all of its proposed changes,
 from the system.
 
+## Component
+
+A component is the 'theoretical' half of a Model. It represents the
+configuration values you _want_ something to have, while the Resource represents
+its real world values.
+
+## Credential
+
+A credential is a type of component that stores secret data, and has
+authentication functions attached to it. They are used to provide access to
+cloud providers, etc.
+
+## Configuration Frame (down)
+
+A "down" frame is one where the output sockets of the frame will automatically
+connect to any components placed within the frame.
+
+## Configuration Frame (up)
+
+An "up" frame is one where the output sockets of the components within the frame
+will connect to the input sockets of the frame.
+
+## HEAD
+
+HEAD is the change set that represents "the real world". It can only be altered
+by actions, refreshing resources, or applying change sets.
+
 ## Hypergraph of functions
 
 The hypergraph of functions, or hypergraph, is the data structure that powers
@@ -59,16 +76,37 @@ System Initiative. It is a graph that represents all of the code, components,
 resources, and functions that are in a workspace. We call it a "hypergraph"
 because it is multi-dimensional through the use of change sets.
 
-We know it's not an actual [hypergraph](https://en.wikipedia.org/wiki/Hypergraph). It's just less of a mouthful than 'multi-dimensional graph'.
+We know it's not an actual
+[hypergraph](https://en.wikipedia.org/wiki/Hypergraph). It's just less of a
+mouthful than 'multi-dimensional graph'.
 
-## A Model
+## Input Socket
+
+A socket that feeds data into a component. Appears on the left side of
+components.
+
+## Model
+
+### A Model
 
 When we refer to "a model", we mean a single Component/Resource pair.
 
-## The Model
+### The Model
 
 When we refer to "the model", we're talking about all of the assets, functions,
 components, resources, etc. that make up your hypergraph.
+
+## Output Socket
+
+A socket that feeds data out of a component. Appears on the right side of
+components.
+
+## Qualification
+
+Qualifications are functions that are executed to ensure that the component can
+be applied successfully to the workspace. An example is the qualification
+function that checks if the Secret you have passed into your AWS Credential
+component are valid.
 
 ## Resource
 
@@ -78,30 +116,3 @@ A resource is the data about the real-world thing represented by a component.
 
 Secrets are encrypted data stored for a given type of credential. They are
 defined by a credential component.
-
-## Qualification
-
-Qualifications are functions that are executed to ensure that the component can
-be applied successfully to the workspace. An example is the qualification
-function that checks if the Secret you have passed into your AWS Credential
-component are valid.
-
-## HEAD
-
-HEAD is the change set that represents "the real world". It can only be altered by actions, refreshing resources, or applying change sets.
-
-## Configuration Frame (down)
-
-A "down" frame is one where the output sockets of the frame will automatically connect to any components placed within the frame.
-
-## Configuration Frame (up)
-
-An "up" frame is one where the output sockets of the components within the frame will connect to the input sockets of the frame.
-
-## Input Socket
-
-A socket that feeds data into a component. Appears on the left side of components.
-
-## Output Socket
-
-A socket that feeds data out of a component. Appears on the right side of components.
