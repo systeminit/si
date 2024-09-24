@@ -27,7 +27,7 @@ export async function createCustomer(
 
 export async function createTrialSubscription(userPk: string) {
   const plan_code = "launch_trial";
-  const external_id = `1234_${plan_code}`;
+  const external_id = `${userPk}_${plan_code}`;
   const trialEndDate = new Date(
     new Date().getTime() + 30 * 24 * 60 * 60 * 1000,
   );
