@@ -151,6 +151,37 @@ async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
 }
 
 #[test]
+async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut DalContext) {
+    let docker_image_1 = ExpectComponent::create_named(ctx, "Docker Image", "docker 1").await;
+    expected::apply_change_set_to_base(ctx).await;
+
+    // fork this change set and place docker image in a frame
+    let cs_1 = fork_from_head_change_set(ctx).await;
+    let frame_one = ExpectComponent::create_named(ctx, "small odd lego", "frame one").await;
+    Frame::upsert_parent(ctx, docker_image_1.id(), frame_one.id())
+        .await
+        .expect("attach child to frame one");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // fork and delete a docker image
+    fork_from_head_change_set(ctx).await;
+    Component::remove(ctx, docker_image_1.id())
+        .await
+        .expect("able to remove");
+
+    apply_change_set_to_base(ctx).await;
+
+    update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
+
+    assert!(ctx
+        .workspace_snapshot()
+        .expect("get snap")
+        .get_node_index_by_id_opt(docker_image_1.id())
+        .await
+        .is_none());
+}
+
+#[test]
 async fn deleting_a_component_deletes_outgoing_connections_in_other_change_sets(
     ctx: &mut DalContext,
 ) {
