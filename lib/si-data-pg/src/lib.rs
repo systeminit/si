@@ -426,7 +426,7 @@ impl PgPool {
     #[instrument(
         name = "pool.get",
         skip_all,
-        level = "debug",
+        level = "info",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -576,7 +576,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.transaction",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -681,7 +681,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -733,7 +733,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query_one",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -781,7 +781,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query_opt",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -885,7 +885,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.execute",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1203,7 +1203,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.commit",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1236,7 +1236,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.rollback",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1341,7 +1341,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1396,7 +1396,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_one",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1446,7 +1446,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_opt",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1554,7 +1554,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.execute",
         skip_all,
-        level = "info",
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
