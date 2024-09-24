@@ -93,6 +93,7 @@
               type="email"
               autocomplete="email"
               required
+              disabled
               placeholder="ex: yourname@somewhere.com"
             />
             <VormInput
