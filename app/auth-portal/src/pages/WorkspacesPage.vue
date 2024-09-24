@@ -16,30 +16,28 @@
       </div>
       <VButton
         v-if="featureFlagsStore.CREATE_WORKSPACES"
-        label="Create Workspace"
-        icon="plus"
         :linkTo="{ name: 'workspace-settings', params: { workspaceId: 'new' } }"
+        icon="plus"
+        label="Create Workspace"
       />
     </div>
-    <div
-      class="mb-sm flex flex-col gap-sm p-sm border border-neutral-400 rounded-lg"
-    >
-      <div>
-        If you have questions or need help, join us on
-        <a
-          href="https://discord.gg/system-init"
-          target="_blank"
-          class="text-action-500 dark:text-action-300 font-bold hover:underline"
-          >Discord</a
-        >
-        or visit our
-        <a
-          href="https://docs.systeminit.com"
-          target="_blank"
-          class="text-action-500 dark:text-action-300 font-bold hover:underline"
-          >docs site</a
-        >.
-      </div>
+    <div class="mb-sm p-sm border border-neutral-400 rounded-lg">
+      If you have questions or need help, join us on
+      <a
+        class="text-action-500 dark:text-action-300 font-bold hover:underline"
+        href="https://discord.gg/system-init"
+        target="_blank"
+      >
+        Discord
+      </a>
+      or visit our
+      <a
+        class="text-action-500 dark:text-action-300 font-bold hover:underline"
+        href="https://docs.systeminit.com"
+        target="_blank"
+        >docs site</a
+      >
+      .
     </div>
     <template v-if="loadWorkspacesReqStatus.isPending">
       <Icon name="loader" />
@@ -62,7 +60,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed, watch } from "vue";
 import { Icon, Stack, ErrorMessage, VButton } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";

@@ -51,19 +51,19 @@
         />
         <VormInput
           v-model="draftWorkspace.displayName"
+          :disabled="!isWorkspaceOwner && !createMode"
+          :maxLength="500"
           label="Display Name"
           placeholder="A display name for this workspace"
           required
-          :disabled="!isWorkspaceOwner && !createMode"
-          :maxLength="500"
         />
         <VormInput
           v-if="createMode"
           v-model="createWorkspaceType"
           :options="createWorkspaceTypeDropdownOptions"
-          required
           label="Workspace Type"
           placeholder="Choose what kind of workspace to create"
+          required
           type="dropdown"
         />
 
@@ -71,31 +71,31 @@
           v-if="createWorkspaceType === 'url'"
           ref="urlInputRef"
           v-model="draftWorkspace.instanceUrl"
-          label="URL"
+          :disabled="!isWorkspaceOwner"
           autocomplete="url"
+          label="URL"
           placeholder="The instance url for this workspace"
           required
-          :disabled="!isWorkspaceOwner"
         />
 
         <VormInput
           v-model="draftWorkspace.description"
-          label="Description"
-          placeholder="A description for this workspace"
           :disabled="!isWorkspaceOwner && !createMode"
           :required="false"
+          label="Description"
+          placeholder="A description for this workspace"
         />
 
         <VButton
           v-if="!createMode || createWorkspaceType"
-          iconRight="chevron--right"
           :disabled="
             validationState.isError || (!isWorkspaceOwner && !createMode)
           "
+          :loadingText="createMode ? 'Creating...' : 'Applying...'"
           :requestStatus="
             createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
           "
-          :loadingText="createMode ? 'Creating...' : 'Applying...'"
+          iconRight="chevron--right"
           tone="action"
           variant="solid"
           @click="() => (createMode ? createWorkspace() : editWorkspace())"
@@ -189,10 +189,7 @@
         "
         class="pt-md"
       >
-        <template v-if="inviteUserReqStatus.isPending">
-          <Icon name="loader" />
-        </template>
-        <template v-else-if="inviteUserReqStatus.isError">
+        <template v-if="inviteUserReqStatus.isError">
           <ErrorMessage :requestStatus="inviteUserReqStatus" />
         </template>
         <template v-if="!createMode">
@@ -200,18 +197,27 @@
             <Stack>
               <VormInput
                 v-model="newMember.email"
-                type="email"
                 label="User Email to Grant Workspace Access"
+                type="email"
                 @enterPressed="inviteButtonHandler"
               />
               <VButton
+                :requestStatus="inviteUserReqStatus"
                 class="flex-none"
                 tone="action"
                 variant="solid"
-                :requestStatus="inviteUserReqStatus"
                 @click="inviteButtonHandler"
-                >Add User To Workspace</VButton
               >
+                Add User To Workspace
+              </VButton>
+              <div
+                v-if="latestInviteEmail"
+                class="p-sm border border-neutral-400 rounded-lg transition-opacity"
+              >
+                we have notified {{ latestInviteEmail }} that you invited them
+                to collaborate on this workspace. They will be able to see this
+                workspace in their workspace list.
+              </div>
             </Stack>
           </Stack>
         </template>
@@ -226,9 +232,9 @@
           class="pt-md"
         >
           <VButton
-            iconRight="chevron--right"
             :disabled="!isWorkspaceOwner"
             :requestStatus="deleteWorkspaceReqStatus"
+            iconRight="chevron--right"
             loadingText="Deleting..."
             tone="action"
             variant="solid"
@@ -251,7 +257,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, PropType, reactive, ref, watch } from "vue";
 import {
@@ -302,10 +308,7 @@ const editWorkspaceReqStatus =
 const loadWorkspaceMembersReqStatus = workspacesStore.getRequestStatus(
   "LOAD_WORKSPACE_MEMBERS",
 );
-const inviteUserReqStatus = workspacesStore.getRequestStatus(
-  "INVITE_USER",
-  "email",
-);
+const inviteUserReqStatus = workspacesStore.getRequestStatus("INVITE_USER");
 const deleteWorkspaceReqStatus =
   workspacesStore.getRequestStatus("DELETE_WORKSPACE");
 
@@ -458,12 +461,19 @@ const changeMembership = async (userId: string, role: string) => {
   await workspacesStore.LOAD_WORKSPACE_MEMBERS(props.workspaceId);
 };
 
+const latestInviteEmail = ref<string | undefined>();
+
 const inviteButtonHandler = async () => {
   if (newMember.email === "") return;
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
+    latestInviteEmail.value = newMember.email;
     newMember.email = "";
+
+    setTimeout(() => {
+      latestInviteEmail.value = undefined;
+    }, 20000);
   }
 };
 
@@ -491,9 +501,3 @@ const createWorkspaceTypeDropdownOptions = [
   { label: "Remote URL", value: "url" },
 ];
 </script>
-
-<style scoped>
-.long-email-handler {
-  max-width: 700px;
-}
-</style>
