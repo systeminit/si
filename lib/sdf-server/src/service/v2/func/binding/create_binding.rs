@@ -297,7 +297,7 @@ pub async fn create_binding(
 
     let bindings = func_summary.clone().bindings;
 
-    WsEvent::func_updated(&ctx, func_summary)
+    WsEvent::func_updated(&ctx, func_summary, None)
         .await?
         .publish_on_commit(&ctx)
         .await?;

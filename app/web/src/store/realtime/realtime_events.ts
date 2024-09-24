@@ -302,6 +302,7 @@ export type WsEventPayloadMap = {
     types: string;
     funcSummary: FuncSummary;
     changeSetId: ChangeSetId;
+    clientUlid?: string;
   };
   FuncDeleted: {
     funcId: FuncId;
