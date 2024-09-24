@@ -232,6 +232,25 @@ impl DependentValuesUpdate {
         metric!(counter.dvu_concurrency_count = 1);
         let roots = ctx.workspace_snapshot()?.take_dependent_values().await?;
 
+        let mut unfinished_values: HashSet<Ulid> = HashSet::new();
+        let mut finished_values: HashSet<Ulid> = HashSet::new();
+
+        roots.iter().for_each(|root| match root {
+            DependentValueRoot::Finished(ulid) => {
+                finished_values.insert((*ulid).into());
+            }
+            DependentValueRoot::Unfinished(ulid) => {
+                unfinished_values.insert((*ulid).into());
+            }
+        });
+
+        // If we have no unfinished values, and only finished values, this is a
+        // legacy snapshot where all dvus were accidentally marked "finished"
+        if unfinished_values.is_empty() {
+            unfinished_values.clone_from(&finished_values);
+            finished_values.clear();
+        }
+
         // Calculate the inferred connection graph up front so we reuse it throughout the job and don't rebuild each time
         let inferred_connection_graph = InferredConnectionGraph::for_workspace(ctx).await?;
         ctx.workspace_snapshot()?
@@ -248,9 +267,12 @@ impl DependentValuesUpdate {
         );
 
         // Remove the first set of independent_values since they should already have had their functions executed
-        for value in dependency_graph.independent_values() {
-            if !dependency_graph.values_needs_to_execute_from_prototype_function(value) {
-                dependency_graph.remove_value(value);
+        for value_id in dependency_graph.independent_values() {
+            if !dependency_graph.values_needs_to_execute_from_prototype_function(value_id)
+                || (finished_values.contains(&value_id.into())
+                    && !unfinished_values.contains(&value_id.into()))
+            {
+                dependency_graph.remove_value(value_id);
             }
         }
         let all_value_ids = dependency_graph.all_value_ids();
@@ -403,26 +425,32 @@ impl DependentValuesUpdate {
         }
 
         let snap = ctx.workspace_snapshot()?;
+        let mut added_unfinished = false;
         for value_id in &independent_value_ids {
             if spawned_ids.contains(value_id) {
                 snap.add_dependent_value_root(DependentValueRoot::Finished(value_id.into()))
                     .await?;
             } else {
+                added_unfinished = true;
                 snap.add_dependent_value_root(DependentValueRoot::Unfinished(value_id.into()))
                     .await?;
             }
         }
 
-        // If we enouncter a failure when executing the values above, we may
-        // not process the downstream attributes and thus will fail to send the
+        // If we encounter a failure when executing the values above, we may not
+        // process the downstream attributes and thus will fail to send the
         // "finish" update. So we send the "finish" update here to ensure the
         // frontend can continue to work on the snapshot.
-        if independent_value_ids.is_empty() {
+        //
+        // We also want to ensure that we don't add a set of only finished
+        // values.
+        if independent_value_ids.is_empty() || !added_unfinished {
             for status_update in tracker.finish_remaining() {
                 if let Err(err) = send_status_update(ctx, status_update).await {
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
                 }
             }
+            snap.take_dependent_values().await?;
         }
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());
