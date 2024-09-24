@@ -13,6 +13,10 @@ interface API_DESCRIPTION {
 
 export const ROUTES = {
   // Change Set Management ------------------------------------------------------
+  apply_change_set: {
+    path: () => "/change_set/apply_change_set",
+    method: "POST",
+  },
   create_change_set: {
     path: () => "/change_set/create_change_set",
     method: "POST",
