@@ -416,6 +416,10 @@ const verifyEmail = async () => {
         firstName: storeUser.value?.firstName,
         lastName: storeUser.value?.lastName,
       });
+
+      if (featureFlagsStore.SAAS_RELEASE) {
+        await authStore.BILLING_INTEGRATION();
+      }
     }
   }
 };

@@ -475,6 +475,9 @@ importers:
       koa-bodyparser:
         specifier: ^4.3.0
         version: 4.3.0
+      lago-javascript-client:
+        specifier: ^1.11.0
+        version: 1.11.0
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -484,6 +487,9 @@ importers:
       nanoid:
         specifier: ^4.0.1
         version: 4.0.1
+      node-fetch:
+        specifier: ^3.3.2
+        version: 3.3.2
       parse-redis-url-simple:
         specifier: ^1.0.2
         version: 1.0.2
@@ -2885,7 +2891,7 @@ packages:
       glob-to-regexp: 0.4.1
       is-path-inside: 4.0.0
       jsonc-parser: 3.2.0
-      node-fetch: 3.3.1
+      node-fetch: 3.3.2
       node-stream-zip: 1.15.0
       p-retry: 5.1.2
       p-wait-for: 4.1.0
@@ -8408,7 +8414,6 @@ packages:
   /data-uri-to-buffer@4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
     engines: {node: '>= 12'}
-    dev: true
 
   /data-urls@2.0.0:
     resolution: {integrity: sha512-X5eWTSXO/BJmpdIKCRuKUgSCgAN0OwliVK3yPKbwIWU1Tdw5BRajxlzMidvh+gwko9AfQ9zIj52pzF91Q3YAvQ==}
@@ -10563,7 +10568,6 @@ packages:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.2.1
-    dev: true
 
   /fetch-node-website@6.1.2:
     resolution: {integrity: sha512-rbYqWX5PqECG8v1vyZ7MNQ9jcGQkyOK4Sg6Ke8SXHRCf2c/qV/6UbfFEPWMkqxcrIiwzdapFE3HszreFT82zOA==}
@@ -10923,7 +10927,6 @@ packages:
     engines: {node: '>=12.20.0'}
     dependencies:
       fetch-blob: 3.2.0
-    dev: true
 
   /formidable@2.1.1:
     resolution: {integrity: sha512-0EcS9wCFEzLvfiks7omJ+SiYJAiD+TzK4Pcw1UlUoGnhUxDcMKjt0P7x8wEb0u6OHu8Nb98WG3nxtlF5C7bvUQ==}
@@ -13738,6 +13741,10 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: true
 
+  /lago-javascript-client@1.11.0:
+    resolution: {integrity: sha512-pYcSEd66ujLumu6wgXrvsH8ymf9Jkb1vSrb9EVsd64U054fuWxhdbdvVE7i90cQ8F1brK97G4ovs/2GJuML/Ew==}
+    dev: false
+
   /lambda-local@2.0.3:
     resolution: {integrity: sha512-Vs55gujwdjhPL2VpXEXAWWwxiOYdnVPDsMgwOr9BqC0O1EoSXs1S8TKBmD/ySEnPVRiQfFlABcQgcykF1mkE8Q==}
     engines: {node: '>=6'}
@@ -15170,7 +15177,7 @@ packages:
       '@netlify/open-api': 2.15.1
       lodash-es: 4.17.21
       micro-api-client: 3.3.0
-      node-fetch: 3.3.1
+      node-fetch: 3.3.2
       omit.js: 2.0.2
       p-wait-for: 4.1.0
       qs: 6.11.0
@@ -15201,7 +15208,6 @@ packages:
   /node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
-    dev: true
 
   /node-fetch@2.6.7:
     resolution: {integrity: sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==}
@@ -15214,14 +15220,13 @@ packages:
     dependencies:
       whatwg-url: 5.0.0
 
-  /node-fetch@3.3.1:
-    resolution: {integrity: sha512-cRVc/kyto/7E5shrWca1Wsea4y6tL9iYJE5FBCius3JQfb/4P4I295PfhgbJQBLTx6lATE4z+wK0rPM4VS2uow==}
+  /node-fetch@3.3.2:
+    resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
     dependencies:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
-    dev: true
 
   /node-gyp-build@4.1.1:
     resolution: {integrity: sha512-dSq1xmcPDKPZ2EED2S6zw/b9NKsqzXRE6dVr8TVQnI3FJOTteUMuqF3Qqs6LZg+mLGYJWqQzMbIjMtJqTv87nQ==}
@@ -20521,7 +20526,6 @@ packages:
   /web-streams-polyfill@3.2.1:
     resolution: {integrity: sha512-e0MO3wdXWKrLbL0DgGnUV7WHVuw9OUvL4hjgnPkIeEvESk74gAITi5G606JtZPp39cd8HA9VQzCIvA49LpPN5Q==}
     engines: {node: '>= 8'}
-    dev: true
 
   /web-vitals@4.0.1:
     resolution: {integrity: sha512-AW6qT/vXK3pbf+WgVcEBXY//AWCpXjVKgdb6rt0cARSUdtT+NUtZCOeo+CSLUX7PjSQ275DmxfkAs7QlPbtR6w==}
