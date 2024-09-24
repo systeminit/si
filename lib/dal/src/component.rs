@@ -758,7 +758,7 @@ impl Component {
                             }
                         }
                         // The old component was using the default value. The new component
-                        // should do the same, so there's not much to do.
+                        // should do the same, so there's not much to do, except for root/si/type!
                         None => {
                             // The only exception is values that change the meaning or
                             // validity of other components and connections the user may
@@ -770,22 +770,17 @@ impl Component {
                             // those child components would now be in an invalid place
                             // (because Components can't have children).
                             //
-                            // For properties like this, we check whether the value has
-                            // changed between the current component's value
-                            // and new schema variant's default, and if so,
-                            // we explicitly set the value on the component to the old
-                            // value it used to have, as if the user had explicitly set it
-                            // themselves. (You could argue they basically implicitly set
-                            // the value of root/si/type when they created the child
-                            // components.)
+                            // If root/si/type is not set by a component specific prototype,
+                            // this means the component was created before we were always setting
+                            // a component specific prototype for components.  If we hit this,
+                            // just set the value here and now so it will have a component specific prototype
+                            // from here on out.
+                            //
+                            // If for whatever reason, there isn't a value set yet for the type, set it to the old
+                            // Prop's default value
                             if prop_path == ["root", "si", "type"] {
-                                let old_value = old_av.value(ctx).await?;
-                                let new_value = Prop::default_value(ctx, new_prop_id).await?;
-                                if old_value != new_value {
-                                    // Even if the value was set to a dynamic function, we want
-                                    // to freeze it now.
-                                    AttributeValue::set_value(ctx, new_av_id, old_value).await?;
-                                }
+                                let old_value = old_av.value_or_default(ctx, old_prop_id).await?;
+                                AttributeValue::set_value(ctx, new_av_id, Some(old_value)).await?;
                             }
 
                             // But we do need to see if this value is set dynamically. If
