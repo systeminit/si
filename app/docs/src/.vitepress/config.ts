@@ -59,6 +59,12 @@ export default defineConfig({
         icon: "discord",
         link: "https://discord.com/invite/system-init",
       },
+      {
+        icon: {
+          svg: '<svg viewBox="0 0 216 216" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="m275.42 59.42h-216v216h216zm-78.29 206.56h-128.28v-59.42h128.28zm68.85 0h-59.42v-68.85h-137.71v-128.28h128.27v59.42h-59.42v9.44h128.27v128.27zm0-137.71h-59.42v-59.42h59.42z" fill-rule="nonzero" transform="translate(-59.42 -59.42)"/></svg>',
+        },
+        link: "https://systeminit.com/",
+      },
     ],
     sidebar: [
       {
@@ -141,6 +147,10 @@ export default defineConfig({
       {
         text: "Road map",
         link: "/roadmap/",
+      },
+      {
+        text: "System Initiative Website",
+        link: "https://systeminit.com/",
       },
     ],
     editLink: {
