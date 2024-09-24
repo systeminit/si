@@ -124,7 +124,7 @@
         <VormInput
           :disabled="editingAsset.isLocked"
           compact
-          label="color"
+          label="Color"
           type="container"
         >
           <ColorPicker
@@ -148,7 +148,7 @@
       </Stack>
       <template v-if="ffStore.SHOW_INTRINSIC_EDITING">
         <Stack class="p-xs" spacing="none">
-          <p>Output Sockets</p>
+          <span class="font-bold">Output Sockets</span>
           <ul>
             <li
               v-for="config in outputSocketIntrinsics"
@@ -158,27 +158,33 @@
                 :id="config.socketName"
                 v-model="config.value"
                 :disabled="editingAsset.isLocked"
-                :label="config.socketName + '&lt;&mdash;'"
+                :label="config.socketName"
                 :options="optionsForIntrinsicDisplay"
                 compact
-                type="dropdown"
+                iconRight="input-socket"
+                iconRightRotate="down"
+                nullLabel="not set"
+                type="dropdown-optgroup"
                 @change="updateOutputSocketIntrinsics(config)"
               />
             </li>
           </ul>
         </Stack>
         <Stack class="p-xs" spacing="none">
-          <p>Props</p>
+          <span class="font-bold">Props</span>
           <ul>
             <li v-for="prop in configurableProps" :key="prop.id">
               <VormInput
                 :id="prop.path"
                 v-model="prop.value"
                 :disabled="editingAsset.isLocked"
-                :label="prop.path + '&lt;&mdash;'"
+                :label="prop.name"
                 :options="optionsForIntrinsicDisplay"
                 compact
-                type="dropdown"
+                iconRight="input-socket"
+                iconRightRotate="down"
+                nullLabel="not set"
+                type="dropdown-optgroup"
                 @change="updatePropIntrinsics(prop)"
               />
             </li>
@@ -267,16 +273,16 @@ const focus = (evt: Event) => {
 };
 
 const optionsForIntrinsicDisplay = computed(() => {
-  if (!props.schemaVariantId) return [];
+  if (!props.schemaVariantId) return {};
   const variant = assetStore.variantFromListById[props.schemaVariantId];
-  if (!variant) return [];
-  const opts = inputSocketsAndPropsFor(variant);
-  return [...opts.propOptions, ...opts.socketOptions];
+  if (!variant) return {};
+  return inputSocketsAndPropsFor(variant);
 });
 
 interface PropDisplay {
   id: PropId;
   path: string;
+  name: string;
   value?: PropId | InputSocketId;
   attributePrototypeId?: AttributePrototypeId;
 }
@@ -345,7 +351,7 @@ const configurableProps = computed(() => {
     });
 
   const config: PropDisplay[] = [];
-  _props.forEach(({ id, path }) => {
+  _props.forEach(({ id, path, name }) => {
     const vals = propValues[id];
     let value;
     let attributePrototypeId;
@@ -354,6 +360,7 @@ const configurableProps = computed(() => {
     const d: PropDisplay = {
       id,
       path,
+      name,
       value,
       attributePrototypeId,
     };

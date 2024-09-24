@@ -39,6 +39,12 @@ you can pass in options as props too */
     <slot name="prompt">
       <div class="vorm-input__prompt pb-xs text-sm">{{ prompt }}</div>
     </slot>
+    <Icon
+      v-if="iconRight"
+      :class="clsx('vorm-input__right-icon')"
+      :rotate="iconRightRotate"
+      :name="iconRight"
+    />
     <div
       :class="
         clsx(
@@ -98,7 +104,7 @@ you can pass in options as props too */
             <slot />
 
             <VormInputOption
-              v-for="(o, i) in optionsFromProps"
+              v-for="(o, i) in arrayOptionsFromProps"
               :key="generateOptionKey(o, i)"
               :value="o.value"
               >{{ o.label }}
@@ -107,8 +113,50 @@ you can pass in options as props too */
           <template v-if="compact">
             <div class="vorm-input__input-value">
               {{
-                optionsFromProps.find((o) => o.value === valueForSelectField)
-                  ?.label ?? valueForSelectField
+                arrayOptionsFromProps.find(
+                  (o) => o.value === valueForSelectField,
+                )?.label ?? valueForSelectField
+              }}
+            </div>
+            <Icon
+              class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+              name="input-type-select"
+              size="sm"
+            />
+          </template>
+        </template>
+
+        <template v-else-if="type === 'dropdown-optgroup'">
+          <select
+            :id="formInputId"
+            ref="inputRef"
+            :class="[
+              compact
+                ? 'vorm-input-compact__input vorm-input__hidden-input'
+                : 'vorm-input__input cursor-pointer',
+            ]"
+            :disabled="disabledBySelfOrParent"
+            :value="valueForSelectField"
+            @focus="onFocus"
+            @blur="onBlur"
+            @change="onSelectChange"
+          >
+            <optgroup
+              v-for="(inner, innerLabel) in objectOptionsFromProps"
+              :key="innerLabel"
+              :label="innerLabel"
+            >
+              <option v-for="o in inner" :key="o.value" :value="o.value">
+                {{ o.label }}
+              </option>
+            </optgroup>
+          </select>
+          <template v-if="compact">
+            <div class="vorm-input__input-value">
+              {{
+                flattenedObjectOptionsFromProps.find(
+                  (o) => o.value === valueForSelectField,
+                )?.label ?? valueForSelectField
               }}
             </div>
             <Icon
@@ -121,7 +169,7 @@ you can pass in options as props too */
 
         <template v-else-if="type === 'radio' || type === 'multi-checkbox'">
           <VormInputOption
-            v-for="(o, i) in optionsFromProps"
+            v-for="(o, i) in arrayOptionsFromProps"
             :key="generateOptionKey(o, i)"
             :disabled="disabledBySelfOrParent"
             :value="o.value"
@@ -228,6 +276,7 @@ import * as _ from "lodash-es";
 
 import clsx from "clsx";
 import Icon from "../icons/Icon.vue";
+import { IconNames } from "../icons/icon_set";
 
 import { useValidatedInput, validators } from "./helpers/form-validation";
 import { useDisabledBySelfOrParent } from "./helpers/form-disabling";
@@ -236,24 +285,25 @@ import { useTheme } from "../utils/theme_tools";
 import type { PropType, ComponentInternalInstance } from "vue";
 
 type InputTypes =
+  | "checkbox"
   | "container"
-  | "text"
-  | "textarea"
+  | "date"
+  | "decimal"
+  | "dropdown"
+  | "dropdown-optgroup"
   | "email"
-  | "url"
+  | "integer"
+  | "money"
+  | "multi-checkbox"
+  | "number"
   | "password"
+  | "percent"
+  | "radio"
   | "slug"
   | "tel"
-  | "number"
-  | "integer"
-  | "decimal"
-  | "money"
-  | "percent"
-  | "date"
-  | "checkbox"
-  | "multi-checkbox"
-  | "dropdown"
-  | "radio";
+  | "text"
+  | "textarea"
+  | "url";
 
 // object of the shape { option1Value: 'Label 1',  }
 type OptionsAsSimpleObject = Record<string, string>;
@@ -263,11 +313,13 @@ type OptionsAsObjectWithLabels = Record<
 >;
 type OptionsAsSimpleArray = string[];
 type OptionsAsArray = { value: any; label: string }[];
+type OptionsAsNestedArrays = Record<string, OptionsAsArray>;
 type InputOptions =
   | OptionsAsSimpleObject
   | OptionsAsObjectWithLabels
   | OptionsAsSimpleArray
-  | OptionsAsArray;
+  | OptionsAsArray
+  | OptionsAsNestedArrays;
 
 const props = defineProps({
   // to be used with v-model
@@ -292,6 +344,13 @@ const props = defineProps({
   instructions: String,
   placeholder: String,
 
+  iconRight: { type: String as PropType<IconNames>, required: false },
+  iconRightRotate: {
+    type: String as PropType<"left" | "right" | "up" | "down">,
+    default: undefined,
+  },
+  nullLabel: String,
+
   disabled: Boolean,
   defaultValue: {}, // eslint-disable-line vue/require-prop-types
   autocomplete: { type: String },
@@ -314,7 +373,7 @@ const props = defineProps({
   // additional options for specific input types
   // TODO: figure out how to further constrain sets of props to get better autocomplete
 
-  // for radio / dropdown / multi-checkbox
+  // for radio / dropdown / multi-checkbox / dropdown-optgroup
   options: { type: [Object, Array] as PropType<InputOptions> },
 
   // for dropdown only
@@ -446,7 +505,12 @@ const computedClasses = computed(() => ({
 
 const formInputId = props.id || _.uniqueId("vorm-input-");
 
-const TYPES_WITH_OPTIONS = ["radio", "dropdown", "multi-checkbox"];
+const TYPES_WITH_OPTIONS = [
+  "radio",
+  "dropdown",
+  "multi-checkbox",
+  "dropdown-optgroup",
+];
 const NUMERIC_TYPES = ["number", "integer", "decimal", "money", "percent"];
 const isTypeWithOptions = computed(() =>
   TYPES_WITH_OPTIONS.includes(props.type),
@@ -519,12 +583,12 @@ function setNewValue(newValue: any, clean = true) {
   emit("update:modelValue", clean ? cleanValue(newValue) : newValue);
 }
 
-// helpers to deal with input types that have child options (radio, multicheckbox, dropdown)
+// helpers to deal with input types that have child options (radio, multicheckbox, dropdown, dropdown-optgroup)
 function generateOptionKey(option: { value: string }, index: number) {
   return `vorm-input-option-${formInputId}-${index}`;
 }
 
-const optionsFromProps = computed((): OptionsAsArray => {
+const arrayOptionsFromProps = computed((): OptionsAsArray => {
   /* eslint-disable consistent-return */
   if (!isTypeWithOptions.value) return [];
   if (!props.options) return [];
@@ -560,6 +624,19 @@ const optionsFromProps = computed((): OptionsAsArray => {
   }
   return [];
 });
+
+// TODO(nick): make this safe for other options coming in. I think the bigger problem is that how
+// the props work in general though...
+const objectOptionsFromProps = computed((): OptionsAsNestedArrays => {
+  if (!isTypeWithOptions.value) return {};
+  if (!props.options) return {};
+  if (_.isArray(props.options)) return {};
+  if (!_.isObject(props.options)) return {};
+  return props.options as OptionsAsNestedArrays;
+});
+const flattenedObjectOptionsFromProps = computed(
+  (): OptionsAsArray => Object.values(objectOptionsFromProps.value).flat(),
+);
 
 // event handlers
 function onFocus(evt: Event) {
@@ -680,8 +757,8 @@ function fixOptionSelection() {
 // see VormInputOption for more info
 const valueForSelectField = computed(() => {
   if (typeof props.modelValue === "boolean") return String(props.modelValue);
-  if (props.modelValue === undefined) return "_null_";
-  if (props.modelValue === null) return "_null_";
+  if (props.modelValue === undefined) return props.nullLabel ?? "_null_";
+  if (props.modelValue === null) return props.nullLabel ?? "_null_";
 
   return props.modelValue;
 });
@@ -912,6 +989,13 @@ defineExpose({
   margin-right: 4px;
   width: 12px;
   height: 12px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: -1px;
+}
+
+.vorm-input__right-icon {
+  margin-right: 4px;
   display: inline-block;
   vertical-align: middle;
   margin-top: -1px;

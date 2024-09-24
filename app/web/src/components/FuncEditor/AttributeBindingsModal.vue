@@ -50,7 +50,10 @@
 import { computed, ref, ComputedRef } from "vue";
 import { storeToRefs } from "pinia";
 import { Modal, useModal } from "@si/vue-lib/design-system";
-import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import SelectMenu, {
+  Option,
+  GroupedOptions,
+} from "@/components/SelectMenu.vue";
 import {
   FuncArgumentId,
   Attribute,
@@ -145,26 +148,20 @@ const editedPrototype: ComputedRef<Attribute> = computed(() => ({
   ),
 }));
 
-const outputLocationOptions = computed(() => {
-  let socketOptions: Option[] = [];
-  let propOptions: Option[] = [];
+const outputLocationOptions = computed<GroupedOptions>(() => {
   const variant =
     componentsStore.schemaVariantsById[selectedVariant.value.value as string];
-  if (variant)
-    ({ socketOptions, propOptions } = outputSocketsAndPropsFor(variant));
+  if (variant) return outputSocketsAndPropsFor(variant);
 
-  return [...socketOptions, ...propOptions];
+  return {};
 });
 
-const inputSourceOptions = computed(() => {
-  let socketOptions: Option[] = [];
-  let propOptions: Option[] = [];
+const inputSourceOptions = computed<GroupedOptions>(() => {
   const variant =
     componentsStore.schemaVariantsById[selectedVariant.value.value as string];
-  if (variant)
-    ({ socketOptions, propOptions } = inputSocketsAndPropsFor(variant));
+  if (variant) return inputSocketsAndPropsFor(variant);
 
-  return [...socketOptions, ...propOptions];
+  return {};
 });
 
 const variantChanged = () => {
@@ -184,11 +181,13 @@ const open = (binding: Attribute) => {
     ) || noneVariant;
 
   selectedOutputLocation.value =
-    outputLocationOptions.value.find(
-      (loc) =>
-        loc.value === `p_${binding.propId}` ||
-        loc.value === `s_${binding.outputSocketId}`,
-    ) || noneOutputLocation;
+    Object.values(outputLocationOptions.value)
+      .flat()
+      .find(
+        (loc) =>
+          loc.value === `p_${binding.propId}` ||
+          loc.value === `s_${binding.outputSocketId}`,
+      ) || noneOutputLocation;
 
   editableBindings.value = [];
   const funcArgs = funcStore.funcsById[props.funcId]?.arguments;
@@ -204,11 +203,13 @@ const open = (binding: Attribute) => {
             funcArgumentId,
             attributePrototypeArgumentId,
             binding:
-              inputSourceOptions.value.find(
-                (opt) =>
-                  opt.value === `s_${inputSocketId}` ||
-                  opt.value === `p_${propId}`,
-              ) || noneSource,
+              Object.values(inputSourceOptions.value)
+                .flat()
+                .find(
+                  (opt) =>
+                    opt.value === `s_${inputSocketId}` ||
+                    opt.value === `p_${propId}`,
+                ) || noneSource,
           };
         } else {
           return {

@@ -6,7 +6,7 @@
   >
     <div class="relative">
       <ListboxButton
-        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-1.5 pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-1.5 pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
       >
         <span class="block truncate text-sm">{{ selectedLabel }}</span>
         <span
@@ -39,43 +39,98 @@
               placeholder="Filter options"
             />
           </div>
-          <ListboxOption
-            v-for="option in filteredOptions"
-            :key="`${option.value}`"
-            v-slot="{ active, selected }"
-            :value="option"
-            as="template"
-          >
-            <li
-              :class="[
-                active
-                  ? 'bg-action-500 text-neutral-50'
-                  : 'text-neutral-900 dark:text-neutral-50',
-                'cursor-default relative select-none py-2 pl-3 pr-9',
-              ]"
+          <template v-if="Array.isArray(filteredOptions)">
+            <ListboxOption
+              v-for="option in filteredOptions"
+              :key="`${option.value}`"
+              v-slot="{ active, selected }"
+              :value="option"
+              as="template"
             >
-              <span
+              <li
                 :class="[
-                  isSelected(option, selected)
-                    ? 'font-semibold'
-                    : 'font-normal',
-                  'block truncate',
+                  active
+                    ? 'bg-action-500 text-neutral-50'
+                    : 'text-neutral-900 dark:text-neutral-50',
+                  'cursor-default relative select-none py-2 pl-3 pr-9',
                 ]"
               >
-                {{ option.label }}
-              </span>
+                <span
+                  :class="[
+                    isSelected(option, selected)
+                      ? 'font-semibold'
+                      : 'font-normal',
+                    'block truncate',
+                  ]"
+                >
+                  {{ option.label }}
+                </span>
 
-              <span
-                v-if="isSelected(option, selected)"
-                :class="[
-                  active ? 'text-white' : 'text-action-500',
-                  'absolute inset-y-0 right-0 flex items-center pr-4',
-                ]"
+                <span
+                  v-if="isSelected(option, selected)"
+                  :class="[
+                    active ? 'text-white' : 'text-action-500',
+                    'absolute inset-y-0 right-0 flex items-center pr-4',
+                  ]"
+                >
+                  <Icon name="check" />
+                </span>
+              </li>
+            </ListboxOption>
+          </template>
+          <template
+            v-if="
+              filteredGroupOptions &&
+              Object.keys(filteredGroupOptions).length > 0
+            "
+          >
+            <ul
+              v-for="[groupLabel, groupOptions] in Object.entries(
+                filteredGroupOptions,
+              )"
+              :key="groupLabel"
+              class="pl-3 py-2"
+            >
+              <span class="uppercase text-neutral-400"> {{ groupLabel }} </span>
+              <ListboxOption
+                v-for="option in groupOptions"
+                :key="`${option.value}`"
+                v-slot="{ active, selected }"
+                :value="option"
+                as="template"
               >
-                <Icon name="check" />
-              </span>
-            </li>
-          </ListboxOption>
+                <li
+                  :class="[
+                    active
+                      ? 'bg-action-500 text-neutral-50'
+                      : 'text-neutral-900 dark:text-neutral-50',
+                    'cursor-default relative select-none py-2 pl-3 pr-9',
+                  ]"
+                >
+                  <span
+                    :class="[
+                      isSelected(option, selected)
+                        ? 'font-semibold'
+                        : 'font-normal',
+                      'block truncate',
+                    ]"
+                  >
+                    {{ option.label }}
+                  </span>
+
+                  <span
+                    v-if="isSelected(option, selected)"
+                    :class="[
+                      active ? 'text-white' : 'text-action-500',
+                      'absolute inset-y-0 right-0 flex items-center pr-4',
+                    ]"
+                  >
+                    <Icon name="check" />
+                  </span>
+                </li>
+              </ListboxOption>
+            </ul>
+          </template>
         </ListboxOptions>
       </transition>
     </div>
@@ -102,6 +157,8 @@ export interface Option {
   value: string | number | object;
 }
 
+export type GroupedOptions = Record<string, Option[]>;
+
 export interface StringOption extends Option {
   value: string;
 }
@@ -109,7 +166,7 @@ export interface StringOption extends Option {
 const emit = defineEmits(["update:modelValue", "change"]);
 
 const props = defineProps<{
-  options: Option[];
+  options: Option[] | GroupedOptions;
   modelValue: Option | Option[]; // to make this a multiselect, just pass in an array of Option here
   noneSelectedLabel?: string; // this is only valid in the multiple select case
   disabled?: boolean;
@@ -122,8 +179,25 @@ const { theme } = useTheme();
 const filterString = ref("");
 
 const filteredOptions = computed(() => {
+  if (!Array.isArray(props.options)) return [];
   if (!filterString.value) return props.options;
+
   return props.options.filter((o) => o.label.includes(filterString.value));
+});
+
+const filteredGroupOptions = computed(() => {
+  if (Array.isArray(props.options)) return {};
+  if (!filterString.value) return props.options;
+
+  const filtered = {} as GroupedOptions;
+  const grouped = props.options as GroupedOptions;
+  Object.keys(grouped).forEach((key) => {
+    const options = grouped[key]?.filter((o) =>
+      o.label.includes(filterString.value),
+    );
+    if (options && options.length > 0) filtered[key] = options;
+  });
+  return filtered;
 });
 
 const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);

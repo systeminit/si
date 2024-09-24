@@ -1,6 +1,7 @@
 import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { FuncId } from "@/api/sdf/dal/func";
 import { Prop, PropId } from "@/api/sdf/dal/prop";
+import { GroupedOptions } from "@/components/SelectMenu.vue";
 
 export enum SchemaKind {
   Concept = "concept",
@@ -70,7 +71,9 @@ export interface SchemaVariant {
   canContribute: boolean;
 }
 
-export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
+export const outputSocketsAndPropsFor = (
+  schemaVariant: SchemaVariant,
+): GroupedOptions => {
   const socketOptions = schemaVariant.outputSockets
     .map((socket) => ({
       label: `Output Socket: ${socket.name}`,
@@ -78,32 +81,110 @@ export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  // output
-  const propOptions = schemaVariant.props
-    .filter((p) => p.eligibleToReceiveData)
+  const opts = groupedPropsFor(schemaVariant);
+  opts["Output Sockets"] = socketOptions;
+  return opts;
+};
+
+const groupedPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
+  const rootPropOptions = schemaVariant.props
+    .filter(
+      (p) =>
+        p.eligibleToSendData &&
+        (p.path === "/root/code" ||
+          p.path === "/root/deleted_at" ||
+          p.path === "/root/domain" ||
+          p.path === "/root/qualification" ||
+          p.path === "/root/resource" ||
+          p.path === "/root/resource_value" ||
+          p.path === "/root/secrets" ||
+          p.path === "/root/si"),
+    )
     .map((p) => ({
-      label: `Attribute: ${p.path}`,
+      label: p.name,
       value: `p_${p.id}`,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
-  return { socketOptions, propOptions };
+
+  // TODO(nick): collapse this logic into one iterator. This is relatively inexpensive, but is
+  // still more wasteful than it needs to be.
+  const codePropOptions = schemaVariant.props
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/code/"))
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const domainPropOptions = schemaVariant.props
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/domain/"))
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const qualificationPropOptions = schemaVariant.props
+    .filter(
+      (p) => p.eligibleToSendData && p.path.startsWith("/root/qualification/"),
+    )
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const resourcePropOptions = schemaVariant.props
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/resource/"))
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const resourceValuePropOptions = schemaVariant.props
+    .filter(
+      (p) => p.eligibleToSendData && p.path.startsWith("/root/resource_value/"),
+    )
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const secretsPropOptions = schemaVariant.props
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/secrets/"))
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const siPropOptions = schemaVariant.props
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/si/"))
+    .map((p) => ({
+      label: p.name,
+      value: `p_${p.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  return {
+    root: rootPropOptions,
+    code: codePropOptions,
+    domain: domainPropOptions,
+    qualification: qualificationPropOptions,
+    resource: resourcePropOptions,
+    resource_value: resourceValuePropOptions,
+    secrets: secretsPropOptions,
+    si: siPropOptions,
+  };
 };
 
-export const inputSocketsAndPropsFor = (schemaVariant: SchemaVariant) => {
-  const socketOptions = schemaVariant.inputSockets.map((socket) => ({
-    label: `Input Socket: ${socket.name}`,
+export const inputSocketsAndPropsFor = (
+  schemaVariant: SchemaVariant,
+): GroupedOptions => {
+  const inputSocketOptions = schemaVariant.inputSockets.map((socket) => ({
+    label: socket.name,
     value: `s_${socket.id}`,
   }));
 
-  const propOptions = schemaVariant.props
-    .filter((p) => p.eligibleToSendData)
-    .map((p) => ({
-      label: `Attribute: ${p.path}`,
-      value: `p_${p.id}`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-
-  return { socketOptions, propOptions };
+  const opts = groupedPropsFor(schemaVariant);
+  opts["Input Sockets"] = inputSocketOptions;
+  return opts;
 };
 
 export const findSchemaVariantForPropOrSocketId = (
