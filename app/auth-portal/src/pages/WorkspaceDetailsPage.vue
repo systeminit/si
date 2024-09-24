@@ -181,77 +181,56 @@
           </div>
         </template>
       </div>
-      <div
-        v-if="
-          inviteUserReqStatus.isPending ||
-          inviteUserReqStatus.isError ||
-          !createMode
-        "
-        class="pt-md"
-      >
-        <template v-if="inviteUserReqStatus.isError">
+      <div v-if="!createMode" class="pt-md">
+        <Stack>
           <ErrorMessage :requestStatus="inviteUserReqStatus" />
-        </template>
-        <template v-if="!createMode">
-          <Stack spacing="lg">
-            <Stack>
-              <VormInput
-                v-model="newMember.email"
-                label="User Email to Grant Workspace Access"
-                type="email"
-                @enterPressed="inviteButtonHandler"
-              />
-              <VButton
-                :requestStatus="inviteUserReqStatus"
-                class="flex-none"
-                tone="action"
-                variant="solid"
-                @click="inviteButtonHandler"
-              >
-                Add User To Workspace
-              </VButton>
-              <div
-                v-if="latestInviteEmail"
-                class="p-sm border border-neutral-400 rounded-lg transition-opacity"
-              >
-                we have notified {{ latestInviteEmail }} that you invited them
-                to collaborate on this workspace. They will be able to see this
-                workspace in their workspace list.
-              </div>
-            </Stack>
-          </Stack>
-        </template>
+
+          <VormInput
+            ref="newMemberEmailInput"
+            v-model="newMember.email"
+            label="User Email to Grant Workspace Access"
+            type="email"
+            @enterPressed="inviteButtonHandler"
+          />
+          <VButton
+            :requestStatus="inviteUserReqStatus"
+            class="flex-none"
+            tone="action"
+            variant="solid"
+            @click="inviteButtonHandler"
+          >
+            Add User To Workspace
+          </VButton>
+          <div
+            v-if="latestInviteEmail"
+            class="p-sm border border-neutral-400 rounded-lg transition-opacity"
+          >
+            we have notified {{ latestInviteEmail }} that you invited them to
+            collaborate on this workspace. They will be able to see this
+            workspace in their workspace list.
+          </div>
+        </Stack>
       </div>
-      <div class="flex justify-between items-center">
-        <div
-          v-if="
-            featureFlagsStore.DELETE_WORKSPACE &&
-            isWorkspaceOwner &&
-            !createMode
-          "
-          class="pt-md"
+      <div v-if="!createMode" class="flex justify-between items-center pt-md">
+        <VButton
+          v-if="featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner"
+          :disabled="!isWorkspaceOwner"
+          :requestStatus="deleteWorkspaceReqStatus"
+          iconRight="chevron--right"
+          loadingText="Deleting..."
+          tone="action"
+          variant="solid"
+          @click="() => deleteWorkspace()"
         >
-          <VButton
-            :disabled="!isWorkspaceOwner"
-            :requestStatus="deleteWorkspaceReqStatus"
-            iconRight="chevron--right"
-            loadingText="Deleting..."
-            tone="action"
-            variant="solid"
-            @click="() => deleteWorkspace()"
-          >
-            Delete Workspace
-          </VButton>
-        </div>
-        <div class="pt-md">
-          <VButton
-            label="Go to workspace"
-            tone="action"
-            variant="solid"
-            @click="() => launchWorkspace()"
-          >
-          </VButton>
-        </div>
+          Delete Workspace
+        </VButton>
+        <VButton
+          label="Go to workspace"
+          tone="action"
+          variant="solid"
+          @click="() => launchWorkspace()"
+        >
+        </VButton>
       </div>
     </template>
   </div>
@@ -462,9 +441,10 @@ const changeMembership = async (userId: string, role: string) => {
 };
 
 const latestInviteEmail = ref<string | undefined>();
-
+const newMemberEmailInput = ref<InstanceType<typeof VormInput>>();
 const inviteButtonHandler = async () => {
-  if (newMember.email === "") return;
+  if (!newMember.email || newMember.email === "") return;
+  if (newMemberEmailInput.value?.validationState.isInvalid === true) return;
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
