@@ -28,12 +28,11 @@ jobs:
       - id: tests
         working-directory: app/web/cypress/e2e
         run: |
-            # get the names of all test subdirs without slashes
-            test_dirs=$(find . -mindepth 1 -maxdepth 1 -type d | sed 's|^\./||')
+            # get the names of all test subdirs with out slashes
+            test_dirs=$(find . -mindepth 1 -maxdepth 1 -type d  | sed 's|^\./||')
             test_array="[]"
             # put them into an array
             for d in $test_dirs; do
-              test_array=""
               test_array=$(echo "$test_array" | jq --arg d "$d" '. += [$d]')
             done
             test_array=$(echo "$test_array" | jq -c '.')
