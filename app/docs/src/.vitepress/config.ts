@@ -43,6 +43,7 @@ export default defineConfig({
       { text: "Tutorials", link: "/tutorials/" },
       { text: "How To", link: "/how-tos/" },
       { text: "Reference Guides", link: "/reference/" },
+      { text: "Explanation", link: "/explanation/" },
       { text: "Changelog", link: "/changelog/" },
       {
         text: "Log In",
@@ -137,6 +138,17 @@ export default defineConfig({
           {
             text: "Vocabulary",
             link: "/reference/vocabulary",
+          },
+        ],
+      },
+      {
+        text: "Explanation",
+        link: "/explanation/",
+        collapsed: false,
+        items: [
+          {
+            text: "AWS Authentication",
+            link: "/explanation/aws-authentication",
           },
         ],
       },
