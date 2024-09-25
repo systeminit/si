@@ -11,7 +11,15 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-## 2024-09-09
+## 2024-09-23
+
+- Rebaser changes
+- UI/UX Improvements
+- SWAG Program!
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Hie7YLq-tzI?si=wX774HcP692rChL4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></iframe>
+
+## 2024-09-16
 
 New demo's this week:
 
