@@ -5,12 +5,10 @@ use axum::{
     Router,
 };
 use dal::{
-    attribute::value::AttributeValueError,
-    func::{
+    attribute::{prototype::argument::AttributePrototypeArgumentError, value::AttributeValueError}, func::{
         argument::FuncArgumentError, authoring::FuncAuthoringError, binding::FuncBindingError,
         runner::FuncRunnerError,
-    },
-    ChangeSetError, DalContext, Func, FuncError, FuncId, WsEventError,
+    }, workspace_snapshot::graph::WorkspaceSnapshotGraphError, ChangeSetError, DalContext, Func, FuncError, FuncId, SchemaVariantError, WorkspaceSnapshotError, WsEventError
 };
 use si_frontend_types::FuncCode;
 use si_layer_cache::LayerDbError;
@@ -142,11 +140,18 @@ impl IntoResponse for FuncAPIError {
 
             // When the authoring changes requested would result in a cycle
             Self::FuncBinding(FuncBindingError::SchemaVariant(
-                dal::SchemaVariantError::AttributePrototypeArgument(
-                    dal::attribute::prototype::argument::AttributePrototypeArgumentError::WorkspaceSnapshot(
-                        dal::WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                            dal::workspace_snapshot::graph::WorkspaceSnapshotGraphError::CreateGraphCycle,
+                SchemaVariantError::AttributePrototypeArgument(
+                    AttributePrototypeArgumentError::WorkspaceSnapshot(
+                        WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                            WorkspaceSnapshotGraphError::CreateGraphCycle,
                         ),
+                    ),
+                ),
+            )) 
+            | Self::FuncBinding(FuncBindingError::AttributePrototypeArgument(
+                AttributePrototypeArgumentError::WorkspaceSnapshot(
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::CreateGraphCycle,
                     ),
                 ),
             )) => (StatusCode::UNPROCESSABLE_ENTITY, None),
