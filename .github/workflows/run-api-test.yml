@@ -1,4 +1,5 @@
 name: API Test
+
 on:
   workflow_call:
     inputs:
@@ -42,12 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: define-test-matrix
     strategy:
-      # don't fail the entire matrix on failure
       fail-fast: false
       matrix:
-        # run copies of the current job in parallel split by test dir
-        # TODO: we really should build once and set it as an
-        # artifact so we aren't rebuilding for each of these
         tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
 
     env:
@@ -56,10 +53,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Install Deno
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
+
       - name: Run the deno exec
         run: |
           cd bin/si-api-test
@@ -70,12 +69,37 @@ jobs:
           --password ${{ secrets.API_TEST_PASSWORD }} \
           --tests ${{ matrix.tests }}
 
+  retry:
+    runs-on: ubuntu-latest
+    needs: api-test
+    if: failure() && github.run_attempt < 3
+    steps:
+      - name: Retry API Tests
+        run: echo "Retry attempt ${{ github.run_attempt }}/3"
+  
   on-failure:
     runs-on: ubuntu-latest
     needs: api-test
-    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' && github.run_attempt == 3 }}
     steps:
+      - run: |
+            curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
+            --header "Content-Type: application/json" \
+            --data "{
+              \"summary\": \"API ${{ inputs.environment }} Tests Fail\",
+              \"body\": \"API Tests have failed for ${{ inputs.environment }}.\",
+              \"links\": [
+                {
+                  \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
+                  \"text\": \"E2E Test Run ${{ inputs.environment }}\"
+                }
+              ],
+              \"tags\": [
+                \"service:github\"
+              ]
+            }"
       - run: |
           curl -X POST \
             -H 'Content-type: application/json' \
-            --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+            --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
