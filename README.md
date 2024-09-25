@@ -8,8 +8,9 @@ This is a monolithic repository containing the System Initiative software.
 
 ## About
 
-System Initiative is a collaborative power tool designed to remove the papercuts from DevOps work.
-To learn more, read our ["Second Wave DevOps" blog post](https://www.systeminit.com/blog-second-wave-devops).
+System Initiative is the future of DevOps Automation. It is an Intuitive, Powerful, and Collaborative replacement for Infrastructure as Code.
+
+To learn more, read our ["System Initiative is the Future" blog post](https://www.systeminit.com/blog-system-initiative-is-the-future).
 
 ## Quickstart
 
