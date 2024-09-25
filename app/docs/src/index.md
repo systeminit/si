@@ -18,7 +18,7 @@ get help. The community is eager to answer your questions and to help.
   task they are teaching.
 - [Reference guides](./reference/index.md) give you just the facts about APIs
   and Vocabulary.
-- [Explanations](./explanations/index.md) provides the more detailed material to
+- [Explanations](./explanation/index.md) provides the more detailed material to
   clarify how to use particular parts of the system.
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest
   features and weekly demos.
