@@ -447,7 +447,7 @@ async fn execution_error(
         fallback
     };
 
-    error!(si.error.message = error_message, %attribute_value_id);
+    warn!(name = "function_execution_error", si.error.message = error_message, %attribute_value_id);
 }
 
 async fn execution_error_detail(
