@@ -14,9 +14,9 @@ use naxum::{
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+        trace::{DefaultMakeSpan, DefaultOnResponse, OnRequest, TraceLayer},
     },
-    ServiceExt as _,
+    MessageHead, ServiceExt as _,
 };
 use rebaser_client::RebaserClient;
 use rebaser_core::nats;
@@ -168,7 +168,7 @@ impl Server {
             .layer(
                 TraceLayer::new()
                     .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
+                    .on_request(RebaserOnRequest)
                     .on_response(DefaultOnResponse::new().level(Level::TRACE)),
             )
             .layer(AckLayer::new())
@@ -281,5 +281,17 @@ impl Server {
     )]
     fn create_compute_executor() -> Result<DedicatedExecutor> {
         dal::compute_executor("rebaser").map_err(Into::into)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RebaserOnRequest;
+
+impl<R> OnRequest<R> for RebaserOnRequest
+where
+    R: MessageHead,
+{
+    fn on_request(&mut self, req: &R, _span: &Span) {
+        info!(task = req.subject().as_str(), "starting task");
     }
 }
