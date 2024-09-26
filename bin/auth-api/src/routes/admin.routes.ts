@@ -94,6 +94,18 @@ router.post("/workspaces/setup-production-workspace-by-userid", async (ctx) => {
   }
 });
 
+router.get("/workspaces/:workspaceId/ownerWorkspaces", async (ctx) => {
+  extractAdminAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  ctx.body = {
+    workspaceId: workspace.id,
+    workspaceOwnerId: workspace.creatorUserId,
+    workspaces: await getUserWorkspaces(workspace.creatorUserId),
+  };
+});
+
 router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
   const authUser = extractAdminAuthUser(ctx);
 

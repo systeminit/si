@@ -238,6 +238,9 @@ export async function getUserSignupReport(startDate: Date, endDate: Date) {
       NOT: {
         signupAt: null,
       },
+      AND: {
+        emailVerified: true,
+      },
     },
     select: {
       id: true,
