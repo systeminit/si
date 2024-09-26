@@ -359,6 +359,15 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
     );
   }
 
+  const { redirect } = validate(
+    ctx.request.query,
+    z.object({
+      redirect: z.string().optional(),
+    }),
+  );
+
+  const redirectArg = redirect ? `&redirect=${redirect}` : "";
+
   // generate a new single use authentication code that we will send to the instance
   const connectCode = nanoid(24);
   await setCache(
@@ -371,7 +380,7 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
   );
 
   // redirect to instance (frontend) with single use auth code
-  ctx.redirect(`${workspace.instanceUrl}/auth-connect?code=${connectCode}`);
+  ctx.redirect(`${workspace.instanceUrl}/auth-connect?code=${connectCode}${redirectArg}`);
 });
 
 router.post("/complete-auth-connect", async (ctx) => {
