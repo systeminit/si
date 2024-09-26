@@ -123,8 +123,16 @@ const routes: RouteRecordRaw[] = [
     path: "/login",
     name: "login",
     meta: { public: true },
-    beforeEnter: () => {
-      window.location.href = `${AUTH_PORTAL_URL}/login`;
+    beforeEnter: (route) => {
+      const query = route.query;
+      const workspaceId = query.workspaceId;
+      const queryString = query.redirect ? `redirect=${query.redirect}` : "";
+
+      if (workspaceId) {
+        window.location.href = `${AUTH_PORTAL_URL}/workspace/${workspaceId}/go?${queryString}`;
+      } else {
+        window.location.href = `${AUTH_PORTAL_URL}/login?${queryString}`;
+      }
     },
     component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
@@ -178,9 +186,17 @@ router.beforeEach((to, _from) => {
     const authStore = useAuthStore();
 
     if (!authStore.userIsLoggedIn) {
+      const workspaceId = to.fullPath.match(/^\/w\/(?<workspaceId>\w*)\//)
+        ?.groups?.workspaceId;
+
       return {
         name: "login",
-        ...(to.fullPath !== "/" && { query: { redirect: to.fullPath } }),
+        ...(to.fullPath !== "/" && {
+          query: {
+            redirect: to.fullPath,
+            workspaceId,
+          },
+        }),
       };
     }
   }

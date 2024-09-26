@@ -243,6 +243,7 @@ import clsx from "clsx";
 import storage from "local-storage-fallback";
 import { tracker } from "@/lib/posthog";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { API_HTTP_URL } from "@/store/api";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
 import DeployNotification from "./components/DeployNotification.vue";
@@ -316,7 +317,7 @@ const route = useRoute();
 
 // onMounted for a component may run before this watch does,
 // So a component may override these redirects if itself redirects navigation
-// This can happen on DefaultWorkspacePage, for example
+// This happens on DefaultWorkspacePage, for example
 watch([checkAuthReq, route], () => {
   // if we're still checking auth, do nothing
   if (!checkAuthReq.value.isRequested || checkAuthReq.value.isPending) return;
@@ -390,6 +391,14 @@ watch([checkAuthReq, route], () => {
       return router.push({ name: "profile" });
     }
     return;
+  }
+
+  if (route?.name === "workspace-go") {
+    if (route.params?.workspaceId) {
+      window.location.href = `${API_HTTP_URL}/workspaces/${route.params?.workspaceId}/go?redirect=${route.query?.redirect}`;
+    } else {
+      return router.push({ name: "workspaces" });
+    }
   }
 });
 

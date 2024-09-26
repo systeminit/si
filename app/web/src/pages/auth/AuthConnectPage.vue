@@ -1,6 +1,6 @@
 <template>
-  <AppLayout pageMode="modal" class="font-medium">
-    <Stack spacing="lg" class="max-w-md">
+  <AppLayout class="font-medium" pageMode="modal">
+    <Stack class="max-w-md" spacing="lg">
       <AuthPageHeader title="Authenticating">
         Validating your credentials
       </AuthPageHeader>
@@ -27,7 +27,7 @@
   </AppLayout>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
@@ -47,8 +47,9 @@ const LOGIN_URL = `${AUTH_PORTAL_URL}/login`;
 const authStore = useAuthStore();
 const authReqStatus = authStore.getRequestStatus("AUTH_CONNECT");
 
-// grab the code from the URL, dont need to care about reactivity as it will not change while on the page
+// grab the code from the URL, don't need to care about reactivity as it will not change while on the page
 const connectCode = route.query.code as string;
+const redirectPath = route.query.redirect as string;
 
 onMounted(async () => {
   // if no code in query, we just bail and an error will be displayed
@@ -58,9 +59,11 @@ onMounted(async () => {
   if (connectReq.result.success) {
     const workspacePk = connectReq.result.data.workspace.pk;
 
-    // TODO: we probably want to allow passing in a more specific URL to redirect to
-    // in case they tried to access that URL and were then redirected to login
-    await router.replace({ name: "workspace-single", params: { workspacePk } });
+    const redirectObject = redirectPath
+      ? { path: redirectPath }
+      : { name: "workspace-single", params: { workspacePk } };
+
+    await router.replace(redirectObject);
   }
 });
 </script>
