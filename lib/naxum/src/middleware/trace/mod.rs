@@ -57,17 +57,20 @@ use std::{fmt, time::Duration};
 use tracing::Level;
 
 pub use self::{
-    layer::TraceLayer, make_span::DefaultMakeSpan, on_request::DefaultOnRequest,
-    on_response::DefaultOnResponse, service::Trace,
+    layer::TraceLayer,
+    make_span::{DefaultMakeSpan, MakeSpan},
+    on_request::{DefaultOnRequest, OnRequest},
+    on_response::{DefaultOnResponse, OnResponse},
+    service::Trace,
 };
 
 use super::LatencyUnit;
 
 const DEFAULT_MESSAGE_LEVEL: Level = Level::DEBUG;
 
-struct Latency {
-    unit: LatencyUnit,
-    duration: Duration,
+pub struct Latency {
+    pub unit: LatencyUnit,
+    pub duration: Duration,
 }
 
 impl fmt::Display for Latency {
