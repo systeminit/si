@@ -3,7 +3,9 @@ meant to be used within it specifically it's only for VormInputs with type =
 dropdown | radio | multi-checkbox */
 <template>
   <option
-    v-if="parentInputType === 'dropdown'"
+    v-if="
+      parentInputType === 'dropdown' || parentInputType === 'dropdown-optgroup'
+    "
     class="vorm-input-option"
     :value="safeOptionValue"
     :selected="dropdownOptionSelected"
@@ -85,7 +87,12 @@ const parentValue = computed(() =>
 );
 
 // this is tightly coupled component only meant to be used within a VormInput
-const VALID_PARENT_INPUT_TYPES = ["dropdown", "radio", "multi-checkbox"];
+const VALID_PARENT_INPUT_TYPES = [
+  "dropdown",
+  "radio",
+  "multi-checkbox",
+  "dropdown-optgroup",
+];
 if (!VALID_PARENT_INPUT_TYPES.includes(parentInputType)) {
   throw new Error(
     "VormInputOption can only be used inside VormInput with type = dropdown/radio/multi-checkbox",
