@@ -6,7 +6,17 @@ on:
       environment:
         type: string
         required: true
-        description: "where to deploy"
+        description: "Where to deploy"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "Where to deploy"
+        default: "tools"
+        options:
+          - tools
+          - production
 
 jobs:
   down:
