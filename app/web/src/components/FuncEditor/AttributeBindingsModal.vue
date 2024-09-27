@@ -137,10 +137,10 @@ const editedPrototype: ComputedRef<Attribute> = computed(() => ({
   argumentBindings: editableBindings.value.map(
     ({ funcArgumentId, attributePrototypeArgumentId, binding }) => ({
       funcArgumentId: funcArgumentId ?? null,
-      inputSocketId: binding.label.includes("Input Socket")
+      inputSocketId: (binding.value as string).startsWith("s_")
         ? (binding.value as string).replace("s_", "")
         : null,
-      propId: binding.label.includes("Attribute")
+      propId: (binding.value as string).startsWith("p_")
         ? (binding.value as string).replace("p_", "")
         : null,
       attributePrototypeArgumentId,
