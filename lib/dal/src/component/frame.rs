@@ -223,6 +223,7 @@ impl Frame {
         // get the latest state of the component tree
         let current_impacted_values =
             Self::get_all_inferred_connections_for_component_tree(ctx, parent_id, child_id).await?;
+
         // an edge has been removed if it exists in the state after we've detached the component, and it's not in current state
         values_to_run.extend(
             post_edge_removal_impacted_values
@@ -236,10 +237,11 @@ impl Frame {
                 .copied(),
         );
 
-        // let the front end know if we've removed some inferred edges
-        let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        // Let the frontend know what edges should be removed.
+        let mut inferred_edges_to_remove: Vec<SummaryDiagramInferredEdge> =
+            Vec::with_capacity(values_to_run.len());
         for pair in &values_to_run {
-            inferred_edges.push(SummaryDiagramInferredEdge {
+            inferred_edges_to_remove.push(SummaryDiagramInferredEdge {
                 to_socket_id: pair.component_input_socket.input_socket_id,
                 to_component_id: pair.component_input_socket.component_id,
                 from_socket_id: pair.component_output_socket.output_socket_id,
@@ -247,7 +249,29 @@ impl Frame {
                 to_delete: false, // irrelevant
             })
         }
-        WsEvent::remove_inferred_edges(ctx, inferred_edges)
+        WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        // After we let the frontend know what edges should be removed, now we should handle upsertion.
+        let removed_edges_to_skip: HashSet<SummaryDiagramInferredEdge> =
+            HashSet::from_iter(inferred_edges_to_remove.into_iter());
+
+        let mut inferred_edges_to_upsert = Vec::new();
+        for pair in &current_impacted_values {
+            let edge = SummaryDiagramInferredEdge {
+                to_socket_id: pair.component_input_socket.input_socket_id,
+                to_component_id: pair.component_input_socket.component_id,
+                from_socket_id: pair.component_output_socket.output_socket_id,
+                from_component_id: pair.component_output_socket.component_id,
+                to_delete: false, // irrelevant
+            };
+            if !removed_edges_to_skip.contains(&edge) {
+                inferred_edges_to_upsert.push(edge);
+            }
+        }
+        WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert)
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -268,6 +292,7 @@ impl Frame {
                     .copied(),
             );
         }
+
         // enqueue those values that we now know need to run
         ctx.add_dependent_values_and_enqueue(
             values_to_run
@@ -307,9 +332,9 @@ impl Frame {
                 .difference(&current_impacted_sockets)
                 .cloned(),
         );
-        let mut inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
+        let mut inferred_edges_to_remove: Vec<SummaryDiagramInferredEdge> = vec![];
         for pair in &diff {
-            inferred_edges.push(SummaryDiagramInferredEdge {
+            inferred_edges_to_remove.push(SummaryDiagramInferredEdge {
                 to_socket_id: pair.component_input_socket.input_socket_id,
                 to_component_id: pair.component_input_socket.component_id,
                 from_socket_id: pair.component_output_socket.output_socket_id,
@@ -318,10 +343,41 @@ impl Frame {
             })
         }
         // let the front end know what's been removed
-        WsEvent::remove_inferred_edges(ctx, inferred_edges)
+        WsEvent::remove_inferred_edges(ctx, inferred_edges_to_remove.clone())
             .await?
             .publish_on_commit(ctx)
             .await?;
+
+        // Inform the frontend of upsertions. This is a rare case but can happen under the
+        // following scenario: there's a grandparent up-frame, a parent down-frame and a child
+        // component or up-frame. If the parent frame has an input socket with an arity of one and
+        // both the child and grandparent have an output socket with a matching annotation, then the
+        // edge will be mutated. The parent will now have a different value at its input socket
+        // because the source side of the edge has changed.
+        {
+            let removed_edges_to_skip: HashSet<SummaryDiagramInferredEdge> =
+                HashSet::from_iter(inferred_edges_to_remove.into_iter());
+            let mut inferred_edges_to_upsert = Vec::new();
+            for pair in &current_impacted_sockets {
+                // Only edges in "current" and not in "before" can be upserted.
+                if !before_change_impacted_input_sockets.contains(pair) {
+                    let edge = SummaryDiagramInferredEdge {
+                        to_socket_id: pair.component_input_socket.input_socket_id,
+                        to_component_id: pair.component_input_socket.component_id,
+                        from_socket_id: pair.component_output_socket.output_socket_id,
+                        from_component_id: pair.component_output_socket.component_id,
+                        to_delete: false, // irrelevant
+                    };
+                    if !removed_edges_to_skip.contains(&edge) {
+                        inferred_edges_to_upsert.push(edge);
+                    }
+                }
+            }
+            WsEvent::upsert_inferred_edges(ctx, inferred_edges_to_upsert)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
 
         // also get what's in current that's not in before (because these have also changed!)
         diff.extend(
@@ -329,6 +385,7 @@ impl Frame {
                 .difference(&before_change_impacted_input_sockets)
                 .cloned(),
         );
+
         // enqueue dvu for those values that no longer have an output socket driving them!
         ctx.add_dependent_values_and_enqueue(
             diff.into_iter()

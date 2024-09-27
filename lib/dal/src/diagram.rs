@@ -150,7 +150,7 @@ impl SummaryDiagramEdge {
         })
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramInferredEdge {
     pub from_component_id: ComponentId,
