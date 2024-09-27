@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
@@ -22,6 +22,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
+
+use super::ApiError;
 
 pub mod delete_property_editor_value;
 pub mod get_actions;
@@ -110,7 +112,7 @@ pub type ComponentResult<T> = Result<T, ComponentError>;
 
 impl IntoResponse for ComponentError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status_code, error_message) = match self {
             ComponentError::SchemaNotFound
             | ComponentError::InvalidVisibility
             | ComponentError::PropNotFound(_)
@@ -133,12 +135,7 @@ impl IntoResponse for ComponentError {
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-
-        error!(si.error.message = error_message);
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

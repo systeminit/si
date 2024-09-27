@@ -1,7 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
-use axum::Json;
 use axum::Router;
 use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
@@ -19,6 +18,8 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::AppState;
+
+use super::ApiError;
 
 pub mod create_component;
 pub mod create_connection;
@@ -110,7 +111,7 @@ pub type DiagramResult<T> = Result<T, DiagramError>;
 
 impl IntoResponse for DiagramError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status_code, error_message) = match self {
             DiagramError::SchemaNotFound
             | DiagramError::ChangeSetNotFound
             | DiagramError::ComponentNotFound
@@ -121,11 +122,7 @@ impl IntoResponse for DiagramError {
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-        error!(si.error.message = error_message);
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

@@ -160,8 +160,6 @@ impl IntoResponse for FuncAPIError {
             _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None)
         };
 
-        error!(si.error.message = ?err_string);
-
         ApiError::new(status_code, maybe_message.unwrap_or(err_string)).into_response()
     }
 }

@@ -5378,6 +5378,7 @@ dependencies = [
  "tokio-util",
  "tower",
  "tower-http",
+ "tracing-tunnel",
  "ulid",
  "url",
  "veritech-client",
@@ -7183,6 +7184,16 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "tracing-tunnel"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "507bbab1fc2c9e606543558f5656b62e8014ba7e0ffa68b9484511b6871019c5"
+dependencies = [
+ "serde",
+ "tracing-core",
 ]
 
 [[package]]

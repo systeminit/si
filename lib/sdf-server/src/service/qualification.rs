@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
+    Router,
 };
 use dal::{
     qualification::QualificationSummaryError, ComponentError, ComponentId, FuncId, SchemaError,
@@ -14,6 +14,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::AppState;
+
+use super::ApiError;
 
 pub mod get_summary;
 
@@ -67,7 +69,7 @@ pub type QualificationResult<T> = std::result::Result<T, QualificationError>;
 
 impl IntoResponse for QualificationError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status_code, error_message) = match self {
             QualificationError::ComponentNotFound(_)
             | QualificationError::FuncCodeNotFound(_)
             | QualificationError::FuncNotFound
@@ -78,12 +80,7 @@ impl IntoResponse for QualificationError {
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-        error!(si.error.message = error_message);
-
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

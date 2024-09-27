@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use dal::{
     KeyPairError, StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError,
@@ -13,6 +13,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::AppState;
+
+use super::ApiError;
 
 pub mod auth_connect;
 pub mod load_workspaces;
@@ -64,30 +66,15 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
-        let (status, error_code, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::CONFLICT, None, self.to_string()),
-            SessionError::InvalidWorkspace(_) => (
-                StatusCode::CONFLICT,
-                Some("WORKSPACE_NOT_INITIALIZED"),
-                self.to_string(),
-            ),
-            SessionError::WorkspacePermissions => {
-                (StatusCode::UNAUTHORIZED, None, self.to_string())
-            }
-            SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, None, self.to_string()),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, None, self.to_string()),
+        let (status_code, error_message) = match self {
+            SessionError::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
+            SessionError::InvalidWorkspace(_) => (StatusCode::CONFLICT, self.to_string()),
+            SessionError::WorkspacePermissions => (StatusCode::UNAUTHORIZED, self.to_string()),
+            SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(serde_json::json!({
-            "error": {
-                "message": error_message,
-                "code": error_code.unwrap_or("42"),
-                "statusCode": status.as_u16()
-            }
-        }));
-        error!(si.error.message = error_message);
-
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

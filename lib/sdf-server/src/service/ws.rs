@@ -1,6 +1,4 @@
-use axum::{
-    http::StatusCode, response::IntoResponse, response::Response, routing::get, Json, Router,
-};
+use axum::{http::StatusCode, response::IntoResponse, response::Response, routing::get, Router};
 use crdt::CrdtError;
 use dal::{TransactionsError, WsEventError};
 use nats_multiplexer_client::MultiplexerClientError;
@@ -10,6 +8,8 @@ use thiserror::Error;
 use tokio::sync::TryLockError;
 
 use crate::AppState;
+
+use super::ApiError;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -37,18 +37,9 @@ pub mod workspace_updates;
 
 impl IntoResponse for WsError {
     fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let (status_code, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
-        let body = Json(serde_json::json!({
-            "error": {
-                "message": error_message,
-                "code": 42,
-                "statusCode": status.as_u16()
-            }
-        }));
-        error!(si.error.message = error_message);
-
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 
