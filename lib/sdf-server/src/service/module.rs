@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use convert_case::{Case, Casing};
 use dal::{
@@ -23,6 +23,8 @@ use tokio::fs::read_dir;
 use ulid::Ulid;
 
 use crate::AppState;
+
+use super::ApiError;
 
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
@@ -131,7 +133,7 @@ pub type ModuleResult<T> = Result<T, ModuleError>;
 
 impl IntoResponse for ModuleError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status_code, error_message) = match self {
             ModuleError::ChangeSetNotFound(_)
             | ModuleError::ModuleHashNotFound(_)
             | ModuleError::PackageNotFound(_)
@@ -141,11 +143,7 @@ impl IntoResponse for ModuleError {
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-        error!(si.error.message = error_message);
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 

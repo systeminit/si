@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
-    Json, Router,
+    Router,
 };
 use dal::{
     pkg::PkgError, schema::variant::authoring::VariantAuthoringError, ChangeSetError, FuncError,
@@ -13,6 +13,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::AppState;
+
+use super::ApiError;
 
 pub mod clone_variant;
 pub mod create_variant;
@@ -72,7 +74,7 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
 impl IntoResponse for SchemaVariantError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status_code, error_message) = match self {
             SchemaVariantError::FuncNotFound(_)
             | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
             | SchemaVariantError::SchemaVariantAssetNotFound(_)
@@ -92,12 +94,7 @@ impl IntoResponse for SchemaVariantError {
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-        error!(si.error.message = error_message);
-
-        (status, body).into_response()
+        ApiError::new(status_code, error_message).into_response()
     }
 }
 
