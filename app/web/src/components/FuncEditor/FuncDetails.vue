@@ -11,12 +11,12 @@
   >
     <div class="flex flex-col">
       <SidebarSubpanelTitle
-        :label="editingFunc.name"
+        :label="editingFunc.displayName || editingFunc.name"
         icon="func"
         variant="subtitle"
       >
         <div class="flex flex-row gap-xs">
-          <EditingPill v-if="!editingFunc.isLocked" color="#666"></EditingPill>
+          <EditingPill v-if="!editingFunc.isLocked" color="#666" />
           <IconButton
             v-if="canBeEdited && editingFunc.isLocked"
             :loading="unlocking"
@@ -117,13 +117,10 @@
                 <VormInput
                   id="name"
                   v-model="editingFunc.name"
-                  :disabled="editingFunc.isLocked"
                   compact
+                  disabled
                   label="Name"
                   required
-                  @blur="updateFunc"
-                  @focus="focus"
-                  @keyup.enter="updateFunc"
                 />
                 <VormInput
                   id="displayName"
@@ -408,10 +405,7 @@ const isConnectedToOtherSchemas = computed<boolean>(() => {
 });
 
 const testFuncReqStatus = funcStore.getRequestStatus("TEST_EXECUTE");
-const execFuncReqStatus = funcStore.getRequestStatus(
-  "SAVE_AND_EXEC_FUNC",
-  funcId,
-);
+const execFuncReqStatus = funcStore.getRequestStatus("EXEC_FUNC", funcId);
 
 const latestFuncExecutionReqStatus = ref<ApiRequestStatus | undefined>();
 const storeLatestReqStatus = (value: ApiRequestStatus) => {
@@ -422,7 +416,7 @@ watch(execFuncReqStatus, storeLatestReqStatus);
 
 const execFunc = () => {
   if (!funcId.value) return;
-  funcStore.SAVE_AND_EXEC_FUNC(funcId.value);
+  funcStore.EXEC_FUNC(funcId.value);
 };
 
 const isDetaching = ref(false);

@@ -9,13 +9,16 @@
         >
           Test {{ funcStore.selectedFuncSummary?.kind + " " || "" }}Function
           <span class="italic"
-            >"{{ funcStore.selectedFuncSummary?.name }}"</span
+            >"{{
+              funcStore.selectedFuncSummary?.displayName ||
+              funcStore.selectedFuncSummary?.name
+            }}"</span
           >
         </div>
         <StatusIndicatorIcon
           v-if="runningTest"
-          type="funcTest"
           :status="testStatus"
+          type="funcTest"
         />
       </div>
 
@@ -35,14 +38,14 @@
         <FuncTestSelector
           v-if="selectedAsset"
           ref="funcTestSelectorRef"
-          :testStatus="testStatus"
-          :schemaVariantId="selectedAsset?.schemaVariantId"
           :isAttributeFunc="
             funcStore.selectedFuncSummary?.kind === FuncKind.Attribute
           "
           :readyToTest="readyToTest"
-          @startTest="startTest"
+          :schemaVariantId="selectedAsset?.schemaVariantId"
+          :testStatus="testStatus"
           @loadInput="loadInput"
+          @startTest="startTest"
         />
       </div>
       <!-- DRY RUN SECTION -->
@@ -56,11 +59,11 @@
         <VormInput
           v-model="dryRun"
           class="flex-grow justify-center"
-          type="checkbox"
-          placeholder="no attribute selected"
-          label="Dry Run"
-          inlineLabel
           disabled
+          inlineLabel
+          label="Dry Run"
+          placeholder="no attribute selected"
+          type="checkbox"
         />
       </div>
       <div v-else class="py-xs px-sm rounded text-center italic">
@@ -80,10 +83,10 @@
     <TabGroup
       v-if="enableTestTabGroup"
       ref="funcTestTabsRef"
-      startSelectedTabSlug="input"
       growTabsToFillWidth
-      variant="secondary"
       marginTop="2xs"
+      startSelectedTabSlug="input"
+      variant="secondary"
     >
       <TabGroupItem label="Input" slug="input">
         <CodeViewer
@@ -100,8 +103,8 @@
             >
               <StatusIndicatorIcon
                 :status="testLogs.status"
-                type="funcTest"
                 size="2xl"
+                type="funcTest"
               />
               <div class="text-xl font-bold capitalize">
                 Status: {{ testLogs.status }}
@@ -169,10 +172,10 @@
                 Awaiting logs for the currently running test...
               </div>
               <StatusIndicatorIcon
-                type="funcTest"
                 :status="testStatus"
                 size="2xl"
                 tone="neutral"
+                type="funcTest"
               />
             </template>
             <template v-else>No logs available for this test.</template>
@@ -200,10 +203,10 @@
               Awaiting output for the currently running test...
             </div>
             <StatusIndicatorIcon
-              type="funcTest"
               :status="testStatus"
               size="2xl"
               tone="neutral"
+              type="funcTest"
             />
           </template>
           <template v-else>No output available for this test.</template>
