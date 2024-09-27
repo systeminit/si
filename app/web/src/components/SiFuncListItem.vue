@@ -17,7 +17,7 @@
         class="w-full flex flex-row gap-xs text-xs justify-between items-center"
       >
         <div class="truncate">
-          {{ func.name }}
+          {{ func.displayName || func.name }}
         </div>
         <EditingPill v-if="!func.isLocked" color="#666"></EditingPill>
       </div>

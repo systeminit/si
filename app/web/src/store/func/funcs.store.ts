@@ -173,7 +173,7 @@ export const useFuncStore = () => {
         funcList: (state) => _.values(state.funcsById),
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
-          const _bindings = [] as BindingWithDisplayName[];
+          const bindings = [] as BindingWithDisplayName[];
           const variant =
             componentsStore.schemaVariantsById[
               componentsStore.selectedComponent?.schemaVariantId || ""
@@ -190,14 +190,11 @@ export const useFuncStore = () => {
                 const a = _.cloneDeep(b) as BindingWithDisplayName;
                 a.displayName = summary?.displayName;
                 a.name = summary?.name || "<not set>";
-                _bindings.push(a);
+                bindings.push(a);
               });
             }
           });
-          return _bindings;
-          // return _bindings.sort((_a, _b) =>
-          //   _a.displayName.localeCompare(_b.displayName),
-          // );
+          return bindings;
         },
 
         intrinsicBindingsByVariant(
@@ -485,11 +482,10 @@ export const useFuncStore = () => {
             },
           });
         },
-        // TODO: jobelenus, is this still "save"? or *just* execute?
-        async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
+        async EXEC_FUNC(funcId: FuncId) {
           const func = this.funcsById[funcId];
           if (func) {
-            trackEvent("func_save_and_exec", {
+            trackEvent("func_execute", {
               id: func.funcId,
               name: func.name,
             });
