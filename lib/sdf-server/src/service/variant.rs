@@ -6,7 +6,7 @@ use axum::{
 };
 use dal::{
     pkg::PkgError, schema::variant::authoring::VariantAuthoringError, ChangeSetError, FuncError,
-    FuncId, SchemaError, SchemaId, SchemaVariantId, TransactionsError, WsEventError,
+    FuncId, Schema, SchemaError, SchemaId, SchemaVariantId, TransactionsError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 use telemetry::prelude::*;
@@ -74,12 +74,23 @@ impl IntoResponse for SchemaVariantError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SchemaVariantError::FuncNotFound(_)
-            | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
             | SchemaVariantError::SchemaVariantAssetNotFound(_)
             | SchemaVariantError::VariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaVariantError::VariantAuthoring(VariantAuthoringError::DuplicatedSchemaName(
                 _,
             )) => (StatusCode::CONFLICT, self.to_string()),
+
+            SchemaVariantError::ChangeSet(_)
+            | SchemaVariantError::Func(_)
+            | SchemaVariantError::FuncExecution(_)
+            | SchemaVariantError::NoDefaultSchemaVariantFoundForSchema(_)
+            | SchemaVariantError::CreatingUnlockedCopyForNonDefault(_) => {
+                (StatusCode::BAD_REQUEST, self.to_string())
+            }
+            SchemaVariantError::VariantAlreadyUnlocked(_) | SchemaVariantError::NoAssetCreated => {
+                (StatusCode::NOT_MODIFIED, self.to_string())
+            }
+
             SchemaVariantError::VariantAuthoring(
                 VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _),
             ) => (
@@ -89,6 +100,12 @@ impl IntoResponse for SchemaVariantError {
             SchemaVariantError::VariantAuthoring(VariantAuthoringError::FuncExecutionFailure(
                 message,
             )) => (StatusCode::UNPROCESSABLE_ENTITY, message),
+            SchemaVariantError::FuncIsEmpty(_)
+            | SchemaVariantError::Hyper(_)
+            | SchemaVariantError::SerdeJson(_) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "func was found to be empty".to_string(),
+            ),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

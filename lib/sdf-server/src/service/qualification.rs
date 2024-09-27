@@ -72,9 +72,14 @@ impl IntoResponse for QualificationError {
             | QualificationError::FuncCodeNotFound(_)
             | QualificationError::FuncNotFound
             | QualificationError::SchemaNotFound(_)
-            | QualificationError::SchemaVariantNotFound => {
-                (StatusCode::NOT_FOUND, self.to_string())
-            }
+            | QualificationError::SchemaVariantNotFound
+            | QualificationError::Transactions(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            QualificationError::Component(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            QualificationError::Tenancy(_) => (StatusCode::FORBIDDEN, self.to_string()),
+            QualificationError::Base64Decode(_)
+            | QualificationError::Serde(_)
+            | QualificationError::Utf8(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

@@ -75,8 +75,14 @@ pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;
 impl IntoResponse for ChangeSetError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            ChangeSetError::ActionAlreadyEnqueued(_) => {
+            ChangeSetError::ActionAlreadyEnqueued(_) | ChangeSetError::ActionPrototype(_) => {
                 (StatusCode::NOT_MODIFIED, self.to_string())
+            }
+            ChangeSetError::SchemaVariant(_) | ChangeSetError::Schema(_) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
+            ChangeSetError::Hyper(_) | ChangeSetError::CannotAbandonHead => {
+                (StatusCode::BAD_REQUEST, self.to_string())
             }
             ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ChangeSetError::DalChangeSetApply(_) => (StatusCode::CONFLICT, self.to_string()),

@@ -137,7 +137,35 @@ impl IntoResponse for ModuleError {
             | ModuleError::PackageNotFound(_)
             | ModuleError::SchemaNotFoundForVariant(_)
             | ModuleError::SchemaVariantNotFound(_)
+            | ModuleError::SchemaNotFoundFromInstall(_)
             | ModuleError::WorkspaceNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ModuleError::PackageAlreadyOnDisk(_) | ModuleError::PackageAlreadyInstalled(_) => {
+                (StatusCode::NOT_MODIFIED, self.to_string())
+            }
+            ModuleError::InvalidUserSystemInit
+            | ModuleError::InvalidUser(_)
+            | ModuleError::InvalidPackageFileName(_)
+            | ModuleError::Hyper(_)
+            | ModuleError::Func(_)
+            | ModuleError::ChangeSet(_)
+            | ModuleError::SchemaVariant(_)
+            | ModuleError::PackageNameEmpty
+            | ModuleError::PackageExportEmpty
+            | ModuleError::SiPkg(_)
+            | ModuleError::Workspace(_)
+            | ModuleError::User(_)
+            | ModuleError::UlidDecode(_)
+            | ModuleError::WorkspaceSnapshot(_)
+            | ModuleError::StandardModel(_)
+            | ModuleError::Reqwest(_)
+            | ModuleError::PackageVersionEmpty
+            | ModuleError::Canonicalize(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            ModuleError::Tenancy(_) => (StatusCode::FORBIDDEN, self.to_string()),
+            ModuleError::SerdeJson(_)
+            | ModuleError::Url(_)
+            | ModuleError::ExportingImportingWithRootTenancy => {
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

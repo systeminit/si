@@ -118,16 +118,31 @@ impl IntoResponse for ComponentError {
             | ComponentError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentError::PropertyEditor(err) => match err {
                 PropertyEditorError::ComponentNotFound
+                | PropertyEditorError::PropertyEditorValueNotFoundByPropId(_)
                 | PropertyEditorError::SchemaVariantNotFound(_) => {
                     (StatusCode::NOT_FOUND, err.to_string())
                 }
-
+                PropertyEditorError::AttributePrototype(_)
+                | PropertyEditorError::AttributeValue(_)
+                | PropertyEditorError::BadAttributeReadContext(_)
+                | PropertyEditorError::SchemaVariant(_)
+                | PropertyEditorError::Secret(_)
+                | PropertyEditorError::SerdeJson(_)
+                | PropertyEditorError::SecretPropLeadsToStaticValue(_, _)
+                | PropertyEditorError::Validation(_)
+                | PropertyEditorError::ValueSource(_) => (StatusCode::BAD_REQUEST, err.to_string()),
+                PropertyEditorError::CycleDetected(_) => {
+                    (StatusCode::LOOP_DETECTED, err.to_string())
+                }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             },
             ComponentError::SchemaVariantUpgradeSkipped => {
                 (StatusCode::NOT_MODIFIED, self.to_string())
             }
-            ComponentError::KeyAlreadyExists(_) => {
+            ComponentError::UpgradeSkippedDueToActions => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            ComponentError::KeyAlreadyExists(_) | ComponentError::SerdeJson(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),

@@ -65,16 +65,16 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
         let (status, error_code, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::CONFLICT, None, self.to_string()),
-            SessionError::InvalidWorkspace(_) => (
-                StatusCode::CONFLICT,
-                Some("WORKSPACE_NOT_INITIALIZED"),
-                self.to_string(),
-            ),
-            SessionError::WorkspacePermissions => {
-                (StatusCode::UNAUTHORIZED, None, self.to_string())
+            SessionError::WorkspacePermissions
+            | SessionError::LoginFailed
+            | SessionError::InvalidUser(_)
+            | SessionError::User(_)
+            | SessionError::InvalidWorkspace(_)
+            | SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, None, self.to_string()),
+            SessionError::Request(_) => (StatusCode::BAD_REQUEST, None, self.to_string()),
+            SessionError::JSONSerialize(_) | SessionError::WorkspaceNotYetMigrated(_) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, None, self.to_string())
             }
-            SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, None, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, None, self.to_string()),
         };
 
