@@ -21,8 +21,7 @@ We will cover:
   [AWS default VPC](https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html)
   available to deploy into in `us-east-1` of your AWS account
 
-:::tip
-The minimum lease on an AWS EC2 Dedicated Host for macOS is 24 hours. So
+:::tip The minimum lease on an AWS EC2 Dedicated Host for macOS is 24 hours. So
 you will not be able to release the host before the 24 hour period expires.
 
 :::
@@ -46,7 +45,7 @@ Create a change set named `MacOS How-to`.
 
 Add a `AWS Credential` to your change set and configure your AWS credentials as
 per the
-[getting started guide](./tutorials/getting-started#add-an-aws-credential-component)
+[getting started guide](../tutorials/getting-started#add-an-aws-credential-component)
 
 ### Select an AWS Region
 
