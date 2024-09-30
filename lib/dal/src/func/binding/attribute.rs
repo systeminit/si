@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_events::{ComponentId, InputSocketId, OutputSocketId, PropId, SchemaVariantId};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
@@ -20,6 +21,33 @@ use super::{
     AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
     EventualParent, FuncBinding, FuncBindingError, FuncBindingResult,
 };
+
+/// Contains the error scenarios for malformed input when creating or mutating attribute func bindings.
+#[remain::sorted]
+#[derive(Debug, Clone)]
+pub enum AttributeBindingMalformedInput {
+    /// The [`Component`]'s [`SchemaVariant`](crate::SchemaVariant) does not match the
+    /// [`SchemaVariant`](crate::SchemaVariant) provided.
+    EventualParentComponentNotFromSchemaVariant(ComponentId, SchemaVariantId),
+    /// When assembling an input location, all options were provided. We only want one.
+    InputLocationAllOptionsProvided(PropId, InputSocketId, serde_json::Value),
+    /// When assembling an input location, both an [`InputSocketId`](crate::InputSocket) and a raw, static argument
+    /// value were provided. We only want one option to be provided.
+    InputLocationBothInputSocketAndStaticArgumentValueProvided(InputSocketId, serde_json::Value),
+    /// When assembling an input location, both a [`PropId`](crate::Prop) and an [`InputSocketId`](crate::InputSocket)
+    /// were provided. We only want one option to be provided.
+    InputLocationBothPropAndInputSocketProvided(PropId, InputSocketId),
+    /// When assembling an input location, both an [`PropId`](crate::Prop) and a raw, static argument
+    /// value were provided. We only want one option to be provided.
+    InputLocationBothPropAndStaticArgumentValueProvided(PropId, serde_json::Value),
+    /// When assembling an input location, no option was provided. We want one option to be provided.
+    InputLocationNoOptionProvided,
+    /// When assembling an output location, both a [`PropId`](crate::Prop) and an [`OutputSocketId`](crate::OutputSocket)
+    /// were provided. We only want one option to be provided.
+    OutputLocationBothPropAndOutputSocketProvided(PropId, OutputSocketId),
+    /// When assembling an output location, no option was provided. We want one option to be provided.
+    OutputLocationNoOptionProvided,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AttributeBinding {
@@ -98,37 +126,87 @@ impl AttributeBinding {
                 Some(EventualParent::SchemaVariant(schema_variant.into()))
             }
             (Some(component_id), None) => Some(EventualParent::Component(component_id.into())),
-            (Some(component_id), Some(schema_variant)) => {
+            (Some(component_id), Some(schema_variant_id)) => {
                 if Component::schema_variant_id(ctx, component_id.into()).await?
-                    == schema_variant.into()
+                    == schema_variant_id.into()
                 {
-                    Some(EventualParent::SchemaVariant(schema_variant.into()))
+                    Some(EventualParent::SchemaVariant(schema_variant_id.into()))
                 } else {
                     return Err(FuncBindingError::MalformedInput(
-                        "component and schema variant mismatch".to_owned(),
+                        AttributeBindingMalformedInput::EventualParentComponentNotFromSchemaVariant(
+                            component_id,
+                            schema_variant_id,
+                        ),
                     ));
                 }
             }
         };
         Ok(eventual_parent)
     }
+
+    pub fn assemble_attribute_input_location(
+        prop_id: Option<si_events::PropId>,
+        input_socket_id: Option<si_events::InputSocketId>,
+        static_argument_value: Option<serde_json::Value>,
+    ) -> FuncBindingResult<AttributeFuncArgumentSource> {
+        match (prop_id, input_socket_id, static_argument_value) {
+            (Some(prop_id), None, None) => Ok(AttributeFuncArgumentSource::Prop(prop_id.into())),
+            (None, Some(input_socket_id), None) => Ok(AttributeFuncArgumentSource::InputSocket(
+                input_socket_id.into(),
+            )),
+            (None, None, Some(static_argument_value)) => Ok(
+                AttributeFuncArgumentSource::StaticArgument(static_argument_value),
+            ),
+            (Some(prop_id), Some(input_socket_id), Some(static_argument_value)) => {
+                Err(FuncBindingError::MalformedInput(
+                    AttributeBindingMalformedInput::InputLocationAllOptionsProvided(
+                        prop_id,
+                        input_socket_id,
+                        static_argument_value,
+                    ),
+                ))
+            }
+            (Some(prop_id), Some(input_socket_id), None) => Err(FuncBindingError::MalformedInput(
+                AttributeBindingMalformedInput::InputLocationBothPropAndInputSocketProvided(
+                    prop_id,
+                    input_socket_id,
+                ),
+            )),
+            (Some(prop_id), None, Some(static_argument_value)) => {
+                Err(FuncBindingError::MalformedInput(
+                    AttributeBindingMalformedInput::InputLocationBothPropAndStaticArgumentValueProvided(prop_id, static_argument_value),
+                ))
+            }
+            (None, Some(input_socket_id), Some(static_argument_value)) => {
+                Err(FuncBindingError::MalformedInput(
+                    AttributeBindingMalformedInput::InputLocationBothInputSocketAndStaticArgumentValueProvided(input_socket_id, static_argument_value),
+                ))
+            }
+            (None, None, None) => Err(FuncBindingError::MalformedInput(
+                AttributeBindingMalformedInput::InputLocationNoOptionProvided,
+            )),
+        }
+    }
+
     pub fn assemble_attribute_output_location(
         prop_id: Option<si_events::PropId>,
         output_socket_id: Option<si_events::OutputSocketId>,
     ) -> FuncBindingResult<AttributeFuncDestination> {
-        let output_location = match (prop_id, output_socket_id) {
-            (None, Some(output_socket_id)) => {
-                AttributeFuncDestination::OutputSocket(output_socket_id.into())
-            }
-
-            (Some(prop_id), None) => AttributeFuncDestination::Prop(prop_id.into()),
-            _ => {
-                return Err(FuncBindingError::MalformedInput(
-                    "cannot set more than one output location".to_owned(),
-                ))
-            }
-        };
-        Ok(output_location)
+        match (prop_id, output_socket_id) {
+            (Some(prop_id), None) => Ok(AttributeFuncDestination::Prop(prop_id.into())),
+            (None, Some(output_socket_id)) => Ok(AttributeFuncDestination::OutputSocket(
+                output_socket_id.into(),
+            )),
+            (Some(prop_id), Some(output_socket_id)) => Err(FuncBindingError::MalformedInput(
+                AttributeBindingMalformedInput::OutputLocationBothPropAndOutputSocketProvided(
+                    prop_id,
+                    output_socket_id,
+                ),
+            )),
+            (None, None) => Err(FuncBindingError::MalformedInput(
+                AttributeBindingMalformedInput::OutputLocationNoOptionProvided,
+            )),
+        }
     }
 
     /// assemble bindings for an [`IntrinsicFunc`]

@@ -35,6 +35,7 @@ impl From<AttributeFuncArgumentSource> for Option<si_events::PropId> {
         }
     }
 }
+
 impl From<AttributeFuncArgumentSource> for Option<si_events::InputSocketId> {
     fn from(value: AttributeFuncArgumentSource) -> Self {
         match value {
@@ -68,6 +69,7 @@ pub struct AttributeArgumentBinding {
     pub attribute_prototype_argument_id: Option<AttributePrototypeArgumentId>,
     pub attribute_func_input_location: AttributeFuncArgumentSource,
 }
+
 impl AttributeArgumentBinding {
     pub fn into_frontend_type(&self) -> si_frontend_types::AttributeArgumentBinding {
         si_frontend_types::AttributeArgumentBinding {
@@ -78,6 +80,7 @@ impl AttributeArgumentBinding {
             static_value: self.attribute_func_input_location.clone().into(),
         }
     }
+
     pub async fn assemble(
         ctx: &DalContext,
         attribute_prototype_argument_id: AttributePrototypeArgumentId,
@@ -122,27 +125,5 @@ impl AttributeArgumentBinding {
             attribute_prototype_argument_id: Some(attribute_prototype_argument_id),
             attribute_func_input_location,
         })
-    }
-    pub fn assemble_attribute_input_location(
-        prop_id: Option<si_events::PropId>,
-        input_socket_id: Option<si_events::InputSocketId>,
-        value: Option<serde_json::Value>,
-    ) -> FuncBindingResult<AttributeFuncArgumentSource> {
-        let input_location = match (prop_id, input_socket_id, value) {
-            (None, Some(input_socket_id), None) => {
-                AttributeFuncArgumentSource::InputSocket(input_socket_id.into())
-            }
-
-            (Some(prop_id), None, None) => AttributeFuncArgumentSource::Prop(prop_id.into()),
-            (None, None, Some(json_value)) => {
-                AttributeFuncArgumentSource::StaticArgument(json_value)
-            }
-            _ => {
-                return Err(FuncBindingError::MalformedInput(
-                    "cannot set more than one output location".to_owned(),
-                ))
-            }
-        };
-        Ok(input_location)
     }
 }
