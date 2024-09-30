@@ -12,6 +12,7 @@ use dal::{
     AttributePrototype, AttributePrototypeId, Component, ComponentType, DalContext, Func, Prop,
     SchemaVariant, SchemaVariantId,
 };
+use dal_test::expected::commit_and_update_snapshot_to_visibility;
 use dal_test::helpers::{
     create_component_for_default_schema_name, create_component_for_unlocked_schema_name,
     ChangeSetTestHelpers,
@@ -586,8 +587,11 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     let second_updated_variant_id =
         VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
             .await
-            .expect("could not udpate variant");
+            .expect("could not update variant");
     assert_ne!(second_updated_variant_id, first_variant.id());
+
+    // Commit to ensure graph cleanup
+    commit_and_update_snapshot_to_visibility(ctx).await;
 
     // Create another component and check that the second prop exists on it.
     create_component_for_default_schema_name(ctx, schema.name, "component two")
@@ -611,7 +615,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         .await
         .expect("could not list ids for func id");
     assert_eq!(
-        2,                             // expected,
+        1,                             // expected,
         attribute_prototype_ids.len()  // actual
     );
     for id in attribute_prototype_ids {
@@ -633,7 +637,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         .expect("could not get bindings");
 
     assert_eq!(
-        2,              // expected
+        1,              // expected
         bindings.len()  // actual
     );
     let actual_prototype_pairs_from_associations: HashSet<(AttributePrototypeId, EventualParent)> =
@@ -647,21 +651,15 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         actual_prototype_pairs_from_associations  // actual
     );
 
-    // Check that the variants of the pairs are we what expect. Check the total number of pairs.
-    let expected_schema_variant_ids_in_pairs: HashSet<EventualParent> = HashSet::from([
-        EventualParent::SchemaVariant(first_variant.id()),
-        EventualParent::SchemaVariant(second_updated_variant_id),
-    ]);
+    // Check that the variants of the pairs are what we expect. Check the total number of pairs.
+    let expected_schema_variant_ids_in_pairs: HashSet<EventualParent> =
+        HashSet::from([EventualParent::SchemaVariant(second_updated_variant_id)]);
     let actual_schema_variant_ids_in_pairs: HashSet<EventualParent> =
         HashSet::from_iter(actual_prototype_pairs.iter().map(|pair| pair.1));
     assert_eq!(
         expected_schema_variant_ids_in_pairs, // expected
         actual_schema_variant_ids_in_pairs    // actual
     );
-    assert_eq!(
-        2,                                        // expected
-        actual_schema_variant_ids_in_pairs.len()  // actual
-    )
 }
 
 #[test]
@@ -991,10 +989,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .expect("could not get binding");
 
     assert_eq!(
-        2,              // expected
+        1,              // expected
         bindings.len(), // actual
     );
-    let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
+    let actual: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
         if let EventualParent::SchemaVariant(sv) = b.eventual_parent {
             Some(sv)
         } else {
@@ -1002,10 +1000,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         }
         .expect("is a schema variant")
     }));
-    let expected = HashSet::from_iter([first_update_variant_id, second_update_variant_id]);
+    let expected = HashSet::from_iter([second_update_variant_id]);
     assert_eq!(
         expected, // expected
-        acutal    // actual
+        actual    // actual
     );
 
     // Check the bindings for the second qualification.
@@ -1122,10 +1120,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
                 .expect("could not create bindings");
 
         assert_eq!(
-            2,              // expected
+            1,              // expected
             bindings.len(), // actual
         );
-        let acutal: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
+        let actual: HashSet<SchemaVariantId> = HashSet::from_iter(bindings.iter().map(|b| {
             if let EventualParent::SchemaVariant(sv) = b.eventual_parent {
                 Some(sv)
             } else {
@@ -1133,10 +1131,10 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
             }
             .expect("is a schema variant")
         }));
-        let expected = HashSet::from_iter([first_update_variant_id, second_update_variant_id]);
+        let expected = HashSet::from_iter([second_update_variant_id]);
         assert_eq!(
             expected, // expected
-            acutal    // actual
+            actual    // actual
         );
 
         // Check the bindings for the second qualification.

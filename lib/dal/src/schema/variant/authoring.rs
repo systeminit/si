@@ -361,10 +361,11 @@ impl VariantAuthoringClient {
                     .await?;
             }
 
-            SchemaVariant::get_by_id_or_error(ctx, sv_id)
-                .await?
-                .lock(ctx)
-                .await?;
+            // When  we get here, sv_id points to an unlocked variant with no components
+            // and no way to create new components from it. No other changesets point to it,
+            // since it's been created on the changeset (otherwise it would not be unlocked)
+            // So we should clean it up
+            SchemaVariant::cleanup_unlocked_variant(ctx, sv_id).await?;
 
             Ok(new_variant.id)
         }
