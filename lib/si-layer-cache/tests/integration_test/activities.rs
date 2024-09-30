@@ -6,7 +6,7 @@ use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
     activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
-    memory_cache::MemoryCacheConfig, LayerDb,
+    memory_cache::MemoryCacheConfig, object_cache::ObjectCacheConfig, LayerDb,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -35,6 +35,7 @@ async fn activities() {
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -48,6 +49,7 @@ async fn activities() {
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -101,6 +103,7 @@ async fn activities_subscribe_partial() {
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -114,6 +117,7 @@ async fn activities_subscribe_partial() {
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )

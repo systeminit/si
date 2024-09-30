@@ -1,4 +1,5 @@
 use si_layer_cache::memory_cache::MemoryCacheConfig;
+use si_layer_cache::object_cache::ObjectCacheConfig;
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, ChangeSetId, Tenancy, UserPk, WorkspacePk};
@@ -24,6 +25,7 @@ async fn write_to_db() {
         setup_pg_db("workspace_snapshot_write_to_db").await,
         setup_nats_client(Some("workspace_snapshot_write_to_db".to_string())).await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -96,6 +98,7 @@ async fn evict_from_db() {
         setup_pg_db("workspace_snapshot_evict_from_db").await,
         setup_nats_client(Some("workspace_snapshot_evict_from_db".to_string())).await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -189,6 +192,7 @@ async fn evictions_are_gossiped() {
         ))
         .await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -205,6 +209,7 @@ async fn evictions_are_gossiped() {
         ))
         .await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )

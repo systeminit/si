@@ -13,8 +13,8 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
-use crate::db::func_run::FuncRunDb;
 use crate::event::LayeredEventKind;
+use crate::{db::func_run::FuncRunDb, object_cache::ObjectCache};
 use crate::{
     disk_cache::DiskCache,
     error::{LayerDbError, LayerDbResult},
@@ -105,6 +105,7 @@ impl PersisterClient {
 pub struct PersisterTask {
     messages: mpsc::UnboundedReceiver<PersistMessage>,
     disk_path: PathBuf,
+    object_cache: ObjectCache,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
     tracker: TaskTracker,
@@ -117,6 +118,7 @@ impl PersisterTask {
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
         disk_path: PathBuf,
+        object_cache: ObjectCache,
         pg_pool: PgPool,
         nats_client: &NatsClient,
         instance_id: Ulid,
@@ -141,6 +143,7 @@ impl PersisterTask {
         Ok(Self {
             messages,
             disk_path,
+            object_cache,
             pg_pool,
             layered_event_client,
             tracker,
@@ -180,6 +183,7 @@ impl PersisterTask {
                 PersistMessage::Write((event, status_tx)) => {
                     let task = PersistEventTask::new(
                         self.disk_path.clone(),
+                        self.object_cache.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -188,6 +192,7 @@ impl PersisterTask {
                 PersistMessage::Evict((event, status_tx)) => {
                     let task = PersistEventTask::new(
                         self.disk_path.clone(),
+                        self.object_cache.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -210,11 +215,13 @@ pub struct PersisterTaskError {
     pub disk_error: Option<String>,
     pub pg_error: Option<String>,
     pub nats_error: Option<String>,
+    pub obj_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PersistEventTask {
     disk_path: PathBuf,
+    object_cache: ObjectCache,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
 }
@@ -222,11 +229,13 @@ pub struct PersistEventTask {
 impl PersistEventTask {
     pub fn new(
         disk_path: PathBuf,
+        object_cache: ObjectCache,
         pg_pool: PgPool,
         layered_event_client: LayeredEventClient,
     ) -> Self {
         PersistEventTask {
             disk_path,
+            object_cache,
             pg_pool,
             layered_event_client,
         }

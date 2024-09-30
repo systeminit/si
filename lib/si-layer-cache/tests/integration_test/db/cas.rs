@@ -2,7 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{
-    db::serialize, memory_cache::MemoryCacheConfig, persister::PersistStatus, LayerDb,
+    db::serialize, memory_cache::MemoryCacheConfig, object_cache::ObjectCacheConfig,
+    persister::PersistStatus, LayerDb,
 };
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -24,6 +25,7 @@ async fn write_to_db() {
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -93,6 +95,7 @@ async fn write_and_read_many() {
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -150,6 +153,7 @@ async fn cold_read_from_db() {
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
         setup_compute_executor(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -248,6 +252,7 @@ async fn writes_are_gossiped() {
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -261,6 +266,7 @@ async fn writes_are_gossiped() {
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token,
     )
@@ -371,6 +377,7 @@ async fn stress_test() {
         db.clone(),
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -386,6 +393,7 @@ async fn stress_test() {
         db,
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )

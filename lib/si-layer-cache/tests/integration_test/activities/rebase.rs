@@ -7,7 +7,8 @@ use si_events::{
     rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
 };
 use si_layer_cache::{
-    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
+    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig,
+    object_cache::ObjectCacheConfig, LayerDb,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
@@ -36,6 +37,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -49,6 +51,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -62,6 +65,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -171,6 +175,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -184,6 +189,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -264,6 +270,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -277,6 +284,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -290,6 +298,7 @@ async fn rebase_requests_work_queue_stress() {
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -432,6 +441,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor.clone(),
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -445,6 +455,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor,
+        ObjectCacheConfig::default(),
         MemoryCacheConfig::default(),
         token.clone(),
     )

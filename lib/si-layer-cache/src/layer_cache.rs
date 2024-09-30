@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
@@ -11,6 +12,7 @@ use crate::db::serialize;
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
 use crate::memory_cache::{MemoryCache, MemoryCacheConfig};
+use crate::object_cache::{ObjectCache, ObjectCacheConfig};
 use crate::pg::PgLayer;
 use crate::LayerDbError;
 
@@ -21,6 +23,8 @@ where
 {
     memory_cache: MemoryCache<V>,
     disk_cache: DiskCache,
+    #[allow(dead_code)] // TODO(scott): remove once in use
+    object_cache: ObjectCache,
     pg: PgLayer,
     #[allow(dead_code)] // TODO(fnichol): remove once in use
     compute_executor: DedicatedExecutor,
@@ -30,9 +34,10 @@ impl<V> LayerCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(
+    pub async fn new(
         name: &str,
         disk_path: impl Into<PathBuf>,
+        object_cache_config: ObjectCacheConfig,
         pg_pool: PgPool,
         memory_cache_config: MemoryCacheConfig,
         compute_executor: DedicatedExecutor,
@@ -42,6 +47,7 @@ where
         let pg = PgLayer::new(pg_pool.clone(), name);
 
         Ok(LayerCache {
+            object_cache: ObjectCache::new(object_cache_config).await?,
             memory_cache: MemoryCache::new(memory_cache_config),
             disk_cache,
             pg,
@@ -56,7 +62,7 @@ where
 
     #[instrument(
         name = "layer_cache.get",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.layer_cache.key = key.as_ref(),
@@ -66,36 +72,45 @@ where
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
         let span = current_span_for_instrument_at!("debug");
 
-        Ok(match self.memory_cache.get(&key).await {
-            Some(memory_value) => {
-                span.record("si.layer_cache.layer.hit", "memory");
-                Some(memory_value)
-            }
-            None => match self.disk_cache.get(key.clone()).await {
-                Ok(value) => {
-                    let deserialized: V = serialize::from_bytes(&value[..])?;
+        if let Some(memory_value) = self.memory_cache.get(&key).await {
+            span.record("si.layer_cache.layer.hit", "memory");
+            return Ok(Some(memory_value));
+        }
 
-                    self.memory_cache.insert(key, deserialized.clone()).await;
+        if let Ok(value) = self.disk_cache.get(key.clone()).await {
+            let deserialized: V = serialize::from_bytes(&value[..])?;
 
-                    span.record("si.layer_cache.layer.hit", "disk");
-                    Some(deserialized)
-                }
-                Err(_) => match self.pg.get(&key).await? {
-                    Some(value) => {
-                        let deserialized: V = serialize::from_bytes(&value)?;
+            self.memory_cache.insert(key, deserialized.clone()).await;
 
-                        self.memory_cache
-                            .insert(key.clone(), deserialized.clone())
-                            .await;
-                        self.spawn_disk_cache_write_vec(key.clone(), value).await?;
+            span.record("si.layer_cache.layer.hit", "disk");
+            return Ok(Some(deserialized));
+        }
 
-                        span.record("si.layer_cache.layer.hit", "disk");
-                        Some(deserialized)
-                    }
-                    None => None,
-                },
-            },
-        })
+        if let Some(value) = self.object_cache.get(key.clone()).await? {
+            let deserialized: V = serialize::from_bytes(&value)?;
+
+            self.memory_cache
+                .insert(key.clone(), deserialized.clone())
+                .await;
+            self.spawn_disk_cache_write_vec(key.clone(), value).await?;
+
+            span.record("si.layer_cache.layer.hit", "object");
+            return Ok(Some(deserialized));
+        }
+
+        if let Some(value) = self.pg.get(&key).await? {
+            let deserialized: V = serialize::from_bytes(&value)?;
+
+            self.memory_cache
+                .insert(key.clone(), deserialized.clone())
+                .await;
+            self.spawn_disk_cache_write_vec(key.clone(), value).await?;
+
+            span.record("si.layer_cache.layer.hit", "pg");
+            return Ok(Some(deserialized));
+        }
+
+        Ok(None)
     }
 
     #[instrument(

@@ -17,6 +17,7 @@ use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::db::func_run::FuncRunDb;
 use crate::db::func_run_log::FuncRunLogDb;
 use crate::memory_cache::MemoryCacheConfig;
+use crate::object_cache::{ObjectCache, ObjectCacheConfig};
 use crate::{
     activity_client::ActivityClient,
     error::LayerDbResult,
@@ -81,6 +82,7 @@ where
             pg_pool,
             nats_client,
             compute_executor,
+            config.object_cache_config,
             config.memory_cache_config,
             token,
         )
@@ -93,6 +95,7 @@ where
         pg_pool: PgPool,
         nats_client: NatsClient,
         compute_executor: DedicatedExecutor,
+        object_cache_config: ObjectCacheConfig,
         memory_cache_config: MemoryCacheConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
@@ -108,50 +111,62 @@ where
         let cas_cache: LayerCache<Arc<CasValue>> = LayerCache::new(
             cas::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
             encrypted_secret::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
             func_run::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
             func_run_log::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
             rebase_batch::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             disk_path,
+            object_cache_config.clone(),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
@@ -170,6 +185,7 @@ where
         let persister_task = PersisterTask::create(
             rx,
             disk_path.to_path_buf(),
+            ObjectCache::new(object_cache_config).await?,
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -324,6 +340,7 @@ pub struct LayerDbConfig {
     pub pg_pool_config: PgPoolConfig,
     pub nats_config: NatsConfig,
     pub memory_cache_config: MemoryCacheConfig,
+    pub object_cache_config: ObjectCacheConfig,
 }
 
 impl LayerDbConfig {
@@ -335,6 +352,7 @@ impl LayerDbConfig {
             pg_pool_config: Default::default(),
             nats_config: Default::default(),
             memory_cache_config: Default::default(),
+            object_cache_config: Default::default(),
         }
     }
 }
