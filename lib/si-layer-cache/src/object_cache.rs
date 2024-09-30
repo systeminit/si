@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use aws_sdk_s3::primitives::ByteStream;
@@ -55,6 +56,23 @@ impl ObjectCache {
             Err(SdkError::ServiceError(err)) if err.err().is_no_such_key() => Ok(None),
             Err(e) => Err(e.into()),
         }
+    }
+
+    pub async fn get_many(
+        &self,
+        keys: &[Arc<str>],
+    ) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
+        let mut results = HashMap::new();
+        for key in keys {
+            if let Some(result) = self.get(key.clone()).await? {
+                results.insert(key.to_string(), result);
+            }
+        }
+        if results.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(results))
     }
 
     pub async fn contains_key(&self, key: Arc<str>) -> LayerDbResult<bool> {
