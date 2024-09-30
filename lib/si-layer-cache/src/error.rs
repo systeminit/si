@@ -1,5 +1,13 @@
 use std::error;
 
+use aws_sdk_s3::{
+    config::http::HttpResponse,
+    error::SdkError,
+    operation::{
+        create_bucket::CreateBucketError, delete_object::DeleteObjectError,
+        get_object::GetObjectError, head_bucket::HeadBucketError, put_object::PutObjectError,
+    },
+};
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
 use si_events::{content_hash::ContentHashParseError, ActionId, FuncRunId};
@@ -94,6 +102,18 @@ pub enum LayerDbError {
     PgPool(#[from] PgPoolError),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
+    #[error("s3 create error: {0}")]
+    S3Create(#[from] SdkError<CreateBucketError, HttpResponse>),
+    #[error("s3 delete error: {0}")]
+    S3Delete(#[from] SdkError<DeleteObjectError, HttpResponse>),
+    #[error("s3 get error: {0}")]
+    S3Get(#[from] SdkError<GetObjectError, HttpResponse>),
+    #[error("s3 error: {0}")]
+    S3Head(#[from] SdkError<HeadBucketError, HttpResponse>),
+    #[error("s3 to bytes error: {0}")]
+    S3ToBytes(#[from] aws_sdk_s3::primitives::ByteStreamError),
+    #[error("s3 write error: {0}")]
+    S3Write(#[from] SdkError<PutObjectError, HttpResponse>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]

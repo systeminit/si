@@ -32,6 +32,7 @@ pub mod event;
 pub mod layer_cache;
 pub mod memory_cache;
 mod nats;
+pub mod object_cache;
 pub mod persister;
 pub mod pg;
 

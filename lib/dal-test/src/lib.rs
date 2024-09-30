@@ -50,7 +50,9 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::{memory_cache::MemoryCacheConfig, CaCacheTempFile};
+use si_layer_cache::{
+    memory_cache::MemoryCacheConfig, object_cache::ObjectCacheConfig, CaCacheTempFile,
+};
 use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
@@ -379,6 +381,7 @@ impl TestContext {
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
+            ObjectCacheConfig::default(),
             MemoryCacheConfig::default(),
             token,
         )
