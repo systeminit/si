@@ -84,6 +84,7 @@ pub use tracing_subscriber;
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
 const DEFAULT_TEST_MODULE_INDEX_URL: &str = "http://localhost:5157";
+const DEFAULT_LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
@@ -381,7 +382,7 @@ impl TestContext {
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
-            ObjectCacheConfig::default(),
+            ObjectCacheConfig::default().with_endpoint(DEFAULT_LOCALSTACK_ENDPOINT.to_string()),
             MemoryCacheConfig::default(),
             token,
         )

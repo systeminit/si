@@ -15,6 +15,7 @@ use crate::integration_test::{
 };
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
 
 #[tokio::test]
 async fn activities() {
@@ -35,7 +36,7 @@ async fn activities() {
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -49,7 +50,7 @@ async fn activities() {
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -103,7 +104,7 @@ async fn activities_subscribe_partial() {
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -117,7 +118,7 @@ async fn activities_subscribe_partial() {
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )

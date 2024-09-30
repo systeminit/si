@@ -18,6 +18,7 @@ use crate::integration_test::{
 };
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
 
 #[tokio::test]
 async fn subscribe_rebaser_requests_work_queue() {
@@ -37,7 +38,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -51,7 +52,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -65,7 +66,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -175,7 +176,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -189,7 +190,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -270,7 +271,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -284,7 +285,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -298,7 +299,7 @@ async fn rebase_requests_work_queue_stress() {
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -441,7 +442,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -455,7 +456,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )

@@ -18,6 +18,7 @@ use crate::integration_test::{
 };
 
 type TestLayerDb = LayerDb<String, String, String, String>;
+const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
 
 #[tokio::test]
 async fn write_to_db() {
@@ -30,7 +31,7 @@ async fn write_to_db() {
         setup_pg_db("func_run_write_to_db").await,
         setup_nats_client(Some("func_run_write_to_db".to_string())).await,
         setup_compute_executor(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token,
     )
@@ -94,7 +95,7 @@ async fn update() {
         db.clone(),
         setup_nats_client(Some("func_run_update_to_db".to_string())).await,
         setup_compute_executor(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -108,7 +109,7 @@ async fn update() {
         db,
         setup_nats_client(Some("func_run_update_to_db".to_string())).await,
         setup_compute_executor(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token,
     )
@@ -270,7 +271,7 @@ async fn write_and_read_many_for_workspace_id() {
         ))
         .await,
         setup_compute_executor(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         MemoryCacheConfig::default(),
         token,
     )

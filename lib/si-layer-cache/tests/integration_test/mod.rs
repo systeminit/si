@@ -11,6 +11,7 @@ mod activities;
 mod db;
 mod disk_cache;
 mod layer_cache;
+mod object_cache;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";

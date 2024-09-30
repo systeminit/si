@@ -7,13 +7,15 @@ use std::sync::Arc;
 use si_layer_cache::db::serialize;
 use si_layer_cache::layer_cache::LayerCache;
 
+const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
+
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
 
     let layer_cache = LayerCache::new(
         "cas",
         tempdir.path(),
-        ObjectCacheConfig::default(),
+        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
         super::setup_pg_db(db_name).await,
         MemoryCacheConfig::default(),
         super::setup_compute_executor(),
@@ -195,4 +197,40 @@ async fn get_last_four_from_database() {
         .expect("should have results");
 
     assert_eq!(get_values.len(), 4);
+}
+
+#[tokio::test]
+async fn get_bulk_from_s3() {
+    let layer_cache = make_layer_cache("get_bulk_s3").await;
+
+    let mut values: [Arc<str>; 5] = [
+        "skid row".into(),
+        "kid scrow".into(),
+        "march for macragge".into(),
+        "magnus did nothing wrong".into(),
+        "steppa pig".into(),
+    ];
+
+    let mut rng = thread_rng();
+
+    for _i in 0..5 {
+        values.shuffle(&mut rng);
+        for value in &values {
+            let _ = layer_cache
+                .object_cache()
+                .insert(value.clone(), value.as_bytes().to_vec())
+                .await;
+        }
+
+        let get_values = layer_cache
+            .object_cache()
+            .get_many(&values)
+            .await
+            .expect("should get bulk")
+            .expect("should have results");
+
+        for value in &values {
+            assert_eq!(value.as_bytes(), get_values[&value.as_ref().to_string()]);
+        }
+    }
 }

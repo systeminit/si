@@ -19,11 +19,15 @@ pub struct ObjectCache {
 impl ObjectCache {
     pub async fn new(cache_config: ObjectCacheConfig) -> LayerDbResult<Self> {
         let config = aws_config::load_from_env().await;
-        let builder = Builder::from(&config)
-            .endpoint_url(cache_config.endpoint)
-            .build();
 
-        let client = aws_sdk_s3::Client::from_conf(builder);
+        let mut builder = Builder::from(&config);
+
+        if cache_config.endpoint.is_some() {
+            builder.set_endpoint_url(cache_config.endpoint);
+        }
+
+        let config = builder.build();
+        let client = aws_sdk_s3::Client::from_conf(config);
 
         let new = Self {
             bucket: cache_config.bucket,
@@ -141,14 +145,21 @@ impl ObjectCache {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ObjectCacheConfig {
     bucket: String,
-    endpoint: String,
+    endpoint: Option<String>,
+}
+
+impl ObjectCacheConfig {
+    pub fn with_endpoint(mut self, endpoint: String) -> Self {
+        self.endpoint = Some(endpoint);
+        self
+    }
 }
 
 impl Default for ObjectCacheConfig {
     fn default() -> Self {
         Self {
             bucket: "si-local".to_string(),
-            endpoint: "http://0.0.0.0:4566".to_string(),
+            endpoint: None,
         }
     }
 }

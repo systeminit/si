@@ -23,7 +23,6 @@ where
 {
     memory_cache: MemoryCache<V>,
     disk_cache: DiskCache,
-    #[allow(dead_code)] // TODO(scott): remove once in use
     object_cache: ObjectCache,
     pg: PgLayer,
     #[allow(dead_code)] // TODO(fnichol): remove once in use
@@ -237,6 +236,10 @@ where
 
     pub fn disk_cache(&self) -> &DiskCache {
         &self.disk_cache
+    }
+
+    pub fn object_cache(&self) -> ObjectCache {
+        self.object_cache.clone()
     }
 
     pub fn pg(&self) -> PgLayer {
