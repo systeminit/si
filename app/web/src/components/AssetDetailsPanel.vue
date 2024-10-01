@@ -1,6 +1,6 @@
 <template>
   <div class="grow relative">
-    <ScrollArea v-if="editingAsset && props.schemaVariantId">
+    <ScrollArea v-if="editingAsset && schemaVariantId">
       <template #top>
         <div
           class="flex flex-row items-center justify-around gap-xs p-xs border-b dark:border-neutral-600"
@@ -148,44 +148,40 @@
       </Stack>
       <template v-if="ffStore.SHOW_INTRINSIC_EDITING">
         <Stack class="p-xs" spacing="none">
-          <span class="font-bold">Output Sockets</span>
+          <span class="uppercase font-bold py-3"
+            >CONFIGURE DATA PROPAGATION</span
+          >
+          <p class="text-xs pb-4">
+            Choose how output sockets and props get their value
+          </p>
+          <span class="uppercase font-bold text-sm">Output Sockets</span>
           <ul>
             <li
               v-for="config in outputSocketIntrinsics"
               :key="config.attributePrototypeId"
             >
-              <VormInput
-                :id="config.socketName"
-                v-model="config.value"
-                :disabled="editingAsset.isLocked"
-                :label="config.socketName"
-                :options="optionsForIntrinsicDisplay"
-                compact
-                iconRight="input-socket"
-                iconRightRotate="down"
-                nullLabel="not set"
-                type="dropdown-optgroup"
-                @change="updateOutputSocketIntrinsics(config)"
+              <AssetDetailIntrinsicInput
+                :schemaVariantId="schemaVariantId"
+                :isLocked="editingAsset.isLocked"
+                :data="config"
+                @change="updateOutputSocketIntrinsics"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
               />
             </li>
           </ul>
         </Stack>
         <Stack class="p-xs" spacing="none">
-          <span class="font-bold">Props</span>
+          <span class="uppercase font-bold text-sm">Props</span>
           <ul>
             <li v-for="prop in configurableProps" :key="prop.id">
-              <VormInput
-                :id="prop.path"
-                v-model="prop.value"
-                :disabled="editingAsset.isLocked"
-                :label="prop.name"
-                :options="optionsForIntrinsicDisplay"
-                compact
-                iconRight="input-socket"
-                iconRightRotate="down"
-                nullLabel="not set"
-                type="dropdown-optgroup"
-                @change="updatePropIntrinsics(prop)"
+              <AssetDetailIntrinsicInput
+                :schemaVariantId="schemaVariantId"
+                :isLocked="editingAsset.isLocked"
+                :data="prop"
+                @change="updatePropIntrinsics"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
               />
             </li>
           </ul>
@@ -221,7 +217,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, toRaw } from "vue";
 import {
   ErrorMessage,
   Modal,
@@ -231,6 +227,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
+import { useToast } from "vue-toastification";
 import {
   FuncKind,
   FuncId,
@@ -240,22 +237,27 @@ import {
   Attribute,
   AttributeArgumentBinding,
   FuncArgumentId,
+  IntrinsicDisplay,
+  PropDisplay,
+  BindingWithBackendKindAndPropId,
+  BindingWithBackendKindAndOutputSocket,
 } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   ComponentType,
   InputSocketId,
-  OutputSocketId,
   SchemaVariant,
   SchemaVariantId,
-  inputSocketsAndPropsFor,
 } from "@/api/sdf/dal/schema";
-import { useFuncStore, BindingWithBackendKind } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { PropId } from "@/api/sdf/dal/prop";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetNameModal from "./AssetNameModal.vue";
+import AssetDetailIntrinsicInput from "./AssetDetailIntrinsicInput.vue";
+
+const toast = useToast();
 
 const props = defineProps<{
   schemaVariantId?: SchemaVariantId;
@@ -272,24 +274,26 @@ const focus = (evt: Event) => {
   focusedFormField.value = (evt.target as HTMLInputElement).id;
 };
 
-const optionsForIntrinsicDisplay = computed(() => {
-  if (!props.schemaVariantId) return {};
-  const variant = assetStore.variantFromListById[props.schemaVariantId];
-  if (!variant) return {};
-  return inputSocketsAndPropsFor(variant);
+const identityFuncId = computed(() => {
+  const func = funcStore.funcList.find(
+    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
+  );
+  return func?.funcId as FuncId;
 });
 
-interface PropDisplay {
-  id: PropId;
-  path: string;
-  name: string;
-  value?: PropId | InputSocketId;
-  attributePrototypeId?: AttributePrototypeId;
-}
+const identityFuncArgumentId = computed(() => {
+  const func = funcStore.funcList.find(
+    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
+  );
+  return func?.arguments[0]?.id as FuncArgumentId;
+});
 
-interface BindingWithBackendKindAndPropId extends BindingWithBackendKind {
-  propId: NonNullable<PropId>;
-}
+const unsetFuncId = computed(() => {
+  const func = funcStore.funcList.find(
+    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset",
+  );
+  return func?.funcId as FuncId;
+});
 
 const intrinsics = computed(() => {
   if (!props.schemaVariantId) return [];
@@ -297,12 +301,10 @@ const intrinsics = computed(() => {
     props.schemaVariantId,
   );
   if (!intrinsics) return [];
-  return intrinsics.filter(
-    (binding) => binding.backendKind === FuncBackendKind.Identity,
-  );
+  return intrinsics;
 });
 
-const configurableProps = computed(() => {
+const _configurableProps = computed(() => {
   if (!props.schemaVariantId) return [];
 
   const variant = assetStore.variantFromListById[props.schemaVariantId];
@@ -311,10 +313,17 @@ const configurableProps = computed(() => {
   const ignoreProps: PropId[] = [];
   variant?.funcIds.forEach((funcId) => {
     const summary = funcStore.funcsById[funcId];
-    if (summary?.kind === FuncKind.Intrinsic) return;
+    if (summary?.kind === FuncKind.Intrinsic)
+      if (
+        [FuncBackendKind.Identity, FuncBackendKind.Unset].includes(
+          summary.backendKind,
+        )
+      )
+        return; // don't ignore identity or unset, ignore set string, etc
     summary?.bindings.forEach((b) => {
-      if (b.schemaVariantId === props.schemaVariantId)
+      if (b.schemaVariantId === props.schemaVariantId) {
         if ("propId" in b && b.propId) ignoreProps.push(b.propId);
+      }
     });
   });
 
@@ -327,6 +336,7 @@ const configurableProps = computed(() => {
     {
       value: PropId | InputSocketId;
       attributePrototypeId: AttributePrototypeId;
+      backendKind: FuncBackendKind;
     }
   >;
   intrinsics.value
@@ -342,11 +352,13 @@ const configurableProps = computed(() => {
         propValues[binding.propId] = {
           value: `p_${arg.propId}`,
           attributePrototypeId: binding.attributePrototypeId,
+          backendKind: binding.backendKind,
         };
       if (inputSocket && inputSocket.inputSocketId)
         propValues[binding.propId] = {
           value: `s_${inputSocket.inputSocketId}`,
           attributePrototypeId: binding.attributePrototypeId,
+          backendKind: binding.backendKind,
         };
     });
 
@@ -355,7 +367,11 @@ const configurableProps = computed(() => {
     const vals = propValues[id];
     let value;
     let attributePrototypeId;
-    if (vals) ({ value, attributePrototypeId } = vals);
+    let backendKind;
+    if (vals) ({ value, attributePrototypeId, backendKind } = vals);
+
+    let funcId = unsetFuncId.value;
+    if (backendKind === FuncBackendKind.Identity) funcId = identityFuncId.value;
 
     const d: PropDisplay = {
       id,
@@ -363,27 +379,23 @@ const configurableProps = computed(() => {
       name,
       value,
       attributePrototypeId,
+      funcId,
     };
     config.push(d);
   });
   return config;
 });
 
-interface IntrinsicDisplay {
-  attributePrototypeId: AttributePrototypeId;
-  outputSocketId: OutputSocketId;
-  socketName: string;
-  backendKind: FuncBackendKind;
-  value: InputSocketId | PropId | undefined;
-}
+const configurableProps = ref<PropDisplay[]>([]);
+watch(
+  _configurableProps,
+  () => {
+    configurableProps.value = toRaw(_configurableProps.value);
+  },
+  { immediate: true },
+);
 
-// PSA: this is how to type guard filter so later operations know the field
-// is no longer nullable b/c the filter removed any objects where the property was null
-interface BindingWithBackendKindAndOutputSocket extends BindingWithBackendKind {
-  outputSocketId: NonNullable<OutputSocketId>;
-}
-
-const outputSocketIntrinsics = computed(() => {
+const _outputSocketIntrinsics = computed(() => {
   const bindings: IntrinsicDisplay[] = [];
   intrinsics.value
     .filter(
@@ -396,20 +408,27 @@ const outputSocketIntrinsics = computed(() => {
         .filter((a) => !!a.inputSocketId)
         .pop();
 
+      const socketName =
+        assetStore.selectedSchemaVariant?.outputSockets.find(
+          (s) => s.id === binding.outputSocketId,
+        )?.name || "N/A";
+
       let value;
       if (arg && arg.propId) value = `p_${arg.propId}`;
       if (inputSocket && inputSocket.inputSocketId)
         value = `s_${inputSocket.inputSocketId}`;
 
+      let funcId = unsetFuncId.value;
+      if (binding.backendKind === FuncBackendKind.Identity)
+        funcId = identityFuncId.value;
+
       const d: IntrinsicDisplay = {
         value,
         attributePrototypeId: binding.attributePrototypeId,
         outputSocketId: binding.outputSocketId,
-        socketName:
-          assetStore.selectedSchemaVariant?.outputSockets.find(
-            (s) => s.id === binding.outputSocketId,
-          )?.name || "N/A",
         backendKind: binding.backendKind,
+        socketName,
+        funcId,
       };
 
       bindings.push(d);
@@ -417,45 +436,51 @@ const outputSocketIntrinsics = computed(() => {
   return bindings;
 });
 
-const identityFuncId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
-  );
-  return func?.funcId as FuncId;
-});
-
-const identityFuncArgumentId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
-  );
-  return func?.arguments[0]?.id as FuncArgumentId;
-});
+const outputSocketIntrinsics = ref<IntrinsicDisplay[]>([]);
+watch(
+  _outputSocketIntrinsics,
+  () => {
+    outputSocketIntrinsics.value = toRaw(_outputSocketIntrinsics.value);
+  },
+  { immediate: true },
+);
 
 const commonBindingConstruction = (
   data: PropDisplay | IntrinsicDisplay,
 ): Attribute | undefined => {
   if (!props.schemaVariantId) return;
-  if (!data.value) return;
 
-  const arg: AttributeArgumentBinding = {
-    funcArgumentId: identityFuncArgumentId.value,
-    attributePrototypeArgumentId: null,
-    inputSocketId: null,
-    propId: null,
-  };
-  if (data.value.startsWith("s_"))
-    arg.inputSocketId = data.value.replace("s_", "");
-  else if (data.value.startsWith("p_"))
-    arg.propId = data.value.replace("p_", "");
+  // unset has no value
+  if (!data.value && data.funcId !== unsetFuncId.value) return;
+
+  const argumentBindings: AttributeArgumentBinding[] = [];
+
+  if (data.funcId === identityFuncId.value) {
+    const arg: AttributeArgumentBinding = {
+      funcArgumentId: identityFuncArgumentId.value,
+      attributePrototypeArgumentId: null,
+      inputSocketId: null,
+      propId: null,
+    };
+
+    if (data.value)
+      if (data.value.startsWith("s_"))
+        arg.inputSocketId = data.value.replace("s_", "");
+      else if (data.value.startsWith("p_"))
+        arg.propId = data.value.replace("p_", "");
+
+    argumentBindings.push(arg);
+  }
 
   const binding: Attribute = {
-    // NOTE: attributePrototypeId is null when we swap fns for a new binding, it is required when staying with the same func and switching args
-    attributePrototypeId: null,
+    // NOTE: attributePrototypeId is null when we swap fns for a new binding,
+    // it is required when staying with the same func and switching args
+    attributePrototypeId: data.attributePrototypeId || null,
     componentId: null,
-    funcId: identityFuncId.value,
+    funcId: data.funcId,
     schemaVariantId: props.schemaVariantId,
     bindingKind: FuncBindingKind.Attribute,
-    argumentBindings: [arg],
+    argumentBindings,
     propId: "id" in data ? data.id : null,
     outputSocketId: "outputSocketId" in data ? data.outputSocketId : null,
   };
@@ -464,12 +489,68 @@ const commonBindingConstruction = (
 
 const updatePropIntrinsics = async (data: PropDisplay) => {
   const binding = commonBindingConstruction(data);
-  if (binding) await funcStore.CREATE_BINDING(identityFuncId.value, [binding]);
+  if (binding) {
+    const resp = await funcStore.CREATE_BINDING(identityFuncId.value, [
+      binding,
+    ]);
+    if (!resp.result.success) {
+      if (resp.result.statusCode === 422) {
+        toast(
+          "Error: chosen prop configuration is invalid. It would cause a cycle",
+        );
+        configurableProps.value = toRaw(_configurableProps.value);
+      }
+    }
+  }
 };
 
 const updateOutputSocketIntrinsics = async (data: IntrinsicDisplay) => {
   const binding = commonBindingConstruction(data);
-  if (binding) await funcStore.CREATE_BINDING(identityFuncId.value, [binding]);
+  if (binding) {
+    const resp = await funcStore.CREATE_BINDING(identityFuncId.value, [
+      binding,
+    ]);
+    if (!resp.result.success) {
+      if (resp.result.statusCode === 422) {
+        toast(
+          "Error: chosen socket configuration is invalid. It would cause a cycle",
+        );
+        outputSocketIntrinsics.value = toRaw(_outputSocketIntrinsics.value);
+      }
+    }
+  }
+};
+
+const changeToUnset = (config: PropDisplay | IntrinsicDisplay | undefined) => {
+  if (!config) return;
+
+  config.attributePrototypeId = undefined;
+  config.funcId = unsetFuncId.value;
+  config.value = undefined;
+  if ("backendKind" in config) {
+    config.backendKind = FuncBackendKind.Unset;
+    // its a socket
+    updateOutputSocketIntrinsics(config);
+  } else {
+    updatePropIntrinsics(config);
+  }
+};
+
+const changeToIdentity = (
+  config: PropDisplay | IntrinsicDisplay | undefined,
+  value: string | null,
+) => {
+  if (!config) return;
+  config.attributePrototypeId = undefined;
+  config.funcId = identityFuncId.value;
+  config.value = value || undefined;
+  // dont fire a save if there isnt a value
+  if ("backendKind" in config) {
+    config.backendKind = FuncBackendKind.Identity;
+    if (config.value) updateOutputSocketIntrinsics(config);
+  } else if (config.value) {
+    updatePropIntrinsics(config);
+  }
 };
 
 const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {

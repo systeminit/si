@@ -18,7 +18,7 @@ import {
   Authentication,
   Qualification,
   FuncBackendKind,
-  AttributePrototypeId,
+  BindingWithBackendKind,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -64,11 +64,6 @@ export interface AttributeWithVariant extends Attribute {
 export interface BindingWithDisplayName extends Action {
   displayName?: string | null;
   name: string;
-}
-
-export interface BindingWithBackendKind extends Attribute {
-  backendKind: FuncBackendKind;
-  attributePrototypeId: NonNullable<AttributePrototypeId>;
 }
 
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];

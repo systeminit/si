@@ -280,6 +280,10 @@ function readjustMenuPosition() {
   } else if (posX.value + menuRect.width > windowWidth) {
     hAlign.value = "right";
     posX.value = 4; // if overflowing off the screen, we right align with a small buffer
+    if (props.submenu) {
+      hAlign.value = "left";
+      posX.value = anchorRect.left - menuRect.width - 4;
+    }
   }
 
   // try positioning the menu below the anchor, and otherwise position above

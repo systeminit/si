@@ -174,14 +174,14 @@ const groupedPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return {
-    root: rootPropOptions,
-    code: codePropOptions,
-    domain: domainPropOptions,
-    qualification: qualificationPropOptions,
-    resource: resourcePropOptions,
-    resource_value: resourceValuePropOptions,
-    secrets: secretsPropOptions,
-    si: siPropOptions,
+    "root/": rootPropOptions,
+    "root/code/": codePropOptions,
+    "root/domain/": domainPropOptions,
+    "root/qualification/": qualificationPropOptions,
+    "root/resource/": resourcePropOptions,
+    "root/resource_value/": resourceValuePropOptions,
+    "root/secrets/": secretsPropOptions,
+    "root/si/": siPropOptions,
   };
 };
 

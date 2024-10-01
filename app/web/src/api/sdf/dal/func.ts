@@ -209,3 +209,38 @@ export type LeafInputLocation =
   | "domain"
   | "resource"
   | "secrets";
+
+export interface BindingWithBackendKind extends Attribute {
+  backendKind: FuncBackendKind;
+  attributePrototypeId: NonNullable<AttributePrototypeId>;
+}
+
+export interface PropDisplay {
+  id: PropId;
+  path: string;
+  name: string;
+  value?: PropId | InputSocketId;
+  attributePrototypeId?: AttributePrototypeId;
+  funcId: FuncId;
+}
+
+export interface BindingWithBackendKindAndPropId
+  extends BindingWithBackendKind {
+  propId: NonNullable<PropId>;
+}
+
+export interface IntrinsicDisplay {
+  attributePrototypeId: AttributePrototypeId;
+  outputSocketId: OutputSocketId;
+  socketName: string;
+  backendKind: FuncBackendKind;
+  value: InputSocketId | PropId | undefined;
+  funcId: FuncId;
+}
+
+// PSA: this is how to type guard filter so later operations know the field
+// is no longer nullable b/c the filter removed any objects where the property was null
+export interface BindingWithBackendKindAndOutputSocket
+  extends BindingWithBackendKind {
+  outputSocketId: NonNullable<OutputSocketId>;
+}

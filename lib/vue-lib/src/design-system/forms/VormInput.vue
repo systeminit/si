@@ -28,7 +28,7 @@ you can pass in options as props too */
       :for="formInputId"
     >
       <Icon
-        v-if="disabledBySelfOrParent"
+        v-if="disabledBySelfOrParent && !iconRight"
         :class="clsx('vorm-input__locked-icon')"
         name="lock"
       />
@@ -146,15 +146,18 @@ you can pass in options as props too */
               :key="innerLabel"
               :label="innerLabel"
             >
-              <option v-for="o in inner" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
+              <VormInputOption
+                v-for="(o, i) in inner"
+                :key="generateOptionKey(o, i)"
+                :value="o.value"
+                >{{ o.label }}
+              </VormInputOption>
             </optgroup>
           </select>
           <template v-if="compact">
             <div class="vorm-input__input-value">
               {{
-                flattenedObjectOptionsFromProps.find(
+                arrayOptionsFromProps.find(
                   (o) => o.value === valueForSelectField,
                 )?.label ?? valueForSelectField
               }}
@@ -265,13 +268,14 @@ you can pass in options as props too */
         {{ error_set }}
       </div>
     </div>
+    <slot name="rightOfInput"></slot>
   </div>
 </template>
 
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-explicit-any,@typescript-eslint/no-non-null-assertion */
 
-import { ref, computed, onMounted, onUpdated, watch, toRefs } from "vue";
+import { ref, computed, onMounted, onUpdated, watch, toRefs, toRaw } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
@@ -592,7 +596,9 @@ const arrayOptionsFromProps = computed((): OptionsAsArray => {
   /* eslint-disable consistent-return */
   if (!isTypeWithOptions.value) return [];
   if (!props.options) return [];
-  if (_.isArray(props.options)) {
+  if (props.type === "dropdown-optgroup") {
+    return Object.values(toRaw(props.options) as OptionsAsNestedArrays).flat();
+  } else if (_.isArray(props.options)) {
     if (!_.isObject(props.options[0])) {
       return _.map(props.options, (value) => ({
         value,
@@ -634,9 +640,6 @@ const objectOptionsFromProps = computed((): OptionsAsNestedArrays => {
   if (!_.isObject(props.options)) return {};
   return props.options as OptionsAsNestedArrays;
 });
-const flattenedObjectOptionsFromProps = computed(
-  (): OptionsAsArray => Object.values(objectOptionsFromProps.value).flat(),
-);
 
 // event handlers
 function onFocus(evt: Event) {
