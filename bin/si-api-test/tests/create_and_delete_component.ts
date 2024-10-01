@@ -21,10 +21,15 @@ async function create_and_delete_component_inner(
   changeSetId: string,
 ) {
   // Get the Schema Variant ID of Generic Frame
-  const schemaVariants = await sdfApiClient.call({
+  let schemaVariants = await sdfApiClient.call({
     route: "schema_variants",
     routeVars: { changeSetId },
   });
+
+  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
+  if (newCreateComponentApi) {
+    schemaVariants = schemaVariants.installed;
+  }
 
   assert(
     Array.isArray(schemaVariants),
@@ -46,6 +51,10 @@ async function create_and_delete_component_inner(
     visibility_change_set_pk: changeSetId,
     workspaceId: sdfApiClient.workspaceId,
   };
+  if (newCreateComponentApi) {
+    createComponentPayload["schemaType"] = "installed";
+  }
+
   const createComponentResp = await sdfApiClient.call({
     route: "create_component",
     body: createComponentPayload,

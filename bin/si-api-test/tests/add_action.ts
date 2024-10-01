@@ -20,10 +20,15 @@ export async function add_action_inner(
   const actionOriginalLength = data.length;
 
   // Get all Schema Variants
-  const schemaVariants = await sdfApiClient.call({
+  let schemaVariants = await sdfApiClient.call({
     route: "schema_variants",
     routeVars: { changeSetId },
   });
+  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
+  if (newCreateComponentApi) {
+    schemaVariants = schemaVariants.installed;
+  }
+
 
   assert(
     Array.isArray(schemaVariants),
@@ -45,6 +50,10 @@ export async function add_action_inner(
     visibility_change_set_pk: changeSetId,
     workspaceId: sdfApiClient.workspaceId,
   };
+  if (newCreateComponentApi) {
+    createComponentPayload["schemaType"] = 'installed';
+  }
+
   const createComponentResp = await sdfApiClient.call({
     route: "create_component",
     body: createComponentPayload,
