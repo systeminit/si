@@ -12,8 +12,8 @@ import UpdatingModel from "../components/toasts/UpdatingModel.vue";
 
 import handleStoreError from "./errors";
 
-const GLOBAL_STATUS_TOAST_TIMEOUT = 1000;
-const GLOBAL_STATUS_TOAST_DEBOUNCE = 300;
+const GLOBAL_STATUS_TOAST_TIMEOUT = 300;
+const GLOBAL_STATUS_TOAST_DEBOUNCE = 150;
 export const GLOBAL_STATUS_TOAST_ID = "global_status_toast";
 
 export type StatusMessageState = "statusStarted" | "statusFinished";
