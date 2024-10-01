@@ -129,7 +129,7 @@ impl LeafBinding {
         eventual_parent: EventualParent,
         inputs: &[LeafInputLocation],
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        // remove the exisiting binding
+        // remove the existing binding
         LeafBinding::delete_leaf_func_binding(ctx, existing_prototype_id).await?;
 
         // create one for the new func_id
