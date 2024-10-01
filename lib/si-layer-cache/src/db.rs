@@ -111,7 +111,9 @@ where
         let cas_cache: LayerCache<Arc<CasValue>> = LayerCache::new(
             cas::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(cas::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
@@ -121,7 +123,9 @@ where
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
             encrypted_secret::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(encrypted_secret::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
@@ -131,7 +135,9 @@ where
         let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
             func_run::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(func_run::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
@@ -141,7 +147,9 @@ where
         let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
             func_run_log::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(func_run_log::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
@@ -151,7 +159,9 @@ where
         let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
             rebase_batch::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(rebase_batch::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),
@@ -161,7 +171,9 @@ where
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             disk_path,
-            object_cache_config.clone(),
+            object_cache_config
+                .clone()
+                .with_prefix(workspace_snapshot::DBNAME.to_string()),
             pg_pool.clone(),
             memory_cache_config.clone(),
             compute_executor.clone(),

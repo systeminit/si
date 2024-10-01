@@ -233,6 +233,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_db_config.pg_pool_config.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
+    config.layer_db_config.object_cache_config.endpoint = Some("http://localhost:4566".to_string());
 
     Ok(())
 }
@@ -267,6 +268,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_db_config.pg_pool_config.certificate_path = Some(postgres_key.clone().try_into()?);
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
+    config.layer_db_config.object_cache_config.endpoint = Some("http://localhost:4566".to_string());
 
     Ok(())
 }
