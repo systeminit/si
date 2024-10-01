@@ -21,6 +21,7 @@ impl ObjectCache {
         let config = aws_config::load_from_env().await;
 
         let mut builder = Builder::from(&config);
+        builder.set_force_path_style(Some(true));
 
         if cache_config.endpoint.is_some() {
             builder.set_endpoint_url(cache_config.endpoint);
@@ -144,8 +145,8 @@ impl ObjectCache {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ObjectCacheConfig {
-    bucket: String,
-    endpoint: Option<String>,
+    pub bucket: String,
+    pub endpoint: Option<String>,
 }
 
 impl ObjectCacheConfig {

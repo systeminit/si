@@ -1,6 +1,6 @@
 use si_layer_cache::object_cache::{ObjectCache, ObjectCacheConfig};
 
-const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
+const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 #[tokio::test]
 async fn new() {

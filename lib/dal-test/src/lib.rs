@@ -84,7 +84,7 @@ pub use tracing_subscriber;
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
 const DEFAULT_TEST_MODULE_INDEX_URL: &str = "http://localhost:5157";
-const DEFAULT_LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
+const DEFAULT_LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
@@ -94,6 +94,7 @@ const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
+const ENV_VAR_LOCALSTACK_ENDPOINT: &str = "SI_TEST_LOCALSTACK_ENDPOINT";
 
 #[allow(missing_docs)]
 pub static COLOR_EYRE_INIT: Once = Once::new();
@@ -169,6 +170,8 @@ pub struct Config {
     #[allow(dead_code)]
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
+    #[builder(default = "ObjectCacheConfig::default()")]
+    layer_cache_object_cache_config: ObjectCacheConfig,
 }
 
 impl Config {
@@ -191,6 +194,11 @@ impl Config {
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
             config.pg.hostname = value;
         }
+
+        if let Ok(value) = env::var(ENV_VAR_LOCALSTACK_ENDPOINT) {
+            config.layer_cache_object_cache_config.endpoint = Some(value);
+        }
+
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.user =
             env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());

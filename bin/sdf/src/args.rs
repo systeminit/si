@@ -135,6 +135,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) layer_db_seconds_to_idle: Option<u64>,
 
+    /// The name of the S3 bucket for the layercache
+    #[arg(long)]
+    pub(crate) layer_db_bucket_name: Option<String>,
+
     /// Generates Veritech secret key file (does not run server)
     ///
     /// Will error if set when `generate_veritech_public_key_path` is not set
@@ -321,6 +325,12 @@ impl TryFrom<Args> for Config {
             }
             if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
                 config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
+            }
+            if let Some(layer_cache_bucket_name) = args.layer_db_bucket_name {
+                config_map.set(
+                    "layer_db_config.object_cache_config.bucket",
+                    layer_cache_bucket_name,
+                );
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);

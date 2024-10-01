@@ -18,7 +18,7 @@ use crate::integration_test::{
 };
 
 type TestLayerDb = LayerDb<String, String, String, String>;
-const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
+const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 #[tokio::test]
 async fn write_to_db() {

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use si_layer_cache::db::serialize;
 use si_layer_cache::layer_cache::LayerCache;
 
-const LOCALSTACK_ENDPOINT: &str = "http://0.0.0.0:4566";
+const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");

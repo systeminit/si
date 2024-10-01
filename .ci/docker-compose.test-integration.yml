@@ -10,6 +10,7 @@ services:
       # and not using the external port mapping.
       - "SI_TEST_PG_PORT=5432"
       - "SI_TEST_NATS_URL=nats"
+      - "SI_TEST_LOCALSTACK_ENDPOINT=http://localstack:4566"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     depends_on:
       - postgres-test
