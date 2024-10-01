@@ -587,6 +587,17 @@ impl SchemaVariant {
         Ok(schema_variant)
     }
 
+    pub async fn was_created_on_this_changeset(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<bool> {
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+
+        Ok(Self::get_by_id(&base_change_set_ctx, self.id)
+            .await?
+            .is_none())
+    }
+
     pub async fn cleanup_unlocked_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -597,22 +608,33 @@ impl SchemaVariant {
             return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
         }
 
-        let schema = variant.schema(ctx).await?;
+        Self::cleanup_variant(ctx, variant).await
+    }
+
+    /// Removes a schema variant from the graph, even if it is locked. You probably want to use [Self::cleanup_unlocked_variant]
+    /// unless you're garbage collecting unused variants
+    pub async fn cleanup_variant(
+        ctx: &DalContext,
+        schema_variant: SchemaVariant,
+    ) -> SchemaVariantResult<()> {
+        let schema = schema_variant.schema(ctx).await?;
 
         // Firstly we want to delete the asset func
-        let asset_func = variant.get_asset_func(ctx).await?;
+        let asset_func = schema_variant.get_asset_func(ctx).await?;
         Func::delete_by_id(ctx, asset_func.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         if let Some(default_schema_variant_id) = schema.get_default_schema_variant_id(ctx).await? {
-            if variant.id == default_schema_variant_id {
+            if schema_variant.id == default_schema_variant_id {
                 workspace_snapshot.remove_node_by_id(schema.id()).await?;
             }
         }
 
         // now we want to delete the schema variant
-        workspace_snapshot.remove_node_by_id(variant.id).await?;
+        workspace_snapshot
+            .remove_node_by_id(schema_variant.id)
+            .await?;
 
         Ok(())
     }
@@ -686,18 +708,29 @@ impl SchemaVariant {
         ctx: &DalContext,
         id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
+        Self::get_by_id(ctx, id)
+            .await?
+            .ok_or_else(|| SchemaVariantError::NotFound(id))
+    }
+
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot
-            .get_node_index_by_id(id)
-            .await
-            .map_err(|err| {
-                if err.is_node_with_id_not_found() {
-                    SchemaVariantError::NotFound(id)
+        let maybe_node_result = workspace_snapshot.get_node_index_by_id(id).await;
+
+        let node_index = match maybe_node_result {
+            Ok(node_index) => node_index,
+            Err(e) => {
+                return if e.is_node_with_id_not_found() {
+                    Ok(None)
                 } else {
-                    err.into()
+                    Err(SchemaVariantError::from(e))
                 }
-            })?;
+            }
+        };
 
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let schema_variant_node_weight = node_weight.get_schema_variant_node_weight()?;
@@ -709,7 +742,9 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        Self::from_node_weight_and_content(ctx, &schema_variant_node_weight, &content).await
+        Ok(Some(
+            Self::from_node_weight_and_content(ctx, &schema_variant_node_weight, &content).await?,
+        ))
     }
 
     async fn from_node_weight_and_content(

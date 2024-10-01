@@ -504,32 +504,49 @@ impl FuncBinding {
     pub async fn delete_all_bindings_for_func_id(
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> FuncBindingResult<Vec<FuncBinding>> {
+    ) -> FuncBindingResult<()> {
         let func_bindings = FuncBinding::for_func_id(ctx, func_id).await?;
         for binding in func_bindings {
+            if let Some(sv_id) = binding.get_schema_variant() {
+                let sv = SchemaVariant::get_by_id_or_error(ctx, sv_id).await?;
+
+                // If the variant is locked, not default and was created on this changeset, it needs to be garbage collected
+                if sv.is_locked()
+                    && !sv.is_default(ctx).await?
+                    && sv.was_created_on_this_changeset(ctx).await?
+                {
+                    SchemaVariant::cleanup_variant(ctx, sv).await?;
+                    // Don't delete the binding directly, this will be dealt with by the cleanup at the end
+                    continue;
+                }
+            }
+
             match binding {
                 FuncBinding::Action(action) => {
-                    ActionBinding::delete_action_binding(ctx, action.action_prototype_id).await?
+                    ActionBinding::delete_action_binding(ctx, action.action_prototype_id).await?;
                 }
                 FuncBinding::Attribute(attribute) => {
-                    AttributeBinding::reset_attribute_binding(ctx, attribute.attribute_prototype_id)
-                        .await?
+                    AttributeBinding::reset_attribute_binding(
+                        ctx,
+                        attribute.attribute_prototype_id,
+                    )
+                    .await?;
                 }
                 FuncBinding::Authentication(auth) => {
                     AuthBinding::delete_auth_binding(ctx, auth.func_id, auth.schema_variant_id)
-                        .await?
+                        .await?;
                 }
-                FuncBinding::CodeGeneration(code_gen) => {
-                    LeafBinding::delete_leaf_func_binding(ctx, code_gen.attribute_prototype_id)
-                        .await?
-                }
-                FuncBinding::Qualification(qualification) => {
-                    LeafBinding::delete_leaf_func_binding(ctx, qualification.attribute_prototype_id)
-                        .await?
+                FuncBinding::CodeGeneration(binding) | FuncBinding::Qualification(binding) => {
+                    LeafBinding::delete_leaf_func_binding(ctx, binding.attribute_prototype_id)
+                        .await?;
                 }
             };
         }
-        FuncBinding::for_func_id(ctx, func_id).await
+
+        // Remove the bindings from the garbage collected schema variants
+        ctx.workspace_snapshot()?.cleanup().await?;
+
+        Ok(())
     }
 
     /// Compile all the types for all of the bindings to return to the front end for type checking

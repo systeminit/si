@@ -1,8 +1,14 @@
+use crate::{
+    extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::v2::func::{FuncAPIError, FuncAPIResult},
+    track,
+};
 use axum::{
     extract::{Host, OriginalUri, Path},
     response::IntoResponse,
     Json,
 };
+use dal::func::FuncKind;
 use dal::{
     func::binding::{
         action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
@@ -10,12 +16,7 @@ use dal::{
     ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_frontend_types as frontend_types;
-
-use crate::{
-    extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::v2::func::{FuncAPIError, FuncAPIResult},
-    track,
-};
+use std::collections::HashSet;
 
 pub async fn delete_binding(
     HandlerContext(builder): HandlerContext,
@@ -31,156 +32,86 @@ pub async fn delete_binding(
         .await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
-    match func.kind {
-        dal::func::FuncKind::Action => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::Action {
+
+    let mut modified_sv_ids = HashSet::new();
+
+    // Note(victor): Matching inside the loop for a static variable may look weird, but
+    // branch prediction will mitigate any performance penalty, and there's no elegant way to implement
+    // these branches as closures as of today
+    for binding in request.bindings {
+        let eventual_parent = match func.kind {
+            FuncKind::Action => {
+                let frontend_types::FuncBinding::Action {
                     action_prototype_id: Some(action_prototype_id),
                     ..
                 } = binding
-                {
-                    let eventual_parent = ActionBinding::delete_action_binding(
-                        &ctx,
-                        action_prototype_id.into_raw_id().into(),
-                    )
-                    .await?;
-                    if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
-                        let schema =
-                            SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id)
-                                .await?;
-                        let schema_variant =
-                            SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
-                        WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                            .await?
-                            .publish_on_commit(&ctx)
-                            .await?;
-                    }
-                } else {
+                else {
                     return Err(FuncAPIError::MissingActionPrototype);
-                }
-            }
-        }
-        dal::func::FuncKind::CodeGeneration | dal::func::FuncKind::Qualification => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::CodeGeneration {
-                    attribute_prototype_id,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let eventual_parent = LeafBinding::delete_leaf_func_binding(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                            )
-                            .await?;
-                            if let EventualParent::SchemaVariant(schema_variant_id) =
-                                eventual_parent
-                            {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx,
-                                    schema_variant_id,
-                                )
-                                .await?;
-                                let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                                        .await?;
+                };
 
-                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                                    .await?
-                                    .publish_on_commit(&ctx)
-                                    .await?;
-                            }
-                        }
-                        None => {
-                            return Err(FuncAPIError::MissingPrototypeId);
-                        }
-                    }
-                } else if let frontend_types::FuncBinding::Qualification {
-                    attribute_prototype_id,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let eventual_parent = LeafBinding::delete_leaf_func_binding(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                            )
-                            .await?;
-                            if let EventualParent::SchemaVariant(schema_variant_id) =
-                                eventual_parent
-                            {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx,
-                                    schema_variant_id,
-                                )
-                                .await?;
-                                let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                                        .await?;
-
-                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                                    .await?
-                                    .publish_on_commit(&ctx)
-                                    .await?;
-                            }
-                        }
-                        None => {
-                            return Err(FuncAPIError::MissingPrototypeId);
-                        }
-                    }
-                } else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
-                }
+                ActionBinding::delete_action_binding(&ctx, action_prototype_id.into_raw_id().into())
+                    .await?
             }
-        }
-        dal::func::FuncKind::Authentication => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::Authentication {
+            FuncKind::Authentication => {
+                let frontend_types::FuncBinding::Authentication {
                     schema_variant_id,
                     func_id,
                 } = binding
-                {
-                    match func_id {
-                        Some(func_id) => {
-                            let eventual_parent = AuthBinding::delete_auth_binding(
-                                &ctx,
-                                func_id.into(),
-                                schema_variant_id.into(),
-                            )
-                            .await?;
-                            if let EventualParent::SchemaVariant(schema_variant_id) =
-                                eventual_parent
-                            {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx,
-                                    schema_variant_id,
-                                )
-                                .await?;
-                                let schema_variant =
-                                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
-                                        .await?;
-
-                                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                                    .await?
-                                    .publish_on_commit(&ctx)
-                                    .await?;
-                            }
-                        }
-                        None => return Err(FuncAPIError::MissingFuncId),
-                    }
-                } else {
+                else {
                     return Err(FuncAPIError::WrongFunctionKindForBinding);
-                }
+                };
+
+                let Some(func_id) = func_id else {
+                    return Err(FuncAPIError::MissingFuncId);
+                };
+
+                AuthBinding::delete_auth_binding(&ctx, func_id.into(), schema_variant_id.into())
+                    .await?
             }
+            FuncKind::CodeGeneration | FuncKind::Qualification => {
+                let (frontend_types::FuncBinding::Qualification {
+                    attribute_prototype_id,
+                    ..
+                }
+                | frontend_types::FuncBinding::CodeGeneration {
+                    attribute_prototype_id,
+                    ..
+                }) = binding
+                else {
+                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                };
+
+                let Some(attribute_prototype_id) = attribute_prototype_id else {
+                    return Err(FuncAPIError::MissingPrototypeId);
+                };
+
+                LeafBinding::delete_leaf_func_binding(
+                    &ctx,
+                    attribute_prototype_id.into_raw_id().into(),
+                )
+                .await?
+            }
+            FuncKind::Attribute
+            | FuncKind::Intrinsic
+            | FuncKind::SchemaVariantDefinition
+            | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
+        };
+
+        if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
+            modified_sv_ids.insert(schema_variant_id);
         }
-        dal::func::FuncKind::Attribute
-        | dal::func::FuncKind::Intrinsic
-        | dal::func::FuncKind::SchemaVariantDefinition
-        | dal::func::FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
-    };
+    }
+
+    for schema_variant_id in modified_sv_ids {
+        let schema =
+            SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+        let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+
+        WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     track(
         &posthog_client,
