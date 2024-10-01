@@ -35,6 +35,7 @@ use crate::diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge};
 use crate::func::argument::FuncArgumentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
+use crate::module::{Module, ModuleError};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
 use crate::schema::variant::leaves::LeafKind;
@@ -148,6 +149,8 @@ pub enum ComponentError {
     MissingQualificationsValue(ComponentId),
     #[error("component {0} missing attribute value for root")]
     MissingRootProp(ComponentId),
+    #[error("module error: {0}")]
+    Module(#[from] ModuleError),
     #[error("more than one schema variant found for component: {0}")]
     MoreThanOneSchemaVariantFound(ComponentId),
     #[error("found multiple parents for component: {0}")]
@@ -3242,6 +3245,38 @@ impl Component {
         Ok(components)
     }
 
+    /// Is there a newer version of the schema variant that this component is using?
+    pub async fn can_be_upgraded(&self, ctx: &DalContext) -> ComponentResult<bool> {
+        let schema_variant = self.schema_variant(ctx).await?;
+        let schema = self.schema(ctx).await?;
+        let default_schema_variant_id =
+            SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
+
+        let newest_schema_variant_id =
+            match SchemaVariant::get_unlocked_for_schema(ctx, schema.id()).await? {
+                Some(unlocked_schema_variant) => unlocked_schema_variant.id(),
+                None => default_schema_variant_id,
+            };
+
+        Ok(if newest_schema_variant_id != schema_variant.id() {
+            // There's a chance that the exact same asset was installed in
+            // different change sets and then applied to head. In that case,
+            // there's no need to show the upgrade for this component, since the
+            // upgrade will be effectively a no-op.
+            let current_module = Module::find_for_member_id(ctx, schema_variant.id()).await?;
+            let new_module = Module::find_for_member_id(ctx, newest_schema_variant_id).await?;
+
+            match (current_module, new_module) {
+                (Some(current_module), Some(new_module)) => {
+                    current_module.root_hash() != new_module.root_hash()
+                }
+                _ => true,
+            }
+        } else {
+            false
+        })
+    }
+
     pub async fn into_frontend_type(
         &self,
         ctx: &DalContext,
@@ -3302,8 +3337,6 @@ impl Component {
         let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
         let schema_id = schema.id();
 
-        let default_schema_variant = SchemaVariant::get_default_for_schema(ctx, schema_id).await?;
-
         let position = GridPoint {
             x: self.x().parse::<f64>()?.round() as isize,
             y: self.y().parse::<f64>()?.round() as isize,
@@ -3337,13 +3370,7 @@ impl Component {
             })?
         };
 
-        let can_be_upgraded = if let Some(unlocked_schema_variant) =
-            SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
-        {
-            unlocked_schema_variant.id() != schema_variant.id()
-        } else {
-            default_schema_variant.id() != schema_variant.id()
-        };
+        let can_be_upgraded = self.can_be_upgraded(ctx).await?;
 
         let maybe_parent = self.parent(ctx).await?;
 

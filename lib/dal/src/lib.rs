@@ -25,6 +25,7 @@ pub mod attribute;
 pub mod authentication_prototype;
 pub mod billing_publish;
 pub mod builtins;
+pub mod cached_module;
 pub mod change_set;
 pub mod change_status;
 pub mod code_view;

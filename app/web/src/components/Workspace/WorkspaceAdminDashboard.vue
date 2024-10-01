@@ -7,6 +7,20 @@
         >Admin Dashboard</span
       >
       <Stack class="max-w-xl">
+        <h2 class="font-bold text-lg">UPDATE MODULE CACHE</h2>
+        <div class="flex flex-row-reverse gap-sm">
+          <VButton
+            :requestStatus="updateModuleCacheReqStatus"
+            class="flex-grow"
+            icon="plus-circle"
+            label="Update module cache"
+            loadingText="Updating module cache"
+            tone="success"
+            @click="updateModuleCache"
+          />
+        </div>
+      </Stack>
+      <Stack class="max-w-xl">
         <h2 class="font-bold text-lg">KILL FUNCTION EXECUTION</h2>
         <VormInput
           v-model="funcRunId"
@@ -48,6 +62,14 @@ onBeforeMount(async () => {
     await router.push({ name: "workspace-single" });
   }
 });
+
+const updateModuleCacheReqStatus = adminStore.getRequestStatus(
+  "UPDATE_MODULE_CACHE",
+);
+
+const updateModuleCache = async () => {
+  await adminStore.UPDATE_MODULE_CACHE();
+};
 
 const killExecutionReqStatus = adminStore.getRequestStatus("KILL_EXECUTION");
 

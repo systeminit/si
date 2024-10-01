@@ -5,13 +5,15 @@ use axum::Router;
 use dal::attribute::prototype::argument::AttributePrototypeArgumentError;
 use dal::attribute::prototype::AttributePrototypeError;
 use dal::attribute::value::AttributeValueError;
+use dal::cached_module::CachedModuleError;
 use dal::component::ComponentError;
+use dal::pkg::PkgError;
 use dal::slow_rt::SlowRuntimeError;
 use dal::socket::input::InputSocketError;
 use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::WsEventError;
-use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
+use dal::{ChangeSetError, SchemaError, SchemaVariantId, StandardModelError, TransactionsError};
+use dal::{SchemaId, WsEventError};
 use std::num::ParseFloatError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -43,6 +45,8 @@ pub enum DiagramError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found")]
@@ -71,14 +75,14 @@ pub enum DiagramError {
     Hyper(#[from] hyper::http::Error),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
-    #[error("invalid request")]
-    InvalidRequest,
-    #[error("invalid system")]
-    InvalidSystem,
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
     #[error("tokio join error: {0}")]
     Join(#[from] JoinError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("no default schema variant found for schema id {0}")]
+    NoDefaultSchemaVariant(SchemaId),
     #[error("not authorized")]
     NotAuthorized,
     #[error("output socket error: {0}")]
@@ -91,8 +95,14 @@ pub enum DiagramError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("pkg error: {0}")]
+    Pkg(#[from] PkgError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("No schema installed after successful package import for {0}")]
+    SchemaNotInstalledAfterImport(SchemaId),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
@@ -101,6 +111,8 @@ pub enum DiagramError {
     SocketNotFound,
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("No installable module found for schema id {0}")]
+    UninstalledSchemaNotFound(SchemaId),
     #[error(transparent)]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]

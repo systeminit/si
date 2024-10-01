@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("--- Reading object tree from dir: {path}");
     let buf = fs::read(&path).await?;
-    let pkg = SiPkg::load_from_bytes(buf)?;
+    let pkg = SiPkg::load_from_bytes(&buf)?;
 
     let (graph, _root_idx) = pkg.as_petgraph();
     println!(

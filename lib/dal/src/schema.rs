@@ -305,7 +305,30 @@ impl Schema {
         Ok(())
     }
 
-    pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Option<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let Some(node_index) = workspace_snapshot.get_node_index_by_id_opt(id).await else {
+            return Ok(None);
+        };
+
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let hash = node_weight.content_hash();
+
+        let content: SchemaContent = ctx
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let SchemaContent::V1(inner) = content;
+
+        Ok(Some(Self::assemble(id, inner)))
+    }
+
+    pub async fn get_by_id_or_error(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
@@ -453,7 +476,7 @@ impl Schema {
                     .await?
                     .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?
             };
-            let schema = Self::get_by_id(ctx, schema_node_weight.id().into()).await?;
+            let schema = Self::get_by_id_or_error(ctx, schema_node_weight.id().into()).await?;
             if schema.name == name.as_ref() {
                 return Ok(Some(schema));
             }

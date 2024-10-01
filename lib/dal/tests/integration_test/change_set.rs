@@ -150,12 +150,14 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
 ) {
     let user_1 = create_user(ctx).await.expect("Unable to create user");
     let user_2 = create_user(ctx).await.expect("Unable to create user");
-    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
-        .await
-        .expect("Unable to create workspace");
-    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
-        .await
-        .expect("Unable to create workspace");
+    let user_1_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_1 workspace")
+            .await
+            .expect("Unable to create workspace");
+    let user_2_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_2 workspace")
+            .await
+            .expect("Unable to create workspace");
     user_1
         .associate_workspace(ctx, *user_1_workspace.pk())
         .await
@@ -200,12 +202,14 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
 ) {
     let user_1 = create_user(ctx).await.expect("Unable to create user");
     let user_2 = create_user(ctx).await.expect("Unable to create user");
-    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
-        .await
-        .expect("Unable to create workspace");
-    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
-        .await
-        .expect("Unable to create workspace");
+    let user_1_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_1 workspace")
+            .await
+            .expect("Unable to create workspace");
+    let user_2_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_2 workspace")
+            .await
+            .expect("Unable to create workspace");
     user_1
         .associate_workspace(ctx, *user_1_workspace.pk())
         .await
@@ -250,12 +254,14 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
 ) {
     let user_1 = create_user(ctx).await.expect("Unable to create user");
     let user_2 = create_user(ctx).await.expect("Unable to create user");
-    let user_1_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_1 workspace")
-        .await
-        .expect("Unable to create workspace");
-    let user_2_workspace = Workspace::new(ctx, WorkspacePk::generate(), "user_2 workspace")
-        .await
-        .expect("Unable to create workspace");
+    let user_1_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_1 workspace")
+            .await
+            .expect("Unable to create workspace");
+    let user_2_workspace =
+        Workspace::new_from_builtin(ctx, WorkspacePk::generate(), "user_2 workspace")
+            .await
+            .expect("Unable to create workspace");
     user_1
         .associate_workspace(ctx, *user_1_workspace.pk())
         .await

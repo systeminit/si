@@ -107,7 +107,7 @@ pub async fn upsert_module_route(
     let data = module_data.ok_or(UpsertModuleError::UploadRequiredError)?;
 
     // SiPkg using old term "package" but we are dealing with a "module"
-    let loaded_module = SiPkg::load_from_bytes(data.to_vec())?;
+    let loaded_module = SiPkg::load_from_bytes(&data)?;
     let module_metadata = loaded_module.metadata()?;
 
     info!(

@@ -211,7 +211,7 @@ impl ExpectSchema {
     }
 
     pub async fn schema(self, ctx: &DalContext) -> Schema {
-        Schema::get_by_id(ctx, self.0)
+        Schema::get_by_id_or_error(ctx, self.0)
             .await
             .expect("get schema by id")
     }

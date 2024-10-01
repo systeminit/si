@@ -10,7 +10,7 @@ use thiserror::Error;
 use url::ParseError;
 
 use si_events::{ulid::Ulid, ContentHash};
-use si_frontend_types as frontend_types;
+use si_frontend_types::SchemaVariant as FrontendVariant;
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
@@ -214,7 +214,7 @@ impl SchemaVariant {
         self,
         ctx: &DalContext,
         schema_id: SchemaId,
-    ) -> SchemaVariantResult<frontend_types::SchemaVariant> {
+    ) -> SchemaVariantResult<FrontendVariant> {
         // NOTE(fnichol): We're going to start asserting that there *is* an asset func id as all
         // schema variants must be created via a func. Since the graph representation currently has
         // this as optional we make this assertion here and error if not present.
@@ -230,7 +230,7 @@ impl SchemaVariant {
             .map(|func_id| func_id.into())
             .collect();
 
-        let schema = Schema::get_by_id(ctx, schema_id).await?;
+        let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
 
         let is_default = schema.get_default_schema_variant_id(ctx).await? == Some(self.id());
         let props = Self::all_props(ctx, self.id()).await?;
@@ -242,7 +242,7 @@ impl SchemaVariant {
 
         let can_contribute = Self::can_be_contributed_by_id(ctx, self.id).await?;
 
-        Ok(frontend_types::SchemaVariant {
+        Ok(FrontendVariant {
             schema_id: schema_id.into(),
             schema_name: schema.name().to_owned(),
             schema_variant_id: self.id.into(),
@@ -314,7 +314,7 @@ pub struct SchemaVariantDeletedPayload {
 pub struct SchemaVariantReplacedPayload {
     schema_id: SchemaId,
     old_schema_variant_id: SchemaVariantId,
-    new_schema_variant: frontend_types::SchemaVariant,
+    new_schema_variant: FrontendVariant,
     change_set_id: ChangeSetId,
 }
 
@@ -1741,7 +1741,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Schema> {
         let schema_id = Self::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
 
-        Ok(Schema::get_by_id(ctx, schema_id).await?)
+        Ok(Schema::get_by_id_or_error(ctx, schema_id).await?)
     }
 
     pub async fn schema_id_for_schema_variant_id(
@@ -2219,10 +2219,8 @@ impl SchemaVariant {
         )
     }
 
-    /// This function lists all [`SchemaVariants`](frontend_types::SchemaVariant) for user-facing applications.
-    pub async fn list_user_facing(
-        ctx: &DalContext,
-    ) -> SchemaVariantResult<Vec<frontend_types::SchemaVariant>> {
+    /// This function lists all [`SchemaVariants`](si_frontend_types::SchemaVariant) for user-facing applications.
+    pub async fn list_user_facing(ctx: &DalContext) -> SchemaVariantResult<Vec<FrontendVariant>> {
         let mut schema_variants = HashMap::new();
 
         for schema_id in Schema::list_ids(ctx).await? {

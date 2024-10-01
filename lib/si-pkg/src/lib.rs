@@ -57,7 +57,7 @@ mod tests {
 
         let pkg_data = pkg.write_to_bytes().expect("failed to serialize pkg");
 
-        let read_pkg = SiPkg::load_from_bytes(pkg_data).expect("failed to load pkg from bytes");
+        let read_pkg = SiPkg::load_from_bytes(&pkg_data).expect("failed to load pkg from bytes");
         let metadata = read_pkg.metadata().expect("Get metadata (WorkspaceBackup)");
 
         assert_eq!(description, metadata.description());
@@ -83,7 +83,7 @@ mod tests {
 
         let pkg_data = pkg.write_to_bytes().expect("failed to serialize pkg");
 
-        let read_pkg = SiPkg::load_from_bytes(pkg_data).expect("failed to load pkg from bytes");
+        let read_pkg = SiPkg::load_from_bytes(&pkg_data).expect("failed to load pkg from bytes");
 
         assert_eq!(
             description,

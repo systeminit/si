@@ -50,12 +50,17 @@ const authReqStatus = authStore.getRequestStatus("AUTH_CONNECT");
 // grab the code from the URL, don't need to care about reactivity as it will not change while on the page
 const connectCode = route.query.code as string;
 const redirectPath = route.query.redirect as string;
+const onDemandAssets = route.query.onDemandAssets === "true";
 
 onMounted(async () => {
   // if no code in query, we just bail and an error will be displayed
   if (!connectCode) return;
 
-  const connectReq = await authStore.AUTH_CONNECT({ code: connectCode });
+  const connectReq = await authStore.AUTH_CONNECT({
+    code: connectCode,
+    onDemandAssets,
+  });
+
   if (connectReq.result.success) {
     const workspacePk = connectReq.result.data.workspace.pk;
 

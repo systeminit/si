@@ -74,11 +74,14 @@ export const useAuthStore = defineStore("auth", {
 
     // exchanges a code from the auth portal/api to auth with sdf
     // and initializes workspace/user if necessary
-    async AUTH_CONNECT(payload: { code: string }) {
-      return new ApiRequest<LoginResponse>({
+    async AUTH_CONNECT(payload: { code: string; onDemandAssets: boolean }) {
+      return new ApiRequest<
+        LoginResponse,
+        { code: string; onDemandAssets: boolean }
+      >({
         method: "post",
         url: "/session/connect",
-        params: payload,
+        params: { ...payload },
         onSuccess: (response) => {
           this.finishUserLogin(response);
         },

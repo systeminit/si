@@ -168,7 +168,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     let schema = schemas.pop().expect("schemas are empty");
 
     // Ensure we can get it by id.
-    let found_schema = Schema::get_by_id(ctx, schema.id())
+    let found_schema = Schema::get_by_id_or_error(ctx, schema.id())
         .await
         .expect("could not get schema by id");
     assert_eq!(

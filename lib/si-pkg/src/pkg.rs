@@ -105,10 +105,10 @@ pub struct SiPkg {
 impl SiPkg {
     pub async fn load_from_file(path: impl AsRef<Path>) -> PkgResult<Self> {
         let file_data = tokio::fs::read(&path).await?;
-        Self::load_from_bytes(file_data)
+        Self::load_from_bytes(&file_data)
     }
 
-    pub fn load_from_bytes(bytes: Vec<u8>) -> PkgResult<Self> {
+    pub fn load_from_bytes(bytes: &[u8]) -> PkgResult<Self> {
         let tree: ObjectTree<PkgNode> = ObjectTree::<PkgNode>::read_from_tar(bytes)?;
 
         Ok(Self {

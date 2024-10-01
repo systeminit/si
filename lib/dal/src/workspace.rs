@@ -17,15 +17,16 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::builtins::func::migrate_intrinsics_no_commit;
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
-    HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
+    pk, standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -44,6 +45,8 @@ const DEFAULT_COMPONENT_CONCURRENCY_LIMIT: i32 = 256;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
+    #[error("builtins error: {0}")]
+    Builtins(#[from] Box<BuiltinsError>),
     #[error("builtin workspace not found")]
     BuiltinWorkspaceNotFound,
     #[error("change set error: {0}")]
@@ -340,7 +343,75 @@ impl Workspace {
         Ok(maybe_workspace)
     }
 
-    pub async fn new(
+    /// Creates a new workspace with only the intrinsic functions installed,
+    /// suitable for on demand asset installation
+    pub async fn new_for_on_demand_assets(
+        ctx: &mut DalContext,
+        pk: WorkspacePk,
+        name: impl AsRef<str>,
+    ) -> WorkspaceResult<Self> {
+        let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
+        ctx.set_workspace_snapshot(workspace_snapshot);
+
+        migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
+
+        let workspace_snapshot_address = ctx.workspace_snapshot()?.write(ctx).await?;
+
+        let mut head_change_set = ChangeSet::new(
+            ctx,
+            DEFAULT_CHANGE_SET_NAME,
+            None,
+            workspace_snapshot_address,
+        )
+        .await?;
+
+        let workspace = Self::insert_workspace(ctx, pk, name, head_change_set.id).await?;
+        head_change_set
+            .update_workspace_id(ctx, workspace.pk)
+            .await?;
+
+        ctx.update_tenancy(Tenancy::new(pk));
+        ctx.update_visibility_and_snapshot_to_visibility(head_change_set.id)
+            .await?;
+
+        let _history_event = HistoryEvent::new(
+            ctx,
+            "workspace.create".to_owned(),
+            "Workspace created".to_owned(),
+            &serde_json::json![{ "visibility": ctx.visibility() }],
+        )
+        .await?;
+
+        Ok(workspace)
+    }
+
+    async fn insert_workspace(
+        ctx: &DalContext,
+        pk: WorkspacePk,
+        name: impl AsRef<str>,
+        change_set_id: ChangeSetId,
+    ) -> WorkspaceResult<Self> {
+        let name = name.as_ref();
+        let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
+        let uses_actions_v2 = ctx
+            .services_context()
+            .feature_flags_service()
+            .feature_is_enabled(&FeatureFlag::ActionsV2);
+
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string],
+            )
+            .await?;
+
+        Self::try_from(row)
+    }
+
+    pub async fn new_from_builtin(
         ctx: &mut DalContext,
         pk: WorkspacePk,
         name: impl AsRef<str>,
@@ -357,32 +428,14 @@ impl Workspace {
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         let mut change_set = ChangeSet::new(
             ctx,
-            "HEAD",
+            DEFAULT_CHANGE_SET_NAME,
             Some(builtin.default_change_set_id),
             workspace_snapshot.id().await,
         )
         .await?;
         let change_set_id = change_set.id;
 
-        let uses_actions_v2 = ctx
-            .services_context()
-            .feature_flags_service()
-            .feature_is_enabled(&FeatureFlag::ActionsV2);
-
-        let name = name.as_ref();
-        let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
-
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string],
-            )
-            .await?;
-        let new_workspace = Self::try_from(row)?;
-
+        let new_workspace = Self::insert_workspace(ctx, pk, name, change_set_id).await?;
         change_set
             .update_workspace_id(ctx, *new_workspace.pk())
             .await?;

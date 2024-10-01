@@ -38,12 +38,12 @@
         </template>
 
         <TreeNode
-          v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
+          v-for="category in filteredCategoriesAndSchemas"
           ref="collapsibleRefs"
-          :key="categoryIndex"
+          :key="category.displayName"
           :label="category.displayName"
           :primaryIcon="getAssetIcon(category.displayName)"
-          :color="category.schemaVariants[0]?.color || '#000'"
+          :color="category.schemaVariants[0]?.variant.color || '#000'"
           enableDefaultHoverClasses
           enableGroupToggle
           alwaysShowArrow
@@ -56,9 +56,13 @@
             />
           </template>
           <TreeNode
-            v-for="(schemaVariant, schemaIndex) in category.schemaVariants"
-            :key="schemaIndex"
-            :color="schemaVariant.color"
+            v-for="schemaVariant in category.schemaVariants"
+            :key="
+              schemaVariant.type === 'installed'
+                ? schemaVariant.variant.schemaVariantId
+                : schemaVariant.variant.schemaId
+            "
+            :color="schemaVariant.variant.color"
             :classes="
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
@@ -66,18 +70,20 @@
               )
             "
             :isSelected="
-              componentsStore.selectedInsertSchemaVariantId ===
-              schemaVariant.schemaVariantId
+              componentsStore.selectedInsertCategoryVariantId ===
+              schemaVariant.id
             "
             showSelection
-            @mousedown.left.stop="
-              onSelect(schemaVariant.schemaVariantId, $event)
-            "
+            @mousedown.left.stop="onSelect(schemaVariant.id, $event)"
             @click.right.prevent
           >
             <template #label>
               <TruncateWithTooltip class="text-xs">
-                {{ schemaVariantDisplayName(schemaVariant) }}
+                {{
+                  schemaVariantDisplayName(
+                    schemaVariant.variant as SchemaVariant,
+                  )
+                }}
               </TruncateWithTooltip>
               <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
@@ -87,8 +93,11 @@
             </template>
             <template #icons>
               <EditingPill
-                v-if="!schemaVariant.isLocked"
-                :color="schemaVariant.color"
+                v-if="
+                  schemaVariant.type === 'installed' &&
+                  !schemaVariant.variant.isLocked
+                "
+                :color="schemaVariant.variant.color"
               />
             </template>
           </TreeNode>
@@ -126,7 +135,7 @@ import {
   Categories,
 } from "@/store/components.store";
 import { schemaVariantDisplayName } from "@/store/asset.store";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariant } from "@/api/sdf/dal/schema";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
@@ -173,7 +182,7 @@ const filteredCategoriesBySearchString = (
 
     // otherwise, filter out the individual assets that don't match
     const matchingSchemas = _.filter(c.schemaVariants, (s) => {
-      const categoryAndSchemaName = `${c.displayName} ${s.schemaName}`;
+      const categoryAndSchemaName = `${c.displayName} ${s.variant.schemaName}`;
       return categoryAndSchemaName.toLowerCase().includes(searchString);
     });
 
@@ -278,9 +287,9 @@ const assetCount = computed(() =>
 );
 
 const selectedSchemaVariant = computed(() => {
-  if (componentsStore.selectedInsertSchemaVariantId)
+  if (componentsStore.selectedInsertCategoryVariantId)
     return componentsStore.schemaVariantsById[
-      componentsStore.selectedInsertSchemaVariantId
+      componentsStore.selectedInsertCategoryVariantId
     ];
   return undefined;
 });
@@ -295,11 +304,11 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaVariantId: SchemaVariantId, e: MouseEvent) {
-  if (componentsStore.selectedInsertSchemaVariantId === schemaVariantId) {
+function onSelect(id: string, e: MouseEvent) {
+  if (componentsStore.selectedInsertCategoryVariantId === id) {
     componentsStore.cancelInsert();
   } else {
-    componentsStore.setInsertSchema(schemaVariantId);
+    componentsStore.setInsertSchema(id);
     if (e) {
       nextTick(() => {
         updateMouseNode(e);
@@ -311,7 +320,7 @@ function onSelect(schemaVariantId: SchemaVariantId, e: MouseEvent) {
 const onKeyDown = (e: KeyboardEvent) => {
   if (
     (e.key === "Escape" || e.key === "Backspace") &&
-    componentsStore.selectedInsertSchemaVariantId
+    componentsStore.selectedInsertCategoryVariantId
   ) {
     componentsStore.cancelInsert();
     e.stopPropagation();
@@ -320,7 +329,7 @@ const onKeyDown = (e: KeyboardEvent) => {
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (componentsStore.selectedInsertSchemaVariantId) {
+  if (componentsStore.selectedInsertCategoryVariantId) {
     componentsStore.cancelInsert();
   }
 };

@@ -29,6 +29,19 @@ pub struct SchemaVariant {
     pub can_contribute: bool,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UninstalledVariant {
+    pub schema_id: SchemaId,
+    pub schema_name: String,
+    pub display_name: Option<String>,
+    pub category: Option<String>,
+    pub link: Option<String>,
+    pub color: Option<String>,
+    pub description: Option<String>,
+    pub component_type: ComponentType,
+}
+
 #[remain::sorted]
 #[derive(
     AsRefStr,
@@ -68,6 +81,7 @@ pub struct OutputSocket {
     pub name: String,
     pub eligible_to_receive_data: bool,
 }
+
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Prop {
@@ -79,6 +93,8 @@ pub struct Prop {
     pub eligible_to_receive_data: bool,
     pub eligible_to_send_data: bool,
 }
+
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum PropKind {

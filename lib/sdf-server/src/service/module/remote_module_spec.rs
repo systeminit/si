@@ -45,7 +45,7 @@ pub async fn remote_module_spec(
         ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let pkg_data = module_index_client.download_module(request.id).await?;
 
-    let pkg = SiPkg::load_from_bytes(pkg_data)?;
+    let pkg = SiPkg::load_from_bytes(&pkg_data)?;
     let spec = pkg.to_spec().await?;
 
     track(
