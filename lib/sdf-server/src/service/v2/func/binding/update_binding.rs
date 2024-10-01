@@ -49,7 +49,7 @@ pub async fn update_binding(
                             let mut arguments: Vec<AttributeArgumentBinding> = vec![];
                             for arg_binding in argument_bindings {
                                 let input_location =
-                                    AttributeArgumentBinding::assemble_attribute_input_location(
+                                    AttributeBinding::assemble_attribute_input_location(
                                         arg_binding.prop_id,
                                         arg_binding.input_socket_id,
                                         arg_binding.static_value,

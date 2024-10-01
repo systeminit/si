@@ -18,6 +18,8 @@ use crate::attribute::prototype::argument::{
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentError;
+use crate::func::argument::FuncArgumentId;
+use crate::func::binding::attribute::AttributeBindingMalformedInput;
 use crate::func::FuncKind;
 use crate::prop::PropError;
 use crate::schema::variant::leaves::LeafKind;
@@ -30,10 +32,9 @@ use crate::{
     ComponentId, InputSocketId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError,
     WsEventError,
 };
+
 pub use attribute_argument::AttributeArgumentBinding;
 pub use attribute_argument::AttributeFuncArgumentSource;
-
-use super::argument::FuncArgumentId;
 
 pub mod action;
 pub mod attribute;
@@ -78,8 +79,8 @@ pub enum FuncBindingError {
     InvalidAttributePrototypeDestination(AttributeFuncDestination),
     #[error("invalid intrinsic binding")]
     InvalidIntrinsicBinding,
-    #[error("malformed input for binding: {0}")]
-    MalformedInput(String),
+    #[error("malformed input for binding: {0:?}")]
+    MalformedInput(AttributeBindingMalformedInput),
     #[error("missing value source for attribute prototype argument id {0}")]
     MissingValueSource(AttributePrototypeArgumentId),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
@@ -105,6 +106,7 @@ pub enum FuncBindingError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
+
 type FuncBindingResult<T> = Result<T, FuncBindingError>;
 
 /// Represents the location where the function ultimately writes to
