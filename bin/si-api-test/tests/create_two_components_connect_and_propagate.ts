@@ -28,13 +28,19 @@ async function create_two_components_connect_and_propagate_inner(
 ) {
   // CREATE COMPONENTS
   // get schema variant ids
-  const schemaVariants = await sdf.call({
+  let schemaVariants = await sdf.call({
     route: "schema_variants",
     routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,
     },
   });
+  let newCreateComponentApi = false;
+  if (Array.isArray(schemaVariants?.installed)) {
+    newCreateComponentApi = true;
+    schemaVariants = schemaVariants.installed;
+  }
+
   assert(
     Array.isArray(schemaVariants),
     "List schema variants should return an array",
@@ -67,6 +73,10 @@ async function create_two_components_connect_and_propagate_inner(
     "visibility_change_set_pk": changeSetId,
     "workspaceId": sdf.workspaceId,
   };
+  if (newCreateComponentApi) {
+    createRegionPayload["schemaType"] = "installed";
+  }
+
   const createRegionResp = await sdf.call({
     route: "create_component",
     body: createRegionPayload,
@@ -82,6 +92,9 @@ async function create_two_components_connect_and_propagate_inner(
     "visibility_change_set_pk": changeSetId,
     "workspaceId": sdf.workspaceId,
   };
+  if (newCreateComponentApi) {
+    createInstancePayload["schemaType"] = "installed";
+  }
   const createInstanceResp = await sdf.call({
     route: "create_component",
     body: createInstancePayload,

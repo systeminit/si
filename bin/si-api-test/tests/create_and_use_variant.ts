@@ -13,6 +13,14 @@ export async function create_variant_inner(
   const startTime = new Date();
   const variantName = `Test_Variant - ${startTime.toISOString()}`;
 
+  const newCreateComponentApi = Array.isArray((await sdfApiClient.call({
+    route: "schema_variants",
+    routeVars: {
+      workspaceId: sdfApiClient.workspaceId,
+      changeSetId,
+    },
+  }))?.installed);
+
   // Create the Varint
   const createVariantPayload = {
     "name": variantName,
@@ -39,6 +47,9 @@ export async function create_variant_inner(
     "visibility_change_set_pk": changeSetId,
     "workspaceId": sdfApiClient.workspaceId,
   };
+  if (newCreateComponentApi) {
+    createInstancePayload["schemaType"] = "installed";
+  }
 
   const createInstanceResp = await sdfApiClient.call({
     route: "create_component",

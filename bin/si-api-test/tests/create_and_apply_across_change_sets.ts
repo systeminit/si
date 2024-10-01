@@ -21,7 +21,7 @@ async function create_and_and_apply_across_change_sets_inner(
       const changeSetId = await createChangeSet(sdf);
       changeSetIds.push(changeSetId);
 
-      const testResourceActionsVariantId = await getTestSchemaVariantId(
+      const { schemaVariantId: testResourceActionsVariantId, newCreateComponentApi}  = await getTestSchemaVariantId(
         sdf,
         changeSetId,
       );
@@ -32,6 +32,8 @@ async function create_and_and_apply_across_change_sets_inner(
         testResourceActionsVariantId,
         0,
         0,
+        undefined,
+        newCreateComponentApi
       );
     }
 
@@ -109,15 +111,16 @@ async function createChangeSet(sdf: SdfApiClient): Promise<string> {
 async function getTestSchemaVariantId(
   sdf: SdfApiClient,
   changeSetId: string,
-): Promise<string> {
-  const schemaVariants = await getSchemaVariants(sdf, changeSetId);
+): Promise<{ schemaVariantId: string, newCreateComponentApi: boolean }> {
+  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(sdf, changeSetId);
 
   const testResourceActionsVariant = await extractSchemaVariant(
     schemaVariants,
     "TestResourceActions",
     "",
   );
-  return testResourceActionsVariant.schemaVariantId;
+  assert(typeof testResourceActionsVariant !== "undefined", "TestResourceActions variant should exist");
+  return { schemaVariantId: testResourceActionsVariant.schemaVariantId, newCreateComponentApi };
 }
 
 function extractSchemaVariant(
@@ -134,19 +137,24 @@ function extractSchemaVariant(
 }
 
 async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
-  const schemaVariants = await sdf.call({
+  let schemaVariants = await sdf.call({
     route: "schema_variants",
     routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,
     },
   });
+  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
+  if (newCreateComponentApi) {
+    schemaVariants = schemaVariants.installed;
+  }
+
   assert(
     Array.isArray(schemaVariants),
     "List schema variants should return an array",
   );
 
-  return schemaVariants;
+  return { schemaVariants, newCreateComponentApi };
 }
 
 async function getDiagram(
@@ -177,9 +185,11 @@ async function createComponent(
   x: number,
   y: number,
   parentId?: string,
+  newCreateComponentApi?: boolean,
 ): Promise<string> {
   const parentArgs = parentId ? { parentId } : {};
   const payload = {
+    schemaType: newCreateComponentApi ? "installed" : undefined,
     schemaVariantId,
     x: x.toString(),
     y: y.toString(),
@@ -187,7 +197,7 @@ async function createComponent(
     workspaceId: sdf.workspaceId,
     ...parentArgs,
   };
-  const createResp = await sdf.call({
+    const createResp = await sdf.call({
     route: "create_component",
     body: payload,
   });

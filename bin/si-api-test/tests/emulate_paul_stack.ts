@@ -19,7 +19,7 @@ async function emulate_paul_stack_inner(
 ) {
   sdf.listenForDVUs();
   // LOAD INITIAL DATA
-  const schemaVariants = await getSchemaVariants(sdf, changeSetId);
+  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(sdf, changeSetId);
 
   const awsRegionVariant = await extractSchemaVariant(
     schemaVariants,
@@ -39,6 +39,8 @@ async function emulate_paul_stack_inner(
     awsRegionVariantId,
     0,
     0,
+    undefined,
+    newCreateComponentApi
   );
 
   //await sleepBetween(3000, 6000);
@@ -98,6 +100,8 @@ async function emulate_paul_stack_inner(
     vpcVariantId,
     0,
     0,
+    undefined,
+    newCreateComponentApi,
   );
 
   // await sleepBetween(1000, 2000);
@@ -176,6 +180,7 @@ async function emulate_paul_stack_inner(
       -550 + 550 * index,
       150,
       vpcComponentId,
+      newCreateComponentApi,
     );
     await sleepBetween(1000, 5000);
 
@@ -234,9 +239,11 @@ async function createComponent(
   x: number,
   y: number,
   parentId?: string,
+  newCreateComponentApi?: boolean,
 ): Promise<string> {
   const parentArgs = parentId ? { parentId } : {};
   const payload = {
+    schemaType: newCreateComponentApi ? 'installed' : undefined,
     schemaVariantId,
     x: x.toString(),
     y: y.toString(),
@@ -390,19 +397,25 @@ async function setAttributeValue(
 }
 
 async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
-  const schemaVariants = await sdf.call({
+  let schemaVariants = await sdf.call({
     route: "schema_variants",
     routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,
     },
   });
+
+  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
+  if (newCreateComponentApi) {
+    schemaVariants = schemaVariants.installed;
+  }
+
   assert(
     Array.isArray(schemaVariants),
     "List schema variants should return an array",
   );
 
-  return schemaVariants;
+  return { schemaVariants, newCreateComponentApi };
 }
 
 async function getPropertyEditor(
