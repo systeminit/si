@@ -7,6 +7,7 @@ use aws_sdk_s3::{
         create_bucket::CreateBucketError, delete_object::DeleteObjectError,
         get_object::GetObjectError, head_bucket::HeadBucketError, put_object::PutObjectError,
     },
+    waiters::object_exists::WaitUntilObjectExistsError,
 };
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
@@ -108,8 +109,10 @@ pub enum LayerDbError {
     S3Delete(#[from] SdkError<DeleteObjectError, HttpResponse>),
     #[error("s3 get error: {0}")]
     S3Get(#[from] SdkError<GetObjectError, HttpResponse>),
-    #[error("s3 error: {0}")]
-    S3Head(#[from] SdkError<HeadBucketError, HttpResponse>),
+    #[error("s3 head bucket error: {0}")]
+    S3HeadBucket(#[from] SdkError<HeadBucketError, HttpResponse>),
+    #[error("s3 object exists error: {0}")]
+    S3ObjectExists(#[from] WaitUntilObjectExistsError),
     #[error("s3 to bytes error: {0}")]
     S3ToBytes(#[from] aws_sdk_s3::primitives::ByteStreamError),
     #[error("s3 write error: {0}")]

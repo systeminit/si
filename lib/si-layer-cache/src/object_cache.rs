@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
+use aws_sdk_s3::client::Waiters;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::Client;
 use aws_sdk_s3::{config::Builder, error::SdkError};
@@ -83,23 +85,22 @@ impl ObjectCache {
     pub async fn contains_key(&self, key: Arc<str>) -> LayerDbResult<bool> {
         let result = self
             .client
-            .head_object()
+            .wait_until_object_exists()
             .bucket(&self.bucket)
             .key(key.as_ref())
-            .send()
-            .await;
+            .wait(Duration::from_millis(100))
+            .await?
+            .into_result();
 
         Ok(result.is_ok())
     }
 
     pub async fn insert(&self, key: Arc<str>, value: Vec<u8>) -> LayerDbResult<()> {
-        let byte_stream = ByteStream::from(value);
-
         self.client
             .put_object()
             .bucket(&self.bucket)
             .key(key.as_ref())
-            .body(byte_stream)
+            .body(ByteStream::from(value))
             .send()
             .await?;
 
@@ -160,7 +161,7 @@ impl Default for ObjectCacheConfig {
     fn default() -> Self {
         Self {
             bucket: "si-local".to_string(),
-            endpoint: None,
+            endpoint: Some("http://localhost:4566".to_string()),
         }
     }
 }

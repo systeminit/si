@@ -1,13 +1,12 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use si_layer_cache::memory_cache::MemoryCacheConfig;
-use si_layer_cache::object_cache::ObjectCacheConfig;
 use std::sync::Arc;
 
 use si_layer_cache::db::serialize;
 use si_layer_cache::layer_cache::LayerCache;
 
-const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
+use super::setup_object_cache_config;
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
@@ -15,7 +14,7 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let layer_cache = LayerCache::new(
         "cas",
         tempdir.path(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         super::setup_pg_db(db_name).await,
         MemoryCacheConfig::default(),
         super::setup_compute_executor(),

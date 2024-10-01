@@ -195,9 +195,10 @@ impl Config {
             config.pg.hostname = value;
         }
 
-        if let Ok(value) = env::var(ENV_VAR_LOCALSTACK_ENDPOINT) {
-            config.layer_cache_object_cache_config.endpoint = Some(value);
-        }
+        config.layer_cache_object_cache_config.endpoint = Some(
+            env::var(ENV_VAR_LOCALSTACK_ENDPOINT)
+                .unwrap_or_else(|_| DEFAULT_LOCALSTACK_ENDPOINT.to_string()),
+        );
 
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.user =
@@ -390,7 +391,7 @@ impl TestContext {
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
-            ObjectCacheConfig::default().with_endpoint(DEFAULT_LOCALSTACK_ENDPOINT.to_string()),
+            self.config.layer_cache_object_cache_config.clone(),
             MemoryCacheConfig::default(),
             token,
         )

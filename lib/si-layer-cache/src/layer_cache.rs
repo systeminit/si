@@ -70,7 +70,7 @@ where
 
     #[instrument(
         name = "layer_cache.get",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             si.layer_cache.key = key.as_ref(),

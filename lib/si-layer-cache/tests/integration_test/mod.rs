@@ -1,6 +1,7 @@
 use buck2_resources::Buck2Resources;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::object_cache::ObjectCacheConfig;
 use std::env;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -15,12 +16,13 @@ mod object_cache;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
+const DEFAULT_LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
-
+const ENV_VAR_LOCALSTACK_ENDPOINT: &str = "SI_TEST_LOCALSTACK_ENDPOINT";
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 
 #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test
@@ -137,6 +139,13 @@ pub async fn setup_nats_client(subject_prefix: Option<String>) -> NatsClient {
         .expect("failed to connect to nats")
 }
 
+pub async fn setup_object_cache_config() -> ObjectCacheConfig {
+    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test
+    ObjectCacheConfig::default().with_endpoint(
+        env::var(ENV_VAR_LOCALSTACK_ENDPOINT)
+            .unwrap_or_else(|_| DEFAULT_LOCALSTACK_ENDPOINT.to_string()),
+    )
+}
 pub fn setup_compute_executor() -> si_runtime::DedicatedExecutor {
     si_runtime::compute_executor("test").expect("failed to create executor")
 }

@@ -12,11 +12,15 @@ services:
       - "SI_TEST_NATS_URL=nats"
       - "SI_TEST_LOCALSTACK_ENDPOINT=http://localstack:4566"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+      - "AWS_DEFAULT_REGION=us-east-1"
+      - "AWS_ACCESS_KEY_ID=test"
+      - "AWS_SECRET_ACCESS_KEY=test"
     depends_on:
       - postgres-test
       - nats
       - jaeger
       - otelcol
+      - localstack
 
   # This is the same as the pgbouncer test setup in our dev environment
   postgres-test:
@@ -72,3 +76,7 @@ services:
     ports:
       - "4566:4566"
       - "4510-4559:4510-4559"
+    environment:
+    - HOSTNAME=localstack
+    - HOSTNAME_EXTERNAL=localstack
+    - DEFAULT_REGION=us-east-1

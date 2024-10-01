@@ -7,18 +7,17 @@ use si_events::{
     rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
 };
 use si_layer_cache::{
-    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig,
-    object_cache::ObjectCacheConfig, LayerDb,
+    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_object_cache_config,
+    setup_pg_db,
 };
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
-const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 #[tokio::test]
 async fn subscribe_rebaser_requests_work_queue() {
@@ -38,7 +37,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -52,7 +51,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -66,7 +65,7 @@ async fn subscribe_rebaser_requests_work_queue() {
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -176,7 +175,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -190,7 +189,7 @@ async fn rebase_and_wait() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -271,7 +270,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -285,7 +284,7 @@ async fn rebase_requests_work_queue_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -299,7 +298,7 @@ async fn rebase_requests_work_queue_stress() {
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -442,7 +441,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -456,7 +455,7 @@ async fn rebase_and_wait_stress() {
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )

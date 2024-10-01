@@ -6,16 +6,16 @@ use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
     activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
-    memory_cache::MemoryCacheConfig, object_cache::ObjectCacheConfig, LayerDb,
+    memory_cache::MemoryCacheConfig, LayerDb,
 };
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_object_cache_config,
+    setup_pg_db,
 };
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
-const LOCALSTACK_ENDPOINT: &str = "http://localhost:4566";
 
 #[tokio::test]
 async fn activities() {
@@ -36,7 +36,7 @@ async fn activities() {
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -50,7 +50,7 @@ async fn activities() {
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -104,7 +104,7 @@ async fn activities_subscribe_partial() {
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -118,7 +118,7 @@ async fn activities_subscribe_partial() {
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
-        ObjectCacheConfig::default().with_endpoint(LOCALSTACK_ENDPOINT.to_string()),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
