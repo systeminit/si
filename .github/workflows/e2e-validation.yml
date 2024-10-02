@@ -83,8 +83,33 @@ jobs:
           export VITE_UUID
           export VITE_AUTH_API_URL="https://auth-api.systeminit.com"
           export VITE_AUTH_PORTAL_URL="https://auth.systeminit.com"
-          npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**"
-        continue-on-error: true
+
+          # Retry loop with 3 attempts
+          n=0
+          max_retries=3
+          
+          until [ $n -ge $max_retries ]
+          do
+
+            unset exit_code || echo "exit_code not set"
+
+            # Run the npx task and store exit code in a variable
+            npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**" || exit_code=$?
+            
+            # Check the exit code
+            if [ -z "$exit_code" ]; then
+              echo "Cypress Test task succeeded!"
+              break
+            fi
+
+            n=$((n+1))
+            echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
+          done
+
+          if [ $n -ge $max_retries ]; then
+            echo "All $max_retries attempts failed."
+            exit 1
+          fi
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
@@ -98,18 +123,10 @@ jobs:
         if: failure()
         run: exit 1
 
-  retry:
-    runs-on: ubuntu-latest
-    needs: cypress-tests
-    if: failure() && github.run_attempt < 3
-    steps:
-      - name: Retry Cypress Tests
-        run: echo "Retry attempt ${{ github.run_attempt }}/3"
-
   on-failure:
     runs-on: ubuntu-latest
     needs: cypress-tests
-    if: ${{ failure() && github.ref == 'refs/heads/main' && github.run_attempt == 3 }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     steps:
       - run: |
           curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
@@ -130,6 +147,6 @@ jobs:
 
       - run: |
           curl -X POST \
-            -H 'Content-type: application/json' \
-            --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+          --header 'Content-type: application/json' \
+          --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}

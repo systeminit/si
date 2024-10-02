@@ -46,7 +46,6 @@ jobs:
       fail-fast: false
       matrix:
         tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
-
     env:
       SDF_API_URL: ${{ vars.SDF_API_URL }}
       AUTH_API_URL: ${{ vars.AUTH_API_URL }}
@@ -59,28 +58,44 @@ jobs:
         with:
           deno-version: v1.x
 
-      - name: Run the deno exec
+      - name: Run the deno exec with retry
         run: |
           cd bin/si-api-test
-          echo ${{ github.ref }}
-          deno task run \
-          --workspaceId ${{ vars.API_TEST_WORKSPACE_ID }} \
-          --userId ${{ secrets.API_TEST_EMAIL }} \
-          --password ${{ secrets.API_TEST_PASSWORD }} \
-          --tests ${{ matrix.tests }}
+          
+          # Retry loop with 3 attempts
+          n=0
+          max_retries=3
+          
+          until [ $n -ge $max_retries ]
+          do
+            unset exit_code || echo "exit_code not set"
 
-  retry:
-    runs-on: ubuntu-latest
-    needs: api-test
-    if: failure() && github.run_attempt < 3
-    steps:
-      - name: Retry API Tests
-        run: echo "Retry attempt ${{ github.run_attempt }}/3"
-  
+            # Run the deno task and store exit code in a variable
+            deno task run \
+            --workspaceId ${{ vars.API_TEST_WORKSPACE_ID }} \
+            --userId ${{ secrets.API_TEST_EMAIL }} \
+            --password ${{ secrets.API_TEST_PASSWORD }} \
+            --tests ${{ matrix.tests }} || exit_code=$?
+            
+            # Check the exit code
+            if [ -z "$exit_code" ]; then
+              echo "Deno task succeeded!"
+              break
+            fi
+
+            n=$((n+1))
+            echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
+          done
+
+          if [ $n -ge $max_retries ]; then
+            echo "All $max_retries attempts failed."
+            exit 1
+          fi
+
   on-failure:
     runs-on: ubuntu-latest
     needs: api-test
-    if: ${{ failure() && github.ref == 'refs/heads/main' && github.run_attempt == 3 }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     steps:
       - run: |
             curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
@@ -100,6 +115,6 @@ jobs:
             }"
       - run: |
           curl -X POST \
-            -H 'Content-type: application/json' \
-            --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+          --header 'Content-type: application/json' \
+          --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
