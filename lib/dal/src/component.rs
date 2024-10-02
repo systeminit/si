@@ -361,6 +361,26 @@ impl Component {
         self.to_delete
     }
 
+    pub async fn change_status(&self, ctx: &DalContext) -> ComponentResult<ChangeStatus> {
+        let status = if self.exists_in_head(ctx).await? {
+            if self.to_delete() {
+                ChangeStatus::Deleted
+            } else {
+                ChangeStatus::Unmodified
+            }
+        } else {
+            ChangeStatus::Added
+        };
+
+        Ok(status)
+    }
+
+    pub async fn exists_in_head(&self, ctx: &DalContext) -> ComponentResult<bool> {
+        let head_ctx = ctx.clone_with_head().await?;
+
+        Ok(Self::try_get_by_id(&head_ctx, self.id).await?.is_some())
+    }
+
     pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
         Self::view_by_id(ctx, self.id).await
     }

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use axum::{response::IntoResponse, Json};
 use dal::{
-    change_status::ChangeStatus,
     component::{frame::Frame, ComponentGeometry},
     diagram::SummaryDiagramInferredEdge,
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
@@ -53,24 +52,14 @@ pub async fn set_component_position(
     for (id, update) in request.data_by_component_id {
         let mut component = Component::get_by_id(&ctx, id).await?;
 
+        let mut component_updated = false;
+
         if update.detach {
             Frame::orphan_child(&ctx, component.id()).await?;
-            let payload = component
-                .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
-                .await?;
-            WsEvent::component_updated(&ctx, payload)
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
+            component_updated = true;
         } else if let Some(new_parent) = update.new_parent {
             Frame::upsert_parent(&ctx, component.id(), new_parent).await?;
-            let payload = component
-                .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
-                .await?;
-            WsEvent::component_updated(&ctx, payload)
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
+            component_updated = true;
 
             // Queue new implicit edges to send to frontend
             {
@@ -90,6 +79,16 @@ pub async fn set_component_position(
                     )?)
                 }
             }
+        }
+
+        if component_updated {
+            let payload = component
+                .into_frontend_type(&ctx, component.change_status(&ctx).await?, &mut socket_map)
+                .await?;
+            WsEvent::component_updated(&ctx, payload)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
         }
 
         let (width, height) = {
