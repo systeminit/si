@@ -146,7 +146,7 @@ impl CachedModule {
 
         let query = format!(
             "
-            SELECT hashes.hash 
+            SELECT hashes.hash
                 FROM (VALUES {values_expr}) AS hashes(hash)
             LEFT JOIN cached_modules on cached_modules.latest_hash = hashes.hash
             WHERE cached_modules.latest_hash IS NULL
@@ -208,15 +208,9 @@ impl CachedModule {
 
         let mut new_modules = vec![];
         for res in join_set.join_all().await {
-            match res {
-                Ok((module, module_bytes)) => {
-                    if let Some(new_cached_module) =
-                        Self::insert(ctx, &module, module_bytes).await?
-                    {
-                        new_modules.push(new_cached_module);
-                    }
-                }
-                Err(_) => todo!(),
+            let (module, module_bytes) = res?;
+            if let Some(new_cached_module) = Self::insert(ctx, &module, module_bytes).await? {
+                new_modules.push(new_cached_module);
             }
         }
 
@@ -232,7 +226,7 @@ impl CachedModule {
         schema_id: SchemaId,
     ) -> CachedModuleResult<Option<CachedModule>> {
         let query = "
-            SELECT DISTINCT ON (schema_id) 
+            SELECT DISTINCT ON (schema_id)
                 id,
                 schema_id,
                 schema_name,
@@ -316,7 +310,7 @@ impl CachedModule {
                 package_data
             ) VALUES (
                 $1, $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11 
+                $7, $8, $9, $10, $11
             ) RETURNING
                 id,
                 schema_id,
