@@ -47,7 +47,6 @@ pub(crate) struct ChangeSetProcessorTask {
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
-    quiescence_token: CancellationToken,
 }
 
 impl ChangeSetProcessorTask {
@@ -62,46 +61,53 @@ impl ChangeSetProcessorTask {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
-        run_notify: Arc<Notify>,
+        run_dvu_notify: Arc<Notify>,
         quiescent_period: Duration,
+        quiesced_notify: Arc<Notify>,
+        quiesced_token: CancellationToken,
         task_token: CancellationToken,
     ) -> Self {
-        let state = AppState::new(workspace_id, change_set_id, nats, ctx_builder, run_notify);
-
-        let quiescence_token = CancellationToken::new();
+        let state = AppState::new(
+            workspace_id,
+            change_set_id,
+            nats,
+            ctx_builder,
+            run_dvu_notify,
+        );
 
         let captured = QuiescedCaptured {
             instance_id: metadata.instance_id().to_string(),
             workspace_id,
             change_set_id,
-            quiescence_token: quiescence_token.clone(),
+            quiesced_notify: quiesced_notify.clone(),
         };
 
         let inactive_aware_incoming = incoming
             // Looks for a gap between incoming messages greater than the duration
             .timeout(quiescent_period)
-            // Fire the quiescence token which triggers a distinctive shutdown where we *know* we
-            // want to remove the task from the set of work.
+            // Fire quiesced_notify which triggers a specific shutdown of the serial dvu task where
+            // we *know* we want to remove the task from the set of work.
             .inspect_err(move |_elapsed| {
                 let QuiescedCaptured {
                     instance_id,
                     workspace_id,
                     change_set_id,
-                    quiescence_token,
+                    quiesced_notify,
                 } = &captured;
 
                 debug!(
                     service.instance.id = instance_id,
                     si.workspace.id = %workspace_id,
                     si.change_set.id = %change_set_id,
-                    "rate of requests has become inactive, shutting down processing tasks",
+                    "rate of requests has become inactive, triggering a quiesced shutdown",
                 );
-                quiescence_token.cancel();
+                // Notify the serial dvu task that we want to shutdown due to a quiet period
+                quiesced_notify.notify_one();
             })
-            // Once the first inactive period is detected, this stream is closed (i.e. returns
-            // `None`)
-            .map_while(result::Result::ok)
-            .fuse();
+            // Continue processing messages as normal until the Naxum app's graceful shutdown is
+            // triggered. This means we turn the stream back from a stream of
+            // `Result<Result<Message, _>, Elapsed>` into `Result<Message, _>`
+            .filter_map(|maybe_elapsed_item| maybe_elapsed_item.ok());
 
         let app = ServiceBuilder::new()
             .layer(
@@ -115,10 +121,7 @@ impl ChangeSetProcessorTask {
 
         let inner =
             naxum::serve_with_incoming_limit(inactive_aware_incoming, app.into_make_service(), 1)
-                .with_graceful_shutdown(graceful_shutdown_signal(
-                    task_token,
-                    quiescence_token.clone(),
-                ));
+                .with_graceful_shutdown(graceful_shutdown_signal(task_token, quiesced_token));
 
         let inner_fut = inner.into_future();
 
@@ -127,44 +130,27 @@ impl ChangeSetProcessorTask {
             workspace_id,
             change_set_id,
             inner: Box::new(inner_fut),
-            quiescence_token,
         }
     }
 
-    pub(crate) async fn try_run(self) -> Result<Shutdown> {
+    pub(crate) async fn try_run(self) -> Result<()> {
         self.inner.await.map_err(Error::Naxum)?;
 
-        if self.quiescence_token.is_cancelled() {
-            debug!(
-                task = Self::NAME,
-                si.workspace.id = %self.workspace_id,
-                si.change_set.id = %self.change_set_id,
-                "shutdown due to quiescent period",
-            );
-            Ok(Shutdown::Quiesced)
-        } else {
-            debug!(
-                task = Self::NAME,
-                si.workspace.id = %self.workspace_id,
-                si.change_set.id = %self.change_set_id,
-                "shutdown complete",
-            );
-            Ok(Shutdown::Graceful)
-        }
+        debug!(
+            task = Self::NAME,
+            si.workspace.id = %self.workspace_id,
+            si.change_set.id = %self.change_set_id,
+            "shutdown complete",
+        );
+        Ok(())
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum Shutdown {
-    Graceful,
-    Quiesced,
 }
 
 struct QuiescedCaptured {
     instance_id: String,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
-    quiescence_token: CancellationToken,
+    quiesced_notify: Arc<Notify>,
 }
 
 #[derive(Clone, Debug)]
