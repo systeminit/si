@@ -111,7 +111,7 @@
           ref="mouseNode"
           class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
         >
-          <NodeSkeleton :color="selectedSchemaVariant.color" />
+          <NodeSkeleton :color="selectedSchemaVariant.variant.color" />
         </div>
       </Teleport>
     </template>
@@ -288,7 +288,7 @@ const assetCount = computed(() =>
 
 const selectedSchemaVariant = computed(() => {
   if (componentsStore.selectedInsertCategoryVariantId)
-    return componentsStore.schemaVariantsById[
+    return componentsStore.categoryVariantById[
       componentsStore.selectedInsertCategoryVariantId
     ];
   return undefined;
