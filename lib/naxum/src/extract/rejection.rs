@@ -21,7 +21,7 @@ impl InvalidUtf8 {
 impl IntoResponse for InvalidUtf8 {
     fn into_response(self) -> Response {
         // TODO: log rejection
-        Response::internal_server_error()
+        Response::default_internal_server_error()
     }
 }
 
@@ -108,5 +108,23 @@ composite_rejection! {
         JsonDataError,
         JsonSyntaxError,
         // MissingJsonContentType,
+    }
+}
+
+define_rejection! {
+    #[status_code = 500]
+    #[body = "No matched subject found"]
+    /// Rejection type for [`MatchedSubject`](super::MatchedSubject).
+    ///
+    /// This rejection is used if no matched subject could be found.
+    pub struct MatchedSubjectMissing;
+}
+
+composite_rejection! {
+    /// Rejection type for [`MatchedSubject`](super::MatchedSubject).
+    ///
+    /// Contains one vaiant for each way the extractor can fail.
+    pub enum MatchedSubjectRejection {
+        MatchedSubjectMissing,
     }
 }

@@ -147,7 +147,7 @@ impl Context {
         subject: S,
         payload: Bytes,
     ) -> Result<PublishAckFuture, PublishError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -225,7 +225,7 @@ impl Context {
         headers: async_nats::header::HeaderMap,
         payload: Bytes,
     ) -> Result<PublishAckFuture, PublishError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -303,7 +303,7 @@ impl Context {
         subject: S,
         publish: Publish,
     ) -> Result<PublishAckFuture, PublishError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -346,7 +346,7 @@ impl Context {
         )
     )]
     pub async fn query_account(&self) -> Result<Account, AccountError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let account = self
             .inner
@@ -417,7 +417,7 @@ impl Context {
     where
         Config: From<S>,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let stream = self
             .inner
@@ -480,7 +480,7 @@ impl Context {
         &self,
         stream: T,
     ) -> Result<Stream<()>, GetStreamError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let stream = self
             .inner
@@ -535,7 +535,7 @@ impl Context {
         )
     )]
     pub async fn get_stream<T: AsRef<str>>(&self, stream: T) -> Result<Stream, GetStreamError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let stream = self
             .inner
@@ -607,7 +607,7 @@ impl Context {
     where
         S: Into<Config>,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let stream_config = stream_config.into();
         trace!(?stream_config);
@@ -668,7 +668,7 @@ impl Context {
         &self,
         stream: T,
     ) -> Result<async_nats::jetstream::stream::DeleteStatus, DeleteStreamError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let status = self
             .inner
@@ -738,7 +738,7 @@ impl Context {
     where
         S: Borrow<Config>,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let info = self
             .inner
@@ -796,7 +796,7 @@ impl Context {
         &self,
         subject: T,
     ) -> Result<String, GetStreamByNameError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.into();
         span.record("messaging.destination.name", subject.as_str());
@@ -907,7 +907,7 @@ impl Context {
         &self,
         bucket: T,
     ) -> Result<async_nats::jetstream::kv::Store, KeyValueError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let store = self
             .inner
@@ -969,7 +969,7 @@ impl Context {
         &self,
         config: async_nats::jetstream::kv::Config,
     ) -> Result<async_nats::jetstream::kv::Store, CreateKeyValueError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let store = self
             .inner
@@ -1031,7 +1031,7 @@ impl Context {
         &self,
         bucket: T,
     ) -> Result<async_nats::jetstream::stream::DeleteStatus, KeyValueError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let status = self
             .inner
@@ -1102,7 +1102,7 @@ impl Context {
         S: AsRef<str>,
         C: AsRef<str>,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let consumer = self
             .inner
@@ -1167,7 +1167,7 @@ impl Context {
         consumer: C,
         stream: S,
     ) -> Result<DeleteStatus, ConsumerError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let status = self
             .inner
@@ -1236,7 +1236,7 @@ impl Context {
         config: C,
         stream: S,
     ) -> Result<Consumer<C>, ConsumerError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let consumer = self
             .inner
@@ -1304,7 +1304,7 @@ impl Context {
         T: ?Sized + Serialize,
         V: DeserializeOwned,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
@@ -1371,7 +1371,7 @@ impl Context {
         &self,
         config: async_nats::jetstream::object_store::Config,
     ) -> Result<async_nats::jetstream::object_store::ObjectStore, CreateObjectStoreError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let store = self
             .inner
@@ -1427,7 +1427,7 @@ impl Context {
         &self,
         bucket_name: T,
     ) -> Result<async_nats::jetstream::object_store::ObjectStore, ObjectStoreError> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let store = self
             .inner
@@ -1483,7 +1483,7 @@ impl Context {
         &self,
         bucket_name: T,
     ) -> Result<(), DeleteObjectStore> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         self.inner
             .delete_object_store(bucket_name)

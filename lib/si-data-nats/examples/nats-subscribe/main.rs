@@ -94,7 +94,8 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     )
 )]
 fn process_message(message: Message, count: u32, sub: &Subscriber) {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("debug");
+
     span.follows_from(sub.span());
 
     span.record(

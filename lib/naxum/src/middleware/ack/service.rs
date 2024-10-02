@@ -8,7 +8,10 @@ use async_nats::jetstream;
 use tokio_util::sync::CancellationToken;
 use tower::Service;
 
-use crate::{response::Response, MessageHead};
+use crate::{
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 use super::{
     future::ResponseFuture,
@@ -41,9 +44,10 @@ impl<S> Ack<S> {
     }
 }
 
-impl<S, OnSuccessT, OnFailureT> Service<jetstream::Message> for Ack<S, OnSuccessT, OnFailureT>
+impl<S, OnSuccessT, OnFailureT> Service<Message<jetstream::Message>>
+    for Ack<S, OnSuccessT, OnFailureT>
 where
-    S: Service<async_nats::Message, Response = Response>,
+    S: Service<Message<async_nats::Message>, Response = Response>,
     OnSuccessT: OnSuccess,
     OnFailureT: OnFailure,
 {
@@ -55,18 +59,33 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: jetstream::Message) -> Self::Future {
-        let (message, acker) = req.split();
+    fn call(&mut self, req: Message<jetstream::Message>) -> Self::Future {
+        // Split into jetstream message & extensions
+        let (jetstream_message, extensions) = req.split();
+
+        // Split off acker from jetstream message which is now a core message
+        let (core_message, acker) = jetstream_message.split();
         let acker = Arc::new(acker);
-        let parts = message.into_parts();
+
+        // Decompose the core message into head and payload
+        let mut parts = core_message.into_head_and_payload();
+
+        // Append remaining extensions into head and save copy of head
+        parts.0.extensions.extend(extensions);
         let head = Arc::new(parts.0.clone());
-        let message = match <async_nats::Message as MessageHead>::from_parts(parts.0, parts.1) {
-            Ok(message) => message,
-            Err(err) => unreachable!(
-                "NATS core message from parts is infallible, this is a bug!; error={:?}",
-                err
-            ),
-        };
+
+        // Reconstruct a core message from head and payload
+        let (core_message, extensions) =
+            match <async_nats::Message as MessageHead>::from_head_and_payload(parts.0, parts.1) {
+                Ok(msg_and_exts) => msg_and_exts,
+                Err(err) => unreachable!(
+                    "NATS core message from parts is infallible, this is a bug!; error={:?}",
+                    err
+                ),
+            };
+
+        // Create final message from core message and remaining extensions
+        let message = Message::new_with_extensions(core_message, extensions);
 
         let task_shutdown = CancellationToken::new();
 

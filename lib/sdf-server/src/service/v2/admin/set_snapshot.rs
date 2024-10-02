@@ -20,7 +20,16 @@ pub struct SetSnapshotResponse {
     workspace_snapshot_address: WorkspaceSnapshotAddress,
 }
 
-#[instrument(name = "admin.set_snapshot", skip_all)]
+#[instrument(
+    name = "admin.set_snapshot",
+    level = "info",
+    skip_all,
+    fields(
+        si.change_set.id = %change_set_id,
+        si.workspace.id = %workspace_pk,
+        si.workspace_snapshot.address = Empty,
+    ),
+)]
 pub async fn set_snapshot(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -30,9 +39,7 @@ pub async fn set_snapshot(
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     mut multipart: Multipart,
 ) -> AdminAPIResult<Json<SetSnapshotResponse>> {
-    let span = Span::current();
-    span.record("si.workspace.id", workspace_pk.to_string());
-    span.record("si.change_set.id", change_set_id.to_string());
+    let span = current_span_for_instrument_at!("info");
 
     let ctx = builder.build_head(access_builder).await?;
 
@@ -63,7 +70,7 @@ pub async fn set_snapshot(
     .await??;
 
     span.record(
-        "workspace_snapshot_address",
+        "si.workspace_snapshot.address",
         workspace_snapshot_address.to_string(),
     );
 

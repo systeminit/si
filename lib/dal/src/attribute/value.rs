@@ -415,7 +415,7 @@ impl AttributeValue {
     }
 
     #[instrument(
-        name = "attribute_value.update", 
+        name = "attribute_value.update",
         level = "info",
         skip_all,
         fields(
@@ -506,7 +506,14 @@ impl AttributeValue {
         .into())
     }
 
-    #[instrument(level = "info" skip(ctx, read_lock))]
+    #[instrument(
+        name = "attribute_value.execute_prototype_function",
+        level = "info",
+        skip_all,
+        fields(
+            si.attribute_value.id = %attribute_value_id,
+        ),
+    )]
     pub async fn execute_prototype_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1902,7 +1909,7 @@ impl AttributeValue {
     }
 
     #[instrument(
-        name = "attribute_value.set_value", 
+        name = "attribute_value.set_value",
         level = "info",
         skip_all,
         fields(

@@ -8,12 +8,15 @@ use std::{
 use dal::DalContextBuilder;
 use futures::{future::BoxFuture, TryStreamExt};
 use naxum::{
+    extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
+        matched_subject::{ForSubject, MatchedSubjectLayer},
         post_process::{self, PostProcessLayer},
-        trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+        trace::TraceLayer,
     },
-    ServiceExt as _,
+    response::{IntoResponse, Response},
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{
     async_nats::jetstream::{self, consumer::push},
@@ -25,7 +28,6 @@ use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
-use tower::ServiceBuilder;
 
 use self::app_state::AppState;
 use crate::ServerMetadata;
@@ -66,6 +68,10 @@ impl ChangeSetProcessorTask {
         quiescent_period: Duration,
         task_token: CancellationToken,
     ) -> Self {
+        let connection_metadata = nats.metadata_clone();
+
+        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
         let state = AppState::new(workspace_id, change_set_id, nats, ctx_builder, run_notify);
 
         let quiescence_token = CancellationToken::new();
@@ -105,13 +111,19 @@ impl ChangeSetProcessorTask {
 
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new()
+                    .for_subject(RebaserRequestsForSubject::with_prefix(prefix.as_deref())),
+            )
+            .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::TRACE))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(DefaultOnResponse::new().level(Level::TRACE)),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(PostProcessLayer::new().on_success(DeleteMessageOnSuccess::new(stream)))
-            .service(handlers::default.with_state(state));
+            .service(handlers::default.with_state(state))
+            .map_response(Response::into_response);
 
         let inner =
             naxum::serve_with_incoming_limit(inactive_aware_incoming, app.into_make_service(), 1)
@@ -199,6 +211,63 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
     }
 }
 
+#[derive(Clone, Debug)]
+struct RebaserRequestsForSubject {
+    prefix: Option<()>,
+}
+
+impl RebaserRequestsForSubject {
+    fn with_prefix(prefix: Option<&str>) -> Self {
+        Self {
+            prefix: prefix.map(|_p| ()),
+        }
+    }
+}
+
+impl<R> ForSubject<R> for RebaserRequestsForSubject
+where
+    R: MessageHead,
+{
+    fn call(&mut self, req: &mut naxum::Message<R>) {
+        let mut parts = req.subject().split('.');
+
+        match self.prefix {
+            Some(_) => {
+                if let (
+                    Some(prefix),
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (Some(p1), Some(p2), Some(_workspace_id), Some(_change_set_id), None) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+        }
+    }
+}
+
 // Await either a graceful shutdown signal from the task or an inactive request stream trigger.
 async fn graceful_shutdown_signal(
     task_token: CancellationToken,
@@ -230,6 +299,7 @@ mod handlers {
     };
     use si_data_nats::HeaderMap;
     use telemetry::prelude::*;
+    use telemetry_nats::propagation;
     use thiserror::Error;
 
     use crate::{
@@ -276,7 +346,7 @@ mod handlers {
         fn into_response(self) -> Response {
             // TODO(fnichol): there are different responses, esp. for expected interrupted
             error!(si.error.message = ?self, "failed to process message");
-            Response::internal_server_error()
+            Response::default_internal_server_error()
         }
     }
 
@@ -295,6 +365,10 @@ mod handlers {
         let mut ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id.into(), change_set_id.into())
             .await?;
+
+        let span = Span::current();
+        span.record("si.workspace.id", workspace_id.to_string());
+        span.record("si.change_set.id", change_set_id.to_string());
 
         let rebase_status = perform_rebase(&mut ctx, &request)
             .await
@@ -354,8 +428,8 @@ mod handlers {
 
             let info = ContentInfo::from(&response);
 
-            // TODO(fnichol): add span propagation
             let mut headers = HeaderMap::new();
+            propagation::inject_headers(&mut headers);
             info.inject_into_headers(&mut headers);
 
             nats.publish_with_headers(reply, headers, response.to_vec()?.into())

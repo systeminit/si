@@ -214,6 +214,8 @@ impl PgPool {
         )
     )]
     pub async fn new(settings: &PgPoolConfig) -> PgPoolResult<Self> {
+        let span = current_span_for_instrument_at!("debug");
+
         let mut cfg = Config::new();
         cfg.hosts = Some(vec![settings.hostname.clone()]);
         cfg.port = Some(settings.port);
@@ -269,7 +271,6 @@ impl PgPool {
             net_transport: "ip_tcp",
         };
 
-        let span = Span::current();
         span.record("db.system", metadata.db_system);
         span.record(
             "db.connection_string",
@@ -373,7 +374,7 @@ impl PgPool {
 
     /// Attempts to establish a database connection and returns an error if not successful.
     #[instrument(
-        name = "pool.test_connection",
+        name = "pg_pool.test_connection",
         skip_all,
         level = "debug",
         fields(
@@ -424,7 +425,7 @@ impl PgPool {
 
     /// Retrieve object from pool or wait for one to become available.
     #[instrument(
-        name = "pool.get",
+        name = "pg_pool.get",
         skip_all,
         level = "debug",
         fields(
@@ -441,8 +442,9 @@ impl PgPool {
         )
     )]
     pub async fn get(&self) -> PgPoolResult<InstrumentedClient> {
+        let span = current_span_for_instrument_at!("debug");
+
         let pool_status = self.pool.status();
-        let span = Span::current();
         span.record("db.pool.max_size", pool_status.max_size);
         span.record("db.pool.size", pool_status.size);
         span.record("db.pool.available", pool_status.available);
@@ -456,7 +458,7 @@ impl PgPool {
     }
 
     #[instrument(
-        name = "pool.migrate",
+        name = "pg_pool.migrate",
         skip_all,
         level = "debug",
         fields(
@@ -489,7 +491,11 @@ impl PgPool {
         }
     }
 
-    #[instrument(name = "pool.drop_and_create_public_schema", skip_all, level = "debug")]
+    #[instrument(
+        name = "pg_pool.drop_and_create_public_schema",
+        skip_all,
+        level = "debug"
+    )]
     pub async fn drop_and_create_public_schema(&self) -> PgPoolResult<()> {
         let conn = self.get().await?;
         conn.execute("DROP SCHEMA IF EXISTS public CASCADE", &[])
@@ -522,7 +528,7 @@ impl InstrumentedClient {
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "client.prepare_cached",
+        name = "pg_client.prepare_cached",
         skip_all,
         level = "debug",
         fields(
@@ -544,7 +550,7 @@ impl InstrumentedClient {
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "client.prepare_typed_cached",
+        name = "pg_client.prepare_typed_cached",
         skip_all,
         level = "debug",
         fields(
@@ -574,7 +580,7 @@ impl InstrumentedClient {
     ///
     /// The transaction will roll back by default - use the `commit` method to commit it.
     #[instrument(
-        name = "client.transaction",
+        name = "pg_client.transaction",
         skip_all,
         level = "debug",
         fields(
@@ -615,7 +621,7 @@ impl InstrumentedClient {
     /// by `$1`, `$2`, etc), which are set when executed. Prepared statements can only be used with
     /// the connection that created them.
     #[instrument(
-        name = "client.prepare",
+        name = "pg_client.prepare",
         skip_all,
         level = "debug",
         fields(
@@ -640,7 +646,7 @@ impl InstrumentedClient {
     /// parameters will be inferred. For example, `client.prepare_typed(query, &[])` is equivalent
     /// to `client.prepare(query)`.
     #[instrument(
-        name = "client.prepare_typed",
+        name = "pg_client.prepare_typed",
         skip_all,
         level = "debug",
         fields(
@@ -679,7 +685,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "client.query",
+        name = "pg_client.query",
         skip_all,
         level = "debug",
         fields(
@@ -700,6 +706,8 @@ impl InstrumentedClient {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
+        let span = current_span_for_instrument_at!("debug");
+
         let r = self
             .inner
             .query(statement, params)
@@ -711,7 +719,7 @@ impl InstrumentedClient {
             })
             .map_err(Into::into);
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", rows.len());
+            span.record("db.rows", rows.len());
         }
         r
     }
@@ -731,7 +739,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "client.query_one",
+        name = "pg_client.query_one",
         skip_all,
         level = "debug",
         fields(
@@ -752,6 +760,8 @@ impl InstrumentedClient {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<PgRow, PgError> {
+        let span = current_span_for_instrument_at!("debug");
+
         let r = self
             .inner
             .query_one(statement, params)
@@ -759,7 +769,7 @@ impl InstrumentedClient {
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
-            Span::current().record("db.rows", 1);
+            span.record("db.rows", 1);
         }
         r
     }
@@ -779,7 +789,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "client.query_opt",
+        name = "pg_client.query_opt",
         skip_all,
         level = "debug",
         fields(
@@ -800,6 +810,8 @@ impl InstrumentedClient {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<PgRow>, PgError> {
+        let span = current_span_for_instrument_at!("debug");
+
         let r = self
             .inner
             .query_opt(statement, params)
@@ -807,7 +819,7 @@ impl InstrumentedClient {
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
             .map_err(Into::into);
         if let Ok(ref maybe) = r {
-            Span::current().record(
+            span.record(
                 "db.rows",
                 match maybe {
                     Some(_) => 1,
@@ -833,7 +845,7 @@ impl InstrumentedClient {
     ///
     /// [`query`]: #method.query
     #[instrument(
-        name = "client.query_raw",
+        name = "pg_client.query_raw",
         skip_all,
         level = "debug",
         fields(
@@ -883,7 +895,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "client.execute",
+        name = "pg_client.execute",
         skip_all,
         level = "debug",
         fields(
@@ -924,7 +936,7 @@ impl InstrumentedClient {
     ///
     /// [`execute`]: #method.execute
     #[instrument(
-        name = "client.execute_raw",
+        name = "pg_client.execute_raw",
         skip_all,
         level = "debug",
         fields(
@@ -961,7 +973,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "client.copy_in",
+        name = "pg_client.copy_in",
         skip_all,
         level = "debug",
         fields(
@@ -992,7 +1004,7 @@ impl InstrumentedClient {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "client.copy_out",
+        name = "pg_client.copy_out",
         skip_all,
         level = "debug",
         fields(
@@ -1029,7 +1041,7 @@ impl InstrumentedClient {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "client.simple_query",
+        name = "pg_client.simple_query",
         skip_all,
         level = "debug",
         fields(
@@ -1060,7 +1072,7 @@ impl InstrumentedClient {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "client.batch_execute",
+        name = "pg_client.batch_execute",
         skip_all,
         level = "debug",
         fields(
@@ -1092,7 +1104,7 @@ impl InstrumentedClient {
     /// in the database, this method can be used to flush the local cache and allow the new,
     /// updated definitions to be loaded.
     #[instrument(
-        name = "client.clear_type_cache",
+        name = "pg_client.clear_type_cache",
         skip_all,
         level = "debug",
         fields(
@@ -1144,7 +1156,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "transaction.prepare_cached",
+        name = "pg_transaction.prepare_cached",
         skip_all,
         level = "debug",
         fields(
@@ -1160,7 +1172,9 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .prepare_cached(query)
             .instrument(self.tx_span.clone())
@@ -1171,7 +1185,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "transaction.prepare_typed_cached",
+        name = "pg_transaction.prepare_typed_cached",
         skip_all,
         level = "debug",
         fields(
@@ -1191,7 +1205,9 @@ impl<'a> InstrumentedTransaction<'a> {
         query: &str,
         types: &[Type],
     ) -> Result<Statement, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .prepare_typed_cached(query, types)
             .instrument(self.tx_span.clone())
@@ -1201,7 +1217,7 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Consumes the transaction, committing all changes made within it.
     #[instrument(
-        name = "transaction.commit",
+        name = "pg_transaction.commit",
         skip_all,
         level = "debug",
         fields(
@@ -1216,8 +1232,10 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn commit(self) -> Result<(), PgError> {
+        let span = current_span_for_instrument_at!("debug");
+
         let _ = &self;
-        Span::current().follows_from(&self.tx_span);
+        span.follows_from(&self.tx_span);
 
         let r = self
             .inner
@@ -1234,7 +1252,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// This is equivalent to `Transaction`'s `Drop` implementation, but provides any error
     /// encountered to the caller.
     #[instrument(
-        name = "transaction.rollback",
+        name = "pg_transaction.rollback",
         skip_all,
         level = "debug",
         fields(
@@ -1249,8 +1267,10 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn rollback(self) -> Result<(), PgError> {
+        let span = current_span_for_instrument_at!("debug");
+
         let _ = &self;
-        Span::current().follows_from(&self.tx_span);
+        span.follows_from(&self.tx_span);
 
         let r = self
             .inner
@@ -1268,7 +1288,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// by `$1`, `$2`, etc), which are set when executed. Prepared statements can only be used with
     /// the connection that created them.
     #[instrument(
-        name = "transaction.prepare",
+        name = "pg_transaction.prepare",
         skip_all,
         level = "debug",
         fields(
@@ -1284,7 +1304,9 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .prepare(query)
             .instrument(self.tx_span.clone())
@@ -1298,7 +1320,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// parameters will be inferred. For example, `client.prepare_typed(query, &[])` is equivalent
     /// to `client.prepare(query)`.
     #[instrument(
-        name = "transaction.prepare_typed",
+        name = "pg_transaction.prepare_typed",
         skip_all,
         level = "debug",
         fields(
@@ -1318,7 +1340,9 @@ impl<'a> InstrumentedTransaction<'a> {
         query: &str,
         parameter_types: &[Type],
     ) -> Result<Statement, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .prepare_typed(query, parameter_types)
             .instrument(self.tx_span.clone())
@@ -1339,7 +1363,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "transaction.query",
+        name = "pg_transaction.query",
         skip_all,
         level = "debug",
         fields(
@@ -1360,8 +1384,9 @@ impl<'a> InstrumentedTransaction<'a> {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
-        // info!(tx_span = ?self.tx_span, statement = &statement, "query");
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         let r = self
             .inner
             .query(statement, params)
@@ -1374,7 +1399,7 @@ impl<'a> InstrumentedTransaction<'a> {
             })
             .map_err(Into::into);
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", rows.len());
+            span.record("db.rows", rows.len());
         }
         r
     }
@@ -1394,7 +1419,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "transaction.query_one",
+        name = "pg_transaction.query_one",
         skip_all,
         level = "debug",
         fields(
@@ -1415,7 +1440,9 @@ impl<'a> InstrumentedTransaction<'a> {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<PgRow, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         let r = self
             .inner
             .query_one(statement, params)
@@ -1424,7 +1451,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
-            Span::current().record("db.rows", 1);
+            span.record("db.rows", 1);
         }
         r
     }
@@ -1444,7 +1471,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "transaction.query_opt",
+        name = "pg_transaction.query_opt",
         skip_all,
         level = "debug",
         fields(
@@ -1465,7 +1492,9 @@ impl<'a> InstrumentedTransaction<'a> {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<PgRow>, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         let r = self
             .inner
             .query_opt(statement, params)
@@ -1474,7 +1503,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
             .map_err(Into::into);
         if let Ok(ref maybe) = r {
-            Span::current().record(
+            span.record(
                 "db.rows",
                 match maybe {
                     Some(_) => 1,
@@ -1500,7 +1529,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`query`]: #method.query
     #[instrument(
-        name = "transaction.query_raw",
+        name = "pg_transaction.query_raw",
         skip_all,
         level = "debug",
         fields(
@@ -1525,7 +1554,9 @@ impl<'a> InstrumentedTransaction<'a> {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .query_raw(statement, params)
             .instrument(self.tx_span.clone())
@@ -1552,7 +1583,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "transaction.execute",
+        name = "pg_transaction.execute",
         skip_all,
         level = "debug",
         fields(
@@ -1572,7 +1603,9 @@ impl<'a> InstrumentedTransaction<'a> {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<u64, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .execute(statement, params)
             .instrument(self.tx_span.clone())
@@ -1595,7 +1628,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`execute`]: #method.execute
     #[instrument(
-        name = "transaction.execute_raw",
+        name = "pg_transaction.execute_raw",
         skip_all,
         level = "debug",
         fields(
@@ -1616,7 +1649,9 @@ impl<'a> InstrumentedTransaction<'a> {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .execute_raw(statement, params)
             .instrument(self.tx_span.clone())
@@ -1634,7 +1669,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "transaction.bind",
+        name = "pg_transaction.bind",
         skip_all,
         level = "debug",
         fields(
@@ -1656,7 +1691,9 @@ impl<'a> InstrumentedTransaction<'a> {
     where
         T: ?Sized + ToStatement,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .bind(statement, params)
             .instrument(self.tx_span.clone())
@@ -1668,7 +1705,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`bind`]: #method.bind
     #[instrument(
-        name = "transaction.bind_raw",
+        name = "pg_transaction.bind_raw",
         skip_all,
         level = "debug",
         fields(
@@ -1689,7 +1726,9 @@ impl<'a> InstrumentedTransaction<'a> {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .bind_raw(statement, params)
             .instrument(self.tx_span.clone())
@@ -1703,7 +1742,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// returned in each call to `query_portal`. If the requested number is negative or 0, all rows
     /// will be returned.
     #[instrument(
-        name = "transaction.query_portal",
+        name = "pg_transaction.query_portal",
         skip_all,
         level = "debug",
         fields(
@@ -1722,7 +1761,9 @@ impl<'a> InstrumentedTransaction<'a> {
         portal: &Portal,
         max_rows: i32,
     ) -> Result<Vec<PgRow>, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .query_portal(portal, max_rows)
             .instrument(self.tx_span.clone())
@@ -1739,7 +1780,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`query_portal`]: #method.query_portal
     #[instrument(
-        name = "transaction.query_portal_raw",
+        name = "pg_transaction.query_portal_raw",
         skip_all,
         level = "debug",
         fields(
@@ -1758,7 +1799,9 @@ impl<'a> InstrumentedTransaction<'a> {
         portal: &Portal,
         max_rows: i32,
     ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .query_portal_raw(portal, max_rows)
             .instrument(self.tx_span.clone())
@@ -1780,7 +1823,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "transaction.copy_in",
+        name = "pg_transaction.copy_in",
         skip_all,
         level = "debug",
         fields(
@@ -1799,7 +1842,9 @@ impl<'a> InstrumentedTransaction<'a> {
         T: ?Sized + ToStatement,
         U: Buf + 'static + Send,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .copy_in(statement)
             .instrument(self.tx_span.clone())
@@ -1816,7 +1861,7 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "transaction.copy_out",
+        name = "pg_transaction.copy_out",
         skip_all,
         level = "debug",
         fields(
@@ -1834,7 +1879,9 @@ impl<'a> InstrumentedTransaction<'a> {
     where
         T: ?Sized + ToStatement,
     {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .copy_out(statement)
             .instrument(self.tx_span.clone())
@@ -1858,7 +1905,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "transaction.simple_query",
+        name = "pg_transaction.simple_query",
         skip_all,
         level = "debug",
         fields(
@@ -1874,7 +1921,9 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .simple_query(query)
             .instrument(self.tx_span.clone())
@@ -1894,7 +1943,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "transaction.batch_execute",
+        name = "pg_transaction.batch_execute",
         skip_all,
         level = "debug",
         fields(
@@ -1910,7 +1959,9 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.inner
             .batch_execute(query)
             .instrument(self.tx_span.clone())
@@ -1921,7 +1972,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
     #[instrument(
-        name = "transaction.cancel_token",
+        name = "pg_transaction.cancel_token",
         skip_all,
         level = "debug",
         fields(
@@ -1936,13 +1987,15 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub fn cancel_token(&self) -> CancelToken {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.tx_span.in_scope(|| self.inner.cancel_token())
     }
 
     /// Like `Client::transaction`, but creates a nested transaction via a savepoint.
     #[instrument(
-        name = "transaction.transaction",
+        name = "pg_transaction.transaction",
         skip_all,
         level = "debug",
         fields(
@@ -1971,7 +2024,7 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Like `Client::transaction`, but creates a nested transaction via a savepoint with the
     /// specified name.
     #[instrument(
-        name = "transaction.savepoint",
+        name = "pg_transaction.savepoint",
         skip_all,
         level = "debug",
         fields(
@@ -2001,7 +2054,7 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Returns a mutex-guarded reference to the underlying `Client`.
     #[instrument(
-        name = "transaction.client",
+        name = "pg_transaction.client",
         skip_all,
         level = "debug",
         fields(
@@ -2016,7 +2069,9 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub fn client(&'a self) -> &Client {
-        Span::current().follows_from(&self.tx_span);
+        let span = current_span_for_instrument_at!("debug");
+
+        span.follows_from(&self.tx_span);
         self.tx_span.in_scope(|| self.inner.client())
     }
 }
@@ -2123,7 +2178,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     ///
     /// Like `tokio_postgres::TransactionBuilder::start`
     #[instrument(
-        name = "transaction_builder.start",
+        name = "pg_transaction_builder.start",
         skip_all,
         level = "debug",
         fields(

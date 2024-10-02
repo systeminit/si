@@ -63,17 +63,17 @@ impl IntoResponse for HandlerError {
         match self {
             HandlerError::SubjectParse(_, _) => {
                 warn!(si.error.message = ?self, "subject parse error");
-                Response::bad_request()
+                Response::default_bad_request()
             }
             // While propagated as an `Err`, a task being interupted is expected behavior and is
             // not an error (rather we use `Err` to ensure the task persists in the stream)
             HandlerError::TaskInterrupted(subject) => {
                 debug!(subject, "task interrupted");
-                Response::service_unavailable()
+                Response::default_service_unavailable()
             }
             _ => {
                 error!(si.error.message = ?self, "failed to process message");
-                Response::internal_server_error()
+                Response::default_internal_server_error()
             }
         }
     }

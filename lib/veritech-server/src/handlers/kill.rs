@@ -58,7 +58,7 @@ async fn kill_execution_request_task(
 
 #[instrument(name = "veritech.kill_execution_request", level = "info", skip_all)]
 async fn kill_execution_request(state: &KillAppState, execution_id: String) -> HandlerResult<()> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     // NOTE(nick): in the instances of multiple veritechs, only one will have the kill sender.
     // Right now, we are returning a formal error here. We may want to reconsider this.

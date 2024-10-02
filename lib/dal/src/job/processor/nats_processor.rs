@@ -131,8 +131,11 @@ impl JobQueueProcessor for NatsProcessor {
 
         // TODO(fnichol): hrm, no timeout, so we wait forever? That's probably not expected?
         match reply_subscriber.next().await {
-            Some(message) => serde_json::from_slice::<BlockingJobResult>(message.payload())
-                .map_err(|e| BlockingJobError::Serde(e.to_string()))?,
+            Some(message) => {
+                propagation::associate_current_span_from_headers(message.headers());
+                serde_json::from_slice::<BlockingJobResult>(message.payload())
+                    .map_err(|e| BlockingJobError::Serde(e.to_string()))?
+            }
             None => Err(BlockingJobError::Nats(
                 "Subscriber or connection no longer valid".to_string(),
             )),
@@ -198,7 +201,8 @@ impl JobQueueProcessor for NatsProcessor {
         )
     )]
     async fn process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
+
         span.record("queue.size", queue.size().await);
 
         self.push_all_jobs(queue).await?;
@@ -215,7 +219,8 @@ impl JobQueueProcessor for NatsProcessor {
         )
     )]
     async fn blocking_process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
+
         span.record("queue.size", queue.size().await);
 
         let mut jobs = Vec::with_capacity(queue.size().await);

@@ -2,14 +2,18 @@ use std::convert::Infallible;
 
 use async_trait::async_trait;
 
-use crate::{message::Head, response::IntoResponse, MessageHead};
+use crate::{
+    message::{Head, Message, MessageHead},
+    response::IntoResponse,
+};
 
+mod matched_subject;
 pub mod message_parts;
 pub mod rejection;
 mod state;
 mod tuple;
 
-pub use self::state::State;
+pub use self::{matched_subject::MatchedSubject, state::State};
 
 mod private {
     #[derive(Debug, Clone, Copy)]
@@ -33,7 +37,7 @@ where
 {
     type Rejection: IntoResponse;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection>;
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
@@ -45,7 +49,7 @@ where
 {
     type Rejection = <Self as FromMessageHead<S>>::Rejection;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         let (mut head, _payload) = req.into_parts();
         Self::from_message_head(&mut head, state).await
     }
@@ -73,7 +77,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         Ok(T::from_message(req, state).await.ok())
     }
 }
@@ -100,7 +104,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         Ok(T::from_message(req, state).await)
     }
 }

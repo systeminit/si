@@ -61,7 +61,9 @@ impl<T> SubscriberBuilder<T> {
                 .map_err(SubscriberError::NatsSubscribe)?
         };
 
-        let make_span = NatsMakeSpan::new().level(self.span_level);
+        let make_span = NatsMakeSpan::builder(nats.metadata_clone())
+            .level(self.span_level)
+            .build();
 
         Ok(Subscriber {
             inner,

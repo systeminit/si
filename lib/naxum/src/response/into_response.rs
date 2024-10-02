@@ -2,9 +2,14 @@ use core::fmt;
 use std::{borrow::Cow, convert::Infallible};
 
 use async_nats::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use bytes::{buf::Chain, Buf, Bytes, BytesMut};
+use bytes::{Bytes, BytesMut};
 
-use super::Response;
+use crate::body::{self, Body};
+
+use super::{
+    inner::{self, Parts},
+    IntoResponseParts, Response, ResponseParts,
+};
 
 pub trait IntoResponse {
     fn into_response(self) -> Response;
@@ -12,13 +17,15 @@ pub trait IntoResponse {
 
 impl IntoResponse for StatusCode {
     fn into_response(self) -> Response {
-        Response { status: self }
+        let mut response = ().into_response();
+        *response.status_mut() = self;
+        response
     }
 }
 
 impl IntoResponse for () {
     fn into_response(self) -> Response {
-        Response::default()
+        Body::empty().into_response()
     }
 }
 
@@ -41,85 +48,96 @@ where
     }
 }
 
-impl IntoResponse for Response {
+impl<B> IntoResponse for Response<B>
+where
+    B: body::inner::Body,
+{
     fn into_response(self) -> Response {
-        self
+        self.map(Body::new)
+    }
+}
+
+impl IntoResponse for Parts {
+    fn into_response(self) -> Response {
+        Response::from_parts(self, Body::empty())
+    }
+}
+
+impl IntoResponse for Body {
+    fn into_response(self) -> Response {
+        Response::new(self)
     }
 }
 
 impl IntoResponse for &'static str {
     fn into_response(self) -> Response {
-        Response::default()
+        Cow::Borrowed(self).into_response()
     }
 }
 
 impl IntoResponse for String {
     fn into_response(self) -> Response {
-        Response::default()
+        Cow::<'static, str>::Owned(self).into_response()
     }
 }
 
 impl IntoResponse for Box<str> {
     fn into_response(self) -> Response {
-        Response::default()
+        String::from(self).into_response()
     }
 }
 
 impl IntoResponse for Cow<'static, str> {
     fn into_response(self) -> Response {
-        Response::default()
+        Body::from(self).into_response()
     }
 }
 
 impl IntoResponse for Bytes {
     fn into_response(self) -> Response {
-        Response::default()
+        Body::from(self).into_response()
     }
 }
 
 impl IntoResponse for BytesMut {
     fn into_response(self) -> Response {
-        Response::default()
-    }
-}
-
-impl<T, U> IntoResponse for Chain<T, U>
-where
-    T: Buf + Unpin + Send + 'static,
-    U: Buf + Unpin + Send + 'static,
-{
-    fn into_response(self) -> Response {
-        Response::default()
+        self.freeze().into_response()
     }
 }
 
 impl IntoResponse for &'static [u8] {
     fn into_response(self) -> Response {
-        Response::default()
+        Cow::Borrowed(self).into_response()
+    }
+}
+
+impl<const N: usize> IntoResponse for &'static [u8; N] {
+    fn into_response(self) -> Response {
+        self.as_slice().into_response()
     }
 }
 
 impl<const N: usize> IntoResponse for [u8; N] {
     fn into_response(self) -> Response {
-        Response::default()
+        self.to_vec().into_response()
     }
 }
 
 impl IntoResponse for Vec<u8> {
     fn into_response(self) -> Response {
-        Response::default()
+        Cow::<'static, [u8]>::Owned(self).into_response()
     }
 }
 
 impl IntoResponse for Box<[u8]> {
     fn into_response(self) -> Response {
-        Response::default()
+        Vec::from(self).into_response()
     }
 }
 
 impl IntoResponse for Cow<'static, [u8]> {
     fn into_response(self) -> Response {
-        Response::default()
+        Body::from(self).into_response()
     }
 }
 
@@ -128,13 +146,15 @@ where
     R: IntoResponse,
 {
     fn into_response(self) -> Response {
-        Response { status: self.0 }
+        let mut response = self.1.into_response();
+        *response.status_mut() = self.0;
+        response
     }
 }
 
 impl IntoResponse for HeaderMap {
     fn into_response(self) -> Response {
-        Response::default()
+        ().into_response()
     }
 }
 
@@ -150,11 +170,127 @@ where
     }
 }
 
+impl<R> IntoResponse for (Parts, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (parts, res) = self;
+        (parts.status, res).into_response()
+    }
+}
+
+impl<R> IntoResponse for (inner::Response<()>, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (template, res) = self;
+        let (parts, ()) = template.into_parts();
+        (parts, res).into_response()
+    }
+}
+
 impl<R> IntoResponse for (R,)
 where
     R: IntoResponse,
 {
     fn into_response(self) -> Response {
-        Response::default()
+        let (res,) = self;
+        res.into_response()
     }
 }
+
+macro_rules! impl_into_response {
+    ( $($ty:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for ($($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let ($($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+
+                $(
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
+                )*
+
+                parts.res
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (StatusCode, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (status, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+
+                $(
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
+                )*
+
+                (status, parts.res).into_response()
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (Parts, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (outer_parts, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+
+                $(
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
+                )*
+
+                (outer_parts, parts.res).into_response()
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (inner::Response<()>, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (template, $($ty),*, res) = self;
+                let (parts, ()) = template.into_parts();
+                (parts, $($ty),*, res).into_response()
+            }
+        }
+    };
+}
+
+all_the_tuples_no_last_special_case!(impl_into_response);

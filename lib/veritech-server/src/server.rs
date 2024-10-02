@@ -10,12 +10,15 @@ use std::{
 
 use futures::{join, StreamExt};
 use naxum::{
+    extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer},
+        matched_subject::{ForSubject, MatchedSubjectLayer},
+        trace::TraceLayer,
     },
-    ServiceBuilder, ServiceExt as _,
+    response::{IntoResponse, Response},
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_crypto::VeritechDecryptionKey;
 use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
@@ -188,9 +191,12 @@ impl Server {
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+        let connection_metadata = nats.metadata_clone();
+
+        // Take the *active* subject prefix from the connected NATS client
+        let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
         let incoming = {
-            // Take the *active* subject prefix from the connected NATS client
-            let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
             let context = jetstream::new(nats.clone());
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
@@ -211,15 +217,19 @@ impl Server {
 
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new()
+                    .for_subject(VeritechForSubject::with_prefix(prefix.as_deref())),
+            )
+            .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(
-                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
-                    ),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(AckLayer::new())
-            .service(handlers::process_request.with_state(state));
+            .service(handlers::process_request.with_state(state))
+            .map_response(Response::into_response);
 
         let inner =
             naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
@@ -234,6 +244,8 @@ impl Server {
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
         token: CancellationToken,
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+        let connection_metadata = nats.metadata_clone();
+
         let incoming = {
             let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
             Self::kill_subscriber(&nats, prefix.as_deref())
@@ -249,13 +261,13 @@ impl Server {
         let app = ServiceBuilder::new()
             .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(
-                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
-                    ),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .service(handlers::process_kill_request.with_state(state));
+            .service(handlers::process_kill_request.with_state(state))
+            .map_response(Response::into_response);
 
         let inner = naxum::serve(incoming, app.into_make_service())
             .with_graceful_shutdown(naxum::wait_on_cancelled(token));
@@ -291,6 +303,73 @@ impl Server {
             filter_subject: subject::incoming(subject_prefix).to_string(),
             max_deliver: CONSUMER_MAX_DELIVERY,
             ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct VeritechForSubject {
+    prefix: Option<()>,
+}
+
+impl VeritechForSubject {
+    fn with_prefix(prefix: Option<&str>) -> Self {
+        Self {
+            prefix: prefix.map(|_p| ()),
+        }
+    }
+}
+
+impl<R> ForSubject<R> for VeritechForSubject
+where
+    R: MessageHead,
+{
+    fn call(&mut self, req: &mut naxum::Message<R>) {
+        let mut parts = req.subject().split('.');
+
+        match self.prefix {
+            Some(_) => {
+                if let (
+                    Some(prefix),
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
         }
     }
 }

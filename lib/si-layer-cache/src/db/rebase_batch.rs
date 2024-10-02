@@ -94,7 +94,7 @@ where
         &self,
         key: &RebaseBatchAddress,
     ) -> LayerDbResult<Option<Arc<V>>> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();
         const MAX_TRIES: i32 = 2000;

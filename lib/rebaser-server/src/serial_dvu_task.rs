@@ -89,19 +89,22 @@ impl SerialDvuTask {
         Ok(())
     }
 
+    #[instrument(
+        name = "serial_dvu_task.run_dvu",
+        level = "info",
+        skip_all,
+        fields(
+            service.instance.id = self.metadata.instance_id(),
+            si.change_set.id = %self.change_set_id,
+            si.workspace.id = %self.workspace_id,
+        ),
+    )]
     async fn run_dvu(&self) -> Result<()> {
         let builder = self.ctx_builder.clone();
         let ctx = builder
             .build_for_change_set_as_system(self.workspace_id.into(), self.change_set_id.into())
             .await?;
 
-        info!(
-            task = Self::NAME,
-            service.instance.id = self.metadata.instance_id(),
-            si.workspace.id = %self.workspace_id,
-            si.change_set.id = %self.change_set_id,
-            "enqueuing dependent_values_update",
-        );
         ctx.enqueue_dependent_values_update().await?;
         ctx.blocking_commit_no_rebase().await?;
 

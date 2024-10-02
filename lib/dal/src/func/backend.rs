@@ -394,8 +394,8 @@ pub trait FuncDispatch: std::fmt::Debug {
 
     #[instrument(
         name = "funcdispatch.execute",
-        skip_all,
         level = "debug",
+        skip_all,
         fields(
             otel.kind = SpanKind::Client.as_str(),
             otel.status_code = Empty,
@@ -409,7 +409,7 @@ pub trait FuncDispatch: std::fmt::Debug {
     where
         <Self::Output as ExtractPayload>::Payload: Serialize,
     {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         // NOTE(nick,wendy): why is a debug output of "self" a valid backend?
         let backend = format!("{:?}", &self);
@@ -460,8 +460,8 @@ pub trait FuncBackend {
 
     #[instrument(
         name = "funcbackend.execute",
-        skip_all,
         level = "debug",
+        skip_all,
         fields(
             otel.kind = SpanKind::Client.as_str(),
             otel.status_code = Empty,
@@ -472,7 +472,7 @@ pub trait FuncBackend {
     async fn execute(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         let value = self.inline().await?;
 

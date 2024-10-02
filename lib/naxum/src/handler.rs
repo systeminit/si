@@ -11,8 +11,8 @@ use tower::{Layer, Service, ServiceExt};
 use crate::{
     extract::{FromMessage, FromMessageHead},
     make_service::IntoMakeService,
+    message::{Message, MessageHead},
     response::{IntoResponse, Response},
-    MessageHead,
 };
 
 pub mod future;
@@ -26,12 +26,12 @@ where
 {
     type Future: Future<Output = Response> + Send + 'static;
 
-    fn call(self, req: R, state: S) -> Self::Future;
+    fn call(self, req: Message<R>, state: S) -> Self::Future;
 
     fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, R>
     where
         L: Layer<HandlerService<Self, T, S, R>> + Clone,
-        L::Service: Service<R>,
+        L::Service: Service<Message<R>>,
     {
         Layered {
             layer,
@@ -55,7 +55,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: R, _state: S) -> Self::Future {
+    fn call(self, _req: Message<R>, _state: S) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -77,7 +77,7 @@ macro_rules! impl_handler {
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: R, state: S) -> Self::Future {
+            fn call(self, req: Message<R>, state: S) -> Self::Future {
                 Box::pin(async move {
                     let (mut parts, body) = req.into_parts();
                     let state = &state;
@@ -89,7 +89,7 @@ macro_rules! impl_handler {
                         };
                     )*
 
-                    let req = match R::from_parts(parts, body) {
+                    let req = match Message::from_parts(parts, body) {
                         Ok(value) => value,
                         Err(rejection) => return rejection.into_response(),
                     };
@@ -123,7 +123,7 @@ where
 {
     type Future = Ready<Response>;
 
-    fn call(self, _req: R, _state: S) -> Self::Future {
+    fn call(self, _req: Message<R>, _state: S) -> Self::Future {
         #[allow(clippy::unit_arg)]
         ready(self.into_response())
     }
@@ -166,16 +166,16 @@ impl<L, H, T, S, R> Handler<T, S, R> for Layered<L, H, T, S, R>
 where
     L: Layer<HandlerService<H, T, S, R>> + Clone + Send + 'static,
     H: Handler<T, S, R>,
-    L::Service: Service<R, Error = Infallible> + Clone + Send + 'static,
-    <L::Service as Service<R>>::Response: IntoResponse,
-    <L::Service as Service<R>>::Future: Send,
+    L::Service: Service<Message<R>, Error = Infallible> + Clone + Send + 'static,
+    <L::Service as Service<Message<R>>>::Response: IntoResponse,
+    <L::Service as Service<Message<R>>>::Future: Send,
     T: 'static,
     S: 'static,
     R: MessageHead + Send + 'static,
 {
     type Future = future::LayeredFuture<L::Service, R>;
 
-    fn call(self, req: R, state: S) -> Self::Future {
+    fn call(self, req: Message<R>, state: S) -> Self::Future {
         use futures::future::{FutureExt, Map};
 
         let svc = self.handler.with_state(state);
@@ -185,7 +185,10 @@ where
         let future: Map<
             _,
             fn(
-                Result<<L::Service as Service<R>>::Response, <L::Service as Service<R>>::Error>,
+                Result<
+                    <L::Service as Service<Message<R>>>::Response,
+                    <L::Service as Service<Message<R>>>::Error,
+                >,
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),

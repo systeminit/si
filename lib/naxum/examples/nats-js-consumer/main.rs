@@ -2,7 +2,7 @@ use std::{env, error, str, time::Duration};
 
 use async_nats::jetstream;
 use naxum::{
-    extract::State, handler::Handler, middleware::trace::TraceLayer, BoxError, ServiceExt,
+    extract::State, handler::Handler, middleware::trace::TraceLayer, BoxError, Message, ServiceExt,
 };
 use tokio::{
     signal::unix::{self, SignalKind},
@@ -26,7 +26,7 @@ struct AppState {}
 
 async fn default(
     State(_state): State<AppState>,
-    msg: jetstream::Message,
+    msg: Message<jetstream::Message>,
 ) -> naxum::response::Result<()> {
     info!(subject = msg.subject.as_str(), "processing message");
 

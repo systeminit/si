@@ -9,7 +9,6 @@ rust_library(
     deps = [
         "//lib/billing-events:billing-events",
         "//lib/module-index-client:module-index-client",
-        "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
         "//lib/pinga-core:pinga-core",
         "//lib/rebaser-client:rebaser-client",

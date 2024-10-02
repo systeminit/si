@@ -93,7 +93,7 @@ impl Subscriber {
         )
     )]
     pub async fn unsubscribe(mut self) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.sub_span);
 
         self.inner
@@ -160,7 +160,7 @@ impl Subscriber {
         )
     )]
     pub async fn unsubscribe_after(&mut self, unsub_after: u64) -> Result<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
         span.follows_from(&self.sub_span);
 
         self.inner

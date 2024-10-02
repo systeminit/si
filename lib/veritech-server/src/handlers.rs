@@ -3,6 +3,7 @@ use futures::StreamExt;
 use naxum::{
     extract::{message_parts::Headers, State},
     response::{IntoResponse, Response},
+    Message,
 };
 use si_data_nats::{InnerMessage, Subject};
 use si_pool_noodle::{
@@ -75,7 +76,7 @@ type HandlerResult<T> = result::Result<T, HandlerError>;
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         error!(si.error.message = ?self, "failed to process message");
-        Response::internal_server_error()
+        Response::default_internal_server_error()
     }
 }
 
@@ -83,8 +84,10 @@ pub async fn process_request(
     State(state): State<AppState>,
     subject: Subject,
     Headers(maybe_headers): Headers,
-    msg: InnerMessage,
+    msg: Message<InnerMessage>,
 ) -> HandlerResult<()> {
+    let span = Span::current();
+
     let reply_subject = match maybe_headers
         .and_then(|headers| headers.get(REPLY_INBOX_HEADER_NAME).map(|v| v.to_string()))
     {
@@ -104,12 +107,18 @@ pub async fn process_request(
             parts.next(),
             parts.next(),
         ) {
-            (Some(_), Some(_), Some(_), Some(_), Some(_)) => {}
+            (Some(_), Some(_), Some(_), Some(workspace_id), Some(change_set_id)) => {
+                span.record("si.workspace.id", workspace_id);
+                span.record("si.change_set.id", change_set_id);
+            }
             _ => return Err(HandlerError::InvalidIncomingSubject(subject)),
         }
     } else {
         match (parts.next(), parts.next(), parts.next(), parts.next()) {
-            (Some(_), Some(_), Some(_), Some(_)) => {}
+            (Some(_), Some(_), Some(workspace_id), Some(change_set_id)) => {
+                span.record("si.workspace.id", workspace_id);
+                span.record("si.change_set.id", change_set_id);
+            }
             _ => return Err(HandlerError::InvalidIncomingSubject(subject)),
         }
     }
@@ -152,7 +161,7 @@ async fn action_run_request(
     mut payload_request: ActionRunRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     let mut client = state
         .cyclone_pool
@@ -328,7 +337,7 @@ async fn resolver_function_request(
     publisher: &Publisher<'_>,
     mut request: ResolverFunctionRequest,
 ) -> HandlerResult<FunctionResult<ResolverFunctionResultSuccess>> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     let mut client = state
         .cyclone_pool
@@ -427,7 +436,7 @@ async fn schema_variant_definition_request(
     mut payload_request: SchemaVariantDefinitionRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     let mut client = state
         .cyclone_pool
@@ -554,7 +563,7 @@ async fn validation_request(
     mut payload_request: ValidationRequest,
     reply_mailbox: Subject,
 ) -> HandlerResult<()> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
 
     let mut client = state
         .cyclone_pool
@@ -684,7 +693,7 @@ async fn kill_sender_remove_blocking(
     kill_senders: &Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
     execution_id: String,
 ) -> HandlerResult<Option<oneshot::Sender<()>>> {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("debug");
 
     let maybe_kill_sender = { kill_senders.lock().await.remove(&execution_id) };
 

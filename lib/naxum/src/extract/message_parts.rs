@@ -6,8 +6,7 @@ use bytes::Bytes;
 
 use crate::{
     extract::rejection::InvalidUtf8,
-    message::{Extensions, Head},
-    MessageHead,
+    message::{Extensions, Head, Message, MessageHead},
 };
 
 use super::{
@@ -16,14 +15,14 @@ use super::{
 };
 
 #[async_trait]
-impl<S, R> FromMessage<S, R> for R
+impl<S, R> FromMessage<S, R> for Message<R>
 where
     S: Send + Sync,
     R: MessageHead + Send,
 {
     type Rejection = Infallible;
 
-    async fn from_message(req: R, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(req)
     }
 }
@@ -100,7 +99,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_message(req: R, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(req.into_parts().1)
     }
 }
@@ -113,7 +112,7 @@ where
 {
     type Rejection = StringRejection;
 
-    async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         let bytes = Bytes::from_message(req, state).await.unwrap();
         let string = str::from_utf8(&bytes)
             .map_err(InvalidUtf8::from_err)?

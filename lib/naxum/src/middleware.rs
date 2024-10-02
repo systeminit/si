@@ -1,5 +1,6 @@
 pub mod ack;
 pub mod delay;
+pub mod matched_subject;
 pub mod post_process;
 pub mod trace;
 

@@ -6,11 +6,15 @@ use std::{
 
 use tower::Service;
 
-use crate::{response::Response, MessageHead};
+use crate::{
+    body::inner,
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 use super::{
     future::ResponseFuture, make_span::MakeSpan, on_request::OnRequest, on_response::OnResponse,
-    DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer,
+    DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, ResponseBody, TraceLayer,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -97,17 +101,18 @@ impl<S, MakeSpan, OnRequest, OnResponse> Trace<S, MakeSpan, OnRequest, OnRespons
     }
 }
 
-impl<S, R, NewMakeSpanT, OnRequestT, OnResponseT> Service<R>
-    for Trace<S, NewMakeSpanT, OnRequestT, OnResponseT>
+impl<S, R, ResBody, MakeSpanT, OnRequestT, OnResponseT> Service<Message<R>>
+    for Trace<S, MakeSpanT, OnRequestT, OnResponseT>
 where
-    S: Service<R, Response = Response>,
+    S: Service<Message<R>, Response = Response<ResBody>>,
     S::Error: fmt::Display + 'static,
-    NewMakeSpanT: MakeSpan<R>,
+    ResBody: inner::Body,
+    MakeSpanT: MakeSpan<R>,
     OnRequestT: OnRequest<R>,
-    OnResponseT: OnResponse + Clone,
+    OnResponseT: OnResponse<ResBody> + Clone,
     R: MessageHead,
 {
-    type Response = Response;
+    type Response = Response<ResponseBody<ResBody>>;
     type Error = S::Error;
     type Future = ResponseFuture<S::Future, OnResponseT>;
 
@@ -115,7 +120,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: R) -> Self::Future {
+    fn call(&mut self, req: Message<R>) -> Self::Future {
         let start = Instant::now();
 
         let span = self.make_span.make_span(&req);

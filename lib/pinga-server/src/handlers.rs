@@ -16,6 +16,7 @@ use naxum::{
 use pinga_core::REPLY_INBOX_HEADER_NAME;
 use si_data_nats::Subject;
 use telemetry::prelude::*;
+use telemetry_nats::propagation;
 use thiserror::Error;
 
 use crate::{app_state::AppState, server::ServerMetadata};
@@ -36,7 +37,7 @@ type Result<T> = result::Result<T, HandlerError>;
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         error!(si.error.message = ?self, "failed to process message");
-        Response::internal_server_error()
+        Response::default_internal_server_error()
     }
 }
 
@@ -46,6 +47,18 @@ pub async fn process_request(
     Headers(maybe_headers): Headers,
     Json(job_info): Json<JobInfo>,
 ) -> Result<()> {
+    let workspace_id_str = job_info
+        .access_builder
+        .tenancy()
+        .workspace_pk_opt()
+        .map(|id| id.to_string())
+        .unwrap_or_default();
+    let change_set_id = job_info.visibility.change_set_id;
+
+    let span = Span::current();
+    span.record("si.workspace.id", workspace_id_str);
+    span.record("si.change_set.id", change_set_id.to_string());
+
     let reply_subject = match maybe_headers
         .and_then(|headers| headers.get(REPLY_INBOX_HEADER_NAME).map(|v| v.to_string()))
     {
@@ -100,7 +113,7 @@ async fn execute_job(
     maybe_reply_subject: Option<Subject>,
     job_info: JobInfo,
 ) {
-    let span = Span::current();
+    let span = current_span_for_instrument_at!("info");
     let id = job_info.id.clone();
 
     let arg_str = serde_json::to_string(&job_info.arg)
@@ -121,7 +134,7 @@ async fn execute_job(
             parts.next(),
         ) {
             (Some(p1), Some(p2), Some(_workspace_id), Some(_change_set_id), Some(kind)) => {
-                format!("{p1}.{p2}.{{workspace_id}}.{{change_set_id}}.{kind} process")
+                format!("{p1}.{p2}.:workspace_id.:change_set_id.{kind} process")
             }
             _ => format!("{} process", subject.as_str()),
         }
@@ -156,7 +169,11 @@ async fn execute_job(
         if let Ok(message) = serde_json::to_vec(&reply_message) {
             if let Err(err) = ctx_builder
                 .nats_conn()
-                .publish(reply_subject, message.into())
+                .publish_with_headers(
+                    reply_subject,
+                    propagation::empty_injected_headers(),
+                    message.into(),
+                )
                 .await
             {
                 error!(error = ?err, "Unable to notify spawning job of blocking job completion");

@@ -24,7 +24,15 @@ pub struct SetComponentConcurrencyLimitResponse {
     pub concurrency_limit: Option<i32>,
 }
 
-#[instrument(name = "admin.set_component_concurrency_limit", skip_all)]
+#[instrument(
+    name = "admin.set_component_concurrency_limit",
+    level = "info",
+    skip_all,
+    fields(
+        si.workspace.id = %workspace_pk,
+        si.workspace.concurrency_limit = Empty,
+    ),
+)]
 pub async fn set_concurrency_limit(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -34,8 +42,8 @@ pub async fn set_concurrency_limit(
     Path(workspace_pk): Path<WorkspacePk>,
     Json(request): Json<SetComponentConcurrencyLimitRequest>,
 ) -> AdminAPIResult<Json<SetComponentConcurrencyLimitResponse>> {
-    let span = Span::current();
-    span.record("si.workspace.id", workspace_pk.to_string());
+    let span = current_span_for_instrument_at!("info");
+
     span.record(
         "si.workspace.concurrency_limit",
         request

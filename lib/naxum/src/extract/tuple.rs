@@ -3,9 +3,8 @@ use std::convert::Infallible;
 use async_trait::async_trait;
 
 use crate::{
-    message::Head,
+    message::{Head, Message, MessageHead},
     response::{IntoResponse, Response},
-    MessageHead,
 };
 
 use super::{FromMessage, FromMessageHead};
@@ -63,16 +62,20 @@ macro_rules! impl_from_message {
         {
             type Rejection = Response;
 
-            async fn from_message(req: R, state: &S) -> Result<Self, Self::Rejection> {
-                let (mut head, body) = req.into_parts();
+            async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
+                let (mut head, payload) = req.into_parts();
 
                 $(
-                    let $ty = $ty::from_message_head(&mut head, state).await.map_err(|err| err.into_response())?;
+                    let $ty = $ty::from_message_head(&mut head, state)
+                        .await
+                        .map_err(|err| err.into_response())?;
                 )*
 
-                let req = R::from_parts(head, body).map_err(|err| err.into_response())?;
+                let req = Message::from_parts(head, payload).map_err(|err| err.into_response())?;
 
-                let $last = $last::from_message(req, state).await.map_err(|err| err.into_response())?;
+                let $last = $last::from_message(req, state)
+                    .await
+                    .map_err(|err| err.into_response())?;
 
                 Ok(($($ty,)* $last,))
             }

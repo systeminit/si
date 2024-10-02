@@ -10,12 +10,15 @@ use dal::{
     JobQueueProcessor, NatsProcessor, ServicesContext,
 };
 use naxum::{
+    extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer},
+        matched_subject::{ForSubject, MatchedSubjectLayer},
+        trace::TraceLayer,
     },
-    ServiceExt as _,
+    response::{IntoResponse, Response},
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use pinga_core::{pinga_work_queue, subject};
 use rebaser_client::RebaserClient;
@@ -29,7 +32,6 @@ use si_layer_cache::LayerDb;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tower::ServiceBuilder;
 use veritech_client::Client as VeritechClient;
 
 use crate::{app_state::AppState, handlers, Config, ServerError, ServerResult};
@@ -136,6 +138,8 @@ impl Server {
             job_invoked_provider: "si",
         });
 
+        let connection_metadata = services_context.nats_conn().metadata_clone();
+
         // Take the *active* subject prefix from the connected NATS client
         let prefix = services_context
             .nats_conn()
@@ -158,15 +162,19 @@ impl Server {
 
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new()
+                    .for_subject(PingaForSubject::with_prefix(prefix.as_deref())),
+            )
+            .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                    .on_request(DefaultOnRequest::new().level(Level::TRACE))
-                    .on_response(
-                        naxum::middleware::trace::DefaultOnResponse::new().level(Level::TRACE),
-                    ),
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(AckLayer::new())
-            .service(handlers::process_request.with_state(state));
+            .service(handlers::process_request.with_state(state))
+            .map_response(Response::into_response);
 
         let inner =
             naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
@@ -261,6 +269,73 @@ impl Server {
             durable_name: Some(CONSUMER_NAME.to_owned()),
             filter_subject: subject::incoming(subject_prefix).to_string(),
             ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PingaForSubject {
+    prefix: Option<()>,
+}
+
+impl PingaForSubject {
+    fn with_prefix(prefix: Option<&str>) -> Self {
+        Self {
+            prefix: prefix.map(|_p| ()),
+        }
+    }
+}
+
+impl<R> ForSubject<R> for PingaForSubject
+where
+    R: MessageHead,
+{
+    fn call(&mut self, req: &mut naxum::Message<R>) {
+        let mut parts = req.subject().split('.');
+
+        match self.prefix {
+            Some(_) => {
+                if let (
+                    Some(prefix),
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
         }
     }
 }

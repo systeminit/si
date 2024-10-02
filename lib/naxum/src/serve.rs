@@ -19,14 +19,17 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::{Service, ServiceExt};
 use tracing::{debug, trace, warn};
 
-use crate::{message::MessageHead, response::Response};
+use crate::{
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 const MAX_FAILED_MESSAGES: usize = 4;
 
 pub fn serve<M, S, T, E, R>(stream: T, make_service: M) -> Serve<M, S, T, E, R>
 where
     M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
-    S: Service<R, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Message<R>, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     T: Stream<Item = Result<R, E>>,
     E: error::Error,
@@ -42,7 +45,7 @@ pub fn serve_with_incoming_limit<M, S, T, E, R>(
 ) -> Serve<M, S, T, E, R>
 where
     M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
-    S: Service<R, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Message<R>, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     T: Stream<Item = Result<R, E>>,
     E: error::Error,
@@ -126,7 +129,7 @@ impl<M, S, T, E, R, F> IntoFuture for WithGracefulShutdown<M, S, T, E, R, F>
 where
     M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingMessage<'a, R>>>::Future: Send,
-    S: Service<R, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Message<R>, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     T: Stream<Item = Result<R, E>> + Send + 'static,
     E: error::Error,
@@ -238,7 +241,7 @@ async fn next_message<T, E, R>(
     stream: &mut Pin<&mut T>,
     semaphore: Option<Arc<Semaphore>>,
     failed_count: usize,
-) -> (Option<Result<R, E>>, Option<OwnedSemaphorePermit>)
+) -> (Option<Result<Message<R>, E>>, Option<OwnedSemaphorePermit>)
 where
     T: Stream<Item = Result<R, E>> + Send + 'static,
     E: error::Error,
@@ -261,7 +264,10 @@ where
     };
 
     match stream.try_next().await {
-        Ok(maybe) => (Ok(maybe).transpose(), permit),
+        Ok(maybe) => (
+            Ok(maybe.map(|inner| Message::new(inner))).transpose(),
+            permit,
+        ),
         Err(err) => {
             if failed_count > MAX_FAILED_MESSAGES {
                 warn!(

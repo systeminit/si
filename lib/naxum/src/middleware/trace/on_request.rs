@@ -1,20 +1,22 @@
 use tracing::{Level, Span};
 
+use crate::message::Message;
+
 use super::DEFAULT_MESSAGE_LEVEL;
 
 pub trait OnRequest<R> {
-    fn on_request(&mut self, req: &R, span: &Span);
+    fn on_request(&mut self, req: &Message<R>, span: &Span);
 }
 
 impl<R> OnRequest<R> for () {
-    fn on_request(&mut self, _req: &R, _span: &Span) {}
+    fn on_request(&mut self, _req: &Message<R>, _span: &Span) {}
 }
 
 impl<R, F> OnRequest<R> for F
 where
     F: FnMut(&R, &Span),
 {
-    fn on_request(&mut self, req: &R, span: &Span) {
+    fn on_request(&mut self, req: &Message<R>, span: &Span) {
         self(req, span)
     }
 }
@@ -44,7 +46,7 @@ impl DefaultOnRequest {
 }
 
 impl<R> OnRequest<R> for DefaultOnRequest {
-    fn on_request(&mut self, _req: &R, _span: &Span) {
+    fn on_request(&mut self, _req: &Message<R>, _span: &Span) {
         event_dynamic_lvl!(self.level, "started processing message");
     }
 }

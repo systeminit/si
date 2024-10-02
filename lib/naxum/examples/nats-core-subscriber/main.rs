@@ -2,7 +2,7 @@ use std::{convert::Infallible, env, error, str, time::Duration};
 
 use futures::StreamExt;
 use naxum::{
-    extract::State, handler::Handler, middleware::trace::TraceLayer, BoxError, ServiceExt,
+    extract::State, handler::Handler, middleware::trace::TraceLayer, BoxError, Message, ServiceExt,
 };
 use tokio::{
     signal::unix::{self, SignalKind},
@@ -26,7 +26,7 @@ struct AppState {}
 
 async fn default(
     State(_state): State<AppState>,
-    msg: async_nats::Message,
+    msg: Message<async_nats::Message>,
 ) -> naxum::response::Result<()> {
     info!(subject = msg.subject.as_str(), "processing message");
 

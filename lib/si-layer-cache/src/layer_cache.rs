@@ -64,7 +64,7 @@ where
         ),
     )]
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("debug");
 
         Ok(match self.memory_cache.get(&key).await {
             Some(memory_value) => {

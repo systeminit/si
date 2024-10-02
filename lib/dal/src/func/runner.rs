@@ -188,6 +188,8 @@ impl FuncRunner {
         args: serde_json::Value,
         component_id: ComponentId,
     ) -> FuncRunnerResult<(FuncRunId, FuncRunnerValueChannel)> {
+        let span = current_span_for_instrument_at!("debug");
+
         // Prepares the function for execution.
         //
         // Note: this function is internal so we can record early-returning errors in span metadata
@@ -285,8 +287,6 @@ impl FuncRunner {
             })
         }
 
-        let span = Span::current();
-
         let runner = prepare(ctx, func, args, component_id, &span)
             .await
             .map_err(|err| span.record_err(err))?;
@@ -327,6 +327,8 @@ impl FuncRunner {
         ctx: &DalContext,
         func: &Func,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+        let span = current_span_for_instrument_at!("debug");
+
         // Prepares the function for execution.
         //
         // Note: this function is internal so we can record early-returning errors in span metadata
@@ -440,8 +442,6 @@ impl FuncRunner {
             })
         }
 
-        let span = Span::current();
-
         let runner = prepare(ctx, func, &span)
             .await
             .map_err(|err| span.record_err(err))?;
@@ -483,6 +483,8 @@ impl FuncRunner {
         value: Option<serde_json::Value>,
         validation_format: String,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+        let span = current_span_for_instrument_at!("debug");
+
         // Prepares the function for execution.
         //
         // Note: this function is internal so we can record early-returning errors in span metadata
@@ -625,8 +627,6 @@ impl FuncRunner {
             })
         }
 
-        let span = Span::current();
-
         let runner = prepare(ctx, attribute_value_id, value, validation_format, &span)
             .await
             .map_err(|err| span.record_err(err))?;
@@ -666,6 +666,8 @@ impl FuncRunner {
         func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+        let span = current_span_for_instrument_at!("info");
+
         // Prepares the function for execution.
         //
         // Note: this function is internal so we can record early-returning errors in span metadata
@@ -805,8 +807,6 @@ impl FuncRunner {
             })
         }
 
-        let span = Span::current();
-
         let runner = prepare(ctx, attribute_value_id, func_id, args, &span)
             .await
             .map_err(|err| span.record_err(err))?;
@@ -850,6 +850,8 @@ impl FuncRunner {
         func_id: FuncId,
         args: serde_json::Value,
     ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+        let span = current_span_for_instrument_at!("debug");
+
         // Prepares the function for execution.
         //
         // Note: this function is internal so we can record early-returning errors in span metadata
@@ -1026,8 +1028,6 @@ impl FuncRunner {
             })
         }
 
-        let span = Span::current();
-
         let runner = prepare(ctx, action_prototype_id, component_id, func_id, args, &span)
             .await
             .map_err(|err| span.record_err(err))?;
@@ -1044,7 +1044,7 @@ impl FuncRunner {
         fields(job.id = Empty, si.func_run.id = Empty)
     )]
     pub async fn kill_execution(ctx: &DalContext, func_run_id: FuncRunId) -> FuncRunnerResult<()> {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
 
         if !span.is_disabled() {
             let mut id_buf = FuncRunId::array_to_str_buf();
@@ -1469,13 +1469,14 @@ impl FuncRunnerExecutionTask {
 
     #[instrument(
         name = "func_runner.execution_task.run",
-        level = "debug",
+        level = "info",
         parent = &self.parent_span,
         skip_all,
         fields()
     )]
     async fn run(self) {
-        let span = Span::current();
+        let span = current_span_for_instrument_at!("info");
+
         let parent_span = self.parent_span.clone();
 
         if let Err(err) = self

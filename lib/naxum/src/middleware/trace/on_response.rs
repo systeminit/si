@@ -9,20 +9,20 @@ use crate::{
 
 use super::DEFAULT_MESSAGE_LEVEL;
 
-pub trait OnResponse {
-    fn on_response(self, response: &Response, latency: Duration, span: &Span);
+pub trait OnResponse<B> {
+    fn on_response(self, response: &Response<B>, latency: Duration, span: &Span);
 }
 
-impl OnResponse for () {
+impl<B> OnResponse<B> for () {
     #[inline]
-    fn on_response(self, _response: &Response, _latency: Duration, _span: &Span) {}
+    fn on_response(self, _response: &Response<B>, _latency: Duration, _span: &Span) {}
 }
 
-impl<F> OnResponse for F
+impl<B, F> OnResponse<B> for F
 where
-    F: FnOnce(&Response, Duration, &Span),
+    F: FnOnce(&Response<B>, Duration, &Span),
 {
-    fn on_response(self, response: &Response, latency: Duration, span: &Span) {
+    fn on_response(self, response: &Response<B>, latency: Duration, span: &Span) {
         self(response, latency, span)
     }
 }
@@ -58,8 +58,8 @@ impl DefaultOnResponse {
     }
 }
 
-impl OnResponse for DefaultOnResponse {
-    fn on_response(self, _response: &Response, latency: Duration, _span: &Span) {
+impl<B> OnResponse<B> for DefaultOnResponse {
+    fn on_response(self, _response: &Response<B>, latency: Duration, _span: &Span) {
         let latency = Latency {
             unit: self.latency_unit,
             duration: latency,

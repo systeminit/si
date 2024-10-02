@@ -18,4 +18,5 @@ serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }

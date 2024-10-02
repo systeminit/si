@@ -11,12 +11,15 @@ use dal::{
     JobQueueProcessor, NatsProcessor, ServicesContext,
 };
 use naxum::{
+    extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        trace::{DefaultMakeSpan, DefaultOnResponse, OnRequest, TraceLayer},
+        matched_subject::{ForSubject, MatchedSubjectLayer},
+        trace::{OnRequest, TraceLayer},
     },
-    MessageHead, ServiceExt as _,
+    response::{IntoResponse, Response},
+    Message, MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use rebaser_client::RebaserClient;
 use rebaser_core::nats;
@@ -28,7 +31,6 @@ use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use telemetry::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tower::ServiceBuilder;
 use veritech_client::Client as VeritechClient;
 
 use crate::{app_state::AppState, handlers, Config, Error, Result};
@@ -144,6 +146,8 @@ impl Server {
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
 
+        let connection_metadata = nats.metadata_clone();
+
         let tasks = nats::rebaser_tasks_jetstream_stream(&context)
             .await?
             .create_consumer(Self::rebaser_tasks_consumer_config(prefix.as_deref()))
@@ -166,13 +170,20 @@ impl Server {
 
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new()
+                    .for_subject(RebaserTasksForSubject::with_prefix(prefix.as_deref())),
+            )
+            .layer(
                 TraceLayer::new()
-                    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                    .make_span_with(
+                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
+                    )
                     .on_request(RebaserOnRequest)
-                    .on_response(DefaultOnResponse::new().level(Level::TRACE)),
+                    .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(AckLayer::new())
-            .service(handlers::default.with_state(state));
+            .service(handlers::default.with_state(state))
+            .map_response(Response::into_response);
 
         let inner = match concurrency_limit {
             Some(concurrency_limit) => Box::new(
@@ -291,7 +302,74 @@ impl<R> OnRequest<R> for RebaserOnRequest
 where
     R: MessageHead,
 {
-    fn on_request(&mut self, req: &R, _span: &Span) {
+    fn on_request(&mut self, req: &Message<R>, _span: &Span) {
         info!(task = req.subject().as_str(), "starting task");
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RebaserTasksForSubject {
+    prefix: Option<()>,
+}
+
+impl RebaserTasksForSubject {
+    fn with_prefix(prefix: Option<&str>) -> Self {
+        Self {
+            prefix: prefix.map(|_p| ()),
+        }
+    }
+}
+
+impl<R> ForSubject<R> for RebaserTasksForSubject
+where
+    R: MessageHead,
+{
+    fn call(&mut self, req: &mut naxum::Message<R>) {
+        let mut parts = req.subject().split('.');
+
+        match self.prefix {
+            Some(_) => {
+                if let (
+                    Some(prefix),
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (
+                    Some(p1),
+                    Some(p2),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    Some(kind),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+        }
     }
 }

@@ -6,7 +6,10 @@ use std::{
 use async_nats::jetstream;
 use tower::Service;
 
-use crate::{response::Response, MessageHead};
+use crate::{
+    message::{Message, MessageHead},
+    response::Response,
+};
 
 use super::{
     future::ResponseFuture, DefaultOnFailure, DefaultOnSuccess, Info, OnFailure, OnSuccess,
@@ -34,10 +37,10 @@ impl<S> PostProcess<S> {
     }
 }
 
-impl<S, OnSuccessT, OnFailureT> Service<jetstream::Message>
+impl<S, OnSuccessT, OnFailureT> Service<Message<jetstream::Message>>
     for PostProcess<S, OnSuccessT, OnFailureT>
 where
-    S: Service<jetstream::Message, Response = Response>,
+    S: Service<Message<jetstream::Message>, Response = Response>,
     OnSuccessT: OnSuccess,
     OnFailureT: OnFailure,
 {
@@ -49,22 +52,32 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: jetstream::Message) -> Self::Future {
+    fn call(&mut self, req: Message<jetstream::Message>) -> Self::Future {
+        // Decontruct the message into head and payload and save a copy of head
         let parts = req.into_parts();
         let head = Arc::new(parts.0.clone());
-        let message = match <jetstream::Message as MessageHead>::from_parts(parts.0, parts.1) {
-            Ok(message) => message,
-            Err(err) => unreachable!(
-                "NATS Jetstream message from parts should succeed, this is a bug!; error={:?}",
-                err
-            ),
-        };
 
+        // Reconstruct a jetstream message from head and payload
+        let (jetstream_message, extensions) =
+            match <jetstream::Message as MessageHead>::from_head_and_payload(parts.0, parts.1) {
+                Ok(message) => message,
+                Err(err) => unreachable!(
+                    "NATS Jetstream message from parts should succeed, this is a bug!; error={:?}",
+                    err
+                ),
+            };
+
+        // Create an info from the jetstream message
         let info = Arc::new(Info::from(
             // TODO(fnichol): the middleware here is infallible, but this call could, in theory
             // error. There's probably a better alternative here...
-            message.info().expect("failed to parse message info"),
+            jetstream_message
+                .info()
+                .expect("failed to parse message info"),
         ));
+
+        // Create final message from jetstream message and remaining extensions
+        let message = Message::new_with_extensions(jetstream_message, extensions);
 
         let response = self.inner.call(message);
 
