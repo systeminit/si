@@ -422,7 +422,7 @@ impl Component {
     );
 
     #[instrument(
-        name = "component.new", 
+        name = "component.new",
         level = "info",
         skip_all,
         fields(
@@ -2909,6 +2909,9 @@ impl Component {
         let original_incoming_connections = original_component.incoming_connections(ctx).await?;
         let original_outgoing_connections = original_component.outgoing_connections(ctx).await?;
 
+        let original_parent = original_component.parent(ctx).await?;
+        let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
+
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
         // ================================================================================
@@ -2941,20 +2944,6 @@ impl Component {
             return Err(ComponentError::ComponentIncorrectSchemaVariant(
                 new_component_with_temp_id.id(),
             ));
-        }
-
-        // Restore parent connection on new component
-        if let Some(parent) = original_component.parent(ctx).await? {
-            Frame::upsert_parent(ctx, new_component_with_temp_id.id(), parent)
-                .await
-                .map_err(Box::new)?;
-        }
-
-        // Restore child connections on new component
-        for child in Component::get_children_for_id(ctx, original_component_id).await? {
-            Frame::upsert_parent(ctx, child, new_component_with_temp_id.id())
-                .await
-                .map_err(Box::new)?;
         }
 
         // Remove old component connections
@@ -3042,6 +3031,20 @@ impl Component {
             .await?
             .publish_on_commit(ctx)
             .await?;
+
+        // Restore parent connection on new component
+        if let Some(parent) = original_parent {
+            Frame::upsert_parent(ctx, finalized_new_component.id(), parent)
+                .await
+                .map_err(Box::new)?;
+        }
+
+        // Restore child connections on new component
+        for child in original_children {
+            Frame::upsert_parent(ctx, child, finalized_new_component.id())
+                .await
+                .map_err(Box::new)?;
+        }
 
         // Restore connections on new component
         for incoming in &original_incoming_connections {
