@@ -28,7 +28,7 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "../change_sets.store";
@@ -74,6 +74,28 @@ export type MgmtPrototype = {
   managementPrototypeId: ManagementPrototypeId;
   funcId: FuncId;
 };
+export function actionBindingsForVariant(
+  variant: SchemaVariant,
+  summaries: Record<FuncId, FuncSummary>,
+  actionBindings: Record<FuncId, Action[]>,
+) {
+  const bindings = [] as BindingWithDisplayName[];
+  variant?.funcIds.forEach((funcId) => {
+    const summary = summaries[funcId];
+    const actions = actionBindings[funcId]?.filter(
+      (b) => b.schemaVariantId === variant.schemaVariantId,
+    );
+    if (actions && actions.length > 0) {
+      actions.forEach((b) => {
+        const a = _.clone(b) as BindingWithDisplayName;
+        a.displayName = summary?.displayName;
+        a.name = summary?.name || "<not set>";
+        bindings.push(a);
+      });
+    }
+  });
+  return bindings;
+}
 
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
@@ -208,28 +230,20 @@ export const useFuncStore = () => {
         },
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
-          const bindings = [] as BindingWithDisplayName[];
           const variant =
             componentsStore.schemaVariantsById[
               componentsStore.selectedComponent?.schemaVariantId || ""
             ];
+          if (!variant) return [];
+          const summaries: Record<FuncId, FuncSummary> = {};
+          const actionBindings: Record<FuncId, Action[]> = {};
           variant?.funcIds.forEach((funcId) => {
             const summary = this.funcsById[funcId];
-            const actions = this.actionBindings[funcId]?.filter(
-              (b) =>
-                b.schemaVariantId ===
-                componentsStore.selectedComponent?.schemaVariantId,
-            );
-            if (actions && actions.length > 0) {
-              actions.forEach((b) => {
-                const a = _.cloneDeep(b) as BindingWithDisplayName;
-                a.displayName = summary?.displayName;
-                a.name = summary?.name || "<not set>";
-                bindings.push(a);
-              });
-            }
+            if (summary) summaries[funcId] = summary;
+            const actions = this.actionBindings[funcId];
+            if (actions) actionBindings[funcId] = actions;
           });
-          return bindings;
+          return actionBindingsForVariant(variant, summaries, actionBindings);
         },
 
         intrinsicBindingsByVariant(
