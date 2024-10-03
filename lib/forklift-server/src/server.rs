@@ -8,10 +8,15 @@ use std::{
 use billing_events::{BillingEventsError, BillingEventsWorkQueue};
 use data_warehouse_stream_client::DataWarehouseStreamClient;
 use naxum::{
+    extract::MatchedSubject,
     handler::Handler as _,
-    middleware::{ack::AckLayer, trace::TraceLayer},
+    middleware::{
+        ack::AckLayer,
+        matched_subject::{ForSubject, MatchedSubjectLayer},
+        trace::TraceLayer,
+    },
     response::{IntoResponse, Response},
-    ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{async_nats, jetstream, NatsClient};
 use si_data_nats::{
@@ -158,6 +163,11 @@ impl Server {
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new().for_subject(ForkliftForSubject::with_prefix(
+                    connection_metadata.subject_prefix(),
+                )),
+            )
+            .layer(
                 TraceLayer::new()
                     .make_span_with(
                         telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
@@ -199,6 +209,11 @@ impl Server {
     ) -> ServerResult<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
         let app = ServiceBuilder::new()
             .layer(
+                MatchedSubjectLayer::new().for_subject(ForkliftForSubject::with_prefix(
+                    connection_metadata.subject_prefix(),
+                )),
+            )
+            .layer(
                 TraceLayer::new()
                     .make_span_with(
                         telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
@@ -231,6 +246,51 @@ impl Server {
             durable_name: Some(CONSUMER_NAME.to_owned()),
             filter_subject: subject.into(),
             ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ForkliftForSubject {
+    prefix: Option<()>,
+}
+
+impl ForkliftForSubject {
+    fn with_prefix(prefix: Option<&str>) -> Self {
+        Self {
+            prefix: prefix.map(|_p| ()),
+        }
+    }
+}
+
+impl<R> ForSubject<R> for ForkliftForSubject
+where
+    R: MessageHead,
+{
+    fn call(&mut self, req: &mut naxum::Message<R>) {
+        let mut parts = req.subject().split('.');
+
+        match self.prefix {
+            Some(_) => {
+                if let (Some(prefix), Some(p1), Some(p2), Some(_workspace_id), None) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (Some(p1), Some(p2), Some(_workspace_id), None) =
+                    (parts.next(), parts.next(), parts.next(), parts.next())
+                {
+                    let matched = format!("{p1}.{p2}.:workspace_id");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
         }
     }
 }

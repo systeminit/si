@@ -34,7 +34,11 @@ pub(crate) async fn process_request(
     _subject: Subject,
     Json(request): Json<BillingEvent>,
 ) -> HandlerResult<()> {
-    trace!(kind = ?request.kind, ?request, "received billing event");
+    let span = Span::current();
+
+    span.record("si.workspace.id", request.workspace_id.to_string());
+    span.record("si.change_set.id", request.change_set_id.to_string());
+
     let serialized_request = serde_json::to_vec(&request)?;
     state
         .data_warehouse_stream_client
@@ -50,6 +54,11 @@ pub(crate) async fn process_request_noop(
     _subject: Subject,
     Json(request): Json<BillingEvent>,
 ) -> HandlerResult<()> {
+    let span = Span::current();
+
+    span.record("si.workspace.id", request.workspace_id.to_string());
+    span.record("si.change_set.id", request.change_set_id.to_string());
+
     info!(
         kind = ?request.kind,
         ?request,
