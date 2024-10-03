@@ -197,21 +197,7 @@ impl Diagram {
         let mut precomputed_incoming_connections = HashMap::with_capacity(components.len());
 
         for component in components.values() {
-            let exists_in_base = base_snapshot
-                .get_node_index_by_id_opt(component.id())
-                .await
-                .is_some();
-
-            let change_status = if exists_in_base {
-                if component.to_delete() {
-                    ChangeStatus::Deleted
-                } else {
-                    ChangeStatus::Unmodified
-                }
-            } else {
-                ChangeStatus::Added
-            };
-
+            let change_status = component.change_status(ctx).await?;
             component_views.push(
                 component
                     .into_frontend_type(ctx, change_status, diagram_sockets)

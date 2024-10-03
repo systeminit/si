@@ -6,9 +6,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use dal::{
-    change_status::ChangeStatus, ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent,
-};
+use dal::{ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -130,7 +128,11 @@ pub async fn remove_delete_intent(
     for component_id in request.components {
         let component = Component::get_by_id(&ctx, component_id).await?;
         let payload = component
-            .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+            .into_frontend_type(
+                &ctx,
+                component.change_status(&ctx).await?,
+                &mut diagram_sockets,
+            )
             .await?;
         WsEvent::component_updated(&ctx, payload)
             .await?

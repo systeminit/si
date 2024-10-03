@@ -6,8 +6,8 @@ use axum::{
     Json,
 };
 use dal::{
-    change_status::ChangeStatus, component::ComponentGeometry, ChangeSet, Component, ComponentId,
-    ComponentType, Visibility, WsEvent,
+    component::ComponentGeometry, ChangeSet, Component, ComponentId, ComponentType, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -60,11 +60,9 @@ pub async fn set_type(
     }
 
     let component = Component::get_by_id(&ctx, component_id).await?;
-    // TODO: We'll want to figure out whether this component is Added/Modified, depending on
-    // whether it existed in the base change set already or not.
     let mut socket_map = HashMap::new();
     let payload = component
-        .into_frontend_type(&ctx, ChangeStatus::Unmodified, &mut socket_map)
+        .into_frontend_type(&ctx, component.change_status(&ctx).await?, &mut socket_map)
         .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
