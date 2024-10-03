@@ -550,18 +550,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "async-compression-0.4.12.crate",
-    sha256 = "fec134f64e2bc57411226dfc4e52dec859ddfc7e711fc5e07b612584f000e4aa",
-    strip_prefix = "async-compression-0.4.12",
-    urls = ["https://static.crates.io/crates/async-compression/0.4.12/download"],
+    name = "async-compression-0.4.13.crate",
+    sha256 = "7e614738943d3f68c628ae3dbce7c3daffb196665f82f8c8ea6b65de73c79429",
+    strip_prefix = "async-compression-0.4.13",
+    urls = ["https://static.crates.io/crates/async-compression/0.4.13/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "async-compression-0.4.12",
-    srcs = [":async-compression-0.4.12.crate"],
+    name = "async-compression-0.4.13",
+    srcs = [":async-compression-0.4.13.crate"],
     crate = "async_compression",
-    crate_root = "async-compression-0.4.12.crate/src/lib.rs",
+    crate_root = "async-compression-0.4.13.crate/src/lib.rs",
     edition = "2018",
     features = [
         "brotli",
@@ -572,7 +572,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":brotli-6.0.0",
+        ":brotli-7.0.0",
         ":flate2-1.0.34",
         ":futures-core-0.3.30",
         ":memchr-2.7.4",
@@ -2417,18 +2417,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "brotli-6.0.0.crate",
-    sha256 = "74f7971dbd9326d58187408ab83117d8ac1bb9c17b085fdacd1cf2f598719b6b",
-    strip_prefix = "brotli-6.0.0",
-    urls = ["https://static.crates.io/crates/brotli/6.0.0/download"],
+    name = "brotli-7.0.0.crate",
+    sha256 = "cc97b8f16f944bba54f0433f07e30be199b6dc2bd25937444bbad560bcea29bd",
+    strip_prefix = "brotli-7.0.0",
+    urls = ["https://static.crates.io/crates/brotli/7.0.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "brotli-6.0.0",
-    srcs = [":brotli-6.0.0.crate"],
+    name = "brotli-7.0.0",
+    srcs = [":brotli-7.0.0.crate"],
     crate = "brotli",
-    crate_root = "brotli-6.0.0.crate/src/lib.rs",
+    crate_root = "brotli-7.0.0.crate/src/lib.rs",
     edition = "2015",
     features = [
         "alloc-stdlib",
@@ -6445,7 +6445,7 @@ cargo.rust_library(
         ":futures-sink-0.3.30",
         ":futures-util-0.3.30",
         ":http-0.2.12",
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":slab-0.4.9",
         ":tokio-1.40.0",
         ":tokio-util-0.7.12",
@@ -6549,13 +6549,29 @@ cargo.rust_library(
         "allocator-api2",
         "default",
         "inline-more",
-        "raw",
     ],
     visibility = [],
     deps = [
         ":ahash-0.8.11",
         ":allocator-api2-0.2.18",
     ],
+)
+
+http_archive(
+    name = "hashbrown-0.15.0.crate",
+    sha256 = "1e087f84d4f86bf4b218b927129862374b72199ae7d8657835f1e89000eea4fb",
+    strip_prefix = "hashbrown-0.15.0",
+    urls = ["https://static.crates.io/crates/hashbrown/0.15.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "hashbrown-0.15.0",
+    srcs = [":hashbrown-0.15.0.crate"],
+    crate = "hashbrown",
+    crate_root = "hashbrown-0.15.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
 )
 
 http_archive(
@@ -7434,7 +7450,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":unicode-bidi-0.3.15",
+        ":unicode-bidi-0.3.17",
         ":unicode-normalization-0.1.24",
     ],
 )
@@ -7553,23 +7569,23 @@ cargo.rust_library(
 
 alias(
     name = "indexmap",
-    actual = ":indexmap-2.5.0",
+    actual = ":indexmap-2.6.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "indexmap-2.5.0.crate",
-    sha256 = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5",
-    strip_prefix = "indexmap-2.5.0",
-    urls = ["https://static.crates.io/crates/indexmap/2.5.0/download"],
+    name = "indexmap-2.6.0.crate",
+    sha256 = "707907fe3c25f5424cce2cb7e1cbcafee6bdbe735ca90ef77c29e84591e5b9da",
+    strip_prefix = "indexmap-2.6.0",
+    urls = ["https://static.crates.io/crates/indexmap/2.6.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "indexmap-2.5.0",
-    srcs = [":indexmap-2.5.0.crate"],
+    name = "indexmap-2.6.0",
+    srcs = [":indexmap-2.6.0.crate"],
     crate = "indexmap",
-    crate_root = "indexmap-2.5.0.crate/src/lib.rs",
+    crate_root = "indexmap-2.6.0.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -7580,7 +7596,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":equivalent-1.0.1",
-        ":hashbrown-0.14.5",
+        ":hashbrown-0.15.0",
         ":serde-1.0.210",
     ],
 )
@@ -7708,18 +7724,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "ipnet-2.10.0.crate",
-    sha256 = "187674a687eed5fe42285b40c6291f9a01517d415fad1c3cbc6a9f778af7fcd4",
-    strip_prefix = "ipnet-2.10.0",
-    urls = ["https://static.crates.io/crates/ipnet/2.10.0/download"],
+    name = "ipnet-2.10.1.crate",
+    sha256 = "ddc24109865250148c2e0f3d25d4f0f479571723792d3802153c60922a4fb708",
+    strip_prefix = "ipnet-2.10.1",
+    urls = ["https://static.crates.io/crates/ipnet/2.10.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "ipnet-2.10.0",
-    srcs = [":ipnet-2.10.0.crate"],
+    name = "ipnet-2.10.1",
+    srcs = [":ipnet-2.10.1.crate"],
     crate = "ipnet",
-    crate_root = "ipnet-2.10.0.crate/src/lib.rs",
+    crate_root = "ipnet-2.10.1.crate/src/lib.rs",
     edition = "2018",
     features = [
         "default",
@@ -10833,7 +10849,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":fixedbitset-0.4.2",
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":serde-1.0.210",
         ":serde_derive-1.0.210",
     ],
@@ -11897,7 +11913,7 @@ cargo.rust_library(
         "linux-x86_64": dict(
             deps = [
                 ":libc-0.2.159",
-                ":raw-cpuid-11.1.0",
+                ":raw-cpuid-11.2.0",
             ],
         ),
         "macos-arm64": dict(
@@ -11906,18 +11922,18 @@ cargo.rust_library(
         "macos-x86_64": dict(
             deps = [
                 ":libc-0.2.159",
-                ":raw-cpuid-11.1.0",
+                ":raw-cpuid-11.2.0",
             ],
         ),
         "windows-gnu": dict(
             deps = [
-                ":raw-cpuid-11.1.0",
+                ":raw-cpuid-11.2.0",
                 ":winapi-0.3.9",
             ],
         ),
         "windows-msvc": dict(
             deps = [
-                ":raw-cpuid-11.1.0",
+                ":raw-cpuid-11.2.0",
                 ":winapi-0.3.9",
             ],
         ),
@@ -12292,18 +12308,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "raw-cpuid-11.1.0.crate",
-    sha256 = "cb9ee317cfe3fbd54b36a511efc1edd42e216903c9cd575e686dd68a2ba90d8d",
-    strip_prefix = "raw-cpuid-11.1.0",
-    urls = ["https://static.crates.io/crates/raw-cpuid/11.1.0/download"],
+    name = "raw-cpuid-11.2.0.crate",
+    sha256 = "1ab240315c661615f2ee9f0f2cd32d5a7343a84d5ebcccb99d46e6637565e7b0",
+    strip_prefix = "raw-cpuid-11.2.0",
+    urls = ["https://static.crates.io/crates/raw-cpuid/11.2.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "raw-cpuid-11.1.0",
-    srcs = [":raw-cpuid-11.1.0.crate"],
+    name = "raw-cpuid-11.2.0",
+    srcs = [":raw-cpuid-11.2.0.crate"],
     crate = "raw_cpuid",
-    crate_root = "raw-cpuid-11.1.0.crate/src/lib.rs",
+    crate_root = "raw-cpuid-11.2.0.crate/src/lib.rs",
     edition = "2018",
     visibility = [],
     deps = [":bitflags-2.6.0"],
@@ -12778,7 +12794,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -12800,7 +12816,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -12822,7 +12838,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -12844,7 +12860,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -12866,7 +12882,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -12889,7 +12905,7 @@ cargo.rust_library(
                 ":hyper-1.4.1",
                 ":hyper-rustls-0.27.3",
                 ":hyper-util-0.1.9",
-                ":ipnet-2.10.0",
+                ":ipnet-2.10.1",
                 ":log-0.4.22",
                 ":mime-0.3.17",
                 ":once_cell-1.20.1",
@@ -15056,7 +15072,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":itoa-1.0.11",
         ":memchr-2.7.4",
         ":ryu-1.0.18",
@@ -15230,7 +15246,7 @@ cargo.rust_library(
     named_deps = {
         "chrono_0_4": ":chrono-0.4.38",
         "indexmap_1": ":indexmap-1.9.3",
-        "indexmap_2": ":indexmap-2.5.0",
+        "indexmap_2": ":indexmap-2.6.0",
         "time_0_3": ":time-0.3.36",
     },
     visibility = [],
@@ -15290,7 +15306,7 @@ cargo.rust_library(
     edition = "2021",
     visibility = [],
     deps = [
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":itoa-1.0.11",
         ":ryu-1.0.18",
         ":serde-1.0.210",
@@ -15978,7 +15994,7 @@ cargo.rust_library(
         ":futures-util-0.3.30",
         ":hashlink-0.8.4",
         ":hex-0.4.3",
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":log-0.4.22",
         ":memchr-2.7.4",
         ":once_cell-1.20.1",
@@ -16201,7 +16217,7 @@ cargo.rust_library(
     edition = "2015",
     visibility = [],
     deps = [
-        ":unicode-bidi-0.3.15",
+        ":unicode-bidi-0.3.17",
         ":unicode-normalization-0.1.24",
         ":unicode-properties-0.1.3",
     ],
@@ -16761,7 +16777,7 @@ cargo.rust_binary(
         ":hyper-0.14.30",
         ":hyperlocal-0.8.0",
         ":iftree-1.0.5",
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":indicatif-0.17.8",
         ":indoc-2.0.5",
         ":inquire-0.7.5",
@@ -17754,7 +17770,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":indexmap-2.5.0",
+        ":indexmap-2.6.0",
         ":serde-1.0.210",
         ":serde_spanned-0.6.8",
         ":toml_datetime-0.6.8",
@@ -17922,7 +17938,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":async-compression-0.4.12",
+        ":async-compression-0.4.13",
         ":bitflags-2.6.0",
         ":bytes-1.7.2",
         ":futures-core-0.3.30",
@@ -18477,18 +18493,18 @@ buildscript_run(
 )
 
 http_archive(
-    name = "unicode-bidi-0.3.15.crate",
-    sha256 = "08f95100a766bf4f8f28f90d77e0a5461bbdb219042e7679bebe79004fed8d75",
-    strip_prefix = "unicode-bidi-0.3.15",
-    urls = ["https://static.crates.io/crates/unicode-bidi/0.3.15/download"],
+    name = "unicode-bidi-0.3.17.crate",
+    sha256 = "5ab17db44d7388991a428b2ee655ce0c212e862eff1768a455c58f9aad6e7893",
+    strip_prefix = "unicode-bidi-0.3.17",
+    urls = ["https://static.crates.io/crates/unicode-bidi/0.3.17/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "unicode-bidi-0.3.15",
-    srcs = [":unicode-bidi-0.3.15.crate"],
+    name = "unicode-bidi-0.3.17",
+    srcs = [":unicode-bidi-0.3.17.crate"],
     crate = "unicode_bidi",
-    crate_root = "unicode-bidi-0.3.15.crate/src/lib.rs",
+    crate_root = "unicode-bidi-0.3.17.crate/src/lib.rs",
     edition = "2018",
     features = [
         "default",

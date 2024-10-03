@@ -39,6 +39,8 @@ use si_events::{
     ChangeSetId, ChangeSetStatus, ComponentId, FuncRunId, SchemaId, SchemaVariantId, UserPk,
     WorkspacePk, WorkspaceSnapshotAddress,
 };
+use telemetry::prelude::*;
+use telemetry_nats::propagation;
 use thiserror::Error;
 
 const STREAM_NAME: &str = "BILLING_EVENTS";
@@ -132,6 +134,14 @@ impl BillingEventsWorkQueue {
     }
 
     /// Publishes a workspace update.
+    #[instrument(
+        name = "billing_events_work_queue.publish_workspace_update",
+        level = "info",
+        skip_all,
+        fields(
+            si.workspace.id = workspace_id,
+        )
+    )]
     pub async fn publish_workspace_update(
         &self,
         workspace_id: &str,
@@ -175,7 +185,11 @@ impl BillingEventsWorkQueue {
         let subject = self.prefixed_subject(subject, parameters);
         let ack = self
             .context
-            .publish(subject, serde_json::to_vec(message)?.into())
+            .publish_with_headers(
+                subject,
+                propagation::empty_injected_headers(),
+                serde_json::to_vec(message)?.into(),
+            )
             .await?;
         ack.await?;
         Ok(())
