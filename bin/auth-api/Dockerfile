@@ -11,10 +11,10 @@ FROM node:$NODE_VERSION-slim AS installer
 WORKDIR /app
 COPY --from=base /app/out/json/ ./
 COPY --from=base /app/out/pnpm-lock.yaml ./app/out/pnpm-workspace.yaml ./
-RUN npm i -g pnpm@8.1.1
+RUN npm i -g pnpm@^8
 COPY --from=base /app/out/full/ .
 
-FROM installer as builder
+FROM installer AS builder
 WORKDIR /app/bin/auth-api
 RUN pnpx prisma generate
 RUN pnpm run build \
@@ -22,8 +22,8 @@ RUN pnpm run build \
     && PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy pruned \
     && rm -rf pruned/src
 
-FROM node:$NODE_VERSION-alpine as runner
-RUN  npm i -g pnpm@8.1.1
+FROM node:$NODE_VERSION-alpine AS runner
+RUN  npm i -g pnpm@^8
 WORKDIR /app
 COPY ./config ./config
 COPY --from=builder /app/bin/auth-api/pruned .
