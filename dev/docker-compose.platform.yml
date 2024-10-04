@@ -174,3 +174,14 @@ services:
     image: localstack/localstack
     ports:
       - "4566:4566"
+
+  spicedb:
+    #<<: *loki-logged-service
+    build: ../component/spicedb
+    environment:
+      - "SPICEDB_LOG_FORMAT=console"
+      - "SPICEDB_GRPC_PRESHARED_KEY=hobgoblin"
+      - "SPICEDB_DATASTORE_ENGINE=memory"
+      - "ZED_KEYRING_PASSWORD=orc"
+    ports:
+      - "50051:50051"

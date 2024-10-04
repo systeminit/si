@@ -10,13 +10,10 @@ cfg = config.parse()
 
 groups = {
     "platform": [
-        "nats",
-        "otelcol",
         "db",
+        "nats",
         "postgres",
-        "db-test",
-        "postgres-test",
-        "jaeger",
+        "spicedb",
     ],
     "backend": [
         "pinga",
@@ -30,14 +27,17 @@ groups = {
         "web",
     ],
     "testing": [
+        "db-test",
         "localstack",
-
+        "postgres-test",
     ],
     "telemetry": [
+        "grafana",
+        "jaeger",
+        "loki",
+        "otelcol",
         "prometheus",
         "promtail",
-        "grafana",
-        "loki",
     ],
 }
 
@@ -110,7 +110,7 @@ def find_group(name, groups):
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "loki",  "grafana", "localstack", "promtail", "prometheus"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "postgres-test", "db", "db-test", "loki",  "grafana", "localstack", "promtail", "prometheus", "spicedb"]
 for service in compose_services:
     if service == "jaeger":
         links = [
@@ -295,6 +295,7 @@ local_resource(
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
+        "spicedb",
         "nats",
         "otelcol",
         "pinga",
