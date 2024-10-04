@@ -7,7 +7,8 @@ use crate::func::FuncResult;
 use crate::{FuncBackendKind, FuncBackendResponseType};
 
 /// Describes the kind of [`Func`](crate::Func).
-#[remain::sorted]
+/// This type is postcard serialized, so cannot be "remain::sorted". New enum
+/// variants must go at the end
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum FuncKind {
     Action,
@@ -18,6 +19,7 @@ pub enum FuncKind {
     Qualification,
     SchemaVariantDefinition,
     Unknown,
+    Management,
 }
 
 impl From<EventFuncKind> for FuncKind {
@@ -31,6 +33,7 @@ impl From<EventFuncKind> for FuncKind {
             EventFuncKind::Qualification => FuncKind::Qualification,
             EventFuncKind::SchemaVariantDefinition => FuncKind::SchemaVariantDefinition,
             EventFuncKind::Unknown => FuncKind::Unknown,
+            EventFuncKind::Management => FuncKind::Management,
         }
     }
 }
@@ -46,6 +49,7 @@ impl From<FuncKind> for si_events::FuncKind {
             FuncKind::Qualification => si_events::FuncKind::Qualification,
             FuncKind::SchemaVariantDefinition => si_events::FuncKind::SchemaVariantDefinition,
             FuncKind::Unknown => si_events::FuncKind::Unknown,
+            FuncKind::Management => si_events::FuncKind::Management,
         }
     }
 }
@@ -55,15 +59,16 @@ impl FuncKind {
         func_backend_kind: FuncBackendKind,
         func_backend_response_type: FuncBackendResponseType,
     ) -> FuncResult<FuncKind> {
-        match func_backend_kind {
+        Ok(match func_backend_kind {
             FuncBackendKind::JsAttribute => match func_backend_response_type {
-                FuncBackendResponseType::CodeGeneration => Ok(FuncKind::CodeGeneration),
-                FuncBackendResponseType::Qualification => Ok(FuncKind::Qualification),
-                _ => Ok(FuncKind::Attribute),
+                FuncBackendResponseType::CodeGeneration => FuncKind::CodeGeneration,
+                FuncBackendResponseType::Qualification => FuncKind::Qualification,
+                _ => FuncKind::Attribute,
             },
-            FuncBackendKind::JsAction => Ok(FuncKind::Action),
-            FuncBackendKind::JsAuthentication => Ok(FuncKind::Authentication),
-            FuncBackendKind::JsSchemaVariantDefinition => Ok(FuncKind::SchemaVariantDefinition),
+            FuncBackendKind::JsAction => FuncKind::Action,
+            FuncBackendKind::JsAuthentication => FuncKind::Authentication,
+            FuncBackendKind::JsSchemaVariantDefinition => FuncKind::SchemaVariantDefinition,
+            FuncBackendKind::Management => FuncKind::Management,
             FuncBackendKind::Array
             | FuncBackendKind::Json
             | FuncBackendKind::Boolean
@@ -74,15 +79,15 @@ impl FuncKind {
             | FuncBackendKind::Object
             | FuncBackendKind::String
             | FuncBackendKind::Unset
-            | FuncBackendKind::Validation => Ok(FuncKind::Intrinsic),
+            | FuncBackendKind::Validation => FuncKind::Intrinsic,
             FuncBackendKind::JsReconciliation | FuncBackendKind::JsValidation => {
                 warn!(
                     %func_backend_kind,
                     %func_backend_response_type,
                     "found deprecated or unknown func backend kind, marking as unknown"
                 );
-                Ok(FuncKind::Unknown)
+                FuncKind::Unknown
             }
-        }
+        })
     }
 }

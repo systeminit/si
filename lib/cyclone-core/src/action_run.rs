@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
+use telemetry_utils::metric;
 
-use crate::BeforeFunction;
+use crate::{BeforeFunction, CycloneRequestable};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,4 +32,24 @@ pub struct ActionRunResultSuccess {
     pub message: Option<String>,
     // Collects the error if the function throws
     pub error: Option<String>,
+}
+
+impl CycloneRequestable for ActionRunRequest {
+    type Response = ActionRunResultSuccess;
+
+    fn execution_id(&self) -> &str {
+        &self.execution_id
+    }
+
+    fn websocket_path(&self) -> &str {
+        "/execute/command"
+    }
+
+    fn inc_run_metric(&self) {
+        metric!(counter.function_run.action = 1);
+    }
+
+    fn dec_run_metric(&self) {
+        metric!(counter.function_run.action = -1);
+    }
 }

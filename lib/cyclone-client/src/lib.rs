@@ -10,7 +10,7 @@ pub use cyclone_core::{
     ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, SensitiveStrings,
 };
-pub use execution::{Execution, ExecutionError};
+pub use execution::{new_unstarted_execution, Execution, ExecutionError};
 pub use hyper::client::connect::Connection;
 pub use hyperlocal::UnixStream;
 pub use ping::{PingExecution, PingExecutionError};

@@ -7,6 +7,7 @@ rust_library(
         "//lib/si-hash:si-hash",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:base64",
         "//third-party/rust:nix",
         "//third-party/rust:remain",

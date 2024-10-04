@@ -1,3 +1,4 @@
+use cyclone_core::CycloneRequestable;
 use futures::{StreamExt, TryStreamExt};
 use nats_subscriber::{Subscriber, SubscriberError};
 use serde::{de::DeserializeOwned, Serialize};
@@ -8,19 +9,17 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{
-    reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
-    NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX, NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX,
-    NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX, NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX,
-    REPLY_INBOX_HEADER_NAME,
+    reply_mailbox_for_output, reply_mailbox_for_result, GetNatsSubjectFor,
+    FINAL_MESSAGE_HEADER_KEY, REPLY_INBOX_HEADER_NAME,
 };
 
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
     FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind, KillExecutionRequest,
-    OutputStream, ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
-    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveContainer, ValidationRequest,
-    ValidationResultSuccess,
+    ManagementRequest, ManagementResultSuccess, OutputStream, ResolverFunctionComponent,
+    ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
+    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
 };
 pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 
@@ -85,18 +84,8 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
-        self.execute_request(
-            veritech_core::subject::veritech_request(
-                self.nats_subject_prefix(),
-                workspace_id,
-                change_set_id,
-                NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX,
-            ),
-            Some(output_tx),
-            request,
-            RequestMode::Jetstream,
-        )
-        .await
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
     }
 
     #[instrument(
@@ -115,18 +104,8 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
-        self.execute_request(
-            veritech_core::subject::veritech_request(
-                self.nats_subject_prefix(),
-                workspace_id,
-                change_set_id,
-                NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX,
-            ),
-            Some(output_tx),
-            request,
-            RequestMode::Jetstream,
-        )
-        .await
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
     }
 
     #[instrument(
@@ -145,18 +124,8 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<SchemaVariantDefinitionResultSuccess>> {
-        self.execute_request(
-            veritech_core::subject::veritech_request(
-                self.nats_subject_prefix(),
-                workspace_id,
-                change_set_id,
-                NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX,
-            ),
-            Some(output_tx),
-            request,
-            RequestMode::Jetstream,
-        )
-        .await
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
     }
 
     #[instrument(
@@ -175,18 +144,28 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
-        self.execute_request(
-            veritech_core::subject::veritech_request(
-                self.nats_subject_prefix(),
-                workspace_id,
-                change_set_id,
-                NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX,
-            ),
-            Some(output_tx),
-            request,
-            RequestMode::Jetstream,
-        )
-        .await
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
+    }
+
+    #[instrument(
+        name = "veritech_client.execute_management",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
+    pub async fn execute_management(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ManagementRequest,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<ManagementResultSuccess>> {
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
     }
 
     #[instrument(
@@ -200,7 +179,7 @@ impl Client {
         request: &KillExecutionRequest,
     ) -> ClientResult<FunctionResult<()>> {
         self.execute_request(
-            veritech_core::subject::veritech_kill_request(self.nats_subject_prefix()),
+            request.nats_subject(self.nats_subject_prefix(), None, None),
             None,
             request,
             RequestMode::Core,
@@ -208,16 +187,40 @@ impl Client {
         .await
     }
 
-    async fn execute_request<R, S>(
+    async fn execute_jetstream_request<R>(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &R,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<R::Response>>
+    where
+        R: Serialize + CycloneRequestable + GetNatsSubjectFor,
+        R::Response: DeserializeOwned,
+    {
+        self.execute_request(
+            request.nats_subject(
+                self.nats_subject_prefix(),
+                Some(workspace_id),
+                Some(change_set_id),
+            ),
+            Some(output_tx),
+            request,
+            RequestMode::Jetstream,
+        )
+        .await
+    }
+
+    async fn execute_request<R>(
         &self,
         subject: Subject,
         output_tx: Option<mpsc::Sender<OutputStream>>,
         request: &R,
         request_mode: RequestMode,
-    ) -> ClientResult<FunctionResult<S>>
+    ) -> ClientResult<FunctionResult<R::Response>>
     where
-        R: Serialize,
-        S: DeserializeOwned,
+        R: Serialize + CycloneRequestable,
+        R::Response: DeserializeOwned,
     {
         let msg = serde_json::to_vec(request).map_err(ClientError::JSONSerialize)?;
         let reply_mailbox_root = self.nats.new_inbox();
@@ -228,7 +231,7 @@ impl Client {
             messaging.destination = &result_subscriber_subject.as_str(),
             "subscribing for result messages"
         );
-        let mut result_subscriber: Subscriber<FunctionResult<S>> =
+        let mut result_subscriber: Subscriber<FunctionResult<R::Response>> =
             Subscriber::create(result_subscriber_subject)
                 .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
                 .start(&self.nats)

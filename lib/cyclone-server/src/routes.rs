@@ -100,6 +100,11 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             get(handlers::ws_execute_schema_variant_definition),
         ));
     }
+    if config.enable_management() {
+        debug!("enabling management function endpoint");
+        router =
+            router.merge(Router::new().route("/management", get(handlers::ws_execute_management)));
+    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 

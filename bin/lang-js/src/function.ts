@@ -14,6 +14,7 @@ import resolver_function, {
 import schema_variant_definition, {
   SchemaVariantDefinitionFunc,
 } from "./function_kinds/schema_variant_definition";
+import management_run, { ManagementFunc } from "./function_kinds/management";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run";
 import before from "./function_kinds/before";
 import { rawStorageRequest } from "./sandbox/requestStorage";
@@ -22,12 +23,13 @@ import { Debugger } from "./debug";
 export enum FunctionKind {
   ActionRun = "actionRun",
   Before = "before",
+  Management = "management",
   ResolverFunction = "resolverfunction",
   Validation = "validation",
   SchemaVariantDefinition = "schemaVariantDefinition",
 }
 
-export function functionKinds(): Array<string> {
+export function functionKinds(): Array<FunctionKind> {
   return _.values(FunctionKind);
 }
 
@@ -155,6 +157,15 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
         schema_variant_definition,
       );
       break;
+    case FunctionKind.Management:
+      result = await executor(
+        ctx,
+        request as ManagementFunc,
+        kind,
+        timeout,
+        management_run
+      )
+      break;
     default:
       throw Error(`Unknown Kind variant: ${kind}`);
   }
@@ -176,7 +187,7 @@ async function timer(seconds: number): Promise<never> {
   });
 }
 
-export async function executor<F extends Func | ActionRunFunc, Result>(
+export async function executor<F extends Func, Result>(
   ctx: RequestCtx,
   func: F,
   kind: FunctionKind,

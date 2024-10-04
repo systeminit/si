@@ -16,14 +16,13 @@ use bollard::{
     Docker,
 };
 use cyclone_client::{
-    Client, ClientConfig, ClientError, Connection, CycloneClient, Execution, LivenessStatus,
-    PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
+    new_unstarted_execution, Client, ClientConfig, ClientError, Connection, CycloneClient,
+    Execution, LivenessStatus, PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch,
+    WatchError, WatchStarted,
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, CycloneRequest,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    CanonicalCommand, CycloneRequest, CycloneRequestable,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -182,71 +181,24 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn prepare_resolver_execution(
+    async fn prepare_execution<Request>(
         &mut self,
-        request: CycloneRequest<ResolverFunctionRequest>,
-    ) -> result::Result<
-        Execution<UnixStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-        let result = self.client.prepare_resolver_execution(request).await;
-        self.count_request();
-        result
-    }
-
-    async fn prepare_validation_execution(
-        &mut self,
-        request: CycloneRequest<ValidationRequest>,
-    ) -> result::Result<
-        Execution<UnixStream, ValidationRequest, ValidationResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-        let result = self.client.prepare_validation_execution(request).await;
-        self.count_request();
-
-        result
-    }
-
-    // The request argument is the same as that in the "impl FuncDispatch for
-    // FuncBackendJsAction" in the dal.
-    async fn prepare_action_run_execution(
-        &mut self,
-        request: CycloneRequest<ActionRunRequest>,
-    ) -> result::Result<Execution<UnixStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
+        request: CycloneRequest<Request>,
+    ) -> result::Result<Execution<UnixStream, Request, Request::Response>, ClientError>
+    where
+        Request: CycloneRequestable + Send + Sync,
     {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        // Use the websocket client for cyclone to execute command run.
-        let result = self.client.prepare_action_run_execution(request).await;
-        self.count_request();
-
-        result
-    }
-
-    async fn prepare_schema_variant_definition_execution(
-        &mut self,
-        request: CycloneRequest<SchemaVariantDefinitionRequest>,
-    ) -> result::Result<
-        Execution<UnixStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-        let result = self
+        let stream = self
             .client
-            .prepare_schema_variant_definition_execution(request)
-            .await;
+            .websocket_stream(request.websocket_path())
+            .await?;
+        let result = new_unstarted_execution(stream, request);
         self.count_request();
 
-        result
+        Ok(result)
     }
 }
 

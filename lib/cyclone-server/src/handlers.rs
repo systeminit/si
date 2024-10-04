@@ -13,8 +13,9 @@ use axum::{
     response::IntoResponse,
 };
 use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, LivenessStatus, Message, ReadinessStatus,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    ActionRunRequest, ActionRunResultSuccess, CycloneRequestable, LivenessStatus,
+    ManagementRequest, ManagementResultSuccess, Message, ReadinessStatus, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use hyper::StatusCode;
@@ -221,6 +222,37 @@ pub async fn ws_execute_schema_variant_definition(
     })
 }
 
+pub async fn ws_execute_management(
+    wsu: WebSocketUpgrade,
+    State(lang_server_path): State<LangServerPath>,
+    State(telemetry_level): State<TelemetryLevel>,
+    State(lang_server_function_timeout): State<LangServerFunctionTimeout>,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
+) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
+    wsu.on_upgrade(move |socket| {
+        let request: PhantomData<ManagementRequest> = PhantomData;
+        let lang_server_success: PhantomData<ManagementResultSuccess> = PhantomData;
+        let success: PhantomData<ManagementResultSuccess> = PhantomData;
+        handle_socket(
+            socket,
+            lang_server_path,
+            telemetry_level,
+            lang_server_function_timeout.inner(),
+            lang_server_process_timeout.inner(),
+            limit_request_guard,
+            "management".to_owned(),
+            request,
+            lang_server_success,
+            success,
+            request_span.into_inner(),
+        )
+    })
+}
+
 #[instrument(
     name = "web_socket.handle_socket",
     parent = &request_span,
@@ -242,7 +274,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     success_marker: PhantomData<Success>,
     request_span: Span,
 ) where
-    Request: Serialize + DeserializeOwned + Unpin + fmt::Debug,
+    Request: Serialize + DeserializeOwned + Unpin + fmt::Debug + CycloneRequestable,
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {

@@ -379,6 +379,7 @@ impl FuncBinding {
                 AttributeBinding::assemble_intrinsic_bindings(ctx, func_id).await?
             }
             FuncKind::SchemaVariantDefinition | FuncKind::Unknown => vec![],
+            FuncKind::Management => vec![],
         };
         Ok(bindings)
     }
@@ -558,6 +559,7 @@ impl FuncBinding {
                 LeafBinding::compile_leaf_func_types(ctx, func_id).await?
             }
             FuncKind::Attribute => AttributeBinding::compile_attribute_types(ctx, func_id).await?,
+            FuncKind::Management => String::new(),
             FuncKind::Authentication
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition

@@ -4,8 +4,9 @@ rust_library(
     name = "veritech-core",
     deps = [
         "//lib/si-crypto:si-crypto",
-        "//third-party/rust:serde_json",
+        "//lib/cyclone-core:cyclone-core",
         "//lib/si-data-nats:si-data-nats",
+        "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
     ],
     test_unit_deps = [

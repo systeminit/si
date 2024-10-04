@@ -2,9 +2,10 @@ use std::env;
 
 use base64::{engine::general_purpose, Engine};
 use cyclone_core::{
-    ComponentKind, ComponentView, FunctionResult, FunctionResultFailureErrorKind,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
-    SchemaVariantDefinitionRequest, ValidationRequest,
+    ActionRunRequest, ComponentKind, ComponentView, FunctionResult, FunctionResultFailureErrorKind,
+    ManagementRequest, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResponseType, ResourceStatus, SchemaVariantDefinitionRequest,
+    ValidationRequest,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
@@ -84,6 +85,90 @@ async fn run_veritech_server_for_uds_cyclone(subject_prefix: String) -> JoinHand
 
 fn base64_encode(input: impl AsRef<[u8]>) -> String {
     general_purpose::STANDARD_NO_PAD.encode(input)
+}
+
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+#[test(tokio::test)]
+async fn executes_simple_management_function() {
+    let prefix = nats_prefix();
+    run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+    let client = client(prefix).await;
+
+    // Not going to check output here--we aren't emitting anything
+    let (tx, mut rx) = mpsc::channel(64);
+    tokio::spawn(async move {
+        while let Some(output) = rx.recv().await {
+            info!("output: {:?}", output)
+        }
+    });
+
+    let request = ManagementRequest {
+        execution_id: "1234".to_string(),
+        handler: "numberOfInputs".to_string(),
+        this_component: ComponentView {
+            properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
+            kind: ComponentKind::Standard,
+        },
+        code_base64: base64_encode(
+            "function numberOfInputs(input) { const number = Object.keys(input)?.length; return { message: `${number}` } }",
+        ),
+        before: vec![],
+    };
+
+    let result = client
+        .execute_management(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
+        .await
+        .expect("failed to execute resolver function");
+
+    match result {
+        FunctionResult::Success(success) => {
+            assert_eq!(Some("3"), success.message.as_deref())
+        }
+        FunctionResult::Failure(failure) => {
+            panic!("function did not succeed and should have: {failure:?}")
+        }
+    }
+}
+
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+#[test(tokio::test)]
+async fn executes_simple_action_run() {
+    let prefix = nats_prefix();
+    run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+    let client = client(prefix).await;
+
+    // Not going to check output here--we aren't emitting anything
+    let (tx, mut rx) = mpsc::channel(64);
+    tokio::spawn(async move {
+        while let Some(output) = rx.recv().await {
+            info!("output: {:?}", output)
+        }
+    });
+
+    let request = ActionRunRequest {
+        execution_id: "1234".to_string(),
+        handler: "numberOfInputs".to_string(),
+        args: serde_json::json!({ "foo": "bar", "baz": "foo" }),
+        code_base64: base64_encode("function numberOfInputs(input) { return { status: 'ok', payload: Object.keys(input)?.length ?? 0 } }"),
+        before: vec![],
+    };
+
+    let result = client
+        .execute_action_run(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
+        .await
+        .expect("failed to execute resolver function");
+
+    match result {
+        FunctionResult::Success(success) => {
+            dbg!(&success);
+            assert_eq!(success.execution_id, "1234");
+            assert_eq!(success.payload, Some(serde_json::json!(2)));
+            assert_eq!(success.status, ResourceStatus::Ok);
+        }
+        FunctionResult::Failure(failure) => {
+            panic!("function did not succeed and should have: {failure:?}")
+        }
+    }
 }
 
 #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
