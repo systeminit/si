@@ -15,7 +15,7 @@ use telemetry::prelude::*;
 
 use crate::{
     workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
-    SchemaVariantError,
+    ComponentError, SchemaVariantError,
 };
 
 pub mod correct_transforms;
@@ -40,6 +40,8 @@ pub enum WorkspaceSnapshotGraphError {
     CategoryNodeNotFound(CategoryNodeKind),
     // #[error("ChangeSet error: {0}")]
     // ChangeSet(#[from] ChangeSetError),
+    #[error("Component error: {0}")]
+    Component(#[from] Box<ComponentError>),
     #[error("Unable to retrieve content for ContentHash")]
     ContentMissingForContentHash,
     #[error("Action would create a graph cycle")]

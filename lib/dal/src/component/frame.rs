@@ -5,16 +5,18 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::value::AttributeValueError;
-use crate::component::inferred_connection_graph::InferredConnectionGraph;
+use crate::component::inferred_connection_graph::InferredConnection;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    Component, ComponentError, ComponentId, ComponentType, DalContext, TransactionsError, WsEvent,
-    WsEventError,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket,
+    TransactionsError, WsEvent, WsEventError,
 };
 
+use super::inferred_connection_graph::InferredConnectionGraphError;
 use super::socket::{ComponentInputSocket, ComponentOutputSocket};
 
 #[remain::sorted]
@@ -26,8 +28,12 @@ pub enum FrameError {
     AttributeValueError(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("InferredConnectionGraph error: {0}")]
+    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocketError(#[from] InputSocketError),
+    #[error("OutputSocket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("parent is not a frame (child id: {0}) (parent id: {1})")]
     ParentIsNotAFrame(ComponentId, ComponentId),
     #[error("transactions error: {0}")]
@@ -198,6 +204,7 @@ impl Frame {
         if let Some(current_parent_id) = Component::get_parent_by_id(ctx, child_id).await? {
             //remove the edge
             Component::remove_edge_from_frame(ctx, current_parent_id, child_id).await?;
+
             // get the map of input <-> output sockets after the edge was removed. so we can determine if more
             // updates need to be made due to the upsert
             // note we need to see what the current parent's tree looked like, as there could be nested impacts
@@ -216,6 +223,9 @@ impl Frame {
         Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
             .await?;
         drop(cycle_check_guard);
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         // now figure out what needs to rerun!
         let mut values_to_run: HashSet<SocketAttributeValuePair> = HashSet::new();
@@ -407,17 +417,43 @@ impl Frame {
         child_id: ComponentId,
     ) -> FrameResult<HashSet<SocketAttributeValuePair>> {
         let mut impacted_connections = HashSet::new();
-        let tree = InferredConnectionGraph::assemble_for_components(
-            ctx,
-            [child_id, parent_id].to_vec(),
-            None,
-        )
-        .await?;
-        let incoming_connections = tree.get_all_inferred_connections();
-        for incoming_connection in incoming_connections {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
+        let mut stack_inferred_connections: HashSet<InferredConnection> = inferred_connections
+            .inferred_connections_for_component_stack(ctx, parent_id)
+            .await?
+            .iter()
+            .copied()
+            .collect();
+        stack_inferred_connections.extend(
+            inferred_connections
+                .inferred_connections_for_component_stack(ctx, child_id)
+                .await?,
+        );
+        for incoming_connection in stack_inferred_connections {
+            let component_input_socket = ComponentInputSocket {
+                component_id: incoming_connection.destination_component_id,
+                input_socket_id: incoming_connection.input_socket_id,
+                attribute_value_id: InputSocket::component_attribute_value_for_input_socket_id(
+                    ctx,
+                    incoming_connection.input_socket_id,
+                    incoming_connection.destination_component_id,
+                )
+                .await?,
+            };
+            let component_output_socket = ComponentOutputSocket {
+                component_id: incoming_connection.source_component_id,
+                output_socket_id: incoming_connection.output_socket_id,
+                attribute_value_id: OutputSocket::component_attribute_value_for_output_socket_id(
+                    ctx,
+                    incoming_connection.output_socket_id,
+                    incoming_connection.source_component_id,
+                )
+                .await?,
+            };
             impacted_connections.insert(SocketAttributeValuePair {
-                component_input_socket: incoming_connection.input_socket,
-                component_output_socket: incoming_connection.output_socket,
+                component_input_socket,
+                component_output_socket,
             });
         }
         debug!("imapcted connections: {:?}", impacted_connections);

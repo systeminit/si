@@ -11,7 +11,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
-use crate::component::inferred_connection_graph::InferredConnectionGraph;
+use crate::component::inferred_connection_graph::InferredConnectionGraphError;
 use crate::component::{
     ComponentError, ComponentResult, IncomingConnection, InferredConnection, OutgoingConnection,
 };
@@ -56,6 +56,8 @@ pub enum DiagramError {
     EdgeNotFound,
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("InferredConnectionGraph error: {0}")]
+    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("node not found")]
@@ -187,14 +189,9 @@ impl Diagram {
         base_snapshot: &Arc<WorkspaceSnapshot>,
         components: &HashMap<ComponentId, Component>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> DiagramResult<(
-        Vec<SummaryDiagramComponent>,
-        Vec<SummaryDiagramEdge>,
-        HashMap<ComponentId, Vec<IncomingConnection>>,
-    )> {
+    ) -> DiagramResult<(Vec<SummaryDiagramComponent>, Vec<SummaryDiagramEdge>)> {
         let mut component_views = Vec::with_capacity(components.len());
         let mut diagram_edges = Vec::with_capacity(components.len());
-        let mut precomputed_incoming_connections = HashMap::with_capacity(components.len());
 
         for component in components.values() {
             let change_status = component.change_status(ctx).await?;
@@ -207,7 +204,6 @@ impl Diagram {
 
         for component in components.values() {
             let incoming_connections = component.incoming_connections(ctx).await?;
-            precomputed_incoming_connections.insert(component.id(), incoming_connections.clone());
             for incoming_connection in incoming_connections {
                 if let Some(from_component) = components.get(&incoming_connection.from_component_id)
                 {
@@ -233,31 +229,25 @@ impl Diagram {
             }
         }
 
-        Ok((
-            component_views,
-            diagram_edges,
-            precomputed_incoming_connections,
-        ))
+        Ok((component_views, diagram_edges))
     }
 
     async fn assemble_inferred_connection_views(
         ctx: &DalContext,
         components: &HashMap<ComponentId, Component>,
-        precomputed_incoming_connections: &HashMap<ComponentId, Vec<IncomingConnection>>,
     ) -> DiagramResult<Vec<SummaryDiagramInferredEdge>> {
         let mut diagram_inferred_edges = vec![];
 
-        let component_tree =
-            InferredConnectionGraph::assemble_with_precomputed_incoming_connections(
-                ctx,
-                precomputed_incoming_connections,
-            )
-            .await?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut component_tree = workspace_snapshot.inferred_connection_graph(ctx).await?;
 
-        for incoming_connection in component_tree.get_all_inferred_connections() {
+        for incoming_connection in component_tree
+            .inferred_connections_for_all_components(ctx)
+            .await?
+        {
             let to_delete = if let (Some(source_component), Some(destination_component)) = (
-                components.get(&incoming_connection.output_socket.component_id),
-                components.get(&incoming_connection.input_socket.component_id),
+                components.get(&incoming_connection.source_component_id),
+                components.get(&incoming_connection.destination_component_id),
             ) {
                 source_component.to_delete() || destination_component.to_delete()
             } else {
@@ -265,10 +255,10 @@ impl Diagram {
             };
 
             diagram_inferred_edges.push(SummaryDiagramInferredEdge {
-                from_component_id: incoming_connection.output_socket.component_id,
-                from_socket_id: incoming_connection.output_socket.output_socket_id,
-                to_component_id: incoming_connection.input_socket.component_id,
-                to_socket_id: incoming_connection.input_socket.input_socket_id,
+                from_component_id: incoming_connection.source_component_id,
+                from_socket_id: incoming_connection.output_socket_id,
+                to_component_id: incoming_connection.destination_component_id,
+                to_socket_id: incoming_connection.input_socket_id,
                 to_delete,
             });
         }
@@ -378,21 +368,17 @@ impl Diagram {
             components.iter().cloned().map(|c| (c.id(), c)).collect();
 
         let mut diagram_sockets = HashMap::new();
-        let (mut component_views, mut diagram_edges, precomputed_incoming_connections) =
-            Self::assemble_component_views(
-                ctx,
-                &base_snapshot,
-                &virtual_and_real_components_by_id,
-                &mut diagram_sockets,
-            )
-            .await?;
-
-        let diagram_inferred_edges = Self::assemble_inferred_connection_views(
+        let (mut component_views, mut diagram_edges) = Self::assemble_component_views(
             ctx,
+            &base_snapshot,
             &virtual_and_real_components_by_id,
-            &precomputed_incoming_connections,
+            &mut diagram_sockets,
         )
         .await?;
+
+        let diagram_inferred_edges =
+            Self::assemble_inferred_connection_views(ctx, &virtual_and_real_components_by_id)
+                .await?;
 
         if not_on_head {
             let removed_component_summaries = Self::assemble_removed_components(

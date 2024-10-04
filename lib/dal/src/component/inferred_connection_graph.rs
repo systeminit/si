@@ -12,689 +12,750 @@
 //! build this mapping only from the perspective of the [`InputSocket`] and use that mapping to hydrate both
 //! the Incoming and Outgoing Inferred Connections for a given [`ComponentId`]
 
-use itertools::Itertools;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet};
+
+use petgraph::{
+    prelude::*,
+    visit::{Control, DfsEvent},
+};
+use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use thiserror::Error;
 
-use super::{
-    socket::{ComponentInputSocket, ComponentOutputSocket},
-    ComponentResult, IncomingConnection,
-};
 use crate::{
-    Component, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket, OutputSocketId,
-    SocketArity,
+    socket::{
+        connection_annotation::ConnectionAnnotation, input::InputSocketError,
+        output::OutputSocketError,
+    },
+    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, SocketArity, WorkspaceSnapshotError,
 };
 
-#[derive(Eq, PartialEq, Clone, Debug, Default)]
-pub struct InferredConnections {
-    pub input_sockets: HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-    pub output_sockets: HashMap<ComponentOutputSocket, HashSet<ComponentInputSocket>>,
+#[remain::sorted]
+#[derive(Debug, Error)]
+pub enum InferredConnectionGraphError {
+    #[error("Component error: {0}")]
+    Component(#[from] Box<ComponentError>),
+    #[error("InputSocket error: {0}")]
+    InputSocket(#[from] InputSocketError),
+    #[error("Missing graph node")]
+    MissingGraphNode,
+    #[error("Orphaned Component")]
+    OrphanedComponent(ComponentId),
+    #[error("OutputSocket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
+    #[error("Unable to compute costs for inferred connections")]
+    UnableToComputeCost,
+    #[error("Unsupported Component type {0} for Component {1}")]
+    UnsupportedComponentType(ComponentType, ComponentId),
+    #[error("WorkspaceSnapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct InferredConnection {
-    pub input_socket: ComponentInputSocket,
-    pub output_socket: ComponentOutputSocket,
-}
+pub type InferredConnectionGraphResult<T> = Result<T, InferredConnectionGraphError>;
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InferredConnectionGraph {
-    components: HashMap<ComponentId, HashSet<ComponentId>>,
-    connections: HashMap<ComponentId, InferredConnections>,
+    down_component_graph: StableDiGraph<InferredConnectionGraphNodeWeight, ()>,
+    up_component_graph: StableDiGraph<InferredConnectionGraphNodeWeight, ()>,
+    index_by_component_id: HashMap<ComponentId, NodeIndex>,
+
+    #[serde(skip)]
+    inferred_connections_by_component_and_input_socket:
+        HashMap<ComponentId, HashMap<InputSocketId, Vec<InferredConnection>>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct InferredConnectionGraphNodeWeight {
+    component: Component,
+    component_type: ComponentType,
+    input_sockets: Vec<InputSocket>,
+    output_sockets: Vec<OutputSocket>,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct InferredConnection {
+    pub source_component_id: ComponentId,
+    pub output_socket_id: OutputSocketId,
+    pub destination_component_id: ComponentId,
+    pub input_socket_id: InputSocketId,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PotentialInferredConnectionMatch {
+    component_id: ComponentId,
+    output_socket_id: OutputSocketId,
 }
 
 impl InferredConnectionGraph {
-    /// Assembles the [`InferredConnectionGraph`] from the perspective of the given [`ComponentId`]s by first creating a
-    /// a tree representing this Component and all others in the lineage grouping (i.e walk to the top and then get all children)
-    /// for all given ComponentIds.
-    /// Then, find all inferred connections for everything we've found
     #[instrument(
-        name = "component.inferred_connection_graph.assemble_for_components",
+        name = "component.inferred_connection_graph.new",
         level = "debug",
         skip(ctx)
     )]
-    pub async fn assemble_for_components(
-        ctx: &DalContext,
-        component_ids: Vec<ComponentId>,
-        precomputed_incoming_connections: Option<&HashMap<ComponentId, Vec<IncomingConnection>>>,
-    ) -> ComponentResult<Self> {
-        let mut component_incoming_connections: HashMap<
-            ComponentId,
-            HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        > = HashMap::new();
-        let mut top_parents: HashSet<ComponentId> = HashSet::new();
-        let mut components: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+    pub async fn new(ctx: &DalContext) -> InferredConnectionGraphResult<Self> {
+        let mut down_component_graph = StableDiGraph::new();
+        let mut index_by_component_id = HashMap::new();
 
-        let component_ids = if let Some(precomputed_ids) =
-            precomputed_incoming_connections.map(|precomp| precomp.keys().map(ToOwned::to_owned))
-        {
-            precomputed_ids.collect()
-        } else {
-            component_ids
-        };
-
-        for component_id in component_ids {
-            // Check if the component_id is either a key or a value in the components HashMap
-            let is_in_tree = components.contains_key(&component_id)
-                || components.values().any(|x| x.contains(&component_id));
-
-            // If this component id is already in the hashmap somewhere, skip it
-            // since we already have accounted for it!
-            if !is_in_tree {
-                // Get the outermost parent of this tree
-                let first_top_parent = Self::find_top_parent(ctx, component_id).await?;
-                top_parents.insert(first_top_parent);
-                let this_tree = Self::build_tree(ctx, first_top_parent).await?;
-                components.extend(this_tree);
-            }
-        }
-
-        for parent in &top_parents {
-            // Walk down the tree and accumulate connections for every input socket
-            let mut work_queue = VecDeque::new();
-            work_queue.push_back(*parent);
-
-            while let Some(component) = work_queue.pop_front() {
-                let (input_sockets, duplicates) = if let Some(precomputed) =
-                    precomputed_incoming_connections.and_then(|precomp| precomp.get(&component))
-                {
-                    Self::process_component(ctx, component, precomputed.as_slice()).await?
-                } else {
-                    Self::process_component(
-                        ctx,
-                        component,
-                        &Component::incoming_connections_for_id(ctx, component).await?,
-                    )
-                    .await?
-                };
-
-                Self::update_incoming_connections(
-                    &mut component_incoming_connections,
-                    component,
-                    input_sockets,
-                    duplicates,
-                );
-
-                // Load up next children
-                if let Some(children) = components.get(&component) {
-                    work_queue.extend(children.clone());
+        for component in Component::list(ctx).await.map_err(Box::new)? {
+            let component_id = component.id();
+            let component_type = match component.get_type(ctx).await {
+                Ok(comp_type) => comp_type,
+                Err(e) => {
+                    // New components are frequently incompletely set up. If we can't get the type,
+                    // then it's pretty much guaranteed to not be a Frame (yet), or the child of a
+                    // Frame (yet).
+                    debug!("{}", e);
+                    continue;
                 }
+            };
+            let schema_variant_id = ctx
+                .workspace_snapshot()?
+                .schema_variant_id_for_component_id(component_id)
+                .await
+                .map_err(Box::new)?;
+            let input_sockets = InputSocket::list(ctx, schema_variant_id).await?;
+            let output_sockets = OutputSocket::list(ctx, schema_variant_id).await?;
+
+            let component_weight = InferredConnectionGraphNodeWeight {
+                component,
+                component_type,
+                input_sockets,
+                output_sockets,
+            };
+
+            let node_index = down_component_graph.add_node(component_weight);
+            index_by_component_id.insert(component_id, node_index);
+        }
+        // Gather the "frame contains" information for all Components to build the edges of the
+        // graph.
+        for (&component_id, &source_node_index) in &index_by_component_id {
+            for target_component_id in ctx
+                .workspace_snapshot()?
+                .frame_contains_components(component_id)
+                .await
+                .map_err(Box::new)?
+            {
+                let destination_node_index = *index_by_component_id
+                    .get(&target_component_id)
+                    .ok_or_else(|| {
+                        InferredConnectionGraphError::OrphanedComponent(target_component_id)
+                    })?;
+                down_component_graph.add_edge(source_node_index, destination_node_index, ());
             }
         }
 
-        // Populate outgoing connections
-        let component_tree = Self::populate_graph(component_incoming_connections);
+        let mut up_component_graph = down_component_graph.clone();
+        up_component_graph.reverse();
 
-        Ok(InferredConnectionGraph {
-            connections: component_tree,
-            components,
+        Ok(Self {
+            down_component_graph,
+            up_component_graph,
+            index_by_component_id,
+            inferred_connections_by_component_and_input_socket: HashMap::new(),
         })
     }
 
-    /// Create a [`InferredConnectionGraph`] containing all [`Component`]s in this Workspace
     #[instrument(
-        name = "component.inferred_connection_graph.for_workspace",
-        level = "info",
-        skip(ctx)
+        name = "component.inferred_connection_graph.inferred_connections_for_all_components",
+        level = "debug",
+        skip(self, ctx)
     )]
-    pub async fn for_workspace(ctx: &DalContext) -> ComponentResult<Self> {
-        // get all components
-        let components = Component::list(ctx)
-            .await?
-            .into_iter()
-            .map(|component| component.id())
-            .collect_vec();
-        Self::assemble_for_components(ctx, components, None).await
-    }
-
-    #[instrument(
-        name = "component.inferred_connection_graph.with_precomputed_incoming_connections",
-        level = "info",
-        skip(ctx, precomputed_incoming_connections)
-    )]
-    pub async fn assemble_with_precomputed_incoming_connections(
+    pub async fn inferred_connections_for_all_components(
+        &mut self,
         ctx: &DalContext,
-        precomputed_incoming_connections: &HashMap<ComponentId, Vec<IncomingConnection>>,
-    ) -> ComponentResult<Self> {
-        Self::assemble_for_components(ctx, vec![], Some(precomputed_incoming_connections)).await
-    }
-
-    /// Assembles the [`InferredConnectionGraph`] from the perspective of this single [`ComponentId`] by first creating a
-    /// a tree representing this Component and all others in the lineage grouping (i.e walk to the top and then get all children)
-    /// Then, find all inferred connections for everything in the tree
-    #[instrument(
-        name = "component.inferred_connection_graph.assemble",
-        level = "info",
-        skip(ctx)
-    )]
-    pub async fn assemble(
-        ctx: &DalContext,
-        with_component_id: ComponentId,
-    ) -> ComponentResult<Self> {
-        Self::assemble_for_components(ctx, vec![with_component_id], None).await
-    }
-
-    /// Assembles the a map of Incoming Connections from the perspective of this single [`ComponentId`]
-    #[instrument(
-        name = "component.inferred_connection_graph.assemble_incoming_only",
-        level = "info",
-        skip(ctx)
-    )]
-    pub async fn assemble_incoming_only(
-        ctx: &DalContext,
-        for_component_id: ComponentId,
-    ) -> ComponentResult<HashMap<ComponentInputSocket, Vec<ComponentOutputSocket>>> {
-        let mut component_incoming_connections: HashMap<
-            ComponentId,
-            HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        > = HashMap::new();
-        let (input_sockets, duplicates) = Self::process_component(
-            ctx,
-            for_component_id,
-            &Component::incoming_connections_for_id(ctx, for_component_id).await?,
-        )
-        .await?;
-        Self::update_incoming_connections(
-            &mut component_incoming_connections,
-            for_component_id,
-            input_sockets,
-            duplicates,
-        );
-        let mut incoming_connections = HashMap::new();
-        for (input_socket, output_sockets) in component_incoming_connections
-            .get(&for_component_id)
-            .unwrap_or(&HashMap::new())
-        {
-            let outputs = output_sockets
-                .iter()
-                .cloned()
-                .sorted_by_key(|output| output.component_id)
-                .collect();
-            incoming_connections.insert(*input_socket, outputs);
-        }
-        Ok(incoming_connections)
-    }
-
-    /// Walk the frame contains edges to find the top most parent with the given ComponentId beneath it
-    async fn find_top_parent(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<ComponentId> {
-        let mut parent_id = component_id;
-        while let Some(parent) = Component::get_parent_by_id(ctx, parent_id).await? {
-            parent_id = parent;
-        }
-        Ok(parent_id)
-    }
-
-    /// find all inferred incoming connections for the provided component by looping through the component's
-    /// input sockets
-    async fn process_component(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        existing_incoming_connections: &[IncomingConnection],
-    ) -> ComponentResult<(
-        HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        HashSet<ComponentOutputSocket>,
-    )> {
-        let mut input_sockets: HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>> =
-            HashMap::new();
-        let mut duplicate_tracker: HashSet<ComponentOutputSocket> = HashSet::new();
-        let mut duplicates: HashSet<ComponentOutputSocket> = HashSet::new();
-
-        let current_component_input_sockets =
-            ComponentInputSocket::list_for_component_id(ctx, component_id).await?;
-
-        for input_socket in current_component_input_sockets {
-            let incoming_connections = Self::find_available_connections(ctx, input_socket).await?;
-
-            // Check all existing explicit outgoing connections so that we don't create an inferred connection to the same output socket
-            for incoming_connection in existing_incoming_connections {
-                let component_output_socket = ComponentOutputSocket::get_by_ids_or_error(
-                    ctx,
-                    incoming_connection.from_component_id,
-                    incoming_connection.from_output_socket_id,
-                )
-                .await?;
-                // note: we don't care if a user has drawn multiple edges to the same output socket
-                duplicate_tracker.insert(component_output_socket);
-            }
-            for output_socket in &incoming_connections {
-                if !duplicate_tracker.insert(*output_socket) {
-                    duplicates.insert(*output_socket);
-                }
-            }
-            input_sockets
-                .entry(input_socket)
-                .or_insert(incoming_connections);
-        }
-        Ok((input_sockets, duplicates))
-    }
-
-    /// Adds the found incoming connections to the map, removing duplicate connections (if one input socket is connected to
-    /// two output sockets from the same component)
-    fn update_incoming_connections(
-        component_incoming_connections: &mut HashMap<
-            ComponentId,
-            HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        >,
-        component: ComponentId,
-        input_sockets: HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        duplicates: HashSet<ComponentOutputSocket>,
-    ) {
-        for (input_socket, output_vec) in input_sockets {
-            let filtered_output_vec: HashSet<ComponentOutputSocket> = output_vec
-                .into_iter()
-                .filter(|os| !duplicates.contains(os))
-                .collect();
-
-            // if filtered is empty, there are no connections to this input socket, don't add it
-            if !filtered_output_vec.is_empty() {
-                component_incoming_connections
-                    .entry(component)
-                    .and_modify(|connections| {
-                        connections
-                            .entry(input_socket)
-                            .or_insert_with(|| filtered_output_vec.clone());
-                    })
-                    .or_insert_with(|| HashMap::from([(input_socket, filtered_output_vec)]));
-            }
-        }
-    }
-
-    /// Given the full list of incoming connections, use it to build the map of outgoing connections keyed by output socket
-    fn populate_graph(
-        component_incoming_connections: HashMap<
-            ComponentId,
-            HashMap<ComponentInputSocket, HashSet<ComponentOutputSocket>>,
-        >,
-    ) -> HashMap<ComponentId, InferredConnections> {
-        let mut component_tree: HashMap<ComponentId, InferredConnections> = HashMap::new();
-        for (component, incoming_connections) in component_incoming_connections {
-            for (input_socket, output_sockets) in incoming_connections {
-                component_tree
-                    .entry(component)
-                    .or_default()
-                    .input_sockets
-                    .entry(input_socket)
-                    .and_modify(|outgoing| outgoing.extend(output_sockets.iter().cloned()))
-                    .or_insert_with(|| output_sockets.clone());
-
-                for output_socket in output_sockets {
-                    component_tree
-                        .entry(output_socket.component_id)
-                        .or_default()
-                        .output_sockets
-                        .entry(output_socket)
-                        .and_modify(|connections| {
-                            connections.insert(input_socket);
-                        })
-                        .or_insert_with(|| HashSet::from([input_socket]));
-                }
-            }
-        }
-
-        component_tree
-    }
-
-    fn get_component_inferred_connections(&self, component_id: ComponentId) -> InferredConnections {
-        let connections = match self.connections.get(&component_id) {
-            Some(connections) => connections.clone(),
-            None => InferredConnections {
-                input_sockets: HashMap::new(),
-                output_sockets: HashMap::new(),
-            },
-        };
-        connections
-    }
-
-    /// Get all inferred incoming connections for a given component
-    pub fn get_inferred_incoming_connections_to_component(
-        &self,
-        component_id: ComponentId,
-    ) -> Vec<InferredConnection> {
-        let mut inferred_incoming_connections = Vec::new();
-        let incoming_connections = self.get_component_inferred_connections(component_id);
-        for (input_socket, output_sockets) in incoming_connections.input_sockets {
-            for output_socket in output_sockets {
-                inferred_incoming_connections.push(InferredConnection {
-                    input_socket,
-                    output_socket,
-                });
-            }
-        }
-        inferred_incoming_connections
-    }
-
-    /// Get all inferred outgoing connections for a given [`ComponentId`]
-    pub fn get_inferred_outgoing_connections_for_component(
-        &self,
-        component_id: ComponentId,
-    ) -> Vec<InferredConnection> {
-        let mut inferred_outgoing_connections = Vec::new();
-        let connections = self.get_component_inferred_connections(component_id);
-        for (output_socket, input_sockets) in connections.output_sockets {
-            for input_socket in input_sockets {
-                inferred_outgoing_connections.push(InferredConnection {
-                    input_socket,
-                    output_socket,
-                });
-            }
-        }
-        inferred_outgoing_connections
-    }
-
-    /// Get all inferred connections to a given [`ComponentId`] and [`OutputSocketId`]
-    pub fn get_component_connections_to_output_socket(
-        &self,
-        component_id: ComponentId,
-        output_socket_id: OutputSocketId,
-    ) -> HashSet<ComponentInputSocket> {
-        self.get_component_inferred_connections(component_id)
-            .output_sockets
-            .into_iter()
-            .find_map(|(output_socket, input_sockets)| {
-                if output_socket.output_socket_id == output_socket_id
-                    && output_socket.component_id == component_id
-                {
-                    Some(input_sockets)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(HashSet::new)
-            .clone()
-    }
-
-    /// Get all inferred connections to a given [`ComponentInputSocket`]
-    pub fn get_component_connections_to_input_socket(
-        &self,
-        component_input_socket: ComponentInputSocket,
-    ) -> HashSet<ComponentOutputSocket> {
-        self.get_component_inferred_connections(component_input_socket.component_id)
-            .input_sockets
-            .get(&component_input_socket)
-            .cloned()
-            .unwrap_or_default()
-    }
-
-    /// Get all inferred connections that exist for the constructed [`InferredConnectionGraph`].
-    pub fn get_all_inferred_connections(&self) -> Vec<InferredConnection> {
-        let mut incoming_connections = Vec::new();
-        for inferred_connection in self.connections.values() {
-            for (input_socket, output_sockets) in inferred_connection.input_sockets.clone() {
-                for output_socket in output_sockets {
-                    incoming_connections.push(InferredConnection {
-                        input_socket,
-                        output_socket,
-                    });
-                }
-            }
-        }
-        incoming_connections
-    }
-
-    /// For the provided [`ComponentId`], build a tree of all Components that are a descendant (directly or indirectly)
-    #[instrument(level = "trace", skip(ctx))]
-    async fn build_tree(
-        ctx: &DalContext,
-        first_top_parent: ComponentId,
-    ) -> ComponentResult<HashMap<ComponentId, HashSet<ComponentId>>> {
-        let mut resp = HashMap::new();
-        let mut work_queue = VecDeque::new();
-        work_queue.push_back(first_top_parent);
-        while let Some(parent) = work_queue.pop_front() {
-            let children = Component::get_children_for_id(ctx, parent).await?;
-            resp.insert(
-                parent,
-                children
-                    .clone()
-                    .into_iter()
-                    .collect::<HashSet<ComponentId>>(),
+    ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
+        let mut results = Vec::new();
+        for component_id in Component::list_ids(ctx).await.map_err(Box::new)? {
+            results.extend(
+                self.inferred_incoming_connections_for_component(ctx, component_id)
+                    .await?,
             );
-            work_queue.extend(children);
         }
-        Ok(resp)
+
+        Ok(results)
     }
 
-    /// For a given [`ComponentInputSocket`], find all incoming connections based on the [`ComponentType`]. If the
-    /// [`ComponentInputSocket`] is manually configured (aka a user has drawn an edge to it), we return early as we do not
-    /// mix and match Inferred/Explicit connections.
-    ///
-    /// [`ComponentType::Component`]s and [`ComponentType::ConfigurationFrameDown`] search up the ancestry tree
-    /// and will connect to the closest matching [`ComponentOutputSocket`]
-    ///
-    /// [`ComponentType::ConfigurationFrameUp`] can connect to both descendants of the up frame, and ascendants of the up frame
-    /// if the ascendant is a [`ComponentType::ConfigurationFrameDown`]
-    async fn find_available_connections(
+    #[instrument(
+        name = "component.inferred_connection_graph.inferred_connections_for_component_stack",
+        level = "debug",
+        skip(self, ctx)
+    )]
+    pub async fn inferred_connections_for_component_stack(
+        &mut self,
         ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
-    ) -> ComponentResult<HashSet<ComponentOutputSocket>> {
-        // if this socket is manually configured, early return
-        if ComponentInputSocket::is_manually_configured(ctx, component_input_socket).await? {
-            return Ok(HashSet::new());
+        component_id: ComponentId,
+    ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
+        let mut inferred_connections = HashSet::new();
+        let mut stack_component_ids = HashSet::new();
+
+        fn get_component_id(
+            event: DfsEvent<NodeIndex>,
+            graph: &StableDiGraph<InferredConnectionGraphNodeWeight, ()>,
+            collected_ids: &mut HashSet<ComponentId>,
+        ) -> Control<()> {
+            if let DfsEvent::Discover(node_index, _) = event {
+                if let Some(node_weight) = graph.node_weight(node_index) {
+                    collected_ids.insert(node_weight.component.id());
+                }
+            }
+            Control::Continue
         }
 
-        let destination_sockets =
-            match Component::get_type_by_id(ctx, component_input_socket.component_id).await? {
-                ComponentType::Component | ComponentType::ConfigurationFrameDown => {
-                    //For a component, or a down frame, check my parents and other ancestors
-                    // find the first output socket match that is a down frame and use it!
-                    Self::find_closest_connection_in_ancestors(
-                        ctx,
-                        component_input_socket,
-                        vec![ComponentType::ConfigurationFrameDown],
-                    )
-                    .await?
-                }
-                ComponentType::ConfigurationFrameUp => {
-                    // An up frame's input sockets are sourced from either its children's output sockets
-                    // or an ancestor.  Based on the input socket's arity, we match many (sorted by component ulid)
-                    // or if the arity is single, we return none
-                    let mut matches = vec![];
-                    let descendant_matches = Self::find_connections_in_descendants(
-                        ctx,
-                        component_input_socket,
-                        vec![
-                            ComponentType::ConfigurationFrameUp,
-                            ComponentType::Component,
-                        ],
-                    )
-                    .await?;
-                    matches.extend(descendant_matches);
+        if let Some(&start_component_index) = self.index_by_component_id.get(&component_id) {
+            petgraph::visit::depth_first_search(
+                &self.up_component_graph,
+                Some(start_component_index),
+                |event| get_component_id(event, &self.up_component_graph, &mut stack_component_ids),
+            );
+            petgraph::visit::depth_first_search(
+                &self.down_component_graph,
+                Some(start_component_index),
+                |event| {
+                    get_component_id(event, &self.down_component_graph, &mut stack_component_ids)
+                },
+            );
+        }
 
-                    if let [connection] = Self::find_closest_connection_in_ancestors(
-                        ctx,
-                        component_input_socket,
-                        vec![ComponentType::ConfigurationFrameDown],
-                    )
-                    .await?
-                    .as_slice()
-                    {
-                        matches.push(*connection);
-                    }
+        for stack_component_id in stack_component_ids {
+            inferred_connections.extend(
+                self.inferred_incoming_connections_for_component(ctx, stack_component_id)
+                    .await?,
+            );
+        }
 
-                    let input_socket =
-                        InputSocket::get_by_id(ctx, component_input_socket.input_socket_id).await?;
-                    if input_socket.arity() == SocketArity::One && matches.len() > 1 {
-                        vec![]
-                    } else {
-                        matches
-                    }
-                }
-                ComponentType::AggregationFrame => vec![], // Aggregation Frames are not supported
+        Ok(inferred_connections.iter().copied().collect())
+    }
+
+    #[instrument(
+        name = "component.inferred_connection_graph.inferred_incoming_connections_for_component",
+        level = "debug",
+        skip(self, ctx),
+        fields(si.inferred_connections.cache_hit = Empty)
+    )]
+    pub async fn inferred_incoming_connections_for_component(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
+        let span = Span::current();
+        if let std::collections::hash_map::Entry::Occupied(component_cache) = self
+            .inferred_connections_by_component_and_input_socket
+            .entry(component_id)
+        {
+            let mut cached_results = Vec::new();
+            for input_socket_info in component_cache.get().values() {
+                cached_results.extend(input_socket_info);
+            }
+
+            span.record("si.inferred_connections.cache_hit", true);
+
+            return Ok(cached_results);
+        }
+        span.record("si.inferred_connections.cache_hit", false);
+
+        let input_sockets_with_explicit_connections: HashSet<InputSocketId> =
+            Component::input_sockets_with_connections(ctx, component_id)
+                .await
+                .map_err(Box::new)?
+                .iter()
+                .copied()
+                .collect();
+
+        // `component_index` should be the same in both the `Up` and `Down` graphs since the `Up`
+        // graph is created by reversing the edges in the `Down` graph, without touching the nodes
+        // at all.
+        let component_index =
+            if let Some(&node_index) = self.index_by_component_id.get(&component_id) {
+                node_index
+            } else {
+                // It's entirely possible we might not find a `Component` that is actually in the
+                // `WorkspaceSnapshotGraph` in the graph we have built as we're only updating it when
+                // a `Component` is added/removed from a `Frame`. `Component`s (including `Frame`s) that
+                // are not inside of a `Frame` (or are not do not have inferred connections to anything.
+                return Ok(Vec::new());
             };
-        Ok(destination_sockets
-            .into_iter()
-            .collect::<HashSet<ComponentOutputSocket>>())
-    }
+        let mut input_sockets = self
+            .up_component_graph
+            .node_weight(component_index)
+            .ok_or(InferredConnectionGraphError::MissingGraphNode)?
+            .input_sockets
+            .clone();
+        let all_input_sockets: HashMap<InputSocketId, InputSocket> = input_sockets
+            .iter()
+            .cloned()
+            .map(|is| (is.id(), is))
+            .collect();
+        // Any `InputSocket` with an explicit connection already made will not automatically infer
+        // any additional connections.
+        input_sockets.retain(|is| !input_sockets_with_explicit_connections.contains(&is.id()));
 
-    /// For the given [`ComponentInputSocket`], discover if this set of children has any connections.  If the
-    /// [`ComponentInputSocket`] is [`SocketArity::Many`], we allow multiple children to connect to it. If it's
-    /// a [`SocketArity::One`], we only allow one [`ComponentOutputSocket`] to connect to it, so if we find that
-    /// there are multiple connections, we return an empty list which will force the user to decide which one they
-    /// want.
-    ///
-    /// This helper is useful so that we can early return and stop looking if we find there is a potential connection
-    /// that is ambiguious (as we don't skip ambiguous connections and continue search their children)
-    async fn find_connections_for_children(
-        ctx: &DalContext,
-        input_socket: ComponentInputSocket,
-        component_types: &[ComponentType],
-        children: Vec<ComponentId>,
-        arity: SocketArity,
-    ) -> ComponentResult<(Vec<ComponentOutputSocket>, Vec<ComponentId>)> {
-        let mut output_matches = vec![];
-        let mut next_children = vec![];
+        // If all of the `InputSocket`s have explicit connections, then populate the cache with
+        // empty entries, and return an empty list of `InferredConnection`s.
+        if input_sockets.is_empty() {
+            let mut empty_socket_map = HashMap::new();
+            for input_socket in all_input_sockets.values() {
+                empty_socket_map.insert(input_socket.id(), Vec::new());
+            }
+            self.inferred_connections_by_component_and_input_socket
+                .insert(component_id, empty_socket_map);
+            return Ok(Vec::new());
+        }
 
-        for child in children {
-            if component_types.contains(&Component::get_type_by_id(ctx, child).await?) {
-                let matches = Self::find_connections_in_component(ctx, input_socket, child).await?;
-                match arity {
-                    SocketArity::One if matches.len() == 1 => {
-                        output_matches.push(matches[0]);
-                        return Ok((output_matches, vec![])); // Stop searching after finding one match
+        // We need to find all of the groups of `InputSocket`s that have similar shapes to each
+        // other (including if an `InputSocket` is the only one with that shape). We want to
+        // ensure that for each of these "exclusivity groups", a given source `Component` will
+        // only occur once (regardless if it is with different, or the same `OutputSocket`). By
+        // doing this, we will both prevent two similarly shaped `InputSocket` from trying to
+        // pull from the same `Component` as well as prevent a single `InputSocket` from trying to
+        // pull from multiple `OutputSocket` on a single `Component`.
+        let mut exclusivity_groups: HashSet<BTreeSet<InputSocketId>> = HashSet::new();
+        for input_socket in all_input_sockets.values() {
+            let mut similarly_shaped_input_sockets = BTreeSet::new();
+            for potentially_similaraly_shaped_input_socket in all_input_sockets.values() {
+                if input_socket
+                    .connection_annotations()
+                    .iter()
+                    .any(|input_annotation| {
+                        potentially_similaraly_shaped_input_socket
+                            .connection_annotations()
+                            .iter()
+                            .any(|potential_annotation| {
+                                ConnectionAnnotation::target_fits_reference(
+                                    input_annotation,
+                                    potential_annotation,
+                                )
+                            })
+                    })
+                {
+                    similarly_shaped_input_sockets
+                        .insert(potentially_similaraly_shaped_input_socket.id());
+                }
+            }
+            exclusivity_groups.insert(similarly_shaped_input_sockets);
+        }
+
+        let mut results = HashMap::new();
+        // We need to calculate the potential `InferredConnection`s for _ALL_ `InputSocket`, even
+        // if they already have an explicit connection since the ones with explicit connections
+        // still affect the results of `InputSocket`s with no explicit connections.
+        for &input_socket_id in all_input_sockets.keys() {
+            let input_socket_results =
+                self.raw_inferred_connections_for_input_socket(component_id, input_socket_id)?;
+
+            results.insert(input_socket_id, input_socket_results);
+        }
+
+        // Across all of the `InputSocket`s on the `Component`, we can only use a specific
+        // `OutputSocket + Component` pair once.
+        let mut component_output_socket_usage = HashSet::new();
+        let mut component_output_socket_reuse_violations = HashSet::new();
+        for input_socket_id in all_input_sockets.keys() {
+            if let Some(socket_matches) = results.get(input_socket_id) {
+                for socket_match in socket_matches {
+                    let component_socket_pair = (
+                        socket_match.source_component_id,
+                        socket_match.output_socket_id,
+                    );
+                    if component_output_socket_usage.contains(&component_socket_pair) {
+                        component_output_socket_reuse_violations.insert(component_socket_pair);
                     }
-                    SocketArity::One if matches.len() > 1 => {
-                        return Ok((vec![], vec![])); // Multiple matches found, return empty
-                    }
-                    SocketArity::One => {} // no matches, do nothing and keep looking
-                    SocketArity::Many => {
-                        output_matches.extend(matches);
+                    component_output_socket_usage.insert(component_socket_pair);
+                }
+            }
+        }
+
+        // Within the "exclusivity groups" we need to make sure that there is not more than one
+        // occurrence of a connection coming from a single Component, regardless of which
+        // `OutputSocket` it is coming from.
+        for exclusivity_group in &exclusivity_groups {
+            let mut exclusivity_group_components = HashSet::new();
+            let mut component_exclusivity_violations = HashSet::new();
+            for group_input_socket_id in exclusivity_group {
+                if let Some(socket_results) = results.get(group_input_socket_id) {
+                    for inferred_connection in socket_results {
+                        let source_component_id = inferred_connection.source_component_id;
+                        if exclusivity_group_components.contains(&source_component_id) {
+                            component_exclusivity_violations.insert(source_component_id);
+                        }
+                        exclusivity_group_components.insert(source_component_id);
                     }
                 }
             }
-            next_children.extend(Component::get_children_for_id(ctx, child).await?);
+
+            if !component_exclusivity_violations.is_empty()
+                || !component_output_socket_reuse_violations.is_empty()
+                || exclusivity_group.iter().any(|input_socket_id| {
+                    if let Some(input_socket) = all_input_sockets.get(input_socket_id) {
+                        input_socket.arity() == SocketArity::One
+                    } else {
+                        false
+                    }
+                })
+            {
+                for group_input_socket_id in exclusivity_group {
+                    if let Some(socket_matches) = results.get_mut(group_input_socket_id) {
+                        if let Some(input_socket) = all_input_sockets.get(group_input_socket_id) {
+                            if input_socket.arity() == SocketArity::One && socket_matches.len() > 1
+                            {
+                                socket_matches.clear();
+                            }
+                        }
+                        socket_matches.retain(|inferred_connection| {
+                            !component_exclusivity_violations
+                                .contains(&inferred_connection.source_component_id)
+                                && !component_output_socket_reuse_violations.contains(&(
+                                    inferred_connection.source_component_id,
+                                    inferred_connection.output_socket_id,
+                                ))
+                        });
+                    }
+                }
+            }
         }
 
-        Ok((output_matches, next_children))
+        // We only want to keep the inferred results for the `InputSocket`s that don't already have
+        // explicit connections.
+        results.retain(|id, _| !input_sockets_with_explicit_connections.contains(id));
+        self.inferred_connections_by_component_and_input_socket
+            .entry(component_id)
+            .and_modify(|component_cache| {
+                // We should never really hit this case, but it's included for completeness. If
+                // there were already an entry for this `Component`, we should have used it & early
+                // returned a the beginning of this function.
+                component_cache.clone_from(&results);
+            })
+            .or_insert_with(|| results.clone());
+
+        Ok(results.values().flatten().copied().collect())
     }
 
-    /// For the provided [`ComponentInputSocket`], find any matching [`ComponentOutputSocket`] that should
-    /// drive this [`InputSocket`] by searching down the descendants of the [`Component`],
-    /// checking children first and walking down until we find any matches.
-    ///
-    /// If the provided [`ComponentInputSocket`] has a [`SocketArity::One`], we look for only one
-    /// eligible [`OutputSocket`]. If we find multiple, we won't return any, forcing the
-    /// user to explicity draw the edge.
-    ///
-    /// If it has an [`SocketArity::Many`], we will look for multiple matches, but they must
-    /// be at the same 'level' to be considered valid.
-    async fn find_connections_in_descendants(
+    #[instrument(
+        name = "component.inferred_connection_graph.inferred_connections_for_input_socket",
+        level = "debug",
+        skip(self, ctx)
+    )]
+    pub async fn inferred_connections_for_input_socket(
+        &mut self,
         ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        let component_id = component_input_socket.component_id;
-        let children = Component::get_children_for_id(ctx, component_id).await?;
-        let socket_arrity = InputSocket::get_by_id(ctx, component_input_socket.input_socket_id)
-            .await?
-            .arity();
-        //load up the children and look for matches
-        let mut work_queue: VecDeque<Vec<ComponentId>> = VecDeque::new();
-        work_queue.push_front(children);
-        while let Some(children) = work_queue.pop_front() {
-            let (matches, next_children) = Self::find_connections_for_children(
-                ctx,
-                component_input_socket,
-                &component_types,
-                children,
-                socket_arrity,
-            )
+        component_id: ComponentId,
+        input_socket_id: InputSocketId,
+    ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
+        // The `InferredConnection`s for any given `InputSocket` on a `Component` are affected by
+        // the `InferredConnection`s of all of the other `InputSocket` on that `Component` with an
+        // overlaping shape. Because of this, we can't actually determine the `InferredConnection`
+        // for a single `InputSocket` in isolation, and need to calculate the `InferredConnection`
+        // for all `InputSocket` with overlaping shapes at the same time.
+        self.inferred_incoming_connections_for_component(ctx, component_id)
             .await?;
 
-            // if there are matches found, return them and stop looking
-            // otherwise, load up the next children if there are any
-            if matches.is_empty() && !next_children.is_empty() {
-                work_queue.push_back(next_children);
-            } else {
-                return Ok(matches);
-            }
+        // Rather than iterating through all of the `InferredConnection`s across all `InputSocket`
+        // of the `Component`, which might be a lot, we can go straight to the cache that we
+        // maintain, and grab the results for the specific `InputSocket` we're interested in.
+        if let Some(component_info) = self
+            .inferred_connections_by_component_and_input_socket
+            .get(&component_id)
+        {
+            Ok(component_info
+                .get(&input_socket_id)
+                .cloned()
+                .unwrap_or_default())
+        } else {
+            Ok(Vec::new())
         }
-        Ok(vec![])
     }
 
-    /// For the provided [`ComponentInputSocket`], find the nearest [`ComponentOutputSocket`] in the ancestry tree
-    /// that should drive this [`InputSocket`] (first searching parents and onwards up the ancestry tree)
-    #[instrument(level = "debug", skip(ctx))]
-    async fn find_closest_connection_in_ancestors(
-        ctx: &DalContext,
-        component_input_socket: ComponentInputSocket,
-        component_types: Vec<ComponentType>,
-    ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        if let Some(parent_id) =
-            Component::get_parent_by_id(ctx, component_input_socket.component_id).await?
-        {
-            let mut work_queue = VecDeque::from([parent_id]);
-            while let Some(component_id) = work_queue.pop_front() {
-                // see if this component is the right type
+    #[instrument(
+        name = "component.inferred_connection_graph.raw_inferred_connections_for_input_socket",
+        level = "debug",
+        skip(self)
+    )]
+    fn raw_inferred_connections_for_input_socket(
+        &self,
+        component_id: ComponentId,
+        input_socket_id: InputSocketId,
+    ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
+        // `component_index` should be the same in both the `Up` and `Down` graphs since the `Up`
+        // graph is created by reversing the edges in the `Down` graph, without touching the nodes
+        // at all.
+        let component_index =
+            if let Some(&node_index) = self.index_by_component_id.get(&component_id) {
+                node_index
+            } else {
+                // It's entirely possible we might not find a `Component` that is actually in the
+                // `WorkspaceSnapshotGraph` in the graph we have built as we're only updating it when
+                // a `Component` is added/removed from a `Frame`. `Component`s (including `Frame`s) that
+                // are not inside of a `Frame` (or are not do not have inferred connections to anything.
+                return Ok(Vec::new());
+            };
+        let node_info = self
+            .down_component_graph
+            .node_weight(component_index)
+            .ok_or(InferredConnectionGraphError::MissingGraphNode)?;
+        let component_type = node_info.component_type;
+        let input_socket = node_info
+            .input_sockets
+            .iter()
+            .find(|is| is.id() == input_socket_id)
+            .ok_or_else(|| {
+                ComponentError::InputSocketNotFoundForComponentId(input_socket_id, component_id)
+            })
+            .map_err(Box::new)?;
 
-                if component_types.contains(&Component::get_type_by_id(ctx, component_id).await?) {
-                    // get all output sockets for this component
-                    let maybe_matches = Self::find_connections_in_component(
-                        ctx,
-                        component_input_socket,
-                        component_id,
-                    )
-                    .await?;
-                    {
-                        if maybe_matches.len() > 1 {
-                            // this ancestor has more than one match
-                            // stop looking and return None to force
-                            // the user to manually draw an edge to this socket
-                            debug!("More than one match found: {:?}", maybe_matches);
-                            return Ok(vec![]);
-                        }
-                        if maybe_matches.len() == 1 {
-                            // this ancestor has 1 match!
-                            // return and stop looking
-                            return Ok(maybe_matches);
-                        }
+        // All `ComponentType` can pull their inputs in a `Frame` stack by going "up" to look for
+        // a matching `OutputSocket`.
+        let mut up_distances = HashMap::new();
+        up_distances.insert(component_index, 0);
+        let mut up_potential_matches = Vec::new();
+        let allowed_match_kinds = match component_type {
+            ComponentType::ConfigurationFrameDown => vec![ComponentType::ConfigurationFrameDown],
+            ComponentType::Component => vec![
+                // ComponentType::ConfigurationFrameUp,
+                ComponentType::ConfigurationFrameDown,
+            ],
+            ComponentType::ConfigurationFrameUp => vec![ComponentType::ConfigurationFrameDown],
+            t => {
+                return Err(InferredConnectionGraphError::UnsupportedComponentType(
+                    t,
+                    component_id,
+                ))
+            }
+        };
+        petgraph::visit::depth_first_search(
+            &self.up_component_graph,
+            Some(component_index),
+            |event| {
+                cost_visitor(
+                    event,
+                    &self.up_component_graph,
+                    component_id,
+                    input_socket,
+                    &allowed_match_kinds,
+                    &mut up_distances,
+                    &mut up_potential_matches,
+                )
+            },
+        )?;
+
+        match component_type {
+            // Both `Component` and `ConfigurationFrameDown` only connect their `InputSocket`s to
+            // things in the `Up` direction in the `Frame` stack. `Components`, because they are
+            // the leaves in the stack and there is nothing else in the `Down` direction.
+            // `ConfigurationFrameDown` because that is how we have defined their behavior.
+            ComponentType::Component | ComponentType::ConfigurationFrameDown => {
+                let mut inferred_connections = Vec::new();
+
+                if !up_potential_matches.is_empty() {
+                    let found_matches = closest_matches(
+                        &self.up_component_graph,
+                        up_distances,
+                        up_potential_matches,
+                    )?;
+                    for found_match in found_matches {
+                        inferred_connections.push(InferredConnection {
+                            source_component_id: found_match.component_id,
+                            output_socket_id: found_match.output_socket_id,
+                            destination_component_id: component_id,
+                            input_socket_id,
+                        });
                     }
                 }
-                // didn't find it, so let's queue up the next parent if it exists
-                if let Some(maybe_parent_id) =
-                    Component::get_parent_by_id(ctx, component_id).await?
+
+                Ok(inferred_connections)
+            }
+            ComponentType::ConfigurationFrameUp => {
+                // `ConfigurationFrameUp` can connect their `InputSocket`s to things in both the
+                // `Up` and `Down` directions (potentially at the same time, depending on socket
+                // arity), so we need to also find the `Down` costs.
+                let mut down_distances = HashMap::new();
+                down_distances.insert(component_index, 0);
+                let mut down_potential_matches = Vec::new();
+                petgraph::visit::depth_first_search(
+                    &self.down_component_graph,
+                    Some(component_index),
+                    |event| {
+                        cost_visitor(
+                            event,
+                            &self.down_component_graph,
+                            component_id,
+                            input_socket,
+                            &[
+                                ComponentType::ConfigurationFrameUp,
+                                // ComponentType::ConfigurationFrameDown,
+                                ComponentType::Component,
+                            ],
+                            &mut down_distances,
+                            &mut down_potential_matches,
+                        )
+                    },
+                )?;
+                // We pull the entry for this component back out since we never want to hook a
+                // component up to itself, and the entry for itself will always have the minimum
+                // distance.
+                down_distances.remove(&component_index);
+
+                // If the `InputSocket` arity is `One`, and the frame has matches in both the up &
+                // down directions, then we don't use any of them.
+                if input_socket.arity() == SocketArity::One
+                    && !up_potential_matches.is_empty()
+                    && !down_potential_matches.is_empty()
                 {
-                    work_queue.push_back(maybe_parent_id);
+                    return Ok(Vec::new());
                 }
+
+                let mut inferred_connections = Vec::new();
+
+                if !up_potential_matches.is_empty() {
+                    let found_matches = closest_matches(
+                        &self.up_component_graph,
+                        up_distances,
+                        up_potential_matches,
+                    )?;
+                    for found_match in found_matches {
+                        inferred_connections.push(InferredConnection {
+                            source_component_id: found_match.component_id,
+                            output_socket_id: found_match.output_socket_id,
+                            destination_component_id: component_id,
+                            input_socket_id,
+                        });
+                    }
+                }
+
+                if !down_potential_matches.is_empty() {
+                    let found_matches = closest_matches(
+                        &self.down_component_graph,
+                        down_distances,
+                        down_potential_matches,
+                    )?;
+                    for found_match in found_matches {
+                        inferred_connections.push(InferredConnection {
+                            source_component_id: found_match.component_id,
+                            output_socket_id: found_match.output_socket_id,
+                            destination_component_id: component_id,
+                            input_socket_id,
+                        });
+                    }
+                }
+
+                Ok(inferred_connections)
+            }
+            t => {
+                return Err(InferredConnectionGraphError::UnsupportedComponentType(
+                    t,
+                    component_id,
+                ))
             }
         }
+    }
+}
 
-        Ok(vec![])
+fn closest_matches(
+    graph: &StableDiGraph<InferredConnectionGraphNodeWeight, ()>,
+    mut distances: HashMap<NodeIndex, usize>,
+    potential_matches: Vec<PotentialInferredConnectionMatch>,
+) -> InferredConnectionGraphResult<Vec<PotentialInferredConnectionMatch>> {
+    let potential_component_matches: HashSet<ComponentId> = potential_matches
+        .iter()
+        .map(|picm| picm.component_id)
+        .collect();
+    // We're only interested in the distances to the `Component`s that potentially match the shape
+    // of the `InputSocket` we're trying to find the connection(s) of.
+    distances.retain(|&node_index, _| {
+        if let Some(node_weight) = graph.node_weight(node_index) {
+            potential_component_matches.contains(&node_weight.component.id())
+        } else {
+            false
+        }
+    });
+    // Of those `Component`s, we only care about the one(s) closest to the `InputSocket` within the
+    // frame stack.
+    let min_distance = *distances
+        .values()
+        .min()
+        .ok_or_else(|| InferredConnectionGraphError::UnableToComputeCost)?;
+    let mut closest_matches = Vec::new();
+    distances.retain(|_, v| *v == min_distance);
+    let mut match_ids = HashSet::new();
+    for (match_index, _) in distances {
+        match_ids.insert(
+            graph
+                .node_weight(match_index)
+                .ok_or(InferredConnectionGraphError::MissingGraphNode)?
+                .component
+                .id(),
+        );
     }
 
-    /// For a given [`ComponentInputSocket`], search within the given [`ComponentId`] to see if there are any [`ComponentOutputSocket`]s
-    /// Note: this does not enforce or check [`SocketArity`]. Even though we do not want one [`InputSocket`] to match multiple [`OutputSocket`]s
-    /// from the same Component, that is enforced elsewhere to differentiate between 'this is an ambiguous connection' and 'there are no available
-    /// connections here'
-    async fn find_connections_in_component(
-        ctx: &DalContext,
-        input_socket_match: ComponentInputSocket,
-        source_component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        // check for matching output socket names for this input socket
-        let parent_sv_id = Component::schema_variant_id(ctx, source_component_id).await?;
-        let output_socket_ids =
-            OutputSocket::list_ids_for_schema_variant(ctx, parent_sv_id).await?;
-        let mut maybe_matches = vec![];
+    for potential_match in potential_matches {
+        if match_ids.contains(&potential_match.component_id) {
+            closest_matches.push(potential_match);
+        }
+    }
 
-        for output_socket_id in output_socket_ids {
-            if OutputSocket::fits_input_by_id(
-                ctx,
-                input_socket_match.input_socket_id,
-                output_socket_id,
-            )
-            .await?
+    Ok(closest_matches)
+}
+
+fn cost_visitor(
+    event: DfsEvent<NodeIndex>,
+    graph: &StableDiGraph<InferredConnectionGraphNodeWeight, ()>,
+    input_socket_component_id: ComponentId,
+    input_socket: &InputSocket,
+    allowed_component_types: &[ComponentType],
+    distances: &mut HashMap<NodeIndex, usize>,
+    socket_matches: &mut Vec<PotentialInferredConnectionMatch>,
+) -> InferredConnectionGraphResult<Control<()>> {
+    match event {
+        DfsEvent::Discover(node_index, _) => {
+            let potential_output_socket_node = match graph.node_weight(node_index) {
+                Some(w) => w,
+                None => return Ok(Control::Continue),
+            };
+
+            // If we're looking at the `OutputSocket`s of the same `Component` as the one we're
+            // trying to match the `InputSocket` on, then just keep looking since a `Component`
+            // isn't allowed to connect to itself automatically in a frame stack.
+            if potential_output_socket_node.component.id() == input_socket_component_id
+                || !allowed_component_types.contains(&potential_output_socket_node.component_type)
             {
-                if let Some(component_output_socket) =
-                    ComponentOutputSocket::get_by_ids(ctx, source_component_id, output_socket_id)
-                        .await?
-                {
-                    maybe_matches.push(component_output_socket);
+                return Ok(Control::Continue);
+            }
+
+            let mut output_socket_matches = Vec::new();
+            for output_socket in &potential_output_socket_node.output_sockets {
+                if output_socket.fits_input(input_socket) {
+                    output_socket_matches.push(output_socket.id());
                 }
             }
+            // If this `Component` has multiple `OutputSocket`s suitable for a connection, then
+            // we don't use _any_ of the matches, _and_ we don't consider any of the potential
+            // matches further in this direction.
+            if output_socket_matches.len() > 1 {
+                return Ok(Control::Prune);
+            }
+
+            if let Some(&output_socket_id) = output_socket_matches.first() {
+                let component_id = potential_output_socket_node.component.id();
+                socket_matches.push(PotentialInferredConnectionMatch {
+                    component_id,
+                    output_socket_id,
+                });
+
+                // Since we found a matching `OutputSocket` to use, we don't need to search in this
+                // direction any further.
+                return Ok(Control::Prune);
+            }
+
+            Ok(Control::Continue)
         }
-        Ok(maybe_matches)
+        DfsEvent::Finish(_, _) => Ok(Control::Continue),
+        DfsEvent::TreeEdge(source_index, target_index)
+        | DfsEvent::BackEdge(source_index, target_index)
+        | DfsEvent::CrossForwardEdge(source_index, target_index) => {
+            // Keep track of the distance to nodes as we see the edges to them.
+            if let Some(&previous_distance) = distances.get(&source_index) {
+                distances.insert(target_index, previous_distance + 1);
+            }
+            Ok(Control::Continue)
+        }
     }
 }

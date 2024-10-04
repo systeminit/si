@@ -1,10 +1,10 @@
 use itertools::Itertools;
+use petgraph::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 
 use crate::{
     action::{Action, ActionId},
-    component::inferred_connection_graph::InferredConnectionGraph,
     dependency_graph::DependencyGraph,
     Component, ComponentId, DalContext,
 };
@@ -49,9 +49,12 @@ impl ActionDependencyGraph {
         //     * For each Input Socket:
         //         * For each source ComponentId (B):
         //           * All Actions for Component A depend on All actions for Component B
-        let mut component_dependencies: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
-        let mut component_reverse_dependencies: HashMap<ComponentId, HashSet<ComponentId>> =
+        let mut component_dependencies: StableDiGraph<ComponentId, ()> = StableDiGraph::new();
+        let mut component_dependencies_index_by_id: HashMap<ComponentId, NodeIndex> =
             HashMap::new();
+        // let mut component_dependencies: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+        // let mut component_reverse_dependencies: HashMap<ComponentId, HashSet<ComponentId>> =
+        //     HashMap::new();
         let mut actions_by_component_id: HashMap<ComponentId, HashSet<ActionId>> = HashMap::new();
         let mut action_dependency_graph = Self::new();
         let mut action_kinds: HashMap<ActionId, ActionKind> = HashMap::new();
@@ -76,104 +79,82 @@ impl ActionDependencyGraph {
         //       directly between two Actions, but are not implemented yet.
 
         // Get all inferred connections up front so we don't build this tree each time
-        let components_to_find = actions_by_component_id.keys().copied().collect_vec();
-        let component_tree =
-            InferredConnectionGraph::assemble_for_components(ctx, components_to_find, None).await?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut component_tree = workspace_snapshot.inferred_connection_graph(ctx).await?;
         // Action dependencies are primarily based on the data flow between Components. Things that
         // feed data into other things must have their actions run before the actions for the
         // things they are feeding data into.
         for component_id in actions_by_component_id.keys().copied() {
             let component = Component::get_by_id(ctx, component_id).await?;
+            let component_index = component_dependencies.add_node(component_id);
+            component_dependencies_index_by_id.insert(component_id, component_index);
             for incoming_connection in component.incoming_connections(ctx).await? {
-                component_dependencies
-                    .entry(component_id)
-                    .or_default()
-                    .insert(incoming_connection.from_component_id);
+                component_dependencies_index_by_id
+                    .entry(incoming_connection.from_component_id)
+                    .or_insert_with(|| {
+                        component_dependencies.add_node(incoming_connection.from_component_id)
+                    });
             }
-            for inferred_connection in
-                component_tree.get_inferred_incoming_connections_to_component(component_id)
+            for inferred_connection in component_tree
+                .inferred_incoming_connections_for_component(ctx, component_id)
+                .await?
             {
-                if inferred_connection.input_socket.component_id != component_id {
-                    continue;
+                if let Some(&source_component_index) =
+                    component_dependencies_index_by_id.get(&inferred_connection.source_component_id)
+                {
+                    // The edges of this graph go `output_socket_component (source) ->
+                    // input_socket_component (target)`, matching the flow of the data between
+                    // components.
+                    component_dependencies.update_edge(source_component_index, component_index, ());
                 }
-
-                component_dependencies
-                    .entry(component_id)
-                    .or_default()
-                    .insert(inferred_connection.output_socket.component_id);
-            }
-
-            // Destroy Actions follow the flow of data backwards, so we need the reverse dependency
-            // graph between the components.
-            for outgoing_connection in component.outgoing_connections(ctx).await? {
-                component_reverse_dependencies
-                    .entry(component_id)
-                    .or_default()
-                    .insert(outgoing_connection.to_component_id);
-            }
-            for inferred_outgoing_connection in
-                component_tree.get_inferred_outgoing_connections_for_component(component_id)
-            {
-                if inferred_outgoing_connection.output_socket.component_id != component_id {
-                    continue;
-                }
-
-                component_reverse_dependencies
-                    .entry(component_id)
-                    .or_default()
-                    .insert(inferred_outgoing_connection.input_socket.component_id);
             }
         }
 
         // Each Component's Actions need to be marked as depending on the Actions that the
         // Component itself has been determined to be depending on.
-        for (component_id, dependencies) in component_dependencies {
-            if let Some(component_action_ids) = actions_by_component_id.get(&component_id) {
-                for component_action_id in component_action_ids {
+        for (component_id, action_ids) in &actions_by_component_id {
+            if let Some(&component_index) = component_dependencies_index_by_id.get(component_id) {
+                for &component_action_id in action_ids {
                     let action_kind = action_kinds
-                        .get(component_action_id)
+                        .get(&component_action_id)
                         .copied()
-                        .ok_or(ActionError::UnableToGetKind(*component_action_id))?;
-                    if action_kind == ActionKind::Destroy {
-                        continue;
-                    }
+                        .ok_or(ActionError::UnableToGetKind(component_action_id))?;
+                    // Given a data flow between components of:
+                    //     `Component A -> Component B`
+                    //
+                    // * `ActionKind::Destroy` for `Component A` would run _after_ `Actions` for
+                    //   `Component A`. (A depends on the components from the `Outgoing` data flow
+                    //   edges)
+                    // * For all other `ActionKind`, `Actions` for `Component B` would run _after_
+                    //   `Actions` for `Component A`. (`B` depends on the components from the
+                    //   `Incoming` data flow edges.)
+                    let dependency_direction = match action_kind {
+                        ActionKind::Create
+                        | ActionKind::Manual
+                        | ActionKind::Refresh
+                        | ActionKind::Update => Incoming,
+                        ActionKind::Destroy => Outgoing,
+                    };
 
-                    for dependency_component_id in &dependencies {
-                        for dependency_action_id in actions_by_component_id
-                            .get(dependency_component_id)
-                            .cloned()
-                            .unwrap_or_default()
+                    for dependency_edgeref in
+                        component_dependencies.edges_directed(component_index, dependency_direction)
+                    {
+                        let dependency_node_index = match dependency_direction {
+                            Outgoing => dependency_edgeref.target(),
+                            Incoming => dependency_edgeref.source(),
+                        };
+                        if let Some(dependency_component_id) =
+                            component_dependencies.node_weight(dependency_node_index)
                         {
-                            action_dependency_graph
-                                .action_depends_on(*component_action_id, dependency_action_id);
-                        }
-                    }
-                }
-            }
-        }
-
-        // We get to do it all over again, but this time using the reverse dependency graph for the
-        // Destroy Actions.
-        for (component_id, reverse_dependencies) in component_reverse_dependencies {
-            if let Some(component_action_ids) = actions_by_component_id.get(&component_id) {
-                for component_action_id in component_action_ids {
-                    let action_kind = action_kinds
-                        .get(component_action_id)
-                        .copied()
-                        .ok_or(ActionError::UnableToGetKind(*component_action_id))?;
-                    if action_kind != ActionKind::Destroy {
-                        continue;
-                    }
-
-                    for dependency_compoonent_id in &reverse_dependencies {
-                        for dependency_action_id in actions_by_component_id
-                            .get(dependency_compoonent_id)
-                            .cloned()
-                            .unwrap_or_default()
-                        {
-                            action_dependency_graph
-                                .action_depends_on(*component_action_id, dependency_action_id);
-                        }
+                            for dependency_action_id in actions_by_component_id
+                                .get(dependency_component_id)
+                                .cloned()
+                                .unwrap_or_default()
+                            {
+                                action_dependency_graph
+                                    .action_depends_on(component_action_id, dependency_action_id);
+                            }
+                        };
                     }
                 }
             }

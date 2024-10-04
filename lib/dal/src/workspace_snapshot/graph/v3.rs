@@ -30,6 +30,7 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
+pub mod component;
 pub mod schema;
 mod tests;
 

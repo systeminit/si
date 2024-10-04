@@ -1,7 +1,6 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use inferred_connection_graph::InferredConnectionGraph;
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
@@ -47,9 +46,7 @@ use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{
-    ComponentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-};
+use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
 use crate::{AttributePrototypeId, SocketArity};
 use frame::{Frame, FrameError};
@@ -66,6 +63,8 @@ use crate::{
     StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
+
+use self::inferred_connection_graph::InferredConnectionGraphError;
 
 pub mod code;
 pub mod debug;
@@ -129,6 +128,8 @@ pub enum ComponentError {
     FuncArgumentError(#[from] FuncArgumentError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("InferredConnectionGraph Error: {0}")]
+    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} not found for component id {1}")]
@@ -1153,6 +1154,11 @@ impl Component {
 
     /// Finds all incoming connections for explicit edges (i.e. those coming from
     /// [`Components`](ComponentType::Component) and not from frames.
+    #[instrument(
+        name = "component.incoming_connections_for_id",
+        level = "info",
+        skip(ctx)
+    )]
     pub async fn incoming_connections_for_id(
         ctx: &DalContext,
         id: ComponentId,
@@ -1204,6 +1210,34 @@ impl Component {
         }
 
         Ok(incoming_edges)
+    }
+
+    #[instrument(
+        name = "component.input_sockets_with_connections",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn input_sockets_with_connections(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<InputSocketId>> {
+        let mut input_socket_ids = Vec::new();
+        for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
+            let prototype_id =
+                AttributeValue::prototype_id(ctx, input_socket.attribute_value_id).await?;
+            if !AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                prototype_id,
+                component_id,
+            )
+            .await?
+            .is_empty()
+            {
+                input_socket_ids.push(input_socket.input_socket_id);
+            }
+        }
+
+        Ok(input_socket_ids)
     }
 
     pub async fn get_children_for_id(
@@ -1446,23 +1480,9 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariantId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let maybe_schema_variant_indices = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(component_id, EdgeWeightKindDiscriminants::Use)
-            .await?;
-
-        for maybe_schema_variant_index in maybe_schema_variant_indices {
-            let node_weight = workspace_snapshot
-                .get_node_weight(maybe_schema_variant_index)
-                .await?;
-            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
-            {
-                return Ok(node_weight.id().into());
-            }
-        }
-
-        Err(ComponentError::SchemaVariantNotFound(component_id))
+        ctx.workspace_snapshot()?
+            .schema_variant_id_for_component_id(component_id)
+            .await
     }
 
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
@@ -1656,6 +1676,9 @@ impl Component {
         let value = serde_json::to_value(new_type)?;
 
         AttributeValue::update(ctx, type_value_id, Some(value)).await?;
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         Ok(())
     }
@@ -1932,6 +1955,9 @@ impl Component {
                 EdgeWeightKindDiscriminants::FrameContains,
             )
             .await?;
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         Ok(())
     }
@@ -2019,6 +2045,9 @@ impl Component {
                 .await?
             }
         };
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         ctx.add_dependent_values_and_enqueue(vec![destination_attribute_value_id])
             .await?;
@@ -2729,40 +2758,29 @@ impl Component {
         let to_component_id = self.id();
         let mut connections = vec![];
 
-        let incoming_connections = match ctx
-            .workspace_snapshot()?
-            .get_cached_inferred_connection_graph()
-            .await
-            .as_ref()
-        {
-            Some(cached_graph) => {
-                cached_graph.get_inferred_incoming_connections_to_component(to_component_id)
-            }
-            None => InferredConnectionGraph::assemble(ctx, to_component_id)
-                .await?
-                .get_inferred_incoming_connections_to_component(to_component_id),
-        };
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut inferred_connection_graph =
+            workspace_snapshot.inferred_connection_graph(ctx).await?;
+        let incoming_connections = inferred_connection_graph
+            .inferred_incoming_connections_for_component(ctx, to_component_id)
+            .await?;
 
         for incoming_connection in incoming_connections {
             // add the check for to_delete on either to or from component
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed
             // data into not deleted Components.
-            let destination_component = Self::get_by_id(ctx, to_component_id).await?;
             let source_component =
-                Self::get_by_id(ctx, incoming_connection.output_socket.component_id).await?;
-            let to_delete = !Self::should_data_flow_between_components(
-                ctx,
-                destination_component.id,
-                source_component.id,
-            )
-            .await?;
+                Self::get_by_id(ctx, incoming_connection.source_component_id).await?;
+            let to_delete =
+                !Self::should_data_flow_between_components(ctx, self.id, source_component.id)
+                    .await?;
 
             connections.push(InferredConnection {
                 to_component_id,
-                to_input_socket_id: incoming_connection.input_socket.input_socket_id,
-                from_component_id: incoming_connection.output_socket.component_id,
-                from_output_socket_id: incoming_connection.output_socket.output_socket_id,
+                to_input_socket_id: incoming_connection.input_socket_id,
+                from_component_id: incoming_connection.source_component_id,
+                from_output_socket_id: incoming_connection.output_socket_id,
                 to_delete,
             });
         }
@@ -2778,29 +2796,22 @@ impl Component {
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<Vec<InferredConnection>> {
-        let from_component_id = self.id();
         let mut connections = vec![];
 
-        let outgoing_connections = match ctx
-            .workspace_snapshot()?
-            .get_cached_inferred_connection_graph()
-            .await
-            .as_ref()
-        {
-            Some(cached_graph) => {
-                cached_graph.get_inferred_outgoing_connections_for_component(from_component_id)
-            }
-            None => InferredConnectionGraph::assemble(ctx, from_component_id)
-                .await?
-                .get_inferred_outgoing_connections_for_component(from_component_id),
-        };
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
+        let mut inferred_connections_for_component_stack = inferred_connections
+            .inferred_connections_for_component_stack(ctx, self.id)
+            .await?;
+        inferred_connections_for_component_stack
+            .retain(|inferred_connection| inferred_connection.source_component_id == self.id);
 
-        for outgoing_connection in outgoing_connections {
+        for outgoing_connection in inferred_connections_for_component_stack {
             // add the check for to_delete on either to or from component
             // Both "deleted" and not deleted Components can feed data into
             // "deleted" Components. **ONLY** not deleted Components can feed
             // data into not deleted Components.
-            let destination_component = outgoing_connection.input_socket.component_id;
+            let destination_component = outgoing_connection.destination_component_id;
             let source_component = self.id();
 
             let to_delete = !Self::should_data_flow_between_components(
@@ -2810,10 +2821,10 @@ impl Component {
             )
             .await?;
             connections.push(InferredConnection {
-                to_component_id: outgoing_connection.input_socket.component_id,
-                to_input_socket_id: outgoing_connection.input_socket.input_socket_id,
-                from_component_id: outgoing_connection.output_socket.component_id,
-                from_output_socket_id: outgoing_connection.output_socket.output_socket_id,
+                to_component_id: outgoing_connection.destination_component_id,
+                to_input_socket_id: outgoing_connection.input_socket_id,
+                from_component_id: outgoing_connection.source_component_id,
+                from_output_socket_id: outgoing_connection.output_socket_id,
                 to_delete,
             });
         }
@@ -2902,6 +2913,9 @@ impl Component {
                 continue;
             }
         }
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         Ok(())
     }
