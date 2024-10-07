@@ -25,12 +25,12 @@ use si_data_nats::{async_nats, jetstream, NatsClient, Subscriber};
 use si_pool_noodle::{
     instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
     pool_noodle::PoolNoodleConfig,
-    PoolNoodle, Spec,
+    KillExecutionRequest, PoolNoodle, Spec,
 };
 use telemetry::prelude::*;
 use tokio::sync::{oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
-use veritech_core::{subject, veritech_work_queue, ExecutionId};
+use veritech_core::{incoming_subject, veritech_work_queue, ExecutionId, GetNatsSubjectFor};
 
 use crate::{
     app_state::{AppState, KillAppState},
@@ -279,7 +279,11 @@ impl Server {
     // we ask for both here. We don't want users to forget the prefix, so being explicit is
     // helpful, but maybe we can change this in the future.
     async fn kill_subscriber(nats: &NatsClient, prefix: Option<&str>) -> ServerResult<Subscriber> {
-        let subject = veritech_core::subject::veritech_kill_request(prefix);
+        // we have to make a dummy request here to get the nats subject from it
+        let dummy_request = KillExecutionRequest {
+            execution_id: "".into(),
+        };
+        let subject = dummy_request.nats_subject(prefix, None, None);
         nats.subscribe(subject.clone())
             .await
             .map_err(|err| ServerError::NatsSubscribe(subject, err))
@@ -300,7 +304,7 @@ impl Server {
     ) -> async_nats::jetstream::consumer::pull::Config {
         async_nats::jetstream::consumer::pull::Config {
             durable_name: Some(CONSUMER_NAME.to_owned()),
-            filter_subject: subject::incoming(subject_prefix).to_string(),
+            filter_subject: incoming_subject(subject_prefix).to_string(),
             max_deliver: CONSUMER_MAX_DELIVERY,
             ..Default::default()
         }

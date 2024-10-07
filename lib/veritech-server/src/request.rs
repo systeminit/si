@@ -1,7 +1,7 @@
 use si_crypto::VeritechDecryptionKey;
 use si_pool_noodle::{
-    ActionRunRequest, BeforeFunction, ResolverFunctionRequest, SchemaVariantDefinitionRequest,
-    SensitiveStrings, ValidationRequest,
+    ActionRunRequest, BeforeFunction, ManagementRequest, ResolverFunctionRequest,
+    SchemaVariantDefinitionRequest, SensitiveStrings, ValidationRequest,
 };
 use veritech_core::{decrypt_value_tree, VeritechValueDecryptError};
 
@@ -51,6 +51,16 @@ impl DecryptRequest for SchemaVariantDefinitionRequest {
     ) -> Result<(), VeritechValueDecryptError> {
         // No before funcs defined!
         Ok(())
+    }
+}
+
+impl DecryptRequest for ManagementRequest {
+    fn decrypt(
+        &mut self,
+        sensitive_strings: &mut SensitiveStrings,
+        decryption_key: &VeritechDecryptionKey,
+    ) -> Result<(), VeritechValueDecryptError> {
+        decrypt_before_func_args(&mut self.before, sensitive_strings, decryption_key)
     }
 }
 

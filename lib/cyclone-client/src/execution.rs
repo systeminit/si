@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use cyclone_core::{CycloneRequest, FunctionResult, Message, ProgressMessage};
+use cyclone_core::{CycloneRequest, CycloneRequestable, FunctionResult, Message, ProgressMessage};
 use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
 use serde::{de::DeserializeOwned, Serialize};
@@ -14,10 +14,13 @@ use tokio_tungstenite::WebSocketStream;
 
 pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
 
-pub fn new_unstarted_execution<T, Request, Success>(
+pub fn new_unstarted_execution<T, Request>(
     stream: WebSocketStream<T>,
     request: CycloneRequest<Request>,
-) -> Execution<T, Request, Success> {
+) -> Execution<T, Request, Request::Response>
+where
+    Request: CycloneRequestable,
+{
     Execution {
         stream,
         request,
@@ -55,7 +58,10 @@ pub enum ExecutionError<Success> {
 }
 
 #[derive(Debug)]
-pub struct Execution<T, Request, Success> {
+pub struct Execution<T, Request, Success>
+where
+    Request: CycloneRequestable,
+{
     stream: WebSocketStream<T>,
     request: CycloneRequest<Request>,
     // Are we sure this is the right variance?
@@ -66,7 +72,7 @@ impl<T, Request, Success> Execution<T, Request, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     Success: DeserializeOwned,
-    Request: Serialize,
+    Request: Serialize + CycloneRequestable,
 {
     pub async fn start(mut self) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
         // As soon as we see the "start" message, we are good to go.
@@ -97,7 +103,10 @@ where
     }
 }
 
-impl<T, Request, Success> From<Execution<T, Request, Success>> for ExecutionStarted<T, Success> {
+impl<T, Request, Success> From<Execution<T, Request, Success>> for ExecutionStarted<T, Success>
+where
+    Request: CycloneRequestable,
+{
     fn from(value: Execution<T, Request, Success>) -> Self {
         Self {
             stream: value.stream,

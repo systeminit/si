@@ -1637,6 +1637,7 @@ dependencies = [
  "si-std",
  "strum 0.26.3",
  "telemetry",
+ "telemetry-utils",
  "thiserror",
  "tokio",
 ]
@@ -7464,6 +7465,7 @@ dependencies = [
 name = "veritech-core"
 version = "0.1.0"
 dependencies = [
+ "cyclone-core",
  "serde_json",
  "si-crypto",
  "si-data-nats",

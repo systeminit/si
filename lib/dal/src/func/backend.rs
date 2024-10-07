@@ -25,6 +25,7 @@ pub mod js_action;
 pub mod js_attribute;
 pub mod js_schema_variant_definition;
 pub mod json;
+pub mod management;
 pub mod map;
 pub mod object;
 pub mod string;
@@ -97,6 +98,7 @@ pub enum FuncBackendKind {
     String,
     Unset,
     Validation,
+    Management,
 }
 
 impl From<FuncBackendKind> for si_events::FuncBackendKind {
@@ -121,6 +123,7 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
             FuncBackendKind::String => si_events::FuncBackendKind::String,
             FuncBackendKind::Unset => si_events::FuncBackendKind::Unset,
             FuncBackendKind::Validation => si_events::FuncBackendKind::Validation,
+            FuncBackendKind::Management => si_events::FuncBackendKind::Management,
         }
     }
 }
@@ -147,6 +150,7 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
             si_events::FuncBackendKind::String => FuncBackendKind::String,
             si_events::FuncBackendKind::Unset => FuncBackendKind::Unset,
             si_events::FuncBackendKind::Validation => FuncBackendKind::Validation,
+            si_events::FuncBackendKind::Management => FuncBackendKind::Management,
         }
     }
 }
@@ -185,6 +189,7 @@ pub enum FuncBackendResponseType {
     Unset,
     Validation,
     Void,
+    Management,
 }
 
 impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
@@ -214,6 +219,7 @@ impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
             FuncBackendResponseType::Unset => si_events::FuncBackendResponseType::Unset,
             FuncBackendResponseType::Validation => si_events::FuncBackendResponseType::Validation,
             FuncBackendResponseType::Void => si_events::FuncBackendResponseType::Void,
+            FuncBackendResponseType::Management => si_events::FuncBackendResponseType::Management,
         }
     }
 }
@@ -245,6 +251,7 @@ impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
             si_events::FuncBackendResponseType::Unset => FuncBackendResponseType::Unset,
             si_events::FuncBackendResponseType::Validation => FuncBackendResponseType::Validation,
             si_events::FuncBackendResponseType::Void => FuncBackendResponseType::Void,
+            si_events::FuncBackendResponseType::Management => FuncBackendResponseType::Management,
         }
     }
 }
@@ -265,6 +272,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
             ResolverFunctionResponseType::Void => FuncBackendResponseType::Void,
+            ResolverFunctionResponseType::Management => FuncBackendResponseType::Management,
         }
     }
 }
@@ -300,6 +308,7 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
                 return Err(InvalidResolverFunctionTypeError(value));
             }
             FuncBackendResponseType::Void => ResolverFunctionResponseType::Void,
+            FuncBackendResponseType::Management => ResolverFunctionResponseType::Management,
         };
         Ok(value)
     }

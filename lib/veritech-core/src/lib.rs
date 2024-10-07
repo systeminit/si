@@ -11,7 +11,11 @@
     clippy::module_name_repetitions
 )]
 
-use si_data_nats::{async_nats, jetstream};
+use cyclone_core::{
+    ActionRunRequest, KillExecutionRequest, ManagementRequest, ResolverFunctionRequest,
+    SchemaVariantDefinitionRequest, ValidationRequest,
+};
+use si_data_nats::{async_nats, jetstream, Subject};
 
 mod crypto;
 
@@ -22,12 +26,16 @@ pub use crypto::{
 const NATS_WORK_QUEUE_STREAM_NAME: &str = "VERITECH_REQUESTS";
 const NATS_WORK_QUEUE_STREAM_SUBJECTS: &[&str] = &["veritech.requests.>"];
 
-pub const NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX: &str = "actionrun";
-pub const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX: &str = "resolverfunction";
-pub const NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX: &str = "schemavariantdefinition";
-pub const NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX: &str = "validation";
+const NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX: &str = "actionrun";
+const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX: &str = "resolverfunction";
+const NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX: &str = "schemavariantdefinition";
+const NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX: &str = "validation";
+const NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX: &str = "management";
 
-pub const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
+const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
+
+const INCOMING_SUBJECT: &str = "veritech.requests.*.*.*";
+const SUBJECT_PREFIX: &str = "veritech.requests";
 
 pub const REPLY_INBOX_HEADER_NAME: &str = "X-Reply-Inbox";
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
@@ -43,7 +51,7 @@ pub async fn veritech_work_queue(
 {
     let subjects: Vec<_> = NATS_WORK_QUEUE_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| subject::nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_subject(prefix, suffix).to_string())
         .collect();
 
     let stream = context
@@ -78,45 +86,163 @@ pub fn reply_mailbox_for_result(reply_mailbox: &str) -> String {
     format!("{reply_mailbox}.result")
 }
 
-pub mod subject {
-    use si_data_nats::Subject;
-
-    use crate::NATS_KILL_EXECUTION_DEFAULT_SUBJECT;
-
-    const INCOMING_SUBJECT: &str = "veritech.requests.*.*.*";
-    const SUBJECT_PREFIX: &str = "veritech.requests";
-
-    #[inline]
-    pub fn incoming(prefix: Option<&str>) -> Subject {
-        nats_subject(prefix, INCOMING_SUBJECT)
-    }
-
-    #[inline]
-    pub fn veritech_request(
+pub trait GetNatsSubjectFor {
+    fn subject_suffix(&self) -> &str;
+    fn nats_subject(
+        &self,
         prefix: Option<&str>,
-        workspace_id: &str,
-        change_set_id: &str,
-        kind: &str,
+        workspace_id: Option<&str>,
+        change_set_id: Option<&str>,
     ) -> Subject {
-        nats_subject(
-            prefix,
-            format!(
-                "{SUBJECT_PREFIX}.{}.{}.{}",
-                workspace_id, change_set_id, kind,
-            ),
-        )
+        let subject_with_workspace_and_change_set = format!(
+            "{SUBJECT_PREFIX}.{}.{}.{}",
+            workspace_id.unwrap_or("NONE"),
+            change_set_id.unwrap_or("NONE"),
+            self.subject_suffix()
+        );
+        nats_subject(prefix, subject_with_workspace_and_change_set)
+    }
+}
+
+impl GetNatsSubjectFor for ActionRunRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
+impl GetNatsSubjectFor for KillExecutionRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_KILL_EXECUTION_DEFAULT_SUBJECT
     }
 
-    #[inline]
-    pub fn veritech_kill_request(prefix: Option<&str>) -> Subject {
-        nats_subject(prefix, NATS_KILL_EXECUTION_DEFAULT_SUBJECT)
+    fn nats_subject(
+        &self,
+        prefix: Option<&str>,
+        _workspace_id: Option<&str>,
+        _change_set_id: Option<&str>,
+    ) -> Subject {
+        nats_subject(prefix, self.subject_suffix())
+    }
+}
+
+impl GetNatsSubjectFor for ManagementRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
+impl GetNatsSubjectFor for ResolverFunctionRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
+impl GetNatsSubjectFor for SchemaVariantDefinitionRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
+impl GetNatsSubjectFor for ValidationRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum VeritechRequest {
+    ActionRun(ActionRunRequest),
+    KillExecution(KillExecutionRequest),
+    Mangement(ManagementRequest),
+    Resolver(ResolverFunctionRequest), // Resolvers are JsAttribute functions
+    SchemaVariantDefinition(SchemaVariantDefinitionRequest),
+    Validation(ValidationRequest),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VeritechRequestError {
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("subject suffix {0} not a recognized veritech request type")]
+    UnknownSubjectSuffix(String),
+}
+
+impl VeritechRequest {
+    pub fn from_subject_and_payload(
+        subject: &str,
+        payload: &[u8],
+    ) -> Result<Self, VeritechRequestError> {
+        Ok(match subject {
+            NATS_ACTION_RUN_DEFAULT_SUBJECT_SUFFIX => {
+                Self::ActionRun(serde_json::from_slice(payload)?)
+            }
+            NATS_KILL_EXECUTION_DEFAULT_SUBJECT => {
+                Self::KillExecution(serde_json::from_slice(payload)?)
+            }
+            NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX => {
+                Self::Mangement(serde_json::from_slice(payload)?)
+            }
+            NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX => {
+                Self::Resolver(serde_json::from_slice(payload)?)
+            }
+            NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX => {
+                Self::SchemaVariantDefinition(serde_json::from_slice(payload)?)
+            }
+            NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX => {
+                Self::Validation(serde_json::from_slice(payload)?)
+            }
+            _ => {
+                return Err(VeritechRequestError::UnknownSubjectSuffix(
+                    subject.to_string(),
+                ))
+            }
+        })
     }
 
-    pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> Subject {
-        let suffix = suffix.as_ref();
-        match prefix {
-            Some(prefix) => Subject::from(format!("{prefix}.{suffix}")),
-            None => Subject::from(suffix),
+    pub fn subject_suffix(&self) -> &str {
+        match self {
+            VeritechRequest::ActionRun(action_run_request) => action_run_request.subject_suffix(),
+            VeritechRequest::KillExecution(kill_execution_request) => {
+                kill_execution_request.subject_suffix()
+            }
+            VeritechRequest::Mangement(management_request) => management_request.subject_suffix(),
+            VeritechRequest::Resolver(resolver_function_request) => {
+                resolver_function_request.subject_suffix()
+            }
+            VeritechRequest::SchemaVariantDefinition(schema_variant_definition_request) => {
+                schema_variant_definition_request.subject_suffix()
+            }
+            VeritechRequest::Validation(validation_request) => validation_request.subject_suffix(),
         }
+    }
+
+    pub fn execution_id(&self) -> &str {
+        match self {
+            VeritechRequest::ActionRun(action_run_request) => &action_run_request.execution_id,
+            VeritechRequest::KillExecution(kill_execution_request) => {
+                &kill_execution_request.execution_id
+            }
+            VeritechRequest::Mangement(management_request) => &management_request.execution_id,
+            VeritechRequest::Resolver(resolver_function_request) => {
+                &resolver_function_request.execution_id
+            }
+            VeritechRequest::SchemaVariantDefinition(schema_variant_definition_request) => {
+                &schema_variant_definition_request.execution_id
+            }
+            VeritechRequest::Validation(validation_request) => &validation_request.execution_id,
+        }
+    }
+}
+
+#[inline]
+pub fn incoming_subject(prefix: Option<&str>) -> Subject {
+    nats_subject(prefix, INCOMING_SUBJECT)
+}
+
+fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> Subject {
+    let suffix = suffix.as_ref();
+    match prefix {
+        Some(prefix) => Subject::from(format!("{prefix}.{suffix}")),
+        None => Subject::from(suffix),
     }
 }

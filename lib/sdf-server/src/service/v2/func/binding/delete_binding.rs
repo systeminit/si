@@ -92,6 +92,7 @@ pub async fn delete_binding(
                 .await?
             }
             FuncKind::Attribute
+            | FuncKind::Management
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition
             | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),

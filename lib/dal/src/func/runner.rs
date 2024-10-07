@@ -41,6 +41,7 @@ use crate::{
 };
 use crate::{HistoryEventError, TransactionsError};
 
+use super::backend::management::FuncBackendManagement;
 use super::backend::{
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
@@ -1588,6 +1589,15 @@ impl FuncRunnerExecutionTask {
                 return Err(
                     FuncRunnerError::DirectAuthenticationFuncExecutionUnsupported(self.func.id),
                 )
+            }
+            FuncBackendKind::Management => {
+                FuncBackendManagement::create_and_execute(
+                    self.func_dispatch_context,
+                    &self.func,
+                    &self.args,
+                    self.before,
+                )
+                .await
             }
         };
 

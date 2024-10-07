@@ -27,7 +27,6 @@ pub enum FuncRunState {
 }
 
 /// Describes the kind of [`Func`](crate::Func).
-#[remain::sorted]
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum FuncKind {
     Action,
@@ -38,6 +37,7 @@ pub enum FuncKind {
     Qualification,
     SchemaVariantDefinition,
     Unknown,
+    Management,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -76,6 +76,7 @@ pub enum FuncBackendKind {
     String,
     Unset,
     Validation,
+    Management,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -112,6 +113,7 @@ pub enum FuncBackendResponseType {
     Unset,
     Validation,
     Void,
+    Management,
 }
 
 #[remain::sorted]

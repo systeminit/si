@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Duration;
 
 use dal::component::frame::Frame;
 use dal::{Component, ComponentId, DalContext};
@@ -64,6 +65,8 @@ async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
             .await
             .expect("get parent by id succeeds")
     );
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
 
     // switch to change set 1, and see that the component has been reparented
     expected::update_visibility_and_snapshot_to_visibility(ctx, change_set_1.id).await;

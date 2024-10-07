@@ -1,6 +1,8 @@
-use crate::before::BeforeFunction;
+use crate::{before::BeforeFunction, request::CycloneRequestable};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use telemetry::prelude::*;
+use telemetry_utils::metric;
 
 use crate::ComponentView;
 
@@ -34,6 +36,7 @@ pub enum ResolverFunctionResponseType {
     Identity,
     Integer,
     Json,
+    Management,
     Map,
     Object,
     Qualification,
@@ -50,4 +53,24 @@ pub struct ResolverFunctionResultSuccess {
     pub data: Value,
     pub unset: bool,
     pub timestamp: u64,
+}
+
+impl CycloneRequestable for ResolverFunctionRequest {
+    type Response = ResolverFunctionResultSuccess;
+
+    fn execution_id(&self) -> &str {
+        &self.execution_id
+    }
+
+    fn websocket_path(&self) -> &str {
+        "/execute/resolver"
+    }
+
+    fn inc_run_metric(&self) {
+        metric!(counter.function_run.resolver = 1);
+    }
+
+    fn dec_run_metric(&self) {
+        metric!(counter.function_run.resolver = -1);
+    }
 }

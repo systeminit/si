@@ -149,6 +149,7 @@ impl From<FuncBackendKind> for FuncSpecBackendKind {
             FuncBackendKind::Unset => Self::Unset,
             FuncBackendKind::Validation => Self::Validation,
             FuncBackendKind::JsAuthentication => Self::JsAuthentication,
+            FuncBackendKind::Management => Self::Management,
         }
     }
 }
@@ -173,6 +174,7 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::Unset => Self::Unset,
             FuncSpecBackendKind::Validation => Self::Validation,
             FuncSpecBackendKind::JsAuthentication => Self::JsAuthentication,
+            FuncSpecBackendKind::Management => Self::Management,
         }
     }
 }
@@ -196,6 +198,7 @@ impl From<FuncBackendResponseType> for FuncSpecBackendResponseType {
             FuncBackendResponseType::Unset => Self::Unset,
             FuncBackendResponseType::Validation => Self::Validation,
             FuncBackendResponseType::Void => Self::Void,
+            FuncBackendResponseType::Management => Self::Management,
         }
     }
 }
@@ -219,6 +222,7 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
             FuncSpecBackendResponseType::Unset => Self::Unset,
             FuncSpecBackendResponseType::Validation => Self::Validation,
             FuncSpecBackendResponseType::Void => Self::Void,
+            FuncSpecBackendResponseType::Management => Self::Management,
         }
     }
 }

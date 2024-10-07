@@ -12,8 +12,8 @@ use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
     process::{self, ShutdownError},
-    CycloneRequest, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
-    FunctionResultFailureErrorKind, Message, OutputStream,
+    CycloneRequest, CycloneRequestable, FunctionResult, FunctionResultFailure,
+    FunctionResultFailureError, FunctionResultFailureErrorKind, Message, OutputStream,
 };
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -40,7 +40,10 @@ pub fn new<Request, LangServerSuccess, Success>(
     lang_server_function_timeout: Option<usize>,
     lang_server_process_timeout: Option<u64>,
     command: String,
-) -> Execution<Request, LangServerSuccess, Success> {
+) -> Execution<Request, LangServerSuccess, Success>
+where
+    Request: CycloneRequestable,
+{
     Execution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
@@ -94,7 +97,10 @@ pub enum ExecutionError {
 type Result<T> = std::result::Result<T, ExecutionError>;
 
 #[derive(Debug)]
-pub struct Execution<Request, LangServerSuccess, Success> {
+pub struct Execution<Request, LangServerSuccess, Success>
+where
+    Request: CycloneRequestable,
+{
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
     lang_server_function_timeout: Option<usize>,
@@ -107,7 +113,7 @@ pub struct Execution<Request, LangServerSuccess, Success> {
 
 impl<Request, LangServerSuccess, Success> Execution<Request, LangServerSuccess, Success>
 where
-    Request: Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
+    Request: Serialize + DeserializeOwned + Unpin + core::fmt::Debug + CycloneRequestable,
     LangServerSuccess: DeserializeOwned,
     Success: Serialize,
 {

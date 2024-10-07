@@ -10,10 +10,8 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, CycloneRequest, LivenessStatus,
-    LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    CycloneRequest, CycloneRequestable, LivenessStatus, LivenessStatusParseError, ReadinessStatus,
+    ReadinessStatusParseError,
 };
 use http::{
     request::Builder,
@@ -38,7 +36,7 @@ use tokio_tungstenite::{
     WebSocketStream,
 };
 
-use crate::{execution, ping, watch, Execution, PingExecution, Watch};
+use crate::{new_unstarted_execution, ping, watch, Execution, PingExecution, Watch};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -138,31 +136,12 @@ where
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
 
-    async fn prepare_resolver_execution(
+    async fn prepare_execution<Request>(
         &mut self,
-        request: CycloneRequest<ResolverFunctionRequest>,
-    ) -> result::Result<
-        Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
-        ClientError,
-    >;
-
-    async fn prepare_action_run_execution(
-        &mut self,
-        request: CycloneRequest<ActionRunRequest>,
-    ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>;
-
-    async fn prepare_validation_execution(
-        &mut self,
-        request: CycloneRequest<ValidationRequest>,
-    ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>;
-
-    async fn prepare_schema_variant_definition_execution(
-        &mut self,
-        request: CycloneRequest<SchemaVariantDefinitionRequest>,
-    ) -> result::Result<
-        Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
-        ClientError,
-    >;
+        request: CycloneRequest<Request>,
+    ) -> result::Result<Execution<Strm, Request, Request::Response>, ClientError>
+    where
+        Request: CycloneRequestable + Send + Sync;
 }
 
 impl Client<(), (), ()> {
@@ -275,46 +254,15 @@ where
         Ok(ping::execute(stream))
     }
 
-    async fn prepare_resolver_execution(
+    async fn prepare_execution<Request>(
         &mut self,
-        request: CycloneRequest<ResolverFunctionRequest>,
-    ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
-        let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(execution::new_unstarted_execution(stream, request))
-    }
-
-    async fn prepare_action_run_execution(
-        &mut self,
-        request: CycloneRequest<ActionRunRequest>,
-    ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
+        request: CycloneRequest<Request>,
+    ) -> result::Result<Execution<Strm, Request, Request::Response>, ClientError>
+    where
+        Request: CycloneRequestable + Send + Sync,
     {
-        let stream = self.websocket_stream("/execute/command").await?;
-        Ok(execution::new_unstarted_execution(stream, request))
-    }
-
-    async fn prepare_validation_execution(
-        &mut self,
-        request: CycloneRequest<ValidationRequest>,
-    ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
-    {
-        Ok(execution::new_unstarted_execution(
-            self.websocket_stream("/execute/validation").await?,
-            request,
-        ))
-    }
-
-    async fn prepare_schema_variant_definition_execution(
-        &mut self,
-        request: CycloneRequest<SchemaVariantDefinitionRequest>,
-    ) -> result::Result<
-        Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
-        ClientError,
-    > {
-        Ok(execution::new_unstarted_execution(
-            self.websocket_stream("/execute/schema_variant_definition")
-                .await?,
-            request,
-        ))
+        let stream = self.websocket_stream(request.websocket_path()).await?;
+        Ok(new_unstarted_execution(stream, request))
     }
 }
 
@@ -456,7 +404,7 @@ where
         Ok(stream)
     }
 
-    async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<Strm>>
+    pub async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<Strm>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -500,8 +448,9 @@ mod tests {
     use base64::{engine::general_purpose, Engine};
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
-        ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
-        ValidationRequest,
+        ActionRunRequest, ComponentKind, ComponentView, FunctionResult, ManagementRequest,
+        ProgressMessage, ResolverFunctionComponent, ResolverFunctionRequest,
+        SchemaVariantDefinitionRequest, ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
     use futures::StreamExt;
@@ -819,7 +768,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_resolver_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -920,7 +869,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_resolver_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -992,7 +941,7 @@ mod tests {
             before: vec![],
         };
         let mut progress = client
-            .prepare_validation_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1062,7 +1011,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_action_run_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1148,7 +1097,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_action_run_execution(CycloneRequest::from_parts(req, Default::default()))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1236,10 +1185,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_schema_variant_definition_execution(CycloneRequest::from_parts(
-                req,
-                Default::default(),
-            ))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1316,10 +1262,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .prepare_schema_variant_definition_execution(CycloneRequest::from_parts(
-                req,
-                Default::default(),
-            ))
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1364,6 +1307,168 @@ mod tests {
         match result {
             FunctionResult::Success(_success) => {
                 // TODO(fnichol): assert some result data
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test)]
+    async fn http_execute_management_func() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_management(true), &tmp_socket).await;
+
+        let req = ManagementRequest {
+            execution_id: "1234".to_string(),
+            handler: "manage".to_string(),
+            this_component: ComponentView {
+                properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                kind: ComponentKind::Standard,
+            },
+            code_base64: base64_encode(
+                r#"function manage(input) {
+                    console.log('first');
+                    console.log('second');
+                    return {
+                        message: input.to,
+                    }
+                }"#,
+            ),
+            before: vec![],
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(Some("repeat the theme"), success.message.as_deref());
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test)]
+    async fn uds_execute_management_func() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_management(true), &tmp_socket).await;
+
+        let req = ManagementRequest {
+            execution_id: "1234".to_string(),
+            handler: "manage".to_string(),
+            this_component: ComponentView {
+                properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                kind: ComponentKind::Standard,
+            },
+            code_base64: base64_encode(
+                r#"function manage(input) {
+                    console.log('first');
+                    console.log('second');
+                    return {
+                        message: input.to,
+                    }
+                }"#,
+            ),
+            before: vec![],
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .prepare_execution(CycloneRequest::from_parts(req, Default::default()))
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(Some("repeat the theme"), success.message.as_deref());
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={failure:?}")
