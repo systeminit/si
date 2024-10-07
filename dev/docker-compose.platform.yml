@@ -85,6 +85,7 @@ services:
       - "DEFAULT_POOL_SIZE=250"
       - "MIN_POOL_SIZE=200"
       - "POOL_MODE=transaction"
+      - "IGNORE_STARTUP_PARAMETERS=extra_float_digits,search_path"
     ports:
       - "5432:5432"
     depends_on:
