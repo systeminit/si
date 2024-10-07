@@ -176,7 +176,6 @@ where
         .map_err(|err| span.record_err(HandlerError::CyclonePool(Box::new(err))))?;
 
     request.inc_run_metric();
-    info!("request dispatched");
 
     let mut sensitive_strings = SensitiveStrings::default();
     // Decrypt the relevant contents of the request and track any resulting sensitive strings

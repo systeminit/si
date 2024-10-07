@@ -29,7 +29,7 @@ export enum FunctionKind {
   SchemaVariantDefinition = "schemaVariantDefinition",
 }
 
-export function functionKinds(): Array<FunctionKind> {
+export function functionKinds(): Array<string> {
   return _.values(FunctionKind);
 }
 
@@ -163,8 +163,8 @@ export async function executeFunction(kind: FunctionKind, request: Request, time
         request as ManagementFunc,
         kind,
         timeout,
-        management_run
-      )
+        management_run,
+      );
       break;
     default:
       throw Error(`Unknown Kind variant: ${kind}`);
