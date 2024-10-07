@@ -309,14 +309,14 @@ impl PropSpec {
         current_path: &str,
         prop_truth: InputMismatchTruth,
         other_inputs: &[AttrFuncInputSpec],
-        func_unique_id: &str,
+        other_func_unique_id: &str,
         input_sockets: &[String],
         output_sockets: &[String],
     ) -> Vec<MergeSkip> {
         let mut merge_skips = vec![];
 
-        for input in other_inputs {
-            match input {
+        for other_input in other_inputs {
+            match other_input {
                 AttrFuncInputSpec::Prop {
                     prop_path, name, ..
                 } => {
@@ -341,7 +341,7 @@ impl PropSpec {
                             prop_path: current_path.to_string(),
                             input_name: name.to_owned(),
                             missing_prop_path: prop_path.to_owned(),
-                            func_unique_id: func_unique_id.to_string(),
+                            func_unique_id: other_func_unique_id.to_string(),
                         })
                     }
                 }
@@ -353,7 +353,7 @@ impl PropSpec {
                             prop_path: current_path.to_string(),
                             input_name: name.to_owned(),
                             missing_socket_name: socket_name.to_owned(),
-                            func_unique_id: func_unique_id.to_string(),
+                            func_unique_id: other_func_unique_id.to_string(),
                         })
                     }
                 }
@@ -365,7 +365,7 @@ impl PropSpec {
                             prop_path: current_path.to_string(),
                             input_name: name.to_owned(),
                             missing_socket_name: socket_name.to_owned(),
-                            func_unique_id: func_unique_id.to_string(),
+                            func_unique_id: other_func_unique_id.to_string(),
                         })
                     }
                 }
@@ -380,7 +380,6 @@ impl PropSpec {
         other: &PropSpec,
         input_sockets: &[String],
         output_sockets: &[String],
-        identity_func_unique_id: &str,
     ) -> (PropSpec, Vec<MergeSkip>) {
         let other_map = other.build_prop_spec_index_map();
         let mut self_map = self.build_prop_spec_index_map();
@@ -415,28 +414,20 @@ impl PropSpec {
                 } else if let (Some(other_func_unique_id), Some(other_inputs)) =
                     (other_prop_spec.func_unique_id(), other_prop_spec.inputs())
                 {
-                    // If the func on the matching prop in other is identity,
-                    // then the func should be completely controlled by the
-                    // asset definition. If it is something else, then it's a
-                    // custom attr func and it currently is not part of the
-                    // asset definition, so we want to copy it over to preserve
-                    // asset funcs.
-                    if other_func_unique_id != identity_func_unique_id {
-                        let mismatches = Self::get_input_mismatches(
-                            current_path,
-                            InputMismatchTruth::PropSpecMap(&self_map),
-                            other_inputs.as_slice(),
-                            other_func_unique_id,
-                            input_sockets,
-                            output_sockets,
-                        );
+                    let mismatches = Self::get_input_mismatches(
+                        current_path,
+                        InputMismatchTruth::PropSpecMap(&self_map),
+                        other_inputs.as_slice(),
+                        other_func_unique_id,
+                        input_sockets,
+                        output_sockets,
+                    );
 
-                        if mismatches.is_empty() {
-                            current_prop_spec_builder.func_unique_id(other_func_unique_id);
-                            current_prop_spec_builder.inputs(other_inputs.to_owned());
-                        } else {
-                            merge_skips.extend(mismatches);
-                        }
+                    if mismatches.is_empty() {
+                        current_prop_spec_builder.func_unique_id(other_func_unique_id);
+                        current_prop_spec_builder.inputs(other_inputs.to_owned());
+                    } else {
+                        merge_skips.extend(mismatches);
                     }
                 }
             }
@@ -899,8 +890,7 @@ mod tests {
             .build()
             .expect("able to build");
 
-        let (merged_prop_root, merge_skips) =
-            prop_tree_b.merge_with(&prop_tree_a, &[], &[], "identity");
+        let (merged_prop_root, merge_skips) = prop_tree_b.merge_with(&prop_tree_a, &[], &[]);
 
         // Confirm merge skips are correct
         assert_eq!(

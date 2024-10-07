@@ -97,7 +97,9 @@ export const outputSocketsAndPropsFor = (
   return opts;
 };
 
-const groupedPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
+export const groupedPropsFor = (
+  schemaVariant: SchemaVariant,
+): GroupedOptions => {
   const rootPropOptions = schemaVariant.props
     .filter(
       (p) =>
@@ -188,14 +190,24 @@ const groupedPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
 export const inputSocketsAndPropsFor = (
   schemaVariant: SchemaVariant,
 ): GroupedOptions => {
-  const inputSocketOptions = schemaVariant.inputSockets.map((socket) => ({
+  const opts = groupedPropsFor(schemaVariant);
+  opts["Input Sockets"] = rawInputSocketsFor(schemaVariant);
+  return opts;
+};
+
+export const inputSocketsFor = (
+  schemaVariant: SchemaVariant,
+): GroupedOptions => {
+  return {
+    "Input Sockets": rawInputSocketsFor(schemaVariant),
+  };
+};
+
+const rawInputSocketsFor = (schemaVariant: SchemaVariant) => {
+  return schemaVariant.inputSockets.map((socket) => ({
     label: socket.name,
     value: `s_${socket.id}`,
   }));
-
-  const opts = groupedPropsFor(schemaVariant);
-  opts["Input Sockets"] = inputSocketOptions;
-  return opts;
 };
 
 export const findSchemaVariantForPropOrSocketId = (
