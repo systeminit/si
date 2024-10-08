@@ -47,9 +47,12 @@ const TONES = {
   },
   warning: {
     colorHex: COLOR_PALETTE.warning[500],
-    bgColorClass: tw`bg-warning-500`,
-    textColorClass: tw`text-warning-500`,
-    borderColorClass: tw`border-warning-500`,
+    bgColorClassLight: tw`bg-warning-500`,
+    bgColorClassDark: tw`bg-warning-400`,
+    textColorClassLight: tw`text-warning-500`,
+    textColorClassDark: tw`text-warning-400`,
+    borderColorClassLight: tw`border-warning-500`,
+    borderColorClassDark: tw`border-warning-400`,
   },
   neutral: {
     colorHex: COLOR_PALETTE.neutral[500],

@@ -50,6 +50,7 @@
     "axios": "^1.5.0",
     "clsx": "^1.2.1",
     "date-fns": "^2.29.2",
+    "floating-vue": "2.0.0-beta.20",
     "highlight.js": "^11.7.0",
     "is-promise": "^4.0.0",
     "javascript-time-ago": "^2.5.7",

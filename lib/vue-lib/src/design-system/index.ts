@@ -15,7 +15,11 @@ export { default as RequestStatusMessage } from "./general/RequestStatusMessage.
 export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";
 export { default as VButton } from "./general/VButton.vue";
+export { default as IconButton } from "./general/IconButton.vue";
+export { default as SiSearch } from "./general/SiSearch.vue";
+export type { Filter } from "./general/SiSearch.vue";
 export { default as JsonTreeExplorer } from "./general/JsonTreeExplorer/JsonTreeExplorer.vue";
+export { default as TruncateWithTooltip } from "./general/TruncateWithTooltip.vue";
 
 // ./icons
 export { default as Icon } from "./icons/Icon.vue";

@@ -71,7 +71,7 @@
       size="sm"
     />
     <div class="flex flex-col flex-grow min-w-0">
-      <TruncateWithToolTip class="w-full">
+      <TruncateWithTooltip class="w-full">
         <span class="font-bold">
           {{ actionKindToAbbreviation(props.action.kind) }}:
         </span>
@@ -242,6 +242,7 @@ import {
   themeClasses,
   DropdownMenu,
   DropdownMenuItem,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { FullComponent, useComponentsStore } from "@/store/components.store";
@@ -254,7 +255,6 @@ import {
 } from "@/store/actions.store";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
-import TruncateWithToolTip from "../TruncateWithTooltip.vue";
 
 const componentsStore = useComponentsStore();
 const actionStore = useActionsStore();

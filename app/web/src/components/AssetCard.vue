@@ -126,6 +126,7 @@ import {
   Stack,
   Icon,
   ErrorMessage,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { format as dateFormat } from "date-fns";
@@ -134,7 +135,6 @@ import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";
-import IconButton from "./IconButton.vue";
 import EditingPill from "./EditingPill.vue";
 import AssetContributeModal from "./AssetContributeModal.vue";
 

@@ -202,6 +202,7 @@ import {
   themeClasses,
   Icon,
   COMPONENT_TYPE_ICONS,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -212,7 +213,6 @@ import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-lin
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 import { useDiagramOutlineContext } from "./DiagramOutline.vue";
-import IconButton from "../IconButton.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },

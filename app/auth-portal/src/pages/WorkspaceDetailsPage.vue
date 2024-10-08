@@ -2,36 +2,43 @@
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <div
-        class="flex flex-row gap-sm align-middle items-start justify-between"
+        class="flex flex-row gap-sm align-middle items-center justify-between"
       >
         <div
           ref="workspaceNameRef"
           v-tooltip="workspaceNameTooltip"
-          class="text-lg font-bold line-clamp-3 break-words"
+          class="text-lg font-bold line-clamp-3 break-words flex-grow"
         >
           {{
             draftWorkspace.displayName ||
             (createMode ? "Create New Workspace" : "Workspace Details")
           }}
         </div>
-        <div class="flex flex-col items-end relative">
-          <RouterLink
-            :to="{
-              name: 'workspaces',
-            }"
-          >
-            <VButton label="Return To Workspaces" tone="neutral" />
-          </RouterLink>
-          <div
-            class="absolute -bottom-10 left-0 right-0 flex justify-center cursor-not-allowed opacity-50"
-            @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
-          >
-            <Icon
-              :name="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
-              size="xl"
-            />
-          </div>
+        <div
+          v-tooltip="draftWorkspace.isFavourite ? 'Unstar' : 'Star'"
+          :class="
+            clsx(
+              'flex-none cursor-pointer hover:scale-110',
+              themeClasses(
+                'text-neutral-500 hover:text-shade-100',
+                'text-neutral-400 hover:text-shade-0',
+              ),
+            )
+          "
+          @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
+        >
+          <Icon
+            :name="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
+            size="xl"
+          />
         </div>
+        <RouterLink
+          :to="{
+            name: 'workspaces',
+          }"
+        >
+          <VButton label="Return To Workspaces" tone="neutral" />
+        </RouterLink>
       </div>
       <div class="mt-sm pb-md">
         <div>
@@ -246,9 +253,11 @@ import {
   ErrorMessage,
   VButton,
   useValidatedInputGroup,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
+import clsx from "clsx";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";

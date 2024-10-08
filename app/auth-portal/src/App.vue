@@ -58,8 +58,6 @@
           </RouterLink>
 
           <template v-if="userIsLoggedIn">
-            <!-- REMOVED THE NAV FOR NOW SINCE THERE IS ONLY ONE PAGE -->
-            <!--
             <nav class="flex gap-md font-bold items-center">
               <template
                 v-if="
@@ -73,9 +71,14 @@
                 <RouterLink :to="{ name: 'workspaces' }" class="underline-link">
                   Workspaces
                 </RouterLink>
+                <RouterLink :to="{ name: 'billing' }" class="underline-link">
+                  Billing
+                </RouterLink>
+                <RouterLink :to="{ name: 'profile' }" class="underline-link">
+                  Profile
+                </RouterLink>
               </template>
             </nav>
-            -->
 
             <nav class="flex gap-sm mr-xs items-center ml-auto">
               <a
@@ -150,7 +153,13 @@
         <div class="">
           <div class="m-auto max-w-[1200px] min-w-[520px]">
             <div
-              class="m-lg p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
+              :class="
+                clsx(
+                  route.name === 'workspaces'
+                    ? 'px-lg'
+                    : 'p-lg m-lg dark:bg-neutral-800 bg-neutral-200 rounded-md',
+                )
+              "
             >
               <!-- email verification warning w/ buttons to help resolve -->
               <ErrorMessage v-if="user && !user?.emailVerified" class="mb-lg">
