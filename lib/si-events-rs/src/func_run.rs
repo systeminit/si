@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_id::WorkspacePk;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{id, Actor, ChangeSetId, ContentHash, Tenancy, WorkspacePk};
+use crate::{id, Actor, ChangeSetId, ContentHash, Tenancy};
 
 id!(FuncRunId);
 id!(ComponentId);

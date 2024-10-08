@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use si_id::WorkspacePk;
 
 use crate::id;
 
-id!(WorkspacePk);
 id!(ChangeSetId);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

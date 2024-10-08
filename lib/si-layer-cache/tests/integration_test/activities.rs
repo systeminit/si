@@ -3,7 +3,8 @@ mod rebase;
 use std::sync::Arc;
 
 use futures::StreamExt;
-use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
+use si_events::{Actor, ChangeSetId, Tenancy};
+use si_id::WorkspacePk;
 use si_layer_cache::{
     activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
     memory_cache::MemoryCacheConfig, LayerDb,

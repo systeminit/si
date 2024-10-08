@@ -1,7 +1,8 @@
 use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::{sync::Arc, time::Duration};
 
-use si_events::{Actor, ChangeSetId, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, ChangeSetId, Tenancy, UserPk};
+use si_id::WorkspacePk;
 use si_layer_cache::db::serialize;
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;

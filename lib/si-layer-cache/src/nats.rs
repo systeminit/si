@@ -119,7 +119,8 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
 
 pub mod subject {
     use si_data_nats::Subject;
-    use si_events::{ChangeSetId, WorkspacePk};
+    use si_events::ChangeSetId;
+    use si_id::WorkspacePk;
 
     use crate::{
         activities::{Activity, ActivityPayloadDiscriminants},

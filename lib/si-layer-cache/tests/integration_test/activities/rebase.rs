@@ -3,9 +3,8 @@ use std::sync::{
     Arc,
 };
 
-use si_events::{
-    rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
-};
+use si_events::{rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy};
+use si_id::WorkspacePk;
 use si_layer_cache::{
     activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
 };

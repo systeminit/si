@@ -1,56 +1,3 @@
-pub mod content_hash;
-pub mod encrypted_secret;
-pub mod merkle_tree_hash;
-pub mod rebase_batch_address;
-pub mod ulid;
-pub mod workspace_snapshot_address;
-pub mod xxhash_type;
-
-mod actor;
-mod cas;
-mod change_set_status;
-mod func;
-mod func_execution;
-mod func_run;
-mod func_run_log;
-mod resource_metadata;
-mod schema;
-mod schema_variant;
-mod socket;
-mod tenancy;
-mod timestamp;
-mod vector_clock_id;
-mod web_event;
-
-pub use crate::{
-    actor::Actor,
-    actor::UserPk,
-    cas::CasValue,
-    change_set_status::ChangeSetStatus,
-    content_hash::ContentHash,
-    encrypted_secret::EncryptedSecretKey,
-    func::{FuncArgumentId, FuncId},
-    func_execution::*,
-    func_run::{
-        ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributePrototypeArgumentId,
-        AttributePrototypeId, AttributeValueId, ComponentId, FuncBackendKind,
-        FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId,
-        FuncRunState, FuncRunValue,
-    },
-    func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
-    resource_metadata::{ResourceMetadata, ResourceStatus},
-    schema::SchemaId,
-    schema_variant::{PropId, SchemaVariantId},
-    socket::{InputSocketId, OutputSocketId},
-    tenancy::ChangeSetId,
-    tenancy::Tenancy,
-    timestamp::Timestamp,
-    vector_clock_id::{VectorClockActorId, VectorClockChangeSetId, VectorClockId},
-    web_event::WebEvent,
-    workspace_snapshot_address::WorkspaceSnapshotAddress,
-};
-
-#[macro_export]
 macro_rules! id {
     (
         $(#[$($attrss:tt)*])*
@@ -66,7 +13,6 @@ macro_rules! id {
             Copy,
             Clone,
             Hash,
-            Default,
             derive_more::From,
             derive_more::Into,
             derive_more::Display,
@@ -90,44 +36,52 @@ macro_rules! id {
                 Self(::ulid::Ulid::new())
             }
 
+            /// Calls [`Self::generate`].
             pub fn new() -> Self {
                 Self::generate()
             }
 
+            /// Converts type into inner [`Ulid`](::ulid::Ulid).
+            pub fn into_inner(self) -> ::ulid::Ulid {
+                self.0
+            }
+
+            /// Creates a Crockford Base32 encoded string that represents this Ulid.
             pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ::ulid::ULID_LEN]) -> &'buf mut str {
                 self.0.array_to_str(buf)
             }
 
-            pub fn array_to_str_buf() -> [u8; ::ulid::ULID_LEN] {
-                [0; ::ulid::ULID_LEN]
-            }
-
-            /// Constructs a new instance of Self from the given raw identifier.
-            ///
-            /// This function is typically used to consume ownership of the specified identifier.
-            pub fn from_raw_id(value: ::ulid::Ulid) -> Self {
-                Self(value)
-            }
-
-            /// Extracts the raw identifier.
-            ///
-            /// This function is typically used to borrow an owned idenfier.
-            pub fn as_raw_id(&self) -> ::ulid::Ulid {
-                self.0
-            }
-
-            /// Consumes this object, returning the raw underlying identifier.
-            ///
-            /// This function is typically used to transfer ownership of the underlying identifier
-            /// to the caller.
-            pub fn into_raw_id(self) -> ::ulid::Ulid {
-                self.0
-            }
+            /// The forbidden value of doom.
+            pub const NONE: Self = Self(::ulid::Ulid::nil());
         }
+
+        // impl From<$name> for ::si_events::ulid::Ulid {
+        //     fn from(pk: $name) -> Self {
+        //         pk.0.into()
+        //     }
+        // }
+
+        // impl<'a> From<&'a $name> for ::si_events::ulid::Ulid {
+        //     fn from(pk: &'a $name) -> Self {
+        //         pk.0.into()
+        //     }
+        // }
+
+        // impl From<::si_events::ulid::Ulid> for $name {
+        //     fn from(ulid: ::si_events::ulid::Ulid) -> Self {
+        //         ulid.inner().into()
+        //     }
+        // }
 
         impl From<$name> for String {
             fn from(id: $name) -> Self {
                 ulid::Ulid::from(id.0).into()
+            }
+        }
+
+        impl<'a> From<&'a $name> for ulid::Ulid {
+            fn from(id: &'a $name) -> Self {
+                id.0
             }
         }
 
@@ -190,3 +144,6 @@ macro_rules! id {
         }
     };
 }
+
+id!(WorkspacePk);
+id!(WorkspaceId);
