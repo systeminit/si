@@ -22,11 +22,9 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 async fn subscribe_rebaser_requests_work_queue() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
-    let tempdir_duff = disk_cache_path(&tempdir, "duff");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
+    let tempdir_duff = disk_cache_path("duff");
     let db = setup_pg_db("subscribe_rebaser_requests_work_queue").await;
     let compute_executor = setup_compute_executor();
 
@@ -156,10 +154,8 @@ async fn subscribe_rebaser_requests_work_queue() {
 async fn rebase_and_wait() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("rebase_and_wait").await;
 
@@ -250,11 +246,9 @@ async fn rebase_and_wait() {
 async fn rebase_requests_work_queue_stress() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
-    let tempdir_duff = disk_cache_path(&tempdir, "duff");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
+    let tempdir_duff = disk_cache_path("duff");
     let db = setup_pg_db("rebase_requests_work_queue_stress").await;
     let compute_executor = setup_compute_executor();
 
@@ -417,10 +411,8 @@ async fn rebase_and_wait_stress() {
     let token = CancellationToken::new();
     let tracker = TaskTracker::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("rebase_and_wait_stress").await;
 

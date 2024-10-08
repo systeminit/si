@@ -17,8 +17,7 @@ type TestLayerDb = LayerDb<CasValue, String, String, String>;
 async fn write_to_db() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let dbfile = disk_cache_path(&tempdir, "slash");
+    let dbfile = disk_cache_path("slash");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("cas_write_to_db").await,
@@ -84,9 +83,7 @@ async fn write_to_db() {
 async fn write_and_read_many() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-
-    let dbfile = disk_cache_path(&tempdir, "slash");
+    let dbfile = disk_cache_path("slash");
 
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
@@ -141,9 +138,7 @@ async fn write_and_read_many() {
 async fn cold_read_from_db() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-
-    let dbfile = disk_cache_path(&tempdir, "slash");
+    let dbfile = disk_cache_path("slash");
 
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
@@ -233,10 +228,8 @@ async fn cold_read_from_db() {
 async fn writes_are_gossiped() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
@@ -356,10 +349,8 @@ async fn writes_are_gossiped() {
 async fn stress_test() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("stress_test").await;
 

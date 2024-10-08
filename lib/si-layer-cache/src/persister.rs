@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
@@ -13,8 +13,8 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
-use crate::db::func_run::FuncRunDb;
 use crate::event::LayeredEventKind;
+use crate::{db::func_run::FuncRunDb, disk_cache::DiskCacheConfig};
 use crate::{
     disk_cache::DiskCache,
     error::{LayerDbError, LayerDbResult},
@@ -104,7 +104,7 @@ impl PersisterClient {
 #[derive(Debug)]
 pub struct PersisterTask {
     messages: mpsc::UnboundedReceiver<PersistMessage>,
-    disk_path: PathBuf,
+    disk_cache_config: DiskCacheConfig,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
     tracker: TaskTracker,
@@ -116,7 +116,7 @@ impl PersisterTask {
 
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
-        disk_path: PathBuf,
+        disk_cache_config: DiskCacheConfig,
         pg_pool: PgPool,
         nats_client: &NatsClient,
         instance_id: Ulid,
@@ -140,7 +140,7 @@ impl PersisterTask {
 
         Ok(Self {
             messages,
-            disk_path,
+            disk_cache_config,
             pg_pool,
             layered_event_client,
             tracker,
@@ -179,7 +179,7 @@ impl PersisterTask {
             match msg {
                 PersistMessage::Write((event, status_tx)) => {
                     let task = PersistEventTask::new(
-                        self.disk_path.clone(),
+                        self.disk_cache_config.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -187,7 +187,7 @@ impl PersisterTask {
                 }
                 PersistMessage::Evict((event, status_tx)) => {
                     let task = PersistEventTask::new(
-                        self.disk_path.clone(),
+                        self.disk_cache_config.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -214,19 +214,19 @@ pub struct PersisterTaskError {
 
 #[derive(Debug, Clone)]
 pub struct PersistEventTask {
-    disk_path: PathBuf,
+    disk_cache_config: DiskCacheConfig,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
 }
 
 impl PersistEventTask {
     pub fn new(
-        disk_path: PathBuf,
+        disk_cache_config: DiskCacheConfig,
         pg_pool: PgPool,
         layered_event_client: LayeredEventClient,
     ) -> Self {
         PersistEventTask {
-            disk_path,
+            disk_cache_config,
             pg_pool,
             layered_event_client,
         }
@@ -251,7 +251,7 @@ impl PersistEventTask {
         let nats_join = self.layered_event_client.publish(event.clone()).await?;
 
         // Remove from disk cache
-        let disk_cache = DiskCache::new(&self.disk_path, event.payload.db_name.to_string())?;
+        let disk_cache = DiskCache::new(self.disk_cache_config.clone())?;
         let disk_event = event.clone();
         let disk_join =
             tokio::task::spawn(async move { disk_cache.remove_from_disk(disk_event).await });
@@ -351,7 +351,7 @@ impl PersistEventTask {
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
         // Write to disk cache
-        let disk_cache = DiskCache::new(&self.disk_path, event.payload.db_name.to_string())?;
+        let disk_cache = DiskCache::new(self.disk_cache_config.clone())?;
         let disk_join = tokio::task::spawn(async move { disk_cache.write_to_disk(event).await });
 
         match join![disk_join, pg_join, nats_join] {

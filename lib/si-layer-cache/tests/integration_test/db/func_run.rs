@@ -22,8 +22,7 @@ type TestLayerDb = LayerDb<String, String, String, String>;
 async fn write_to_db() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let dbfile = disk_cache_path(&tempdir, "jesawyer");
+    let dbfile = disk_cache_path("jesawyer");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         setup_pg_db("func_run_write_to_db").await,
@@ -84,8 +83,7 @@ async fn write_to_db() {
 async fn update() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-    let dbfile = disk_cache_path(&tempdir, "jesawyer");
+    let dbfile = disk_cache_path("jesawyer");
     let db = setup_pg_db("func_run_update_to_db").await;
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
@@ -99,7 +97,7 @@ async fn update() {
     .expect("cannot create layerdb");
     ldb.pg_migrate().await.expect("migrate layer db");
 
-    let dbfile = disk_cache_path(&tempdir, "rainbow");
+    let dbfile = disk_cache_path("rainbow");
     let (ldb_remote, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,
         db,
@@ -254,9 +252,7 @@ async fn update() {
 async fn write_and_read_many_for_workspace_id() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
-
-    let dbfile = disk_cache_path(&tempdir, "fnv");
+    let dbfile = disk_cache_path("fnv");
 
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
         dbfile,

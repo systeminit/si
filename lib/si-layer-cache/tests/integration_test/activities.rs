@@ -20,10 +20,8 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 async fn activities() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("activities").await;
 
@@ -87,10 +85,8 @@ async fn activities() {
 async fn activities_subscribe_partial() {
     let token = CancellationToken::new();
 
-    let tempdir = tempfile::TempDir::new().expect("cannot create tempdir");
-
-    let tempdir_slash = disk_cache_path(&tempdir, "slash");
-    let tempdir_axl = disk_cache_path(&tempdir, "axl");
+    let tempdir_slash = disk_cache_path("slash");
+    let tempdir_axl = disk_cache_path("axl");
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     let compute_executor = setup_compute_executor();

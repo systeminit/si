@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
@@ -8,7 +7,7 @@ use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 
 use crate::db::serialize;
-use crate::disk_cache::DiskCache;
+use crate::disk_cache::{DiskCache, DiskCacheConfig};
 use crate::error::LayerDbResult;
 use crate::memory_cache::{MemoryCache, MemoryCacheConfig};
 use crate::pg::PgLayer;
@@ -32,12 +31,12 @@ where
 {
     pub fn new(
         name: &str,
-        disk_path: impl Into<PathBuf>,
         pg_pool: PgPool,
         memory_cache_config: MemoryCacheConfig,
+        disk_cache_config: DiskCacheConfig,
         compute_executor: DedicatedExecutor,
     ) -> LayerDbResult<Self> {
-        let disk_cache = DiskCache::new(disk_path, name)?;
+        let disk_cache = DiskCache::new(disk_cache_config)?;
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 

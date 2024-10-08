@@ -1,9 +1,9 @@
 use buck2_resources::Buck2Resources;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::disk_cache::DiskCacheConfig;
 use std::env;
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use std::path::Path;
 
 use crate::TEST_PG_DBNAME;
 
@@ -140,6 +140,6 @@ pub fn setup_compute_executor() -> si_runtime::DedicatedExecutor {
     si_runtime::compute_executor("test").expect("failed to create executor")
 }
 
-pub fn disk_cache_path(tempdir: &TempDir, name: &str) -> PathBuf {
-    tempdir.path().join(format!("{name}-cacache"))
+pub fn disk_cache_path(table_name: &str) -> DiskCacheConfig {
+    DiskCacheConfig::default_for_service(table_name)
 }
