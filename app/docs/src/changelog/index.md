@@ -11,6 +11,23 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 2024-10-07
+
+- Using ChatGPT to generate Schema definitions
+- Updates to tracing
+- Billing pipeline
+- Identity Function UX
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/OBSy4r0OrA8?si=DEw1EWP5FhEku2cT" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 2024-09-30
+
+- Asset Authoring Friday overview
+- Status Page updates
+- On demand asset installation
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/IM8iK0kMRPY?si=La1IsBzly3L4wh_x" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## 2024-09-23
 
 - Rebaser changes
