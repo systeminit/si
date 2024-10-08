@@ -1,0 +1,1 @@
+export PGBOUNCER_EXPORTER_CONNECTION_STRING="postgres://admin:$SI_BOUNCER_ADMIN_PASSWORD@pgbouncer:5432/pgbouncer?sslmode=disable"
