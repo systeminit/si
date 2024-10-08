@@ -18,6 +18,7 @@ pub struct ManagementRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ManagementResultSuccess {
     pub execution_id: String,
+    pub operations: Option<serde_json::Value>,
     pub message: Option<String>,
     pub error: Option<String>,
 }

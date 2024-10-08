@@ -20,7 +20,7 @@ use crate::{
             WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
+        CategoryNodeKind, LineageId, OrderingNodeWeight,
     },
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
@@ -707,172 +707,6 @@ impl WorkspaceSnapshotGraphV2 {
         println!("Wrote graph to {}", home.join(&filename).display());
     }
 
-    #[allow(clippy::disallowed_methods)]
-    pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
-        let suffix = suffix.unwrap_or("dot");
-        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
-        // process and open a new tab in your browser.
-        // ```
-        // GRAPHFILE=<filename-without-extension>; cat $GRAPHFILE.txt | dot -Tsvg -o processed-$GRAPHFILE.svg; open processed-$GRAPHFILE.svg
-        // ```
-        let dot = petgraph::dot::Dot::with_attr_getters(
-            &self.graph,
-            &[
-                petgraph::dot::Config::NodeNoLabel,
-                petgraph::dot::Config::EdgeNoLabel,
-            ],
-            &|_, edgeref| {
-                let discrim: EdgeWeightKindDiscriminants = edgeref.weight().kind().into();
-                let color = match discrim {
-                    EdgeWeightKindDiscriminants::Action => "black",
-                    EdgeWeightKindDiscriminants::ActionPrototype => "black",
-                    EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
-                    EdgeWeightKindDiscriminants::Contain => "blue",
-                    EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::Ordering => "gray",
-                    EdgeWeightKindDiscriminants::Ordinal => "gray",
-                    EdgeWeightKindDiscriminants::Prop => "orange",
-                    EdgeWeightKindDiscriminants::Prototype => "green",
-                    EdgeWeightKindDiscriminants::PrototypeArgument => "green",
-                    EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
-                    EdgeWeightKindDiscriminants::Socket => "red",
-                    EdgeWeightKindDiscriminants::SocketValue => "purple",
-                    EdgeWeightKindDiscriminants::Proxy => "gray",
-                    EdgeWeightKindDiscriminants::Root => "black",
-                    EdgeWeightKindDiscriminants::Use => "black",
-                    EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
-                };
-
-                match edgeref.weight().kind() {
-                    EdgeWeightKind::Contain(key) => {
-                        let key = key
-                            .as_deref()
-                            .map(|key| format!(" ({key}"))
-                            .unwrap_or("".into());
-                        format!(
-                            "label = \"{discrim:?}{key}\"\nfontcolor = {color}\ncolor = {color}"
-                        )
-                    }
-                    _ => format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}"),
-                }
-            },
-            &|_, (node_index, node_weight)| {
-                let (label, color) = match node_weight {
-                    NodeWeight::Action(_) => ("Action".to_string(), "cyan"),
-                    NodeWeight::ActionPrototype(_) => ("Action Prototype".to_string(), "cyan"),
-                    NodeWeight::Content(weight) => {
-                        let discrim = ContentAddressDiscriminants::from(weight.content_address());
-                        let color = match discrim {
-                            // Some of these should never happen as they have their own top-level
-                            // NodeWeight variant.
-                            ContentAddressDiscriminants::ActionPrototype => "green",
-                            ContentAddressDiscriminants::AttributePrototype => "green",
-                            ContentAddressDiscriminants::Component => "black",
-                            ContentAddressDiscriminants::DeprecatedAction => "green",
-                            ContentAddressDiscriminants::DeprecatedActionBatch => "green",
-                            ContentAddressDiscriminants::DeprecatedActionRunner => "green",
-                            ContentAddressDiscriminants::OutputSocket => "red",
-                            ContentAddressDiscriminants::Func => "black",
-                            ContentAddressDiscriminants::FuncArg => "black",
-                            ContentAddressDiscriminants::InputSocket => "red",
-                            ContentAddressDiscriminants::JsonValue => "fuchsia",
-                            ContentAddressDiscriminants::Module => "yellow",
-                            ContentAddressDiscriminants::Prop => "orange",
-                            ContentAddressDiscriminants::Root => "black",
-                            ContentAddressDiscriminants::Schema => "black",
-                            ContentAddressDiscriminants::SchemaVariant => "black",
-                            ContentAddressDiscriminants::Secret => "black",
-                            ContentAddressDiscriminants::StaticArgumentValue => "green",
-                            ContentAddressDiscriminants::ValidationPrototype => "black",
-                            ContentAddressDiscriminants::ValidationOutput => "darkcyan",
-                        };
-                        (discrim.to_string(), color)
-                    }
-                    NodeWeight::AttributePrototypeArgument(apa) => (
-                        format!(
-                            "Attribute Prototype Argument{}",
-                            apa.targets()
-                                .map(|targets| format!(
-                                    "\nsource: {}\nto: {}",
-                                    targets.source_component_id, targets.destination_component_id
-                                ))
-                                .unwrap_or("".to_string())
-                        ),
-                        "green",
-                    ),
-                    NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
-                    NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
-                    {
-                        CategoryNodeKind::Action => ("Actions (Category)".to_string(), "black"),
-                        CategoryNodeKind::Component => {
-                            ("Components (Category)".to_string(), "black")
-                        }
-                        CategoryNodeKind::DeprecatedActionBatch => {
-                            ("Action Batches (Category)".to_string(), "black")
-                        }
-                        CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
-                        CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
-                        CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
-                        CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
-                        CategoryNodeKind::DependentValueRoots => {
-                            ("Dependent Values (Category)".into(), "black")
-                        }
-                    },
-                    NodeWeight::Component(component) => (
-                        "Component".to_string(),
-                        if component.to_delete() {
-                            "gray"
-                        } else {
-                            "black"
-                        },
-                    ),
-                    NodeWeight::Func(func_node_weight) => {
-                        (format!("Func\n{}", func_node_weight.name()), "black")
-                    }
-                    NodeWeight::FuncArgument(func_arg_node_weight) => (
-                        format!("Func Arg\n{}", func_arg_node_weight.name()),
-                        "black",
-                    ),
-                    NodeWeight::InputSocket(_) => ("Input Socket".to_string(), "black"),
-                    NodeWeight::Ordering(_) => {
-                        (NodeWeightDiscriminants::Ordering.to_string(), "gray")
-                    }
-                    NodeWeight::Prop(prop_node_weight) => {
-                        (format!("Prop\n{}", prop_node_weight.name()), "orange")
-                    }
-                    NodeWeight::SchemaVariant(_) => ("Schema Variant".to_string(), "black"),
-                    NodeWeight::Secret(secret_node_weight) => (
-                        format!("Secret\n{}", secret_node_weight.encrypted_secret_key()),
-                        "black",
-                    ),
-                    NodeWeight::DependentValueRoot(node_weight) => (
-                        format!("UnfinishedDependentValue\n{}", node_weight.value_id()),
-                        "purple",
-                    ),
-                    NodeWeight::FinishedDependentValueRoot(node_weight) => (
-                        format!("FinishedDependentValue\n{}", node_weight.value_id()),
-                        "red",
-                    ),
-                };
-                let color = color.to_string();
-                let id = node_weight.id();
-                format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash(), node_weight.node_hash(),
-                )
-            },
-        );
-        let filename_no_extension = format!("{}-{}", Ulid::new(), suffix);
-
-        let home_str = std::env::var("HOME").expect("could not find home directory via env");
-        let home = std::path::Path::new(&home_str);
-
-        let mut file = File::create(home.join(format!("{filename_no_extension}.txt")))
-            .expect("could not create file");
-        file.write_all(format!("{dot:?}").as_bytes())
-            .expect("could not write file");
-        println!("dot output stored in file (filename without extension: {filename_no_extension})");
-    }
-
     #[inline(always)]
     pub(crate) fn get_node_index_by_id(
         &self,
@@ -1397,6 +1231,7 @@ impl WorkspaceSnapshotGraphV2 {
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
                     | EdgeWeightKind::SocketValue
+                    | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::ValidationOutput => {}
                 }
             }

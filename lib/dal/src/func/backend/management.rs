@@ -56,9 +56,9 @@ impl FuncDispatch for FuncBackendManagement {
 }
 
 impl ExtractPayload for ManagementResultSuccess {
-    type Payload = ();
+    type Payload = ManagementResultSuccess;
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
-        Ok(())
+        Ok(self)
     }
 }

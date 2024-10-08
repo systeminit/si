@@ -56,13 +56,8 @@ impl SchemaVariantNodeWeightV1 {
         self.is_locked = new_locked;
     }
 
-    pub fn new_content_hash(
-        &mut self,
-        new_content_hash: ContentHash,
-    ) -> SchemaVariantNodeWeightResult<()> {
+    pub fn new_content_hash(&mut self, new_content_hash: ContentHash) {
         self.content_address = ContentAddress::SchemaVariant(new_content_hash);
-
-        Ok(())
     }
 
     pub(crate) async fn try_upgrade_from_content_node_weight(

@@ -1621,7 +1621,8 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::Schema
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
-                | ContentAddressDiscriminants::ValidationPrototype => None,
+                | ContentAddressDiscriminants::ValidationPrototype
+                | ContentAddressDiscriminants::ManagementPrototype => None,
             },
 
             NodeWeight::Action(_)
@@ -1635,6 +1636,7 @@ impl WorkspaceSnapshot {
             | NodeWeight::InputSocket(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::Secret(_) => None,
         } {
             let next_node_idxs = self

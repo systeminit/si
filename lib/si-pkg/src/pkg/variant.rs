@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgPropData,
-    SiPkgSiPropFunc, SiPkgSocket, Source,
+    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgManagementFunc, SiPkgProp,
+    SiPkgPropData, SiPkgSiPropFunc, SiPkgSocket, Source,
 };
 
 use crate::{
@@ -184,6 +184,12 @@ impl<'a> SiPkgSchemaVariant<'a> {
         root_prop_funcs,
         SchemaVariantChildNode::RootPropFuncs,
         SiPkgRootPropFunc
+    );
+
+    impl_variant_children_from_graph!(
+        management_funcs,
+        SchemaVariantChildNode::ManagementFuncs,
+        SiPkgManagementFunc
     );
 
     fn prop_stack_from_source<I>(
@@ -439,6 +445,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
         for si_prop_func in self.si_prop_funcs()? {
             builder.si_prop_func(si_prop_func.try_into()?);
+        }
+
+        for management_func in self.management_funcs()? {
+            builder.management_func(management_func.try_into()?);
         }
 
         self.build_prop_specs(SchemaVariantSpecPropRoot::Domain, &mut builder)

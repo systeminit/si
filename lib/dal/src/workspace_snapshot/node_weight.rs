@@ -35,6 +35,7 @@ pub use dependent_value_root_node_weight::DependentValueRootNodeWeight;
 pub use func_argument_node_weight::FuncArgumentNodeWeight;
 pub use func_node_weight::FuncNodeWeight;
 pub use input_socket_node_weight::InputSocketNodeWeight;
+pub use management_prototype_node_weight::ManagementPrototypeNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 pub use schema_variant_node_weight::SchemaVariantNodeWeight;
@@ -58,6 +59,7 @@ pub mod finished_dependent_value_root_node_weight;
 pub mod func_argument_node_weight;
 pub mod func_node_weight;
 pub mod input_socket_node_weight;
+pub mod management_prototype_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod schema_variant_node_weight;
@@ -127,6 +129,7 @@ pub enum NodeWeight {
     FinishedDependentValueRoot(FinishedDependentValueRootNodeWeight),
     InputSocket(InputSocketNodeWeight),
     SchemaVariant(SchemaVariantNodeWeight),
+    ManagementPrototype(ManagementPrototypeNodeWeight),
 }
 
 impl NodeWeight {
@@ -148,6 +151,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.content_hash(),
             NodeWeight::InputSocket(weight) => weight.content_hash(),
             NodeWeight::SchemaVariant(weight) => weight.content_hash(),
+            NodeWeight::ManagementPrototype(weight) => weight.content_hash(),
         }
     }
 
@@ -169,6 +173,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.content_store_hashes(),
             NodeWeight::InputSocket(weight) => weight.content_store_hashes(),
             NodeWeight::SchemaVariant(weight) => weight.content_store_hashes(),
+            NodeWeight::ManagementPrototype(weight) => weight.content_store_hashes(),
         }
     }
 
@@ -189,6 +194,7 @@ impl NodeWeight {
             | NodeWeight::DependentValueRoot(_)
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::SchemaVariant(_) => None,
         }
     }
@@ -211,6 +217,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.id(),
             NodeWeight::InputSocket(weight) => weight.id(),
             NodeWeight::SchemaVariant(weight) => weight.id(),
+            NodeWeight::ManagementPrototype(weight) => weight.id(),
         }
     }
 
@@ -232,6 +239,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.lineage_id(),
             NodeWeight::InputSocket(weight) => weight.lineage_id(),
             NodeWeight::SchemaVariant(weight) => weight.lineage_id(),
+            NodeWeight::ManagementPrototype(weight) => weight.lineage_id(),
         }
     }
 
@@ -301,6 +309,10 @@ impl NodeWeight {
                 weight.set_id(id.into());
                 weight.set_lineage_id(lineage_id);
             }
+            NodeWeight::ManagementPrototype(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
         }
     }
 
@@ -322,6 +334,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.merkle_tree_hash(),
             NodeWeight::InputSocket(weight) => weight.merkle_tree_hash(),
             NodeWeight::SchemaVariant(weight) => weight.merkle_tree_hash(),
+            NodeWeight::ManagementPrototype(weight) => weight.merkle_tree_hash(),
         }
     }
 
@@ -333,14 +346,18 @@ impl NodeWeight {
             NodeWeight::FuncArgument(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Prop(weight) => weight.new_content_hash(content_hash),
             NodeWeight::Secret(weight) => weight.new_content_hash(content_hash),
-            NodeWeight::InputSocket(weight) => traits::SiVersionedNodeWeight::inner_mut(weight)
-                .new_content_hash(content_hash)
-                .map_err(Box::new)
-                .map_err(Into::into),
-            NodeWeight::SchemaVariant(weight) => traits::SiVersionedNodeWeight::inner_mut(weight)
-                .new_content_hash(content_hash)
-                .map_err(Box::new)
-                .map_err(Into::into),
+            NodeWeight::InputSocket(weight) => {
+                traits::SiVersionedNodeWeight::inner_mut(weight).new_content_hash(content_hash);
+                Ok(())
+            }
+            NodeWeight::SchemaVariant(weight) => {
+                traits::SiVersionedNodeWeight::inner_mut(weight).new_content_hash(content_hash);
+                Ok(())
+            }
+            NodeWeight::ManagementPrototype(weight) => {
+                traits::SiVersionedNodeWeight::inner_mut(weight).new_content_hash(content_hash);
+                Ok(())
+            }
             NodeWeight::Action(_)
             | NodeWeight::ActionPrototype(_)
             | NodeWeight::AttributePrototypeArgument(_)
@@ -373,6 +390,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.node_hash(),
             NodeWeight::InputSocket(weight) => weight.node_hash(),
             NodeWeight::SchemaVariant(weight) => weight.node_hash(),
+            NodeWeight::ManagementPrototype(weight) => weight.node_hash(),
         }
     }
 
@@ -394,6 +412,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::InputSocket(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::SchemaVariant(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::ManagementPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -417,6 +436,7 @@ impl NodeWeight {
             | NodeWeight::Prop(_)
             | NodeWeight::Secret(_)
             | NodeWeight::InputSocket(_)
+            | NodeWeight::ManagementPrototype(_)
             | NodeWeight::SchemaVariant(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
     }
@@ -449,6 +469,7 @@ impl NodeWeight {
             NodeWeight::FinishedDependentValueRoot(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::ManagementPrototype(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 
@@ -646,6 +667,14 @@ impl NodeWeight {
 
     pub fn new_content(id: Ulid, lineage_id: Ulid, kind: ContentAddress) -> Self {
         NodeWeight::Content(ContentNodeWeight::new(id, lineage_id, kind))
+    }
+
+    pub fn new_management_prototype(id: Ulid, lineage_id: Ulid, content_hash: ContentHash) -> Self {
+        NodeWeight::ManagementPrototype(ManagementPrototypeNodeWeight::new(
+            id,
+            lineage_id,
+            content_hash,
+        ))
     }
 
     pub fn new_action(
@@ -921,6 +950,11 @@ impl CorrectTransforms for NodeWeight {
                 updates,
                 from_different_change_set,
             ),
+            NodeWeight::ManagementPrototype(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
@@ -946,6 +980,7 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::ManagementPrototype(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 }

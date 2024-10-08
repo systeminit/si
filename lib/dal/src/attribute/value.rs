@@ -1277,6 +1277,31 @@ impl AttributeValue {
         Ok(())
     }
 
+    pub async fn map_children(
+        ctx: &DalContext,
+        map_attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<HashMap<String, AttributeValueId>> {
+        let mut result = HashMap::new();
+
+        let snapshot = ctx.workspace_snapshot()?;
+
+        for (edge_weight, _, target_idx) in snapshot
+            .edges_directed(map_attribute_value_id, Outgoing)
+            .await?
+            .into_iter()
+        {
+            let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() else {
+                continue;
+            };
+
+            let target_id: AttributeValueId =
+                snapshot.get_node_weight(target_idx).await?.id().into();
+            result.insert(key.to_owned(), target_id);
+        }
+
+        Ok(result)
+    }
+
     /// Return a hashset of all the keys contained by this attribute value (if any)
     pub async fn child_keys_for_id(
         ctx: &DalContext,

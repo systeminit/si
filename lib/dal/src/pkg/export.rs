@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::collections::{hash_map::Entry, HashMap};
 use std::ops::Deref;
 
@@ -6,12 +7,13 @@ use strum::IntoEnumIterator;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AuthenticationFuncSpec,
     ComponentSpec, EdgeSpec, FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec,
-    MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind, RootPropFuncSpec, SchemaSpec,
-    SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecData,
-    SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec,
-    SocketSpecData, SocketSpecKind, SpecError,
+    ManagementFuncSpec, MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    RootPropFuncSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
+    SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError,
 };
 use telemetry::prelude::*;
+use ulid::Ulid;
 
 use crate::action::prototype::ActionPrototype;
 use crate::attribute::prototype::argument::{
@@ -19,6 +21,7 @@ use crate::attribute::prototype::argument::{
 };
 
 use crate::func::is_intrinsic;
+use crate::management::prototype::ManagementPrototype;
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
     func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
@@ -275,6 +278,13 @@ impl PkgExporter {
                 variant_spec_builder.action_func(action_func_spec);
             });
 
+        self.export_management_funcs(ctx, variant.id())
+            .await?
+            .drain(..)
+            .for_each(|management_func_spec| {
+                variant_spec_builder.management_func(management_func_spec);
+            });
+
         self.export_auth_funcs(ctx, variant.id())
             .await?
             .drain(..)
@@ -494,6 +504,44 @@ impl PkgExporter {
 
             socket_spec_builder.data(data_builder.build()?);
             specs.push(socket_spec_builder.build()?);
+        }
+
+        Ok(specs)
+    }
+
+    async fn export_management_funcs(
+        &self,
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PkgResult<Vec<ManagementFuncSpec>> {
+        let mut specs = vec![];
+        let management_prototypes =
+            ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
+
+        for management_proto in management_prototypes {
+            let key = ManagementPrototype::func_id(ctx, management_proto.id).await?;
+
+            let func_spec = self
+                .func_map
+                .get(&key)
+                .ok_or(PkgError::MissingExportedFunc(key))?;
+
+            let mut builder = ManagementFuncSpec::builder();
+            if let Some(description) = management_proto.description {
+                builder.description(description);
+            }
+            if let Some(managed_schemas) = management_proto.managed_schemas {
+                let managed_schemas: HashSet<Ulid> =
+                    managed_schemas.into_iter().map(Into::into).collect();
+                builder.managed_schemas(managed_schemas);
+            }
+
+            specs.push(
+                builder
+                    .func_unique_id(&func_spec.unique_id)
+                    .name(management_proto.name)
+                    .build()?,
+            )
         }
 
         Ok(specs)

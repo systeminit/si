@@ -270,6 +270,10 @@ impl RootProp {
         )
         .await?;
 
+        // The `resourceId` is a prop that uniquely identifies the resource,
+        // useful for importing an existing resource from reality into the model
+        Prop::new_without_ui_optionals(ctx, "resourceId", PropKind::String, si_prop.id()).await?;
+
         Ok(si_prop.id())
     }
 

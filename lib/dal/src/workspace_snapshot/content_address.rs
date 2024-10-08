@@ -33,8 +33,9 @@ pub enum ContentAddress {
     StaticArgumentValue(ContentHash),
     ValidationOutput(ContentHash),
     // With validations moving to the props and not having prototypes anymore, this is unused
-    // TODO(victor): remove this as soon as it does not break graph (de)serialization
+    // TODO(victor): remove this when we migrate the graph next
     ValidationPrototype(ContentHash),
+    ManagementPrototype(ContentHash),
 }
 
 impl ContentAddress {
@@ -59,7 +60,8 @@ impl ContentAddress {
             | ContentAddress::Secret(id)
             | ContentAddress::StaticArgumentValue(id)
             | ContentAddress::ValidationPrototype(id)
-            | ContentAddress::ValidationOutput(id) => Some(*id),
+            | ContentAddress::ValidationOutput(id)
+            | ContentAddress::ManagementPrototype(id) => Some(*id),
         }
         .unwrap_or_default()
     }

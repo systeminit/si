@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::node::auth_func::AuthFuncNode;
+use management_func::ManagementFuncNode;
 use object_tree::{
     read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
     ReadBytes, WriteBytes,
@@ -23,6 +24,7 @@ mod edge;
 mod func;
 mod func_argument;
 mod leaf_function;
+mod management_func;
 mod map_key_func;
 mod package;
 mod position;
@@ -76,6 +78,7 @@ const NODE_KIND_EDGE: &str = "edge";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
+const NODE_KIND_MANAGEMENT_FUNC: &str = "management_func";
 const NODE_KIND_MAP_KEY_FUNC: &str = "map_key_func";
 const NODE_KIND_PACKAGE: &str = "package";
 const NODE_KIND_POSITION: &str = "position";
@@ -148,6 +151,7 @@ pub enum PkgNode {
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
     LeafFunction(LeafFunctionNode),
+    ManagementFunc(ManagementFuncNode),
     MapKeyFunc(MapKeyFuncNode),
     Package(PackageNode),
     Position(PositionNode),
@@ -176,6 +180,7 @@ impl PkgNode {
     pub const FUNC_KIND_STR: &'static str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &'static str = NODE_KIND_FUNC_ARGUMENT;
     pub const LEAF_FUNCTION_KIND_STR: &'static str = NODE_KIND_LEAF_FUNCTION;
+    pub const MANAGEMENT_FUNC_KIND_STR: &'static str = NODE_KIND_MANAGEMENT_FUNC;
     pub const MAP_KEY_FUNC_KIND_STR: &'static str = NODE_KIND_MAP_KEY_FUNC;
     pub const PACKAGE_KIND_STR: &'static str = NODE_KIND_PACKAGE;
     pub const POSTITION_KIND_STR: &'static str = NODE_KIND_POSITION;
@@ -203,6 +208,7 @@ impl PkgNode {
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
+            Self::ManagementFunc(_) => NODE_KIND_MANAGEMENT_FUNC,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(_) => NODE_KIND_PACKAGE,
             Self::Position(_) => NODE_KIND_POSITION,
@@ -235,6 +241,7 @@ impl NameStr for PkgNode {
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
+            Self::ManagementFunc(_) => NODE_KIND_MANAGEMENT_FUNC,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(node) => node.name(),
             Self::Position(_) => NODE_KIND_POSITION,
@@ -270,6 +277,7 @@ impl WriteBytes for PkgNode {
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
+            Self::ManagementFunc(node) => node.write_bytes(writer)?,
             Self::MapKeyFunc(node) => node.write_bytes(writer)?,
             Self::Package(node) => node.write_bytes(writer)?,
             Self::Position(node) => node.write_bytes(writer)?,
@@ -322,6 +330,9 @@ impl ReadBytes for PkgNode {
             }
             NODE_KIND_LEAF_FUNCTION => {
                 LeafFunctionNode::read_bytes(reader)?.map(Self::LeafFunction)
+            }
+            NODE_KIND_MANAGEMENT_FUNC => {
+                ManagementFuncNode::read_bytes(reader)?.map(Self::ManagementFunc)
             }
             NODE_KIND_MAP_KEY_FUNC => MapKeyFuncNode::read_bytes(reader)?.map(Self::MapKeyFunc),
             NODE_KIND_PACKAGE => PackageNode::read_bytes(reader)?.map(Self::Package),

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
@@ -11,8 +13,8 @@ use crate::{
     action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
     property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
     ActionPrototypeId, ComponentId, ComponentType, DalContext, FuncBackendKind,
-    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaVariant, SchemaVariantId, SocketArity,
-    SocketKind, Timestamp, UserPk,
+    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaId, SchemaVariant, SchemaVariantId,
+    SocketArity, SocketKind, Timestamp, UserPk,
 };
 
 #[remain::sorted]
@@ -54,6 +56,7 @@ pub enum ContentTypes {
     StaticArgumentValue(StaticArgumentValueContent),
     Validation(ValidationContent),
     OutputSocket(OutputSocketContent),
+    ManagementPrototype(ManagementPrototypeContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -108,6 +111,7 @@ impl_into_content_types!(SchemaVariant);
 impl_into_content_types!(Secret);
 impl_into_content_types!(StaticArgumentValue);
 impl_into_content_types!(Validation);
+impl_into_content_types!(ManagementPrototype);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -604,4 +608,16 @@ pub struct ValidationContentV1 {
     pub timestamp: Timestamp,
     pub status: ValidationStatus,
     pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ManagementPrototypeContent {
+    V1(ManagementPrototypeContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ManagementPrototypeContentV1 {
+    pub name: String,
+    pub managed_schemas: Option<HashSet<SchemaId>>,
+    pub description: Option<String>,
 }

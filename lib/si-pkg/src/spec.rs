@@ -12,6 +12,7 @@ mod component;
 mod edge;
 mod func;
 mod leaf_function;
+mod management_func;
 mod map_key_func;
 mod position;
 mod prop;
@@ -23,8 +24,8 @@ mod variant;
 
 pub use {
     action_func::*, attr_func_input::*, attribute_value::*, authentication_func::*, change_set::*,
-    component::*, edge::*, func::*, leaf_function::*, map_key_func::*, position::*, prop::*,
-    root_prop_func::*, schema::*, si_prop_func::*, socket::*, variant::*,
+    component::*, edge::*, func::*, leaf_function::*, management_func::*, map_key_func::*,
+    position::*, prop::*, root_prop_func::*, schema::*, si_prop_func::*, socket::*, variant::*,
 };
 
 use super::SiPkgKind;

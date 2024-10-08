@@ -173,6 +173,7 @@ async fn all_prop_ids(ctx: &DalContext) {
         "root/si/color",
         "root/si/name",
         "root/si/protected",
+        "root/si/resourceId",
         "root/si/type",
     ];
     assert_eq!(

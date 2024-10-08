@@ -2,15 +2,15 @@ use dal::action::prototype::ActionKind;
 use dal::pkg::import_pkg_from_pkg;
 use dal::ComponentType;
 use dal::{BuiltinsResult, DalContext};
-use si_pkg::SchemaSpecData;
 use si_pkg::{
     ActionFuncSpec, PkgSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
 };
+use si_pkg::{ManagementFuncSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, build_resource_payload_to_value_func,
-    create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    build_action_func, build_asset_func, build_management_func,
+    build_resource_payload_to_value_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
@@ -37,16 +37,16 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
 
     // Build Refresh Action Func
     let refresh_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
-            }";
+        return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
+    }";
 
     let fn_name = "test:refreshActionSmallLego";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
     // Build Update Action Func
     let update_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: { \"poonami\": true }, status: \"ok\" };
-            }";
+        return { payload: { \"poonami\": true }, status: \"ok\" };
+    }";
     let fn_name = "test:updateActionSmallLego";
     let update_action_func = build_action_func(update_action_code, fn_name)?;
 
@@ -54,6 +54,28 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let delete_action_code = "async function main() {
         return { payload: null, status: \"ok\" };
     }";
+
+    let import_management_func_code = "async function main(thisComponent: Input): Promise<Output> {
+        return { 
+            ops: {
+                update: {
+                    self: {
+                        properties: {
+                            domain: {
+                                two: 'step',
+                                ...thisComponent.domain
+                            }
+                            ...thisComponent
+                        }
+                    }
+                }
+            },
+            message: 'hello'
+        }
+    }";
+    let import_management_func_name = "test:importManagementSmallLego";
+    let import_management_func =
+        build_management_func(import_management_func_code, import_management_func_name)?;
 
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
@@ -117,6 +139,12 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&delete_action_func.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Import small odd lego")
+                        .func_unique_id(&import_management_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -129,6 +157,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(delete_action_func)
         .func(small_lego_authoring_schema_func)
         .func(resource_payload_to_value_func)
+        .func(import_management_func)
         .schema(small_lego_schema)
         .build()?;
 

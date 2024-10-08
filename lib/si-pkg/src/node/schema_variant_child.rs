@@ -7,8 +7,8 @@ use object_tree::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ActionFuncSpec, AuthenticationFuncSpec, LeafFunctionSpec, PropSpec, RootPropFuncSpec,
-    SiPropFuncSpec, SocketSpec,
+    ActionFuncSpec, AuthenticationFuncSpec, LeafFunctionSpec, ManagementFuncSpec, PropSpec,
+    RootPropFuncSpec, SiPropFuncSpec, SocketSpec,
 };
 
 use super::PkgNode;
@@ -17,6 +17,7 @@ const VARIANT_CHILD_TYPE_ACTION_FUNCS: &str = "action_funcs";
 const VARIANT_CHILD_TYPE_AUTH_FUNCS: &str = "auth_funcs";
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
+const VARIANT_CHILD_TYPE_MANAGEMENT_FUNCS: &str = "management_funcs";
 const VARIANT_CHILD_TYPE_RESOURCE_VALUE: &str = "resource_value";
 const VARIANT_CHILD_TYPE_SI_PROP_FUNCS: &str = "si_prop_funcs";
 const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
@@ -34,6 +35,7 @@ pub enum SchemaVariantChild {
     AuthFuncs(Vec<AuthenticationFuncSpec>),
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
+    ManagementFuncs(Vec<ManagementFuncSpec>),
     ResourceValue(PropSpec),
     RootPropFuncs(Vec<RootPropFuncSpec>),
     SecretDefinition(PropSpec),
@@ -49,6 +51,7 @@ pub enum SchemaVariantChildNode {
     AuthFuncs,
     Domain,
     LeafFunctions,
+    ManagementFuncs,
     ResourceValue,
     RootPropFuncs,
     SecretDefinition,
@@ -64,6 +67,7 @@ impl SchemaVariantChildNode {
             Self::AuthFuncs => VARIANT_CHILD_TYPE_AUTH_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::ManagementFuncs => VARIANT_CHILD_TYPE_MANAGEMENT_FUNCS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
             Self::RootPropFuncs => VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS,
             Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
@@ -81,6 +85,7 @@ impl NameStr for SchemaVariantChildNode {
             Self::AuthFuncs => VARIANT_CHILD_TYPE_AUTH_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::ManagementFuncs => VARIANT_CHILD_TYPE_MANAGEMENT_FUNCS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
             Self::RootPropFuncs => VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS,
             Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
@@ -110,6 +115,7 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_AUTH_FUNCS => Self::AuthFuncs,
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
+            VARIANT_CHILD_TYPE_MANAGEMENT_FUNCS => Self::ManagementFuncs,
             VARIANT_CHILD_TYPE_RESOURCE_VALUE => Self::ResourceValue,
             VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
             VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS => Self::RootPropFuncs,
@@ -230,6 +236,17 @@ impl NodeChild for SchemaVariantChild {
                     .iter()
                     .map(|prop_func| {
                         Box::new(prop_func.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::ManagementFuncs(management_funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::ManagementFuncs),
+                management_funcs
+                    .iter()
+                    .map(|management_func| {
+                        Box::new(management_func.clone())
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),
