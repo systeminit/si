@@ -1,0 +1,5 @@
+error: SiVersionedNodeWeight must be derived on an enum.
+  --> tests/ui/03-node_weight-versioned-derive-on-wrong-type-fail.rs:11:1
+   |
+11 | pub struct VersionedNodeWeight {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

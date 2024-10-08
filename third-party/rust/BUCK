@@ -4278,6 +4278,12 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "darling",
+    actual = ":darling-0.20.10",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "darling-0.20.10.crate",
     sha256 = "6f63b86c8a8826a49b8c21f08a2d07338eec8d900540f8630dc76284be802989",
@@ -4956,6 +4962,23 @@ cargo.rust_library(
     },
     visibility = [],
     deps = [":option-ext-0.2.0"],
+)
+
+http_archive(
+    name = "dissimilar-1.0.9.crate",
+    sha256 = "59f8e79d1fbf76bdfbde321e902714bf6c49df88a7dda6fc682fc2979226962d",
+    strip_prefix = "dissimilar-1.0.9",
+    urls = ["https://static.crates.io/crates/dissimilar/1.0.9/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "dissimilar-1.0.9",
+    srcs = [":dissimilar-1.0.9.crate"],
+    crate = "dissimilar",
+    crate_root = "dissimilar-1.0.9.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
 )
 
 http_archive(
@@ -8765,6 +8788,69 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "manyhow",
+    actual = ":manyhow-0.11.4",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "manyhow-0.11.4.crate",
+    sha256 = "b33efb3ca6d3b07393750d4030418d594ab1139cee518f0dc88db70fec873587",
+    strip_prefix = "manyhow-0.11.4",
+    urls = ["https://static.crates.io/crates/manyhow/0.11.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "manyhow-0.11.4",
+    srcs = [":manyhow-0.11.4.crate"],
+    crate = "manyhow",
+    crate_root = "manyhow-0.11.4.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "darling",
+        "darling_core",
+        "default",
+        "macros",
+        "syn",
+        "syn2",
+    ],
+    named_deps = {
+        "macros": ":manyhow-macros-0.11.4",
+        "syn2": ":syn-2.0.79",
+    },
+    visibility = [],
+    deps = [
+        ":darling_core-0.20.10",
+        ":proc-macro2-1.0.86",
+        ":quote-1.0.37",
+    ],
+)
+
+http_archive(
+    name = "manyhow-macros-0.11.4.crate",
+    sha256 = "46fce34d199b78b6e6073abf984c9cf5fd3e9330145a93ee0738a7443e371495",
+    strip_prefix = "manyhow-macros-0.11.4",
+    urls = ["https://static.crates.io/crates/manyhow-macros/0.11.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "manyhow-macros-0.11.4",
+    srcs = [":manyhow-macros-0.11.4.crate"],
+    crate = "manyhow_macros",
+    crate_root = "manyhow-macros-0.11.4.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro-utils-0.10.0",
+        ":proc-macro2-1.0.86",
+        ":quote-1.0.37",
+    ],
+)
+
 http_archive(
     name = "matchers-0.1.0.crate",
     sha256 = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558",
@@ -11661,6 +11747,36 @@ cargo.rust_library(
         ":proc-macro2-1.0.86",
         ":quote-1.0.37",
         ":syn-2.0.79",
+    ],
+)
+
+http_archive(
+    name = "proc-macro-utils-0.10.0.crate",
+    sha256 = "eeaf08a13de400bc215877b5bdc088f241b12eb42f0a548d3390dc1c56bb7071",
+    strip_prefix = "proc-macro-utils-0.10.0",
+    urls = ["https://static.crates.io/crates/proc-macro-utils/0.10.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "proc-macro-utils-0.10.0",
+    srcs = [":proc-macro-utils-0.10.0.crate"],
+    crate = "proc_macro_utils",
+    crate_root = "proc-macro-utils-0.10.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "parser",
+        "proc-macro",
+        "proc-macro2",
+        "quote",
+        "smallvec",
+    ],
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.86",
+        ":quote-1.0.37",
+        ":smallvec-1.13.2",
     ],
 )
 
@@ -16760,6 +16876,7 @@ cargo.rust_binary(
         ":criterion-0.5.1",
         ":crossbeam-channel-0.5.13",
         ":crossbeam-queue-0.3.11",
+        ":darling-0.20.10",
         ":deadpool-0.10.0",
         ":deadpool-postgres-0.12.1",
         ":derive_builder-0.20.1",
@@ -16785,6 +16902,7 @@ cargo.rust_binary(
         ":jwt-simple-0.12.9",
         ":krata-loopdev-0.0.12",
         ":lazy_static-1.5.0",
+        ":manyhow-0.11.4",
         ":mime_guess-2.0.4",
         ":miniz_oxide-0.7.4",
         ":moka-0.12.8",
@@ -16856,6 +16974,7 @@ cargo.rust_binary(
         ":tracing-opentelemetry-0.23.0",
         ":tracing-subscriber-0.3.18",
         ":tracing-tunnel-0.1.0",
+        ":trybuild-1.0.99",
         ":tryhard-0.5.1",
         ":ulid-1.1.3",
         ":url-2.5.2",
@@ -18317,6 +18436,42 @@ cargo.rust_library(
     crate_root = "try-lock-0.2.5.crate/src/lib.rs",
     edition = "2015",
     visibility = [],
+)
+
+alias(
+    name = "trybuild",
+    actual = ":trybuild-1.0.99",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "trybuild-1.0.99.crate",
+    sha256 = "207aa50d36c4be8d8c6ea829478be44a372c6a77669937bb39c698e52f1491e8",
+    strip_prefix = "trybuild-1.0.99",
+    urls = ["https://static.crates.io/crates/trybuild/1.0.99/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "trybuild-1.0.99",
+    srcs = [":trybuild-1.0.99.crate"],
+    crate = "trybuild",
+    crate_root = "trybuild-1.0.99.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "diff",
+        "dissimilar",
+    ],
+    visibility = [],
+    deps = [
+        ":dissimilar-1.0.9",
+        ":glob-0.3.1",
+        ":serde-1.0.210",
+        ":serde_derive-1.0.210",
+        ":serde_json-1.0.125",
+        ":termcolor-1.4.1",
+        ":toml-0.8.19",
+    ],
 )
 
 alias(

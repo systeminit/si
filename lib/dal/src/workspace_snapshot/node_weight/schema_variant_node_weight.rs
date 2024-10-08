@@ -30,8 +30,11 @@ pub enum SchemaVariantNodeWeightError {
 
 pub type SchemaVariantNodeWeightResult<T> = Result<T, SchemaVariantNodeWeightError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,
+)]
 pub enum SchemaVariantNodeWeight {
+    #[si_versioned_node_weight(current)]
     V1(SchemaVariantNodeWeightV1),
 }
 
@@ -56,23 +59,5 @@ impl SchemaVariantNodeWeight {
             content_node_weight,
         )
         .await
-    }
-}
-
-impl SiVersionedNodeWeight for SchemaVariantNodeWeight {
-    type Inner = SchemaVariantNodeWeightV1;
-
-    /// Return a reference to the most uup to date enum variant
-    fn inner(&self) -> &SchemaVariantNodeWeightV1 {
-        match self {
-            SchemaVariantNodeWeight::V1(inner) => inner,
-        }
-    }
-
-    /// Return a mutable reference to the most up to date enum variant
-    fn inner_mut(&mut self) -> &mut SchemaVariantNodeWeightV1 {
-        match self {
-            SchemaVariantNodeWeight::V1(inner) => inner,
-        }
     }
 }

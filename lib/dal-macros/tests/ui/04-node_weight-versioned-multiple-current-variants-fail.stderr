@@ -1,0 +1,13 @@
+error: Enum cannot have multiple current variants.
+  --> tests/ui/04-node_weight-versioned-multiple-current-variants-fail.rs:14:5
+   |
+14 | /     #[si_versioned_node_weight(current)]
+15 | |     V2(InnerType),
+   | |_________________^
+
+error: Enum cannot have multiple current variants.
+  --> tests/ui/04-node_weight-versioned-multiple-current-variants-fail.rs:18:5
+   |
+18 | /     #[si_versioned_node_weight(current)]
+19 | |     V5(InnerType),
+   | |_________________^
