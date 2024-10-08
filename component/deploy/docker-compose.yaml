@@ -57,6 +57,18 @@ services:
       init:
         condition: service_completed_successfully
 
+  pgbouncer-prom-exporter:
+    container_name: pgbouncer-prom-exporter
+    image: systeminit/pgbouncer-prom-exporter:${INIT_VERSION:-stable}
+    profiles: [rebaser, pinga, sdf]
+    ports:
+      - 9127:9127
+    volumes:
+      - config:/etc/pgbouncer-prom-exporter/
+    depends_on:
+      pgbouncer:
+        condition: service_completed_successfully
+
   vector:
     container_name: vector
     image: timberio/vector:0.X-debian
