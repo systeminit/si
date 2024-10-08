@@ -13,7 +13,8 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_object_cache_config,
+    setup_pg_db,
 };
 
 type TestLayerDb = LayerDb<String, String, String, String>;
@@ -29,6 +30,7 @@ async fn write_to_db() {
         setup_pg_db("func_run_write_to_db").await,
         setup_nats_client(Some("func_run_write_to_db".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -92,6 +94,7 @@ async fn update() {
         db.clone(),
         setup_nats_client(Some("func_run_update_to_db".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -105,6 +108,7 @@ async fn update() {
         db,
         setup_nats_client(Some("func_run_update_to_db".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -266,6 +270,7 @@ async fn write_and_read_many_for_workspace_id() {
         ))
         .await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )

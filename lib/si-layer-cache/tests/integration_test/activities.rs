@@ -11,7 +11,8 @@ use si_layer_cache::{
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_object_cache_config,
+    setup_pg_db,
 };
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
@@ -35,6 +36,7 @@ async fn activities() {
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -48,6 +50,7 @@ async fn activities() {
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -101,6 +104,7 @@ async fn activities_subscribe_partial() {
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -114,6 +118,7 @@ async fn activities_subscribe_partial() {
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )

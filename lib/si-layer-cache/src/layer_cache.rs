@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
@@ -11,6 +12,7 @@ use crate::db::serialize;
 use crate::disk_cache::DiskCache;
 use crate::error::LayerDbResult;
 use crate::memory_cache::{MemoryCache, MemoryCacheConfig};
+use crate::object_cache::{ObjectCache, ObjectCacheConfig};
 use crate::pg::PgLayer;
 use crate::LayerDbError;
 
@@ -21,6 +23,7 @@ where
 {
     memory_cache: MemoryCache<V>,
     disk_cache: DiskCache,
+    object_cache: ObjectCache,
     pg: PgLayer,
     #[allow(dead_code)] // TODO(fnichol): remove once in use
     compute_executor: DedicatedExecutor,
@@ -30,9 +33,10 @@ impl<V> LayerCache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(
+    pub async fn new(
         name: &str,
         disk_path: impl Into<PathBuf>,
+        object_cache_config: ObjectCacheConfig,
         pg_pool: PgPool,
         memory_cache_config: MemoryCacheConfig,
         compute_executor: DedicatedExecutor,
@@ -42,6 +46,7 @@ where
         let pg = PgLayer::new(pg_pool.clone(), name);
 
         Ok(LayerCache {
+            object_cache: ObjectCache::new(object_cache_config).await?,
             memory_cache: MemoryCache::new(memory_cache_config),
             disk_cache,
             pg,
@@ -51,6 +56,15 @@ where
 
     async fn spawn_disk_cache_write_vec(&self, key: Arc<str>, value: Vec<u8>) -> LayerDbResult<()> {
         self.disk_cache().insert(key, value).await?;
+        Ok(())
+    }
+
+    async fn spawn_object_cache_write_vec(
+        &self,
+        key: Arc<str>,
+        value: Vec<u8>,
+    ) -> LayerDbResult<()> {
+        self.object_cache().insert(key, value).await?;
         Ok(())
     }
 
@@ -66,36 +80,45 @@ where
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
         let span = current_span_for_instrument_at!("debug");
 
-        Ok(match self.memory_cache.get(&key).await {
-            Some(memory_value) => {
-                span.record("si.layer_cache.layer.hit", "memory");
-                Some(memory_value)
-            }
-            None => match self.disk_cache.get(key.clone()).await {
-                Ok(value) => {
-                    let deserialized: V = serialize::from_bytes(&value[..])?;
+        async fn cache_hit<V>(
+            memory_cache: &MemoryCache<V>,
+            key: Arc<str>,
+            value: Vec<u8>,
+            layer: &str,
+            span: &Span,
+        ) -> LayerDbResult<Option<V>>
+        where
+            V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+        {
+            let deserialized: V = serialize::from_bytes(&value)?;
+            memory_cache.insert(key.clone(), deserialized.clone()).await;
+            span.record("si.layer_cache.layer.hit", layer);
+            Ok(Some(deserialized))
+        }
 
-                    self.memory_cache.insert(key, deserialized.clone()).await;
+        if let Some(memory_value) = self.memory_cache.get(&key).await {
+            return Ok(Some(memory_value));
+        }
 
-                    span.record("si.layer_cache.layer.hit", "disk");
-                    Some(deserialized)
-                }
-                Err(_) => match self.pg.get(&key).await? {
-                    Some(value) => {
-                        let deserialized: V = serialize::from_bytes(&value)?;
+        if let Ok(value) = self.disk_cache.get(key.clone()).await {
+            return cache_hit(&self.memory_cache, key, value, "disk", &span).await;
+        }
 
-                        self.memory_cache
-                            .insert(key.clone(), deserialized.clone())
-                            .await;
-                        self.spawn_disk_cache_write_vec(key.clone(), value).await?;
+        if let Some(value) = self.object_cache.get(key.clone()).await? {
+            self.spawn_disk_cache_write_vec(key.clone(), value.clone())
+                .await?;
+            return cache_hit(&self.memory_cache, key, value, "object", &span).await;
+        }
 
-                        span.record("si.layer_cache.layer.hit", "disk");
-                        Some(deserialized)
-                    }
-                    None => None,
-                },
-            },
-        })
+        if let Some(value) = self.pg.get(&key).await? {
+            self.spawn_disk_cache_write_vec(key.clone(), value.clone())
+                .await?;
+            self.spawn_object_cache_write_vec(key.clone(), value.clone())
+                .await?;
+            return cache_hit(&self.memory_cache, key, value, "pg", &span).await;
+        }
+
+        Ok(None)
     }
 
     #[instrument(
@@ -110,10 +133,19 @@ where
         &self,
         key: Arc<str>,
     ) -> LayerDbResult<Option<Vec<u8>>> {
-        Ok(match self.disk_cache.get(key.clone()).await {
-            Ok(bytes) => Some(bytes),
-            Err(_) => self.pg.get(&key).await?,
-        })
+        if let Ok(bytes) = self.disk_cache.get(key.clone()).await {
+            return Ok(Some(bytes));
+        }
+
+        if let Some(bytes) = self.object_cache.get(key.clone()).await? {
+            return Ok(Some(bytes));
+        }
+
+        if let Some(bytes) = self.pg.get(&key).await? {
+            return Ok(Some(bytes));
+        }
+
+        Ok(None)
     }
 
     pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
@@ -121,7 +153,7 @@ where
         K: Clone + Display + Eq + std::hash::Hash + std::str::FromStr,
         <K as std::str::FromStr>::Err: Display,
     {
-        let mut found_keys = HashMap::new();
+        let mut found_values: HashMap<K, V> = HashMap::new();
         let mut not_found: Vec<Arc<str>> = vec![];
 
         for key in keys {
@@ -143,19 +175,43 @@ where
                     }
                 },
             } {
-                found_keys.insert(key.clone(), found);
+                found_values.insert(key.clone(), found);
             }
         }
 
         if !not_found.is_empty() {
+            let mut found_keys: Vec<Arc<str>> = vec![];
+            if let Some(obj_found) = self.object_cache.get_many(&not_found).await? {
+                for (k, v) in obj_found {
+                    let deserialized: V = serialize::from_bytes(&v)?;
+                    self.memory_cache
+                        .insert(k.clone().into(), deserialized.clone())
+                        .await;
+                    self.spawn_disk_cache_write_vec(k.clone().into(), v.clone())
+                        .await?;
+                    found_values.insert(
+                        K::from_str(&k).map_err(|err| {
+                            LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
+                        })?,
+                        deserialized,
+                    );
+                    found_keys.push(k.into());
+                }
+            }
+            // we don't need to hit the database if they are in S3
+            not_found.retain(|item| !found_keys.contains(item));
+
             if let Some(pg_found) = self.pg.get_many(&not_found).await? {
                 for (k, v) in pg_found {
                     let deserialized: V = serialize::from_bytes(&v)?;
                     self.memory_cache
                         .insert(k.clone().into(), deserialized.clone())
                         .await;
-                    self.spawn_disk_cache_write_vec(k.clone().into(), v).await?;
-                    found_keys.insert(
+                    self.spawn_disk_cache_write_vec(k.clone().into(), v.clone())
+                        .await?;
+                    self.spawn_object_cache_write_vec(k.clone().into(), v)
+                        .await?;
+                    found_values.insert(
                         K::from_str(&k).map_err(|err| {
                             LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
                         })?,
@@ -165,7 +221,7 @@ where
             }
         }
 
-        Ok(found_keys)
+        Ok(found_values)
     }
 
     pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
@@ -180,6 +236,10 @@ where
 
     pub fn disk_cache(&self) -> &DiskCache {
         &self.disk_cache
+    }
+
+    pub fn object_cache(&self) -> ObjectCache {
+        self.object_cache.clone()
     }
 
     pub fn pg(&self) -> PgLayer {

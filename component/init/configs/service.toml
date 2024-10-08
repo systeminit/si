@@ -59,3 +59,6 @@ url = "$SI_NATS_URL"
 
 [layer_db_config.memory_cache_config]
 seconds_to_idle = "$SI_CACHE_EVICTION_SECONDS_TO_IDLE"
+
+[layer_db_config.object_cache_config]
+bucket = "$SI_LAYER_CACHE_BUCKET_NAME"

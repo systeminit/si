@@ -2,13 +2,15 @@ use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{
-    db::serialize, memory_cache::MemoryCacheConfig, persister::PersistStatus, LayerDb,
+    db::serialize, memory_cache::MemoryCacheConfig,
+    persister::PersistStatus, LayerDb,
 };
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
+    disk_cache_path, setup_compute_executor, setup_nats_client, setup_object_cache_config,
+    setup_pg_db,
 };
 
 type TestLayerDb = LayerDb<CasValue, String, String, String>;
@@ -24,6 +26,7 @@ async fn write_to_db() {
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -66,6 +69,19 @@ async fn write_to_db() {
         serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
     assert_eq!(cas_value.as_ref(), &on_disk);
 
+    // Are we in S3?
+    let in_s3_postcard = ldb
+        .cas()
+        .cache
+        .object_cache()
+        .get(cas_pk_str.clone())
+        .await
+        .expect("cannot get from object cache")
+        .expect("no cas object in s3");
+    let in_s3: CasValue =
+        serialize::from_bytes(&in_s3_postcard[..]).expect("cannot deserialize data");
+    assert_eq!(cas_value.as_ref(), &in_s3);
+
     // Are we in pg?
     let in_pg_postcard = ldb
         .cas()
@@ -93,6 +109,7 @@ async fn write_and_read_many() {
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -150,6 +167,7 @@ async fn cold_read_from_db() {
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
         setup_compute_executor(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -248,6 +266,7 @@ async fn writes_are_gossiped() {
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
         compute_executor.clone(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -261,6 +280,7 @@ async fn writes_are_gossiped() {
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         compute_executor,
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token,
     )
@@ -338,6 +358,19 @@ async fn writes_are_gossiped() {
         "value did not arrive in the remote disk cache within 10ms"
     );
 
+    // Are we in S3?
+    let in_s3_postcard = ldb_axl
+        .cas()
+        .cache
+        .object_cache()
+        .get(cas_pk_str.clone())
+        .await
+        .expect("cannot get from object cache")
+        .expect("no cas object in s3");
+    let in_s3: CasValue =
+        serialize::from_bytes(&in_s3_postcard[..]).expect("cannot deserialize data");
+    assert_eq!(cas_value.as_ref(), &in_s3);
+
     // Are we in pg?
     let in_pg_postcard = ldb_axl
         .cas()
@@ -371,6 +404,7 @@ async fn stress_test() {
         db.clone(),
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor.clone(),
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
@@ -386,6 +420,7 @@ async fn stress_test() {
         db,
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor,
+        setup_object_cache_config().await,
         MemoryCacheConfig::default(),
         token.clone(),
     )
