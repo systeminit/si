@@ -16,7 +16,8 @@ use si_data_nats::{
     jetstream::{self, Context},
     HeaderMap, Message, NatsClient, Subject,
 };
-use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
+use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId};
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;

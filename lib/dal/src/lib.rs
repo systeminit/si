@@ -126,7 +126,7 @@ pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
-pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
+pub use workspace::{Workspace, WorkspaceError, WorkspaceResult};
 pub use workspace_snapshot::graph::{
     WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphVCurrent,
 };
@@ -137,6 +137,7 @@ pub use workspace_snapshot::{
 pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
+pub use si_id::{WorkspaceId, WorkspacePk};
 pub use si_runtime::{
     compute_executor, DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
     DedicatedExecutorJoinError,

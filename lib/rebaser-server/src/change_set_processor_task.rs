@@ -22,7 +22,8 @@ use si_data_nats::{
     async_nats::jetstream::{self, consumer::push},
     NatsClient,
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::ChangeSetId;
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
@@ -455,7 +456,8 @@ mod app_state {
 
     use dal::DalContextBuilder;
     use si_data_nats::NatsClient;
-    use si_events::{ChangeSetId, WorkspacePk};
+    use si_events::ChangeSetId;
+    use si_id::WorkspacePk;
     use tokio::sync::Notify;
 
     /// Application state.

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
+use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId};
+use si_id::WorkspacePk;
 
 use crate::RequestId;
 

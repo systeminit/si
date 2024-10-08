@@ -16,6 +16,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
+si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 ulid = { workspace = true }

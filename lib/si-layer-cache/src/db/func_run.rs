@@ -3,8 +3,9 @@ use std::time::Duration;
 
 use si_events::{
     ActionId, ActionResultState, Actor, AttributeValueId, ContentHash, FuncRun, FuncRunId, Tenancy,
-    WebEvent, WorkspacePk,
+    WebEvent,
 };
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 
 use crate::event::LayeredEventPayload;

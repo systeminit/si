@@ -427,7 +427,7 @@ impl DalContext {
     ) -> TransactionsResult<RequestId> {
         self.rebaser()
             .enqueue_updates_from_change_set(
-                workspace_pk.into(),
+                workspace_pk,
                 change_set_id.into(),
                 updates_address,
                 from_change_set_id.into(),
@@ -902,8 +902,7 @@ impl DalContext {
             workspace_pk: self
                 .tenancy()
                 .workspace_pk_opt()
-                .unwrap_or(WorkspacePk::NONE)
-                .into(),
+                .unwrap_or(WorkspacePk::NONE),
         }
     }
 

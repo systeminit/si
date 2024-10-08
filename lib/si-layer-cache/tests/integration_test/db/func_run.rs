@@ -5,8 +5,9 @@ use std::{sync::Arc, time::Duration};
 
 use si_events::{
     Actor, ChangeSetId, ContentHash, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
-    FuncRunBuilder, FuncRunId, Tenancy, UserPk, WorkspacePk,
+    FuncRunBuilder, FuncRunId, Tenancy, UserPk,
 };
+use si_id::WorkspacePk;
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDb;
 use tokio::time::Instant;

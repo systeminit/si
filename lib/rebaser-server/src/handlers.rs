@@ -12,7 +12,8 @@ use si_data_nats::{
     },
     NatsClient, Subject,
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::ChangeSetId;
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;

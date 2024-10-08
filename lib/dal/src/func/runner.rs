@@ -26,7 +26,7 @@ use crate::attribute::prototype::argument::{
 use crate::component::socket::ComponentInputSocket;
 use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
-use crate::workspace::WorkspaceId;
+use crate::WorkspaceId;
 use crate::{
     action::{
         prototype::{ActionPrototype, ActionPrototypeError},
