@@ -15,7 +15,7 @@
           }}
         </div>
         <div
-          v-tooltip="draftWorkspace.isFavourite ? 'Unstar' : 'Star'"
+          v-tooltip="draftWorkspace.isFavourite ? 'Remove Star' : 'Add Star'"
           :class="
             clsx(
               'flex-none cursor-pointer hover:scale-110',

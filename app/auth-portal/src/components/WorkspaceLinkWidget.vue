@@ -228,6 +228,8 @@ function clickHandler(e: MouseEvent) {
     // eslint-disable-next-line no-alert
     alert("You must verify your email before you can log into a workspace");
     e.preventDefault();
+  } else {
+    window.location.href = `${API_HTTP_URL}/workspaces/${props.workspaceId}/go`;
   }
 }
 

@@ -97,7 +97,7 @@
             {{ actionHistory.componentName }}
           </template>
         </span>
-      </TruncateWithToolTip>
+      </TruncateWithTooltip>
       <div
         v-if="props.action.actor"
         class="text-neutral-500 dark:text-neutral-400 truncate"
