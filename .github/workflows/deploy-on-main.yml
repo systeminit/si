@@ -3,7 +3,9 @@ name: Deploy Main
 on:
   push:
     tags:
-      - 'release/*'
+      - "release/*"
+  schedule:
+    - cron: "0 16 * * 1-5"
 
 jobs:
   deploy-tools-prod:
