@@ -8,9 +8,12 @@
         :placeholder="placeholder"
         :class="
           clsx(
-            'w-full text-xs pl-[32px] py-2xs text-black dark:text-white h-[34px] bg-shade-0 dark:bg-neutral-800',
-            'placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400',
+            'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic',
             'focus:bg-neutral-50 focus:dark:bg-shade-100 focus:outline focus:outline-2 focus:outline-action-500 outline-offset-[-1px]',
+            themeClasses(
+              'text-black bg-shade-0 placeholder:text-neutral-500',
+              'text-white bg-neutral-800 placeholder:text-neutral-400',
+            ),
             filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
@@ -77,10 +80,13 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, ref, watch } from "vue";
-import { Icon, IconNames, Tones } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import FilterPill from "./FilterPill.vue";
+import Icon from "../icons/Icon.vue";
 import IconButton from "./IconButton.vue";
+import { Tones } from "../utils/color_utils";
+import { IconNames } from "../icons/icon_set";
+import { themeClasses } from "../utils/theme_tools";
 
 const transitionRef = ref<HTMLDivElement>();
 

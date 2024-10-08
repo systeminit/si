@@ -125,9 +125,11 @@ import {
   RequestStatusMessage,
   TreeNode,
   PillCounter,
+  IconButton,
+  SiSearch,
+  Filter,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
-import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { getAssetIcon } from "@/store/components.store";
@@ -135,7 +137,6 @@ import { useModuleStore } from "@/store/module.store";
 import AssetNameModal from "./AssetNameModal.vue";
 import AssetListItem from "./AssetListItem.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
-import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
 const moduleStore = useModuleStore();

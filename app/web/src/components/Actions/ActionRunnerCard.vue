@@ -91,14 +91,13 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed, ref } from "vue";
-import { TreeNode, useTheme } from "@si/vue-lib/design-system";
+import { TreeNode, useTheme, IconButton } from "@si/vue-lib/design-system";
 import { DeprecatedActionRunner } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import ActionRunnerDetails from "./ActionRunnerDetails.vue";
-import IconButton from "../IconButton.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();

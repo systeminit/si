@@ -248,6 +248,7 @@ import {
   TabGroupItem,
   TreeNode,
   VormInput,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
@@ -267,7 +268,6 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
 import EmptyStateCard from "../EmptyStateCard.vue";
-import IconButton from "../IconButton.vue";
 import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 import EditingPill from "../EditingPill.vue";
 

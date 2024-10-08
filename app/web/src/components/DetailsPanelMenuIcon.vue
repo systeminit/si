@@ -8,7 +8,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import IconButton from "./IconButton.vue";
+import { IconButton } from "@si/vue-lib/design-system";
 
 defineProps({
   selected: { type: Boolean },

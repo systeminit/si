@@ -32,7 +32,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onMounted, ref } from "vue";
-import SiSearch from "@/components/SiSearch.vue";
+import { SiSearch } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
 import ModuleList from "./ModuleList.vue";
 import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";

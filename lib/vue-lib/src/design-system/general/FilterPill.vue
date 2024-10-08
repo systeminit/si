@@ -26,9 +26,10 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon, getToneTextColorClass } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
+import Icon from "../icons/Icon.vue";
+import { getToneTextColorClass } from "../utils/color_utils";
 import { Filter } from "./SiSearch.vue";
 
 const props = defineProps({

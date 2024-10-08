@@ -35,10 +35,13 @@
 </template>
 
 <script setup lang="ts">
-import { Icon, IconNames } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType } from "vue";
-import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 
 export type SidebarSubpanelTitleVariant = "title" | "subtitle";
 

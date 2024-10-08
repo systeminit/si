@@ -12,7 +12,12 @@
           ? `opacity-50 ${getToneTextColorClass(iconToneDefault)}`
           : [
               selectedOrActive
-                ? `text-shade-0 ${getToneBgColorClass(iconTone)}`
+                ? [
+                    'text-shade-0',
+                    iconBgActiveTone
+                      ? getToneBgColorClass(iconBgActiveTone)
+                      : getToneBgColorClass(iconTone),
+                  ]
                 : [
                     hover
                       ? [
@@ -46,18 +51,18 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  Icon,
-  IconNames,
-  SpacingSizes,
-  Tones,
-  getToneBgColorClass,
-  getToneTextColorClass,
-} from "@si/vue-lib/design-system";
-import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import clsx from "clsx";
 import { Placement } from "floating-vue";
 import { PropType, computed, ref } from "vue";
+import Icon from "../icons/Icon.vue";
+import { IconNames } from "../icons/icon_set";
+import {
+  getToneBgColorClass,
+  getToneTextColorClass,
+  Tones,
+} from "../utils/color_utils";
+import { SpacingSizes } from "../utils/size_utils";
+import { ApiRequestStatus } from "../../pinia";
 
 const props = defineProps({
   size: { type: String as PropType<SpacingSizes>, default: "md" },
@@ -65,6 +70,7 @@ const props = defineProps({
   iconHover: { type: String as PropType<IconNames> },
   iconTone: { type: String as PropType<Tones>, default: "action" },
   iconIdleTone: { type: String as PropType<Tones> },
+  iconBgActiveTone: { type: String as PropType<Tones> },
   selected: { type: Boolean },
   tooltip: { type: String },
   tooltipPlacement: { type: String as PropType<Placement>, default: "left" },

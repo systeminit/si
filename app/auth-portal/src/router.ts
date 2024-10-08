@@ -12,6 +12,7 @@ import LogoutPage from "./pages/LogoutPage.vue";
 import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import WorkspacesPage from "./pages/WorkspacesPage.vue";
+import BillingPage from "./pages/BillingPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
 import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
 import WorkspaceGoPage from "./pages/WorkspaceGoPage.vue";
@@ -63,6 +64,7 @@ export const routerOptions: RouterOptions = {
       },
     },
     { path: "/workspaces", name: "workspaces", component: WorkspacesPage },
+    { path: "/billing", name: "billing", component: BillingPage },
     {
       path: "/default_workspace",
       name: "default-workspace",
