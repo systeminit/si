@@ -23,12 +23,15 @@ use crate::{
     Timestamp, WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphVCurrent,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight)]
+#[si_node_weight(discriminant = NodeWeightDiscriminants::SchemaVariant)]
 pub struct SchemaVariantNodeWeightV1 {
     pub id: Ulid,
     pub lineage_id: LineageId,
     merkle_tree_hash: MerkleTreeHash,
+    #[si_node_weight(node_hash = "&[u8::from(self.is_locked)]")]
     is_locked: bool,
+    #[si_node_weight(node_hash = "self.content_address.content_hash().as_bytes()")]
     content_address: ContentAddress,
     timestamp: Timestamp,
 }
@@ -161,48 +164,6 @@ impl SchemaVariantNodeWeightV1 {
             .map_err(Box::new)?;
 
         Ok(())
-    }
-}
-
-impl SiNodeWeight for SchemaVariantNodeWeightV1 {
-    fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
-    }
-
-    fn id(&self) -> Ulid {
-        self.id
-    }
-
-    fn lineage_id(&self) -> Ulid {
-        self.lineage_id
-    }
-
-    fn merkle_tree_hash(&self) -> MerkleTreeHash {
-        self.merkle_tree_hash
-    }
-
-    fn node_hash(&self) -> ContentHash {
-        let mut content_hasher = ContentHash::hasher();
-        content_hasher.update(&[u8::from(self.is_locked)]);
-        content_hasher.update(self.content_address.content_hash().as_bytes());
-
-        content_hasher.finalize()
-    }
-
-    fn node_weight_discriminant(&self) -> NodeWeightDiscriminants {
-        NodeWeightDiscriminants::SchemaVariant
-    }
-
-    fn set_id(&mut self, new_id: Ulid) {
-        self.id = new_id;
-    }
-
-    fn set_lineage_id(&mut self, new_id: Ulid) {
-        self.lineage_id = new_id;
-    }
-
-    fn set_merkle_tree_hash(&mut self, new_hash: MerkleTreeHash) {
-        self.merkle_tree_hash = new_hash
     }
 }
 
