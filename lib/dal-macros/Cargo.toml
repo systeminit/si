@@ -1,0 +1,22 @@
+[package]
+name = "dal-macros"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.20.10"
+manyhow = { version = "0.11.4", features = ["darling"] }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }
+
+[dev-dependencies]
+trybuild = { version = "1.0.99", features = ["diff"] }

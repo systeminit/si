@@ -1,0 +1,44 @@
+error: Enum cannot have multiple current variants.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:14:5
+   |
+14 | /     #[si_versioned_node_weight(current)]
+15 | |     V2(InnerType, InnerType),
+   | |____________________________^
+
+error: Current variant must have a single unnamed field.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:15:7
+   |
+15 |     V2(InnerType, InnerType),
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+error: Enum cannot have multiple current variants.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:16:5
+   |
+16 | /     #[si_versioned_node_weight(current)]
+17 | |     V3 {
+18 | |         inner: InnerType,
+19 | |     },
+   | |_____^
+
+error: Current variant must have a single unnamed field.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:17:8
+   |
+17 |       V3 {
+   |  ________^
+18 | |         inner: InnerType,
+19 | |     },
+   | |_____^
+
+error: Enum cannot have multiple current variants.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:20:5
+   |
+20 | /     #[si_versioned_node_weight(current)]
+21 | |     V4,
+   | |______^
+
+error: Current variant must have a single unnamed field.
+  --> tests/ui/05-node_weight-versioned-wrong-fields-on-enum-variant-fail.rs:20:5
+   |
+20 | /     #[si_versioned_node_weight(current)]
+21 | |     V4,
+   | |______^

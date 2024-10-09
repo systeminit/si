@@ -1,0 +1,8 @@
+error: No current variant annotation
+  --> tests/ui/02-node_weight-versioned-no-current-annotation-fail.rs:11:1
+   |
+11 | / pub enum VersionedNodeWeight {
+12 | |     V0,
+13 | |     V1(InnerType),
+14 | | }
+   | |_^

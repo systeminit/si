@@ -30,8 +30,11 @@ pub enum InputSocketNodeWeightError {
 
 pub type InputSocketNodeWeightResult<T> = Result<T, InputSocketNodeWeightError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,
+)]
 pub enum InputSocketNodeWeight {
+    #[si_versioned_node_weight(current)]
     V1(InputSocketNodeWeightV1),
 }
 
@@ -58,23 +61,5 @@ impl InputSocketNodeWeight {
             content_node_weight,
         )
         .await
-    }
-}
-
-impl SiVersionedNodeWeight for InputSocketNodeWeight {
-    type Inner = InputSocketNodeWeightV1;
-
-    /// Return a reference to the most up to date enum variant
-    fn inner(&self) -> &InputSocketNodeWeightV1 {
-        match self {
-            InputSocketNodeWeight::V1(inner) => inner,
-        }
-    }
-
-    /// Return a mutable reference to the most up to date enum variant
-    fn inner_mut(&mut self) -> &mut InputSocketNodeWeightV1 {
-        match self {
-            InputSocketNodeWeight::V1(inner) => inner,
-        }
     }
 }

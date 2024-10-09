@@ -51,6 +51,7 @@ convert_case = "0.6.0"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 crossbeam-channel = "0.5.12"
 crossbeam-queue = {version = "0.3.10"}
+darling = "0.20.10"
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"
 derive_builder = "0.20.0"
@@ -76,6 +77,7 @@ itertools = "0.12.1"
 jwt-simple = { version = "0.12.9", default-features = false, features = ["pure-rust"] }
 krata-loopdev = "0.0.12"
 lazy_static = "1.4.0"
+manyhow = { version = "0.11.4", features = ["darling"] }
 mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.7.2", features = ["simd"] }
 moka = { version = "0.12.5", features = ["future"] }
@@ -147,6 +149,7 @@ tracing = { version = "0.1.40" }
 tracing-opentelemetry = "0.23.0"
 tracing-tunnel = "0.1.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "std"] }
+trybuild = { version = "1.0.99", features = ["diff"] }
 tryhard = "0.5.1"
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
