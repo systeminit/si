@@ -21,6 +21,13 @@ import {
 import { resendAuth0EmailVerification } from "../services/auth0.service";
 import { tracker } from "../lib/tracker";
 import { createProductionWorkspaceForUser } from "../services/workspaces.service";
+import {
+  CustomerDetail,
+  generateCustomerCheckoutUrl,
+  getCustomerBillingDetails,
+  getCustomerPortalUrl,
+  updateCustomerDetails,
+} from "../lib/lago";
 import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/whoami", async (ctx) => {
@@ -392,6 +399,18 @@ router.post("/tos-agreement", async (ctx) => {
   ctx.body = agreement;
 });
 
+router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
+  const user = await extractOwnUserIdParam(ctx);
+
+  _.set(user, ["onboardingDetails", "firstTimeModal"], false);
+
+  await saveUser(user);
+
+  ctx.body = {
+    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+  };
+});
+
 router.get("/users/:userId/firstTimeModal", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
@@ -408,14 +427,124 @@ router.post("/users/:userId/create-billing-integration", async (ctx) => {
   ctx.body = { success: true };
 });
 
-router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
+router.patch("/users/:userId/billingDetails", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
-  _.set(user, ["onboardingDetails", "firstTimeModal"], false);
+  const reqBody = validate(
+    ctx.request.body,
+    z
+      .object({
+        firstName: z.string(),
+        lastName: z.string(),
+        companyInformation: z.object({
+          legalName: z.string().nullable(),
+          legalNumber: z.string().nullable(),
+          taxIdentificationNumber: z.string().nullable(),
+          phoneNumber: z.string().nullable(),
+        }),
+        billingInformation: z.object({
+          addressLine1: z.string().nullable(),
+          addressLine2: z.string().nullable(),
+          zipCode: z.string().nullable(),
+          city: z.string().nullable(),
+          state: z.string().nullable(),
+          country: z.string().nullable(),
+        }),
+      })
+      .partial(),
+  );
 
-  await saveUser(user);
+  // Let's update any changes to first name or last name that the user has specified!
+  if (
+    user.firstName !== reqBody.firstName || user.lastName !== reqBody.lastName
+  ) {
+    _.assign(user.firstName, reqBody.firstName);
+    _.assign(user.lastName, reqBody.lastName);
+    await saveUser(user);
+  }
 
-  ctx.body = {
-    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+  const customer: CustomerDetail = {
+    id: user.id,
+    email: user.email,
+    firstName: reqBody.firstName,
+    lastName: reqBody.lastName,
+    customerCheckoutUrl: "",
+    customerPortalUrl: "",
+    companyInformation: {},
+    billingInformation: {},
   };
+
+  if (reqBody.billingInformation) {
+    customer.billingInformation.addressLine1 = reqBody.billingInformation.addressLine1;
+    customer.billingInformation.addressLine2 = reqBody.billingInformation.addressLine2;
+    customer.billingInformation.zipCode = reqBody.billingInformation.zipCode;
+    customer.billingInformation.city = reqBody.billingInformation.city;
+    customer.billingInformation.state = reqBody.billingInformation.state;
+    customer.billingInformation.country = reqBody.billingInformation.country;
+  }
+
+  if (reqBody.companyInformation) {
+    customer.companyInformation.legalName = reqBody.companyInformation.legalName;
+    customer.companyInformation.legalNumber = reqBody.companyInformation.legalNumber;
+    customer.companyInformation.taxIdentificationNumber = reqBody.companyInformation.taxIdentificationNumber;
+    customer.companyInformation.phoneNumber = reqBody.companyInformation.phoneNumber;
+  }
+
+  await updateCustomerDetails(customer);
+
+  ctx.body = { success: true };
+});
+
+router.get("/users/:userId/billingDetails", async (ctx) => {
+  const user = await extractOwnUserIdParam(ctx);
+  const lagoCustomer = await getCustomerBillingDetails(user.id);
+  if (!lagoCustomer) {
+    throw new ApiError(
+      "InternalServerError",
+      "Unable to find the customer details",
+    );
+  }
+
+  const customerCheckoutUrl = await generateCustomerCheckoutUrl(user.id);
+  if (!customerCheckoutUrl) {
+    throw new ApiError(
+      "InternalServerError",
+      "Unable to generate customer checkout url",
+    );
+  }
+
+  const customerPortalUrl = await getCustomerPortalUrl(user.id);
+  if (!customerPortalUrl) {
+    throw new ApiError(
+      "InternalServerError",
+      "Unable to get customer portal url",
+    );
+  }
+
+  // Should we check that the email in Lago is the same as our database?
+  // do we care??
+  const billingDetails = {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: lagoCustomer.email,
+    companyInformation: {
+      legalName: lagoCustomer.legal_name,
+      legalNumber: lagoCustomer.legal_number,
+      taxIdentificationNumber: lagoCustomer.tax_identification_number,
+      phoneNumber: lagoCustomer.phone,
+    },
+    billingInformation: {
+      addressLine1: lagoCustomer.address_line1,
+      addressLine2: lagoCustomer.address_line2,
+      zipCode: lagoCustomer.zipcode,
+      city: lagoCustomer.city,
+      state: lagoCustomer.state,
+      country: lagoCustomer.country,
+    },
+    customerCheckoutUrl,
+    customerPortalUrl,
+  };
+
+  ctx.body = { billingDetails };
 });

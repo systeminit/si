@@ -36,6 +36,29 @@ export type User = {
   };
 };
 
+export type BillingDetails = {
+  id: UserId;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  companyInformation: {
+    legalName: string | null;
+    legalNumber: string | null;
+    taxIdentificationNumber: string | null;
+    phoneNumber: string | null;
+  };
+  billingInformation: {
+    addressLine1: string | null;
+    addressLine2: string | null;
+    zipCode: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  };
+  customerCheckoutUrl: string;
+  customerPortalUrl: string;
+};
+
 export type SuspendedUser = {
   userId: UserId;
   email: string;
@@ -61,6 +84,7 @@ export type SignupUsersReport = {
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
+    billingDetail: null as BillingDetails | null,
     waitingForAccess: false,
     suspendedUsersState: [] as SuspendedUser[] | null,
     quarantinedUsersState: [] as QuarantinedUser[] | null,
@@ -134,6 +158,27 @@ export const useAuthStore = defineStore("auth", {
         },
       });
     },
+    async LOAD_BILLING_DETAILS() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ billingDetails: BillingDetails }>({
+        url: `/users/${this.user.id}/billingDetails`,
+        onSuccess: (response) => {
+          this.billingDetail = response.billingDetails;
+        },
+      });
+    },
+    async UPDATE_BILLING_DETAILS(billingDetail: Partial<BillingDetails>) {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ billingDetails: BillingDetails }>({
+        method: "patch",
+        url: `/users/${this.user.id}/billingDetails`,
+        params: billingDetail,
+        onSuccess: (response) => {
+          this.billingDetail = response.billingDetails;
+        },
+      });
+    },
+
     async UPDATE_USER(user: Partial<User>) {
       if (!this.user) throw new Error("User not loaded");
       return new ApiRequest<{ user: User }>({
