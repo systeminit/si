@@ -42,6 +42,7 @@ pub fn correct_transforms(
                 nodes_to_interrogate.insert(node_weight.id().into());
             }
             Update::ReplaceNode { node_weight } => {
+                new_nodes.insert(node_weight.id(), node_weight.clone());
                 nodes_to_interrogate.insert(node_weight.id().into());
             }
         }
@@ -51,13 +52,15 @@ pub fn correct_transforms(
     // Let each node involved in the updates check for / resolve conflicts.
     //
     for node_to_interrogate in nodes_to_interrogate {
-        // If the node weight isn't in the graph, see if it was in a NewNode update and
-        // pass that node weight.
-        let node_index = graph.get_node_index_by_id_opt(node_to_interrogate);
-        if let Some(node_weight) = match node_index {
-            Some(node_index) => graph.get_node_weight_opt(node_index),
-            None => new_nodes.get(&node_to_interrogate.into()),
-        } {
+        // Always try to use the version of the `NodeWeight` from the updates, if it is available,
+        // since it will have the most up to date context for performing the transforms correction,
+        // before falling back to using the version that was already in the graph.
+        if let Some(node_weight) = new_nodes.get(&node_to_interrogate.into()).or_else(|| {
+            graph
+                .get_node_index_by_id_opt(node_to_interrogate)
+                .map(|idx| graph.get_node_weight_opt(idx))
+                .flatten()
+        }) {
             updates = node_weight.correct_transforms(graph, updates, from_different_change_set)?;
         }
     }
