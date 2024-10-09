@@ -50,7 +50,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::{memory_cache::MemoryCacheConfig, CaCacheTempFile};
+use si_layer_cache::{disk_cache::DiskCacheConfig, memory_cache::MemoryCacheConfig};
 use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
@@ -274,8 +274,6 @@ pub struct TestContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// The pg_pool for the layer db
     layer_db_pg_pool: PgPool,
-    /// The disk cache path for the layer db
-    layer_db_cache_path: CaCacheTempFile,
     /// Dedicated executor for running CPU-intensive tasks
     compute_executor: DedicatedExecutor,
 }
@@ -375,7 +373,7 @@ impl TestContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
-            self.layer_db_cache_path.tempdir.path(),
+            DiskCacheConfig::default(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
@@ -495,7 +493,6 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
             layer_db_pg_pool,
-            layer_db_cache_path: si_layer_cache::disk_cache::default_cacache_path()?,
             compute_executor,
         })
     }

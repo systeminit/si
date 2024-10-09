@@ -1,8 +1,7 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
-use std::path::PathBuf;
-use std::{future::IntoFuture, io, path::Path, sync::Arc};
+use std::{future::IntoFuture, io, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::{NatsClient, NatsConfig};
@@ -16,6 +15,7 @@ use ulid::Ulid;
 use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::db::func_run::FuncRunDb;
 use crate::db::func_run_log::FuncRunLogDb;
+use crate::disk_cache::DiskCacheConfig;
 use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
@@ -77,7 +77,7 @@ where
         let nats_client = NatsClient::new(&config.nats_config).await?;
 
         Self::from_services(
-            config.disk_path,
+            config.disk_cache_config,
             pg_pool,
             nats_client,
             compute_executor,
@@ -89,7 +89,7 @@ where
 
     #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
-        disk_path: impl AsRef<Path>,
+        disk_cache_config: DiskCacheConfig,
         pg_pool: PgPool,
         nats_client: NatsClient,
         compute_executor: DedicatedExecutor,
@@ -100,56 +100,54 @@ where
 
         let tracker = TaskTracker::new();
 
-        let disk_path = disk_path.as_ref();
-
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
         let cas_cache: LayerCache<Arc<CasValue>> = LayerCache::new(
             cas::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
             encrypted_secret::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
         let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
             func_run::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
         let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
             func_run_log::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
         let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
             rebase_batch::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
-            disk_path,
             pg_pool.clone(),
             memory_cache_config.clone(),
+            disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
 
@@ -169,7 +167,7 @@ where
 
         let persister_task = PersisterTask::create(
             rx,
-            disk_path.to_path_buf(),
+            disk_cache_config.clone(),
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -320,21 +318,19 @@ mod private {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct LayerDbConfig {
-    pub disk_path: PathBuf,
     pub pg_pool_config: PgPoolConfig,
     pub nats_config: NatsConfig,
     pub memory_cache_config: MemoryCacheConfig,
+    pub disk_cache_config: DiskCacheConfig,
 }
 
 impl LayerDbConfig {
     pub fn default_for_service(service: &str) -> Self {
         Self {
-            disk_path: tempfile::TempDir::with_prefix(format!("{service}-cache-"))
-                .expect("unable to create tmp dir for layerdb")
-                .into_path(),
             pg_pool_config: Default::default(),
             nats_config: Default::default(),
             memory_cache_config: Default::default(),
+            disk_cache_config: DiskCacheConfig::default_for_service(service),
         }
     }
 }
