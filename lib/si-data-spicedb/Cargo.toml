@@ -1,0 +1,23 @@
+[package]
+name = "si-data-spicedb"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+remain = { workspace = true }
+serde = { workspace = true }
+si-std = { path = "../../lib/si-std" }
+spicedb-client = { workspace = true }
+spicedb-grpc = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+indoc = { workspace = true }
