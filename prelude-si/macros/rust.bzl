@@ -46,16 +46,23 @@ def rust_binary(
         actual = ":{}".format(name),
     )
 
-    native.rust_test(
-        name = "test-unit",
-        edition = edition,
-        srcs = srcs + test_unit_srcs,
-        deps = deps + test_unit_deps,
-        crate_root = crate_root,
-        resources = test_unit_resources,
-        visibility = visibility,
-        **kwargs
-    )
+    if not rule_exists("test-unit"):
+        native.rust_test(
+            name = "test-unit",
+            edition = edition,
+            srcs = srcs + test_unit_srcs,
+            deps = deps + test_unit_deps,
+            crate_root = crate_root,
+            resources = test_unit_resources,
+            visibility = visibility,
+            **kwargs
+        )
+
+        _clippy_check(
+            name = "check-lint-rust-unit",
+            clippy_txt_dep = ":test-unit[clippy.txt]",
+            visibility = visibility,
+        )
 
     _test_suite(
         name = "test",
@@ -90,11 +97,11 @@ def rust_binary(
         visibility = visibility,
     )
 
-    _clippy_check(
-        name = "check-lint-rust-unit",
-        clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
-        visibility = visibility,
-    )
+    check_lint_rust_targets = []
+    if rule_exists("check-lint-rust-bin"):
+        check_lint_rust_targets.append(":check-lint-rust-bin")
+    if rule_exists("check-lint-rust-unit"):
+        check_lint_rust_targets.append(":check-lint-rust-unit")
 
     extra_check_lint_targets = []
     for extra_test_target in extra_test_targets:
@@ -108,20 +115,14 @@ def rust_binary(
 
     _test_suite(
         name = "check-lint-rust",
-        tests = [
-            ":check-lint-rust-bin",
-            ":check-lint-rust-unit",
-        ] + extra_check_lint_targets,
+        tests = check_lint_rust_targets + extra_check_lint_targets,
         visibility = visibility,
     )
 
     if not rule_exists("check-lint"):
         _test_suite(
             name = "check-lint",
-            tests = [
-                ":check-lint-rust-bin",
-                ":check-lint-rust-unit",
-            ] + extra_check_lint_targets,
+            tests = check_lint_rust_targets + extra_check_lint_targets,
             visibility = visibility,
         )
 
@@ -188,16 +189,23 @@ def rust_library(
         actual = ":{}".format(name),
     )
 
-    native.rust_test(
-        name = "test-unit",
-        edition = edition,
-        srcs = srcs + test_unit_srcs,
-        deps = deps + test_unit_deps,
-        crate_root = crate_root,
-        resources = test_unit_resources,
-        visibility = visibility,
-        **kwargs
-    )
+    if not rule_exists("test-unit"):
+        native.rust_test(
+            name = "test-unit",
+            edition = edition,
+            srcs = srcs + test_unit_srcs,
+            deps = deps + test_unit_deps,
+            crate_root = crate_root,
+            resources = test_unit_resources,
+            visibility = visibility,
+            **kwargs
+        )
+
+        _clippy_check(
+            name = "check-lint-rust-unit",
+            clippy_txt_dep = ":test-unit[clippy.txt]",
+            visibility = visibility,
+        )
 
     _test_suite(
         name = "test",
@@ -232,11 +240,11 @@ def rust_library(
         visibility = visibility,
     )
 
-    _clippy_check(
-        name = "check-lint-rust-unit",
-        clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
-        visibility = visibility,
-    )
+    check_lint_rust_targets = []
+    if rule_exists("check-lint-rust-lib"):
+        check_lint_rust_targets.append(":check-lint-rust-lib")
+    if rule_exists("check-lint-rust-unit"):
+        check_lint_rust_targets.append(":check-lint-rust-unit")
 
     extra_check_lint_targets = []
     for extra_test_target in extra_test_targets:
@@ -250,20 +258,14 @@ def rust_library(
 
     _test_suite(
         name = "check-lint-rust",
-        tests = [
-            ":check-lint-rust-lib",
-            ":check-lint-rust-unit",
-        ] + extra_check_lint_targets,
+        tests = check_lint_rust_targets + extra_check_lint_targets,
         visibility = visibility,
     )
 
     if not rule_exists("check-lint"):
         _test_suite(
             name = "check-lint",
-            tests = [
-                ":check-lint-rust-lib",
-                ":check-lint-rust-unit",
-            ] + extra_check_lint_targets,
+            tests = check_lint_rust_targets + extra_check_lint_targets,
             visibility = visibility,
         )
 

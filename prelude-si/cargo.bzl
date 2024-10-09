@@ -351,3 +351,57 @@ cargo_fmt_check = rule(
         ),
     } | re_test_common.test_args() | inject_test_env.args(),
 )
+
+def cargo_test_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
+]]:
+    run_cmd_args = cmd_args([
+        "cargo",
+        "test",
+        "--package",
+        ctx.attrs.crate,
+        "--",
+    ])
+    run_cmd_args.hidden(ctx.attrs.srcs)
+
+    args_file = ctx.actions.write("cargo-test-args.txt", run_cmd_args)
+
+    # Setup a RE executor based on the `remote_execution` param.
+    re_executor, executor_overrides = get_re_executors_from_props(ctx)
+
+    # We implicitly make the target run from the project root if remote
+    # excution options were specified
+    run_from_project_root = "buck2_run_from_project_root" in (
+        ctx.attrs.labels or []
+    ) or re_executor != None
+
+    return inject_test_run_info(
+        ctx,
+        ExternalRunnerTestInfo(
+            type = "cargo",
+            command = [run_cmd_args],
+            env = ctx.attrs.env,
+            labels = ctx.attrs.labels,
+            contacts = ctx.attrs.contacts,
+            default_executor = re_executor,
+            executor_overrides = executor_overrides,
+            run_from_project_root = run_from_project_root,
+            use_project_relative_paths = run_from_project_root,
+        ),
+    ) + [
+        DefaultInfo(default_output = args_file),
+    ]
+
+cargo_test = rule(
+    impl = cargo_test_impl,
+    attrs = {
+        "crate": attrs.string(),
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """The set of Rust source files in the crate.""",
+        ),
+    } | re_test_common.test_args() | inject_test_env.args(),
+)

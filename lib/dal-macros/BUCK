@@ -1,4 +1,11 @@
+load("@prelude-si//:cargo.bzl", "cargo_test")
 load("@prelude-si//:macros.bzl", "rust_library")
+
+cargo_test(
+    name = "test-unit",
+    crate = "dal-macros",
+    srcs = glob(["src/**/*.rs", "tests/**"]),
+)
 
 rust_library(
     name = "dal-macros",
@@ -11,21 +18,4 @@ rust_library(
     ],
     srcs = glob(["src/**/*.rs"]),
     proc_macro = True,
-)
-
-rust_test(
-    name = "test-integration",
-    deps = [
-        "//third-party/rust:darling",
-        "//third-party/rust:manyhow",
-        "//third-party/rust:proc-macro2",
-        "//third-party/rust:quote",
-        "//third-party/rust:syn",
-        "//third-party/rust:trybuild",
-    ],
-    crate_root = "tests/trybuild.rs",
-    srcs = glob(["tests/**"]),
-    env = {
-        "CARGO_PKG_NAME": "integration",
-    },
 )
