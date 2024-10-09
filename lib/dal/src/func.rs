@@ -291,6 +291,7 @@ impl Func {
         })
         .await
     }
+
     pub fn metadata_view(&self) -> FuncMetadataView {
         FuncMetadataView {
             display_name: self

@@ -30,7 +30,7 @@ use crate::{
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
 
@@ -196,7 +196,7 @@ async fn import_change_set(
             metadata.name(),
         );
 
-        let (_, schema_variant_ids) = import_schema(
+        let schema_variant_ids = import_schema(
             ctx,
             schema_spec,
             installed_module.clone(),
@@ -453,125 +453,178 @@ async fn import_schema(
     thing_map: &mut ThingMap,
     create_unlocked: bool,
     past_hashes: Option<Vec<String>>,
-) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-    let schema_and_category = {
-        let mut existing_schema: Option<Schema> = None;
-        let mut existing_schema_id = None;
+) -> PkgResult<Vec<SchemaVariantId>> {
+    let mut existing_schema: Option<Schema> = None;
+    let mut existing_schema_id = None;
 
-        if let Some(installed_module) = installed_module.as_ref() {
-            existing_schema_id = installed_module.schema_id();
-            // loop through past hashes to find matching schema
-            if let Some(maybe_past_hashes) = past_hashes {
-                for past_hash in maybe_past_hashes {
-                    // find if there's an existing module
-                    // if there is, find the asssociated schemas
-                    if let Some(found) = Module::find_by_root_hash(ctx, past_hash).await? {
-                        match found.list_associated_schemas(ctx).await?.into_iter().next() {
-                            Some(existing) => {
-                                existing_schema = Some(existing);
-                                break;
-                            }
-                            None => continue,
+    if let Some(installed_module) = installed_module.as_ref() {
+        existing_schema_id = installed_module.schema_id();
+        // loop through past hashes to find matching schema
+        if let Some(maybe_past_hashes) = past_hashes {
+            for past_hash in maybe_past_hashes {
+                // find if there's an existing module
+                // if there is, find the asssociated schemas
+                if let Some(found) = Module::find_by_root_hash(ctx, past_hash).await? {
+                    match found.list_associated_schemas(ctx).await?.into_iter().next() {
+                        Some(existing) => {
+                            existing_schema = Some(existing);
+                            break;
                         }
+                        None => continue,
                     }
                 }
             }
         }
-        let data = schema_spec
-            .data()
-            .ok_or(PkgError::DataNotFound("schema".into()))?;
+    }
 
-        // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
-        // to pull it off here, even if we find an existing schema.
-        let category = data.category.clone();
+    let data = schema_spec
+        .data()
+        .ok_or(PkgError::DataNotFound("schema".into()))?;
 
-        let schema = match existing_schema {
-            None => create_schema(ctx, existing_schema_id, data).await?,
-            Some(installed_schema_record) => installed_schema_record,
-        };
-
-        // Even if the asset is already installed, we write a record of the asset installation so that
-        // we can track the installed packages that share schemas.
-        if let Some(module) = installed_module.clone() {
-            module.create_association(ctx, schema.id().into()).await?;
-        }
-
-        Some((schema, category))
+    let schema_already_existed = existing_schema.is_some();
+    let schema = match existing_schema {
+        None => create_schema(ctx, existing_schema_id, data).await?,
+        Some(installed_schema_record) => installed_schema_record,
     };
 
-    if let Some((mut schema, _category)) = schema_and_category {
-        if let Some(unique_id) = schema_spec.unique_id() {
-            thing_map.insert(unique_id.to_owned(), Thing::Schema(schema.to_owned()));
-        }
-
-        let mut installed_schema_variant_ids = vec![];
-        for variant_spec in &schema_spec.variants()? {
-            let variant = import_schema_variant(
-                ctx,
-                &schema,
-                schema_spec.clone(),
-                variant_spec,
-                installed_module.clone(),
-                thing_map,
-                None,
-            )
-            .await?;
-
-            let variant_id = variant.id();
-            if !create_unlocked {
-                variant.lock(ctx).await?;
-            }
-
-            installed_schema_variant_ids.push(variant_id);
-
-            set_default_schema_variant_id(
-                ctx,
-                &mut schema,
-                schema_spec
-                    .data()
-                    .as_ref()
-                    .and_then(|data| data.default_schema_variant()),
-                variant_spec.unique_id(),
-                variant_id,
-            )
-            .await?;
-        }
-
-        Ok((Some(schema.id()), installed_schema_variant_ids))
-    } else {
-        Ok((None, vec![]))
+    // Even if the asset is already installed, we write a record of the asset installation so that
+    // we can track the installed packages that share schemas.
+    if let Some(module) = installed_module.clone() {
+        module.create_association(ctx, schema.id().into()).await?;
     }
+
+    import_schema_variants_for_imported_schema(
+        ctx,
+        schema_spec,
+        installed_module,
+        thing_map,
+        create_unlocked,
+        schema,
+        schema_already_existed,
+    )
+    .await
 }
 
-async fn set_default_schema_variant_id(
+async fn import_schema_variants_for_imported_schema(
     ctx: &DalContext,
-    schema: &mut Schema,
-    spec_default_unique_id: Option<&str>,
-    variant_unique_id: Option<&str>,
-    variant_id: SchemaVariantId,
-) -> PkgResult<()> {
-    match (variant_unique_id, spec_default_unique_id) {
-        (None, _) | (Some(_), None) => {
-            if schema.get_default_schema_variant_id(ctx).await?.is_none() {
+    schema_spec: &SiPkgSchema<'_>,
+    installed_module: Option<Module>,
+    thing_map: &mut ThingMap,
+    create_unlocked: bool,
+    schema: Schema,
+    schema_already_existed: bool,
+) -> PkgResult<Vec<SchemaVariantId>> {
+    if let Some(unique_id) = schema_spec.unique_id() {
+        thing_map.insert(unique_id.to_owned(), Thing::Schema(schema.to_owned()));
+    }
+
+    let data = schema_spec
+        .data()
+        .ok_or(PkgError::DataNotFound("schema".into()))?;
+    let variant_specs_in_schema_spec = schema_spec.variants()?;
+
+    // Okay, so this is a weird one. Before we even begin importing variants, we need to make sure
+    // everyone agrees on which one is the default. Here's the problem: if the package knows its
+    // default variant, but the first one in the iterator does not have a unique ID, we need to
+    // keep looking through the variants until we find one that does. If none of them have unique
+    // IDs, then the first variant will be considered the default variant in the package. That
+    // sounds completely nuts, but hear me out: in the land before time, packages did not know
+    // their default schema variants and variant specs did not have unique IDs. How did we know
+    // which one was the default back then? We didn't. We just YOLO made the first one the default.
+    // Yeehaw. How do we get around this in a world where they can be mixed and matched? You just
+    // don't trust anything at all whatsoever. Essentially, we will look at all the variants just
+    // to be sure that we have found the default variant or we will fallback to the first.
+    let default_variant_spec_index =
+        match determine_default_variant_spec_index(data, &variant_specs_in_schema_spec) {
+            Some(found_default_variant_spec_index) => found_default_variant_spec_index,
+            None => {
+                // This is only possible if there are no variants in the spec.
+                return Ok(Vec::new());
+            }
+        };
+
+    let mut installed_schema_variant_ids = Vec::new();
+    for (index, variant_spec) in variant_specs_in_schema_spec.iter().enumerate() {
+        let variant = import_schema_variant(
+            ctx,
+            &schema,
+            schema_spec.clone(),
+            variant_spec,
+            installed_module.clone(),
+            thing_map,
+            None,
+        )
+        .await?;
+
+        let variant_id = variant.id();
+        installed_schema_variant_ids.push(variant_id);
+
+        // If we are working with the package's default schema variant, then we need to figure out
+        // how to handle it.
+        //
+        // If the schema already existed, then we must leave the package's default variant unlocked
+        // (again, the one we are currently working with). This is because we need to ensure that
+        // the user's local changes to the assets are not automatically clobbered when installing
+        // updated assets from the module index. Not only that, but its corresponding asset func
+        // needs to be unlocked so that the user can regenerate and make changes at will, so we
+        // will do that too.
+        //
+        // If the schema did not already exist, we can safely set the default schema variant and we
+        // don't care about whether or not it becomes locked.
+        let mut can_lock = true;
+        if index == default_variant_spec_index {
+            if schema_already_existed {
+                can_lock = false;
+                variant.unlock_asset_func_without_copy(ctx).await?;
+            } else {
                 schema.set_default_schema_variant(ctx, variant_id).await?;
             }
         }
-        (Some(variant_unique_id), Some(spec_default_unique_id)) => {
-            if variant_unique_id == spec_default_unique_id {
-                // TODO(nick): make this not rely on "nilId" since those should explode and die.
-                let current_default_variant_id = schema
-                    .get_default_schema_variant_id(ctx)
-                    .await?
-                    .unwrap_or(SchemaVariantId::NONE);
 
-                if variant_id != current_default_variant_id {
-                    schema.set_default_schema_variant(ctx, variant_id).await?;
+        // We will only block locking the variant if we are currently working with the default
+        // variant and the schema already existed locally.
+        if can_lock && !create_unlocked {
+            variant.lock(ctx).await?;
+        }
+    }
+
+    Ok(installed_schema_variant_ids)
+}
+
+fn determine_default_variant_spec_index(
+    data: &SiPkgSchemaData,
+    variant_specs_in_schema_spec: &[SiPkgSchemaVariant],
+) -> Option<usize> {
+    let mut default_variant_spec_index = None;
+
+    for (index, variant_spec) in variant_specs_in_schema_spec.iter().enumerate() {
+        match (data.default_schema_variant(), variant_spec.unique_id()) {
+            (Some(default_schema_variant_for_package), Some(variant_spec_unique_id)) => {
+                // This is the ideal case: the package knows its default variant and the
+                // variant spec has a unique ID that matches it.
+                if default_schema_variant_for_package == variant_spec_unique_id {
+                    return Some(index);
                 }
+            }
+            (Some(_), None) => {
+                // If the package knows its default variant, then we have a chance to find a
+                // variant spec who has a unique ID that matches it. For now, let's just grab
+                // the first variant spec we see just in case that never happens.
+                if default_variant_spec_index.is_none() {
+                    default_variant_spec_index = Some(index);
+                }
+            }
+            (None, _) => {
+                // If the package doesn't know its default variant, then just choose the first
+                // one and return early. This is how importing older packages has worked in
+                // the past.
+                return Some(index);
             }
         }
     }
 
-    Ok(())
+    // If this is "None", then there were no variants to import.
+    default_variant_spec_index
 }
 
 #[allow(dead_code)]
