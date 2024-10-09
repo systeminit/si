@@ -12,6 +12,7 @@ docker_image(
     srcs = {
         "entrypoint.sh": ".",
         "schema.zed": ".",
+        "validation.yaml": ".",
     }
 )
 

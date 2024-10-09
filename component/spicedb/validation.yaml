@@ -1,0 +1,13 @@
+schema: |-
+  <<SCHEMA>>
+relationships: |-
+  workspace:123#approver@user:scott
+assertions:
+  assertTrue:
+  - workspace:123#approve@user:scott
+  assertFalse:
+  - workspace:123#approve@user:fletcher
+validation:
+  workspace:123#approve:
+    - "[user:scott] is <workspace:123#approver>"
+
