@@ -328,7 +328,10 @@
           :class="
             clsx(
               'absolute top-[2px]',
-              unsetButtonShow ? 'group-hover/input:right-6 right-0' : 'right-0',
+              unsetButtonShow ? 'group-hover/input:right-6 ' : '',
+              ['comboBox', 'select'].includes(widgetKind)
+                ? 'right-6'
+                : 'right-0',
             )
           "
           :name="validation?.status === 'Success' ? 'check' : 'x'"
