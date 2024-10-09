@@ -1,9 +1,6 @@
   definition user {}
 
-  definition document {
-      relation writer: user
-      relation reader: user
-
-      permission edit = writer
-      permission view = reader + edit
+  definition workspace {
+      relation approver: user
+      permission approve = approver
   }
