@@ -24,6 +24,7 @@ on:
 jobs:
   define-test-matrix:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     outputs:
       tests: ${{ steps.tests.outputs.tests }}
     steps:
@@ -32,8 +33,26 @@ jobs:
         working-directory: bin/si-api-test/tests
         run: |
           # Find .ts files, remove ./ prefix, and format as JSON array
-          files=$(find "." -mindepth 1 -maxdepth 1 -type f -name "*.ts" | sed -r "s/\.\/(.*)\.ts/\1/" | jq -R -s 'split("\n") | map(select(length > 0))')
-          test_output=$(echo "$files" | jq -c '.')
+          files=$(find "." -mindepth 1 -maxdepth 1 -type f -name "*.ts" | sed -r "s/\.\/(.*)\.ts/\1/" | sort)
+          # Get the number of tests
+          test_count=$(echo "$files" | wc -l)
+
+          # Get the list of workspace IDs from the environment variable
+          workspace_ids="${{ vars.API_TEST_WORKSPACE_IDS }}"
+          echo "workspace_ids found to be $workspace_ids"
+          workspace_count=$(echo "$workspace_ids" | tr ',' '\n' | wc -l)
+
+          # Validate that the number of workspace IDs matches the number of tests
+          if [ "$test_count" -ne "$workspace_count" ]; then
+              echo "Error: The number of workspace IDs ($workspace_count) does not match the number of tests ($test_count)."
+              exit 1
+          fi
+
+          # Format files as JSON array with correct numbering and sorted order
+          indexed_files=$(echo "$files" | awk '{print "{\"name\": \"" $0 "\", \"index\": " NR-1 "}"}' | jq -s .)
+
+          # Ensure indexed_files are formatted correctly
+          test_output=$(echo "$indexed_files" | jq -c '.')
           echo "tests=$test_output" >> "$GITHUB_OUTPUT"
           echo "$test_output"
 
@@ -62,6 +81,17 @@ jobs:
         run: |
           cd bin/si-api-test
           
+          echo "Running test ${{ matrix.tests.name }} with index: ${{ matrix.tests.index }}"
+
+          # Split the workspace IDs into an array
+          workspace_ids="${{ vars.API_TEST_WORKSPACE_IDS }}"
+          IFS=',' read -r -a workspace_array <<< "$workspace_ids"
+          
+          # Pick the correct workspace ID based on the index
+          workspace_id=${workspace_array[${{ matrix.tests.index }}]}
+
+          echo "Using workspace ID: $workspace_id"
+
           # Retry loop with 3 attempts
           n=0
           max_retries=3
@@ -72,10 +102,10 @@ jobs:
 
             # Run the deno task and store exit code in a variable
             deno task run \
-            --workspaceId ${{ vars.API_TEST_WORKSPACE_ID }} \
+            --workspaceId "$workspace_id" \
             --userId ${{ secrets.API_TEST_EMAIL }} \
             --password ${{ secrets.API_TEST_PASSWORD }} \
-            --tests ${{ matrix.tests }} || exit_code=$?
+            --tests ${{ matrix.tests.name }} || exit_code=$?
             
             # Check the exit code
             if [ -z "$exit_code" ]; then
