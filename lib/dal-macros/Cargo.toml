@@ -19,4 +19,6 @@ quote = { workspace = true }
 syn = { workspace = true }
 
 [dev-dependencies]
+dal = { path = "../dal" }
+si-events = { path = "../si-events-rs" }
 trybuild = { version = "1.0.99", features = ["diff"] }

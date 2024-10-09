@@ -1,0 +1,42 @@
+error: Invalid custom code for node_hash calculation: unexpected token
+  --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:13:5
+   |
+13 | /     #[si_node_weight(node_hash = "invalid code")]
+14 | |     id: Ulid,
+   | |____________^
+
+warning: unused imports: `NodeWeightDiscriminants`, `SiNodeWeight`
+ --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:4:67
+  |
+4 |         traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+  |                                                                   ^^^^^^^^^^^^
+5 |         NodeWeightDiscriminants,
+  |         ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `ContentHash`
+ --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:8:63
+  |
+8 | use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+  |                                                               ^^^^^^^^^^^
+
+error[E0277]: the trait bound `TestingNodeWeight: SiVersionedNodeWeight` is not satisfied
+  --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:20:6
+   |
+20 | impl CorrectExclusiveOutgoingEdge for TestingNodeWeight {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`, which is required by `for<'a> NodeInformation: From<&'a TestingNodeWeight>`
+   |
+   = help: the following other types implement trait `SiVersionedNodeWeight`:
+             dal::workspace_snapshot::node_weight::InputSocketNodeWeight
+             dal::workspace_snapshot::node_weight::SchemaVariantNodeWeight
+   = note: required for `TestingNodeWeight` to implement `SiNodeWeight`
+   = note: required for `NodeInformation` to implement `for<'a> From<&'a TestingNodeWeight>`
+note: required by a bound in `CorrectExclusiveOutgoingEdge`
+  --> $WORKSPACE/lib/dal/src/workspace_snapshot/node_weight/traits/correct_exclusive_outgoing_edge.rs
+   |
+   | pub trait CorrectExclusiveOutgoingEdge
+   |           ---------------------------- required by a bound in this trait
+   | where
+   |     NodeInformation: for<'a> From<&'a Self>,
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `CorrectExclusiveOutgoingEdge`
