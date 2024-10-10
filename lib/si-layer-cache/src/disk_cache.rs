@@ -24,7 +24,7 @@ impl DiskCache {
         let cache = Self {
             ttl: config.ttl,
             ttl_check_interval: config.ttl_check_interval,
-            write_path: config.tempdir,
+            write_path: config.path,
         };
         cache.start_cleanup_task();
         Ok(cache)
@@ -101,7 +101,7 @@ impl DiskCache {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DiskCacheConfig {
-    pub tempdir: Arc<PathBuf>,
+    pub path: Arc<PathBuf>,
     pub ttl: Duration,
     pub ttl_check_interval: Duration,
 }
@@ -117,7 +117,7 @@ impl DiskCacheConfig {
         let table_name_string = table_name.into();
         let write_path = dir.join(table_name_string);
         Self {
-            tempdir: write_path.into(),
+            path: write_path.into(),
             ttl,
             ttl_check_interval,
         }
@@ -143,7 +143,7 @@ impl Default for DiskCacheConfig {
             .expect("unable to create tmp dir for layerdb")
             .into_path();
         Self {
-            tempdir: Arc::new(path),
+            path: Arc::new(path),
             ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECONDS),
             ttl_check_interval: Duration::from_secs(DEFAULT_CHECK_CACHE_TTL_SECONDS),
         }
