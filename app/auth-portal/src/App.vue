@@ -194,6 +194,16 @@
                 </Inline>
               </ErrorMessage>
 
+              <!-- <div
+                v-if="activeSubscriptionDetails?.isTrial"
+                class="flex flex-row items-center font-semibold bg-success-500 mb-md text-sm border rounded-lg p-xs border-success-500 text-info-400"
+              >
+                <Inline alignY="center">
+                  You are currently on your free trial. Your free trial will end
+                  on {DATE}.
+                </Inline>
+              </div> -->
+
               <RouterView />
             </div>
           </div>

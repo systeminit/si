@@ -24,6 +24,7 @@ import { createProductionWorkspaceForUser } from "../services/workspaces.service
 import {
   CustomerDetail,
   generateCustomerCheckoutUrl,
+  getCustomerActiveSubscription,
   getCustomerBillingDetails,
   getCustomerPortalUrl,
   updateCustomerDetails,
@@ -547,4 +548,16 @@ router.get("/users/:userId/billingDetails", async (ctx) => {
   };
 
   ctx.body = { billingDetails };
+});
+
+router.get("/users/:userId/activeSubscription", async (ctx) => {
+  const user = await extractOwnUserIdParam(ctx);
+
+  const activeUser = getCustomerBillingDetails(user.id);
+  if (!activeUser) {
+    ctx.body = {};
+  }
+
+  const activeSubscription = await getCustomerActiveSubscription(user.id);
+  ctx.body = { activeSubscription };
 });

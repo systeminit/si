@@ -136,3 +136,34 @@ export async function getCustomerPortalUrl(userPk: string) {
   }
   return null;
 }
+
+export async function getCustomerActiveSubscription(userPk: string) {
+  const trial_resp = await client.subscriptions.findSubscription(
+    `${userPk}_launch_trial`,
+  );
+  if (trial_resp.ok && trial_resp.data.subscription.status === "active") {
+    return {
+      planCode: trial_resp.data.subscription.plan_code,
+      subscriptionAt: trial_resp.data.subscription.subscription_at,
+      endingAt: trial_resp.data.subscription.ending_at,
+      isTrial: true,
+    };
+  }
+
+  const payg_resp = await client.subscriptions.findSubscription(
+    `${userPk}_launch_pay_as_you_go`,
+  );
+  if (payg_resp.ok) {
+    return {
+      planCode: payg_resp.data.subscription.plan_code,
+      subscriptionAt: payg_resp.data.subscription.subscription_at,
+      endingAt: payg_resp.data.subscription.ending_at,
+      isTrial: false,
+    };
+  }
+
+  return {
+    planCode: "NOT_FOUND",
+    isTrial: false,
+  };
+}
