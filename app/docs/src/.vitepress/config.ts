@@ -154,6 +154,10 @@ export default defineConfig({
             text: "AWS Authentication",
             link: "/explanation/aws-authentication",
           },
+          {
+            text: "Working on System Initiative",
+            link: "/explanation/working-on-si",
+          },
         ],
       },
       {
