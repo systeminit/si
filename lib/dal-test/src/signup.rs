@@ -24,9 +24,11 @@ impl WorkspaceSignup {
         workspace_name: impl AsRef<str>,
         user_name: impl AsRef<str>,
         user_email: impl AsRef<str>,
+        token: impl AsRef<str>,
     ) -> color_eyre::Result<Self> {
         let workspace =
-            Workspace::new_from_builtin(ctx, WorkspacePk::generate(), workspace_name).await?;
+            Workspace::new_from_builtin(ctx, WorkspacePk::generate(), workspace_name, token)
+                .await?;
         let key_pair = KeyPair::new(ctx, "default").await?;
 
         let user = User::new(

@@ -159,8 +159,9 @@ pub async fn workspace_signup(ctx: &DalContext) -> crate::Result<(WorkspaceSignu
     let workspace_name = generate_fake_name().expect("could not generate fake name");
     let user_name = format!("frank {workspace_name}");
     let user_email = format!("{workspace_name}@example.com");
+    let token = "workspace_name".to_string();
 
-    let nw = WorkspaceSignup::new(&mut ctx, &workspace_name, &user_name, &user_email)
+    let nw = WorkspaceSignup::new(&mut ctx, &workspace_name, &user_name, &user_email, &token)
         .await
         .wrap_err("cannot signup a new workspace")?;
     let auth_token = create_auth_token(UserClaim {
