@@ -7,6 +7,7 @@ export type FuncArgumentId = string;
 export type FuncId = string;
 export type AttributePrototypeArgumentId = string;
 export type AttributePrototypeId = string;
+export type ManagementPrototypeId = string;
 
 export enum FuncKind {
   Action = "Action",
@@ -17,6 +18,7 @@ export enum FuncKind {
   Qualification = "Qualification",
   SchemaVariantDefinition = "SchemaVariantDefinition",
   Unknown = "Unknown",
+  Management = "Management",
 }
 
 export enum CustomizableFuncKind {
@@ -25,6 +27,7 @@ export enum CustomizableFuncKind {
   Authentication = "Authentication",
   CodeGeneration = "CodeGeneration",
   Qualification = "Qualification",
+  Management = "Management",
 }
 
 // TODO(nick,wendy): this is ugly to use in some places. We probably need to think of a better interface. Blame me, not Wendy.
@@ -42,6 +45,8 @@ export function customizableFuncKindToFuncKind(
       return FuncKind.CodeGeneration;
     case CustomizableFuncKind.Qualification:
       return FuncKind.Qualification;
+    case CustomizableFuncKind.Management:
+      return FuncKind.Management;
     default:
       throw new Error(
         "this should not be possible since CustomizableFuncKind is a subset of FuncKind",
@@ -49,7 +54,10 @@ export function customizableFuncKindToFuncKind(
   }
 }
 
-export const CUSTOMIZABLE_FUNC_TYPES = {
+export type FUNC_LABELS = { pluralLabel: string; singularLabel: string };
+export type FUNC_TYPES = Record<CustomizableFuncKind, FUNC_LABELS>;
+
+export const CUSTOMIZABLE_FUNC_TYPES: FUNC_TYPES = {
   [CustomizableFuncKind.Action]: {
     pluralLabel: "Actions",
     singularLabel: "Action",
@@ -59,12 +67,16 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
     singularLabel: "Attribute",
   },
   [CustomizableFuncKind.Authentication]: {
-    pluralLabel: "Authentications",
+    pluralLabel: "Authenticators",
     singularLabel: "Authentication",
   },
   [CustomizableFuncKind.CodeGeneration]: {
-    pluralLabel: "Code Generations",
+    pluralLabel: "Code Generators",
     singularLabel: "Code Generation",
+  },
+  [CustomizableFuncKind.Management]: {
+    pluralLabel: "Management",
+    singularLabel: "Management",
   },
   [CustomizableFuncKind.Qualification]: {
     pluralLabel: "Qualifications",
@@ -144,6 +156,7 @@ export enum FuncBindingKind {
   Authentication = "authentication",
   CodeGeneration = "codeGeneration",
   Qualification = "qualification",
+  Management = "management",
 }
 
 export interface Action {
@@ -168,6 +181,16 @@ export interface Attribute {
   propId: PropId | null;
   outputSocketId: OutputSocketId | null;
   argumentBindings: AttributeArgumentBinding[];
+}
+
+export interface Management {
+  bindingKind: FuncBindingKind.Management;
+  // uneditable
+  funcId: FuncId | null;
+  managementPrototypeId: ManagementPrototypeId | null;
+  // needed on create
+  schemaVariantId: SchemaVariantId | null;
+  componentId: ComponentId | null;
 }
 
 export interface Authentication {
@@ -201,7 +224,8 @@ export type FuncBinding =
   | Attribute
   | Authentication
   | CodeGeneration
-  | Qualification;
+  | Qualification
+  | Management;
 
 export type LeafInputLocation =
   | "code"

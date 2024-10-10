@@ -14,7 +14,7 @@ use crate::{
     workspace_snapshot::node_weight::{traits::SiVersionedNodeWeight, NodeWeight},
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
     EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, SchemaId,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
 };
 
 #[remain::sorted]
@@ -32,8 +32,14 @@ pub enum ManagementPrototypeError {
     LayerDbError(#[from] si_layer_cache::LayerDbError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("too few variants: {0}")]
+    TooFewVariants(ManagementPrototypeId),
+    #[error("too many variants: {0}")]
+    TooManyVariants(ManagementPrototypeId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
@@ -43,6 +49,12 @@ pub enum ManagementPrototypeError {
 pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;
 
 id!(ManagementPrototypeId);
+
+impl From<ManagementPrototypeId> for si_events::ManagementPrototypeId {
+    fn from(value: ManagementPrototypeId) -> Self {
+        si_events::ManagementPrototypeId::from_raw_id(value.into())
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +72,7 @@ impl ManagementPrototype {
         description: Option<String>,
         func_id: FuncId,
         managed_schemas: Option<HashSet<SchemaId>>,
+        schema_variant_id: SchemaVariantId,
     ) -> ManagementPrototypeResult<Self> {
         let content = ManagementPrototypeContentV1 {
             name: name.clone(),
@@ -88,6 +101,13 @@ impl ManagementPrototype {
         workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         Self::add_edge_to_func(ctx, id.into(), func_id, EdgeWeightKind::new_use()).await?;
+        SchemaVariant::add_edge_to_management_prototype(
+            ctx,
+            schema_variant_id,
+            id.into(),
+            EdgeWeightKind::ManagementPrototype,
+        )
+        .await?;
 
         Ok(ManagementPrototype {
             id: id.into(),
@@ -222,6 +242,33 @@ impl ManagementPrototype {
         Ok((maybe_run_result, func_run_id))
     }
 
+    pub async fn get_schema_variant_id(
+        ctx: &DalContext,
+        management_prototype_id: ManagementPrototypeId,
+    ) -> ManagementPrototypeResult<SchemaVariantId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let node_indexes = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                management_prototype_id,
+                EdgeWeightKindDiscriminants::ManagementPrototype,
+            )
+            .await?;
+        if node_indexes.len() > 1 {
+            return Err(ManagementPrototypeError::TooManyVariants(
+                management_prototype_id,
+            ));
+        }
+        let Some(node_index) = node_indexes.first() else {
+            return Err(ManagementPrototypeError::TooFewVariants(
+                management_prototype_id,
+            ));
+        };
+        let node_weight = workspace_snapshot.get_node_weight(*node_index).await?;
+        let schema_variant_id = node_weight.id();
+
+        Ok(schema_variant_id.into())
+    }
+
     pub async fn list_for_variant_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -247,6 +294,41 @@ impl ManagementPrototype {
         }
 
         Ok(management_prototypes)
+    }
+
+    pub async fn list_ids_for_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> ManagementPrototypeResult<Vec<ManagementPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut management_prototype_ids = Vec::new();
+        for node_index in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            let node_weight_id = node_weight.id();
+            if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
+                if let Some(management_prototype) =
+                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                {
+                    management_prototype_ids.push(management_prototype.id);
+                }
+            }
+        }
+
+        Ok(management_prototype_ids)
+    }
+
+    pub async fn remove(
+        ctx: &DalContext,
+        management_prototype_id: ManagementPrototypeId,
+    ) -> ManagementPrototypeResult<()> {
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(management_prototype_id)
+            .await?;
+
+        Ok(())
     }
 
     implement_add_edge_to!(

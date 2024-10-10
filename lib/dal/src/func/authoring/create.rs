@@ -7,6 +7,7 @@ use crate::func::binding::action::ActionBinding;
 use crate::func::binding::attribute::AttributeBinding;
 use crate::func::binding::authentication::AuthBinding;
 use crate::func::binding::leaf::LeafBinding;
+use crate::func::binding::management::ManagementBinding;
 use crate::func::binding::{AttributeArgumentBinding, AttributeFuncDestination, EventualParent};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
@@ -24,6 +25,31 @@ static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("data/defaults/authentic
 
 #[allow(dead_code)]
 static DEFAULT_VALIDATION_CODE: &str = include_str!("data/defaults/validation.ts");
+
+#[instrument(
+    name = "func.authoring.create_func.create.management",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn create_management_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    schema_variant_id: SchemaVariantId,
+) -> FuncAuthoringResult<Func> {
+    let func = create_func_stub(
+        ctx,
+        name.clone(),
+        FuncBackendKind::Management,
+        FuncBackendResponseType::Management,
+        DEFAULT_ACTION_CODE,
+        DEFAULT_CODE_HANDLER,
+    )
+    .await?;
+
+    ManagementBinding::create_management_binding(ctx, func.id, schema_variant_id).await?;
+
+    Ok(func)
+}
 
 #[instrument(
     name = "func.authoring.create_func.create.action",

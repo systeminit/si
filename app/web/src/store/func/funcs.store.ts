@@ -19,6 +19,8 @@ import {
   Qualification,
   FuncBackendKind,
   BindingWithBackendKind,
+  Management,
+  ManagementPrototypeId,
 } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
@@ -28,6 +30,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -66,6 +69,12 @@ export interface BindingWithDisplayName extends Action {
   name: string;
 }
 
+export type MgmtPrototype = {
+  label: string;
+  managementPrototypeId: ManagementPrototypeId;
+  funcId: FuncId;
+};
+
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
@@ -92,6 +101,7 @@ export const useFuncStore = () => {
     const authenticationBindings = [] as Authentication[];
     const codegenBindings = [] as CodeGeneration[];
     const qualificationBindings = [] as Qualification[];
+    const managementBindings = [] as Management[];
 
     func.bindings.forEach((binding) => {
       switch (binding.bindingKind) {
@@ -110,6 +120,9 @@ export const useFuncStore = () => {
         case FuncBindingKind.Qualification:
           qualificationBindings.push(binding as Qualification);
           break;
+        case FuncBindingKind.Management:
+          managementBindings.push(binding as Management);
+          break;
         default:
           throw new Error(`Unexpected FuncBinding ${JSON.stringify(binding)}`);
       }
@@ -121,17 +134,18 @@ export const useFuncStore = () => {
       authenticationBindings,
       codegenBindings,
       qualificationBindings,
+      managementBindings,
     };
   };
 
-  const API_PREFIX = [
+  const BASE_API = [
     "v2",
     "workspaces",
     { workspaceId },
     "change-sets",
     { selectedChangeSetId },
-    "funcs",
   ] as URLPattern;
+  const API_PREFIX = BASE_API.concat(["funcs"]) as URLPattern;
 
   return addStoreHooks(
     workspaceId,
@@ -148,6 +162,7 @@ export const useFuncStore = () => {
         authenticationBindings: {} as Record<FuncId, Authentication[]>,
         codegenBindings: {} as Record<FuncId, CodeGeneration[]>,
         qualificationBindings: {} as Record<FuncId, Qualification[]>,
+        managementBindings: {} as Record<FuncId, Management[]>,
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
@@ -166,6 +181,31 @@ export const useFuncStore = () => {
           componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
 
         funcList: (state) => _.values(state.funcsById),
+
+        managementFunctionsForSelectedComponent(state) {
+          const variant =
+            componentsStore.schemaVariantsById[
+              componentsStore.selectedComponent?.schemaVariantId || ""
+            ];
+          if (!variant) return [];
+          const mgmtFuncs: MgmtPrototype[] = [];
+          variant.funcIds.forEach((funcId) => {
+            const func = state.funcsById[funcId];
+            if (func?.kind === FuncKind.Management) {
+              const funcId = func.funcId;
+              const binding = state.managementBindings[funcId]?.find(
+                (b) => b.schemaVariantId === variant.schemaVariantId,
+              );
+              if (binding && binding.managementPrototypeId)
+                mgmtFuncs.push({
+                  managementPrototypeId: binding.managementPrototypeId,
+                  label: func.displayName || func.name,
+                  funcId,
+                });
+            }
+          });
+          return mgmtFuncs;
+        },
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
           const bindings = [] as BindingWithDisplayName[];
@@ -221,6 +261,20 @@ export const useFuncStore = () => {
       },
 
       actions: {
+        async RUN_PROTOTYPE(
+          prototypeId: ManagementPrototypeId,
+          componentId: ComponentId,
+        ) {
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([
+              "management",
+              "prototype",
+              { prototypeId },
+              { componentId },
+            ]),
+          });
+        },
         async FETCH_FUNC_LIST() {
           return new ApiRequest<FuncSummary[], Visibility>({
             url: API_PREFIX,
@@ -235,6 +289,8 @@ export const useFuncStore = () => {
                 this.qualificationBindings[func.funcId] =
                   bindings.qualificationBindings;
                 this.codegenBindings[func.funcId] = bindings.codegenBindings;
+                this.managementBindings[func.funcId] =
+                  bindings.managementBindings;
               });
 
               this.funcsById = _.keyBy(response, (f) => f.funcId);
@@ -353,7 +409,7 @@ export const useFuncStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest<{ bindings: FuncBinding[] }>({
+          return new ApiRequest<FuncBinding[]>({
             method: "post",
             url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {

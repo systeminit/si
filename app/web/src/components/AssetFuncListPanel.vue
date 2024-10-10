@@ -87,11 +87,12 @@ const variantSummaries = computed(() => {
   return variant;
 });
 
-const funcsByKind = computed(() =>
-  variantSummaries.value
+const funcsByKind = computed(() => {
+  const r = variantSummaries.value
     ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind)
-    : {},
-);
+    : {};
+  return r;
+});
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 

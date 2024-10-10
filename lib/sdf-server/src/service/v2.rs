@@ -5,6 +5,7 @@ use crate::AppState;
 pub mod admin;
 pub mod audit_log;
 pub mod func;
+pub mod management;
 pub mod module;
 pub mod variant;
 
@@ -17,4 +18,5 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .nest(&format!("{PREFIX}/funcs"), func::v2_routes())
         .nest(&format!("{PREFIX}/modules"), module::v2_routes())
         .nest(&format!("{PREFIX}/schema-variants"), variant::v2_routes())
+        .nest(&format!("{PREFIX}/management"), management::v2_routes())
 }

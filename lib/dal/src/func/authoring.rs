@@ -182,6 +182,22 @@ impl FuncAuthoringClient {
         Ok(func)
     }
 
+    /// Creates a new Management Func and returns it
+    #[instrument(
+        name = "func.authoring.create_new_management_func",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn create_new_management_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncAuthoringResult<Func> {
+        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
+        let func = create::create_management_func(ctx, name, schema_variant_id).await?;
+        Ok(func)
+    }
+
     /// Creates a new Code Gen or Qualification Func and returns it
     #[instrument(
         name = "func.authoring.create_new_leaf_func",

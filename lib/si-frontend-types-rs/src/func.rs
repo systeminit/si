@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use si_events::{
     ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
-    FuncArgumentId, FuncBackendKind, FuncId, FuncKind, InputSocketId, OutputSocketId, PropId,
-    SchemaVariantId, Timestamp,
+    FuncArgumentId, FuncBackendKind, FuncId, FuncKind, InputSocketId, ManagementPrototypeId,
+    OutputSocketId, PropId, SchemaVariantId, Timestamp,
 };
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -116,6 +116,13 @@ pub enum FuncBinding {
 
         // thing that can be updated
         inputs: Vec<LeafInputLocation>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Management {
+        // unique ids
+        schema_variant_id: Option<SchemaVariantId>,
+        management_prototype_id: Option<ManagementPrototypeId>,
+        func_id: Option<FuncId>,
     },
     #[serde(rename_all = "camelCase")]
     Qualification {

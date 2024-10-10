@@ -1541,6 +1541,33 @@ impl Component {
         Ok(Self::assemble(&node_weight, content))
     }
 
+    pub async fn set_resource_id(
+        &self,
+        ctx: &DalContext,
+        resource_id: &str,
+    ) -> ComponentResult<()> {
+        let path = ["root", "si", "resourceId"];
+        let sv_id = Self::schema_variant_id(ctx, self.id).await?;
+        let resource_prop_id = Prop::find_prop_id_by_path(ctx, sv_id, &PropPath::new(path)).await?;
+        // If the name prop is controlled by an identity or other function,
+        // don't override the prototype here
+        if Prop::is_set_by_dependent_function(ctx, resource_prop_id).await? {
+            return Ok(());
+        }
+
+        let av_for_resource_id =
+            Self::attribute_value_for_prop_id(ctx, self.id(), resource_prop_id).await?;
+
+        AttributeValue::update(
+            ctx,
+            av_for_resource_id,
+            Some(serde_json::to_value(resource_id)?),
+        )
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
         let path = ["root", "si", "name"];
         let sv_id = Self::schema_variant_id(ctx, self.id).await?;
@@ -1629,6 +1656,28 @@ impl Component {
     /// Returns the name of the [`Component`].
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         Self::name_by_id(ctx, self.id).await
+    }
+
+    // Returns the resource id from the prop tree
+    pub async fn resource_id(&self, ctx: &DalContext) -> ComponentResult<String> {
+        let prop_path = PropPath::new(["root", "si", "resourceId"]);
+        let prop_id =
+            Prop::find_prop_id_by_path_opt(ctx, self.schema_variant(ctx).await?.id, &prop_path)
+                .await?;
+        if let Some(prop_id) = prop_id {
+            let resource_id_value_id =
+                Self::attribute_value_for_prop_id(ctx, self.id, prop_id).await?;
+
+            let resource_id_av =
+                AttributeValue::get_by_id_or_error(ctx, resource_id_value_id).await?;
+
+            Ok(match resource_id_av.view(ctx).await? {
+                Some(serde_value) => serde_json::from_value(serde_value)?,
+                None => "".into(),
+            })
+        } else {
+            Ok("".into())
+        }
     }
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
@@ -3420,6 +3469,7 @@ impl Component {
             schema_variant_name: schema_variant.version().to_owned(),
             schema_category: schema_variant.category().to_owned(),
             display_name: self.name(ctx).await?,
+            resource_id: self.resource_id(ctx).await?,
             position,
             size,
             component_type: self.get_type(ctx).await?.to_string(),

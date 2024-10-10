@@ -101,6 +101,7 @@ pub struct SummaryDiagramComponent {
     pub schema_category: String,
     pub sockets: Vec<DiagramSocket>,
     pub display_name: String,
+    pub resource_id: String,
     pub position: GridPoint,
     pub size: Size2D,
     pub color: String,

@@ -2,11 +2,13 @@
   <div class="h-full relative">
     <TabGroup
       variant="secondary"
-      :startSelectedTabSlug="componentsStore.detailsTabSlugs[1] || undefined"
+      :startSelectedTabSlug="
+        componentsStore.detailsTabSlugs[1] || 'resource-actions'
+      "
       marginTop="2xs"
       @update:selectedTab="onTabSelected"
     >
-      <TabGroupItem label="Select" slug="actions-selection">
+      <TabGroupItem label="Actions" slug="resource-actions">
         <div
           v-if="bindings.length === 0"
           class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
@@ -30,13 +32,8 @@
           />
         </div>
       </TabGroupItem>
-      <TabGroupItem slug="actions-history">
-        <template #label>
-          <Inline>
-            <span>History</span>
-            <!-- <PillCounter class="ml-2xs" :count="filteredBatches.length" /> -->
-          </Inline>
-        </template>
+      <TabGroupItem slug="resource-resource" label="Resource Data">
+        <ComponentDetailsResource />
       </TabGroupItem>
     </TabGroup>
   </div>
@@ -45,12 +42,13 @@
 <script setup lang="ts">
 import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
-import { Inline, TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
+import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { useFuncStore } from "@/store/func/funcs.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import ActionWidget from "@/components/Actions/ActionWidget.vue";
+import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -69,7 +67,7 @@ const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 watch(
   () => componentsStore.selectedComponentDetailsTab,
   (tabSlug) => {
-    if (tabSlug?.startsWith("actions")) {
+    if (tabSlug?.startsWith("resource-")) {
       tabsRef.value?.selectTab(tabSlug);
     }
   },

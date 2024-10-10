@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col overflow-hidden h-full relative">
     <TreeNode
-      v-for="(label, kind) in CUSTOMIZABLE_FUNC_TYPES"
+      v-for="(label, kind) in funcKindOptions"
       :key="kind"
       enableDefaultHoverClasses
       enableGroupToggle
@@ -15,7 +15,7 @@
     >
       <template #primaryIcon><Icon name="func" :size="'sm'" /></template>
       <template #label>
-        <div class="flex items-center gap-xs text-sm">
+        <div v-if="label" class="flex items-center gap-xs text-sm">
           <span> {{ label.pluralLabel }} </span>
         </div>
       </template>
@@ -52,8 +52,19 @@ import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,
   customizableFuncKindToFuncKind,
+  FUNC_LABELS,
   FuncSummary,
 } from "@/api/sdf/dal/func";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+
+const ffStore = useFeatureFlagsStore();
+
+const funcKindOptions: Partial<Record<CustomizableFuncKind, FUNC_LABELS>> = {};
+Object.entries(CUSTOMIZABLE_FUNC_TYPES).forEach(([key, value]) => {
+  if (!ffStore.MANAGEMENT_FUNCTIONS && key === CustomizableFuncKind.Management)
+    return;
+  funcKindOptions[key as CustomizableFuncKind] = value;
+});
 
 const props = defineProps({
   defaultOpen: { type: Boolean },

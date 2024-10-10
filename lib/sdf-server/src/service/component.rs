@@ -42,6 +42,7 @@ pub mod get_code;
 pub mod refresh;
 pub mod restore_default_function;
 pub mod set_name;
+pub mod set_resource_id;
 pub mod set_type;
 mod upgrade;
 
@@ -175,6 +176,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/set_type", post(set_type::set_type))
         .route("/set_name", post(set_name::set_name))
+        .route("/set_resource_id", post(set_resource_id::set_resource_id))
         .route("/refresh", post(refresh::refresh))
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))
