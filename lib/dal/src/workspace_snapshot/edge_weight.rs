@@ -6,6 +6,7 @@ use strum::EnumDiscriminants;
 
 pub mod deprecated;
 
+/// This type is postcard serialized and new enum variants *MUST* be added to the end *ONLY*.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 #[strum_discriminants(derive(Hash, Serialize, Deserialize))]
 pub enum EdgeWeightKind {
@@ -60,6 +61,8 @@ pub enum EdgeWeightKind {
     },
     /// Edge from attribute value to validation result node
     ValidationOutput,
+    /// Edge from [`SchemaVariant`](crate::SchemaVariant) to [`ManagementPrototype`](crate::ManagementPrototype).
+    ManagementPrototype,
 }
 
 impl EdgeWeightKind {

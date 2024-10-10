@@ -141,6 +141,22 @@ fn build_resource_payload_to_value_func() -> BuiltinsResult<FuncSpec> {
     Ok(resource_payload_to_value_func)
 }
 
+fn build_management_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> {
+    Ok(FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(code)
+                .handler("main")
+                .backend_kind(FuncSpecBackendKind::Management)
+                .response_type(FuncSpecBackendResponseType::Management)
+                .build()?,
+        )
+        .build()?)
+}
+
 fn build_action_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> {
     let func = FuncSpec::builder()
         .name(fn_name)

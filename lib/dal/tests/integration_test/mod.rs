@@ -10,6 +10,7 @@ mod diagram;
 mod frame;
 mod func;
 mod input_sources;
+mod management;
 mod module;
 mod node_weight;
 mod pkg;

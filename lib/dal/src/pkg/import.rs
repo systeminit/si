@@ -3,8 +3,8 @@ use si_events::ulid::Ulid;
 use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
     SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
-    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
+    SiPkgLeafFunction, SiPkgManagementFunc, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema,
+    SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -19,6 +19,7 @@ use crate::attribute::prototype::argument::{
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::func;
 use crate::func::intrinsics::IntrinsicFunc;
+use crate::management::prototype::ManagementPrototype;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
@@ -779,6 +780,43 @@ async fn create_action_prototype(
     Ok(proto)
 }
 
+async fn import_management_func(
+    ctx: &DalContext,
+    management_func_spec: &SiPkgManagementFunc<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &ThingMap,
+) -> PkgResult<ManagementPrototype> {
+    let Some(Thing::Func(func)) = thing_map.get(&management_func_spec.func_unique_id().to_owned())
+    else {
+        return Err(PkgError::MissingFuncUniqueId(
+            management_func_spec.func_unique_id().into(),
+            "error found while importing management func",
+        ));
+    };
+    let func_id = func.id;
+
+    let prototype = ManagementPrototype::new(
+        ctx,
+        management_func_spec.name().to_string(),
+        management_func_spec.description().map(Into::into),
+        func_id,
+        management_func_spec
+            .managed_schemas()
+            .map(|schemas| schemas.iter().map(|ulid| (*ulid).into()).collect()),
+    )
+    .await?;
+
+    SchemaVariant::add_edge_to_management_prototype(
+        ctx,
+        schema_variant_id,
+        prototype.id,
+        EdgeWeightKind::ManagementPrototype,
+    )
+    .await?;
+
+    Ok(prototype)
+}
+
 async fn import_action_func(
     ctx: &DalContext,
     action_func_spec: &SiPkgActionFunc<'_>,
@@ -1183,6 +1221,10 @@ pub(crate) async fn import_schema_variant(
 
     for leaf_func in variant_spec.leaf_functions()? {
         import_leaf_function(ctx, leaf_func, schema_variant.id(), thing_map).await?;
+    }
+
+    for management_func in variant_spec.management_funcs()? {
+        import_management_func(ctx, &management_func, schema_variant.id(), thing_map).await?;
     }
 
     // Default values must be set before attribute functions are configured so they don't

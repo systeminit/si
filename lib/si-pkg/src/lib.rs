@@ -142,6 +142,10 @@ mod tests {
             }
         }
 
+        let management_funcs = variant.management_funcs().expect("get management funcs");
+        assert_eq!(1, management_funcs.len());
+        dbg!(management_funcs);
+
         // Ensure we get the props
         let props: Mutex<Vec<String>> = Mutex::new(Vec::new());
         variant

@@ -11,8 +11,8 @@ use crate::{
 };
 
 use super::{
-    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, RootPropFuncSpec,
-    SiPropFuncSpec, SocketSpec, SpecError,
+    ActionFuncSpec, LeafFunctionSpec, ManagementFuncSpec, PropSpec, PropSpecData,
+    PropSpecWidgetKind, RootPropFuncSpec, SiPropFuncSpec, SocketSpec, SpecError,
 };
 
 #[remain::sorted]
@@ -175,6 +175,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "si_prop_func"), into), default)]
     pub si_prop_funcs: Vec<SiPropFuncSpec>,
+
+    #[builder(setter(each(name = "management_func"), into), default)]
+    pub management_funcs: Vec<ManagementFuncSpec>,
 
     #[builder(private, default = "Self::default_domain()")]
     pub domain: PropSpec,
@@ -411,6 +414,7 @@ impl SchemaVariantSpec {
         schema_variant_builder.action_funcs = Some(other_spec.action_funcs.clone());
         schema_variant_builder.auth_funcs = Some(other_spec.auth_funcs.clone());
         schema_variant_builder.leaf_functions = Some(other_spec.leaf_functions.clone());
+        schema_variant_builder.management_funcs = Some(other_spec.management_funcs.clone());
 
         // These are fake root props that include all the "root prop children"
         // (domain, resource_value, etc) as entries

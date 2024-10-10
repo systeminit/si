@@ -29,6 +29,7 @@ use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV3,
 };
+use crate::management::prototype::ManagementPrototypeId;
 use crate::module::Module;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
@@ -1252,6 +1253,13 @@ impl SchemaVariant {
         discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
         result: SchemaVariantResult,
     );
+    implement_add_edge_to!(
+        source_id: SchemaVariantId,
+        destination_id: ManagementPrototypeId,
+        add_fn: add_edge_to_management_prototype,
+        discriminant: EdgeWeightKindDiscriminants::ManagementPrototype,
+        result: SchemaVariantResult,
+    );
 
     pub async fn find_action_prototypes_by_kind(
         ctx: &DalContext,
@@ -2170,6 +2178,12 @@ impl SchemaVariant {
                 }
 
                 EdgeWeightKindDiscriminants::AuthenticationPrototype => {
+                    workspace_snapshot
+                        .remove_edge(source_index, target_index, kind)
+                        .await?;
+                }
+
+                EdgeWeightKindDiscriminants::ManagementPrototype => {
                     workspace_snapshot
                         .remove_edge(source_index, target_index, kind)
                         .await?;

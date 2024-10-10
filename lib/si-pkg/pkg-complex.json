@@ -72,6 +72,14 @@
           "sockets": [],
           "actionFuncs": [],
           "authFuncs": [],
+          "managementFuncs": [
+            {
+              "funcUniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
+              "name": "test management func",
+              "description": "test management func description",
+              "managedSchemas": ["01J9VGAA9V2YVXQM2MTSBNHAVE"]
+            }
+          ],
           "componentType": "component",
           "funcUniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
           "funcDescriptions": [],

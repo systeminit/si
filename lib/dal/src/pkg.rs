@@ -11,6 +11,7 @@ use crate::attribute::prototype::argument::{
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentId;
+use crate::management::prototype::ManagementPrototypeError;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     action::prototype::ActionPrototypeError,
@@ -67,6 +68,8 @@ pub enum PkgError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("management prototype error: {0}")]
+    ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("Missing Func {1} for AttributePrototype {0}")]
     MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
     #[error("Func {0} missing from exported funcs")]

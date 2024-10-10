@@ -818,6 +818,186 @@ impl FuncRunner {
     }
 
     #[instrument(
+        name = "func_runner.run_management",
+        level = "debug",
+        skip_all,
+        fields(
+            job.id = Empty,
+            job.invoked_args = Empty,
+            // job.instance = metadata.job_instance,
+            job.invoked_name = Empty,
+            // job.invoked_provider = metadata.job_invoked_provider,
+            otel.kind = SpanKind::Producer.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.action.id = Empty,
+            si.action.kind = Empty,
+            si.change_set.id = Empty,
+            si.component.id = Empty,
+            si.func_run.func.args = Empty,
+            si.func_run.func.backend_kind = Empty,
+            si.func_run.func.backend_response_type = Empty,
+            si.func_run.func.id = Empty,
+            si.func_run.func.kind = Empty,
+            si.func_run.func.name = Empty,
+            si.func_run.id = Empty,
+            si.workspace.id = Empty,
+        )
+    )]
+    pub async fn run_management(
+        ctx: &DalContext,
+        manager_component_id: ComponentId,
+        management_func_id: FuncId,
+        args: serde_json::Value,
+    ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+        let span = current_span_for_instrument_at!("debug");
+
+        // Prepares the function for execution.
+        //
+        // Note: this function is internal so we can record early-returning errors in span metadata
+        // and in order to time the function's preparation vs. execution timings.
+        #[instrument(
+            name = "func_runner.run_management.prepare",
+            level = "debug",
+            skip_all,
+            fields()
+        )]
+        #[inline]
+        async fn prepare(
+            ctx: &DalContext,
+            manager_component_id: ComponentId,
+            management_func_id: FuncId,
+            args: serde_json::Value,
+            span: &Span,
+        ) -> FuncRunnerResult<FuncRunner> {
+            let func = Func::get_by_id_or_error(ctx, management_func_id).await?;
+
+            let function_args: CasValue = args.clone().into();
+            let (function_args_cas_address, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(function_args.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+                let code_json_value: serde_json::Value = code.clone().into();
+                let code_cas_value: CasValue = code_json_value.into();
+                let (hash, _) = ctx
+                    .layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(code_cas_value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?;
+                hash
+            } else {
+                // Why are we doing this? Because the struct gods demand it. I have feelings.
+                ContentHash::new("".as_bytes())
+            };
+
+            let before = FuncRunner::before_funcs(ctx, manager_component_id).await?;
+            let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
+            let component_name = manager_component.name(ctx).await?;
+            let schema_name = manager_component.schema(ctx).await?.name;
+
+            let manager_component_id = manager_component_id.into();
+
+            let func_run_create_time = Utc::now();
+            let func_run_inner = FuncRunBuilder::default()
+                .actor(ctx.events_actor())
+                .tenancy(ctx.events_tenancy())
+                .backend_kind(func.backend_kind.into())
+                .backend_response_type(func.backend_response_type.into())
+                .function_name(func.name.clone())
+                .function_kind(func.kind.into())
+                .function_display_name(func.display_name.clone())
+                .function_description(func.description.clone())
+                .function_link(func.link.clone())
+                .function_args_cas_address(function_args_cas_address)
+                .function_code_cas_address(code_cas_hash)
+                .attribute_value_id(None)
+                .component_id(Some(manager_component_id))
+                .component_name(Some(component_name))
+                .schema_name(Some(schema_name))
+                .created_at(func_run_create_time)
+                .updated_at(func_run_create_time)
+                .build()?;
+
+            if !span.is_disabled() {
+                let mut id_buf = FuncRunId::array_to_str_buf();
+
+                let id = func_run_inner.id().array_to_str(&mut id_buf);
+                span.record("job.id", &id);
+                span.record("si.func_run.id", &id);
+
+                let invoked_args = serde_json::to_string(&args)
+                    .unwrap_or_else(|_| "args failed to serialize".to_owned());
+                span.record("job.invoked_args", invoked_args.as_str());
+                span.record("si.func_run.func.args", invoked_args.as_str());
+
+                span.record("job.invoked_name", func.name.as_str());
+                span.record("si.func_run.func.name", func.name.as_str());
+
+                span.record("si.func_run.func.backend_kind", func.backend_kind.as_ref());
+                span.record(
+                    "si.func_run.func.backend_response_type",
+                    func.backend_response_type.as_ref(),
+                );
+                span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
+                span.record("si.func_run.func.kind", func.kind.as_ref());
+
+                span.record(
+                    "si.change_set.id",
+                    func_run_inner.change_set_id().array_to_str(&mut id_buf),
+                );
+                span.record(
+                    "si.component.id",
+                    manager_component_id.array_to_str(&mut id_buf),
+                );
+                span.record(
+                    "si.workspace.id",
+                    func_run_inner.workspace_pk().array_to_str(&mut id_buf),
+                );
+            }
+
+            let func_run = Arc::new(func_run_inner);
+
+            ctx.layer_db()
+                .func_run()
+                .write(
+                    func_run.clone(),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            Ok(FuncRunner {
+                func_run,
+                func,
+                args,
+                before,
+            })
+        }
+
+        let runner = prepare(ctx, manager_component_id, management_func_id, args, &span)
+            .await
+            .map_err(|err| span.record_err(err))?;
+
+        let result_channel = runner.execute(ctx.clone(), span).await;
+
+        Ok(result_channel)
+    }
+
+    #[instrument(
         name = "func_runner.run_action",
         level = "debug",
         skip_all,

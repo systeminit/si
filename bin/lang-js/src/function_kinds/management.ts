@@ -20,7 +20,14 @@ export type ManagementFuncResult =
     | ManagementFuncResultSuccess
     | ManagementFuncResultFailure;
 
+export interface ManagementOperations {
+  update: { [key: string]: {
+    properties?: object;
+  } }
+}
+
 export interface ManagementFuncResultSuccess extends ResultSuccess {
+  operations?: ManagementOperations,
   message?: string;
 }
 export interface ManagementFuncResultFailure extends ResultFailure { }
@@ -35,7 +42,6 @@ async function execute(
   try {
     const runner = vm.run(code);
     managementResult = await new Promise((resolve) => {
-      console.error(thisComponent);
       runner(thisComponent.properties, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
@@ -45,6 +51,7 @@ async function execute(
     protocol: "result",
     status: "success",
     executionId,
+    operations: managementResult.ops as ManagementOperations | undefined,
     message: managementResult.message as string | undefined,
   };
 }

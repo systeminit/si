@@ -48,13 +48,8 @@ impl InputSocketNodeWeightV1 {
         }
     }
 
-    pub fn new_content_hash(
-        &mut self,
-        new_content_hash: ContentHash,
-    ) -> InputSocketNodeWeightResult<()> {
+    pub fn new_content_hash(&mut self, new_content_hash: ContentHash) {
         self.content_address = ContentAddress::InputSocket(new_content_hash);
-
-        Ok(())
     }
 
     pub(crate) async fn try_upgrade_from_content_node_weight(
