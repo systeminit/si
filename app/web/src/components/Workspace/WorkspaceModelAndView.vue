@@ -60,6 +60,7 @@
   <DeleteSelectionModal />
   <RestoreSelectionModal />
   <EraseSelectionModal />
+  <CommandModal />
 </template>
 
 <script lang="ts" setup>
@@ -85,6 +86,7 @@ import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
 import DeleteSelectionModal from "../ModelingView/DeleteSelectionModal.vue";
 import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
+import CommandModal from "./CommandModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();

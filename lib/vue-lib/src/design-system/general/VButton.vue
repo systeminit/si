@@ -1,9 +1,10 @@
 <template>
   <component
     :is="htmlTagOrComponentType"
+    v-bind="dynamicAttrs"
+    ref="component"
     class="vbutton"
     :class="computedClasses"
-    v-bind="dynamicAttrs"
     @click="clickHandler($event)"
   >
     <div class="vbutton__inner">
@@ -218,6 +219,15 @@ function clickHandler(e: MouseEvent) {
   }
 }
 
+const component = ref<InstanceType<typeof HTMLElement>>();
+const focus = () => {
+  component.value?.focus();
+};
+
+defineExpose({
+  focus,
+});
+
 onBeforeUnmount(() => {
   if (successClickTimeout) clearTimeout(successClickTimeout);
 });
@@ -239,6 +249,10 @@ const computedClasses = computed(() => ({
 </script>
 
 <style lang="less">
+.vbutton:focus-visible {
+  outline: none;
+}
+
 .vbutton {
   display: inline-block;
   vertical-align: middle;
