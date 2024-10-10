@@ -149,6 +149,7 @@ async fn find_or_create_user_and_workspace(
                     &mut ctx,
                     auth_api_workspace.id,
                     auth_api_workspace.display_name.clone(),
+                    auth_api_workspace.token,
                 )
                 .await?
             } else {
@@ -156,6 +157,7 @@ async fn find_or_create_user_and_workspace(
                     &mut ctx,
                     auth_api_workspace.id,
                     auth_api_workspace.display_name.clone(),
+                    auth_api_workspace.token,
                 )
                 .await?
             };

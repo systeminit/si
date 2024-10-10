@@ -349,6 +349,7 @@ impl Workspace {
         ctx: &mut DalContext,
         pk: WorkspacePk,
         name: impl AsRef<str>,
+        token: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx).await?;
         ctx.set_workspace_snapshot(workspace_snapshot);
@@ -365,7 +366,7 @@ impl Workspace {
         )
         .await?;
 
-        let workspace = Self::insert_workspace(ctx, pk, name, head_change_set.id).await?;
+        let workspace = Self::insert_workspace(ctx, pk, name, head_change_set.id, token).await?;
         head_change_set
             .update_workspace_id(ctx, workspace.pk)
             .await?;
@@ -390,8 +391,10 @@ impl Workspace {
         pk: WorkspacePk,
         name: impl AsRef<str>,
         change_set_id: ChangeSetId,
+        token: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
+        let token = token.as_ref();
         let version_string = WorkspaceSnapshotGraph::current_discriminant().to_string();
         let uses_actions_v2 = ctx
             .services_context()
@@ -403,8 +406,8 @@ impl Workspace {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string],
+                "INSERT INTO workspaces (pk, name, default_change_set_id, uses_actions_v2, snapshot_version, token) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+                &[&pk, &name, &change_set_id, &uses_actions_v2, &version_string, &token],
             )
             .await?;
 
@@ -415,6 +418,7 @@ impl Workspace {
         ctx: &mut DalContext,
         pk: WorkspacePk,
         name: impl AsRef<str>,
+        token: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
         // Get the default change set from the builtin workspace.
         let builtin = match Self::find_builtin(ctx).await? {
@@ -435,7 +439,7 @@ impl Workspace {
         .await?;
         let change_set_id = change_set.id;
 
-        let new_workspace = Self::insert_workspace(ctx, pk, name, change_set_id).await?;
+        let new_workspace = Self::insert_workspace(ctx, pk, name, change_set_id, &token).await?;
         change_set
             .update_workspace_id(ctx, *new_workspace.pk())
             .await?;
