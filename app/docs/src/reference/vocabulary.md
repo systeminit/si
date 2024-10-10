@@ -6,6 +6,11 @@ This a reference to all of the vocabulary used in System Initiative.
 
 Anything that can be used on the canvas.
 
+## Attribute Panel
+
+The panel on the right side of the composition screen, which shows the attributes
+of the currently selected item.
+
 ## Arity
 
 The number of arguments taken by a function. Most frequently used to specify how
@@ -64,6 +69,11 @@ connect to any components placed within the frame.
 An "up" frame is one where the output sockets of the components within the frame
 will connect to the input sockets of the frame.
 
+## Edge
+
+A representation of a relationship between one components output socket and another
+components input socket.
+
 ## HEAD
 
 HEAD is the change set that represents "the real world". It can only be altered
@@ -84,6 +94,11 @@ mouthful than 'multi-dimensional graph'.
 
 A socket that feeds data into a component. Appears on the left side of
 components.
+
+## Living Architecture Diagram
+
+The diagram you use to specify what components you need and what their
+relationships are.
 
 ## Model
 
@@ -111,6 +126,11 @@ component are valid.
 ## Resource
 
 A resource is the data about the real-world thing represented by a component.
+
+## Schema
+
+Assets in System Initiative are defined by a Schema. Each version of the
+schema is referred to as a Schema Variant.
 
 ## Secret
 
