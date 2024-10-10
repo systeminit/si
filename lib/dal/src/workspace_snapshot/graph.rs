@@ -104,9 +104,24 @@ impl std::ops::Deref for WorkspaceSnapshotGraph {
     }
 }
 
+impl std::ops::DerefMut for WorkspaceSnapshotGraph {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner_mut()
+    }
+}
+
 impl WorkspaceSnapshotGraph {
     /// Return a reference to the most up to date enum variant for the graph type
     pub fn inner(&self) -> &WorkspaceSnapshotGraphVCurrent {
+        match self {
+            Self::Legacy | Self::V1(_) | Self::V2(_) => {
+                unimplemented!("Attempted to access an unmigrated snapshot!")
+            }
+            Self::V3(inner) => inner,
+        }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut WorkspaceSnapshotGraphVCurrent {
         match self {
             Self::Legacy | Self::V1(_) | Self::V2(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
