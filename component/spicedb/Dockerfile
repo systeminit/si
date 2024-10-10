@@ -13,6 +13,6 @@ FROM authzed/spicedb:v1.37.0-debug
 COPY --from=cli /usr/local/bin/zed /usr/local/bin/zed
 COPY --from=setup /tmp/schema.zed .
 COPY --from=setup /tmp/validation.yaml .
-COPY ./entrypoint.sh .
+COPY --chmod=755 ./entrypoint.sh .
 
 ENTRYPOINT ["sh", "-c", "./entrypoint.sh"]
