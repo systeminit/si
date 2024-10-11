@@ -8,7 +8,10 @@ use std::{
 use tokio::runtime::{Builder, Runtime};
 
 pub const DEFAULT_TOKIO_RT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+#[cfg(target_os = "linux")]
 pub const DEFAULT_TOKIO_RT_BLOCKING_POOL_SIZE: usize = 512;
+#[cfg(target_os = "macos")]
+pub const DEFAULT_TOKIO_RT_BLOCKING_POOL_SIZE: usize = 16;
 
 // Thread priority for compute executors (min = 0, max = 99, default = 50)
 const COMPUTE_EXECUTOR_THREAD_PRIORITY: u8 = 25;
