@@ -5953,12 +5953,15 @@ dependencies = [
 name = "si-data-spicedb"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "indoc",
+ "rand 0.8.5",
  "remain",
  "serde",
  "si-std",
  "spicedb-client",
  "spicedb-grpc",
+ "strum 0.26.3",
  "telemetry",
  "thiserror",
  "tokio",

@@ -7,18 +7,21 @@
 // )]
 // #![allow(clippy::missing_errors_doc)]
 
+use futures::TryStreamExt;
 use std::{io, net::ToSocketAddrs, result, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_std::SensitiveString;
-use spicedb_client::SpicedbClient;
+use spicedb_client::{builder::WriteRelationshipsRequestBuilder, SpicedbClient};
+use spicedb_grpc::authzed::api::v1::{relationship_update::Operation, WriteRelationshipsRequest};
 use telemetry::prelude::*;
 use thiserror::Error;
+use types::Relationships;
 use url::Url;
 
 mod types;
 
-pub use types::{ReadSchemaResponse, ZedToken};
+pub use types::{Permission, ReadSchemaResponse, Relationship, ZedToken};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -29,6 +32,8 @@ pub enum Error {
     EndpointNoHost(Url),
     #[error("cannot determine spicedb endpoint port number: {0}")]
     EndpointUnknownPort(Url),
+    #[error("GRPC streaming error: {0}")]
+    GRPC(#[source] spicedb_client::result::Error),
     #[error("error resolving ip addr for spicedb endpoint hostname: {0}")]
     ResolveHostname(#[source] io::Error),
     #[error("resolved hostname returned no entries")]
@@ -200,6 +205,150 @@ impl Client {
 
         span.record_ok();
         Ok(resp)
+    }
+
+    #[instrument(
+        name = "spicedb_client.read_relationships",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = %self.metadata.db_connection_string(),
+            db.system = %self.metadata.db_system(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        ),
+    )]
+    pub async fn read_relationship(&mut self, relationship: Relationship) -> Result<Relationships> {
+        let span = current_span_for_instrument_at!("debug");
+        let mut relationships = vec![];
+
+        let results: result::Result<Vec<_>, _> = self
+            .inner
+            .read_relationships(relationship.into_request())
+            .await?
+            .try_collect()
+            .await;
+
+        for r in results.map_err(|e| span.record_err(Error::GRPC(e.into())))? {
+            if let Some(relationship) = r.relationship {
+                relationships.push(relationship.into());
+            }
+        }
+
+        span.record_ok();
+        Ok(relationships)
+    }
+
+    #[instrument(
+        name = "spicedb_client.create_relationships",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = %self.metadata.db_connection_string(),
+            db.system = %self.metadata.db_system(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        ),
+    )]
+    pub async fn create_relationships(
+        &mut self,
+        relationships: Relationships,
+    ) -> Result<Option<ZedToken>> {
+        self.update_relationships(relationships, Operation::Create)
+            .await
+    }
+
+    #[instrument(
+        name = "spicedb_client.delete_relationships",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = %self.metadata.db_connection_string(),
+            db.system = %self.metadata.db_system(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        ),
+    )]
+    pub async fn delete_relationships(
+        &mut self,
+        relationships: Relationships,
+    ) -> Result<Option<ZedToken>> {
+        self.update_relationships(relationships, Operation::Delete)
+            .await
+    }
+
+    async fn update_relationships(
+        &mut self,
+        relationships: Relationships,
+        operation: Operation,
+    ) -> Result<Option<ZedToken>> {
+        let span = current_span_for_instrument_at!("debug");
+
+        let request: WriteRelationshipsRequest = WriteRelationshipsRequest::new(
+            relationships
+                .into_iter()
+                .map(|r| r.into_relationship_update(operation)),
+        );
+
+        let resp = self
+            .inner
+            .write_relationships(request)
+            .await
+            .map_err(|err| span.record_err(Error::SpiceDb(err)))?
+            .written_at
+            .map(|value| value.into());
+
+        span.record_ok();
+        Ok(resp)
+    }
+
+    #[instrument(
+        name = "spicedb_client.check_permissions",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = %self.metadata.db_connection_string(),
+            db.system = %self.metadata.db_system(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        ),
+    )]
+    pub async fn check_permissions(&mut self, permission: Permission) -> Result<bool> {
+        let span = current_span_for_instrument_at!("debug");
+
+        let resp = self
+            .inner
+            .check_permission(permission.into_request())
+            .await
+            .map_err(|err| span.record_err(Error::SpiceDb(err)))?
+            .permissionship;
+
+        span.record_ok();
+        Ok(Permission::has_permission(resp))
     }
 }
 
