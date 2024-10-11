@@ -1,6 +1,13 @@
+---
+outline:
+  level: [2, 3, 4]
+---
+
 # Road map
 
 Updated 2024-09.
+
+Want to influence the road map? [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
 ## Growing coverage of cloud platforms
 
@@ -17,6 +24,15 @@ components that can create and manage other components. Think "applications"
 that take properties, and then expand into the required infrastructure; or have
 deploy actions that pull from artifact repositories and then run actions across
 the infrastructure.
+
+### Current Opportunity: Management Functions
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/GKOtMulPTMc?si=o7GVGMXeKcr37-g_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+Management functions allow a model to manage its own attributes; create,
+update, and delete components; and enqueue actions. In their first iteration,
+they’ll be used for three big use cases: importing existing cloud resources,
+modular templating, and management of existing components. [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-management-functions)
 
 ## Discovery of existing cloud resources
 
