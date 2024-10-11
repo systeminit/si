@@ -1,6 +1,6 @@
 # Vocabulary
 
-This a reference to all of the vocabulary used in System Initiative.
+This is a reference to all of the vocabulary used in System Initiative.
 
 ## Asset
 
@@ -18,7 +18,7 @@ many edges can connect to a socket (either "one" or "many".)
 
 ## Change Set
 
-Change Sets represent a batch of changes to the components, assets, functions
+Change Sets represent a batch of changes to the components, assets, functions,
 and actions in a workspace. When you want to propose a change in the real world,
 you first create a change set to do it. Nothing you do in a change set should
 alter the real world.
@@ -34,13 +34,13 @@ updated to reflect the proposed changes to the model on HEAD.
 
 Creating a change set makes a new copy of the hypergraph based on the current
 data in HEAD. Learn how to create a change set in the
-[getting started tutorial](/tutorials/getting-started).
+[Getting Started tutorial](/tutorials/getting-started).
 
 ### Applying a Change Set
 
 When you _apply_ a change set, all of the properties and code are merged to
 HEAD, and any actions enqueued. Learn how to apply a change set in the
-[getting started tutorial](/tutorials/getting-started).
+[Getting Started tutorial](/tutorials/getting-started).
 
 ### Abandoning a Change Set
 
@@ -55,7 +55,7 @@ its real world values.
 
 ## Credential
 
-A credential is a type of component that stores secret data, and has
+A credential is a type of component that stores secret data and has
 authentication functions attached to it. They are used to provide access to
 cloud providers, etc.
 
