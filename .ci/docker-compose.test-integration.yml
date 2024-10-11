@@ -10,10 +10,12 @@ services:
       # and not using the external port mapping.
       - "SI_TEST_PG_PORT=5432"
       - "SI_TEST_NATS_URL=nats"
+      - "SI_TEST_SPICEDB_URL=http://spicedb:50051"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     depends_on:
       - postgres-test
       - nats
+      - spicedb
       - jaeger
       - otelcol
 
@@ -71,3 +73,13 @@ services:
     ports:
       - "4566:4566"
       - "4510-4559:4510-4559"
+
+  spicedb:
+    build: ../component/spicedb
+    environment:
+      - "SPICEDB_LOG_FORMAT=console"
+      - "SPICEDB_GRPC_PRESHARED_KEY=hobgoblin"
+      - "SPICEDB_DATASTORE_ENGINE=memory"
+      - "ZED_KEYRING_PASSWORD=orc"
+    ports:
+      - "50051:50051"

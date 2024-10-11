@@ -1,0 +1,42 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_test",
+)
+
+rust_library(
+    name = "si-data-spicedb",
+    deps = [
+        "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:spicedb-client",
+        "//third-party/rust:spicedb-grpc",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:url",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+    extra_test_targets = [":test-integration"],
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//third-party/rust:indoc",
+        "//third-party/rust:tokio",
+        ":si-data-spicedb",
+    ],
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    crate_root = "tests/integration.rs",
+    env = {
+        "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
+)
