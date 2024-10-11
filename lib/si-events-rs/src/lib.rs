@@ -1,3 +1,4 @@
+pub mod audit_log;
 pub mod content_hash;
 pub mod encrypted_secret;
 pub mod merkle_tree_hash;

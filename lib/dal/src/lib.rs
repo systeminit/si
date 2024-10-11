@@ -22,6 +22,7 @@ use tokio::time::Instant;
 pub mod action;
 pub mod actor_view;
 pub mod attribute;
+pub mod audit_log;
 pub mod authentication_prototype;
 pub mod billing_publish;
 pub mod builtins;

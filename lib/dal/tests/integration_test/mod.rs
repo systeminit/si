@@ -1,6 +1,7 @@
 mod action;
 mod asset;
 mod attribute;
+mod audit_log;
 mod change_set;
 mod component;
 mod connection;
