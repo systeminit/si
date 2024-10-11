@@ -119,13 +119,13 @@ import {
   TreeNode,
   DropdownMenu,
   DropdownMenuItem,
+  TruncateWithTooltip,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import { useModuleStore, ModuleSpec } from "@/store/module.store";
 import { nilId } from "@/utils/nilId";
 import { ModuleId } from "@/api/sdf/dal/module";
-import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 import CodeViewer from "./CodeViewer.vue";
-import IconButton from "./IconButton.vue";
 
 const props = defineProps<{
   moduleId: ModuleId;

@@ -96,10 +96,10 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { SiSearch } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
-import SiSearch from "@/components/SiSearch.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import UserIcon from "./UserIcon.vue";

@@ -51,13 +51,16 @@
 
 <script lang="ts" setup>
 import { PropType, computed, ref } from "vue";
-import { Timestamp, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Timestamp,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import EditingPill from "./EditingPill.vue";
-import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
 const assetStore = useAssetStore();

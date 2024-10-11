@@ -37,9 +37,8 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
+import { Icon, IconNames, Modal, IconButton } from "@si/vue-lib/design-system";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import IconButton from "../IconButton.vue";
 
 const props = defineProps<{
   health: ResourceHealth | null;

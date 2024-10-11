@@ -298,6 +298,10 @@ import {
   RequestStatusMessage,
   Icon,
   Timestamp,
+  IconButton,
+  SiSearch,
+  Filter,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
@@ -310,13 +314,10 @@ import {
 } from "@/store/secrets.store";
 import { useComponentsStore } from "@/store/components.store";
 import AddSecretForm from "./AddSecretForm.vue";
-import IconButton from "./IconButton.vue";
-import SiSearch, { Filter } from "./SiSearch.vue";
 import RightPanelDrawer from "./RightPanelDrawer.vue";
 import ComponentCard from "./ComponentCard.vue";
 import SecretCard from "./SecretCard.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
-import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 
 const secretsStore = useSecretsStore();
 const { secretsByLastCreated } = storeToRefs(secretsStore);

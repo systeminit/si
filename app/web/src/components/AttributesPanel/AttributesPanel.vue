@@ -147,6 +147,7 @@ import {
   DropdownMenuItem,
   JsonTreeExplorer,
   LoadingMessage,
+  IconButton,
   COMPONENT_TYPE_ICONS,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
@@ -154,7 +155,6 @@ import { useComponentAttributesStore } from "@/store/component_attributes.store"
 
 import { ComponentType } from "@/api/sdf/dal/schema";
 import AttributesPanelItem from "./AttributesPanelItem.vue";
-import IconButton from "../IconButton.vue";
 
 const rootRef = ref<HTMLDivElement>();
 

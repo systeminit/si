@@ -31,9 +31,12 @@
 <script setup lang="ts">
 import { PropType, ref } from "vue";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import { DropdownMenu, DropdownMenuItem } from "@si/vue-lib/design-system";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  IconButton,
+} from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
-import IconButton from "./IconButton.vue";
 
 const assetStore = useAssetStore();
 

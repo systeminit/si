@@ -235,7 +235,7 @@ importers:
         specifier: ^2.29.2
         version: 2.29.3
       floating-vue:
-        specifier: ^2.0.0-beta.16
+        specifier: ^2.0.0-beta.20
         version: 2.0.0-beta.20(vue@3.4.15)
       fontfaceobserver:
         specifier: ^2.3.0
