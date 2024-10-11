@@ -1156,7 +1156,7 @@ impl Component {
     /// [`Components`](ComponentType::Component) and not from frames.
     #[instrument(
         name = "component.incoming_connections_for_id",
-        level = "info",
+        level = "debug",
         skip(ctx)
     )]
     pub async fn incoming_connections_for_id(
@@ -1214,7 +1214,7 @@ impl Component {
 
     #[instrument(
         name = "component.input_sockets_with_connections",
-        level = "info",
+        level = "debug",
         skip(ctx)
     )]
     pub async fn input_sockets_with_connections(
