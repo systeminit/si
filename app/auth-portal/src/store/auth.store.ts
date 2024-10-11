@@ -59,6 +59,13 @@ export type BillingDetails = {
   customerPortalUrl: string;
 };
 
+export type ActiveSubscription = {
+  planCode: string;
+  isTrial: boolean;
+  endingAt?: string | null;
+  subscriptionAt?: string | null;
+};
+
 export type SuspendedUser = {
   userId: UserId;
   email: string;
@@ -85,6 +92,7 @@ export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
     billingDetail: null as BillingDetails | null,
+    activeSubscription: null as ActiveSubscription | null,
     waitingForAccess: false,
     suspendedUsersState: [] as SuspendedUser[] | null,
     quarantinedUsersState: [] as QuarantinedUser[] | null,
@@ -175,6 +183,15 @@ export const useAuthStore = defineStore("auth", {
         params: billingDetail,
         onSuccess: (response) => {
           this.billingDetail = response.billingDetails;
+        },
+      });
+    },
+    async GET_ACTIVE_SUBSCRIPTION() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ activeSubscription: ActiveSubscription }>({
+        url: `/users/${this.user.id}/activeSubscription`,
+        onSuccess: (response) => {
+          this.activeSubscription = response.activeSubscription;
         },
       });
     },
