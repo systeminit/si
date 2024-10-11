@@ -57,9 +57,9 @@ import {
   RequestStatusMessage,
   themeClasses,
   Icon,
+  SiSearch,
 } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
-import SiSearch from "@/components/SiSearch.vue";
 import router from "@/router";
 import { useModuleStore } from "@/store/module.store";
 import { LatestModule } from "@/api/sdf/dal/module";

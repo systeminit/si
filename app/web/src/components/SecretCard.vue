@@ -124,12 +124,12 @@ import {
   DropdownMenuItem,
   themeClasses,
   Timestamp,
+  IconButton,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, PropType, ref } from "vue";
 import clsx from "clsx";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
-import IconButton from "./IconButton.vue";
-import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 
 // The "minimal" variant is used in the SecretsPanel and the "detailed" variant is used in the SecretsModal
 export type SecretCardVariant = "minimal" | "detailed";

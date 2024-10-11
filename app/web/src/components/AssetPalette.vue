@@ -126,6 +126,9 @@ import {
   PillCounter,
   ScrollArea,
   TreeNode,
+  SiSearch,
+  Filter,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
@@ -138,8 +141,6 @@ import { schemaVariantDisplayName } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import SiSearch, { Filter } from "@/components/SiSearch.vue";
-import TruncateWithTooltip from "@/components/TruncateWithTooltip.vue";
 import EditingPill from "@/components/EditingPill.vue";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();

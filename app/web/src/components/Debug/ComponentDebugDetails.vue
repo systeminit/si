@@ -133,7 +133,6 @@ import {
 import { PropType, computed, onMounted, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { ComponentId } from "@/api/sdf/dal/component";
-// import SiSearch from "@/components/SiSearch.vue";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";
