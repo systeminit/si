@@ -16,6 +16,7 @@ import botocore
 import botocore.session as bc
 from botocore.client import Config
 import time
+from si_logger import logger
 
 
 class DatabaseConnectParams(TypedDict):
@@ -99,16 +100,17 @@ class Redshift:
             )
             status = response["Status"]
 
-            if status == "FINISHED":
-                return response
-            elif status == "FAILED":
-                raise Exception(
-                    f"Query failed: {response['Error']} (Id={statement['Id']})"
-                )
-            elif status == "ABORTED":
-                raise Exception(f"Query aborted (Id={statement['Id']})")
+            match status:
+                case "FINISHED":
+                    return response
+                case "FAILED":
+                    raise Exception(
+                        f"Query failed: {response['Error']} (Id={statement['Id']})"
+                    )
+                case "ABORTED":
+                    raise Exception(f"Query aborted (Id={statement['Id']})")
 
-            print(
+            logger.debug(
                 f"Query status: {status}. Waiting {self._wait_interval_seconds}s for completion... (Id={statement['Id']})"
             )
 
@@ -130,10 +132,10 @@ class Redshift:
             return None if value.get("isNull") == True else list(value.values())[0]
 
         if len(Parameters) > 0:
-            print(f"Executing query: {Sql} with parameters {Parameters}")
+            logger.info(f"Executing query: {Sql} with parameters {Parameters}")
             statement = self.execute(Sql, **Parameters)
         else:
-            print(f"Executing query: {Sql}")
+            logger.info(f"Executing query: {Sql}")
             statement = self.execute(Sql)
 
         # Get the first page of results
@@ -146,7 +148,7 @@ class Redshift:
         # Page through the results, yielding each one
         column_names = [col["name"] for col in result["ColumnMetadata"]]  # type: ignore
         while True:
-            print(f"Page with {len(result['Records'])} records")
+            logger.debug(f"Page with {len(result['Records'])} records")
             for record in result["Records"]:
                 values = [to_python_value(value) for value in record]
                 yield dict(zip(column_names, values)) if with_headers else values
@@ -155,9 +157,9 @@ class Redshift:
             if "NextToken" not in result:
                 break
 
-            next_token: str = result["NextToken"]
+            next_token = result["NextToken"]
 
-            print(f"Getting next page with token {next_token} ...")
+            logger.info(f"Page complete. Getting next page with token {next_token} ...")
             result = self.with_client(
                 lambda client: client.get_statement_result(
                     Id=statement["Id"], NextToken=next_token
@@ -173,8 +175,10 @@ class Redshift:
         try:
             return callback(self._client)
         except botocore.exceptions.ConnectionError as e:  # type: ignore
+            logger.info(
+                "Connection error! Reestablishing connection and re-executing ..."
+            )
             self._client = self._connect()
-            print("Re-executing after reestablishing connection")
             return callback(self._client)
         except Exception as e:
             raise Exception(e)

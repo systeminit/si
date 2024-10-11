@@ -3,7 +3,16 @@ from itertools import islice
 import os
 import boto3
 import json
-from typing import Literal, NewType, TypeVar, TypedDict, Union, cast
+from typing import (
+    Literal,
+    NewType,
+    NotRequired,
+    Optional,
+    TypeVar,
+    TypedDict,
+    Union,
+    cast,
+)
 import requests  # from pip._vendor import requests
 import urllib.parse
 from si_logger import logger
@@ -111,7 +120,10 @@ class LagoApi:
             except LagoHTTPError as e:
 
                 # If the batch failed because some events were already uploaded, retry the rest
-                if [e.json.get("status"), e.json.get("code")] != [422, "validation_errors"]:
+                if [e.json.get("status"), e.json.get("code")] != [
+                    422,
+                    "validation_errors",
+                ]:
                     raise
 
                 for error in e.json["error_details"].values():
@@ -135,3 +147,263 @@ class LagoApi:
 
                     # Retry the events that didn't fail. Any failure here is a real error
                     self.post("/api/v1/events/batch", {"events": retry_event_batch})
+
+
+class LagoResponseMetadata(TypedDict):
+    current_page: int
+    next_page: NotRequired[Optional[int]]
+    prev_page: NotRequired[Optional[int]]
+    total_pages: int
+    total_count: int
+
+
+LagoCurrency = Literal[
+    "AED",
+    "AFN",
+    "ALL",
+    "AMD",
+    "ANG",
+    "AOA",
+    "ARS",
+    "AUD",
+    "AWG",
+    "AZN",
+    "BAM",
+    "BBD",
+    "BDT",
+    "BGN",
+    "BIF",
+    "BMD",
+    "BND",
+    "BOB",
+    "BRL",
+    "BSD",
+    "BWP",
+    "BYN",
+    "BZD",
+    "CAD",
+    "CDF",
+    "CHF",
+    "CLF",
+    "CLP",
+    "CNY",
+    "COP",
+    "CRC",
+    "CVE",
+    "CZK",
+    "DJF",
+    "DKK",
+    "DOP",
+    "DZD",
+    "EGP",
+    "ETB",
+    "EUR",
+    "FJD",
+    "FKP",
+    "GBP",
+    "GEL",
+    "GIP",
+    "GMD",
+    "GNF",
+    "GTQ",
+    "GYD",
+    "HKD",
+    "HNL",
+    "HRK",
+    "HTG",
+    "HUF",
+    "IDR",
+    "ILS",
+    "INR",
+    "ISK",
+    "JMD",
+    "JPY",
+    "KES",
+    "KGS",
+    "KHR",
+    "KMF",
+    "KRW",
+    "KYD",
+    "KZT",
+    "LAK",
+    "LBP",
+    "LKR",
+    "LRD",
+    "LSL",
+    "MAD",
+    "MDL",
+    "MGA",
+    "MKD",
+    "MMK",
+    "MNT",
+    "MOP",
+    "MRO",
+    "MUR",
+    "MVR",
+    "MWK",
+    "MXN",
+    "MYR",
+    "MZN",
+    "NAD",
+    "NGN",
+    "NIO",
+    "NOK",
+    "NPR",
+    "NZD",
+    "PAB",
+    "PEN",
+    "PGK",
+    "PHP",
+    "PKR",
+    "PLN",
+    "PYG",
+    "QAR",
+    "RON",
+    "RSD",
+    "RUB",
+    "RWF",
+    "SAR",
+    "SBD",
+    "SCR",
+    "SEK",
+    "SGD",
+    "SHP",
+    "SLL",
+    "SOS",
+    "SRD",
+    "STD",
+    "SZL",
+    "THB",
+    "TJS",
+    "TOP",
+    "TRY",
+    "TTD",
+    "TWD",
+    "TZS",
+    "UAH",
+    "UGX",
+    "USD",
+    "UYU",
+    "UZS",
+    "VND",
+    "VUV",
+]
+
+
+class LagoInvoice(TypedDict):
+    lago_id: str
+    sequential_id: NotRequired[int]
+    number: str
+    issuing_date: str
+    payment_dispute_lost_at: NotRequired[str]
+    payment_due_date: NotRequired[str]
+    payment_overdue: NotRequired[bool]
+    net_payment_term: NotRequired[int]
+    invoice_type: Literal[
+        "subscription", "add_on", "credit", "one_off", "progressive_billing"
+    ]
+    status: Literal["draft", "finalized", "voided", "failed"]
+    payment_status: Literal["pending", "succeeded", "failed"]
+    currency: LagoCurrency
+    fees_amount_cents: int
+    coupons_amount_cents: int
+    credit_notes_amount_cents: int
+    sub_total_excluding_taxes_amount_cents: int
+    taxes_amount_cents: int
+    sub_total_including_taxes_amount_cents: int
+    prepaid_credit_amount_cents: int
+    progressive_billing_credit_amount_cents: int
+    total_amount_cents: int
+    customer: dict[str, object]
+    metadata: list[dict[str, object]]
+    applied_taxes: list[dict[str, object]]
+    applied_usage_thresholds: NotRequired[Optional[list[dict[str, object]]]]
+
+
+class LagoInvoicesResponse(TypedDict):
+    invoices: list[LagoInvoice]
+    meta: LagoResponseMetadata
+
+
+class LagoChargeProperties(TypedDict):
+    graduated_ranges: list[dict[str, object]]
+    graduated_percentage_ranges: list[dict[str, object]]
+    amount: NotRequired[Optional[str]]
+    free_units: NotRequired[Optional[int]]
+    package_size: NotRequired[Optional[int]]
+    rate: NotRequired[Optional[str]]
+    fixed_amount: NotRequired[Optional[str]]
+    free_units_per_events: NotRequired[Optional[int]]
+    free_units_per_total_aggregation: NotRequired[Optional[str]]
+    per_transaction_max_amount: NotRequired[Optional[str]]
+    per_transaction_min_amount: NotRequired[Optional[str]]
+    grouped_by: list[str]
+    volume_ranges: list[dict[str, object]]
+
+
+class LagoCharge(TypedDict):
+    lago_id: str
+    lago_billable_metric_id: str
+    billable_metric_code: str
+    invoice_display_name: NotRequired[Optional[str]]
+    created_at: str
+    charge_model: Literal[
+        "standard",
+        "graduated",
+        "graduated_percentage",
+        "package",
+        "percentage",
+        "volume",
+        "dynamic",
+    ]
+    pay_in_advance: NotRequired[Optional[bool]]
+    invoiceable: NotRequired[Optional[bool]]
+    regroup_paid_fees: NotRequired[Optional[Literal["invoice"]]]
+    prorated: NotRequired[Optional[bool]]
+    min_amount_cents: NotRequired[Optional[int]]
+    properties: LagoChargeProperties
+    filters: list[dict[str, object]]
+    taxes: list[dict[str, object]]
+
+
+class LagoPlan(TypedDict):
+    lago_id: str
+    name: str
+    invoice_display_name: NotRequired[Optional[str]]
+    created_at: str
+    code: str
+    interval: Literal["weekly", "monthly", "quarterly", "yearly"]
+    description: NotRequired[Optional[str]]
+    amount_cents: int
+    amount_currency: LagoCurrency
+    trial_period: NotRequired[Optional[float]]
+    pay_in_advance: bool
+    bill_charges_monthly: NotRequired[Optional[bool]]
+    active_subscriptions_count: int
+    draft_invoices_count: int
+    minimum_commitment: NotRequired[Optional[dict[str, object]]]
+    charges: list[LagoCharge]
+    taxes: list[dict[str, object]]
+    usage_thresholds: list[dict[str, object]]
+
+
+class LagoSubscription(TypedDict):
+    lago_id: str
+    external_id: str
+    lago_customer_id: str
+    external_customer_id: str
+    billing_time: Literal["calendar", "anniversary"]
+    name: NotRequired[Optional[str]]
+    plan_code: str
+    status: Literal["active", "pending", "terminated", "canceled"]
+    created_at: str
+    canceled_at: NotRequired[Optional[str]]
+    started_at: NotRequired[Optional[str]]
+    ending_at: str
+    subscription_at: str
+    terminated_at: NotRequired[Optional[str]]
+    previous_plan_code: NotRequired[Optional[str]]
+    next_plan_code: NotRequired[Optional[str]]
+    downgrade_plan_date: NotRequired[Optional[str]]
+    trial_ended_at: NotRequired[Optional[str]]
+    plan: LagoPlan
