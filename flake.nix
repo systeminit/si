@@ -104,6 +104,7 @@
         doctl
         google-cloud-sdk
         linode-cli
+        flyctl
       ];
 
       buck2Derivation = {
