@@ -42,7 +42,7 @@ pub enum PkgError {
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
     AttributeFuncForKeySetOnWrongKind(PropId, String, PropKind),
-    #[error(transparent)]
+    #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attrbute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
@@ -56,9 +56,9 @@ pub enum PkgError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
-    #[error(transparent)]
+    #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error(transparent)]
+    #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument for {0} not found with name {1}")]
     FuncArgumentNotFoundByName(FuncId, String),
@@ -84,7 +84,7 @@ pub enum PkgError {
     MissingIntrinsicFunc(String),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
-    #[error(transparent)]
+    #[error("module error: {0}")]
     Module(#[from] ModuleError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
@@ -92,11 +92,11 @@ pub enum PkgError {
     OutputSocketMissingPrototype(OutputSocketId),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
-    #[error(transparent)]
+    #[error("si pkg error: {0}")]
     Pkg(#[from] SiPkgError),
-    #[error(transparent)]
+    #[error("pkg spec error: {0}")]
     PkgSpec(#[from] SpecError),
-    #[error(transparent)]
+    #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("prop {0} missing attribute prototype")]
     PropMissingPrototype(PropId),
@@ -114,7 +114,7 @@ pub enum PkgError {
     TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error(transparent)]
+    #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("url parse error: {0}")]
     Url(#[from] ParseError),
@@ -126,7 +126,7 @@ pub enum PkgError {
     WorkspaceNotFound(WorkspacePk),
     #[error("workspace pk not found on context")]
     WorkspacePkNone,
-    #[error(transparent)]
+    #[error("workspace snapshot error: {0}")]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
 }
 

@@ -9,8 +9,9 @@ use axum::{
 use convert_case::{Case, Casing};
 use dal::{
     pkg::PkgError as DalPkgError, ChangeSetError, ChangeSetId, DalContextBuilder, FuncError,
-    SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError, WsEventError,
+    SchemaError, SchemaId, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
+    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WorkspaceSnapshotError,
+    WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_layer_cache::LayerDbError;
@@ -45,17 +46,17 @@ pub mod remote_module_spec;
 pub enum ModuleError {
     #[error("Could not canonicalize path: {0}")]
     Canonicalize(#[from] CanonicalFileError),
-    #[error(transparent)]
+    #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Changeset not found: {0}")]
     ChangeSetNotFound(ChangeSetId),
-    #[error(transparent)]
+    #[error("dal pkg error: {0}")]
     DalPkg(#[from] DalPkgError),
     #[error("Trying to export from/import into root tenancy")]
     ExportingImportingWithRootTenancy,
-    #[error("transparent")]
+    #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error(transparent)]
+    #[error("hyper http error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error("Invalid package file name: {0}")]
     InvalidPackageFileName(String),
@@ -67,7 +68,7 @@ pub enum ModuleError {
     IoError(#[from] std::io::Error),
     #[error("LayerDb error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("dal module error: {0}")]
     Module(#[from] dal::module::ModuleError),
     #[error("Module hash not be found: {0}")]
     ModuleHashNotFound(String),
@@ -89,41 +90,47 @@ pub enum ModuleError {
     PackageNotFound(String),
     #[error("Package version required")]
     PackageVersionEmpty,
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
+    #[error("pg pool error: {0}")]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error(transparent)]
+    #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema not found for variant {0}")]
     SchemaNotFoundForVariant(SchemaVariantId),
     #[error("schema install pkg result empty: {0}")]
     SchemaNotFoundFromInstall(Ulid),
-    #[error(transparent)]
+    #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found {0}")]
     SchemaVariantNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
-    #[error(transparent)]
+    #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error(transparent)]
+    #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
+    #[error(
+        "found an unlocked schema variant (schema: {1}) for a module to be installed (module: {0})"
+    )]
+    UnlockedSchemaVariantForModuleToInstall(String, SchemaId),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
-    #[error("transparent")]
+    #[error("user error: {0}")]
     User(#[from] UserError),
-    #[error("transparent")]
+    #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("Could not find current workspace {0}")]
     WorkspaceNotFound(WorkspacePk),
-    #[error("transparent")]
+    #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),

@@ -291,6 +291,7 @@ impl Func {
         })
         .await
     }
+
     pub fn metadata_view(&self) -> FuncMetadataView {
         FuncMetadataView {
             display_name: self
@@ -469,6 +470,37 @@ impl Func {
         let hash = node_weight.content_hash();
         let func_node_weight = node_weight.get_func_node_weight()?;
         Ok((func_node_weight, hash))
+    }
+
+    /// This _unsafely_ unlocks the [`Func`].
+    ///
+    /// **Warning:** this should only be used on a case-by-case basis and is dangerous. We should
+    /// create a _copy_ of a [`Func`] when an unlocked one is desired, by default. If unsure, do
+    /// not use this.
+    pub async fn unsafe_unlock_without_copy(self, ctx: &DalContext) -> FuncResult<()> {
+        let mut func = self;
+
+        let before = FuncContent::from(func.clone());
+        func.is_locked = false;
+        let updated = FuncContent::from(func.clone());
+
+        if updated != before {
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(updated.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+            ctx.workspace_snapshot()?
+                .update_content(func.id.into(), hash)
+                .await?;
+        }
+
+        Ok(())
     }
 
     pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> FuncResult<Self>

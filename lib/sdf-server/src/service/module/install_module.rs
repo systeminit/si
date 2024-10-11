@@ -5,7 +5,7 @@ use axum::{
 };
 use dal::{
     pkg::{import_pkg_from_pkg, ImportOptions},
-    ChangeSet, Func, SchemaVariant, Visibility, WsEvent,
+    ChangeSet, Func, Schema, SchemaVariant, Visibility, WsEvent,
 };
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
@@ -50,8 +50,43 @@ pub async fn install_module(
 
     let module_index_client =
         ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+
+    // Before we install the module(s), ensure that there are no unlocked variants.
+    let mut ids_with_details = Vec::with_capacity(request.ids.len());
     for id in request.ids {
         let module_details = module_index_client.module_details(id).await?;
+
+        if let Some(schema_id) = module_details.schema_id() {
+            if Schema::exists_locally(&ctx, schema_id.into()).await?
+                && SchemaVariant::get_unlocked_for_schema(&ctx, schema_id.into())
+                    .await?
+                    .is_some()
+            {
+                // TODO(nick): do not use the 500 toast for this.
+                return Err(ModuleError::UnlockedSchemaVariantForModuleToInstall(
+                    module_details.id,
+                    schema_id.into(),
+                ));
+            }
+        } else {
+            // NOTE(nick): I don't love this. Basically, if you install an old module, it can
+            // clobber your editing asset. On the other hand, I think erroring here is a bad idea
+            // because we should still allow you to install it. Ideally, we'd give the user the
+            // option to choose what to do when they want to install module that doesn't know its
+            // schema id. Fortunately, I think these modules should not exist anymore at the time
+            // of writing, so this is most likely just a typing issue in Rust rather than a real
+            // world problem.
+            warn!(
+                module_id = %module_details.id,
+                "found older module where its schema id is empty, so we will still install it, but we cannot triviallly determine if there are unlocked variants that may be clobbered"
+            );
+        }
+
+        ids_with_details.push((id, module_details));
+    }
+
+    // After validating that we can install the modules, get on with it.
+    for (id, module_details) in ids_with_details {
         let pkg_data = module_index_client.download_module(id).await?;
 
         let pkg = SiPkg::load_from_bytes(&pkg_data)?;

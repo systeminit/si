@@ -305,6 +305,16 @@ impl Schema {
         Ok(())
     }
 
+    /// Returns whether or not the [`Schema`] exists locally. This works because
+    /// [`Schemas`](Schema) are unique across workspaces.
+    pub async fn exists_locally(ctx: &DalContext, id: SchemaId) -> SchemaResult<bool> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .get_node_index_by_id_opt(id)
+            .await
+            .is_some())
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Option<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 

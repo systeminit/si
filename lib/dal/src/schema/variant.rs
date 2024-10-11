@@ -1084,6 +1084,23 @@ impl SchemaVariant {
         Ok(Func::get_by_id_or_error(ctx, asset_func_id).await?)
     }
 
+    /// This method unlocks the asset [`Func`] without creating a copy.
+    ///
+    /// **Warning:** this is a somewhat dangerous as we should normally create a copy of an asset
+    /// [`Func`] when unlocking it. However, this is a special case function that should only be
+    /// used on a case-by-case basis. If unsure, create an unlocked _copy_ of the asset [`Func`].
+    pub(crate) async fn unlock_asset_func_without_copy(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<()> {
+        let asset_func_id = self
+            .asset_func_id
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))?;
+        let asset_func = Func::get_by_id_or_error(ctx, asset_func_id).await?;
+        asset_func.unsafe_unlock_without_copy(ctx).await?;
+        Ok(())
+    }
+
     pub async fn get_root_prop_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
