@@ -117,6 +117,10 @@ export default defineConfig({
             link: "/how-tos/aws-ecs",
           },
           {
+            text: "AWS Static Cloudfront Website",
+            link: "/how-tos/aws-static-cloudfront",
+          },
+          {
             text: "AWS macOS Instances",
             link: "/how-tos/aws-macos",
           },
