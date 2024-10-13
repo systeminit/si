@@ -88,6 +88,7 @@ where
         .await
     }
 
+    #[allow(unused)]
     fn spawn_cleanup_tasks(caches: &[&DiskCache], cancellation_token: CancellationToken) {
         let mut cleanup_tracker = HashMap::new();
 
@@ -165,17 +166,17 @@ where
             compute_executor.clone(),
         )?;
 
-        Self::spawn_cleanup_tasks(
-            &[
-                cas_cache.disk_cache(),
-                encrypted_secret_cache.disk_cache(),
-                func_run_cache.disk_cache(),
-                func_run_log_cache.disk_cache(),
-                rebase_batch_cache.disk_cache(),
-                snapshot_cache.disk_cache(),
-            ],
-            token.clone(),
-        );
+        //        Self::spawn_cleanup_tasks(
+        //            &[
+        //                cas_cache.disk_cache(),
+        //                encrypted_secret_cache.disk_cache(),
+        //                func_run_cache.disk_cache(),
+        //                func_run_log_cache.disk_cache(),
+        //                rebase_batch_cache.disk_cache(),
+        //                snapshot_cache.disk_cache(),
+        //            ],
+        //            token.clone(),
+        //        );
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
