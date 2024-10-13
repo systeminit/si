@@ -1,4 +1,5 @@
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 
 use si_layer_cache::disk_cache::{DiskCache, DiskCacheConfig};
 
@@ -87,6 +88,8 @@ async fn remove_ttld_item() {
         Duration::from_secs(1),
     ))
     .expect("cannot create disk cache");
+    let token = CancellationToken::new();
+    disk_cache.start_cleanup_task(token.clone());
 
     disk_cache
         .insert("skid row".into(), b"slave to the grind".to_vec())

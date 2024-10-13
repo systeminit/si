@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use telemetry::tracing::warn;
+use telemetry::prelude::*;
+use tokio::select;
+use tokio_util::sync::CancellationToken;
 
 use crate::error::LayerDbResult;
 use crate::event::LayeredEvent;
@@ -26,8 +28,11 @@ impl DiskCache {
             ttl_check_interval: config.ttl_check_interval,
             write_path: config.path,
         };
-        cache.start_cleanup_task();
         Ok(cache)
+    }
+
+    pub fn write_path(&self) -> PathBuf {
+        self.write_path.as_ref().clone()
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Vec<u8>> {
@@ -69,24 +74,38 @@ impl DiskCache {
         Ok(())
     }
 
-    fn start_cleanup_task(&self) {
-        let me = self.clone();
-        let cache = self.write_path.clone();
-        let ttl = self.ttl;
-        let interval = self.ttl_check_interval;
+    async fn cleanup(&self) {
+        for md in cacache::list_sync(self.write_path.as_ref()).flatten() {
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect(
+                    "unable to get the current time, what does this mean? How could this happen?",
+                )
+                .as_millis();
+            if now - md.time > self.ttl.as_millis() {
+                if let Err(err) = self.remove(md.key.into()).await {
+                    warn!("unable to remove item from disk cache: {}", err);
+                };
+            }
+        }
+    }
+
+    pub fn start_cleanup_task(&self, cancellation_token: CancellationToken) {
+        let self_clone = self.clone();
+
+        info!(
+            "starting disk cache cleanup task for {}",
+            self.write_path.display()
+        );
 
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(interval).await;
-                for md in cacache::list_sync(cache.as_ref()).flatten() {
-                    let now = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("unable to get the current time, what does this mean? How could this happen?")
-                        .as_millis();
-                    if now - md.time > ttl.as_millis() {
-                        if let Err(err) = me.remove(md.key.into()).await {
-                            warn!("unable to remove item from disk cache: {}", err);
-                        };
+                select! {
+                    _ = tokio::time::sleep(self_clone.ttl_check_interval) => {
+                        self_clone.cleanup().await;
+                    }
+                    _ = cancellation_token.cancelled() => {
+                        break;
                     }
                 }
             }

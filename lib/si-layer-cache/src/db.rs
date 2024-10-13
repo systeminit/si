@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
+use std::collections::HashMap;
 use std::{future::IntoFuture, io, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -15,7 +16,7 @@ use ulid::Ulid;
 use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::db::func_run::FuncRunDb;
 use crate::db::func_run_log::FuncRunLogDb;
-use crate::disk_cache::DiskCacheConfig;
+use crate::disk_cache::{DiskCache, DiskCacheConfig};
 use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
@@ -87,6 +88,19 @@ where
         .await
     }
 
+    fn spawn_cleanup_tasks(caches: &[&DiskCache], cancellation_token: CancellationToken) {
+        let mut cleanup_tracker = HashMap::new();
+
+        for disk_cache in caches {
+            let write_path = disk_cache.write_path().display().to_string();
+            cleanup_tracker.insert(write_path, *disk_cache);
+        }
+
+        for cache in cleanup_tracker.into_values() {
+            cache.start_cleanup_task(cancellation_token.clone())
+        }
+    }
+
     #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
         disk_cache_config: DiskCacheConfig,
@@ -150,6 +164,18 @@ where
             disk_cache_config.clone(),
             compute_executor.clone(),
         )?;
+
+        Self::spawn_cleanup_tasks(
+            &[
+                cas_cache.disk_cache(),
+                encrypted_secret_cache.disk_cache(),
+                func_run_cache.disk_cache(),
+                func_run_log_cache.disk_cache(),
+                rebase_batch_cache.disk_cache(),
+                snapshot_cache.disk_cache(),
+            ],
+            token.clone(),
+        );
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
