@@ -37,6 +37,7 @@ pub type ContentTypeResult<T> = Result<T, ContentTypeError>;
 /// with postcard, DO *NOT* add new types to this list in alphabetical order.
 /// Add them to the *END* of the enum *ONLY*.
 #[derive(EnumDiscriminants, Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[strum_discriminants(derive(strum::EnumIter))]
 pub enum ContentTypes {
     Any(CasValue),
     AttributePrototype(AttributePrototypeContent),

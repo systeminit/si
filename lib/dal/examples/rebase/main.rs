@@ -1,17 +1,10 @@
 use std::{env, fs::File, io::prelude::*};
 
 use petgraph::{visit::EdgeRef, Direction::Incoming};
-use regex::bytes;
 use serde::de::DeserializeOwned;
 use si_layer_cache::db::serialize;
 
-use dal::{
-    workspace_snapshot::{
-        graph::{correct_transforms::correct_transforms, RebaseBatch},
-        node_weight::NodeWeight,
-    },
-    WorkspaceSnapshotGraph,
-};
+use dal::{workspace_snapshot::node_weight::NodeWeight, WorkspaceSnapshotGraph};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
@@ -73,5 +66,3 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-// 01J2F7HKZFMTN6GVKXE73044AT

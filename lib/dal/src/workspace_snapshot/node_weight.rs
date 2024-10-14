@@ -4,7 +4,7 @@ use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWei
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
 use si_layer_cache::LayerDbError;
-use strum::EnumDiscriminants;
+use strum::{EnumDiscriminants, EnumIter};
 use thiserror::Error;
 use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
 
@@ -111,7 +111,7 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 /// **WARNING**: the order of this enum is important! Do not re-order elements.
 /// New variants must go at the end, even if it's not in lexical order!
 #[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq)]
-#[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize))]
+#[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize, EnumIter))]
 pub enum NodeWeight {
     Action(ActionNodeWeight),
     ActionPrototype(ActionPrototypeNodeWeight),
