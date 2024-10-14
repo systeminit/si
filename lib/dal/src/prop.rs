@@ -255,7 +255,6 @@ impl From<String> for PropPath {
     }
 }
 
-#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
