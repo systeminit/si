@@ -1,9 +1,10 @@
-use axum::{response::IntoResponse, Json};
+use axum::Json;
 use dal::{ChangeSet, Secret, SecretId, SecretView, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::{SecretError, SecretResult};
 use crate::extract::{AccessBuilder, HandlerContext};
+use crate::service::force_change_set_response::ForceChangeSetResponse;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +20,7 @@ pub async fn delete_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<DeleteSecretRequest>,
-) -> SecretResult<impl IntoResponse> {
+) -> SecretResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
@@ -40,9 +41,5 @@ pub async fn delete_secret(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }

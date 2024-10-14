@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axum::{response::IntoResponse, Json};
+use axum::Json;
 use dal::{
     component::{frame::Frame, ComponentGeometry, InferredConnection},
     diagram::SummaryDiagramInferredEdge,
@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use super::DiagramResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use crate::{
+    extract::{AccessBuilder, HandlerContext},
+    service::force_change_set_response::ForceChangeSetResponse,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +43,7 @@ pub async fn set_component_position(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetComponentPositionRequest>,
-) -> DiagramResult<impl IntoResponse> {
+) -> DiagramResult<ForceChangeSetResponse<SetComponentPositionResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -151,14 +154,10 @@ pub async fn set_component_position(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(
-        response.body(serde_json::to_string(&SetComponentPositionResponse {
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        SetComponentPositionResponse {
             request_ulid: request.request_ulid,
-        })?)?,
-    )
+        },
+    ))
 }

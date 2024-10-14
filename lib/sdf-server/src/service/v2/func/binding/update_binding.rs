@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -15,7 +14,10 @@ use si_frontend_types as frontend_types;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::v2::func::{FuncAPIError, FuncAPIResult},
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::func::{FuncAPIError, FuncAPIResult},
+    },
     track,
 };
 
@@ -27,7 +29,7 @@ pub async fn update_binding(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<frontend_types::FuncBindings>,
-) -> FuncAPIResult<impl IntoResponse> {
+) -> FuncAPIResult<ForceChangeSetResponse<Vec<frontend_types::FuncBinding>>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -184,10 +186,5 @@ pub async fn update_binding(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(serde_json::to_string(&binding)?)?)
+    Ok(ForceChangeSetResponse::new(force_change_set_id, binding))
 }

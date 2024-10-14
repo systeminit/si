@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axum::{response::IntoResponse, Json};
+use axum::Json;
 use dal::{
     AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, PropId, Visibility,
     WsEvent,
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{AccessBuilder, HandlerContext},
-    service::component::ComponentResult,
+    service::{component::ComponentResult, force_change_set_response::ForceChangeSetResponse},
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,7 +27,7 @@ pub async fn delete_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<DeletePropertyEditorValueRequest>,
-) -> ComponentResult<impl IntoResponse> {
+) -> ComponentResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -46,9 +46,5 @@ pub async fn delete_property_editor_value(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }

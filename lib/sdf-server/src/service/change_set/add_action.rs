@@ -1,7 +1,4 @@
-use axum::{
-    extract::{Host, Json, OriginalUri},
-    response::IntoResponse,
-};
+use axum::extract::{Host, Json, OriginalUri};
 use dal::{
     action::{
         prototype::{ActionKind, ActionPrototype},
@@ -14,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::ChangeSetResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -33,7 +31,7 @@ pub async fn add_action(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<AddActionRequest>,
-) -> ChangeSetResult<impl IntoResponse> {
+) -> ChangeSetResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -73,9 +71,5 @@ pub async fn add_action(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }

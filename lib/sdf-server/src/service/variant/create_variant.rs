@@ -1,14 +1,14 @@
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use dal::{schema::variant::authoring::VariantAuthoringClient, ChangeSet, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::variant::SchemaVariantResult,
+    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
     track,
 };
 
@@ -28,7 +28,7 @@ pub async fn create_variant(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateVariantRequest>,
-) -> SchemaVariantResult<impl IntoResponse> {
+) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -65,15 +65,9 @@ pub async fn create_variant(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
+    let variant = created_schema_variant
+        .into_frontend_type(&ctx, schema.id())
+        .await?;
 
-    Ok(response.body(serde_json::to_string(
-        &created_schema_variant
-            .into_frontend_type(&ctx, schema.id())
-            .await?,
-    )?)?)
+    Ok(ForceChangeSetResponse::new(force_change_set_id, variant))
 }

@@ -1,13 +1,11 @@
-use axum::{
-    extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
-};
+use axum::extract::{Host, OriginalUri, Path};
 use dal::{func::binding::FuncBinding, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::{FuncAPIError, FuncAPIResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -25,7 +23,7 @@ pub async fn delete_func(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
-) -> FuncAPIResult<impl IntoResponse> {
+) -> FuncAPIResult<ForceChangeSetResponse<DeleteFuncResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -62,13 +60,11 @@ pub async fn delete_func(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(serde_json::to_string(&DeleteFuncResponse {
-        success: true,
-        name: func_name,
-    })?)?)
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        DeleteFuncResponse {
+            success: true,
+            name: func_name,
+        },
+    ))
 }

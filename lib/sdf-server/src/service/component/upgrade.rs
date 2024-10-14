@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -11,7 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::component::{ComponentError, ComponentResult},
+    service::{
+        component::{ComponentError, ComponentResult},
+        force_change_set_response::ForceChangeSetResponse,
+    },
     track,
 };
 
@@ -30,7 +32,7 @@ pub async fn upgrade(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<UpgradeComponentRequest>,
-) -> ComponentResult<impl IntoResponse> {
+) -> ComponentResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -82,9 +84,5 @@ pub async fn upgrade(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }

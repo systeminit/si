@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -11,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::variant::SchemaVariantResult,
+    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
     track,
 };
 
@@ -41,7 +40,7 @@ pub async fn save_variant(
         code,
         visibility,
     }): Json<SaveVariantRequest>,
-) -> SchemaVariantResult<impl IntoResponse> {
+) -> SchemaVariantResult<ForceChangeSetResponse<SaveVariantResponse>> {
     let mut ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -94,13 +93,8 @@ pub async fn save_variant(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(&SaveVariantResponse {
-        success: true,
-    })?)?)
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        SaveVariantResponse { success: true },
+    ))
 }

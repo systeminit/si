@@ -1,12 +1,10 @@
-use axum::{
-    extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
-};
+use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent};
 
 use super::{SchemaVariantsAPIError, SchemaVariantsAPIResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -21,7 +19,7 @@ pub async fn delete_unlocked_variant(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> SchemaVariantsAPIResult<impl IntoResponse> {
+) -> SchemaVariantsAPIResult<ForceChangeSetResponse<SchemaVariantId>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -55,11 +53,8 @@ pub async fn delete_unlocked_variant(
     );
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(&schema_variant_id)?)?)
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        schema_variant_id,
+    ))
 }
