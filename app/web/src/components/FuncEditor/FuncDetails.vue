@@ -147,6 +147,12 @@
               </Stack>
             </TreeNode>
 
+            <ManagementDetails
+              v-if="editingFunc.kind === FuncKind.Management"
+              ref="detachRef"
+              :funcId="editingFunc.funcId"
+              :schemaVariantId="$props.schemaVariantId"
+            />
             <ActionDetails
               v-if="editingFunc.kind === FuncKind.Action"
               ref="detachRef"
@@ -263,6 +269,7 @@ import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
+import ManagementDetails from "./ManagementDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
@@ -455,6 +462,7 @@ const enableTestPanel = computed(() => {
           FuncBindingKind.Attribute,
           FuncBindingKind.CodeGeneration,
           FuncBindingKind.Qualification,
+          FuncBindingKind.Management,
         ].includes(kind),
       ).length > 0
   );

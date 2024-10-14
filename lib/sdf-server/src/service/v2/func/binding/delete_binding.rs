@@ -10,7 +10,7 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::func::FuncKind;
+use dal::func::{binding::management::ManagementBinding, FuncKind};
 use dal::{
     func::binding::{
         action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
@@ -93,8 +93,22 @@ pub async fn delete_binding(
                 )
                 .await?
             }
+            FuncKind::Management => {
+                let frontend_types::FuncBinding::Management {
+                    management_prototype_id: Some(management_prototype_id),
+                    ..
+                } = binding
+                else {
+                    return Err(FuncAPIError::MissingActionPrototype);
+                };
+
+                ManagementBinding::delete_management_binding(
+                    &ctx,
+                    management_prototype_id.into_raw_id().into(),
+                )
+                .await?
+            }
             FuncKind::Attribute
-            | FuncKind::Management
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition
             | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),

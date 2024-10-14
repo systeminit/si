@@ -37,6 +37,7 @@ export interface RawComponent {
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
   displayName: string;
+  resourceId: string;
   id: ComponentId;
   componentType: ComponentType;
   parentId?: ComponentId;

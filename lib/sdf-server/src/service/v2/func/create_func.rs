@@ -194,7 +194,25 @@ pub async fn create_func(
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
         }
-        _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
+        FuncKind::Management => {
+            if let FuncBinding::Management {
+                schema_variant_id: Some(schema_variant_id),
+                ..
+            } = request.binding.clone()
+            {
+                FuncAuthoringClient::create_new_management_func(
+                    &ctx,
+                    request.name,
+                    schema_variant_id.into(),
+                )
+                .await?
+            } else {
+                return Err(FuncAPIError::WrongFunctionKindForBinding);
+            }
+        }
+        FuncKind::Unknown | FuncKind::SchemaVariantDefinition | FuncKind::Intrinsic => {
+            return Err(FuncAPIError::WrongFunctionKindForBinding)
+        }
     };
 
     let code = get_code_response(&ctx, func.id).await?;

@@ -701,12 +701,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const slug = state.selectedComponentDetailsTab;
 
             // root level tabs
-            if (["resource", "actions", "component"].includes(slug || "")) {
+            if (["resource", "management", "component"].includes(slug || "")) {
               return [slug, undefined];
             }
 
-            // actions tabs are prefixed with "actions-"
-            if (slug?.startsWith("actions")) return ["actions", slug];
+            // subtabs
+            if (slug?.startsWith("management-")) return ["management", slug];
+            if (slug?.startsWith("resource-")) return ["resource", slug];
 
             // all other subtabs (currently) are in the component tab
             return ["component", slug];
@@ -839,6 +840,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
+          async SET_RESOURCE_ID(componentId: ComponentId, resourceId: string) {
+            return new ApiRequest<{
+              componentId: ComponentId;
+            }>({
+              method: "post",
+              url: "component/set_resource_id",
+              params: {
+                componentId,
+                resourceId,
+                ...visibilityParams,
+              },
+            });
+          },
+
           async RENAME_COMPONENT(componentId: ComponentId, newName: string) {
             return new ApiRequest<{
               componentId: ComponentId;

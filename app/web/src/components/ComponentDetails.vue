@@ -143,18 +143,6 @@
               </TabGroupItem>
             </TabGroup>
           </TabGroupItem>
-          <TabGroupItem slug="actions">
-            <template #label>
-              <Inline noWrap alignY="center">
-                <span class="uppercase">Actions</span>
-                <PillCounter
-                  :count="selectedComponentActionsCount"
-                  hideIfZero
-                />
-              </Inline>
-            </template>
-            <AssetActionsDetails :componentId="selectedComponentId" />
-          </TabGroupItem>
           <TabGroupItem slug="resource">
             <template #label>
               <Inline noWrap alignY="center">
@@ -167,7 +155,17 @@
                 />
               </Inline>
             </template>
-            <ComponentDetailsResource />
+            <AssetActionsDetails :componentId="selectedComponentId" />
+          </TabGroupItem>
+          <TabGroupItem
+            v-if="
+              ffStore.MANAGEMENT_FUNCTIONS &&
+              funcStore.managementFunctionsForSelectedComponent.length > 0
+            "
+            slug="management"
+            label="Mgmt Fns"
+          >
+            <ComponentDetailsManagement />
           </TabGroupItem>
         </TabGroup>
       </div>
@@ -193,11 +191,12 @@ import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useActionsStore } from "@/store/actions.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { useFuncStore } from "@/store/func/funcs.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
-import ComponentDetailsResource from "./ComponentDetailsResource.vue";
+import ComponentDetailsManagement from "./ComponentDetailsManagement.vue";
 import ComponentDebugDetails from "./Debug/ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
@@ -220,7 +219,9 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
-const actionsStore = useActionsStore();
+const funcStore = useFuncStore();
+
+const ffStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 
@@ -242,13 +243,6 @@ const selectedComponentFailingQualificationsCount = computed(
       selectedComponentId.value
     ]?.failed || 0,
 );
-
-const selectedComponentActionsCount = computed(() => {
-  return _.filter(
-    actionsStore.actionsByComponentId[selectedComponentId.value],
-    (a) => !!a.actionInstanceId,
-  ).length;
-});
 
 const statusStore = useStatusStore();
 const isUpdating = computed(() =>
@@ -282,13 +276,13 @@ function onTabSelected(newTabSlug?: string) {
 watch(
   () => componentsStore.selectedComponentDetailsTab,
   (tabSlug) => {
-    if (tabSlug === "resource") {
+    if (tabSlug?.startsWith("resource")) {
       tabsRef.value?.selectTab("resource");
-    } else if (tabSlug?.startsWith("actions")) {
-      tabsRef.value?.selectTab("actions");
+    } else if (tabSlug?.startsWith("management")) {
+      tabsRef.value?.selectTab("management");
     } else {
       tabsRef.value?.selectTab("component");
-      componentSubTabsRef.value?.selectTab(tabSlug || undefined);
+      componentSubTabsRef.value?.selectTab(tabSlug || "attributes");
     }
   },
 );

@@ -5,6 +5,7 @@ use attribute::AttributeBinding;
 use authentication::AuthBinding;
 use itertools::Itertools;
 use leaf::LeafBinding;
+use management::ManagementBinding;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
 use telemetry::prelude::*;
@@ -21,6 +22,7 @@ use crate::func::argument::FuncArgumentError;
 use crate::func::argument::FuncArgumentId;
 use crate::func::binding::attribute::AttributeBindingMalformedInput;
 use crate::func::FuncKind;
+use crate::management::prototype::ManagementPrototypeError;
 use crate::prop::PropError;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::output::OutputSocketError;
@@ -41,6 +43,7 @@ pub mod attribute;
 pub mod attribute_argument;
 pub mod authentication;
 pub mod leaf;
+pub mod management;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -81,6 +84,8 @@ pub enum FuncBindingError {
     InvalidIntrinsicBinding,
     #[error("malformed input for binding: {0:?}")]
     MalformedInput(AttributeBindingMalformedInput),
+    #[error("management prototype error: {0}")]
+    ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("missing value source for attribute prototype argument id {0}")]
     MissingValueSource(AttributePrototypeArgumentId),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
@@ -221,6 +226,11 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 schema_variant_id: auth.schema_variant_id.into(),
                 func_id: Some(auth.func_id.into()),
             },
+            FuncBinding::Management(mgmt) => si_frontend_types::FuncBinding::Management {
+                schema_variant_id: Some(mgmt.schema_variant_id.into()),
+                management_prototype_id: Some(mgmt.management_prototype_id.into()),
+                func_id: Some(mgmt.func_id.into()),
+            },
             FuncBinding::CodeGeneration(code_gen) => {
                 si_frontend_types::FuncBinding::CodeGeneration {
                     schema_variant_id: code_gen.eventual_parent.into(),
@@ -271,6 +281,7 @@ pub enum FuncBinding {
     /// CodeGen funcs are ultimately just an Attribute Function, but the user can not control where they output to.
     /// They write to an Attribute Value beneath the Code Gen Root Prop Node
     CodeGeneration(LeafBinding),
+    Management(ManagementBinding),
     /// Qualification funcs are ultimately just an Attribute Function, but the user can not control where they output to.
     /// They write to an Attribute Value beneath the Qualification Root Prop Node
     Qualification(LeafBinding),
@@ -321,6 +332,9 @@ impl FuncBinding {
                 )
                 .await?
             }
+            FuncBinding::Management(mgmt) => {
+                mgmt.port_binding_to_new_func(ctx, new_func_id).await?
+            }
         };
         Ok(new_binding)
     }
@@ -353,6 +367,7 @@ impl FuncBinding {
                     None
                 }
             }
+            FuncBinding::Management(mgmt) => Some(mgmt.schema_variant_id),
         }
     }
 
@@ -379,7 +394,9 @@ impl FuncBinding {
                 AttributeBinding::assemble_intrinsic_bindings(ctx, func_id).await?
             }
             FuncKind::SchemaVariantDefinition | FuncKind::Unknown => vec![],
-            FuncKind::Management => vec![],
+            FuncKind::Management => {
+                ManagementBinding::assemble_management_bindings(ctx, func_id).await?
+            }
         };
         Ok(bindings)
     }
@@ -539,6 +556,10 @@ impl FuncBinding {
                 }
                 FuncBinding::CodeGeneration(binding) | FuncBinding::Qualification(binding) => {
                     LeafBinding::delete_leaf_func_binding(ctx, binding.attribute_prototype_id)
+                        .await?;
+                }
+                FuncBinding::Management(mgmt) => {
+                    ManagementBinding::delete_management_binding(ctx, mgmt.management_prototype_id)
                         .await?;
                 }
             };

@@ -973,6 +973,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                 }
 
                 FuncBinding::Authentication(_)
+                | FuncBinding::Management(_)
                 | FuncBinding::Action(_)
                 | FuncBinding::CodeGeneration(_)
                 | FuncBinding::Qualification(_) => {} // nothing really to check here
@@ -1046,6 +1047,15 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                 }
                 si_frontend_types::FuncBinding::Authentication { func_id, .. } => {
                     assert!(func_id.is_some());
+                }
+                si_frontend_types::FuncBinding::Management {
+                    schema_variant_id,
+                    management_prototype_id,
+                    func_id,
+                } => {
+                    assert!(schema_variant_id.is_some());
+                    assert!(func_id.is_some());
+                    assert!(management_prototype_id.is_some());
                 }
             }
         }

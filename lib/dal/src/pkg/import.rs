@@ -856,14 +856,7 @@ async fn import_management_func(
         management_func_spec
             .managed_schemas()
             .map(|schemas| schemas.iter().map(|ulid| (*ulid).into()).collect()),
-    )
-    .await?;
-
-    SchemaVariant::add_edge_to_management_prototype(
-        ctx,
         schema_variant_id,
-        prototype.id,
-        EdgeWeightKind::ManagementPrototype,
     )
     .await?;
 

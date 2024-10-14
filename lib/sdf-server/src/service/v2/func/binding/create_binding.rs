@@ -5,7 +5,7 @@ use axum::{
 use dal::{
     func::binding::{
         action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-        leaf::LeafBinding, AttributeArgumentBinding, EventualParent,
+        leaf::LeafBinding, management::ManagementBinding, AttributeArgumentBinding, EventualParent,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
@@ -272,8 +272,46 @@ pub async fn create_binding(
                 }
             }
         }
+        dal::func::FuncKind::Management => {
+            for binding in request.bindings {
+                if let frontend_types::FuncBinding::Management {
+                    schema_variant_id,
+                    func_id,
+                    ..
+                } = binding
+                {
+                    match (func_id, schema_variant_id) {
+                        (Some(func_id), Some(schema_variant_id)) => {
+                            ManagementBinding::create_management_binding(
+                                &ctx,
+                                func_id.into(),
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
+                                &ctx,
+                                schema_variant_id.into(),
+                            )
+                            .await?;
+                            let schema_variant =
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
+                                    .await?;
 
-        _ => {
+                            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                                .await?
+                                .publish_on_commit(&ctx)
+                                .await?;
+                        }
+                        _ => {
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                        }
+                    }
+                } else {
+                    return Err(FuncAPIError::WrongFunctionKindForBinding);
+                }
+            }
+        }
+        dal::func::FuncKind::Unknown | dal::func::FuncKind::SchemaVariantDefinition => {
             return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };

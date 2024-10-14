@@ -29,7 +29,7 @@ use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV3,
 };
-use crate::management::prototype::ManagementPrototypeId;
+use crate::management::prototype::{ManagementPrototype, ManagementPrototypeId};
 use crate::module::Module;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
@@ -120,6 +120,8 @@ pub enum SchemaVariantError {
     LeafFunctionMustBeJsAttribute(FuncId),
     #[error("Leaf map prop not found for item prop {0}")]
     LeafMapPropNotFound(PropId),
+    #[error("schema variant missing management func id; schema_variant_id={0}")]
+    ManagementPrototype(String),
     #[error("schema variant missing asset func id; schema_variant_id={0}")]
     MissingAssetFuncId(SchemaVariantId),
     #[error("module error: {0}")]
@@ -1927,6 +1929,28 @@ impl SchemaVariant {
                     ActionPrototype::func_id(ctx, action_prototype_node_weight.id().into())
                         .await
                         .map_err(|err| SchemaVariantError::ActionPrototype(err.to_string()))?;
+
+                all_func_ids.insert(func_id);
+            }
+        }
+
+        // Gather all management funcs.
+        let mgmt_prototype_nodes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::ManagementPrototype,
+            )
+            .await?;
+        for mgmt_prototype_node in mgmt_prototype_nodes {
+            let node_weight = workspace_snapshot
+                .get_node_weight(mgmt_prototype_node)
+                .await?;
+
+            if let NodeWeight::ManagementPrototype(mgmt_prototype_node_weight) = node_weight {
+                let func_id =
+                    ManagementPrototype::func_id(ctx, mgmt_prototype_node_weight.id().into())
+                        .await
+                        .map_err(|err| SchemaVariantError::ManagementPrototype(err.to_string()))?;
 
                 all_func_ids.insert(func_id);
             }

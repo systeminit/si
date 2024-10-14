@@ -464,6 +464,30 @@ const prepareTest = async () => {
 
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
+  } else if (funcStore.selectedFuncSummary?.kind === FuncKind.Management) {
+    const res = await componentsStore.FETCH_COMPONENT_JSON(
+      funcTestSelectorRef.value.selectedComponentId,
+    );
+    if (!res.result.success) {
+      throw new Error(
+        "could not fetch component json needed for preparing test",
+      );
+    }
+
+    const json = res.result.data.json;
+    const props: Record<string, unknown> | null = json as Record<
+      string,
+      unknown
+    >;
+    // TODO recursive toSnakeCase all props
+    const thisComponent = {
+      this_component: {
+        kind: "standard",
+        properties: props,
+      },
+    };
+    testInputCode.value = JSON.stringify(thisComponent, null, 2);
+    testInputProperties.value = thisComponent;
   } else {
     // This should not be possible since we should only prepare tests for valid func kinds.
     return;
