@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub enum AuditLogService {
     AuthApi,
     Pinga,
@@ -10,11 +10,12 @@ pub enum AuditLogService {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub enum AuditLogKind {
     CreateComponent,
     DeleteComponent,
     PerformedRebase,
+    RanAction,
     RanDependentValuesUpdate,
     UpdatePropertyEditorValue,
 }
