@@ -11,6 +11,14 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 2024-10-14
+
+- Workspace Admin Updates
+- Stat Analyze - a custom/non IaC use case
+- Command Palette comes to System Initiative
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/3dIeuu6vxVo?si=2V8m5idGWhnHcJL8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## 2024-10-07
 
 - Using ChatGPT to generate Schema definitions
