@@ -95,6 +95,7 @@ export const useAuthStore = defineStore("auth", {
     billingDetail: null as BillingDetails | null,
     activeSubscription: null as ActiveSubscription | null,
     waitingForAccess: false,
+    hasBillingDetailsSet: false,
     suspendedUsersState: [] as SuspendedUser[] | null,
     quarantinedUsersState: [] as QuarantinedUser[] | null,
     userSignupsState: [] as SignupUsersReport[] | null,
@@ -193,6 +194,17 @@ export const useAuthStore = defineStore("auth", {
         url: `/users/${this.user.id}/activeSubscription`,
         onSuccess: (response) => {
           this.activeSubscription = response.activeSubscription;
+        },
+      });
+    },
+
+    async CHECK_BILLING_DETAILS() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ paymentDetailsSet: boolean }>({
+        method: "get",
+        url: `/users/${this.user.id}/hasBillingDetails`,
+        onSuccess: (response) => {
+          this.hasBillingDetailsSet = response.paymentDetailsSet;
         },
       });
     },

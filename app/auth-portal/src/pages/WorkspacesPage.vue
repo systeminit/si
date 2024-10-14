@@ -210,8 +210,10 @@ const activeSubscriptionDetails = computed(() => authStore.activeSubscription);
 watch(
   () => authStore.userIsLoggedIn,
   async () => {
-    if (authStore.userIsLoggedIn && !authStore.needsProfileUpdate)
+    if (authStore.userIsLoggedIn && !authStore.needsProfileUpdate) {
       await authStore.GET_ACTIVE_SUBSCRIPTION();
+      await authStore.CHECK_BILLING_DETAILS();
+    }
   },
   { immediate: true },
 );
