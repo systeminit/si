@@ -29,6 +29,7 @@ import {
   getCustomerPortalUrl,
   updateCustomerDetails,
 } from "../lib/lago";
+import { checkCustomerPaymentMethodSet } from "../lib/stripe";
 import { extractAdminAuthUser, extractAuthUser, router } from ".";
 
 router.get("/whoami", async (ctx) => {
@@ -560,4 +561,22 @@ router.get("/users/:userId/activeSubscription", async (ctx) => {
 
   const activeSubscription = await getCustomerActiveSubscription(user.id);
   ctx.body = { activeSubscription };
+});
+
+router.get("/users/:userId/hasBillingDetails", async (ctx) => {
+  const user = await extractOwnUserIdParam(ctx);
+
+  const activeUser = await getCustomerBillingDetails(user.id);
+  if (!activeUser) {
+    ctx.body = {};
+  }
+
+  let paymentDetailsSet = false;
+  if (activeUser?.billing_configuration?.provider_customer_id) {
+    paymentDetailsSet = await checkCustomerPaymentMethodSet(
+      activeUser?.billing_configuration?.provider_customer_id,
+    );
+  }
+
+  ctx.body = { paymentDetailsSet };
 });
