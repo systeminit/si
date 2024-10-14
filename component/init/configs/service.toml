@@ -59,3 +59,4 @@ seconds_to_idle = "$SI_CACHE_EVICTION_SECONDS_TO_IDLE"
 
 [layer_db_config.disk_cache_config]
 path = "$SI_LAYER_CACHE_DISK_PATH"
+cleanup_mode = "$SI_LAYER_CACHE_CLEANUP_MODE"
