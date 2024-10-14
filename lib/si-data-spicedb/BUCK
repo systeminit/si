@@ -9,10 +9,12 @@ rust_library(
     deps = [
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:spicedb-client",
         "//third-party/rust:spicedb-grpc",
+        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:url",
@@ -27,6 +29,7 @@ rust_test(
     name = "test-integration",
     deps = [
         "//third-party/rust:indoc",
+        "//third-party/rust:rand",
         "//third-party/rust:tokio",
         ":si-data-spicedb",
     ],
