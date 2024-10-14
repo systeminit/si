@@ -1,4 +1,5 @@
-import { Client, Country } from "lago-javascript-client";
+import { ChargeObject, Client, Country } from "lago-javascript-client";
+import _ from "lodash";
 
 const client = Client(process.env.LAGO_API_KEY as string, {
   baseUrl: "https://api.getlago.com/api/v1",
@@ -138,32 +139,54 @@ export async function getCustomerPortalUrl(userPk: string) {
 }
 
 export async function getCustomerActiveSubscription(userPk: string) {
-  const trial_resp = await client.subscriptions.findSubscription(
-    `${userPk}_launch_trial`,
-  );
-  if (trial_resp.ok && trial_resp.data.subscription.status === "active") {
-    return {
-      planCode: trial_resp.data.subscription.plan_code,
-      subscriptionAt: trial_resp.data.subscription.subscription_at,
-      endingAt: trial_resp.data.subscription.ending_at,
-      isTrial: true,
-    };
+  try {
+    const trial_resp = await client.subscriptions.findSubscription(
+      `${userPk}_launch_trial`,
+    );
+    if (trial_resp.ok && trial_resp.data.subscription.status === "active") {
+      return {
+        planCode: trial_resp.data.subscription.plan_code,
+        subscriptionAt: trial_resp.data.subscription.subscription_at,
+        endingAt: trial_resp.data.subscription.ending_at,
+        isTrial: true,
+        exceededFreeTier: false,
+      };
+    }
+  } catch (err) {
+    /* empty */
+    // We default to an NOT_FOUND plan so we are fine here for now
   }
 
-  const payg_resp = await client.subscriptions.findSubscription(
-    `${userPk}_launch_pay_as_you_go`,
-  );
-  if (payg_resp.ok) {
-    return {
-      planCode: payg_resp.data.subscription.plan_code,
-      subscriptionAt: payg_resp.data.subscription.subscription_at,
-      endingAt: payg_resp.data.subscription.ending_at,
-      isTrial: false,
-    };
+  try {
+    const payg_resp = await client.subscriptions.findSubscription(
+      `${userPk}_launch_pay_as_you_go`,
+    );
+    if (payg_resp.ok) {
+      const charges = _.get(
+        payg_resp.data.subscription,
+        "plan.charges",
+        [],
+      ) as ChargeObject[];
+      const paidCharge = _.find(
+        charges,
+        (charge: ChargeObject) => charge.billable_metric_code === "resource-hours" && parseFloat(_.get(charge, "properties.amount", "0")) > 0,
+      );
+      return {
+        planCode: payg_resp.data.subscription.plan_code,
+        subscriptionAt: payg_resp.data.subscription.subscription_at,
+        endingAt: payg_resp.data.subscription.ending_at,
+        isTrial: false,
+        exceededFreeTier: !!paidCharge,
+      };
+    }
+  } catch (err) {
+    /* empty */
+    // We default to an NOT_FOUND plan so we are fine here for now
   }
 
   return {
     planCode: "NOT_FOUND",
     isTrial: false,
+    exceededFreeTier: false,
   };
 }

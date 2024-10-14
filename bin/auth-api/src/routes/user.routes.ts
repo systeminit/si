@@ -553,7 +553,7 @@ router.get("/users/:userId/billingDetails", async (ctx) => {
 router.get("/users/:userId/activeSubscription", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
-  const activeUser = getCustomerBillingDetails(user.id);
+  const activeUser = await getCustomerBillingDetails(user.id);
   if (!activeUser) {
     ctx.body = {};
   }

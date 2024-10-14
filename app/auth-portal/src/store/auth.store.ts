@@ -64,6 +64,7 @@ export type ActiveSubscription = {
   isTrial: boolean;
   endingAt?: string | null;
   subscriptionAt?: string | null;
+  exceededFreeTier: boolean;
 };
 
 export type SuspendedUser = {
