@@ -1,7 +1,7 @@
-use axum::{
-    extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
-};
+use axum::extract::{Host, OriginalUri, Path};
+
+use si_frontend_types::SchemaVariant as FrontendVariant;
+
 use dal::{
     schema::variant::authoring::VariantAuthoringClient, ChangeSet, ChangeSetId, Schema,
     SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
@@ -9,7 +9,10 @@ use dal::{
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::variant::{SchemaVariantError, SchemaVariantResult},
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        variant::{SchemaVariantError, SchemaVariantResult},
+    },
     track,
 };
 
@@ -24,7 +27,7 @@ pub async fn create_unlocked_copy(
         ChangeSetId,
         SchemaVariantId,
     )>,
-) -> SchemaVariantResult<impl IntoResponse> {
+) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -74,15 +77,10 @@ pub async fn create_unlocked_copy(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(
-        &unlocked_variant
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        unlocked_variant
             .into_frontend_type(&ctx, schema.id())
             .await?,
-    )?)?)
+    ))
 }

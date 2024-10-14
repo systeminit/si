@@ -1,17 +1,18 @@
 use super::FuncAPIResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 use axum::{
     extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
     Json,
 };
 use dal::{
     func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, FuncId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_frontend_types::FuncSummary;
 use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -30,7 +31,7 @@ pub async fn update_func(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<UpdateFuncRequest>,
-) -> FuncAPIResult<impl IntoResponse> {
+) -> FuncAPIResult<ForceChangeSetResponse<FuncSummary>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -61,10 +62,8 @@ pub async fn update_func(
     );
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(serde_json::to_string(&updated_func)?)?)
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        updated_func,
+    ))
 }

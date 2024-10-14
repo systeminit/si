@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -13,6 +12,7 @@ use si_frontend_types::{FuncCode, FuncSummary};
 use super::{get_code_response, FuncAPIError, FuncAPIResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -36,7 +36,7 @@ pub async fn create_unlocked_copy(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, func_id)): Path<(WorkspacePk, ChangeSetId, FuncId)>,
     Json(request): Json<UnlockFuncRequest>,
-) -> FuncAPIResult<impl IntoResponse> {
+) -> FuncAPIResult<ForceChangeSetResponse<CreateFuncResponse>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -75,14 +75,8 @@ pub async fn create_unlocked_copy(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(&CreateFuncResponse {
-        summary,
-        code,
-    })?)?)
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        CreateFuncResponse { summary, code },
+    ))
 }

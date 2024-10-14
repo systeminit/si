@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,7 @@ use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::diagram::DiagramResult,
+    service::{diagram::DiagramResult, force_change_set_response::ForceChangeSetResponse},
     track,
 };
 
@@ -62,7 +61,7 @@ pub async fn create_component(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CreateComponentRequest>,
-) -> DiagramResult<impl IntoResponse> {
+) -> DiagramResult<ForceChangeSetResponse<CreateComponentResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -185,15 +184,11 @@ pub async fn create_component(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    response = response.header("content-type", "application/json");
-    Ok(
-        response.body(serde_json::to_string(&CreateComponentResponse {
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        CreateComponentResponse {
             component_id: component.id(),
             installed_variant,
-        })?)?,
-    )
+        },
+    ))
 }

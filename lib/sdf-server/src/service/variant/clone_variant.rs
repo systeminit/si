@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -8,12 +7,15 @@ use dal::{
     Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::variant::SchemaVariantResult,
+    service::{force_change_set_response::ForceChangeSetResponse, variant::SchemaVariantResult},
     track,
 };
+
+use super::SchemaVariantError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,12 +33,10 @@ pub async fn clone_variant(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<CloneVariantRequest>,
-) -> SchemaVariantResult<impl IntoResponse> {
+) -> SchemaVariantResult<ForceChangeSetResponse<FrontendVariant>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
     if Schema::is_name_taken(&ctx, &request.name).await? {
-        return Ok(axum::response::Response::builder()
-            .status(409)
-            .body("schema name already taken".to_string())?);
+        return Err(SchemaVariantError::SchemaNameAlreadyTaken(request.name));
     }
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -70,15 +70,10 @@ pub async fn clone_variant(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(
-        &cloned_schema_variant
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        cloned_schema_variant
             .into_frontend_type(&ctx, schema.id())
             .await?,
-    )?)?)
+    ))
 }

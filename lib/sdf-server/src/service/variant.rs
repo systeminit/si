@@ -50,6 +50,8 @@ pub enum SchemaVariantError {
     Pkg(#[from] PkgError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
+    #[error("Schema name {0} already taken")]
+    SchemaNameAlreadyTaken(String),
     #[error("schema variant asset func not found: {0}")]
     SchemaVariantAssetNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
@@ -91,6 +93,10 @@ impl IntoResponse for SchemaVariantError {
             SchemaVariantError::VariantAuthoring(VariantAuthoringError::FuncExecutionFailure(
                 message,
             )) => (StatusCode::UNPROCESSABLE_ENTITY, message),
+            SchemaVariantError::SchemaNameAlreadyTaken(name) => (
+                StatusCode::CONFLICT,
+                format!("Schema name {name} already in use"),
+            ),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

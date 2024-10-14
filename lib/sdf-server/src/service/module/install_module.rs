@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri},
-    response::IntoResponse,
     Json,
 };
 use dal::{
@@ -9,12 +8,13 @@ use dal::{
 };
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
+use si_frontend_types::SchemaVariant as FrontendVariant;
 use si_pkg::SiPkg;
 use ulid::Ulid;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
-    service::module::ModuleError,
+    service::{force_change_set_response::ForceChangeSetResponse, module::ModuleError},
     track,
 };
 
@@ -36,7 +36,7 @@ pub async fn install_module(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Json(request): Json<InstallModuleRequest>,
-) -> Result<impl IntoResponse, ModuleError> {
+) -> Result<ForceChangeSetResponse<Vec<FrontendVariant>>, ModuleError> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -153,10 +153,5 @@ pub async fn install_module(
 
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_change_set_id) = force_change_set_id {
-        response = response.header("force_change_set_id", force_change_set_id.to_string());
-    }
-    Ok(response.body(serde_json::to_string(&variants)?)?)
+    Ok(ForceChangeSetResponse::new(force_change_set_id, variants))
 }
