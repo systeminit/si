@@ -67,9 +67,7 @@
             "
           >
             <!-- In the future we are going to need to check if they are outside the free tier as well -->
-            {{
-              activeSubscriptionDetails?.isTrial ? "FREE TRIAL" : "FREE TIER"
-            }}
+            {{ getSubscriptionTier }}
           </div>
         </template>
         <template
@@ -79,7 +77,8 @@
           "
           #infoRow2
         >
-          Ends on <Timestamp :date="activeSubscriptionDetails.endingAt" />
+          Ends end of day
+          <Timestamp :date="activeSubscriptionDetails.endingAt" />
         </template>
       </InfoCard>
     </div>
@@ -230,4 +229,14 @@ const createNewWorkspace = async () => {
     params: { workspaceId: "new" },
   });
 };
+
+const getSubscriptionTier = computed(() => {
+  if (activeSubscriptionDetails.value?.isTrial) {
+    return "30-DAY FREE TRIAL";
+  } else if (activeSubscriptionDetails.value?.exceededFreeTier) {
+    return "MONTHLY SUBSCRIPTION";
+  }
+
+  return "FREE SUBSCRIPTION";
+});
 </script>
