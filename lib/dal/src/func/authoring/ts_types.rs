@@ -47,6 +47,7 @@ pub(crate) fn compile_return_types(
         }
         FuncBackendResponseType::Action => {
             "type Output {
+    resourceId?: string | null;
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
     message?: string | null;

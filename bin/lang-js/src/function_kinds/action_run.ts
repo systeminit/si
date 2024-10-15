@@ -18,6 +18,7 @@ export interface ActionRunFunc extends Func {
 export type ActionRunResult = ActionRunResultSuccess | ActionRunResultFailure;
 
 export interface ActionRunResultSuccess extends ResultSuccess {
+  resourceId?: string | null;
   payload: unknown;
   health: "ok" | "warning" | "error";
   message?: string;
@@ -104,6 +105,7 @@ async function execute(
       status: "success",
       executionId,
       error: actionRunResult.error as string | undefined,
+      resourceId: actionRunResult.resourceId as string | undefined | null,
       payload: actionRunResult.payload,
       health: actionRunResult.status as "ok" | "warning" | "error",
       message: actionRunResult.message as string | undefined,
@@ -117,13 +119,15 @@ const wrapCode = (code: string, handle: string) => `
 module.exports = function(arg, callback) {
   ${code}
   arg = Array.isArray(arg) ? arg : [arg];
-  const resource = arg[0]?.properties?.resource?.payload ?? null;
+  const resourceId = arg[0]?.properties?.si?.resourceId;
+  const payload = arg[0]?.properties?.resource?.payload ?? null;
   const returnValue = ${handle}(...arg, callback);
   if (returnValue instanceof Promise) {
     returnValue.then((data) => callback(data))
         .catch((err) => callback({
           status: "error",
-          payload: resource,
+          payload,
+          resourceId,
           message: err.message,
   }));
   } else {

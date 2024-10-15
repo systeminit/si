@@ -90,6 +90,7 @@ impl FuncDispatch for FuncBackendJsAction {
 
                 FunctionResult::Success(Self::Output {
                     execution_id: failure.execution_id().to_owned(),
+                    resource_id: None,
                     payload: self
                         .request
                         .args

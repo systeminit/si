@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 pub struct LangServerActionRunResultSuccess {
     pub execution_id: String,
     #[serde(default)]
+    pub resource_id: Option<String>,
+    #[serde(default)]
     pub payload: Option<serde_json::Value>,
     pub health: ResourceStatus,
     #[serde(default)]
@@ -21,6 +23,7 @@ impl From<LangServerActionRunResultSuccess> for ActionRunResultSuccess {
     fn from(value: LangServerActionRunResultSuccess) -> Self {
         Self {
             execution_id: value.execution_id,
+            resource_id: value.resource_id,
             error: value.error,
             status: value.health,
             message: value.message,
