@@ -149,7 +149,11 @@ const filterToasts = (toasts: any[]) => {
 };
 
 const filterBeforeCreate = (toast: any, toasts: any[]): any | false => {
-  if (toast.content.component?.__name === "MaintenanceMode") {
+  if (
+    ["MaintenanceMode", "RebaseOnBase"].includes(
+      toast.content.component?.__name,
+    )
+  ) {
     // Basically only have one maintenanace toast in the toast queue
     // at once as they time out serially, which is a bit of a pain with
     // longer timeouts
