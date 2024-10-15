@@ -5,8 +5,8 @@
         v-if="!componentsStore.selectedComponent?.resourceId"
         class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
       >
-        Management functions typically require the resource identifierm, enter
-        it here
+        Management functions typically require the resource identifier, enter it
+        here
       </div>
 
       <div class="ml-xs mt-xs">
