@@ -28,7 +28,9 @@ error[E0277]: the trait bound `TestingNodeWeight: SiVersionedNodeWeight` is not 
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`, which is required by `for<'a> NodeInformation: From<&'a TestingNodeWeight>`
    |
    = help: the following other types implement trait `SiVersionedNodeWeight`:
+             GeometryNodeWeight
              ManagementPrototypeNodeWeight
+             ViewNodeWeight
              dal::workspace_snapshot::node_weight::InputSocketNodeWeight
              dal::workspace_snapshot::node_weight::SchemaVariantNodeWeight
    = note: required for `TestingNodeWeight` to implement `SiNodeWeight`

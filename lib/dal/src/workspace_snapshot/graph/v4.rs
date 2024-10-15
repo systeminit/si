@@ -1,6 +1,3 @@
-pub mod component;
-pub mod schema;
-
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     fs::File,
@@ -35,6 +32,10 @@ use crate::{
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     Timestamp,
 };
+
+pub mod component;
+pub mod schema;
+pub mod socket;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraphV4 {
@@ -326,6 +327,24 @@ impl WorkspaceSnapshotGraphV4 {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
+    }
+
+    pub fn add_edge_between_ids(
+        &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        let from_node_index = *self
+            .node_index_by_id
+            .get(&from_node_id)
+            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(from_node_id))?;
+        let to_node_index = *self
+            .node_index_by_id
+            .get(&to_node_id)
+            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(to_node_id))?;
+
         self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
     }
 
@@ -1030,6 +1049,14 @@ impl WorkspaceSnapshotGraphV4 {
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
         self.get_node_weight_opt(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+    }
+
+    fn get_node_weight_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
+        let node_index = self.get_node_index_by_id(id)?;
+        self.get_node_weight(node_index)
     }
 
     pub fn get_node_weight_by_id_opt(&self, id: impl Into<Ulid>) -> Option<&NodeWeight> {
