@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use dal::DalContextBuilder;
 use si_data_nats::{async_nats::jetstream, NatsClient};
-use tokio_util::sync::CancellationToken;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use crate::ServerMetadata;
 
@@ -15,6 +15,7 @@ pub(crate) struct AppState {
     pub(crate) ctx_builder: DalContextBuilder,
     pub(crate) quiescent_period: Duration,
     pub(crate) token: CancellationToken,
+    pub(crate) server_tracker: TaskTracker,
 }
 
 impl AppState {
@@ -26,6 +27,7 @@ impl AppState {
         ctx_builder: DalContextBuilder,
         quiescent_period: Duration,
         token: CancellationToken,
+        server_tracker: TaskTracker,
     ) -> Self {
         Self {
             metadata,
@@ -34,6 +36,7 @@ impl AppState {
             ctx_builder,
             quiescent_period,
             token,
+            server_tracker,
         }
     }
 }

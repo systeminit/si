@@ -16,7 +16,7 @@ use si_data_nats::{
     jetstream::{self, Context},
     HeaderMap, Message, NatsClient, Subject,
 };
-use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
+use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, ContentHash, WorkspacePk};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
@@ -143,12 +143,19 @@ impl Client {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
     )> {
-        self.call_with_reply(workspace_id, change_set_id, updates_address, None)
-            .await
+        self.call_with_reply(
+            workspace_id,
+            change_set_id,
+            updates_address,
+            None,
+            audit_logs,
+        )
+        .await
     }
 
     /// Enqueues graph updates that originate from a Change Set and return a [`Future`] that will
@@ -168,6 +175,7 @@ impl Client {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
         from_change_set_id: ChangeSetId,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
@@ -177,6 +185,7 @@ impl Client {
             change_set_id,
             updates_address,
             Some(from_change_set_id),
+            audit_logs,
         )
         .await
     }
@@ -197,6 +206,7 @@ impl Client {
             change_set_id,
             updates_address,
             from_change_set_id,
+            audit_log_session_id: None,
         });
 
         // Cut down on the amount of `String` allocations dealing with ids
@@ -245,6 +255,7 @@ impl Client {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
         from_change_set_id: Option<ChangeSetId>,
+        _audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,

@@ -11,6 +11,7 @@ members = [
     "bin/rebaser",
     "bin/sdf",
     "bin/veritech",
+    "lib/audit-logs",
     "lib/auth-api-client",
     "lib/billing-events",
     "lib/buck2-resources",

@@ -9,16 +9,19 @@ use strum::{AsRefStr, EnumDiscriminants, EnumIs, EnumString, VariantNames};
 use crate::{ApiVersionsWrapper, ApiWrapper, RequestId, UpgradeError};
 
 mod v1;
+mod v2;
 
 pub use self::v1::EnqueueUpdatesRequestV1;
+pub use self::v2::EnqueueUpdatesRequestV2;
 
-pub type EnqueueUpdatesRequestVCurrent = EnqueueUpdatesRequestV1;
+pub type EnqueueUpdatesRequestVCurrent = EnqueueUpdatesRequestV2;
 
 #[derive(Clone, Eq, Serialize, PartialEq, VariantNames)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum EnqueueUpdatesRequest {
     V1(EnqueueUpdatesRequestV1),
+    V2(EnqueueUpdatesRequestV2),
 }
 
 impl ApiWrapper for EnqueueUpdatesRequest {
@@ -29,12 +32,13 @@ impl ApiWrapper for EnqueueUpdatesRequest {
 
     fn id(&self) -> RequestId {
         match self {
-            Self::V1(EnqueueUpdatesRequestVCurrent { id, .. }) => *id,
+            Self::V1(EnqueueUpdatesRequestV1 { id, .. }) => *id,
+            Self::V2(EnqueueUpdatesRequestVCurrent { id, .. }) => *id,
         }
     }
 
     fn new_current(current: Self::Current) -> Self {
-        Self::V1(current)
+        Self::V2(current)
     }
 }
 
@@ -42,6 +46,7 @@ impl fmt::Debug for EnqueueUpdatesRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::V1(inner) => inner.fmt(f),
+            Self::V2(inner) => inner.fmt(f),
         }
     }
 }
@@ -51,7 +56,8 @@ impl Deref for EnqueueUpdatesRequest {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::V1(inner) => inner,
+            Self::V1(_) => unimplemented!("attempted to access an unmigrated request"),
+            Self::V2(inner) => inner,
         }
     }
 }
@@ -59,7 +65,8 @@ impl Deref for EnqueueUpdatesRequest {
 impl DerefMut for EnqueueUpdatesRequest {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            EnqueueUpdatesRequest::V1(inner) => inner,
+            Self::V1(_) => unimplemented!("attempted to access an unmigrated request"),
+            Self::V2(inner) => inner,
         }
     }
 }
@@ -71,6 +78,7 @@ impl DerefMut for EnqueueUpdatesRequest {
 #[strum_discriminants(strum(serialize_all = "camelCase"), derive(AsRefStr, EnumString))]
 pub enum EnqueueUpdatesRequestVersions {
     V1(EnqueueUpdatesRequestV1),
+    V2(EnqueueUpdatesRequestV2),
 }
 
 impl ApiVersionsWrapper for EnqueueUpdatesRequestVersions {
@@ -79,12 +87,21 @@ impl ApiVersionsWrapper for EnqueueUpdatesRequestVersions {
     fn id(&self) -> RequestId {
         match self {
             Self::V1(EnqueueUpdatesRequestV1 { id, .. }) => *id,
+            Self::V2(EnqueueUpdatesRequestV2 { id, .. }) => *id,
         }
     }
 
     fn into_current_version(self) -> Result<Self::Target, UpgradeError> {
         match self {
-            Self::V1(inner) => Ok(Self::Target::V1(inner)),
+            Self::V1(inner) => Ok(Self::Target::V2(EnqueueUpdatesRequestVCurrent {
+                id: inner.id,
+                workspace_id: inner.workspace_id,
+                change_set_id: inner.change_set_id,
+                updates_address: inner.updates_address,
+                from_change_set_id: inner.from_change_set_id,
+                audit_log_session_id: None,
+            })),
+            Self::V2(inner) => Ok(Self::Target::V2(inner)),
         }
     }
 }

@@ -6,7 +6,7 @@ use petgraph::prelude::*;
 /// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
 pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 use si_layer_cache::db::serialize;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use thiserror::Error;
