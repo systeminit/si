@@ -62,9 +62,9 @@ impl DiskCache {
         let maybe_metadata = cacache::metadata(self.write_path.as_ref(), key.clone()).await?;
         if let Some(metadata) = maybe_metadata {
             if cacache::exists(self.write_path.as_ref(), &metadata.integrity).await {
-                cacache::remove(self.write_path.as_ref(), &key.clone()).await?;
+                cacache::remove_hash(self.write_path.as_ref(), &metadata.integrity).await?;
             }
-            cacache::remove_hash(self.write_path.as_ref(), &metadata.integrity).await?;
+            cacache::remove(self.write_path.as_ref(), &key.clone()).await?;
         }
         Ok(())
     }
