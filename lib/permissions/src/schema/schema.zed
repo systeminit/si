@@ -1,0 +1,6 @@
+definition user {}
+
+definition workspace {
+    relation approver: user
+    permission approve = approver
+}

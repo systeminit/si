@@ -3,7 +3,7 @@ use std::env;
 use indoc::indoc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use si_data_spicedb::{Client, Permission, Relationship, SpiceDbConfig};
+use si_data_spicedb::{Client, Permission, PermissionsObject, Relationship, SpiceDbConfig};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
 
@@ -82,8 +82,9 @@ async fn write_and_read_relationship() {
         .await
         .expect("failed to write schema");
 
-    let scott_aprover_workspace =
-        Relationship::new("workspace", "456", "approver", "user", "scott");
+    let workspace_object = PermissionsObject::new("workspace", "456".to_string());
+    let user_object = PermissionsObject::new("user", "scott".to_string());
+    let scott_aprover_workspace = Relationship::new(workspace_object, "approver", user_object);
 
     client
         .create_relationships(vec![scott_aprover_workspace.clone()])
@@ -135,16 +136,23 @@ async fn check_permissions() {
         .await
         .expect("failed to write schema");
 
+    let workspace_object = PermissionsObject::new("workspace", "789".to_string());
+    let user_object = PermissionsObject::new("user", "scott".to_string());
+    let user_object2 = PermissionsObject::new("user", "fletcher".to_string());
     let scott_aprover_workspace =
-        Relationship::new("workspace", "789", "approver", "user", "scott");
+        Relationship::new(workspace_object.clone(), "approver", user_object.clone());
 
     client
         .create_relationships(vec![scott_aprover_workspace.clone()])
         .await
         .expect("failed to create a relation");
 
-    let perms = Permission::new("workspace", "789", "approver", "user", "scott");
-    let bad_perms = Permission::new("workspace", "789", "approver", "user", "fletcher");
+    let perms = Permission::new(
+        workspace_object.clone(),
+        "approve",
+        user_object.clone(),
+    );
+    let bad_perms = Permission::new(workspace_object, "approve", user_object2);
 
     assert!(client
         .check_permissions(perms)

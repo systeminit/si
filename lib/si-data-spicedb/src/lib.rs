@@ -21,7 +21,7 @@ use url::Url;
 
 mod types;
 
-pub use types::{Permission, ReadSchemaResponse, Relationship, ZedToken};
+pub use types::{Permission, PermissionsObject, ReadSchemaResponse, Relationship, ZedToken};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -45,9 +45,11 @@ pub enum Error {
 }
 
 pub type SpiceDbError = Error;
+pub type SpiceDbClient = Client;
 
 type Result<T> = result::Result<T, Error>;
 
+#[derive(Clone)]
 pub struct Client {
     inner: SpicedbClient,
     metadata: Arc<ConnectionMetadata>,
@@ -339,6 +341,7 @@ impl Client {
     )]
     pub async fn check_permissions(&mut self, permission: Permission) -> Result<bool> {
         let span = current_span_for_instrument_at!("debug");
+        dbg!(&permission);
 
         let resp = self
             .inner
