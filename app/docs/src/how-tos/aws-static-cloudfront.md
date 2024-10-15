@@ -119,6 +119,9 @@ Set `resource-postfix` to be `/*`.
 The `ARN` input socket of this `AWS ARN` component should get automatically
 connected to the `ARN` output socket of `Bucket` frame.
 
+Connect the `ARN` output socket of the `AWS ARN` component to the `Resource`
+input socket of the `demo.sysinitest.net policy` component.
+
 ### Create a Public Access Block
 
 ![Create Bucket Public Access Block](./aws-static-cloudfront/create-s3-public-access-block.png)
