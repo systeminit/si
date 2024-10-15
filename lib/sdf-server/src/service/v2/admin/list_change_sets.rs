@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axum::{extract::Path, response::IntoResponse, Json};
+use axum::{extract::Path, Json};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -19,7 +19,7 @@ pub async fn list_change_sets(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(workspace_pk): Path<WorkspacePk>,
-) -> AdminAPIResult<impl IntoResponse> {
+) -> AdminAPIResult<Json<ListChangesetsResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let change_sets = ChangeSet::list_all_for_workspace(&ctx, workspace_pk)

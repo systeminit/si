@@ -1,4 +1,4 @@
-use axum::{extract::Path, response::IntoResponse, Json};
+use axum::{extract::Path, Json};
 use dal::{User, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -17,7 +17,7 @@ pub async fn list_workspace_users(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(workspace_pk): Path<WorkspacePk>,
-) -> AdminAPIResult<impl IntoResponse> {
+) -> AdminAPIResult<Json<ListUsersForWorkspaceResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let users = User::list_members_for_workspace(&ctx, workspace_pk.to_string())
