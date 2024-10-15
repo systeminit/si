@@ -200,6 +200,8 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
     ) -> crate::workspace_snapshot::node_weight::traits::CorrectTransformsResult<
         Vec<crate::workspace_snapshot::graph::detect_updates::Update>,
     > {
+        use crate::workspace_snapshot::graph::SchemaVariantExt;
+
         let mut maybe_my_schema_id =
             match workspace_snapshot_graph.schema_id_for_schema_variant_id(self.id.into()) {
                 Err(WorkspaceSnapshotGraphError::SchemaVariant(schema_variant_error)) => {

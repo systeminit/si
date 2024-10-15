@@ -43,7 +43,7 @@ use crate::workspace_snapshot::{
         input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
         NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
     },
-    WorkspaceSnapshotError,
+    SchemaVariantExt, WorkspaceSnapshotError,
 };
 use crate::{
     implement_add_edge_to, pk,

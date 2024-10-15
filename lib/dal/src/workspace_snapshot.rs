@@ -34,6 +34,8 @@ pub mod traits;
 pub mod update;
 pub mod vector_clock;
 
+pub use traits::schema::variant::SchemaVariantExt;
+
 use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
 use graph::{RebaseBatch, WorkspaceSnapshotGraph};
@@ -67,7 +69,6 @@ use crate::workspace_snapshot::{
     edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
     graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-    traits::WorkspaceSnapshotInterface,
 };
 use crate::{
     id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
@@ -185,8 +186,8 @@ impl WorkspaceSnapshotError {
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
-/// The workspace graph. The public interface for this is provided through the
-/// [`WorkspaceSnapshotInterface`], and the various `Ext` traits that are also implemented.
+/// The workspace graph. The public interface for this is provided through the the various `Ext`
+/// traits that are also implemented for [`WorkspaceSnapshot`].
 ///
 /// ## Internals
 ///
@@ -224,8 +225,6 @@ pub struct WorkspaceSnapshot {
     /// A cached version of the inferred connection graph for this snapshot
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
 }
-
-impl WorkspaceSnapshotInterface for WorkspaceSnapshot {}
 
 /// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
 /// will reset the cycle check to false on drop, if nothing else is holding onto
@@ -1667,16 +1666,6 @@ impl WorkspaceSnapshot {
         }
 
         Ok(None)
-    }
-
-    pub async fn schema_id_for_schema_variant_id(
-        &self,
-        schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<SchemaId> {
-        self.working_copy()
-            .await
-            .schema_id_for_schema_variant_id(schema_variant_id)
-            .map_err(Into::into)
     }
 
     pub async fn schema_variant_id_for_component_id(
