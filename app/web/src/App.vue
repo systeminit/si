@@ -43,6 +43,18 @@ import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
 
+// this TS magic means that when you call Object.entries
+// the "key" will retain its type and will not just be defaulted to "string"
+type Entries<T> = {
+  [K in keyof T]: [K, T[K]];
+}[keyof T][];
+
+declare global {
+  interface ObjectConstructor {
+    entries<T extends object>(o: T): Entries<T>;
+  }
+}
+
 useCustomFontsLoadedProvider();
 
 // provides the root theme value to all children, and returns that root theme to use below
