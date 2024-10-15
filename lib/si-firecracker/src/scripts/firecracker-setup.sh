@@ -138,6 +138,26 @@ execute_configuration_management() {
               echo "Pulling version ${rootfs_version}"
               echo $rootfs_version > $rootfs_version_file
               wget $url -O ./rootfs.ext4
+
+              # We have a new rootfs so we must create a new overlay.
+              # Create a device mapped to the rootfs file of the size of the file.
+              # This lets us then create another device that is that size plus 5gb
+              # in order to create a copy-on-write layer. This is so we can avoid
+              # copying this rootfs around to each jail.
+              if dmsetup info rootfs &> /dev/null; then
+                losetup -D
+                dmsetup remove rootfs-overlay || true
+                dmsetup remove rootfs || true
+              fi
+              BASE_LOOP=$(losetup --find --show --read-only ./rootfs.ext4)
+              OVERLAY_FILE=./rootfs-overlay
+              touch $OVERLAY_FILE
+              truncate --size=5368709120 $OVERLAY_FILE
+              OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
+              BASE_SZ=$(blockdev --getsz $BASE_LOOP)
+              OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
+              printf "0 $BASE_SZ linear $BASE_LOOP 0\n$BASE_SZ $OVERLAY_SZ zero"  | dmsetup create rootfs
+              echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create rootfs-overlay
           fi
         fi
 
@@ -147,22 +167,6 @@ execute_configuration_management() {
 
         wget https://artifacts.systeminit.com/firecracker/latest/${arch}/firecracker -O ./firecracker
         wget https://artifacts.systeminit.com/firecracker/latest/${arch}/jailer -O ./jailer
-
-        # Create a device mapped to the rootfs file of the size of the file.
-        # This lets us then create another device that is that size plus 5gb
-        # in order to create a copy-on-write layer. This is so we can avoid
-        # copying this rootfs around to each jail.
-        if ! dmsetup info rootfs &> /dev/null; then
-          BASE_LOOP=$(losetup --find --show --read-only ./rootfs.ext4)
-          OVERLAY_FILE=./rootfs-overlay
-          touch $OVERLAY_FILE
-          truncate --size=5368709120 $OVERLAY_FILE
-          OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
-          BASE_SZ=$(blockdev --getsz $BASE_LOOP)
-          OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
-          printf "0 $BASE_SZ linear $BASE_LOOP 0\n$BASE_SZ $OVERLAY_SZ zero"  | dmsetup create rootfs
-          echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create rootfs-overlay
-        fi
 
         # TODO(scott): fix me.
         # This will perform the same CoW layering for the kernel. First pass
