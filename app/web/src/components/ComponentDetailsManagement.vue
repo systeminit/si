@@ -3,10 +3,9 @@
     <div class="flex flex-col h-full w-full">
       <div
         v-if="!componentsStore.selectedComponent?.resourceId"
-        class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
+        class="text-xs text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
       >
-        Management functions typically require the resource identifier, enter it
-        here
+        These functions can require the resource identifier, enter it here
       </div>
 
       <div class="ml-xs mt-xs">
@@ -18,6 +17,8 @@
           @blur="saveResource"
         />
       </div>
+
+      <span class="uppercase font-bold p-xs mt-sm">FUNCTION LIST</span>
       <div
         class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
       >
