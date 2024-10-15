@@ -1,4 +1,7 @@
-//! Mostly everything is a node or an edge!
+//! This is the primary interface for business logic to interact with the graph. All interaction
+//! should be done through one of the `Ext` traits that [`WorkspaceSnapshot`] implements to avoid
+//! having code outside of the specific graph version implementation that requires having knowledge
+//! of how the internals of that specific version of the graph work.
 
 // #![warn(
 //     missing_debug_implementations,
@@ -27,6 +30,7 @@ pub mod graph;
 pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
+pub mod traits;
 pub mod update;
 pub mod vector_clock;
 
@@ -58,13 +62,13 @@ use crate::component::inferred_connection_graph::{
 };
 use crate::component::{ComponentResult, IncomingConnection};
 use crate::slow_rt::{self, SlowRuntimeError};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+use crate::workspace_snapshot::{
+    content_address::ContentAddressDiscriminants,
+    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
+    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
+    traits::WorkspaceSnapshotInterface,
 };
-use crate::workspace_snapshot::graph::{LineageId, WorkspaceSnapshotGraphDiscriminants};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
     SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
@@ -181,16 +185,19 @@ impl WorkspaceSnapshotError {
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
-/// The workspace graph. The concurrency types used here to give us interior
-/// mutability in the tokio run time are *not* sufficient to prevent data races
-/// when operating on the same graph on different threads, since our graph
-/// operations are not "atomic" and the graph *WILL* end up being read from
-/// different threads while a write operation is still in progress if it is
-/// shared between threads for modification. For example after a node is added
-/// but *before* the edges necessary to place that node in the right spot in the
-/// graph have been added. We need a more general solution here, but for now an
-/// example of synchronization when accessing a snapshot across threads can be
-/// found in [`crate::job::definition::DependentValuesUpdate`].
+/// The workspace graph. The public interface for this is provided through the
+/// [`WorkspaceSnapshotInterface`], and the various `Ext` traits that are also implemented.
+///
+/// ## Internals
+///
+/// The concurrency types used here to give us interior mutability in the tokio run time are *not*
+/// sufficient to prevent data races when operating on the same graph on different threads, since
+/// our graph operations are not "atomic" and the graph *WILL* end up being read from different
+/// threads while a write operation is still in progress if it is shared between threads for
+/// modification. For example after a node is added but *before* the edges necessary to place that
+/// node in the right spot in the graph have been added. We need a more general solution here, but
+/// for now an example of synchronization when accessing a snapshot across threads can be found in
+/// [`crate::job::definition::DependentValuesUpdate`].
 #[derive(Debug, Clone)]
 pub struct WorkspaceSnapshot {
     address: Arc<RwLock<WorkspaceSnapshotAddress>>,
@@ -217,6 +224,8 @@ pub struct WorkspaceSnapshot {
     /// A cached version of the inferred connection graph for this snapshot
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
 }
+
+impl WorkspaceSnapshotInterface for WorkspaceSnapshot {}
 
 /// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
 /// will reset the cycle check to false on drop, if nothing else is holding onto
