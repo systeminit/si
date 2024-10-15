@@ -267,6 +267,7 @@ export const useFuncStore = () => {
         ) {
           return new ApiRequest({
             method: "post",
+            keyRequestStatusBy: [prototypeId, componentId],
             url: BASE_API.concat([
               "management",
               "prototype",
