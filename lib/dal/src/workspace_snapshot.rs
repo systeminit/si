@@ -64,6 +64,7 @@ use crate::component::inferred_connection_graph::{
 };
 use crate::component::{ComponentResult, IncomingConnection};
 use crate::slow_rt::{self, SlowRuntimeError};
+use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::{
     content_address::ContentAddressDiscriminants,
     edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
@@ -117,6 +118,8 @@ pub enum WorkspaceSnapshotError {
     CorrectTransforms(#[from] CorrectTransformsError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
+    #[error("InputSocket error: {0}")]
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
