@@ -94,6 +94,11 @@ impl FirecrackerJail {
     pub async fn setup(pool_size: u32) -> Result<()> {
         Self::create_scripts().await?;
 
+        // we want to work with a clean slate, but we don't necessarily care about failures here
+        for id in 0..pool_size + 1 {
+            Self::clean(id).await?;
+        }
+
         let output = Command::new("sudo")
             .arg(FIRECRACKER_SETUP_PATH)
             .arg("-j")
