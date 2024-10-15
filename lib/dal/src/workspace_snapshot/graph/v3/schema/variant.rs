@@ -2,14 +2,16 @@ use petgraph::prelude::*;
 
 use crate::{
     workspace_snapshot::{
-        content_address::ContentAddressDiscriminants, edge_weight::EdgeWeightKindDiscriminants,
-        graph::WorkspaceSnapshotGraphResult, node_weight::NodeWeight,
+        content_address::ContentAddressDiscriminants,
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::{SchemaVariantExt, WorkspaceSnapshotGraphResult},
+        node_weight::NodeWeight,
     },
     SchemaId, SchemaVariantError, SchemaVariantId, WorkspaceSnapshotGraphV3,
 };
 
-impl WorkspaceSnapshotGraphV3 {
-    pub fn schema_id_for_schema_variant_id(
+impl SchemaVariantExt for WorkspaceSnapshotGraphV3 {
+    fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotGraphResult<SchemaId> {
