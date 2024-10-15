@@ -1,4 +1,4 @@
-use axum::{extract::Query, response::IntoResponse, Json};
+use axum::{extract::Query, Json};
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -23,7 +23,7 @@ pub async fn search_workspaces(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Query(request): Query<SearchWorkspacesRequest>,
-) -> AdminAPIResult<impl IntoResponse> {
+) -> AdminAPIResult<Json<SearchWorkspacesResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let workspaces = Workspace::search(&ctx, request.query.as_deref(), SEARCH_LIMIT)

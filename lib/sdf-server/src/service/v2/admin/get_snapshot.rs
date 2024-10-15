@@ -1,6 +1,6 @@
 use axum::{
     extract::{Host, OriginalUri, Path},
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use base64::prelude::*;
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
@@ -20,7 +20,7 @@ pub async fn get_snapshot(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> AdminAPIResult<impl IntoResponse> {
+) -> AdminAPIResult<Response<Body>> {
     let ctx = builder.build_head(access_builder).await?;
 
     let change_set = ChangeSet::find(&ctx, change_set_id)
