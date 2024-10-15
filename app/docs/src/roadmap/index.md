@@ -49,6 +49,17 @@ create custom views, allow you to drill down, etc.
 
 Custom authentication, ubiquitous access control, history, etc.
 
+### Current Opportunity: ReBAC
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/QlWaeJH74Bo?si=uBXbQ5kyeynFSzjQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+We are laying the foundation of a relationship based access control (ReBAC)
+system using SpiceDB. This first iteration of work will allow a workspace to
+have a defined set of approvers who curate the changes to the infrastructure
+before it is applied (and therefore, before making any changes to real
+infrastructure).
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-rebac)
+
 ## Scaling to huge infrastructures
 
 This is both visual scale, but also front and back-end scale.
