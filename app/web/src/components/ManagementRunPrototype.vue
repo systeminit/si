@@ -47,11 +47,10 @@ const request = funcStore.getRequestStatus(
 );
 
 const runPrototype = () => {
-  if (componentsStore.selectedComponent)
-    funcStore.RUN_PROTOTYPE(
-      props.prototype.managementPrototypeId,
-      props.componentId,
-    );
+  funcStore.RUN_PROTOTYPE(
+    props.prototype.managementPrototypeId,
+    props.componentId,
+  );
 };
 
 function onClickView() {
