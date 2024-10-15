@@ -146,47 +146,59 @@
           @focus="focus"
         />
       </Stack>
-      <Stack class="p-xs" spacing="none">
-        <span class="uppercase font-bold py-3">CONFIGURE DATA PROPAGATION</span>
-        <p class="text-xs pb-4">
-          Choose how output sockets and props get their values.
-        </p>
-        <span class="uppercase font-bold text-sm">Output Sockets</span>
-        <ul v-if="outputSocketIntrinsics.length > 0">
-          <li
-            v-for="config in outputSocketIntrinsics"
-            :key="config.attributePrototypeId"
+      <Stack v-if="funcListRequest.isPending" class="p-xs" spacing="none">
+        <span class="uppercase font-bold py-3">
+          CONFIGURE DATA PROPAGATION
+        </span>
+        <div class="flex justify-center">
+          <Icon size="lg" name="loader" />
+        </div>
+      </Stack>
+      <div v-else>
+        <Stack class="p-xs" spacing="none">
+          <span class="uppercase font-bold py-3"
+            >CONFIGURE DATA PROPAGATION</span
           >
-            <AssetDetailIntrinsicInput
-              :schemaVariantId="schemaVariantId"
-              :isLocked="editingAsset.isLocked"
-              :data="config"
-              @change="updateOutputSocketIntrinsics"
-              @changeToUnset="changeToUnset"
-              @changeToIdentity="changeToIdentity"
-            />
-          </li>
-        </ul>
-        <p v-else class="text-xs pb-4 pt-2">
-          No output sockets exist for asset.
-        </p>
-      </Stack>
-      <Stack class="p-xs" spacing="none">
-        <span class="uppercase font-bold text-sm">Props</span>
-        <ul v-if="configurableProps.length > 0">
-          <li v-for="prop in configurableProps" :key="prop.id">
-            <AssetDetailIntrinsicInput
-              :schemaVariantId="schemaVariantId"
-              :isLocked="editingAsset.isLocked"
-              :data="prop"
-              @change="updatePropIntrinsics"
-              @changeToUnset="changeToUnset"
-              @changeToIdentity="changeToIdentity"
-            />
-          </li>
-        </ul>
-        <p v-else class="text-xs pb-4 pt-2">No props exist for asset.</p>
-      </Stack>
+          <p class="text-xs pb-4">
+            Choose how output sockets and props get their values.
+          </p>
+          <span class="uppercase font-bold text-sm">Output Sockets</span>
+          <ul v-if="outputSocketIntrinsics.length > 0">
+            <li
+              v-for="config in outputSocketIntrinsics"
+              :key="config.attributePrototypeId"
+            >
+              <AssetDetailIntrinsicInput
+                :schemaVariantId="schemaVariantId"
+                :isLocked="editingAsset.isLocked"
+                :data="config"
+                @change="updateOutputSocketIntrinsics"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
+              />
+            </li>
+          </ul>
+          <p v-else class="text-xs pb-4 pt-2">
+            No output sockets exist for asset.
+          </p>
+        </Stack>
+        <Stack class="p-xs" spacing="none">
+          <span class="uppercase font-bold text-sm">Props</span>
+          <ul v-if="configurableProps.length > 0">
+            <li v-for="prop in configurableProps" :key="prop.id">
+              <AssetDetailIntrinsicInput
+                :schemaVariantId="schemaVariantId"
+                :isLocked="editingAsset.isLocked"
+                :data="prop"
+                @change="updatePropIntrinsics"
+                @changeToUnset="changeToUnset"
+                @changeToIdentity="changeToIdentity"
+              />
+            </li>
+          </ul>
+          <p v-else class="text-xs pb-4 pt-2">No props exist for asset.</p>
+        </Stack>
+      </div>
     </ScrollArea>
     <div
       v-else
@@ -225,6 +237,7 @@ import {
   Stack,
   VButton,
   VormInput,
+  Icon,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useToast } from "vue-toastification";
@@ -266,6 +279,10 @@ const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const executeAssetModalRef = ref();
 const cloneAssetModalRef = ref<InstanceType<typeof AssetNameModal>>();
+
+// if func list is loading, its because we dont have the right data
+// and we dont want to display incorrect intrinsic data
+const funcListRequest = funcStore.getRequestStatus("FETCH_FUNC_LIST");
 
 const focusedFormField = ref<string | undefined>();
 const focus = (evt: Event) => {

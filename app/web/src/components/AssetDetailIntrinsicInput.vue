@@ -46,7 +46,7 @@
         :selected="contextMenuRef?.isOpen"
         @click="
           (e) => {
-            contextMenuRef?.open(e, false);
+            if (!props.isLocked) contextMenuRef?.open(e, false);
           }
         "
       />
