@@ -87,6 +87,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         ctx_builder,
         quiescent_period,
         token: server_token,
+        server_tracker,
     } = state;
     let subject_prefix = nats.metadata().subject_prefix();
 
@@ -140,6 +141,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         run_notify,
         quiescent_period,
         tasks_token.clone(),
+        server_tracker,
     );
 
     let dvu_task_result = tracker.spawn(dvu_task.try_run());

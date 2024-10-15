@@ -320,6 +320,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "audit-logs"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "telemetry",
+ "telemetry-nats",
+ "thiserror",
+]
+
+[[package]]
 name = "auth-api-client"
 version = "0.1.0"
 dependencies = [
@@ -1688,6 +1702,7 @@ version = "0.1.0"
 dependencies = [
  "async-recursion",
  "async-trait",
+ "audit-logs",
  "base64 0.22.1",
  "billing-events",
  "blake3",
@@ -4943,6 +4958,7 @@ dependencies = [
 name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
+ "audit-logs",
  "buck2-resources",
  "dal",
  "derive_builder",

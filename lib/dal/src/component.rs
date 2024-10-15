@@ -4,6 +4,7 @@
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::{AuditLogKind, AuditLogService};
 use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
@@ -629,6 +630,9 @@ impl Component {
                 .await
                 .map_err(|err| ComponentError::Action(Box::new(err)))?;
         }
+
+        ctx.write_audit_log(AuditLogService::Sdf, AuditLogKind::CreateComponent)
+            .await?;
 
         Ok(component)
     }

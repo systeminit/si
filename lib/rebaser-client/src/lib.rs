@@ -16,7 +16,7 @@ use si_data_nats::{
     jetstream::{self, Context},
     HeaderMap, Message, NatsClient, Subject,
 };
-use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, WorkspacePk};
+use si_events::{rebase_batch_address::RebaseBatchAddress, ChangeSetId, ContentHash, WorkspacePk};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
@@ -94,9 +94,17 @@ impl Client {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<RequestId> {
-        self.call_async(workspace_id, change_set_id, updates_address, None, None)
-            .await
+        self.call_async(
+            workspace_id,
+            change_set_id,
+            updates_address,
+            None,
+            None,
+            audit_logs,
+        )
+        .await
     }
 
     /// Asynchronously enqueues graph updates that originate from a Change Set & return a
@@ -116,6 +124,7 @@ impl Client {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
         from_change_set_id: ChangeSetId,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<RequestId> {
         self.call_async(
             workspace_id,
@@ -123,6 +132,7 @@ impl Client {
             updates_address,
             Some(from_change_set_id),
             None,
+            audit_logs,
         )
         .await
     }
@@ -143,12 +153,19 @@ impl Client {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
     )> {
-        self.call_with_reply(workspace_id, change_set_id, updates_address, None)
-            .await
+        self.call_with_reply(
+            workspace_id,
+            change_set_id,
+            updates_address,
+            None,
+            audit_logs,
+        )
+        .await
     }
 
     /// Enqueues graph updates that originate from a Change Set and return a [`Future`] that will
@@ -168,6 +185,7 @@ impl Client {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
         from_change_set_id: ChangeSetId,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
@@ -177,6 +195,7 @@ impl Client {
             change_set_id,
             updates_address,
             Some(from_change_set_id),
+            audit_logs,
         )
         .await
     }
@@ -188,6 +207,7 @@ impl Client {
         updates_address: RebaseBatchAddress,
         from_change_set_id: Option<ChangeSetId>,
         maybe_reply_inbox: Option<&Subject>,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<RequestId> {
         let id = RequestId::new();
 
@@ -197,6 +217,7 @@ impl Client {
             change_set_id,
             updates_address,
             from_change_set_id,
+            audit_logs,
         });
 
         // Cut down on the amount of `String` allocations dealing with ids
@@ -245,6 +266,7 @@ impl Client {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
         from_change_set_id: Option<ChangeSetId>,
+        audit_logs: Vec<ContentHash>,
     ) -> Result<(
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
@@ -272,6 +294,7 @@ impl Client {
                 updates_address,
                 from_change_set_id,
                 Some(&reply_inbox),
+                audit_logs,
             )
             .await?;
 

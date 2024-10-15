@@ -1,21 +1,36 @@
+use std::collections::HashMap;
+
+use audit_logs::{AuditLogsError, AuditLogsWorkQueue};
 use dal::{
+    audit_log::AuditLogError,
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
+    layer_db_types::AuditLogContent,
     workspace_snapshot::WorkspaceSnapshotError,
-    DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
-    WsEvent, WsEventError,
+    ContentHash, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
+    WorkspaceSnapshot, WsEvent, WsEventError,
 };
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
-use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
+use si_data_nats::jetstream;
+use si_events::{
+    audit_log::{AuditLog, AuditLogKind, AuditLogService},
+    rebase_batch_address::RebaseBatchAddress,
+    WorkspaceSnapshotAddress,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
+use tokio_util::task::TaskTracker;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
+    #[error("audit log error: {0}")]
+    AuditLog(#[from] AuditLogError),
+    #[error("audit logs error: {0}")]
+    AuditLogs(#[from] AuditLogsError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("layerdb error: {0}")]
@@ -55,6 +70,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 pub async fn perform_rebase(
     ctx: &mut DalContext,
     request: &EnqueueUpdatesRequest,
+    server_tracker: &TaskTracker,
 ) -> RebaseResult<RebaseStatus> {
     let span = current_span_for_instrument_at!("info");
 
@@ -123,14 +139,12 @@ pub async fn perform_rebase(
     ctx.commit_no_rebase().await?;
 
     {
-        let ictx = ctx.clone();
-        // TODO(fnichol): this spawn needs to be tracked or it will be trivially cancelled on shut
-        // down
-        tokio::spawn(async move {
-            if let Err(error) =
-                evict_unused_snapshots(&ictx, &to_rebase_workspace_snapshot_address).await
+        let ctx_clone = ctx.clone();
+        server_tracker.spawn(async move {
+            if let Err(err) =
+                evict_unused_snapshots(&ctx_clone, &to_rebase_workspace_snapshot_address).await
             {
-                error!(?error, "Eviction error: {:?}", error);
+                error!(?err, "eviction error");
             }
             // TODO: RebaseBatch eviction?
         });
@@ -143,35 +157,46 @@ pub async fn perform_rebase(
                 && cs.id != to_rebase_change_set.id
                 && request.from_change_set_id != Some(cs.id.into())
         }) {
-            let ctx_clone = ctx.clone();
             let workspace_pk = *workspace.pk();
             let updates_address = request.updates_address;
-            // TODO(fnichol): this spawn needs to be tracked or it will be trivially cancelled
-            // on shut down
-            tokio::task::spawn(async move {
-                debug!(
-                    "replaying batch {} onto {} from {}",
-                    updates_address, target_change_set.id, to_rebase_change_set.id
-                );
 
-                if let Err(err) = replay_changes(
-                    &ctx_clone,
-                    workspace_pk,
-                    target_change_set.id,
-                    updates_address,
-                    to_rebase_change_set.id,
-                )
-                .await
-                {
-                    error!(
-                        err = ?err,
-                        "error replaying rebase batch {} changes onto {}",
-                        updates_address,
-                        target_change_set.id
+            {
+                let ctx_clone = ctx.clone();
+                server_tracker.spawn(async move {
+                    debug!(
+                        "replaying batch {} onto {} from {}",
+                        updates_address, target_change_set.id, to_rebase_change_set.id
                     );
-                }
-            });
+
+                    if let Err(err) = replay_changes(
+                        &ctx_clone,
+                        workspace_pk,
+                        target_change_set.id,
+                        updates_address,
+                        to_rebase_change_set.id,
+                    )
+                    .await
+                    {
+                        error!(
+                            err = ?err,
+                            "error replaying rebase batch {} changes onto {}",
+                            updates_address,
+                            target_change_set.id
+                        );
+                    }
+                });
+            }
         }
+    }
+
+    {
+        let ctx_clone = ctx.clone();
+        let audit_logs = request.audit_logs.to_owned();
+        server_tracker.spawn(async move {
+            if let Err(err) = publish_audit_logs(&ctx_clone, audit_logs).await {
+                error!(?err, "failed to publish audit logs");
+            }
+        });
     }
 
     if !updating_head {
@@ -238,4 +263,30 @@ async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
     Workspace::get_by_pk(ctx, &workspace_pk)
         .await?
         .ok_or(RebaseError::WorkspaceMissing(workspace_pk))
+}
+
+async fn publish_audit_logs(ctx: &DalContext, audit_logs: Vec<ContentHash>) -> RebaseResult<()> {
+    let raw_contents: HashMap<ContentHash, AuditLogContent> = ctx
+        .layer_db()
+        .cas()
+        .try_read_many_as(audit_logs.as_slice())
+        .await?;
+    let audit_logs: Vec<AuditLog> = raw_contents
+        .into_iter()
+        .map(|(_, content)| dal::audit_log::assemble(content))
+        .collect();
+    // TODO(nick): move to server.
+    let stream =
+        AuditLogsWorkQueue::get_or_create(jetstream::new(ctx.nats_conn().to_owned())).await?;
+    let workspace_id = ctx.workspace_pk()?.to_string();
+    for audit_log in audit_logs {
+        stream.publish_audit_log(&workspace_id, &audit_log).await?;
+    }
+    stream
+        .publish_audit_log(
+            &workspace_id,
+            &dal::audit_log::new(ctx, AuditLogService::Rebaser, AuditLogKind::PerformedRebase)?,
+        )
+        .await?;
+    Ok(())
 }
