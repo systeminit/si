@@ -131,25 +131,19 @@ export class SdfApiClient {
   private readonly baseUrl: string;
 
   // Constructor is private to enforce using the init method
-  private constructor(
-    token: string,
-    baseUrl: string,
-    workspaceId: string,
-  ) {
+  private constructor(token: string, baseUrl: string, workspaceId: string) {
     this.token = token;
     this.baseUrl = baseUrl;
     this.workspaceId = workspaceId;
   }
 
   // Initializes the SdfApiClient with authentication
-  public static async init(
-    args: {
-      workspaceId: string;
-      userEmailOrId?: string;
-      password?: string;
-      token?: string;
-    },
-  ) {
+  public static async init(args: {
+    workspaceId: string;
+    userEmailOrId?: string;
+    password?: string;
+    token?: string;
+  }) {
     let { workspaceId, userEmailOrId, password, token } = args;
 
     if (!token) {
@@ -193,11 +187,14 @@ export class SdfApiClient {
   }
 
   // General fetch method
-  private async fetch(path: string, options?: {
-    headers?: Record<string, string>;
-    body?: Record<string, unknown>;
-    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-  }) {
+  private async fetch(
+    path: string,
+    options?: {
+      headers?: Record<string, string>;
+      body?: Record<string, unknown>;
+      method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+    },
+  ) {
     const resp = await this.fetch_no_throw(path, options);
     if (!resp.ok) {
       throw new Error(`Error ${resp.status}: ${await resp.text()}`);
@@ -207,20 +204,23 @@ export class SdfApiClient {
   }
 
   // Fetch method without automatic error throwing
-  private fetch_no_throw(path: string, options?: {
-    headers?: Record<string, string>;
-    body?: Record<string, unknown>;
-    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-  }) {
+  private fetch_no_throw(
+    path: string,
+    options?: {
+      headers?: Record<string, string>;
+      body?: Record<string, unknown>;
+      method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+    },
+  ) {
     const url = `${this.baseUrl}${path}`;
     const method = options?.method || "GET";
     console.log(`calling ${method} ${url}`);
 
     const headers = {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${this.token}`,
+      Authorization: `Bearer ${this.token}`,
       "Cache-Control": "no-cache",
-      ...options?.headers || {},
+      ...(options?.headers || {}),
     };
 
     const body = options?.body ? JSON.stringify(options.body) : undefined;
@@ -233,11 +233,9 @@ export class SdfApiClient {
   }
 
   public listenForDVUs() {
-    const url = `${this.baseUrl}${
-      ROUTES.workspace_updates_ws.path({
-        token: `Bearer ${this.token}`,
-      })
-    }`;
+    const url = `${this.baseUrl}${ROUTES.workspace_updates_ws.path({
+      token: `Bearer ${this.token}`,
+    })}`;
     const dvuListener = new DVUListener(url, this.workspaceId);
     this.dvuListener = dvuListener;
 
@@ -245,9 +243,12 @@ export class SdfApiClient {
     dvuListener.listen();
   }
 
-  public async waitForDVUs(interval_ms: number): Promise<void> {
+  public async waitForDVUs(
+    interval_ms: number,
+    timeout_ms: number,
+  ): Promise<void> {
     console.log(`Waiting on DVUs for ${this.workspaceId}...`);
-    return new Promise<void>((resolve) => {
+    const dvuPromise = new Promise<void>((resolve) => {
       const interval = setInterval(() => {
         const remainingEvents = this.dvuListener.openEventCount();
         if (remainingEvents === 0) {
@@ -261,6 +262,17 @@ export class SdfApiClient {
         }
       }, interval_ms);
     });
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        console.log(
+          `Timeout reached while waiting for DVUs in workspace ${this.workspaceId}.`,
+        );
+        reject(new Error("Timeout while waiting for DVUs to finish."));
+      }, timeout_ms);
+    });
+
+    return Promise.race([dvuPromise, timeoutPromise]);
   }
 }
 
@@ -302,7 +314,7 @@ async function getSdfJWTFromAuth0(
 
   const loginResp = await fetch(`${authApiUrl}/auth/login`, {
     headers: {
-      "Accept": "application/json",
+      Accept: "application/json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

@@ -21,10 +21,10 @@ async function create_and_and_apply_across_change_sets_inner(
       const changeSetId = await createChangeSet(sdf);
       changeSetIds.push(changeSetId);
 
-      const { schemaVariantId: testResourceActionsVariantId, newCreateComponentApi}  = await getTestSchemaVariantId(
-        sdf,
-        changeSetId,
-      );
+      const {
+        schemaVariantId: testResourceActionsVariantId,
+        newCreateComponentApi,
+      } = await getTestSchemaVariantId(sdf, changeSetId);
 
       await createComponent(
         sdf,
@@ -33,11 +33,11 @@ async function create_and_and_apply_across_change_sets_inner(
         0,
         0,
         undefined,
-        newCreateComponentApi
+        newCreateComponentApi,
       );
     }
 
-    await sdf.waitForDVUs(2000);
+    await sdf.waitForDVUs(2000, 20000);
     console.log("Done! Running an apply...");
     await sdf.call({
       route: "apply_change_set",
@@ -46,7 +46,7 @@ async function create_and_and_apply_across_change_sets_inner(
       },
     });
 
-    await sdf.waitForDVUs(2000);
+    await sdf.waitForDVUs(2000, 20000);
     console.log("verifying and cleaning up change sets...");
     for (var changeSetId of changeSetIds) {
       const diagram = await getDiagram(sdf, changeSetId);
@@ -111,16 +111,25 @@ async function createChangeSet(sdf: SdfApiClient): Promise<string> {
 async function getTestSchemaVariantId(
   sdf: SdfApiClient,
   changeSetId: string,
-): Promise<{ schemaVariantId: string, newCreateComponentApi: boolean }> {
-  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(sdf, changeSetId);
+): Promise<{ schemaVariantId: string; newCreateComponentApi: boolean }> {
+  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(
+    sdf,
+    changeSetId,
+  );
 
   const testResourceActionsVariant = await extractSchemaVariant(
     schemaVariants,
     "TestResourceActions",
     "",
   );
-  assert(typeof testResourceActionsVariant !== "undefined", "TestResourceActions variant should exist");
-  return { schemaVariantId: testResourceActionsVariant.schemaVariantId, newCreateComponentApi };
+  assert(
+    typeof testResourceActionsVariant !== "undefined",
+    "TestResourceActions variant should exist",
+  );
+  return {
+    schemaVariantId: testResourceActionsVariant.schemaVariantId,
+    newCreateComponentApi,
+  };
 }
 
 function extractSchemaVariant(
@@ -197,7 +206,7 @@ async function createComponent(
     workspaceId: sdf.workspaceId,
     ...parentArgs,
   };
-    const createResp = await sdf.call({
+  const createResp = await sdf.call({
     route: "create_component",
     body: payload,
   });

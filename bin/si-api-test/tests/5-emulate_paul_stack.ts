@@ -19,7 +19,10 @@ async function emulate_paul_stack_inner(
 ) {
   sdf.listenForDVUs();
   // LOAD INITIAL DATA
-  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(sdf, changeSetId);
+  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(
+    sdf,
+    changeSetId,
+  );
 
   const awsRegionVariant = await extractSchemaVariant(
     schemaVariants,
@@ -40,7 +43,7 @@ async function emulate_paul_stack_inner(
     0,
     0,
     undefined,
-    newCreateComponentApi
+    newCreateComponentApi,
   );
 
   //await sleepBetween(3000, 6000);
@@ -135,14 +138,12 @@ async function emulate_paul_stack_inner(
     vpcComponentId,
   );
 
-  for (
-    const { p: path, v: value } of [
-      { p: "/root/si/name", v: "How to VPC" },
-      { p: "/root/domain/CidrBlock", v: "10.0.0.0/16" },
-      { p: "/root/domain/EnableDnsHostnames", v: true },
-      { p: "/root/domain/EnableDnsResolution", v: true },
-    ]
-  ) {
+  for (const { p: path, v: value } of [
+    { p: "/root/si/name", v: "How to VPC" },
+    { p: "/root/domain/CidrBlock", v: "10.0.0.0/16" },
+    { p: "/root/domain/EnableDnsHostnames", v: true },
+    { p: "/root/domain/EnableDnsResolution", v: true },
+  ]) {
     const { attributeValueId, parentAttributeValueId, propId } =
       attributeValueIdForPropPath(path, vpcVariant.props, vpcPropValues);
 
@@ -166,13 +167,11 @@ async function emulate_paul_stack_inner(
   );
   const subnetVariantId = subnetVariant.schemaVariantId;
 
-  for (
-    const { index, data } of [
-      { CidrBlock: "10.0.128.0/20", AvailabilityZone: "us-east-1a" },
-      { CidrBlock: "10.0.144.0/20", AvailabilityZone: "us-east-1b" },
-      { CidrBlock: "10.0.160.0/20", AvailabilityZone: "us-east-1c" },
-    ].map((data, index) => ({ index, data }))
-  ) {
+  for (const { index, data } of [
+    { CidrBlock: "10.0.128.0/20", AvailabilityZone: "us-east-1a" },
+    { CidrBlock: "10.0.144.0/20", AvailabilityZone: "us-east-1b" },
+    { CidrBlock: "10.0.160.0/20", AvailabilityZone: "us-east-1c" },
+  ].map((data, index) => ({ index, data }))) {
     const subnetComponentId = await createComponent(
       sdf,
       changeSetId,
@@ -199,14 +198,12 @@ async function emulate_paul_stack_inner(
 
     // CONFIGURE Subnet
 
-    for (
-      const { p: path, v: value } of [
-        { p: "/root/si/name", v: `Public ${index + 1}` },
-        { p: "/root/domain/CidrBlock", v: data.CidrBlock },
-        { p: "/root/domain/AvailabilityZone", v: data.AvailabilityZone },
-        { p: "/root/domain/IsPublic", v: true },
-      ]
-    ) {
+    for (const { p: path, v: value } of [
+      { p: "/root/si/name", v: `Public ${index + 1}` },
+      { p: "/root/domain/CidrBlock", v: data.CidrBlock },
+      { p: "/root/domain/AvailabilityZone", v: data.AvailabilityZone },
+      { p: "/root/domain/IsPublic", v: true },
+    ]) {
       const { attributeValueId, parentAttributeValueId, propId } =
         attributeValueIdForPropPath(
           path,
@@ -228,7 +225,7 @@ async function emulate_paul_stack_inner(
     }
   }
 
-  await sdf.waitForDVUs(2000);
+  await sdf.waitForDVUs(2000, 20000);
 }
 
 // REQUEST HELPERS WITH VALIDATIONS
@@ -243,7 +240,7 @@ async function createComponent(
 ): Promise<string> {
   const parentArgs = parentId ? { parentId } : {};
   const payload = {
-    schemaType: newCreateComponentApi ? 'installed' : undefined,
+    schemaType: newCreateComponentApi ? "installed" : undefined,
     schemaVariantId,
     x: x.toString(),
     y: y.toString(),
