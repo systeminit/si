@@ -52,18 +52,23 @@ import {
   CUSTOMIZABLE_FUNC_TYPES,
   CustomizableFuncKind,
   customizableFuncKindToFuncKind,
-  FUNC_LABELS,
+  FUNC_TYPES,
   FuncSummary,
 } from "@/api/sdf/dal/func";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const ffStore = useFeatureFlagsStore();
 
-const funcKindOptions: Partial<Record<CustomizableFuncKind, FUNC_LABELS>> = {};
+// filtering out a func type if FF for mgmt functions is off
+// When you use an enum as keys in a record
+// TS errors out if all enum values are not in the record
+// but that's literally not what I want! because I want to delete one!
+// So, I can Partial to make all keys optional
+const funcKindOptions: Partial<FUNC_TYPES> = {};
 Object.entries(CUSTOMIZABLE_FUNC_TYPES).forEach(([key, value]) => {
   if (!ffStore.MANAGEMENT_FUNCTIONS && key === CustomizableFuncKind.Management)
     return;
-  funcKindOptions[key as CustomizableFuncKind] = value;
+  funcKindOptions[key] = value;
 });
 
 const props = defineProps({
