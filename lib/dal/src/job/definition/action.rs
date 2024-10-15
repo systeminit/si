@@ -205,7 +205,7 @@ skip_all, level = "info", fields(
     si.action.id = ?action_id))]
 async fn process_execution(
     ctx: &mut DalContext,
-    maybe_resource: Option<&ActionRunResultSuccess>,
+    action_run_result: Option<&ActionRunResultSuccess>,
     action_id: ActionId,
     func_run_id: FuncRunId,
 ) -> JobConsumerResult<()> {
@@ -216,25 +216,30 @@ async fn process_execution(
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
     let component = Component::get_by_id(ctx, component_id).await?;
-    if let Some(resource) = maybe_resource {
+    if let Some(run_result) = action_run_result {
         // Set the resource if we have a payload, regardless of status *and* assemble a
         // summary
-        if resource.payload.is_some() {
+        if run_result.payload.is_some() {
             // Send the create resource event if we're not updating an existing resource
             if component.resource(ctx).await?.is_none() {
                 billing_publish::for_resource_create(ctx, component_id, func_run_id).await?;
             }
 
-            component.set_resource(ctx, resource.into()).await?;
+            component.set_resource(ctx, run_result.into()).await?;
         }
 
-        if resource.status == ResourceStatus::Ok {
+        // Set the resource id if we have one, even on failure. (although, why?)
+        if let Some(resource_id) = &run_result.resource_id {
+            component.set_resource_id(ctx, resource_id.as_str()).await?;
+        }
+
+        if run_result.status == ResourceStatus::Ok {
             // Remove `ActionId` from graph as the execution succeeded
             Action::remove_by_id(ctx, action_id).await?;
 
             // Clear the resource if the status is ok and we don't have a payload. This could
             // be from invoking a delete action directly, rather than deleting the component.
-            if resource.payload.is_none() {
+            if run_result.payload.is_none() {
                 // Send the delete resource event if there is a resource to actually clear
                 if component.resource(ctx).await?.is_some() {
                     billing_publish::for_resource_delete(ctx, component_id, func_run_id).await?;

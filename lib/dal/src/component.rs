@@ -1548,7 +1548,13 @@ impl Component {
     ) -> ComponentResult<()> {
         let path = ["root", "si", "resourceId"];
         let sv_id = Self::schema_variant_id(ctx, self.id).await?;
-        let resource_prop_id = Prop::find_prop_id_by_path(ctx, sv_id, &PropPath::new(path)).await?;
+
+        let Some(resource_prop_id) =
+            Prop::find_prop_id_by_path_opt(ctx, sv_id, &PropPath::new(path)).await?
+        else {
+            return Ok(());
+        };
+
         // If the name prop is controlled by an identity or other function,
         // don't override the prototype here
         if Prop::is_set_by_dependent_function(ctx, resource_prop_id).await? {

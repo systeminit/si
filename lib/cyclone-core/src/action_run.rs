@@ -27,6 +27,7 @@ pub enum ResourceStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ActionRunResultSuccess {
     pub execution_id: String,
+    pub resource_id: Option<String>,
     pub payload: Option<serde_json::Value>,
     pub status: ResourceStatus,
     pub message: Option<String>,
