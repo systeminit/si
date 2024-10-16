@@ -48,6 +48,8 @@ pub enum EdgeWeightKind {
     /// TODO(nick): in the future, this should be used for the "root" [`Prop`](crate::Prop) for a
     /// [`SchemaVariant`](crate::SchemaVariant) as well.
     Root,
+    /// From a Geometry node to the node it represents on a view.
+    Represents,
     /// Used when the target/destination of an edge is an [`InputSocket`](crate::InputSocket), or an
     /// [`OutputSocket`](crate::OutputSocket).
     Socket,

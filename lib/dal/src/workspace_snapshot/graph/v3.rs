@@ -735,6 +735,7 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
+                    EdgeWeightKindDiscriminants::Represents => "black",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
@@ -781,6 +782,7 @@ impl WorkspaceSnapshotGraphV3 {
                             ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
+                            ContentAddressDiscriminants::Geometry => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
                             ContentAddressDiscriminants::Module => "yellow",
@@ -793,6 +795,7 @@ impl WorkspaceSnapshotGraphV3 {
                             ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
                             ContentAddressDiscriminants::ManagementPrototype => "black",
+                            ContentAddressDiscriminants::View => "black",
                         };
                         (discrim.to_string(), color)
                     }
@@ -825,6 +828,7 @@ impl WorkspaceSnapshotGraphV3 {
                         CategoryNodeKind::DependentValueRoots => {
                             ("Dependent Values (Category)".into(), "black")
                         }
+                        CategoryNodeKind::View => ("Views (Category)".into(), "black"),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
@@ -841,6 +845,7 @@ impl WorkspaceSnapshotGraphV3 {
                         format!("Func Arg\n{}", func_arg_node_weight.name()),
                         "black",
                     ),
+                    NodeWeight::Geometry(_) => ("Geometry\n".to_string(), "green"),
                     NodeWeight::InputSocket(_) => ("Input Socket".to_string(), "black"),
                     NodeWeight::Ordering(_) => {
                         (NodeWeightDiscriminants::Ordering.to_string(), "gray")
@@ -861,6 +866,7 @@ impl WorkspaceSnapshotGraphV3 {
                         format!("FinishedDependentValue\n{}", node_weight.value_id()),
                         "red",
                     ),
+                    NodeWeight::View(_) => ("View\n".to_string(), "black"),
                     NodeWeight::ManagementPrototype(_) => {
                         ("ManagementPrototype".to_string(), "black")
                     }
@@ -1396,6 +1402,7 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
+                    | EdgeWeightKind::Represents
                     | EdgeWeightKind::Root
                     | EdgeWeightKind::SocketValue
                     | EdgeWeightKind::ValidationOutput

@@ -103,6 +103,12 @@ impl ContentNodeWeight {
             ContentAddress::OutputSocket(_) => ContentAddress::OutputSocket(content_hash),
             ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
+            ContentAddress::Geometry(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Geometry".to_string(),
+                    "Content".to_string(),
+                ));
+            }
             ContentAddress::InputSocket(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "InputSocket".to_string(),
@@ -140,6 +146,12 @@ impl ContentNodeWeight {
             ContentAddress::ValidationOutput(_) => ContentAddress::ValidationOutput(content_hash),
             ContentAddress::ManagementPrototype(_) => {
                 ContentAddress::ManagementPrototype(content_hash)
+            }
+            ContentAddress::View(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Geometry".to_string(),
+                    "Content".to_string(),
+                ));
             }
         };
 

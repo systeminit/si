@@ -23,6 +23,7 @@ pub enum CategoryNodeKind {
     Schema,
     Secret,
     DependentValueRoots,
+    View,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -5,7 +5,7 @@
 use crate::helpers::ChangeSetTestHelpers;
 use dal::{
     self,
-    component::ComponentGeometry,
+    component::RawGeometry,
     prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
@@ -369,8 +369,8 @@ impl ExpectComponent {
             .expect("get component by id")
     }
 
-    pub async fn geometry(self, ctx: &DalContext) -> ComponentGeometry {
-        self.component(ctx).await.geometry()
+    pub async fn geometry(self, ctx: &DalContext) -> RawGeometry {
+        self.component(ctx).await.geometry(ctx)
     }
 
     pub async fn view(self, ctx: &DalContext) -> Option<serde_json::Value> {

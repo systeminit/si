@@ -1612,6 +1612,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::DeprecatedActionRunner
                 | ContentAddressDiscriminants::Func
                 | ContentAddressDiscriminants::FuncArg
+                | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
                 | ContentAddressDiscriminants::Module
@@ -1622,6 +1623,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
+                | ContentAddressDiscriminants::View
                 | ContentAddressDiscriminants::ManagementPrototype => None,
             },
 
@@ -1633,6 +1635,8 @@ impl WorkspaceSnapshot {
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
+            | NodeWeight::Geometry(_)
+            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)
