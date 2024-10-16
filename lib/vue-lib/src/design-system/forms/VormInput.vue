@@ -719,18 +719,17 @@ function onSelectChange(event: Event) {
   // TODO: a little extra handling to grab the actual vue child and use its bound value
   // rather than event.target.value as this will allow us to preserve any weird value types
 
-  const childIndex = (event?.target as any)?.selectedIndex;
-  const selectedOption = childInputOptions.value[childIndex];
-  const newSelectedValue = selectedOption?.exposed?.optionValue;
+  const newSelectedValue = [...(event?.target as any).selectedOptions].pop()
+    ?.value;
   // fallback to event.target.value for cases where the VormInputOption has no bound value
   // for example `VormInputOption yes`
 
   // console.log(childIndex, selectedOption, newSelectedValue);
-  setNewValue(
+  const newVal =
     newSelectedValue === undefined
       ? (event?.target as any)?.value
-      : newSelectedValue,
-  );
+      : newSelectedValue;
+  setNewValue(newVal);
 }
 
 function fixOptionSelection() {

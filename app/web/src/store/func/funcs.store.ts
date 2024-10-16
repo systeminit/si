@@ -416,6 +416,66 @@ export const useFuncStore = () => {
             params: {
               bindings,
             },
+            optimistic: () => {
+              // if it has prototype, replace
+              // otherwise append
+              const func = this.funcsById[funcId];
+              if (func) {
+                bindings.forEach((binding) => {
+                  // TS not being friendly to genericize this
+                  if ("attributePrototypeId" in binding) {
+                    if (binding.attributePrototypeId) {
+                      const bIdx = func.bindings.findIndex((b) => {
+                        if ("attributePrototypeId" in b) {
+                          if (
+                            b.attributePrototypeId &&
+                            b.attributePrototypeId ===
+                              binding.attributePrototypeId
+                          )
+                            return true;
+                        }
+                        return false;
+                      });
+                      if (bIdx !== -1) {
+                        func.bindings[bIdx] = binding;
+                      } else func.bindings.push(binding);
+                    }
+                  } else if ("managementPrototypeId" in binding) {
+                    if (binding.managementPrototypeId) {
+                      const bIdx = func.bindings.findIndex((b) => {
+                        if ("managementPrototypeId" in b) {
+                          if (
+                            b.managementPrototypeId &&
+                            b.managementPrototypeId ===
+                              binding.managementPrototypeId
+                          )
+                            return true;
+                        }
+                        return false;
+                      });
+                      if (bIdx !== -1) {
+                        func.bindings[bIdx] = binding;
+                      } else func.bindings.push(binding);
+                    }
+                  } else {
+                    func.bindings.push(binding);
+                  }
+                });
+
+                // reset the secondary data structures
+                const _bindings = processBindings(func);
+                this.actionBindings[func.funcId] = _bindings.actionBindings;
+                this.attributeBindings[func.funcId] =
+                  _bindings.attributeBindings;
+                this.authenticationBindings[func.funcId] =
+                  _bindings.authenticationBindings;
+                this.qualificationBindings[func.funcId] =
+                  _bindings.qualificationBindings;
+                this.codegenBindings[func.funcId] = _bindings.codegenBindings;
+                this.managementBindings[func.funcId] =
+                  _bindings.managementBindings;
+              }
+            },
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
@@ -645,14 +705,17 @@ export const useFuncStore = () => {
         const realtimeStore = useRealtimeStore();
 
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
+          // we need func list on new schema variants, b/c the updated bindings
+          // don't come back in the schema variant WsEvent payload
+          // but we have a FoC while the request is in flight
           {
-            eventType: "ChangeSetWritten",
+            eventType: "SchemaVariantCreated",
             callback: () => {
               this.FETCH_FUNC_LIST();
             },
           },
           {
-            eventType: "ChangeSetApplied",
+            eventType: "SchemaVariantCloned",
             callback: () => {
               this.FETCH_FUNC_LIST();
             },
@@ -685,6 +748,8 @@ export const useFuncStore = () => {
                 bindings.qualificationBindings;
               this.codegenBindings[data.funcSummary.funcId] =
                 bindings.codegenBindings;
+              this.managementBindings[data.funcSummary.funcId] =
+                bindings.managementBindings;
             },
           },
           {
@@ -709,6 +774,8 @@ export const useFuncStore = () => {
                 bindings.qualificationBindings;
               this.codegenBindings[data.funcSummary.funcId] =
                 bindings.codegenBindings;
+              this.managementBindings[data.funcSummary.funcId] =
+                bindings.managementBindings;
             },
           },
           {
