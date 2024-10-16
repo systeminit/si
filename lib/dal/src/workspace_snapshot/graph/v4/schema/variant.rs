@@ -1,6 +1,6 @@
 use petgraph::prelude::*;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants, edge_weight::EdgeWeightKindDiscriminants,
@@ -9,7 +9,7 @@ use crate::{
     SchemaId, SchemaVariantError, SchemaVariantId,
 };
 
-impl WorkspaceSnapshotGraphV3 {
+impl WorkspaceSnapshotGraphV4 {
     pub fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,

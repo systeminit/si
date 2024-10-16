@@ -58,6 +58,8 @@ pub enum ContentTypes {
     Validation(ValidationContent),
     OutputSocket(OutputSocketContent),
     ManagementPrototype(ManagementPrototypeContent),
+    Geometry(GeometryContent),
+    View(ViewContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -113,6 +115,8 @@ impl_into_content_types!(Secret);
 impl_into_content_types!(StaticArgumentValue);
 impl_into_content_types!(Validation);
 impl_into_content_types!(ManagementPrototype);
+impl_into_content_types!(Geometry);
+impl_into_content_types!(View);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -214,12 +218,69 @@ pub struct AttributePrototypeContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+#[strum_discriminants(derive(strum::Display))]
 pub enum ComponentContent {
     V1(ComponentContentV1),
+    V2(ComponentContentV2),
+}
+
+impl ComponentContent {
+    pub fn extract(self) -> ComponentContentV2 {
+        match self {
+            ComponentContent::V1(v1) => ComponentContentV2 {
+                timestamp: v1.timestamp,
+            },
+            ComponentContent::V2(v2) => v2,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
+    pub timestamp: Timestamp,
+    pub x: String,
+    pub y: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ComponentContentV2 {
+    pub timestamp: Timestamp,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ViewContent {
+    V1(ViewContentV1),
+}
+
+impl ViewContent {
+    pub fn extract(self) -> ViewContentV1 {
+        let ViewContent::V1(content) = self;
+        content
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ViewContentV1 {
+    pub timestamp: Timestamp,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum GeometryContent {
+    V1(GeometryContentV1),
+}
+
+impl GeometryContent {
+    pub fn extract(self) -> GeometryContentV1 {
+        let GeometryContent::V1(content) = self;
+        content
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct GeometryContentV1 {
     pub timestamp: Timestamp,
     pub x: String,
     pub y: String,
@@ -265,11 +326,6 @@ pub struct FuncContentV2 {
     pub is_locked: bool,
 }
 
-#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum FuncArgumentContent {
-    V1(FuncArgumentContentV1),
-}
-
 impl FuncContent {
     pub fn extract(self) -> FuncContentV2 {
         match self {
@@ -290,6 +346,11 @@ impl FuncContent {
             FuncContent::V2(v2) => v2,
         }
     }
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum FuncArgumentContent {
+    V1(FuncArgumentContentV1),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

@@ -6,7 +6,7 @@ use crate::{
     workspace_snapshot::{
         edge_weight::EdgeWeightKindDiscriminants, graph::detect_updates::Update, NodeInformation,
     },
-    WorkspaceSnapshotGraphV3,
+    WorkspaceSnapshotGraphVCurrent,
 };
 
 pub trait CorrectExclusiveOutgoingEdge
@@ -25,7 +25,7 @@ where
     /// outgoing NewEdge update for the exclusive edge)
     fn correct_exclusive_outgoing_edges(
         &self,
-        graph: &WorkspaceSnapshotGraphV3,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         mut updates: Vec<Update>,
     ) -> Vec<Update> {
         let exclusive_edge_kinds = self.exclusive_outgoing_edges();
