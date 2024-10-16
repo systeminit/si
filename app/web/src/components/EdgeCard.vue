@@ -1,13 +1,13 @@
 <template>
   <div v-if="fromComponent && toComponent">
-    <ComponentCard :componentId="fromComponent.id" />
+    <ComponentCard :component="fromComponent" :titleCard="false" />
     <div class="_connection-label text-xs italic">
       <!-- currently output and input socket always have the same label/name -->
       <span class="capsize">{{ fromSocket?.name }}</span>
       <!-- <div>to</div>
         <span class="capsize">{{ toSocket?.name }}</span> -->
     </div>
-    <ComponentCard :componentId="toComponent.id" />
+    <ComponentCard :component="toComponent" :titleCard="false" />
   </div>
 </template>
 
@@ -15,6 +15,7 @@
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
 import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { EdgeId } from "@/api/sdf/dal/component";
 import ComponentCard from "./ComponentCard.vue";
 
@@ -23,17 +24,18 @@ const props = defineProps({
 });
 
 const componentsStore = useComponentsStore();
+const assetStore = useAssetStore();
 
-const edge = computed(() => componentsStore.edgesById[props.edgeId]);
+const edge = computed(() => componentsStore.rawEdgesById[props.edgeId]);
 
 const fromComponent = computed(() =>
   edge.value?.fromComponentId
-    ? componentsStore.componentsById[edge.value.fromComponentId]
+    ? componentsStore.allComponentsById[edge.value.fromComponentId]
     : undefined,
 );
 const fromSchemaVariant = computed(() =>
-  fromComponent.value?.schemaVariantId
-    ? componentsStore.schemaVariantsById[fromComponent.value.schemaVariantId]
+  fromComponent.value?.def.schemaVariantId
+    ? assetStore.variantFromListById[fromComponent.value.def.schemaVariantId]
     : undefined,
 );
 const fromSocket = computed(() =>
@@ -44,18 +46,9 @@ const fromSocket = computed(() =>
 );
 const toComponent = computed(() =>
   edge.value?.toComponentId
-    ? componentsStore.componentsById[edge.value.toComponentId]
+    ? componentsStore.allComponentsById[edge.value.toComponentId]
     : undefined,
 );
-// const toSchema = computed(
-//   () => componentsStore.schemaVariantsById[toComponent.value.schemaVariantId],
-// );
-// const toSocket = computed(() =>
-//   _.find(
-//     toSchema.value.inputSockets,
-//     (s) => s.id === selectedEdge.value?.toSocketId,
-//   ),
-// );
 </script>
 
 <style lang="less">

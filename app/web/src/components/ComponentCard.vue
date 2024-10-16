@@ -1,23 +1,22 @@
 <template>
   <div
-    v-if="component"
     :class="
       clsx(
         'p-xs border-l-4 border relative',
         titleCard ? 'mb-xs' : 'rounded-md',
-        component.toDelete && 'opacity-70',
-        component.fromBaseChangeSet && 'opacity-70',
+        component.def.toDelete && 'opacity-70',
+        component.def.fromBaseChangeSet && 'opacity-70',
       )
     "
     :style="{
-      borderColor: component.color,
+      borderColor: component.def.color,
       backgroundColor: `#${bodyBg.toHex()}`,
     }"
   >
     <div class="flex gap-2xs items-center">
-      <Icon :name="component.icon" size="lg" class="shrink-0" />
+      <Icon :name="component.def.icon" size="lg" class="shrink-0" />
       <Icon
-        :name="COMPONENT_TYPE_ICONS[component.componentType]"
+        :name="COMPONENT_TYPE_ICONS[component.def.componentType]"
         size="lg"
         class="shrink-0"
       />
@@ -27,10 +26,10 @@
           v-tooltip="componentNameTooltip"
           class="font-bold break-all line-clamp-4 pb-[1px]"
         >
-          {{ component.displayName }}
+          {{ component.def.displayName }}
         </div>
         <div class="text-xs italic capsize">
-          <div class="truncate pr-xs">{{ component.schemaName }}</div>
+          <div class="truncate pr-xs">{{ component.def.schemaName }}</div>
         </div>
       </Stack>
 
@@ -43,7 +42,7 @@
         class="ml-auto cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon
-          v-if="component.canBeUpgraded"
+          v-if="component.def.canBeUpgraded"
           type="upgradable"
           @click="upgradeComponent"
         />
@@ -51,18 +50,18 @@
 
       <!-- change status icon -->
       <div
-        v-if="component.changeStatus !== 'unmodified'"
+        v-if="component.def.changeStatus !== 'unmodified'"
         v-tooltip="{
           content:
-            component.changeStatus.charAt(0).toUpperCase() +
-            component.changeStatus.slice(1),
+            component.def.changeStatus.charAt(0).toUpperCase() +
+            component.def.changeStatus.slice(1),
           theme: 'instant-show',
         }"
         class="cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon
           type="change"
-          :status="component.changeStatus"
+          :status="component.def.changeStatus"
           @click="componentsStore.setComponentDetailsTab('diff')"
         />
       </div>
@@ -74,7 +73,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, ref } from "vue";
+import { computed, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import {
@@ -83,24 +82,23 @@ import {
   Stack,
   COMPONENT_TYPE_ICONS,
 } from "@si/vue-lib/design-system";
-import { FullComponent, useComponentsStore } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
-const props = defineProps({
-  titleCard: { type: Boolean },
-  componentId: { type: String as PropType<ComponentId>, required: true },
-});
+const props = defineProps<{
+  titleCard: boolean;
+  component: DiagramGroupData | DiagramNodeData;
+}>();
 
 const { theme } = useTheme();
 
 const componentsStore = useComponentsStore();
-const component = computed(
-  (): FullComponent | undefined =>
-    componentsStore.componentsById[props.componentId],
-);
 
-const primaryColor = tinycolor(component.value?.color ?? "000000");
+const primaryColor = tinycolor(props.component.def.color);
 
 // body bg
 const bodyBg = computed(() => {
@@ -127,8 +125,8 @@ const componentNameTooltip = computed(() => {
 const upgradeComponent = async () => {
   componentsStore.setSelectedComponentId(null);
   await componentsStore.UPGRADE_COMPONENT(
-    props.componentId,
-    component.value?.displayName || "",
+    props.component.def.id,
+    props.component.def.displayName,
   );
 };
 </script>

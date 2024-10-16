@@ -291,9 +291,9 @@ const dryRunConfig = computed(() => {
 
 const testComponentDisplayName = computed(() => {
   if (funcTestSelectorRef.value?.selectedComponentId) {
-    return componentsStore.componentsById[
+    return componentsStore.allComponentsById[
       funcTestSelectorRef.value.selectedComponentId
-    ]?.displayName;
+    ]?.def.displayName;
   } else return "ERROR";
 });
 
@@ -438,9 +438,9 @@ const prepareTest = async () => {
       selectedInputs =
         funcStore.codegenBindings[funcStore.selectedFuncId]?.find((b) => {
           const schemaVariantId =
-            componentsStore.componentsById[
+            componentsStore.allComponentsById[
               funcTestSelectorRef.value?.selectedComponentId || ""
-            ]?.schemaVariantId;
+            ]?.def.schemaVariantId;
           if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
           return false;
         })?.inputs || [];
@@ -449,9 +449,9 @@ const prepareTest = async () => {
       selectedInputs =
         funcStore.qualificationBindings[funcStore.selectedFuncId]?.find((b) => {
           const schemaVariantId =
-            componentsStore.componentsById[
+            componentsStore.allComponentsById[
               funcTestSelectorRef.value?.selectedComponentId || ""
-            ]?.schemaVariantId;
+            ]?.def.schemaVariantId;
           if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
           return false;
         })?.inputs || [];

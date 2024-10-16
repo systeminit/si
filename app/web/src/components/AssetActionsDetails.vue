@@ -28,7 +28,7 @@
             v-for="action in bindings"
             :key="action.actionPrototypeId || undefined"
             :binding="action"
-            :componentId="props.componentId"
+            :component="props.component"
           />
         </div>
       </TabGroupItem>
@@ -40,19 +40,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
 import { useFuncStore } from "@/store/func/funcs.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import ActionWidget from "@/components/Actions/ActionWidget.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
-const props = defineProps({
-  componentId: { type: String as PropType<ComponentId>, required: true },
-});
+const props = defineProps<{
+  component: DiagramNodeData | DiagramGroupData;
+}>();
 
 const funcStore = useFuncStore();
 const componentsStore = useComponentsStore();

@@ -190,7 +190,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           selectedComponent: () => {
             if (!componentId) return;
             const componentsStore = useComponentsStore();
-            return componentsStore.componentsById[componentId];
+            return componentsStore.allComponentsById[componentId];
           },
         },
         actions: {
@@ -214,11 +214,11 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                   if (prop) {
                     const isHidden =
                       prop.name === "type" &&
-                      this.selectedComponent.schemaName === "Generic Frame";
+                      this.selectedComponent.def.schemaName === "Generic Frame";
                     const isReadonly =
                       prop.name === "type" &&
-                      this.selectedComponent.childIds !== undefined &&
-                      this.selectedComponent.childIds.length > 0;
+                      this.selectedComponent.def.childIds !== undefined &&
+                      this.selectedComponent.def.childIds.length > 0;
 
                     props[propKey] = {
                       ...prop,
@@ -314,26 +314,29 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             let overriddenGeometry: APIComponentGeometry | undefined;
             const componentStore = useComponentsStore();
             const component =
-              componentStore.componentsById[payload.componentId];
+              componentStore.allComponentsById[payload.componentId];
 
             if (!component)
               throw new Error("Could not find component in store");
 
             if (
-              component.parentId &&
+              component.def.parentId &&
               payload.componentType !== ComponentType.Component
             ) {
-              const parent = componentStore.componentsById[component.parentId];
+              const parent =
+                componentStore.allComponentsById[component.def.parentId];
               if (!parent) throw new Error("Could not find parent in store");
 
               const componentGeometry =
-                componentStore.renderedGeometriesByComponentId[component.id];
+                componentStore.renderedGeometriesByComponentId[
+                  component.def.id
+                ];
 
               if (!componentGeometry)
                 throw new Error("Could not rendered geometry for component");
 
               const parentGeometry =
-                componentStore.renderedGeometriesByComponentId[parent.id];
+                componentStore.renderedGeometriesByComponentId[parent.def.id];
 
               if (!parentGeometry)
                 throw new Error("Could not rendered geometry for parent");

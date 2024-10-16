@@ -230,9 +230,10 @@
             </template>
             <div class="flex flex-col gap-xs p-xs">
               <ComponentCard
-                v-for="id in filteredComponents"
-                :key="id"
-                :componentId="id"
+                v-for="component of filteredComponents"
+                :key="component.def.id"
+                :titleCard="false"
+                :component="component"
               />
             </div>
           </ScrollArea>
@@ -318,6 +319,10 @@ import RightPanelDrawer from "./RightPanelDrawer.vue";
 import ComponentCard from "./ComponentCard.vue";
 import SecretCard from "./SecretCard.vue";
 import EmptyStateCard from "./EmptyStateCard.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
 const secretsStore = useSecretsStore();
 const { secretsByLastCreated } = storeToRefs(secretsStore);
@@ -388,19 +393,23 @@ const onComponentSearch = (search: string) => {
 };
 
 const filteredComponents = computed(() => {
-  if (searchComponentString.value.length === 0)
-    return editingSecret.value?.connectedComponents;
+  const components: (DiagramGroupData | DiagramNodeData)[] = [];
+  editingSecret.value?.connectedComponents.forEach((componentId) => {
+    const component = componentStore.allComponentsById[componentId];
+    if (component) components.push(component);
+  });
+  if (searchComponentString.value.length === 0) return components;
+  if (!components) return [];
 
-  return editingSecret.value?.connectedComponents.filter((componentId) => {
-    const component = componentStore.componentsById[componentId];
+  return components.filter((component) => {
     if (
-      component?.displayName
+      component?.def.displayName
         .toLocaleLowerCase()
         .includes(searchComponentString.value)
     )
       return true;
     if (
-      component?.schemaName
+      component?.def.schemaName
         .toLocaleLowerCase()
         .includes(searchComponentString.value)
     )

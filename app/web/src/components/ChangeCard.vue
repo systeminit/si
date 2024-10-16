@@ -13,7 +13,9 @@
         <span v-if="diff.status === 'added'">Added</span>
         <span v-if="diff.status === 'deleted'">Removed</span>
         <span v-if="diff.status === 'modified'">Modified</span>
-        {{ componentsStore.componentsById[diff.componentId]?.schemaName }}
+        {{
+          componentsStore.allComponentsById[diff.componentId]?.def.schemaName
+        }}
       </div>
       <div
         :class="
@@ -26,7 +28,9 @@
         @mouseenter="onHoverStart"
         @mouseleave="onHoverEnd"
       >
-        {{ componentsStore.componentsById[diff.componentId]?.displayName }}
+        {{
+          componentsStore.allComponentsById[diff.componentId]?.def.displayName
+        }}
       </div>
       <div class="text-neutral-500 dark:text-neutral-400 truncate">
         By: {{ diff.actor }}
@@ -57,10 +61,11 @@ const props = defineProps({
 });
 
 function onClick() {
-  if (componentsStore.componentsById[props.diff.componentId]) {
+  const component = componentsStore.allComponentsById[props.diff.componentId];
+  if (component) {
     componentsStore.setSelectedComponentId(props.diff.componentId);
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: props.diff.componentId,
+      component,
       center: true,
     });
   }
@@ -71,13 +76,13 @@ const isHover = computed(
 );
 
 function onHoverStart() {
-  if (componentsStore.componentsById[props.diff.componentId]) {
+  if (componentsStore.allComponentsById[props.diff.componentId]) {
     componentsStore.setHoveredComponentId(props.diff.componentId);
   }
 }
 
 function onHoverEnd() {
-  if (componentsStore.componentsById[props.diff.componentId]) {
+  if (componentsStore.allComponentsById[props.diff.componentId]) {
     componentsStore.setHoveredComponentId(null);
   }
 }

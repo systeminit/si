@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
+import * as _ from "lodash-es";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "./StatusBarTabPill.vue";
@@ -46,5 +47,19 @@ const props = defineProps({
 });
 
 const componentsStore = useComponentsStore();
-const stats = computed(() => componentsStore.changeStatsSummary);
+
+const stats = computed(() => {
+  const allChanged = _.filter(
+    Object.values(componentsStore.allComponentsById),
+    (c) => !!c.def.changeStatus,
+  );
+  const grouped = _.groupBy(allChanged, (c) => c.def.changeStatus);
+  return {
+    added: grouped.added?.length || 0,
+    deleted: grouped.deleted?.length || 0,
+    modified: grouped.modified?.length || 0,
+    unmodified: grouped.unmodified?.length || 0,
+    total: allChanged.length,
+  };
+});
 </script>

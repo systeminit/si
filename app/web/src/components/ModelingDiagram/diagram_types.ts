@@ -3,7 +3,7 @@ import { ConnectionAnnotation } from "@si/ts-lib";
 import { Vector2d } from "konva/lib/types";
 import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
 
 export type GridPoint = { x: number; y: number };
@@ -108,24 +108,26 @@ export class DiagramEdgeData extends DiagramElementData {
 
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
-    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
-    if (comp?.isGroup) {
+    const comp =
+      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    if (comp?.def.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.fromComponentId);
     }
     return DiagramNodeData.generateUniqueKey(this.def.fromComponentId);
   }
 
   get toNodeKey() {
-    const comp = useComponentsStore().componentsById[this.def.toComponentId];
-    if (comp?.isGroup) {
+    const comp = useComponentsStore().allComponentsById[this.def.toComponentId];
+    if (comp?.def.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.toComponentId);
     }
     return DiagramNodeData.generateUniqueKey(this.def.toComponentId);
   }
 
   get fromSocketKey() {
-    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
-    if (comp?.isGroup) {
+    const comp =
+      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    if (comp?.def.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
         this.def.fromSocketId,
@@ -138,8 +140,8 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get toSocketKey() {
-    const comp = useComponentsStore().componentsById[this.def.toComponentId];
-    if (comp?.isGroup) {
+    const comp = useComponentsStore().allComponentsById[this.def.toComponentId];
+    if (comp?.def.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.toComponentId),
         this.def.toSocketId,
@@ -201,9 +203,9 @@ export type DiagramNodeDef = {
   /** Size of element on diagram (for manually  resizable components) */
   size?: Size2D;
   /** single hex color to use for node theme */
-  color?: string | null;
+  color: string;
   /** icon (name/slug) used to help convey node type */
-  typeIcon?: string | null;
+  typeIcon: string;
   /** type of node - define if this is a simple component or a type of frame */
   componentType: ComponentType;
   /** type of node - define if this is a simple component or a type of frame */
@@ -211,7 +213,7 @@ export type DiagramNodeDef = {
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */
-  changeStatus?: ChangeStatus;
+  changeStatus: ChangeStatus;
   /** component will be deleted after next action run */
   toDelete: boolean;
   /** component is deleted in this changeset, but exists in base change set */
@@ -223,6 +225,15 @@ export type DiagramNodeDef = {
   /** stats from recursive children */
   numChildren: number;
   numChildrenResources: number;
+  schemaName: string;
+  schemaVariantName: string;
+  schemaVariantId: string;
+  displayName: string;
+  createdInfo: ActorAndTimestamp;
+  deletedInfo?: ActorAndTimestamp;
+  updatedInfo: ActorAndTimestamp;
+  icon: IconNames;
+  resourceId: string;
 };
 
 export type DiagramSocketDef = {

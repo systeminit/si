@@ -29,7 +29,10 @@ import { IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { useFuncStore, MgmtPrototype } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
 const funcStore = useFuncStore();
 const componentsStore = useComponentsStore();
@@ -37,19 +40,19 @@ const router = useRouter();
 
 const props = defineProps<{
   prototype: MgmtPrototype;
-  componentId: ComponentId;
+  component: DiagramGroupData | DiagramNodeData;
 }>();
 
 const request = funcStore.getRequestStatus(
   "RUN_PROTOTYPE",
   props.prototype.managementPrototypeId,
-  props.componentId,
+  props.component.def.id,
 );
 
 const runPrototype = () => {
   funcStore.RUN_PROTOTYPE(
     props.prototype.managementPrototypeId,
-    props.componentId,
+    props.component.def.id,
   );
 };
 
@@ -57,7 +60,7 @@ function onClickView() {
   router.push({
     name: "workspace-lab-assets",
     query: {
-      s: `a_${componentsStore.selectedComponent?.schemaVariantId}|f_${props.prototype.funcId}`,
+      s: `a_${componentsStore.selectedComponent?.def.schemaVariantId}|f_${props.prototype.funcId}`,
     },
   });
 }

@@ -120,12 +120,12 @@ import {
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
-const componentStore = useComponentsStore();
+const assetStore = useAssetStore();
 
 const props = defineProps<{
   funcId: FuncId;
@@ -145,16 +145,14 @@ const binding = computed(() => {
 });
 
 const variant = computed(() => {
-  return componentStore.schemaVariantsById[
-    binding.value?.schemaVariantId || ""
-  ];
+  return assetStore.variantFromListById[binding.value?.schemaVariantId || ""];
 });
 
 const getPropPathFrom = (
   schemaVariantId: SchemaVariantId | null,
   propId: PropId,
 ) => {
-  return componentStore.schemaVariantsById[schemaVariantId || ""]?.props.find(
+  return assetStore.variantFromListById[schemaVariantId || ""]?.props.find(
     (p) => (p.id === propId ? p : null),
   )?.path;
 };
@@ -163,7 +161,7 @@ const getSocketNameFrom = (
   schemaVariantId: SchemaVariantId | null,
   outputSocketId: OutputSocketId | InputSocketId,
 ) => {
-  const sv = componentStore.schemaVariantsById[schemaVariantId || ""];
+  const sv = assetStore.variantFromListById[schemaVariantId || ""];
 
   if (!sv) return;
 
@@ -192,7 +190,7 @@ const bindings = computed(() => {
   const _bindings: ExtendedBinding[] = [];
   b.forEach((_b) => {
     const schemaVariant =
-      componentStore.schemaVariantsById[_b.schemaVariantId || ""];
+      assetStore.variantFromListById[_b.schemaVariantId || ""];
     if (!schemaVariant) return;
     _b.schemaVariant = schemaVariant;
     if (_b.outputSocketId) {

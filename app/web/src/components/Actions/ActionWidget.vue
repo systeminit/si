@@ -45,25 +45,28 @@
 <script setup lang="ts">
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import { PropType, computed } from "vue";
+import { computed } from "vue";
 import { Icon, themeClasses, Toggle } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useActionsStore } from "@/store/actions.store";
-import { ComponentId } from "@/api/sdf/dal/component";
 import { Action } from "@/api/sdf/dal/func";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "../ModelingDiagram/diagram_types";
 
 interface BindingWithDisplayName extends Action {
   displayName?: string | null;
   name: string;
 }
 
-const props = defineProps({
-  componentId: { type: String as PropType<ComponentId>, required: true },
-  binding: { type: Object as PropType<BindingWithDisplayName> },
-});
+const props = defineProps<{
+  component: DiagramGroupData | DiagramNodeData;
+  binding: BindingWithDisplayName;
+}>();
 
 const componentsStore = useComponentsStore();
 const { selectedComponent } = storeToRefs(componentsStore);
@@ -72,7 +75,7 @@ const router = useRouter();
 
 const action = computed(() => {
   const a = actionsStore.listActionsByComponentId
-    .get(props.componentId)
+    .get(props.component.def.id)
     .find((a) => a.prototypeId === props.binding?.actionPrototypeId);
   return a;
 });
@@ -82,7 +85,7 @@ function clickHandler() {
     actionsStore.CANCEL([action.value.id]);
   } else if (props.binding?.actionPrototypeId) {
     actionsStore.ADD_ACTION(
-      props.componentId,
+      props.component.def.id,
       props.binding?.actionPrototypeId,
     );
   }
@@ -93,7 +96,7 @@ function onClickView() {
     router.push({
       name: "workspace-lab-assets",
       query: {
-        s: `a_${selectedComponent.value?.schemaVariantId}|f_${props.binding.funcId}`,
+        s: `a_${selectedComponent.value?.def.schemaVariantId}|f_${props.binding.funcId}`,
       },
     });
   }
@@ -101,7 +104,7 @@ function onClickView() {
 
 const addRequestStatus = actionsStore.getRequestStatus(
   "ADD_ACTION",
-  props.componentId,
+  props.component.def.id,
   props.binding?.actionPrototypeId,
 );
 const removeRequestStatus = actionsStore.getRequestStatus(

@@ -158,7 +158,7 @@ const centerPoint = computed(() => {
 });
 
 const selectedComponentId = computed(
-  () => componentsStore.selectedComponent?.id,
+  () => componentsStore.selectedComponent?.def.id,
 );
 
 const mainLineOpacity = computed(() => {

@@ -1,9 +1,9 @@
 <template>
-  <ScrollArea v-if="selectedComponent">
+  <ScrollArea>
     <template #top>
-      <ComponentCard :componentId="selectedComponent.id" titleCard>
+      <ComponentCard :component="props.component" titleCard>
         <DetailsPanelMenuIcon
-          :selected="menuSelected"
+          :selected="props.menuSelected"
           @click="
             (e) => {
               emit('openMenu', e);
@@ -21,15 +21,15 @@
       </div>
       <div v-else class="flex flex-row items-center">
         <DetailsPanelTimestamps
-          :changeStatus="selectedComponent.changeStatus"
-          :created="selectedComponent.createdInfo"
-          :modified="selectedComponent.updatedInfo"
-          :deleted="selectedComponent.deletedInfo"
+          :changeStatus="props.component.def.changeStatus"
+          :created="props.component.def.createdInfo"
+          :modified="props.component.def.updatedInfo"
+          :deleted="props.component.def.deletedInfo"
         />
         <div class="pr-xs shrink-0">
           <VButton
             v-if="
-              selectedComponent.hasResource &&
+              props.component.def.hasResource &&
               changeSetsStore.selectedChangeSetId ===
                 changeSetsStore.headChangeSetId
             "
@@ -47,7 +47,7 @@
       </div>
     </template>
 
-    <template v-if="selectedComponent.changeStatus === 'deleted'">
+    <template v-if="props.component.def.changeStatus === 'deleted'">
       <Stack v-if="!changeSetsStore.headSelected" class="p-sm">
         <ErrorMessage icon="alert-triangle" tone="warning">
           This component will be removed from your model when this change set is
@@ -59,7 +59,7 @@
           size="md"
           icon="trash-restore"
           :label="`Restore ${
-            selectedComponent.componentType === ComponentType.Component
+            props.component.def.componentType === ComponentType.Component
               ? 'Component'
               : 'Frame'
           }`"
@@ -119,9 +119,7 @@
                     />
                   </Inline>
                 </template>
-                <AssetQualificationsDetails
-                  :componentId="selectedComponentId"
-                />
+                <AssetQualificationsDetails :component="props.component" />
               </TabGroupItem>
 
               <TabGroupItem label="Diff" slug="diff">
@@ -129,17 +127,17 @@
                   <Inline noWrap alignY="center">
                     <span>Diff</span>
                     <StatusIndicatorIcon
-                      v-if="selectedComponent.changeStatus !== 'unmodified'"
+                      v-if="props.component.def.changeStatus !== 'unmodified'"
                       type="change"
-                      :status="selectedComponent.changeStatus"
+                      :status="props.component.def.changeStatus"
                     />
                   </Inline>
                 </template>
 
-                <AssetDiffDetails :componentId="selectedComponentId" />
+                <AssetDiffDetails :component="props.component" />
               </TabGroupItem>
               <TabGroupItem label="Debug" slug="debug">
-                <ComponentDebugDetails :componentId="selectedComponentId" />
+                <ComponentDebugDetails :component="props.component" />
               </TabGroupItem>
             </TabGroup>
           </TabGroupItem>
@@ -148,14 +146,14 @@
               <Inline noWrap alignY="center">
                 <span class="uppercase">Resource</span>
                 <StatusIndicatorIcon
-                  v-if="selectedComponent.hasResource"
+                  v-if="props.component.def.hasResource"
                   type="resource"
                   status="exists"
                   size="sm"
                 />
               </Inline>
             </template>
-            <AssetActionsDetails :componentId="selectedComponentId" />
+            <AssetActionsDetails :component="props.component" />
           </TabGroupItem>
           <TabGroupItem
             v-if="
@@ -165,7 +163,7 @@
             slug="management"
             label="Mgmt Fns"
           >
-            <ComponentDetailsManagement />
+            <ComponentDetailsManagement :component="props.component" />
           </TabGroupItem>
         </TabGroup>
       </div>
@@ -205,10 +203,15 @@ import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 import ComponentDetailsCode from "./ComponentDetailsCode.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
-defineProps({
-  menuSelected: { type: Boolean },
-});
+const props = defineProps<{
+  menuSelected: boolean;
+  component: DiagramNodeData | DiagramGroupData;
+}>();
 
 const emit = defineEmits<{
   (e: "delete"): void;
@@ -225,45 +228,29 @@ const ffStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 
-const selectedComponent = computed(() => componentsStore.selectedComponent);
-const selectedComponentId = computed(
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  () => componentsStore.selectedComponentId!,
-);
-
 const selectedComponentQualificationStatus = computed(
   () =>
     qualificationsStore.qualificationStatusByComponentId[
-      selectedComponentId.value
+      props.component.def.id
     ],
 );
 const selectedComponentFailingQualificationsCount = computed(
   () =>
-    qualificationsStore.qualificationStatsByComponentId[
-      selectedComponentId.value
-    ]?.failed || 0,
+    qualificationsStore.qualificationStatsByComponentId[props.component.def.id]
+      ?.failed || 0,
 );
 
 const statusStore = useStatusStore();
-const isUpdating = computed(() =>
-  selectedComponentId.value
-    ? statusStore.activeComponents[selectedComponentId.value]
-    : undefined,
+const isUpdating = computed(
+  () => statusStore.activeComponents[props.component.def.id],
 );
 
 const refreshing = computed(() => {
-  const componentId = selectedComponent.value?.id;
-  if (componentId) {
-    return componentsStore.refreshingStatus[componentId] ?? false;
-  }
-
-  return false;
+  return componentsStore.refreshingStatus[props.component.def.id] ?? false;
 });
 
 const onClickRefreshButton = () => {
-  if (selectedComponent.value) {
-    componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
-  }
+  componentsStore.REFRESH_RESOURCE_INFO(props.component.def.id);
 };
 
 const tabsRef = ref<InstanceType<typeof TabGroup>>();

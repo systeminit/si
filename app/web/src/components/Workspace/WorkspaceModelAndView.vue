@@ -43,8 +43,9 @@
       />
       <ComponentDetails
         v-else-if="selectedComponent"
-        :key="selectedComponent.id"
-        :menuSelected="contextMenuRef?.isOpen"
+        :key="selectedComponent.def.id"
+        :component="selectedComponent"
+        :menuSelected="contextMenuRef?.isOpen as boolean"
         @openMenu="onThreeDotMenuClick"
       />
       <MultiSelectDetailsPanel
@@ -68,7 +69,7 @@ import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel } from "@si/vue-lib/design-system";
 import ComponentDetails from "@/components/ComponentDetails.vue";
-import { useComponentsStore, FullComponent } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { usePresenceStore } from "@/store/presence.store";
@@ -78,7 +79,11 @@ import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.v
 import { useStatusStore } from "@/store/status.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
-import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+  RightClickElementEvent,
+} from "../ModelingDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline/DiagramOutline.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
@@ -145,15 +150,6 @@ const selectedComponentIds = computed(
 const selectedEdge = computed(() => componentsStore.selectedEdge);
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
-// TODO: deal with this...
-// watch([diagramNodes, diagramEdges], () => {
-//   // TODO: this should be firing off the callback only when we find the matching new node, but we dont have the new ID yet
-//   _.each(insertCallbacks, (insertCallback, newNodeId) => {
-//     insertCallback();
-//     delete insertCallbacks[newNodeId];
-//   });
-// });
-
 // Nodes that are not resizable have dynamic height based on its rendering objects, we cannot infer that here and honestly it's not a big deal
 // So let's hardcode something reasonable that doesn't make the user too much confused when they paste a copy
 const NODE_HEIGHT = 200;
@@ -170,9 +166,9 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
 
 function onOutlineRightClick(ev: {
   mouse: MouseEvent;
-  component: FullComponent;
+  component: DiagramGroupData | DiagramNodeData;
 }) {
-  contextMenuRef.value?.open(ev.mouse, true, ev.component.position);
+  contextMenuRef.value?.open(ev.mouse, true, ev.component.def.position);
 }
 
 function onThreeDotMenuClick(mouse: MouseEvent) {

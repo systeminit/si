@@ -26,8 +26,9 @@
           <Stack spacing="xs">
             <ComponentCard
               v-for="component in componentsStore.deletableSelectedComponents"
-              :key="component.id"
-              :componentId="component.id"
+              :key="component.def.id"
+              :titleCard="false"
+              :component="component"
             />
           </Stack>
         </div>
@@ -100,7 +101,9 @@ async function onConfirmDelete() {
     );
   } else if (componentsStore.deletableSelectedComponents.length > 0) {
     await componentsStore.DELETE_COMPONENTS([
-      ...new Set(componentsStore.deletableSelectedComponents.map((c) => c.id)),
+      ...new Set(
+        componentsStore.deletableSelectedComponents.map((c) => c.def.id),
+      ),
     ]);
   }
   componentsStore.setSelectedComponentId(null);

@@ -137,7 +137,7 @@ import {
   getAssetIcon,
   Categories,
 } from "@/store/components.store";
-import { schemaVariantDisplayName } from "@/store/asset.store";
+import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
@@ -146,9 +146,10 @@ import EditingPill from "@/components/EditingPill.vue";
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 const componentsStore = useComponentsStore();
+const assetStore = useAssetStore();
 
-const schemasReqStatus = componentsStore.getRequestStatus(
-  "FETCH_AVAILABLE_SCHEMAS",
+const schemasReqStatus = assetStore.getRequestStatus(
+  "LOAD_SCHEMA_VARIANT_LIST",
 );
 
 const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
