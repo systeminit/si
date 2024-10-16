@@ -51,24 +51,37 @@ impl From<v1::ReadSchemaResponse> for ReadSchemaResponse {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct PermissionsObject {
+    r#type: String,
+    id: String,
+}
+
+impl PermissionsObject {
+    pub fn new(r#type: impl ToString, id: impl ToString) -> Self {
+        Self {
+            id: id.to_string(),
+            r#type: r#type.to_string(),
+        }
+    }
+}
+
 pub type Relationships = Vec<Relationship>;
 #[derive(Clone, Debug)]
 pub struct Relationship(pub(crate) v1::Relationship);
 
 impl Relationship {
     pub fn new(
-        object_type: impl ToString,
-        object_id: impl ToString,
+        object: PermissionsObject,
         relation: impl ToString,
-        subject_type: impl ToString,
-        subject_id: impl ToString,
+        subject: PermissionsObject,
     ) -> Self {
         Self(<v1::Relationship as RelationshipBuilder>::new(
-            object_type,
-            object_id,
+            object.r#type,
+            object.id,
             relation,
-            subject_type,
-            subject_id,
+            subject.r#type,
+            subject.id,
         ))
     }
 
@@ -108,27 +121,21 @@ impl From<v1::Relationship> for Relationship {
 
 #[derive(Clone, Debug)]
 pub struct Permission {
-    resource_type: String,
-    resource_id: String,
+    resource: PermissionsObject,
     permission: String,
-    subject_type: String,
-    subject_id: String,
+    subject: PermissionsObject,
 }
 
 impl Permission {
     pub fn new(
-        resource_type: impl ToString,
-        resource_id: impl ToString,
+        resource: PermissionsObject,
         permission: impl ToString,
-        subject_type: impl ToString,
-        subject_id: impl ToString,
+        subject: PermissionsObject,
     ) -> Self {
         Self {
-            resource_type: resource_type.to_string(),
-            resource_id: resource_id.to_string(),
+            resource,
             permission: permission.to_string(),
-            subject_type: subject_type.to_string(),
-            subject_id: subject_id.to_string(),
+            subject,
         }
     }
 
@@ -136,14 +143,14 @@ impl Permission {
         v1::CheckPermissionRequest {
             consistency: None,
             resource: Some(ObjectReference {
-                object_type: self.resource_type,
-                object_id: self.resource_id,
+                object_type: self.resource.r#type,
+                object_id: self.resource.id,
             }),
             permission: self.permission,
             subject: Some(SubjectReference {
                 object: Some(ObjectReference {
-                    object_type: self.subject_type,
-                    object_id: self.subject_id,
+                    object_type: self.subject.r#type,
+                    object_id: self.subject.id,
                 }),
                 optional_relation: "".to_string(),
             }),
