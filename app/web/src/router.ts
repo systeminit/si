@@ -89,6 +89,11 @@ const routes: RouteRecordRaw[] = [
         ],
       },
       {
+        path: ":changeSetId/a",
+        name: "workspace-audit",
+        component: () => import("@/components/Workspace/WorkspaceAuditLog.vue"),
+      },
+      {
         path: "admin",
         name: "workspace-admin-dashboard",
         component: () =>

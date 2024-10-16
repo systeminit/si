@@ -22,7 +22,7 @@
       "
     >
       <Icon name="cloud" class="flex-none" size="sm" />
-      <TruncateWithTooltip class="text-md flex-grow">
+      <TruncateWithTooltip class="text-md flex-grow py-2xs">
         <a :href="`${API_HTTP_URL}/workspaces/${workspace.id}/go`">
           {{ workspace.displayName }}
         </a>

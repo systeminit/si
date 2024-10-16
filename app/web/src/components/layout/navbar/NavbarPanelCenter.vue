@@ -23,6 +23,17 @@
     >
       <Icon name="beaker" />
     </NavbarButton>
+
+    <NavbarButton
+      tooltipText="Audit"
+      :selected="route.matched.some((r) => r.name === 'workspace-audit')"
+      :linkTo="{
+        name: 'workspace-audit',
+        params: { changeSetId: 'auto' },
+      }"
+    >
+      <Icon name="eye" />
+    </NavbarButton>
   </div>
 </template>
 

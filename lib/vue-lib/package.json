@@ -46,6 +46,7 @@
     "@si/ts-lib": "workspace:*",
     "@tailwindcss/forms": "^0.5.3",
     "@tailwindcss/line-clamp": "^0.4.2",
+    "@tanstack/vue-table": "^8.20.5",
     "@vueuse/head": "^1.1.23",
     "axios": "^1.5.0",
     "clsx": "^1.2.1",
