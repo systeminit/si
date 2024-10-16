@@ -15,11 +15,12 @@ use veritech_core::{
 
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
-    FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind, KillExecutionRequest,
-    ManagementRequest, ManagementResultSuccess, OutputStream, ResolverFunctionComponent,
-    ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
-    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
-    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
+    ComponentViewWithGeometry, FunctionResult, FunctionResultFailure,
+    FunctionResultFailureErrorKind, KillExecutionRequest, ManagementFuncStatus, ManagementRequest,
+    ManagementResultSuccess, OutputStream, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
+    ValidationRequest, ValidationResultSuccess,
 };
 pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
 

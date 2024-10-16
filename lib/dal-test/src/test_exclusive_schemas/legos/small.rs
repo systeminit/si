@@ -55,17 +55,20 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         return { payload: null, status: \"ok\" };
     }";
 
-    let import_management_func_code = "async function main(thisComponent: Input): Promise<Output> {
+    let import_management_func_code =
+        "async function main({ thisComponent }: Input): Promise<Output> {
+        const thisProperties = thisComponent.properties;
         return { 
+            status: 'ok',
             ops: {
                 update: {
                     self: {
                         properties: {
                             domain: {
+                                ...thisProperties.domain
                                 two: 'step',
-                                ...thisComponent.domain
                             }
-                            ...thisComponent
+                            ...thisProperties
                         }
                     }
                 }

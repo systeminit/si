@@ -2,10 +2,10 @@ use std::env;
 
 use base64::{engine::general_purpose, Engine};
 use cyclone_core::{
-    ActionRunRequest, ComponentKind, ComponentView, FunctionResult, FunctionResultFailureErrorKind,
-    ManagementRequest, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResourceStatus, SchemaVariantDefinitionRequest,
-    ValidationRequest,
+    ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
+    FunctionResultFailureErrorKind, ManagementRequest, ResolverFunctionComponent,
+    ResolverFunctionRequest, ResolverFunctionResponseType, ResourceStatus,
+    SchemaVariantDefinitionRequest, ValidationRequest,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
@@ -105,12 +105,15 @@ async fn executes_simple_management_function() {
     let request = ManagementRequest {
         execution_id: "1234".to_string(),
         handler: "numberOfInputs".to_string(),
-        this_component: ComponentView {
+        this_component: ComponentViewWithGeometry {
             properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
-            kind: ComponentKind::Standard,
+            geometry: serde_json::json!({"x": "1", "y": "1"}),
         },
         code_base64: base64_encode(
-            "function numberOfInputs(input) { const number = Object.keys(input)?.length; return { message: `${number}` } }",
+            "function numberOfInputs({ thisComponent }) { 
+                const number = Object.keys(thisComponent.properties)?.length; 
+                return { status: 'ok' message: `${number}` }
+             }",
         ),
         before: vec![],
     };

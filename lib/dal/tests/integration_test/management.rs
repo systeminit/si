@@ -3,6 +3,7 @@ use dal::{
     AttributeValue, Component, DalContext,
 };
 use dal_test::{helpers::create_component_for_default_schema_name, test};
+use veritech_client::ManagementFuncStatus;
 
 #[test]
 async fn execute_management_func(ctx: &DalContext) {
@@ -43,6 +44,8 @@ async fn execute_management_func(ctx: &DalContext) {
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
+
+    assert_eq!(result.status, ManagementFuncStatus::Ok);
 
     operate(
         ctx,

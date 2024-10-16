@@ -20,6 +20,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::ManagementFuncStatus;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -29,6 +30,7 @@ use crate::{
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunPrototypeResponse {
+    status: ManagementFuncStatus,
     message: Option<String>,
 }
 
@@ -80,6 +82,20 @@ pub async fn run_prototype(
 
     // TODO check that this is a valid prototypeId
     let (result, _) = ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id).await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        &host_name,
+        "run_prototype",
+        serde_json::json!({
+            "how": "/management/run_prototype",
+            "prototype_id": prototype_id.clone(),
+            "component_id": component_id.clone(),
+        }),
+    );
+
     if let Some(result) = result {
         let result: ManagementFuncReturn = result.try_into()?;
         if let Some(operations) = result.operations {
@@ -87,22 +103,10 @@ pub async fn run_prototype(
             ctx.commit().await?;
         }
 
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "run_prototype",
-            serde_json::json!({
-                "how": "/management/run_prototype",
-                "prototype_id": prototype_id.clone(),
-                "component_id": component_id.clone(),
-            }),
-        );
-
         return Ok(ForceChangeSetResponse::new(
             force_change_set_id,
             RunPrototypeResponse {
+                status: result.status,
                 message: result.message,
             },
         ));

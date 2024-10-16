@@ -448,8 +448,8 @@ mod tests {
     use base64::{engine::general_purpose, Engine};
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
-        ActionRunRequest, ComponentKind, ComponentView, FunctionResult, ManagementRequest,
-        ProgressMessage, ResolverFunctionComponent, ResolverFunctionRequest,
+        ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
+        ManagementRequest, ProgressMessage, ResolverFunctionComponent, ResolverFunctionRequest,
         SchemaVariantDefinitionRequest, ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
@@ -1325,16 +1325,17 @@ mod tests {
         let req = ManagementRequest {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
-            this_component: ComponentView {
+            this_component: ComponentViewWithGeometry {
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
-                kind: ComponentKind::Standard,
+                geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
             code_base64: base64_encode(
                 r#"function manage(input) {
                     console.log('first');
                     console.log('second');
                     return {
-                        message: input.to,
+                        status: 'ok',
+                        message: input.thisComponent.properties.to,
                     }
                 }"#,
             ),
@@ -1406,16 +1407,17 @@ mod tests {
         let req = ManagementRequest {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
-            this_component: ComponentView {
+            this_component: ComponentViewWithGeometry {
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
-                kind: ComponentKind::Standard,
+                geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
             code_base64: base64_encode(
-                r#"function manage(input) {
+                r#"function manage({ thisComponent }) {
                     console.log('first');
                     console.log('second');
                     return {
-                        message: input.to,
+                        status: 'ok',
+                        message: thisComponent.properties.to,
                     }
                 }"#,
             ),
