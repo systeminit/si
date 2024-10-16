@@ -53,71 +53,61 @@ def format_event(event: tuple[ExternalSubscriptionId, SqlTimestamp, int]) -> Lag
     }
 
 
-def lambda_handler(_event=None, _context=None):
-    #
-    # Upload events by hour
-    #
-    all_events = cast(
-        Iterator[tuple[ExternalSubscriptionId, SqlTimestamp, int]],
-        redshift.query_raw(
-            """
-            SELECT external_subscription_id, hour_start, resource_count
-              FROM workspace_operations.owner_resource_hours_with_subscriptions
-             WHERE hour_start <= (SELECT last_complete_event FROM workspace_operations.workspace_update_events_summary)
-               AND external_subscription_id IS NOT NULL
-             ORDER BY hour_start DESC
-            """
-        ),
-    )
+def lambda_handler(lambda_event={}, _context=None):
+    batch_hours = int(lambda_event.get("batch_hours", 6))
+    assert batch_hours > 0
 
-    for hour_start, hour_events in itertools.groupby(
-        all_events, lambda event: event[1]
-    ):
-        logger.info(f"Uploading events for {hour_start}")
-        for _event in hour_events:
-            pass
-        # lago.upload_events(map(format_event, hour_events))
+    last_hour_end = 0
+    while last_hour_end is not None:
+        first_hour_start = last_hour_end - batch_hours
 
-    # lago.upload_events([format_event(event) for event in all_events])
+        logger.info(
+            f"Uploading {batch_hours} hours of billing events starting {-first_hour_start} hours ago"
+        )
 
-    # #
-    # # Upload prices
-    # #
-    # for [owner_pk, external_subscription_id, month, is_free] in cast(
-    #     Iterator[tuple[OwnerPk, ExternalSubscriptionId, str, bool]],
-    #     redshift.query_raw(
-    #         """
-    #         SELECT
-    #             owner_billing_months.owner_pk,
-    #             external_subscription_id,
-    #             month,
-    #             is_free
-    #         FROM workspace_operations.owner_billing_months
-    #         LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions ON latest_owner_subscriptions.owner_pk = owner_billing_months.owner_pk
-    #         WHERE month = :month
-    #         AND owner_billing_months.owner_pk = :owner_pk
-    #         """,
-    #         month=str(get_next_uninvoiced_month()),
-    #         owner_pk=paul,
-    #     ),
-    # ):
-    #     # TODO only do this if it's active!
-    #     json = {
-    #         "subscription": {
-    #             "plan_overrides": {
-    #                 "charges": [
-    #                     {
-    #                         "resource-hours": {
-    #                             "properties": {
-    #                                 "amount": 0.4 if is_free else cost_per_resource_hour
-    #                             }
-    #                         }
-    #                     }
-    #                 ]
-    #             }
-    #         }
-    #     }
-    #     lago.put(f"/api/v1/subscriptions/{external_subscription_id}", json)
+        #
+        # Upload events by hour
+        #
+        all_events = cast(
+            Iterator[tuple[ExternalSubscriptionId, SqlTimestamp, int]],
+            redshift.query_raw(
+                f"""
+                SELECT external_subscription_id, hour_start, resource_count
+                FROM workspace_operations.owner_resource_hours_with_subscriptions
+                CROSS JOIN workspace_operations.workspace_update_events_summary
+                WHERE external_subscription_id IS NOT NULL
+                  AND DATEADD(HOUR, {first_hour_start}, last_complete_hour_start) <= hour_start
+                  AND hour_start < DATEADD(HOUR, {last_hour_end}, last_complete_hour_start)
+                ORDER BY hour_start DESC
+                """
+            ),
+        )
+
+        uploaded_events = 0
+        for hour_start, hour_events in itertools.groupby(
+            all_events, lambda event: event[1]
+        ):
+            logger.debug(f"Uploading events for hour {hour_start}")
+            new_events, total_events = lago.upload_events(
+                map(format_event, hour_events)
+            )
+            logger.info(f"Uploaded {new_events} / {total_events} for hour {hour_start}")
+            if total_events == 0:
+                logger.warning(f"No events found for hour {hour_start}")
+
+            uploaded_events += new_events
+
+        if uploaded_events == 0:
+            logger.info(
+                f"No events needed to be uploaded in the {batch_hours}-hour batch starting {-first_hour_start} hours ago! Finished."
+            )
+            last_hour_end = None
+            break
+
+        logger.warning(
+            f"Uploaded {uploaded_events} events in {batch_hours}-hour batch starting {-first_hour_start} hours ago!"
+        )
+        last_hour_end = first_hour_start if uploaded_events > 0 else None
 
 
 lambda_handler()

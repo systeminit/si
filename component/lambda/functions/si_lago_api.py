@@ -113,9 +113,14 @@ class LagoApi:
         will be thrown.
         """
 
+        total_events = 0
+        new_events = 0
         for event_batch in batch(events, 100):
+            total_events += len(event_batch)
+
             try:
                 self.post("/api/v1/events/batch", {"events": event_batch})
+                new_events += len(event_batch)
 
             except LagoHTTPError as e:
 
@@ -131,7 +136,7 @@ class LagoApi:
                         raise
 
                 # Retry the events that did not fail
-                logger.warning(
+                logger.debug(
                     f"Events already existed: {[event_batch[int(i)]['transaction_id'] for i in e.json["error_details"].keys()]}"
                 )
                 retry_event_batch = [
@@ -142,11 +147,14 @@ class LagoApi:
 
                 if len(retry_event_batch) > 0:
                     logger.warning(
-                        f"Reuploading remaining {len(retry_event_batch)} events."
+                        f"{len(e.json["error_details"])} / {len(event_batch)} events already existed. Reuploading remaining {len(retry_event_batch)} events."
                     )
 
                     # Retry the events that didn't fail. Any failure here is a real error
                     self.post("/api/v1/events/batch", {"events": retry_event_batch})
+                    new_events += len(retry_event_batch)
+
+        return new_events, total_events
 
 
 class LagoResponseMetadata(TypedDict):
