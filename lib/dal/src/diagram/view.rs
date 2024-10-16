@@ -118,23 +118,11 @@ impl View {
             }
         }
 
-        // TODO Put this back when the graph migrates correctly
-        // let Some(default_view) = maybe_default_view else {
-        //     return Err(DiagramError::DefaultViewNotFound);
-        // };
-
-        let default_view: ViewId = match maybe_default_view {
-            None => {
-                let view = Self::new(ctx, "DEFAULT").await?;
-
-                Self::set_default(ctx, view.id).await?;
-
-                view.id
-            }
-            Some(ulid) => ulid.into(),
+        let Some(default_view) = maybe_default_view else {
+            return Err(DiagramError::DefaultViewNotFound);
         };
 
-        Ok(default_view)
+        Ok(default_view.into())
     }
 
     async fn get_node_weight_and_content(
@@ -185,7 +173,7 @@ impl View {
     ) -> DiagramResult<()> {
         Self::add_edge_to_geometry(
             ctx,
-            self.id.into(),
+            self.id,
             geometry_id,
             EdgeWeightKind::Use { is_default: false },
         )

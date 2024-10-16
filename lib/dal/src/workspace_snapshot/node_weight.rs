@@ -18,14 +18,16 @@ use crate::{
         vector_clock::VectorClockError,
     },
     ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
-    WorkspaceSnapshotGraphV3,
+    WorkspaceSnapshotGraphVCurrent,
 };
 
 use self::{
     input_socket_node_weight::InputSocketNodeWeightError,
     schema_variant_node_weight::SchemaVariantNodeWeightError,
 };
-use super::graph::{deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update};
+use super::graph::{
+    deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
+};
 use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
@@ -106,6 +108,8 @@ pub enum NodeWeightError {
     VectorClock(#[from] VectorClockError),
     #[error("WorkspaceSnapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
+    #[error("WorkspaceSnapshotGraph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
@@ -937,7 +941,7 @@ impl From<DeprecatedNodeWeightV1> for NodeWeight {
 impl CorrectTransforms for NodeWeight {
     fn correct_transforms(
         &self,
-        workspace_snapshot_graph: &WorkspaceSnapshotGraphV3,
+        workspace_snapshot_graph: &WorkspaceSnapshotGraphVCurrent,
         updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

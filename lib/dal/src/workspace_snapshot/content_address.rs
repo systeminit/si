@@ -21,7 +21,6 @@ pub enum ContentAddress {
     DeprecatedActionRunner(ContentHash),
     Func(ContentHash),
     FuncArg(ContentHash),
-    Geometry(ContentHash),
     InputSocket(ContentHash),
     JsonValue(ContentHash),
     Module(ContentHash),
@@ -36,8 +35,9 @@ pub enum ContentAddress {
     // With validations moving to the props and not having prototypes anymore, this is unused
     // TODO(victor): remove this when we migrate the graph next
     ValidationPrototype(ContentHash),
-    View(ContentHash),
     ManagementPrototype(ContentHash),
+    Geometry(ContentHash),
+    View(ContentHash),
 }
 
 impl ContentAddress {

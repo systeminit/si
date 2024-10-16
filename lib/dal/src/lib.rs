@@ -130,7 +130,8 @@ pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
 pub use workspace_snapshot::graph::{
-    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphVCurrent,
+    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphV4,
+    WorkspaceSnapshotGraphVCurrent,
 };
 pub use workspace_snapshot::{
     edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},

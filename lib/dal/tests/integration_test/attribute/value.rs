@@ -1,6 +1,6 @@
 use dal::prop::PropPath;
 use dal::{AttributeValue, Component, DalContext, Prop, Schema};
-use dal_test::helpers::{create_component_for_schema_variant, ChangeSetTestHelpers};
+use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 

@@ -10,7 +10,6 @@ use crate::{
 };
 use crate::{DalContext, EdgeWeightKind};
 use jwt_simple::prelude::{Deserialize, Serialize};
-use petgraph::Direction;
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
 use std::sync::Arc;

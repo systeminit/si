@@ -24,6 +24,7 @@ pub enum CategoryNodeKind {
     Secret,
     DependentValueRoots,
     View,
+    DiagramObject,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -5,8 +5,8 @@ use crate::{
     extract::{AccessBuilder, HandlerContext},
     service::force_change_set_response::ForceChangeSetResponse,
 };
-use dal::diagram::geometry::RawGeometry;
 use axum::Json;
+use dal::diagram::geometry::RawGeometry;
 use dal::{
     component::{frame::Frame, InferredConnection},
     diagram::SummaryDiagramInferredEdge,

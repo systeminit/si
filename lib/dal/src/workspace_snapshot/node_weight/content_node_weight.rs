@@ -12,7 +12,7 @@ use crate::{
         node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
         NodeInformation,
     },
-    ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphV3,
+    ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphVCurrent,
 };
 
 use super::{
@@ -201,7 +201,7 @@ impl From<DeprecatedContentNodeWeightV1> for ContentNodeWeight {
 }
 
 fn remove_outgoing_prototype_argument_value_targets_to_dest(
-    graph: &WorkspaceSnapshotGraphV3,
+    graph: &WorkspaceSnapshotGraphVCurrent,
     prototype_idx: NodeIndex,
     source: NodeInformation,
     destination_component_id: ComponentId,
@@ -232,7 +232,7 @@ fn remove_outgoing_prototype_argument_value_targets_to_dest(
 }
 
 fn protect_arity_for_input_socket(
-    graph: &WorkspaceSnapshotGraphV3,
+    graph: &WorkspaceSnapshotGraphVCurrent,
     mut updates: Vec<Update>,
     self_node: &ContentNodeWeight,
 ) -> Vec<Update> {
@@ -307,7 +307,7 @@ fn protect_arity_for_input_socket(
 impl CorrectTransforms for ContentNodeWeight {
     fn correct_transforms(
         &self,
-        graph: &WorkspaceSnapshotGraphV3,
+        graph: &WorkspaceSnapshotGraphVCurrent,
         updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {

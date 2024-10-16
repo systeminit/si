@@ -3,9 +3,9 @@
 #![allow(clippy::expect_used)]
 
 use crate::helpers::ChangeSetTestHelpers;
+use dal::diagram::geometry::RawGeometry;
 use dal::{
     self,
-    component::RawGeometry,
     prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
@@ -370,7 +370,12 @@ impl ExpectComponent {
     }
 
     pub async fn geometry(self, ctx: &DalContext) -> RawGeometry {
-        self.component(ctx).await.geometry(ctx)
+        self.component(ctx)
+            .await
+            .geometry(ctx)
+            .await
+            .expect("get geometry for component")
+            .raw()
     }
 
     pub async fn view(self, ctx: &DalContext) -> Option<serde_json::Value> {
