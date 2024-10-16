@@ -1,22 +1,23 @@
-name: Crons
+name: Tools Crons
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Runs every 15 minutes
+    - cron: "*/15 * * * *" # Runs every 15 minutes
 
 # We will wait until these tests finish before starting a deploy
+# We will also wait for a deploy to finish before starting to run tests
 concurrency:
-  group: deploy-production
+  group: deploy-tools
   cancel-in-progress: false
 
 jobs:
   e2e-validation:
     uses: ./.github/workflows/e2e-validation.yml
     with:
-      environment: production
+      environment: tools
     secrets: inherit
   api-test:
     uses: ./.github/workflows/run-api-test.yml
     with:
-      environment: production
+      environment: tools
     secrets: inherit
