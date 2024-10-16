@@ -56,6 +56,7 @@
                     xl: 'max-w-xl',
                     '2xl': 'max-w-2xl',
                     '4xl': 'max-w-4xl',
+                    '4wxl': 'w-[56rem]',
                     '6xl': 'max-w-6xl',
                   }[size],
                 )
@@ -153,7 +154,9 @@ import { useThemeContainer } from "../utils/theme_tools";
 const props = defineProps({
   beginOpen: { type: Boolean, default: false },
   size: {
-    type: String as PropType<"sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "6xl">,
+    type: String as PropType<
+      "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl"
+    >,
     default: "md",
   },
   title: { type: String },
