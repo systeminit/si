@@ -34,7 +34,7 @@ pub mod traits;
 pub mod update;
 pub mod vector_clock;
 
-pub use traits::schema::variant::SchemaVariantExt;
+pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
 
 use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
@@ -64,6 +64,7 @@ use crate::component::inferred_connection_graph::{
 };
 use crate::component::{ComponentResult, IncomingConnection};
 use crate::slow_rt::{self, SlowRuntimeError};
+use crate::socket::connection_annotation::ConnectionAnnotationError;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::{
     content_address::ContentAddressDiscriminants,
@@ -114,6 +115,8 @@ pub enum WorkspaceSnapshotError {
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("ConnectionAnnotation error: {0}")]
+    ConnectionAnnotation(#[from] Box<ConnectionAnnotationError>),
     #[error("error correcting transforms: {0}")]
     CorrectTransforms(#[from] CorrectTransformsError),
     #[error("InferredConnectionGraph error: {0}")]
