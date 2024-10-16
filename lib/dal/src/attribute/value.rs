@@ -1998,18 +1998,15 @@ impl AttributeValue {
             }
             None => serde_json::Value::Null,
         };
-        let total_start = std::time::Instant::now();
 
         let result_channel =
             FuncRunner::run_attribute_value(ctx, attribute_value_id, func_id, func_args)
                 .await
                 .map_err(Box::new)?;
-        info!("Getting channel took: {:?}", total_start.elapsed());
         let func_values = result_channel
             .await
             .map_err(|_| AttributeValueError::FuncRunnerSend)?
             .map_err(Box::new)?;
-        info!("Waiting for values took: {:?}", total_start.elapsed());
 
         Self::set_real_values(ctx, attribute_value_id, func_values, func).await?;
         Ok(())

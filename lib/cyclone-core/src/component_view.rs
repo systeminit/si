@@ -30,3 +30,19 @@ impl Default for ComponentView {
         }
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentViewWithGeometry {
+    pub properties: Value,
+    pub geometry: Value,
+}
+
+impl Default for ComponentViewWithGeometry {
+    fn default() -> Self {
+        Self {
+            properties: serde_json::json!({}),
+            geometry: serde_json::json!({}),
+        }
+    }
+}

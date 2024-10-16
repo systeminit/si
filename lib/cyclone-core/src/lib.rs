@@ -32,10 +32,10 @@ pub use si_crypto::SensitiveStrings;
 pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
 pub use before::BeforeFunction;
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
-pub use component_view::{ComponentKind, ComponentView};
+pub use component_view::{ComponentKind, ComponentView, ComponentViewWithGeometry};
 pub use kill_execution::KillExecutionRequest;
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
-pub use management::{ManagementRequest, ManagementResultSuccess};
+pub use management::{ManagementFuncStatus, ManagementRequest, ManagementResultSuccess};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError,
     FunctionResultFailureErrorKind, Message, OutputStream, ProgressMessage,

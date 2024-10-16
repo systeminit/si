@@ -3,7 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use veritech_client::ManagementResultSuccess;
+use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
     attribute::value::AttributeValueError,
@@ -40,6 +40,7 @@ pub struct ManagementOperations {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementFuncReturn {
+    pub status: ManagementFuncStatus,
     pub operations: Option<ManagementOperations>,
     pub message: Option<String>,
     pub error: Option<String>,
@@ -50,6 +51,7 @@ impl TryFrom<ManagementResultSuccess> for ManagementFuncReturn {
 
     fn try_from(value: ManagementResultSuccess) -> Result<Self, Self::Error> {
         Ok(ManagementFuncReturn {
+            status: value.health,
             operations: match value.operations {
                 Some(ops) => serde_json::from_value(ops)?,
                 None => None,

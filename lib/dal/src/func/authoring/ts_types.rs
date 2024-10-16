@@ -61,6 +61,14 @@ pub(crate) fn compile_return_types(
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::Void => "type Output = void;",
+        FuncBackendResponseType::Management => {
+            "type Output {
+    status: 'ok' | 'error';
+    ops?: { update: { [key: string]: { properties?: { [key: string]: unknown } } } };
+    message?: string | null;
+    }
+    type Input { thisComponent: { properties: { [key: string]: unknown } } }"
+        }
         _ => "",
         // we no longer serve this from the backend, its static on the front end
         //FuncBackendResponseType::SchemaVariantDefinition => SCHEMA_VARIANT_DEFINITION_TYPES

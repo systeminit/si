@@ -7,13 +7,13 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import { Component } from "../component";
+import { ComponentWithGeometry } from "../component";
 import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:management");
 
 export interface ManagementFunc extends Func {
-  thisComponent: Component
+  thisComponent: ComponentWithGeometry
 }
 
 export type ManagementFuncResult =
@@ -27,6 +27,7 @@ export interface ManagementOperations {
 }
 
 export interface ManagementFuncResultSuccess extends ResultSuccess {
+  health: "ok" | "error",
   operations?: ManagementOperations,
   message?: string;
 }
@@ -38,29 +39,56 @@ async function execute(
   { thisComponent }: ManagementFunc,
   code: string,
 ): Promise<ManagementFuncResult> {
-  let managementResult: Record<string, unknown>;
+  let managementResult: Record<string, unknown> | undefined | null;
   try {
     const runner = vm.run(code);
     managementResult = await new Promise((resolve) => {
-      runner(thisComponent.properties, (resolution: Record<string, unknown>) => resolve(resolution));
+      runner({ thisComponent }, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
+
+  const status = managementResult?.status;
+  if (!status || typeof status !== "string") {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "InvalidReturnType",
+        message: "Management functions must return an object with a status field",
+      },
+    };
+  }
+
+  if (!(["ok", "error"].includes(status))) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "InvalidReturnType",
+        message: "Management functions must return a status of either \"ok\" or \"error\"",
+      },
+    };
+  }
+
   return {
     protocol: "result",
     status: "success",
     executionId,
-    operations: managementResult.ops as ManagementOperations | undefined,
-    message: managementResult.message as string | undefined,
+    health: status as "ok" | "error",
+    operations: managementResult?.ops as ManagementOperations | undefined,
+    message: managementResult?.message as string | undefined,
   };
 }
 
 // Should we wrap this in a try/catch ?
 const wrapCode = (code: string, handle: string) => `
-module.exports = function(thisComponent, callback) {
+module.exports = function(input, callback) {
   ${code}
-  const returnValue = ${handle}(thisComponent);
+  const returnValue = ${handle}(input);
   if (returnValue instanceof Promise) {
     returnValue.then((data) => callback(data))
   } else {

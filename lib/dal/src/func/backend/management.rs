@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
-    BeforeFunction, ComponentView, FunctionResult, ManagementRequest, ManagementResultSuccess,
+    BeforeFunction, ComponentViewWithGeometry, FunctionResult, ManagementRequest,
+    ManagementResultSuccess,
 };
 
 use crate::func::backend::{FuncBackendResult, FuncDispatch, FuncDispatchContext};
@@ -10,7 +11,7 @@ use super::ExtractPayload;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct FuncBackendManagementArgs {
-    this_component: ComponentView,
+    this_component: ComponentViewWithGeometry,
 }
 
 #[derive(Debug)]
