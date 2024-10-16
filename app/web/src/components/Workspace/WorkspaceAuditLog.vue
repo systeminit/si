@@ -84,7 +84,7 @@
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-if="logLoadingRequestStatus.isSuccess">
           <tr
             v-for="row in table.getRowModel().rows"
             :key="row.id"
@@ -111,6 +111,11 @@
           </tr>
         </tbody>
       </table>
+      <RequestStatusMessage
+        v-if="!logLoadingRequestStatus.isSuccess"
+        :requestStatus="logLoadingRequestStatus"
+        loadingMessage="Loading Logs..."
+      />
     </ScrollArea>
   </div>
 </template>
@@ -118,6 +123,7 @@
 <script lang="ts" setup>
 import {
   Icon,
+  RequestStatusMessage,
   ScrollArea,
   themeClasses,
   Timestamp,
@@ -131,68 +137,76 @@ import {
 } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { h, ref } from "vue";
+import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
 
-export type Event = {
-  actorId: string;
-  actorName: string;
-  actorEmail?: string;
-  service: string;
-  kind: string;
-  timestamp: string;
-  ip: string;
-  changeSetId: string;
-  changeSetName: string;
-};
+// const range = (len: number) => {
+//   const arr: number[] = [];
+//   for (let i = 0; i < len; i++) {
+//     arr.push(i);
+//   }
+//   return arr;
+// };
 
-const range = (len: number) => {
-  const arr: number[] = [];
-  for (let i = 0; i < len; i++) {
-    arr.push(i);
-  }
-  return arr;
-};
+// const dummyRow = (): AuditLogDisplay => {
+//   return {
+//     actorId: "system",
+//     actorName: "system",
+//     service: "sdf",
+//     kind: "testkind",
+//     timestamp: "2024-10-15T22:06:42+0000",
+//     ip: "127.0.0.1",
+//     changeSetId: "testchangesetid",
+//     changeSetName: "testchangesetname",
+//   };
+// };
 
-const dummyRow = (): Event => {
-  return {
-    actorId: "system",
-    actorName: "system",
-    service: "sdf",
-    kind: "testkind",
-    timestamp: "2024-10-15T22:06:42+0000",
-    ip: "127.0.0.1",
-    changeSetId: "testchangesetid",
-    changeSetName: "testchangesetname",
-  };
-};
+// function makeData(...lens: number[]) {
+//   const makeDataLevel = (depth = 0): AuditLogDisplay[] => {
+//     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+//     const len = lens[depth]!;
+//     return range(len).map((): AuditLogDisplay => {
+//       return dummyRow();
+//     });
+//   };
 
-function makeData(...lens: number[]) {
-  const makeDataLevel = (depth = 0): Event[] => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const len = lens[depth]!;
-    return range(len).map((): Event => {
-      return dummyRow();
-    });
-  };
+//   return makeDataLevel();
+// }
 
-  return makeDataLevel();
-}
+// const INITIAL_PAGE_INDEX = 0;
+// const goToPageNumber = ref(INITIAL_PAGE_INDEX + 1);
 
-const INITIAL_PAGE_INDEX = 0;
 const PAGE_SIZE = 50;
+const DEFAULT_FILTERS = {
+  page: 1,
+  pageSize: PAGE_SIZE,
+  sortTimestampAscending: true,
+  excludeSystemUser: false,
+  kindFilter: [],
+  serviceFilter: [],
+  changeSetFilter: [],
+  userFilter: [],
+} as LogFilters;
 
-const defaultData = makeData(100);
-const columnHelper = createColumnHelper<Event>();
-const goToPageNumber = ref(INITIAL_PAGE_INDEX + 1);
+const logsStore = useLogsStore();
+logsStore.LOAD_PAGE(DEFAULT_FILTERS);
+const logLoadingRequestStatus = logsStore.getRequestStatus("LOAD_PAGE");
+
+const defaultData = logsStore.logs;
+const columnHelper = createColumnHelper<AuditLogDisplay>();
 const data = ref(defaultData);
 
 const columns = [
+  columnHelper.accessor("timestamp", {
+    header: "Timestamp",
+    cell: (info) => h(Timestamp, { date: info.getValue(), relative: true }),
+  }),
   columnHelper.accessor("changeSetName", {
     header: "Change Set",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("timestamp", {
-    header: "Timestamp",
-    cell: (info) => h(Timestamp, { date: info.getValue(), relative: true }),
+  columnHelper.accessor("kind", {
+    header: "Event Kind",
+    cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("actorName", {
     header: "Actor",
@@ -204,10 +218,6 @@ const columns = [
   }),
   columnHelper.accessor("service", {
     header: "Service",
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.accessor("kind", {
-    header: "Event Kind",
     cell: (info) => info.getValue(),
   }),
 ];
