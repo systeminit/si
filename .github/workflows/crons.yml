@@ -4,11 +4,9 @@ on:
   schedule:
     - cron: '*/15 * * * *'  # Runs every 15 minutes
 
-# We want to ensure that in-progress cron runs are canceled
-# when do a deploy so they don't fail erroneously, but these
-# cannot cancel deploys
+# We will wait until these tests finish before starting a deploy
 concurrency:
-  group: e2e-tools
+  group: deploy-production
   cancel-in-progress: false
 
 jobs:
