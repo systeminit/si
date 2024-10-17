@@ -32,6 +32,7 @@ use crate::{
 
 pub mod component;
 pub mod schema;
+pub mod socket;
 mod tests;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -1531,6 +1532,14 @@ impl WorkspaceSnapshotGraphV3 {
         self.touch_node(node_idx);
 
         Ok(())
+    }
+
+    fn get_node_weight_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<NodeWeight> {
+        let node_index = self.get_node_index_by_id(id)?;
+        Ok(self.get_node_weight(node_index)?.to_owned())
     }
 }
 
