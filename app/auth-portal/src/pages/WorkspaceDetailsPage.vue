@@ -130,32 +130,13 @@
                 <tbody
                   class="divide-y divide-neutral-300 dark:divide-neutral-700"
                 >
-                  <tr
+                  <MemberListItem
                     v-for="memUser in members"
                     :key="memUser.userId"
-                    class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
-                  >
-                    <td class="">
-                      <div
-                        class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
-                      >
-                        {{ memUser.email }}
-                      </div>
-                    </td>
-                    <td class="normal-case">
-                      {{ memUser.role }}
-                    </td>
-                    <td class="normal-case">
-                      <ErrorMessage :requestStatus="deleteUserHandlerReq" />
-                      <div
-                        v-if="memUser.role !== 'OWNER'"
-                        class="cursor-pointer hover:text-destructive-500"
-                        @click="deleteUserHandler(memUser.email)"
-                      >
-                        <Icon name="trash" />
-                      </div>
-                    </td>
-                  </tr>
+                    :memUser="memUser"
+                    :draftWorkspace="draftWorkspace"
+                    :workspaceId="workspaceId"
+                  />
                 </tbody>
               </table>
             </Stack>
@@ -235,6 +216,7 @@ import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
+import MemberListItem from "@/components/MemberListItem.vue";
 
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
@@ -248,8 +230,21 @@ const props = defineProps({
 const urlInputRef = ref<InstanceType<typeof VormInput>>();
 
 const { validationState, validationMethods } = useValidatedInputGroup();
+const members = computed(() => {
+  const members = workspacesStore.selectedWorkspaceMembers;
 
-const members = computed(() => workspacesStore.selectedWorkspaceMembers);
+  return members.slice().sort((a, b) => {
+    // "OWNER" should come first
+    if (a.role === "OWNER" && b.role !== "OWNER") {
+      return -1;
+    }
+    if (a.role !== "OWNER" && b.role === "OWNER") {
+      return 1;
+    }
+    return a.email.localeCompare(b.email);
+  });
+});
+
 const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
@@ -391,17 +386,6 @@ const launchWorkspace = async () => {
   if (props.workspaceId) {
     tracker.trackEvent("workspace_launcher_widget_click");
     window.location.href = `${API_HTTP_URL}/workspaces/${props.workspaceId}/go`;
-  }
-};
-
-const deleteUserHandlerReq = workspacesStore.getRequestStatus("REMOVE_USER");
-const deleteUserHandler = async (email: string) => {
-  if (email === "") return;
-  const res = await workspacesStore.REMOVE_USER(email, props.workspaceId);
-  if (res.result.success) {
-    if (!draftWorkspace.instanceUrl.includes("localhost")) {
-      window.location.href = ` ${draftWorkspace.instanceUrl}/refresh-auth?workspaceId=${props.workspaceId}`;
-    }
   }
 };
 
