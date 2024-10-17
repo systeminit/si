@@ -81,16 +81,16 @@ import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
-const componentStore = useComponentsStore();
+const assetStore = useAssetStore();
 const { theme } = useTheme();
 
 const schemaVariant = ref();
 const schemaVariantOptions = computed(() => {
-  const options = componentStore.schemaVariants
+  const options = assetStore.variantList
     .map((sv) => ({
       label: sv.schemaName,
       value: sv.schemaVariantId,

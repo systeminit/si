@@ -200,14 +200,14 @@ export const useFuncStore = () => {
         },
 
         nameForSchemaVariantId: (_state) => (schemaVariantId: string) =>
-          componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
+          useAssetStore().variantFromListById[schemaVariantId]?.schemaName,
 
         funcList: (state) => _.values(state.funcsById),
 
         managementFunctionsForSelectedComponent(state) {
           const variant =
-            componentsStore.schemaVariantsById[
-              componentsStore.selectedComponent?.schemaVariantId || ""
+            useAssetStore().variantFromListById[
+              componentsStore.selectedComponent?.def.schemaVariantId || ""
             ];
           if (!variant) return [];
           const mgmtFuncs: MgmtPrototype[] = [];
@@ -231,8 +231,8 @@ export const useFuncStore = () => {
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
           const variant =
-            componentsStore.schemaVariantsById[
-              componentsStore.selectedComponent?.schemaVariantId || ""
+            useAssetStore().variantFromListById[
+              componentsStore.selectedComponent?.def.schemaVariantId || ""
             ];
           if (!variant) return [];
           const summaries: Record<FuncId, FuncSummary> = {};

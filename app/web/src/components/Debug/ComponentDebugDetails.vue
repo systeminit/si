@@ -1,5 +1,5 @@
 <template>
-  <div v-if="componentId">
+  <div>
     <template
       v-if="fetchDebugReqStatus.isPending || !fetchDebugReqStatus.isRequested"
     >
@@ -27,7 +27,7 @@
           noIndentationOrLeftBorder
         >
           <dl class="border-l-2 p-xs flex flex-col gap-xs">
-            <DebugViewItem :data="componentId" title="Id" />
+            <DebugViewItem :data="component.def.id" title="Id" />
             <DebugViewItem
               :data="debugData.schemaVariantId"
               title="Variant Id"
@@ -130,12 +130,15 @@ import {
   LoadingMessage,
   TreeNode,
 } from "@si/vue-lib/design-system";
-import { PropType, computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "../ModelingDiagram/diagram_types";
 
 // const searchRef = ref<InstanceType<typeof SiSearch>>();
 const debugParent = ref<InstanceType<typeof Element>>();
@@ -176,20 +179,20 @@ function _findChildren(elm: Element) {
 const componentsStore = useComponentsStore();
 
 const debugData = computed(
-  () => componentsStore.debugDataByComponentId[props.componentId],
+  () => componentsStore.debugDataByComponentId[props.component.def.id],
 );
 
-const props = defineProps({
-  componentId: { type: String as PropType<ComponentId>, required: true },
-});
+const props = defineProps<{
+  component: DiagramNodeData | DiagramGroupData;
+}>();
 
 const fetchDebugReqStatus = componentsStore.getRequestStatus(
   "FETCH_COMPONENT_DEBUG_VIEW",
-  computed(() => props.componentId),
+  computed(() => props.component.def.id),
 );
 
 onMounted(() => {
-  componentsStore.FETCH_COMPONENT_DEBUG_VIEW(props.componentId);
+  componentsStore.FETCH_COMPONENT_DEBUG_VIEW(props.component.def.id);
 });
 </script>
 

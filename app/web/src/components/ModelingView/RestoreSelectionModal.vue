@@ -21,7 +21,6 @@ we'll see. */
 </template>
 
 <script setup lang="ts">
-import * as _ from "lodash-es";
 import {
   ErrorMessage,
   Modal,
@@ -32,6 +31,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
+import { nonNullable } from "@/utils/typescriptLinter";
 
 const componentsStore = useComponentsStore();
 const selectedEdge = computed(() => componentsStore.selectedEdge);
@@ -46,15 +46,12 @@ const { open: openModal, close } = useModal(modalRef);
 const restoreBlockedReason = computed(() => {
   if (!selectedComponentIds.value) return undefined;
   // Block restoring child of deleted frame
-  const parentIds = _.compact(
-    _.map(
-      selectedComponentIds.value,
-      (id) => componentsStore.componentsById[id]?.parentId,
-    ),
-  );
+  const parentIds = componentsStore.selectedComponents
+    .map((c) => c.def.parentId)
+    .filter(nonNullable);
 
   const hasDeletedParent = parentIds.find(
-    (id) => !_.isNil(componentsStore.componentsById[id]?.deletedInfo),
+    (id) => !!componentsStore.allComponentsById[id]?.def.deletedInfo,
   );
 
   if (hasDeletedParent) {

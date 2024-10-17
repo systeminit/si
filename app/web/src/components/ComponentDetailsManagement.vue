@@ -2,7 +2,7 @@
   <div v-if="componentsStore.selectedComponent">
     <div class="flex flex-col h-full w-full">
       <div
-        v-if="!componentsStore.selectedComponent?.resourceId"
+        v-if="!props.component.def.resourceId"
         class="text-xs text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
       >
         These functions can require the resource identifier, enter it here
@@ -31,7 +31,7 @@
         >
           <ManagementRunPrototype
             :prototype="prototype"
-            :componentId="componentsStore.selectedComponent.id"
+            :component="props.component"
           />
         </template>
       </ul>
@@ -45,25 +45,30 @@ import { VormInput } from "@si/vue-lib/design-system";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 import ManagementRunPrototype from "./ManagementRunPrototype.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
 const funcStore = useFuncStore();
 const componentsStore = useComponentsStore();
 
 const resourceId = ref("");
 
+const props = defineProps<{
+  component: DiagramGroupData | DiagramNodeData;
+}>();
+
 watch(
-  () => componentsStore.selectedComponent?.resourceId,
+  () => props.component.def.resourceId,
   () => {
-    resourceId.value = componentsStore.selectedComponent?.resourceId || "";
+    resourceId.value = props.component.def.resourceId;
   },
   { immediate: true },
 );
 
 const saveResource = () => {
   if (componentsStore.selectedComponent && resourceId.value)
-    componentsStore.SET_RESOURCE_ID(
-      componentsStore.selectedComponent?.id,
-      resourceId.value,
-    );
+    componentsStore.SET_RESOURCE_ID(props.component.def.id, resourceId.value);
 };
 </script>

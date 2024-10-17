@@ -133,10 +133,14 @@ import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { trackEvent } from "@/utils/tracking";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
 const props = defineProps<{
   qualification: Qualification;
-  componentId: string;
+  component: DiagramNodeData | DiagramGroupData;
   displayDetailsInModal?: boolean;
 }>();
 
@@ -166,7 +170,7 @@ watch(
     trackEvent("qualification_status", {
       qualification_name: qualification.value.title,
       qualification_status: qualification.value.result?.status,
-      qualification_runs_on_component: props.componentId,
+      qualification_runs_on_component: props.component.def.id,
     });
   },
   { immediate: true },

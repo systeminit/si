@@ -37,6 +37,7 @@
 import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { PropType, computed, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { FuncKind } from "@/api/sdf/dal/func";
 import { outputSocketsAndPropsFor } from "@/api/sdf/dal/schema";
@@ -44,6 +45,7 @@ import { GroupedOptions } from "@/components/SelectMenu.vue";
 import { TestStatus } from "./FuncTest.vue";
 
 const componentsStore = useComponentsStore();
+const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 
 const props = defineProps({
@@ -58,12 +60,12 @@ const selectedPrototypeId = ref<string | undefined>(undefined);
 
 const componentAttributeOptions = computed(() => {
   return componentsForSchemaVariantId.value.map((c) => {
-    return { value: c.id, label: c.displayName };
+    return { value: c.def.id, label: c.def.displayName };
   });
 });
 const componentsForSchemaVariantId = computed(() => {
-  return componentsStore.allComponents.filter(
-    (c) => c.schemaVariantId === props.schemaVariantId,
+  return Object.values(componentsStore.allComponentsById).filter(
+    (c) => c.def.schemaVariantId === props.schemaVariantId,
   );
 });
 
@@ -91,16 +93,16 @@ const prototypeAttributeOptions = computed(() => {
           binding.schemaVariantId === props.schemaVariantId
         )
           schemaVariant =
-            componentsStore.schemaVariantsById[binding.schemaVariantId];
+            assetStore.variantFromListById[binding.schemaVariantId];
         if (
           binding.componentId &&
           binding.componentId === selectedComponentId.value
         ) {
           const schemaVariantId =
-            componentsStore.componentsById[binding.componentId]
-              ?.schemaVariantId;
+            componentsStore.allComponentsById[binding.componentId]?.def
+              .schemaVariantId;
           if (schemaVariantId)
-            schemaVariant = componentsStore.schemaVariantsById[schemaVariantId];
+            schemaVariant = assetStore.variantFromListById[schemaVariantId];
         }
         if (schemaVariant) {
           options = outputSocketsAndPropsFor(schemaVariant);

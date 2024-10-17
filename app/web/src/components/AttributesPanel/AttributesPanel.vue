@@ -163,7 +163,7 @@ const SHOW_DEBUG_TREE = false;
 
 // NON-REACTIVE component id. This works because the parent has a :key which rerenders if the selected component changes
 const componentsStore = useComponentsStore();
-const componentId = componentsStore.selectedComponent?.id;
+const componentId = componentsStore.selectedComponent?.def.id;
 if (!componentId) {
   throw new Error("Do not use this component without a selectedComponentId");
 }
@@ -182,11 +182,12 @@ const siProps = computed(() => attributesStore.siTreeByPropName);
 // we have the component info from the loaded component already, but we are ideally grabbing it from the attributes tree
 // in case in the future we may want to show more info (like where the value is coming from, its update status, etc...)
 const siValuesFromStore = computed(() => ({
-  name: (siProps.value?.name?.value?.value as string) || component.displayName,
-  color: (siProps.value?.color?.value?.value as string) || component.color,
+  name:
+    (siProps.value?.name?.value?.value as string) || component.def.displayName,
+  color: (siProps.value?.color?.value?.value as string) || component.def.color,
   type:
     (siProps.value?.type?.value?.value as ComponentType) ||
-    component?.componentType,
+    component?.def.componentType,
 }));
 const siValues = reactive(_.cloneDeep(siValuesFromStore.value));
 
@@ -215,12 +216,12 @@ function updateSiProp(key: keyof typeof siValues) {
       attributeValueId: prop.valueId,
       parentAttributeValueId: prop.parentValueId,
       propId: prop.propId,
-      componentId: component.id,
+      componentId: component.def.id,
       value: newVal,
       isForSecret: false,
     },
   });
-  if (key === "name") {
+  if (key === "name" && newVal) {
     // TODO; after DVU completes, backend should send updated component object models over WsEvent
     componentsStore.setComponentDisplayName(component, newVal);
   }
@@ -229,7 +230,7 @@ function updateSiProp(key: keyof typeof siValues) {
 function updateComponentType(type = siValues.type) {
   siValues.type = type;
   attributesStore.SET_COMPONENT_TYPE({
-    componentId: component.id,
+    componentId: component.def.id,
     componentType: siValues.type,
   });
 }

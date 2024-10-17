@@ -21,7 +21,6 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useModuleStore } from "./module.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
-import { useComponentsStore } from "./components.store";
 
 export interface InstalledPkgAssetView {
   assetId: string;
@@ -174,6 +173,22 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             obj[v.schemaVariantId] = unlockedVariantsBySchema[v.schemaId];
             return obj;
           }, {} as Record<SchemaVariantId, SchemaVariantId | undefined>);
+        },
+        schemaVariantOptionsUnlocked: (
+          state,
+        ): { label: string; value: string }[] => {
+          return state.variantList
+            .filter((v) => !v.isLocked)
+            .map((sv) => ({
+              label: sv.displayName || sv.schemaName,
+              value: sv.schemaVariantId,
+            }));
+        },
+        schemaVariantOptions: (state): { label: string; value: string }[] => {
+          return state.variantList.map((sv) => ({
+            label: sv.displayName || sv.schemaName,
+            value: sv.schemaVariantId,
+          }));
         },
       },
       actions: {
@@ -638,7 +653,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               if (data.changeSetId !== changeSetId) return;
               this.LOAD_SCHEMA_VARIANT_LIST();
               moduleStore.SYNC();
-              useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
             },
           },
           {

@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="selectedComponent && selectedComponent.changeStatus !== 'deleted'"
+    v-if="selectedComponent && selectedComponent.def.changeStatus !== 'deleted'"
     class="h-full relative"
   >
     <ErrorMessage :requestStatus="diffReqStatus" />

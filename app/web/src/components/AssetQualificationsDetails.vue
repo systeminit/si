@@ -15,7 +15,7 @@
       >
         <QualificationViewerSingle
           :qualification="qualification"
-          :componentId="props.componentId"
+          :component="props.component"
         />
       </div>
     </template>
@@ -23,24 +23,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, watch } from "vue";
+import { computed, watch } from "vue";
 import * as _ from "lodash-es";
 
 import { ErrorMessage } from "@si/vue-lib/design-system";
-import { ComponentId } from "@/api/sdf/dal/component";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import QualificationViewerSingle from "@/components/QualificationViewerSingle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "./ModelingDiagram/diagram_types";
 
-const props = defineProps({
-  componentId: { type: String as PropType<ComponentId>, required: true },
-});
+const props = defineProps<{
+  component: DiagramGroupData | DiagramNodeData;
+}>();
 
 const changeSetsStore = useChangeSetsStore();
 const qualificationsStore = useQualificationsStore();
 
 const componentQualifications = computed(
-  () => qualificationsStore.qualificationsByComponentId[props.componentId],
+  () => qualificationsStore.qualificationsByComponentId[props.component.def.id],
 );
 
 const componentQualificationsSorted = computed(() =>
@@ -49,14 +52,14 @@ const componentQualificationsSorted = computed(() =>
 
 const qualificationDetailsReqStatus = qualificationsStore.getRequestStatus(
   "FETCH_COMPONENT_QUALIFICATIONS",
-  props.componentId,
+  props.component.def.id,
 );
 
 // TODO: this logic probably shouldnt live here... and more targeted updates should be sent
 watch(
   [() => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
-    qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
+    qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.component.def.id);
   },
   { immediate: true },
 );

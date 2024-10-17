@@ -12,12 +12,12 @@ import { FuncId } from "@/api/sdf/dal/func";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 
 const funcStore = useFuncStore();
-const componentsStore = useComponentsStore();
-const { schemaVariantOptions } = storeToRefs(componentsStore);
+const assetStore = useAssetStore();
+const { schemaVariantOptions } = storeToRefs(assetStore);
 
 const props = defineProps<{
   funcId: FuncId;

@@ -26,6 +26,9 @@ const props = defineProps({
 
 const componentsStore = useComponentsStore();
 const resourceCount = computed(
-  () => componentsStore.allComponents.filter((x) => x.hasResource).length,
+  () =>
+    Object.values(componentsStore.allComponentsById).filter(
+      (c) => c.def.hasResource,
+    ).length,
 );
 </script>

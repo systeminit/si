@@ -608,11 +608,11 @@ const topRightIconColor = computed(() => {
 const childCount = computed(() => {
   const mappedChildren = _.map(
     props.group.def.childIds,
-    (child) => componentsStore.componentsById[child],
+    (child) => componentsStore.allComponentsById[child],
   );
 
   const undeletedChildren = _.filter(mappedChildren, (child) =>
-    _.isNil(child?.deletedInfo),
+    _.isNil(child?.def.deletedInfo),
   );
 
   return undeletedChildren.length;
@@ -717,8 +717,8 @@ const colors = computed(() => {
     labelText: theme.value === "dark" ? "#FFF" : "#000",
     bodyText,
     parentColor:
-      componentsStore.componentsById[parentComponentId.value || ""]?.color ||
-      "#FFF",
+      componentsStore.allComponentsById[parentComponentId.value || ""]?.def
+        .color || "#FFF",
   };
 });
 
@@ -766,8 +766,9 @@ const highlightParent = computed(() => {
   if (!componentsStore.hoveredComponent) return false;
   if (componentsStore.hoveredComponentMeta?.type !== "parent") return false;
   return (
-    componentsStore.hoveredComponent.ancestorIds?.includes(componentId.value) ||
-    false
+    componentsStore.hoveredComponent.def.ancestorIds?.includes(
+      componentId.value,
+    ) || false
   );
 });
 

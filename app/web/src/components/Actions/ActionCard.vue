@@ -84,8 +84,8 @@
           "
         >
           <template v-if="component">
-            {{ component?.schemaName }}
-            {{ component?.displayName ?? "unknown" }}
+            {{ component?.def.schemaName }}
+            {{ component?.def.displayName ?? "unknown" }}
             {{
               props.action.kind === ActionKind.Manual
                 ? props.action.description
@@ -152,8 +152,8 @@
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
-            {{ a.component?.schemaName }}
-            {{ a.component?.displayName ?? "unknown" }}
+            {{ a.component?.def.schemaName }}
+            {{ a.component?.def.displayName ?? "unknown" }}
           </span>
         </li>
       </ol>
@@ -172,8 +172,8 @@
           />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
-            {{ a.component?.schemaName }}
-            {{ a.component?.displayName ?? "unknown" }}
+            {{ a.component?.def.schemaName }}
+            {{ a.component?.def.displayName ?? "unknown" }}
           </span>
         </li>
       </ol>
@@ -245,7 +245,7 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FullComponent, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import { ActionKind, ActionState, ActionId } from "@/api/sdf/dal/action";
 import {
   ActionView,
@@ -255,6 +255,10 @@ import {
 } from "@/store/actions.store";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "../ModelingDiagram/diagram_types";
 
 const componentsStore = useComponentsStore();
 const actionStore = useActionsStore();
@@ -334,7 +338,7 @@ const actionQueued = computed(() => {
 });
 
 type ActionViewWithComponent = ActionView & {
-  component: FullComponent | undefined;
+  component: DiagramGroupData | DiagramNodeData | undefined;
 };
 
 const hydrateActions = (actionList: ActionId[] | undefined) => {
@@ -345,7 +349,7 @@ const hydrateActions = (actionList: ActionId[] | undefined) => {
       const a = _a as unknown as ActionViewWithComponent;
       if (a) {
         if (a.componentId) {
-          a.component = componentsStore.componentsById[a.componentId];
+          a.component = componentsStore.allComponentsById[a.componentId];
         }
         actions.push(a);
       }
@@ -426,12 +430,9 @@ const actionKindToAbbreviation = (actionKind: ActionKind) => {
 
 const component = computed(() => {
   if (!props.action.componentId) return undefined;
-  else if (
-    actionHistory.value &&
-    !componentsStore.componentsById[props.action.componentId]
-  )
-    return undefined;
-  return componentsStore.componentsById[props.action.componentId];
+  const component = componentsStore.allComponentsById[props.action.componentId];
+  if (actionHistory.value && !component) return undefined;
+  return component;
 });
 
 const emit = defineEmits<{

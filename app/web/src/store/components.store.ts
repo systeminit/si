@@ -8,7 +8,7 @@ import { useToast } from "vue-toastification";
 import mitt from "mitt";
 import { watch } from "vue";
 import {
-  DiagramEdgeDef,
+  DiagramEdgeData,
   DiagramElementUniqueKey,
   DiagramGroupData,
   DiagramNodeData,
@@ -20,10 +20,9 @@ import {
 import {
   ComponentType,
   SchemaVariant,
-  SchemaVariantId,
   UninstalledVariant,
 } from "@/api/sdf/dal/schema";
-import { ChangeSetId, ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import {
   ComponentDiff,
@@ -48,6 +47,7 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import { trackEvent } from "@/utils/tracking";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
+import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
@@ -179,7 +179,7 @@ type EventBusEvents = {
   refreshSelectionResource: void;
   eraseSelection: void;
   panToComponent: {
-    componentId: ComponentId;
+    component: DiagramNodeData | DiagramGroupData;
     center?: boolean;
   };
   rename: ComponentId;
@@ -259,6 +259,80 @@ export const getCollapsedPrefixes = (workspaceId: string | null) => ({
   POS_PREFIX: `${workspaceId}-collapsed-pos`,
 });
 
+const getAncestorIds = (
+  allComponents: Record<ComponentId, RawComponent>,
+  componentId: ComponentId,
+  idsArray = [] as ComponentId[],
+): ComponentId[] => {
+  const c = allComponents[componentId];
+
+  if (!c) return [];
+  const parentId = c.parentId;
+
+  if (parentId) {
+    return getAncestorIds(allComponents, parentId, [parentId, ...idsArray]);
+  } else {
+    return idsArray;
+  }
+};
+
+const processRawComponent = (
+  component: RawComponent,
+  allComponents: Record<ComponentId, RawComponent>,
+) => {
+  const typeIcon = getAssetIcon(component?.schemaCategory);
+
+  const ancestorIds = getAncestorIds(allComponents, component.id);
+
+  const childIds = [];
+  for (const { id: childId, parentId } of _.values(allComponents)) {
+    if (component.id === parentId) {
+      childIds.push(childId);
+    }
+  }
+
+  const fullComponent = {
+    ...component,
+    ancestorIds,
+    parentId: _.last(ancestorIds),
+    childIds,
+    numChildren: 0,
+    numChildrenResources: 0,
+    icon: typeIcon,
+    isGroup: component.componentType !== ComponentType.Component,
+  } as FullComponent;
+
+  const nodeDef: DiagramNodeDef = {
+    ...fullComponent,
+    // swapping "id" to be node id and passing along component id separately for the diagram
+    // this is gross and needs to go, but will happen later
+    id: fullComponent.id,
+    componentId: fullComponent.id,
+    title: fullComponent.displayName,
+    subtitle: fullComponent.schemaName,
+    canBeUpgraded: fullComponent.canBeUpgraded,
+    typeIcon: fullComponent?.icon || "logo-si",
+  };
+
+  if (nodeDef.componentType === ComponentType.Component) {
+    return new DiagramNodeData(nodeDef);
+  } else {
+    return new DiagramGroupData(nodeDef);
+  }
+};
+
+const processRawEdge = (
+  edge: Edge,
+  allComponentsById: Record<ComponentId, DiagramGroupData | DiagramNodeData>,
+): DiagramEdgeData | null => {
+  const toComponent = allComponentsById[edge.toComponentId];
+  if (!allComponentsById[edge.fromComponentId]) return null;
+  if (!toComponent) return null;
+  else if (!toComponent.def.sockets?.find((s) => s.id === edge.toSocketId))
+    return null;
+  return new DiagramEdgeData(edge);
+};
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -302,6 +376,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
+          nodesById: {} as Record<ComponentId, DiagramNodeData>,
+          groupsById: {} as Record<ComponentId, DiagramGroupData>,
+          allComponentsById: {} as Record<
+            ComponentId,
+            DiagramNodeData | DiagramGroupData
+          >,
 
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
           collapsedComponents: new Set() as Set<DiagramElementUniqueKey>,
@@ -311,8 +391,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           >,
           collapsedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
 
-          edgesById: {} as Record<EdgeId, Edge>,
-          schemaVariantsById: {} as Record<SchemaVariantId, SchemaVariant>,
+          rawEdgesById: {} as Record<EdgeId, Edge>,
+          diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
           uninstalledVariants: [] as UninstalledVariant[],
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
@@ -357,164 +437,78 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ? state.selectedComponentIds[0]
               : null;
           },
-          componentsById(): Record<ComponentId, FullComponent> {
-            const getAncestorIds = (
-              componentId: ComponentId,
-              idsArray = [] as ComponentId[],
-            ): ComponentId[] => {
-              const c = this.rawComponentsById[componentId];
-
-              if (!c) return [];
-              const parentId = c.parentId;
-
-              if (parentId) {
-                return getAncestorIds(parentId, [parentId, ...idsArray]);
-              } else {
-                return idsArray;
-              }
-            };
-
-            const components = _.mapValues(this.rawComponentsById, (rc) => {
-              // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
-              // and eventually can just assume the icon is `logo-${name}`
-              const typeIcon = getAssetIcon(rc?.schemaCategory);
-
-              const ancestorIds = getAncestorIds(rc.id);
-
-              const childIds = [];
-              for (const { id: childId, parentId } of _.values(
-                this.rawComponentsById,
-              )) {
-                if (rc.id === parentId) {
-                  childIds.push(childId);
-                }
-              }
-
-              return {
-                ...rc,
-                ancestorIds,
-                parentId: _.last(ancestorIds),
-                childIds,
-                numChildren: 0,
-                numChildrenResources: 0,
-                icon: typeIcon,
-                isGroup: rc.componentType !== ComponentType.Component,
-              } as FullComponent;
-            });
-
-            const getDeepChildIds = (id: ComponentId): string[] => {
-              const component = components[id];
-              if (!component?.isGroup) return [];
-              return [
-                ...(component.childIds ? component.childIds : []),
-                ...component.childIds.flatMap(getDeepChildIds),
-              ];
-            };
-
-            Object.values(components)
-              .filter((c) => c.isGroup)
-              .forEach((component) => {
-                const childIds = getDeepChildIds(component.id);
-                component.numChildren = childIds.length;
-                component.numChildrenResources = childIds
-                  .map((c) => components[c])
-                  .filter((c) => c?.hasResource).length;
-              });
-
-            return components;
-          },
-          componentsByParentId(): Record<ComponentId, FullComponent[]> {
-            return _.groupBy(this.allComponents, (c) => c.parentId ?? "root");
-          },
-          parentIdPathByComponentId(): Record<ComponentId, ComponentId[]> {
-            const parentsLookup: Record<ComponentId, ComponentId[]> = {};
-            // using componentsByParentId to do a tree walk
-            const processList = (
-              components: FullComponent[],
-              parentIds: ComponentId[],
-            ) => {
-              _.each(components, (c) => {
-                parentsLookup[c.id] = parentIds;
-                const component = this.componentsByParentId[c.id];
-                if (component) {
-                  processList(component, [...parentIds, c.id]);
-                }
-              });
-            };
-            if (this.componentsByParentId?.root) {
-              processList(this.componentsByParentId.root, []);
-            }
-            return parentsLookup;
-          },
-          allComponents(): FullComponent[] {
-            return _.values(this.componentsById);
-          },
-          allComponentIds(): ComponentId[] {
-            return _.keys(this.componentsById);
-          },
-          deepChildIdsByComponentId(): Record<ComponentId, ComponentId[]> {
-            const getDeepChildIds = (id: ComponentId): string[] => {
-              const component = this.componentsById[id];
-              if (!component?.isGroup) return [];
-              return [
-                ...(component.childIds ? component.childIds : []),
-                ..._.flatMap(component.childIds, getDeepChildIds),
-              ];
-            };
-
-            return _.mapValues(this.componentsById, (_component, id) =>
-              getDeepChildIds(id),
+          componentsByParentId(): Record<
+            ComponentId,
+            (DiagramGroupData | DiagramNodeData)[]
+          > {
+            return _.groupBy(
+              this.allComponentsById,
+              (c) => c.def.parentId ?? "root",
             );
           },
 
-          allEdges: (state) => _.values(state.edgesById),
-          selectedComponent(): FullComponent | undefined {
-            return this.componentsById[this.selectedComponentId || 0];
+          selectedComponent(): DiagramNodeData | DiagramGroupData | undefined {
+            return this.allComponentsById[this.selectedComponentId || 0];
           },
-          selectedComponents(): FullComponent[] {
+          selectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
             return _.compact(
-              _.map(this.selectedComponentIds, (id) => this.componentsById[id]),
+              _.map(
+                this.selectedComponentIds,
+                (id) => this.allComponentsById[id],
+              ),
             );
           },
           selectedEdge(): Edge | undefined {
-            return this.edgesById[this.selectedEdgeId || 0];
+            return this.rawEdgesById[this.selectedEdgeId || 0];
           },
-          hoveredComponent(): FullComponent | undefined {
-            return this.componentsById[this.hoveredComponentId || 0];
+          hoveredComponent(): DiagramNodeData | DiagramGroupData | undefined {
+            return this.allComponentsById[this.hoveredComponentId || 0];
           },
 
-          selectedComponentsAndChildren(): FullComponent[] {
-            const selectedAndChildren: Record<string, FullComponent> = {};
-            this.allComponents.forEach((component) => {
+          selectedComponentsAndChildren(): (
+            | DiagramNodeData
+            | DiagramGroupData
+          )[] {
+            const selectedAndChildren: Record<
+              string,
+              DiagramNodeData | DiagramGroupData
+            > = {};
+            Object.values(this.allComponentsById).forEach((component) => {
               this.selectedComponents?.forEach((el) => {
-                if (component.ancestorIds?.includes(el.id)) {
-                  selectedAndChildren[component.id] = component;
+                if (component.def.ancestorIds?.includes(el.def.id)) {
+                  selectedAndChildren[component.def.id] = component;
                 }
               });
             });
             this.selectedComponents?.forEach((el) => {
-              selectedAndChildren[el.id] = el;
+              selectedAndChildren[el.def.id] = el;
             });
 
-            return _.values(selectedAndChildren);
+            return Object.values(selectedAndChildren);
           },
 
-          deletableSelectedComponents(): FullComponent[] {
+          deletableSelectedComponents(): (
+            | DiagramNodeData
+            | DiagramGroupData
+          )[] {
             return _.reject(
               this.selectedComponentsAndChildren,
-              (c) => c.changeStatus === "deleted",
+              (c) => c.def.changeStatus === "deleted",
             );
           },
-          restorableSelectedComponents(): FullComponent[] {
+          restorableSelectedComponents(): (
+            | DiagramNodeData
+            | DiagramGroupData
+          )[] {
             return _.filter(
               this.selectedComponents,
-              (c) => c.changeStatus === "deleted",
+              (c) => c.def.changeStatus === "deleted",
             );
           },
-          erasableSelectedComponents(): FullComponent[] {
+          erasableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
             return _.reject(
               this.selectedComponents,
-              (c) => c.changeStatus === "deleted",
+              (c) => c.def.changeStatus === "deleted",
             );
           },
           selectedComponentDiff(): ComponentDiff | undefined {
@@ -526,48 +520,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentResource(): Resource | undefined {
             return this.componentResourceById[this.selectedComponentId || 0];
           },
-          schemaVariantOptionsUnlocked: (
-            state,
-          ): { label: string; value: string }[] => {
-            return Object.values(state.schemaVariantsById)
-              .filter((v) => !v.isLocked)
-              .map((sv) => ({
-                label: sv.displayName || sv.schemaName,
-                value: sv.schemaVariantId,
-              }));
-          },
-          schemaVariantOptions: (state): { label: string; value: string }[] => {
-            return Object.values(state.schemaVariantsById).map((sv) => ({
-              label: sv.displayName || sv.schemaName,
-              value: sv.schemaVariantId,
-            }));
-          },
-
-          diagramNodes(): DiagramNodeDef[] {
-            return _.map(this.allComponents, (component) => {
-              return {
-                ...component,
-                // swapping "id" to be node id and passing along component id separately for the diagram
-                // this is gross and needs to go, but will happen later
-                id: component.id,
-                componentId: component.id,
-                title: component.displayName,
-                subtitle: component.schemaName,
-                canBeUpgraded: component.canBeUpgraded,
-                typeIcon: component?.icon || "logo-si",
-              };
-            });
-          },
-          diagramNodesById(): Record<string, DiagramNodeDef> {
-            const r: Record<string, DiagramNodeDef> = {};
-            for (const node of this.diagramNodes) {
-              r[node.id] = node;
-            }
-            return r;
-          },
 
           modelIsEmpty(): boolean {
-            return !this.diagramNodes.length;
+            return !Object.keys(this.allComponentsById).length;
           },
           diagramIsEmpty(): boolean {
             return (
@@ -575,26 +530,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             );
           },
 
-          diagramEdges(): DiagramEdgeDef[] {
-            // filter out edge data if neither component exists
-            // or the toComponent Socket doesn't exist
-            return this.allEdges.filter((edge) => {
-              const toComponent = this.componentsById[edge.toComponentId];
-              if (!this.componentsById[edge.fromComponentId]) return false;
-              if (!toComponent) return false;
-              else if (
-                !toComponent.sockets.find((s) => s.id === edge.toSocketId)
-              )
-                return false;
-              return true;
-            });
-          },
-
-          schemaVariants: (state) => _.values(state.schemaVariantsById),
-
           categories(): Categories {
             const featureFlagsStore = useFeatureFlagsStore();
-            const installedGroups = _.groupBy(this.schemaVariants, "category");
+            const installedGroups = _.groupBy(
+              useAssetStore().variantList,
+              "category",
+            );
             const uninstalledGroups = featureFlagsStore.ON_DEMAND_ASSETS
               ? _.groupBy(this.uninstalledVariants, "category")
               : {};
@@ -654,49 +595,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             }, {} as { [key: string]: CategoryVariant });
           },
 
-          changeStatsSummary(): Record<ChangeStatus | "total", number> {
-            const allChanged = _.filter(
-              this.allComponents,
-              (c) => !!c.changeStatus,
-            );
-            const grouped = _.groupBy(allChanged, (c) => c.changeStatus);
-            return {
-              added: grouped.added?.length || 0,
-              deleted: grouped.deleted?.length || 0,
-              modified: grouped.modified?.length || 0,
-              unmodified: grouped.unmodified?.length || 0,
-              total: allChanged.length,
-            };
-          },
-
-          getDependentComponents: (state) => (componentId: ComponentId) => {
-            // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
-
-            const connectedComponents: Record<ComponentId, ComponentId[]> = {};
-            _.each(
-              _.values(state.edgesById),
-              ({ fromComponentId, toComponentId }) => {
-                connectedComponents[fromComponentId] ||= [];
-                connectedComponents[fromComponentId]!.push(toComponentId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-              },
-            );
-
-            const connectedIds: ComponentId[] = [componentId];
-
-            function walkGraph(id: ComponentId) {
-              const nextIds = connectedComponents[id];
-              nextIds?.forEach((nid) => {
-                if (connectedIds.includes(nid)) return;
-                connectedIds.push(nid);
-                walkGraph(nid);
-              });
-            }
-
-            walkGraph(componentId);
-
-            return connectedIds;
-          },
-
           detailsTabSlugs: (state) => {
             const slug = state.selectedComponentDetailsTab;
 
@@ -714,27 +612,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           // The following getters use reported back from the diagram. Don't use to render the diagram.
-          // TODO Move these to a diagram stores
+          // TODO Move these to a diagram stores and (maybe?) make it not computed
           renderedGeometriesByComponentId(): Record<
             ComponentId,
             Vector2d & Size2D
           > {
             const dictionary: Record<ComponentId, Vector2d & Size2D> = {};
 
-            _.forEach(this.componentsById, (c) => {
-              let uniqueKey: DiagramElementUniqueKey;
+            Object.values(this.allComponentsById).forEach((c) => {
               let size: Size2D;
-              if (c.isGroup) {
-                uniqueKey = DiagramGroupData.generateUniqueKey(c.id);
-                size = this.resizedElementSizes[uniqueKey] ??
-                  c.size ?? {
+              if (c.def.isGroup) {
+                size = this.resizedElementSizes[c.uniqueKey] ??
+                  c.def.size ?? {
                     width: GROUP_DEFAULT_WIDTH,
                     height: GROUP_DEFAULT_HEIGHT,
                   };
               } else {
-                uniqueKey = DiagramNodeData.generateUniqueKey(c.id);
-
-                const renderedSize = this.renderedNodeSizes[uniqueKey];
+                const renderedSize = this.renderedNodeSizes[c.uniqueKey];
 
                 if (!renderedSize) return;
 
@@ -742,9 +636,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               }
 
               const position =
-                this.movedElementPositions[uniqueKey] ?? c.position;
+                this.movedElementPositions[c.uniqueKey] ?? c.def.position;
 
-              dictionary[c.id] = {
+              dictionary[c.def.id] = {
                 ...position,
                 ...size,
               };
@@ -755,10 +649,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // The area that encloses all the components children
           contentBoundingBoxesByGroupId(): Record<ComponentId, IRect> {
             const boxDictionary: Record<string, IRect> = {};
-            const groups = this.allComponents.filter((c) => c.isGroup);
 
-            for (const group of groups) {
-              const childIds = group.childIds;
+            for (const group of Object.values(this.groupsById)) {
+              const childIds = group.def.childIds;
               if (!childIds) continue;
 
               let top;
@@ -770,13 +663,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 let geometry = this.renderedGeometriesByComponentId[childId];
                 // in the case of frames being collapsed, look up the positions
                 if (!geometry) {
-                  const comp = this.componentsById[childId];
+                  const comp = this.allComponentsById[childId];
                   // if nodes aren't rendered we won't have data for them, they cannot be collapsed either
-                  if (!comp || comp.componentType === ComponentType.Component)
+                  if (
+                    !comp ||
+                    comp.def.componentType === ComponentType.Component
+                  )
                     continue;
-                  const key = DiagramGroupData.generateUniqueKey(comp.id);
-                  const size = this.resizedElementSizes[key];
-                  const pos = this.movedElementPositions[key];
+                  const size = this.resizedElementSizes[comp.uniqueKey];
+                  const pos = this.movedElementPositions[comp.uniqueKey];
                   if (!size) continue;
                   if (!pos) continue;
                   geometry = { ...size, ...pos };
@@ -802,7 +697,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               )
                 continue;
 
-              boxDictionary[group.id] = {
+              boxDictionary[group.def.id] = {
                 x: left - GROUP_INTERNAL_PADDING,
                 y: top - GROUP_INTERNAL_PADDING,
                 width: right - left + GROUP_INTERNAL_PADDING * 2,
@@ -840,6 +735,32 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
+          processRawEdge(edgeId: EdgeId): void {
+            const edge = this.rawEdgesById[edgeId];
+            if (!edge) return;
+            const dEdge = processRawEdge(edge, this.allComponentsById);
+            if (dEdge) this.diagramEdgesById[dEdge.def.id] = dEdge;
+          },
+          processRawComponent(
+            componentId: ComponentId,
+            processAncestors = true,
+          ): void {
+            const component = this.rawComponentsById[componentId];
+            if (!component) return;
+            const elm = processRawComponent(component, this.rawComponentsById);
+            this.allComponentsById[elm.def.id] = elm;
+            if (elm instanceof DiagramGroupData)
+              this.groupsById[elm.def.id] = elm;
+            else this.nodesById[elm.def.id] = elm;
+
+            // is false when iterating over the whole data set... no need to duplicate work
+            if (processAncestors) {
+              if (component.parentId) {
+                this.processRawComponent(component.parentId, processAncestors);
+              }
+            }
+          },
+
           async SET_RESOURCE_ID(componentId: ComponentId, resourceId: string) {
             return new ApiRequest<{
               componentId: ComponentId;
@@ -932,35 +853,31 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           toggleCollapse(source: string, ...ids: ComponentId[]) {
             let collapsing = false;
-            const uniqueKeys = [] as DiagramElementUniqueKey[];
-            const components = [] as FullComponent[];
+            const components = [] as DiagramGroupData[];
             ids.forEach((id) => {
-              const uniqueKey = `g-${id}`;
-              const component = this.componentsById[id];
-              if (component && component.componentType !== "component") {
-                uniqueKeys.push(uniqueKey);
+              const component = this.groupsById[id];
+              if (component) {
                 components.push(component);
 
-                if (!this.collapsedComponents.has(uniqueKey)) {
+                if (!this.collapsedComponents.has(component.uniqueKey)) {
                   collapsing = true;
                 }
               }
             });
             if (collapsing) {
               const collapsed = [] as ComponentCollapseTrackingData[];
-              components.forEach((component, index) => {
-                const uniqueKey = uniqueKeys[index] as string;
+              components.forEach((component) => {
                 const { position, size } =
-                  this.initMinimzedElementPositionAndSize(uniqueKey);
+                  this.initMinimzedElementPositionAndSize(component.uniqueKey);
                 this.updateMinimzedElementPositionAndSize({
-                  uniqueKey,
+                  uniqueKey: component.uniqueKey,
                   position,
                   size,
                 });
                 collapsed.push({
-                  schemaVariantName: component.schemaVariantName,
-                  schemaName: component.schemaName,
-                  hasParent: !!component.parentId,
+                  schemaVariantName: component.def.schemaVariantName,
+                  schemaName: component.def.schemaName,
+                  hasParent: !!component.def.parentId,
                 });
               });
               trackEvent("collapse-components", {
@@ -969,13 +886,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               });
             } else {
               const expanded = [] as ComponentCollapseTrackingData[];
-              components.forEach((component, index) => {
-                const uniqueKey = uniqueKeys[index] as string;
-                this.expandComponents(uniqueKey);
+              components.forEach((component) => {
+                this.expandComponents(component.uniqueKey);
                 expanded.push({
-                  schemaVariantName: component.schemaVariantName,
-                  schemaName: component.schemaName,
-                  hasParent: !!component.parentId,
+                  schemaVariantName: component.def.schemaVariantName,
+                  schemaName: component.def.schemaName,
+                  hasParent: !!component.def.parentId,
                 });
               });
               trackEvent("expand-components", {
@@ -991,15 +907,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           collapseOrExpandComponents(...ids: ComponentId[]) {
             let result;
-            const uniqueKeys = [] as DiagramElementUniqueKey[];
-            const components = [] as FullComponent[];
+            const components = [] as DiagramGroupData[];
             for (let i = 0; i < ids.length; i++) {
               const id = ids[i];
               if (id) {
                 const uniqueKey = `g-${id}`;
-                const component = this.componentsById[id];
-                if (component && component.componentType !== "component") {
-                  uniqueKeys.push(uniqueKey);
+                const component = this.groupsById[id];
+                if (component) {
                   components.push(component);
 
                   if (!this.collapsedComponents.has(uniqueKey)) {
@@ -1034,6 +948,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.movedElementPositions = {};
 
                 this.rawComponentsById = _.keyBy(response.components, "id");
+                response.components.forEach((component) => {
+                  this.processRawComponent(component.id, false);
+                });
+
                 const edges =
                   response.edges && response.edges.length > 0
                     ? response.edges.map(edgeFromRawEdge(false))
@@ -1042,7 +960,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   response.inferredEdges && response.inferredEdges.length > 0
                     ? response.inferredEdges.map(edgeFromRawEdge(true))
                     : [];
-                this.edgesById = _.keyBy([...edges, ...inferred], "id");
+                this.rawEdgesById = _.keyBy([...edges, ...inferred], "id");
+                Object.keys(this.rawEdgesById).forEach((edgeId) => {
+                  this.processRawEdge(edgeId);
+                });
 
                 // remove invalid component IDs from the selection
                 const validComponentIds = _.intersection(
@@ -1086,32 +1007,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (debugData) => {
                 this.debugDataByComponentId[componentId] = debugData;
-              },
-            });
-          },
-
-          async FETCH_AVAILABLE_SCHEMAS() {
-            return new ApiRequest<{
-              installed: SchemaVariant[];
-              uninstalled: UninstalledVariant[];
-            }>({
-              url: [
-                "v2",
-                "workspaces",
-                { workspaceId },
-                "change-sets",
-                { changeSetId },
-                "schema-variants",
-              ],
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.schemaVariantsById = _.keyBy(
-                  response.installed,
-                  "schemaVariantId",
-                );
-                this.uninstalledVariants = response.uninstalled;
               },
             });
           },
@@ -1219,23 +1114,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (retry.length > 0) {
                   const components = [] as ComponentData[];
                   for (const componentId of retry) {
-                    const c = this.rawComponentsById[componentId];
-                    if (!c) continue;
+                    const nodeOrGroup = this.allComponentsById[componentId];
+                    if (!nodeOrGroup) continue;
 
-                    const node = this.diagramNodesById[c.id];
-                    if (!node) continue;
-
-                    let typedNode: DiagramNodeData | DiagramGroupData;
-                    if (c.componentType === ComponentType.Component) {
-                      typedNode = new DiagramNodeData(node);
-                    } else {
-                      typedNode = new DiagramGroupData(node);
-                    }
-
-                    const newParent = typedNode.def.parentId;
+                    const newParent = nodeOrGroup.def.parentId;
                     const detach = !newParent;
                     components.push({
-                      key: typedNode.uniqueKey,
+                      key: nodeOrGroup.uniqueKey,
                       newParent,
                       detach,
                     });
@@ -1269,19 +1154,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     component.parentId = undefined;
 
                     // remove inferred edges between children and parents
-                    const full_component = this.componentsById[componentId];
+                    const full_component = this.allComponentsById[componentId];
                     for (const edge of _.filter(
-                      _.values(this.edgesById),
+                      _.values(this.rawEdgesById),
                       (edge) =>
                         !!(
                           edge.isInferred &&
                           edge.toComponentId === component.id &&
-                          full_component?.ancestorIds?.includes(
+                          full_component?.def.ancestorIds?.includes(
                             edge.fromComponentId,
                           )
                         ),
                     )) {
-                      delete this.edgesById[edge.id];
+                      delete this.rawEdgesById[edge.id];
+                      delete this.diagramEdgesById[edge.id];
                     }
                   }
 
@@ -1391,8 +1277,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.uninstalledVariants = this.uninstalledVariants.filter(
                     (variant) => variant.schemaId !== installedVariant.schemaId,
                   );
-                  this.schemaVariantsById[installedVariant.schemaVariantId] =
-                    installedVariant;
+                  useAssetStore().schemaVariants.push(installedVariant);
                 }
               },
             });
@@ -1434,9 +1319,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: () => {},
               optimistic: () => {
-                this.edgesById[newEdge.id] = newEdge;
+                this.rawEdgesById[newEdge.id] = newEdge;
+                this.processRawEdge(newEdge.id);
 
-                const replacingEdge = this.allEdges
+                const replacingEdge = Object.values(this.rawEdgesById)
                   .filter(
                     (e) =>
                       e.isInferred &&
@@ -1445,12 +1331,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   )
                   .pop();
                 if (replacingEdge) {
-                  delete this.edgesById[replacingEdge.id];
+                  delete this.rawEdgesById[replacingEdge.id];
+                  delete this.diagramEdgesById[replacingEdge.id];
                 }
                 return () => {
-                  delete this.edgesById[newEdge.id];
+                  delete this.rawEdgesById[newEdge.id];
                   if (replacingEdge) {
-                    this.edgesById[replacingEdge.id] = replacingEdge;
+                    this.rawEdgesById[replacingEdge.id] = replacingEdge;
+                    this.processRawEdge(replacingEdge.id);
                   }
                 };
               },
@@ -1570,15 +1458,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 // this.componentDiffsById[componentId] = response.componentDiff;
               },
               optimistic: () => {
-                const edge = this.edgesById[edgeId];
+                const edge = this.rawEdgesById[edgeId];
 
                 if (edge?.changeStatus === "added") {
-                  const originalEdge = this.edgesById[edgeId];
-                  delete this.edgesById[edgeId];
+                  const originalEdge = this.rawEdgesById[edgeId];
+                  delete this.rawEdgesById[edgeId];
+                  delete this.diagramEdgesById[edgeId];
                   this.selectedEdgeId = null;
                   return () => {
                     if (originalEdge) {
-                      this.edgesById[edgeId] = originalEdge;
+                      this.rawEdgesById[edgeId] = originalEdge;
+                      this.processRawEdge(edgeId);
                     }
                     this.selectedEdgeId = edgeId;
                   };
@@ -1589,14 +1479,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     timestamp: new Date().toISOString(),
                     actor: { kind: "user", label: "You" },
                   };
-                  this.edgesById[edgeId] = edge;
+                  this.rawEdgesById[edgeId] = edge;
+                  this.processRawEdge(edgeId);
 
                   return () => {
-                    this.edgesById[edgeId] = {
+                    this.rawEdgesById[edgeId] = {
                       ...edge,
                       changeStatus: originalStatus,
                       deletedInfo: undefined,
                     };
+                    this.processRawEdge(edgeId);
                     this.selectedEdgeId = edgeId;
                   };
                 }
@@ -1707,6 +1599,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         actor: { kind: "user", label: "You" },
                       },
                     };
+
+                    this.processRawComponent(componentId);
                   }
                 }
 
@@ -1723,6 +1617,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         toDelete: false,
                         deletedInfo: undefined,
                       };
+
+                      this.processRawComponent(componentId);
                     }
                   }
                 };
@@ -1754,6 +1650,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       toDelete: false,
                       deletedInfo: undefined,
                     };
+                    this.processRawComponent(componentId);
                   }
                 }
               },
@@ -1827,7 +1724,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             } else {
               const validSelectionArray = _.reject(
                 _.isArray(selection) ? selection : [selection],
-                (id) => !this.componentsById[id],
+                (id) => !Object.keys(this.allComponentsById).includes(id),
               );
               if (opts?.toggle) {
                 this.selectedComponentIds = _.xor(
@@ -1886,8 +1783,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          setComponentDisplayName(component: FullComponent, name: string) {
-            const c = this.rawComponentsById[component.id];
+          setComponentDisplayName(
+            component: DiagramGroupData | DiagramNodeData,
+            name: string,
+          ) {
+            const c = this.rawComponentsById[component.def.id];
             if (!c) return;
             c.displayName = name;
           },
@@ -1920,7 +1820,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           // trigger initial load
           this.FETCH_DIAGRAM_DATA();
-          this.FETCH_AVAILABLE_SCHEMAS();
 
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(
@@ -1961,6 +1860,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
+                  this.processRawComponent(data.component.id);
                 },
               },
               {
@@ -1971,7 +1871,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (metadata.change_set_id !== changeSetId) return;
 
                   const e = edgeFromRawEdge(false)(edge);
-                  this.edgesById[e.id] = e;
+                  this.rawEdgesById[e.id] = e;
+                  this.processRawEdge(e.id);
                 },
               },
               {
@@ -1986,7 +1887,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     timestamp: "",
                   };
                   const e = edgeFromRawEdge(false)(_edge);
-                  delete this.edgesById[e.id];
+                  delete this.rawEdgesById[e.id];
+                  delete this.diagramEdgesById[e.id];
                 },
               },
               {
@@ -1994,6 +1896,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
                   delete this.rawComponentsById[data.componentId];
+                  delete this.allComponentsById[data.componentId];
+                  delete this.nodesById[data.componentId];
+                  delete this.groupsById[data.componentId];
 
                   // remove invalid component IDs from the selection
                   const validComponentIds = _.intersection(
@@ -2010,6 +1915,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
+                  this.processRawComponent(data.component.id);
 
                   if (this.selectedComponentId === data.component.id) {
                     const component = this.rawComponentsById[data.component.id];
@@ -2033,7 +1939,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       ? data.edges.map(edgeFromRawEdge(true))
                       : [];
                   for (const edge of edges) {
-                    this.edgesById[edge.id] = edge;
+                    this.rawEdgesById[edge.id] = edge;
+                    this.processRawEdge(edge.id);
                   }
                 },
               },
@@ -2046,7 +1953,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       ? data.edges.map(edgeFromRawEdge(true))
                       : [];
                   for (const edge of edges) {
-                    delete this.edgesById[edge.id];
+                    delete this.rawEdgesById[edge.id];
+                    delete this.diagramEdgesById[edge.id];
                   }
                 },
               },
@@ -2058,7 +1966,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (data.changeSetId !== changeSetId) return;
                   // the componentIds ought to be the same, but just in case we'll delete first
                   delete this.rawComponentsById[data.originalComponentId];
+                  delete this.allComponentsById[data.originalComponentId];
+                  delete this.nodesById[data.originalComponentId];
+                  delete this.groupsById[data.originalComponentId];
                   this.rawComponentsById[data.component.id] = data.component;
+                  this.processRawComponent(data.component.id);
                   this.setSelectedComponentId(data.component.id);
                 },
               },
@@ -2069,39 +1981,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
+                  this.processRawComponent(data.component.id);
                   this.refreshingStatus[data.component.id] = false;
                   if (this.selectedComponentId === data.component.id)
                     this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
-                },
-              },
-              {
-                eventType: "SchemaVariantUpdated",
-                callback: (variant, metadata) => {
-                  if (metadata.change_set_id !== changeSetId) return;
-                  this.schemaVariantsById[variant.schemaVariantId] = variant;
-                },
-              },
-              {
-                eventType: "SchemaVariantCreated",
-                callback: (variant, metadata) => {
-                  if (metadata.change_set_id !== changeSetId) return;
-                  this.schemaVariantsById[variant.schemaVariantId] = variant;
-                },
-              },
-              {
-                eventType: "SchemaVariantDeleted",
-                callback: (data, metadata) => {
-                  if (metadata.change_set_id !== changeSetId) return;
-                  delete this.schemaVariantsById[data.schemaVariantId];
-                },
-              },
-              {
-                eventType: "ModuleImported",
-                callback: (schemaVariants, metadata) => {
-                  if (metadata.change_set_id !== changeSetId) return;
-                  for (const variant of schemaVariants) {
-                    this.schemaVariantsById[variant.schemaVariantId] = variant;
-                  }
                 },
               },
               /* { TODO PUT BACK

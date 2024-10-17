@@ -472,15 +472,21 @@ const position = computed(
     props.node.def.position,
 );
 
-watch([nodeWidth, nodeHeight, position, actualSockets], () => {
-  // we call on nextTick to let the component actually update itself on the stage first
-  // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
+// note: this fires once the node is done rendering
+// height and width aren't mutable for nodes
+watch([nodeWidth, nodeHeight], () => {
   nextTick(() => {
     componentsStore.renderedNodeSizes[props.node.uniqueKey] = {
       width: nodeWidth.value,
       height: nodeHeight.value,
     };
+  });
+});
 
+watch([nodeWidth, nodeHeight, position, actualSockets], () => {
+  // we call on nextTick to let the component actually update itself on the stage first
+  // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
+  nextTick(() => {
     emit("resize");
   });
 });
@@ -501,8 +507,8 @@ const colors = computed(() => {
     bodyBg: bodyBg.toRgbString(),
     bodyText,
     parentColor:
-      componentsStore.componentsById[parentComponentId.value || ""]?.color ||
-      "#FFF",
+      componentsStore.allComponentsById[parentComponentId.value || ""]?.def
+        .color || "#FFF",
   };
 });
 

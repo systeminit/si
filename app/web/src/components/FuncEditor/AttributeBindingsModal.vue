@@ -66,12 +66,12 @@ import {
   inputSocketsAndPropsFor,
 } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useComponentsStore } from "@/store/components.store";
+import { useAssetStore } from "@/store/asset.store";
 import { nilId } from "@/utils/nilId";
 
-const componentsStore = useComponentsStore();
+const assetStore = useAssetStore();
 const { schemaVariantOptionsUnlocked, schemaVariantOptions } =
-  storeToRefs(componentsStore);
+  storeToRefs(assetStore);
 
 const funcStore = useFuncStore();
 
@@ -150,7 +150,7 @@ const editedPrototype: ComputedRef<Attribute> = computed(() => ({
 
 const outputLocationOptions = computed<GroupedOptions>(() => {
   const variant =
-    componentsStore.schemaVariantsById[selectedVariant.value.value as string];
+    assetStore.variantFromListById[selectedVariant.value.value as string];
   if (variant) return outputSocketsAndPropsFor(variant);
 
   return {};
@@ -158,7 +158,7 @@ const outputLocationOptions = computed<GroupedOptions>(() => {
 
 const inputSourceOptions = computed<GroupedOptions>(() => {
   const variant =
-    componentsStore.schemaVariantsById[selectedVariant.value.value as string];
+    assetStore.variantFromListById[selectedVariant.value.value as string];
   if (variant) return inputSocketsAndPropsFor(variant);
 
   return {};
@@ -174,7 +174,7 @@ const open = (binding: Attribute) => {
   openedWithBinding.value = binding;
 
   const startingVariant =
-    componentsStore.schemaVariantsById[binding.schemaVariantId || ""];
+    assetStore.variantFromListById[binding.schemaVariantId || ""];
   selectedVariant.value =
     schemaVariantOptions.value.find(
       (o) => o.value === startingVariant?.schemaVariantId,

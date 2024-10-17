@@ -51,17 +51,17 @@ const attributesStore = computed(() =>
 
 function typeDisplayName() {
   if (selectedComponentId.value && selectedComponent.value) {
-    if (selectedComponent.value.componentType === ComponentType.Component)
+    if (selectedComponent.value.def.componentType === ComponentType.Component)
       return "COMPONENT";
     else if (
-      selectedComponent.value.componentType ===
+      selectedComponent.value.def.componentType ===
       ComponentType.ConfigurationFrameUp
     )
       return "UP FRAME";
     else return "DOWN FRAME";
   } else if (selectedComponentIds.value.length) {
     for (const c of selectedComponents.value) {
-      if (c.componentType === ComponentType.Component) return "COMPONENTS"; // if we have both frames and components, just use the word component
+      if (c.def.componentType === ComponentType.Component) return "COMPONENTS"; // if we have both frames and components, just use the word component
     }
     return "FRAMES";
   } else {
@@ -72,7 +72,7 @@ function typeDisplayName() {
 const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 const canRefresh = computed(
   () =>
-    selectedComponent.value?.hasResource &&
+    selectedComponent.value?.def.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId,
 );
 const getActionToggleState = (id: string) => {
@@ -150,7 +150,7 @@ const rightClickMenuItems = computed(() => {
         icon: "component",
         checkable: true,
         checked:
-          selectedComponent.value.componentType === ComponentType.Component,
+          selectedComponent.value.def.componentType === ComponentType.Component,
         onSelect: () => {
           updateComponentType(ComponentType.Component);
         },
@@ -160,7 +160,7 @@ const rightClickMenuItems = computed(() => {
         icon: "frame-up",
         checkable: true,
         checked:
-          selectedComponent.value.componentType ===
+          selectedComponent.value.def.componentType ===
           ComponentType.ConfigurationFrameUp,
         onSelect: () => {
           updateComponentType(ComponentType.ConfigurationFrameUp);
@@ -171,7 +171,7 @@ const rightClickMenuItems = computed(() => {
         icon: "frame-down",
         checkable: true,
         checked:
-          selectedComponent.value.componentType ===
+          selectedComponent.value.def.componentType ===
           ComponentType.ConfigurationFrameDown,
         onSelect: () => {
           updateComponentType(ComponentType.ConfigurationFrameDown);
@@ -186,7 +186,7 @@ const rightClickMenuItems = computed(() => {
     }
 
     // expand and collapse for a single frame
-    if (selectedComponent.value.componentType !== ComponentType.Component) {
+    if (selectedComponent.value.def.componentType !== ComponentType.Component) {
       const verb = collapsed ? "Expand" : "Collapse";
       items.push({
         label: verb,
@@ -209,7 +209,7 @@ const rightClickMenuItems = computed(() => {
       onSelect: triggerCopySelection,
       disabled,
     });
-    if (selectedComponent.value.toDelete) {
+    if (selectedComponent.value.def.toDelete) {
       items.push({
         label: `Restore`,
         icon: "trash-restore",
@@ -300,7 +300,10 @@ const rightClickMenuItems = computed(() => {
         icon: "refresh",
         onSelect: () => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value!.id);
+          if (selectedComponent.value)
+            componentsStore.REFRESH_RESOURCE_INFO(
+              selectedComponent.value.def.id,
+            );
         },
         disabled,
       });
@@ -335,7 +338,7 @@ const rightClickMenuItems = computed(() => {
           endLinkTo: {
             name: "workspace-lab-assets",
             query: {
-              s: `a_${selectedComponent.value?.schemaVariantId}|f_${binding.funcId}`,
+              s: `a_${selectedComponent.value?.def.schemaVariantId}|f_${binding.funcId}`,
             },
           } as RouteLocationRaw,
           endLinkLabel: "view",

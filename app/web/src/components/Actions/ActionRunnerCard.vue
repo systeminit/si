@@ -15,7 +15,7 @@
             :class="
               clsx(
                 'truncate cursor-pointer',
-                componentsStore.componentsById[runner.componentId]
+                componentsStore.allComponentsById[runner.componentId]
                   ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
                   : 'text-neutral-500 dark:text-neutral-400 line-through',
                 isHover && 'underline',
@@ -119,7 +119,7 @@ const formatTitle = (title: string) => {
 const componentNameRef = ref();
 const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
-    if (!componentsStore.componentsById[props.runner.componentId]) {
+    if (!componentsStore.allComponentsById[props.runner.componentId]) {
       return {
         content: `Component "${
           componentNameRef.value.textContent
@@ -141,10 +141,11 @@ const componentNameTooltip = computed(() => {
 });
 
 function onClick() {
-  if (componentsStore.componentsById[props.runner.componentId]) {
+  const component = componentsStore.allComponentsById[props.runner.componentId];
+  if (component) {
     componentsStore.setSelectedComponentId(props.runner.componentId);
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: props.runner.componentId,
+      component,
       center: true,
     });
     onHoverEnd();
@@ -156,13 +157,13 @@ const isHover = computed(
 );
 
 function onHoverStart() {
-  if (componentsStore.componentsById[props.runner.componentId]) {
+  if (componentsStore.allComponentsById[props.runner.componentId]) {
     componentsStore.setHoveredComponentId(props.runner.componentId);
   }
 }
 
 function onHoverEnd() {
-  if (componentsStore.componentsById[props.runner.componentId]) {
+  if (componentsStore.allComponentsById[props.runner.componentId]) {
     componentsStore.setHoveredComponentId(null);
   }
 }

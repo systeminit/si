@@ -7,7 +7,6 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { DiagramStatusIcon } from "@/components/ModelingDiagram/diagram_types";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useComponentsStore } from "./components.store";
 import handleStoreError from "./errors";
 
 export type QualificationStatus = "success" | "failure" | "running" | "warning";
@@ -106,34 +105,6 @@ export const useQualificationsStore = () => {
 
               return "success";
             },
-          qualificationStatusWithRollupsByComponentId(): Record<
-            ComponentId,
-            QualificationStatus | undefined
-          > {
-            const componentsStore = useComponentsStore();
-
-            return _.mapValues(
-              componentsStore.componentsById,
-              (component, id) => {
-                if (!component.isGroup)
-                  return this.qualificationStatusByComponentId[id];
-
-                const deepChildIds =
-                  componentsStore.deepChildIdsByComponentId[id];
-                const deepChildStatuses = _.map(
-                  deepChildIds,
-                  (childId) => this.qualificationStatusByComponentId[childId],
-                );
-                if (_.some(deepChildStatuses, (s) => s === "running"))
-                  return "running";
-                if (_.some(deepChildStatuses, (s) => s === "failure"))
-                  return "failure";
-                if (_.some(deepChildStatuses, (s) => s === "warning"))
-                  return "warning";
-                return "success";
-              },
-            );
-          },
 
           // stats/totals by component
           componentStats(): Record<QualificationStatus | "total", number> {

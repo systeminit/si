@@ -93,7 +93,7 @@ watch(
   () => {
     if (
       componentsStore.selectedComponent &&
-      componentsStore.selectedComponent.changeStatus !== "deleted"
+      componentsStore.selectedComponent.def.changeStatus !== "deleted"
     ) {
       componentsStore.FETCH_COMPONENT_RESOURCE(selectedComponentId.value);
     }

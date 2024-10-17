@@ -15,7 +15,9 @@
             :class="
               clsx(
                 'truncate cursor-pointer',
-                componentsStore.componentsById[props.action.componentId ?? -1]
+                componentsStore.allComponentsById[
+                  props.action.componentId ?? -1
+                ]
                   ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
                   : 'text-neutral-500 dark:text-neutral-400 line-through',
                 isHover && 'underline',
@@ -26,8 +28,8 @@
             @mouseleave="onHoverEnd"
           >
             {{
-              componentsStore.componentsById[props.action.componentId ?? -1]
-                ?.displayName ?? "unknown"
+              componentsStore.allComponentsById[props.action.componentId ?? -1]
+                ?.def.displayName ?? "unknown"
             }}
           </div>
         </div>
@@ -60,7 +62,7 @@ const props = defineProps<{
 const componentNameRef = ref();
 const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
-    if (!componentsStore.componentsById[props.action.componentId ?? -1]) {
+    if (!componentsStore.allComponentsById[props.action.componentId ?? -1]) {
       return {
         content: `Component "${
           componentNameRef.value.textContent
@@ -82,13 +84,12 @@ const componentNameTooltip = computed(() => {
 });
 
 function onClick() {
-  if (
-    props.action.componentId &&
-    componentsStore.componentsById[props.action.componentId]
-  ) {
+  const component =
+    componentsStore.allComponentsById[props.action.componentId || ""];
+  if (component) {
     componentsStore.setSelectedComponentId(props.action.componentId);
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: props.action.componentId,
+      component,
       center: true,
     });
     onHoverEnd();
@@ -102,7 +103,7 @@ const isHover = computed(
 function onHoverStart() {
   if (
     props.action.componentId &&
-    componentsStore.componentsById[props.action.componentId]
+    componentsStore.allComponentsById[props.action.componentId]
   ) {
     componentsStore.setHoveredComponentId(props.action.componentId);
   }
@@ -111,7 +112,7 @@ function onHoverStart() {
 function onHoverEnd() {
   if (
     props.action.componentId &&
-    componentsStore.componentsById[props.action.componentId]
+    componentsStore.allComponentsById[props.action.componentId]
   ) {
     componentsStore.setHoveredComponentId(null);
   }

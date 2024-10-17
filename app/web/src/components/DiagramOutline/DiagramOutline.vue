@@ -41,8 +41,8 @@
         <template v-if="filterModeActive">
           <DiagramOutlineNode
             v-for="component in filteredComponents"
-            :key="component.id"
-            :componentId="component.id"
+            :key="component.def.id"
+            :component="component"
           />
         </template>
 
@@ -67,8 +67,8 @@
           <template v-else>
             <DiagramOutlineNode
               v-for="component in rootComponents"
-              :key="component.id"
-              :componentId="component.id"
+              :key="component.def.id"
+              :component="component"
             />
           </template>
         </template>
@@ -80,7 +80,11 @@
 <script lang="ts">
 type DiagramOutlineRootCtx = {
   filterModeActive: ComputedRef<boolean>;
-  itemClickHandler: (e: MouseEvent, id: ComponentId, tabSlug?: string) => void;
+  itemClickHandler: (
+    e: MouseEvent,
+    component: DiagramNodeData | DiagramGroupData,
+    tabSlug?: string,
+  ) => void;
 };
 
 export const DiagramOutlineCtxInjectionKey: InjectionKey<DiagramOutlineRootCtx> =
@@ -118,13 +122,16 @@ import {
   SiSearch,
   Filter,
 } from "@si/vue-lib/design-system";
-import { useComponentsStore, FullComponent } from "@/store/components.store";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { useComponentsStore } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "../ModelingDiagram/diagram_types";
 
 defineProps<{ actionsAreRunning: boolean }>();
 
@@ -137,7 +144,7 @@ const emit = defineEmits<{
   // and needs the raw MouseEvent
   (
     e: "right-click-item",
-    ev: { mouse: MouseEvent; component: FullComponent },
+    ev: { mouse: MouseEvent; component: Component },
   ): void;
 }>();
 
@@ -148,14 +155,18 @@ const fetchComponentsReq =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
 
 const rootComponents = computed(() => {
-  return _.filter(componentsStore.allComponents, (c) => !c.parentId);
+  return Object.values(componentsStore.allComponentsById).filter(
+    (c) => !c.def.parentId,
+  );
 });
 
+type Component = DiagramNodeData | DiagramGroupData;
+
 const componentsTreeFlattened = computed(() => {
-  const flat: Array<FullComponent> = [];
-  const addAllChildren = (component: FullComponent) => {
+  const flat: Array<Component> = [];
+  const addAllChildren = (component: Component) => {
     flat.push(component);
-    const children = componentsStore.componentsByParentId[component.id];
+    const children = componentsStore.componentsByParentId[component.def.id];
     if (children) {
       children.forEach((child) => {
         addAllChildren(child);
@@ -178,18 +189,18 @@ const filterModeActive = computed(
   () => !!(searchStringCleaned.value || searchRef.value?.filteringActive),
 );
 
-const filterComponentArrayBySearchString = (components: FullComponent[]) => {
+const filterComponentArrayBySearchString = (components: Component[]) => {
   return _.filter(components, (c) => {
-    if (c.displayName.toLowerCase().includes(searchStringCleaned.value))
+    if (c.def.displayName.toLowerCase().includes(searchStringCleaned.value))
       return true;
-    if (c.schemaName.toLowerCase().includes(searchStringCleaned.value))
+    if (c.def.schemaName.toLowerCase().includes(searchStringCleaned.value))
       return true;
     return false;
   });
 };
 
 const filterComponentArrayBySearchStringAndFilters = (
-  components: FullComponent[],
+  components: Component[],
 ) => {
   let _filteredComponents = filterComponentArrayBySearchString(components);
 
@@ -202,7 +213,7 @@ const filterComponentArrayBySearchStringAndFilters = (
       if (searchRef.value?.activeFilters[index]) {
         _filteredComponents = _.filter(_filteredComponents, (component) =>
           filterArrays[index]?.value.includes(component),
-        ) as FullComponent[];
+        ) as Component[];
       }
     }
   }
@@ -212,7 +223,7 @@ const filterComponentArrayBySearchStringAndFilters = (
 const filteredComponents = computed(() => {
   if (!filterModeActive.value) return [];
   return filterComponentArrayBySearchStringAndFilters(
-    componentsStore.allComponents,
+    Object.values(componentsStore.allComponentsById),
   );
 });
 
@@ -222,26 +233,28 @@ function onSearchUpdated(newFilterString: string) {
 
 const newComponents = computed(() =>
   componentsTreeFlattened.value.filter(
-    (component) => component.changeStatus === "added",
+    (component) => component.def.changeStatus === "added",
   ),
 );
 
 const diffComponents = computed(() =>
   componentsTreeFlattened.value.filter(
-    (component) => component.changeStatus === "modified",
+    (component) => component.def.changeStatus === "modified",
   ),
 );
 
 const failedQualificationComponents = computed(() =>
   componentsTreeFlattened.value.filter(
     (component) =>
-      qualificationsStore.qualificationStatusByComponentId[component.id] ===
+      qualificationsStore.qualificationStatusByComponentId[component.def.id] ===
       "failure",
   ),
 );
 
 const upgradableComponents = computed(() =>
-  componentsTreeFlattened.value.filter((component) => component.canBeUpgraded),
+  componentsTreeFlattened.value.filter(
+    (component) => component.def.canBeUpgraded,
+  ),
 );
 
 const searchFiltersWithCounts = computed(() => {
@@ -301,19 +314,20 @@ watch(
   },
 );
 
-function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
-  const component = componentsStore.componentsById[id];
-  if (!component) throw new Error("component not found");
-
+function itemClickHandler(
+  e: MouseEvent,
+  component: Component,
+  tabSlug?: string,
+) {
   const shiftKeyBehavior = () => {
     const selectedComponentIds = componentsStore.selectedComponentIds;
 
     if (selectedComponentIds.length === 0) {
       // If nothing is selected, select the current component
-      componentsStore.setSelectedComponentId(id);
+      componentsStore.setSelectedComponentId(component.def.id);
     } else if (
       selectedComponentIds.length === 1 &&
-      selectedComponentIds[0] === id
+      selectedComponentIds[0] === component.def.id
     ) {
       // If there's only one component selected and you clicked it, deselect it
       componentsStore.setSelectedComponentId(null);
@@ -325,25 +339,27 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
       }
 
       let indexFrom = components.findIndex((c) =>
-        componentsStore.selectedComponentIds.includes(c.id),
+        componentsStore.selectedComponentIds.includes(c.def.id),
       );
-      const indexTo = components.findIndex((c) => c.id === id);
+      const indexTo = components.findIndex(
+        (c) => c.def.id === component.def.id,
+      );
 
       if (indexFrom > indexTo) {
         indexFrom = _.findLastIndex(components, (c) =>
-          componentsStore.selectedComponentIds.includes(c.id),
+          componentsStore.selectedComponentIds.includes(c.def.id),
         );
         const selection = components
           .slice(indexTo, indexFrom + 1)
-          .map((component) => component.id);
+          .map((component) => component.def.id);
         componentsStore.setSelectedComponentId(selection);
       } else if (indexFrom < indexTo) {
         const selection = components
           .slice(indexFrom, indexTo + 1)
-          .map((component) => component.id);
+          .map((component) => component.def.id);
         componentsStore.setSelectedComponentId(selection);
       } else {
-        componentsStore.setSelectedComponentId(id);
+        componentsStore.setSelectedComponentId(component.def.id);
       }
     }
   };
@@ -353,11 +369,15 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
     e.preventDefault();
     if (e.shiftKey) {
       shiftKeyBehavior();
-    } else if (!componentsStore.selectedComponentIds.includes(id)) {
+    } else if (
+      !componentsStore.selectedComponentIds.includes(component.def.id)
+    ) {
       if (e.metaKey) {
-        componentsStore.setSelectedComponentId(id, { toggle: true });
+        componentsStore.setSelectedComponentId(component.def.id, {
+          toggle: true,
+        });
       } else {
-        componentsStore.setSelectedComponentId(id);
+        componentsStore.setSelectedComponentId(component.def.id);
       }
     }
     emit("right-click-item", { mouse: e, component });
@@ -366,16 +386,18 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
     shiftKeyBehavior();
   } else if (e.metaKey) {
     e.preventDefault();
-    componentsStore.setSelectedComponentId(id, { toggle: true });
+    componentsStore.setSelectedComponentId(component.def.id, { toggle: true });
   } else if (e.type === "dblclick") {
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: id,
+      component,
       center: true,
     });
   } else {
-    componentsStore.setSelectedComponentId(id, { detailsTab: tabSlug });
+    componentsStore.setSelectedComponentId(component.def.id, {
+      detailsTab: tabSlug,
+    });
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: id,
+      component,
     });
   }
 }
@@ -392,10 +414,8 @@ onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
 });
 
-let timeout: Timeout;
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
-  clearTimeout(timeout);
 });
 
 const onKeyDown = (e: KeyboardEvent) => {

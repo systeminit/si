@@ -127,6 +127,7 @@ import { Modal, VButton, themeClasses } from "@si/vue-lib/design-system";
 import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
+import { useAssetStore } from "@/store/asset.store";
 import {
   useFuncStore,
   actionBindingsForVariant,
@@ -138,6 +139,7 @@ import { ActionPrototypeId } from "@/api/sdf/dal/action";
 const actionsStore = useActionsStore();
 const componentStore = useComponentsStore();
 const funcStore = useFuncStore();
+const assetStore = useAssetStore();
 
 const go = ref<InstanceType<typeof VButton>>();
 const commandModal = ref<InstanceType<typeof Modal>>();
@@ -290,7 +292,7 @@ const setDropDown = () => {
         if (prevSource === "component" && prevChoice) {
           const component = componentStore.rawComponentsById[prevChoice.value];
           const variant =
-            componentStore.schemaVariantsById[component?.id || ""];
+            assetStore.variantFromListById[component?.schemaVariantId || ""];
           if (variant) {
             const summaries: Record<FuncId, FuncSummary> = {};
             const actionBindings: Record<FuncId, Action[]> = {};
@@ -391,9 +393,10 @@ const setDropDown = () => {
       }
       break;
     case "schema":
-      dropDownOptions.value = Object.values(
-        componentStore.schemaVariantsById,
-      ).map((s) => ({ label: s.schemaName, value: s.schemaVariantId }));
+      dropDownOptions.value = assetStore.variantList.map((s) => ({
+        label: s.schemaName,
+        value: s.schemaVariantId,
+      }));
       break;
     default:
       dropDownOptions.value = [];

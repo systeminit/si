@@ -96,25 +96,31 @@ overflow hidden */
             "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
-          <DiagramNode
-            v-for="node in nodes"
+          <template
+            v-for="node of componentsStore.nodesById"
             :key="node.uniqueKey"
-            :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
-            :debug="enableDebugMode"
-            :isHovered="elementIsHovered(node)"
-            :isLoading="statusStore.componentIsLoading(node.def.id)"
-            :isSelected="elementIsSelected(node)"
-            :node="node"
-            :qualificationStatus="
-              qualificationStore.qualificationStatusForComponentId(node.def.id)
-            "
-            @rename="
-              (f) => {
-                renameOnDiagram(node, f);
-              }
-            "
-            @resize="onNodeLayoutOrLocationChange(node)"
-          />
+          >
+            <DiagramNode
+              v-if="!areMyAncestorsCollapsed(node)"
+              :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+              :debug="enableDebugMode"
+              :isHovered="elementIsHovered(node)"
+              :isLoading="statusStore.componentIsLoading(node.def.id)"
+              :isSelected="elementIsSelected(node)"
+              :node="node"
+              :qualificationStatus="
+                qualificationStore.qualificationStatusForComponentId(
+                  node.def.id,
+                )
+              "
+              @rename="
+                (f) => {
+                  renameOnDiagram(node, f);
+                }
+              "
+              @resize="onNodeLayoutOrLocationChange(node)"
+            />
+          </template>
           <DiagramCursor
             v-for="mouseCursor in presenceStore.diagramCursors"
             :key="mouseCursor.userId"
@@ -290,7 +296,6 @@ import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
   useComponentsStore,
-  FullComponent,
   ComponentData,
   elementPositionAndSize,
   COLLAPSED_HALFWIDTH,
@@ -302,6 +307,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useAuthStore } from "@/store/auth.store";
+import { useAssetStore } from "@/store/asset.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
@@ -365,6 +371,7 @@ import DiagramEmptyState from "./DiagramEmptyState.vue";
 const route = useRoute();
 const toast = useToast();
 
+const assetStore = useAssetStore();
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
 const authStore = useAuthStore();
@@ -570,29 +577,28 @@ const resizeObserver = new ResizeObserver(debouncedOnResize);
 
 // fill both movedElementPositions and resizedElementSizes from data-loading
 // and watch for new components entering the stage, fill them in here
-watch(
-  () => Object.keys(componentsStore.componentsById),
-  () => {
-    Object.values(componentsStore.componentsById).forEach((n) => {
-      const elm = diagramDataFromNodeDef(n);
-
-      // don't overwrite existing values (this causes elements to return to previous positions)
-      const e: elementPositionAndSize = {
-        uniqueKey: elm.uniqueKey,
-        position: { x: n.position.x, y: n.position.y } as Vector2d,
-      };
-      if (n.isGroup && n.size?.height && n.size.width) {
-        e.size = {
-          width: n.size.width,
-          height: n.size.height,
-        } as Size2D;
-      }
-      if (!componentsStore.movedElementPositions[elm.uniqueKey]) {
-        updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
-      }
-    });
-  },
-);
+// TODO: jobelenus, move this to the store, no more WATCH
+watch(componentsStore.allComponentsById, () => {
+  Object.values(componentsStore.allComponentsById).forEach((component) => {
+    // don't overwrite existing values (this causes elements to return to previous positions)
+    const e: elementPositionAndSize = {
+      uniqueKey: component.uniqueKey,
+      position: {
+        x: component.def.position.x,
+        y: component.def.position.y,
+      } as Vector2d,
+    };
+    if (component.def.isGroup) {
+      e.size = {
+        width: component.def.size?.width,
+        height: component.def.size?.height,
+      } as Size2D;
+    }
+    if (!componentsStore.movedElementPositions[component.uniqueKey]) {
+      updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
+    }
+  });
+});
 
 // this is all a little ugly, but basically we are waiting until custom fonts are loaded to initialize and display the canvas
 // or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
@@ -806,13 +812,10 @@ async function onKeyDown(e: KeyboardEvent) {
     e.key === "c" &&
     componentsStore.selectedComponentIds.length
   ) {
-    const component =
-      componentsStore.componentsById[
-        componentsStore.selectedComponentIds[0] ?? -1
-      ];
-    const containsUpgradeable = componentsStore.selectedComponentIds
-      .map((id) => componentsStore.componentsById[id])
-      .some((c) => c?.canBeUpgraded);
+    const component = componentsStore.selectedComponents.pop();
+    const containsUpgradeable = componentsStore.selectedComponents.some(
+      (c) => c.def.canBeUpgraded,
+    );
     if (containsUpgradeable) {
       toast("Components that can be upgraded cannot be copied");
     } else if (component) {
@@ -821,7 +824,7 @@ async function onKeyDown(e: KeyboardEvent) {
         CLIPBOARD_LOCALSTORAGE_KEY.value,
         JSON.stringify({
           componentIds: componentsStore.selectedComponentIds,
-          copyingFrom: component.position,
+          copyingFrom: component.def.position,
         }),
       );
     }
@@ -875,17 +878,21 @@ async function onKeyDown(e: KeyboardEvent) {
   if (
     !props.readOnly &&
     e.key === "r" &&
-    componentsStore.selectedComponent?.hasResource &&
+    componentsStore.selectedComponent?.def.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
   ) {
-    componentsStore.REFRESH_RESOURCE_INFO(componentsStore.selectedComponent.id);
+    componentsStore.REFRESH_RESOURCE_INFO(
+      componentsStore.selectedComponent.def.id,
+    );
   }
   if (!props.readOnly && e.code === "Backslash") {
     if (e.metaKey) {
       // collapse all
       componentsStore.toggleCollapse(
         "hotkey",
-        ...componentsStore.allComponentIds,
+        ...[...componentsStore.collapsedComponents].map((uniqueKey) =>
+          uniqueKey.substring(2),
+        ),
       );
     } else {
       // collapse selected
@@ -1153,6 +1160,9 @@ const cursor = computed(() => {
 
 // HOVERING LOGIC + BEHAVIOUR //////////////////////////////////////////
 const hoveredElementKey = computed(() => {
+  // dont recompute this while we're dragging
+  if (dragElementsActive.value) return undefined;
+
   if (componentsStore.hoveredComponentId) {
     return getDiagramElementKeyForComponentId(
       componentsStore.hoveredComponentId,
@@ -1162,14 +1172,24 @@ const hoveredElementKey = computed(() => {
   }
   return undefined;
 });
-const hoveredElement = computed(() =>
-  hoveredElementKey.value
+
+const hoveredElement = computed(() => {
+  // dont recompute this while we're dragging
+  if (!hoveredElementKey.value) return undefined;
+
+  let elm = hoveredElementKey.value
     ? (allElementsByKey.value[hoveredElementKey.value] as
         | DiagramEdgeData
         | DiagramGroupData
         | DiagramNodeData)
-    : undefined,
-);
+    : undefined;
+  if (!elm) {
+    // putting this last, using a find
+    const id = hoveredElementKey.value?.substring(2);
+    elm = edges.value.find((edge) => edge.def.id === id);
+  }
+  return elm;
+});
 
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
@@ -1228,26 +1248,20 @@ watch(
     if (!componentsStore.panTargetComponentId) return;
 
     const panToComponent =
-      componentsStore.componentsById[componentsStore.panTargetComponentId];
+      componentsStore.allComponentsById[componentsStore.panTargetComponentId];
     if (!panToComponent) return;
 
-    const key =
-      panToComponent.componentType === ComponentType.Component
-        ? DiagramNodeData.generateUniqueKey(panToComponent.id)
-        : DiagramGroupData.generateUniqueKey(panToComponent.id);
-
-    const el = getElementByKey(key);
-    if (el) recenterOnElement(el);
+    recenterOnElement(panToComponent);
     componentsStore.panTargetComponentId = null;
   },
 );
 
 // TODO: handle multiple components?
 function panToComponent(payload: {
-  componentId: ComponentId;
+  component: DiagramGroupData | DiagramGroupData;
   center?: boolean;
 }) {
-  const key = getDiagramElementKeyForComponentId(payload.componentId);
+  const key = getDiagramElementKeyForComponentId(payload.component.def.id);
   if (!key) return;
   const el = allElementsByKey.value[key];
   if (!el) return;
@@ -1573,23 +1587,13 @@ function beginDragElements() {
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
-  const allComponents = {} as Record<
-    string,
-    DiagramNodeData | DiagramGroupData
-  >;
-  componentsStore.diagramNodes.forEach((n) => {
-    const el =
-      n.componentType !== ComponentType.Component
-        ? new DiagramGroupData(n)
-        : new DiagramNodeData(n);
-    allComponents[el.uniqueKey] = el;
-  });
-  draggedElementsPositionsPreDrag.value = _.mapValues(
-    allComponents,
-    (el) =>
-      componentsStore.movedElementPositions[el.uniqueKey] ||
-      _.get(el.def, "position"),
-  );
+  draggedElementsPositionsPreDrag.value = Object.values(
+    componentsStore.allComponentsById,
+  ).reduce((obj, el) => {
+    obj[el.uniqueKey] =
+      componentsStore.movedElementPositions[el.uniqueKey] || el.def.position;
+    return obj;
+  }, {} as Record<DiagramElementUniqueKey, Vector2d>);
 
   const collapsedByKeys = {} as Record<string, DiagramGroupData>;
   for (const [uniqueKey, el] of Object.entries(allElementsByKey.value)) {
@@ -1696,23 +1700,23 @@ let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
 const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
   const children: DiagramElementData[] = [];
   el.def.childIds?.forEach((childId) => {
-    const c = componentsStore.diagramNodes.find((n) => n.id === childId);
-    const isGroup = c?.componentType !== ComponentType.Component;
+    const c = Object.values(componentsStore.allComponentsById).find(
+      (n) => n.def.id === childId,
+    );
     if (c) {
-      const _el = isGroup ? new DiagramGroupData(c) : new DiagramNodeData(c);
-      children.push(_el);
-      if (isGroup) children.push(...allChildren(_el));
+      children.push(c);
+      if (c.def.isGroup) children.push(...allChildren(c));
     }
   });
   return children;
 };
 
-const allChildrenInGroup = (el: FullComponent): ComponentId[] => {
+const allChildrenInGroup = (el: DiagramGroupData): ComponentId[] => {
   const children: ComponentId[] = [];
-  _.map(el?.childIds, (childId) => {
-    const c = componentsStore.componentsById[childId];
-    if (c && c.componentType !== ComponentType.Component) {
-      children.push(c.id);
+  el?.def.childIds?.forEach((childId) => {
+    const c = componentsStore.allComponentsById[childId];
+    if (c && c.def.isGroup) {
+      children.push(c.def.id);
       children.push(...allChildrenInGroup(c));
     }
   });
@@ -2063,18 +2067,14 @@ const recursivePositionCompute = (
   );
   elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
 
-  const component = componentsStore.componentsById[el.def.componentId];
-
-  _.each(component?.childIds, (id) => {
+  _.each(el.def.childIds, (id) => {
     if (
       !currentSelectionMovableElements.value.find(
         (e) => e.def.componentId === id,
       )
     ) {
-      const key = getDiagramElementKeyForComponentId(id);
-      const node = getElementByKey(key);
-
-      if (node instanceof DiagramNodeData || node instanceof DiagramGroupData) {
+      const node = componentsStore.allComponentsById[id];
+      if (node) {
         elements.push(...recursivePositionCompute(node, nudgeVector));
       }
     }
@@ -2466,8 +2466,10 @@ const drawEdgeToSocket = computed(
   () => getElementByKey(drawEdgeToSocketKey.value) as DiagramSocketData,
 );
 const drawEdgePossibleTargetSocketKeys = computed(() => {
+  if (!drawEdgeActive.value) return [];
+
   const fromSocket = drawEdgeFromSocket.value;
-  if (!drawEdgeActive.value || !fromSocket) return [];
+  if (!fromSocket) return [];
 
   const allExistingEdges =
     connectedEdgesByElementKey.value[fromSocket.uniqueKey];
@@ -2516,9 +2518,10 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
 });
 
 const drawEdgeWillDeleteEdges = computed(() => {
+  if (!drawEdgeActive.value) return [];
   const fromSocket = drawEdgeFromSocket.value;
   const toSocket = drawEdgeToSocket.value;
-  if (!drawEdgeActive.value || !fromSocket) return [];
+  if (!fromSocket) return [];
 
   // there will/should always be a fromSocket if draw edge is active
 
@@ -2627,9 +2630,6 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   let right;
   let bottom;
   for (const id of componentIds) {
-    const component = componentsStore.componentsById[id];
-    if (!component) continue;
-
     const geometry = componentsStore.renderedGeometriesByComponentId[id];
     if (!geometry) continue;
 
@@ -2845,30 +2845,37 @@ async function triggerInsertElement() {
   let createAtPosition = gridPointerPos.value;
 
   if (parentGroupId) {
-    const parentComponent = componentsStore.componentsById[parentGroupId];
+    const parentComponent = componentsStore.allComponentsById[parentGroupId];
     if (
       parentComponent &&
-      (parentComponent.componentType !== ComponentType.AggregationFrame ||
-        insertVariantId === parentComponent.schemaVariantId)
+      (parentComponent.def.componentType !== ComponentType.AggregationFrame ||
+        insertVariantId === parentComponent.def.schemaVariantId)
     ) {
       parentId = parentGroupId;
     }
     let isFrame = false;
-    const schemaVariant = componentsStore.schemaVariantsById[insertVariantId];
+    const schemaVariant = assetStore.variantFromListById[insertVariantId];
     if (schemaVariant) {
       isFrame = schemaVariant.componentType !== ComponentType.Component;
     }
 
     if (parentComponent) {
-      if (parentComponent.childIds.length > 0) {
+      if (
+        parentComponent?.def.childIds &&
+        parentComponent.def.childIds?.length > 0
+      ) {
         // when there are already children we can't be as smart
         // leave position as the cursor
         // backend default is 500 x 500, just make it smaller since there are other children
         createAtSize = { width: 250, height: 250 };
-      } else if (isFrame && parentComponent.position && parentComponent.size) {
+      } else if (
+        isFrame &&
+        parentComponent.def.position &&
+        parentComponent.def.size
+      ) {
         [createAtPosition, createAtSize] = fitChildInsideParentFrame(
-          parentComponent.position,
-          parentComponent.size,
+          parentComponent.def.position,
+          parentComponent.def.size,
         );
       }
     }
@@ -2898,17 +2905,13 @@ function getSocketLocationInfo(
     // if from component is collapsed, return the position of its center
     const componentId =
       direction === "from" ? edge.def.fromComponentId : edge.def.toComponentId;
-    const component = componentsStore.diagramNodesById[componentId];
+    const component = componentsStore.allComponentsById[componentId];
     if (component) {
-      let def;
-      if (component?.componentType === ComponentType.Component)
-        def = new DiagramNodeData(component);
-      else def = new DiagramGroupData(component);
       const collapsedKey = componentsStore.collapsedComponents.has(
-        def.uniqueKey,
+        component.uniqueKey,
       )
-        ? def.uniqueKey
-        : areMyAncestorsCollapsed(def);
+        ? component.uniqueKey
+        : areMyAncestorsCollapsed(component);
       if (collapsedKey) {
         const position = structuredClone(
           toRaw(componentsStore.collapsedElementPositions[collapsedKey]),
@@ -2929,6 +2932,7 @@ function getSocketLocationInfo(
   return socketsLocationInfo[socketKey];
 }
 
+// PSA: this is the perf bottleneck for dragging
 function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
   // record node location/dimensions (used when drawing selection box)
   // we find the background shape, because the parent group has no dimensions
@@ -2941,7 +2945,7 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
   if ("sockets" in el) {
     // record new socket locations (used to render edges)
-    _.each(el.sockets, (socket) => {
+    el.sockets?.forEach((socket) => {
       const socketShape = kStage.findOne(`#${socket.uniqueKey}`);
       // This ensures that the diagram won't try to create edges to/from hidden sockets
       if (!socketShape) return;
@@ -2953,17 +2957,6 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 }
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
-
-// TODO: DiagramNodeDef and FullComponent are almost identical. We don't need both.
-function diagramDataFromNodeDef(
-  nodeDef: DiagramNodeDef | FullComponent,
-): DiagramNodeData | DiagramGroupData {
-  const Cls =
-    nodeDef.componentType === ComponentType.Component
-      ? DiagramNodeData
-      : DiagramGroupData;
-  return new Cls(nodeDef as DiagramNodeDef);
-}
 
 const areMyAncestorsCollapsed = (
   component: DiagramNodeData | DiagramGroupData,
@@ -2982,17 +2975,10 @@ const areMyAncestorsCollapsed = (
   return null;
 };
 
-const nodes = computed(() =>
-  componentsStore.diagramNodes
-    .filter((n) => n.componentType === ComponentType.Component)
-    .map((nodeDef) => new DiagramNodeData(nodeDef))
-    .filter((n) => !areMyAncestorsCollapsed(n)),
-);
 const groups = computed(() => {
-  const allGroups = componentsStore.diagramNodes
-    .filter((n) => n.componentType !== ComponentType.Component)
-    .map((groupDef) => new DiagramGroupData(groupDef))
-    .filter((g) => !areMyAncestorsCollapsed(g));
+  const allGroups = Object.values(componentsStore.groupsById).filter(
+    (g) => !areMyAncestorsCollapsed(g),
+  );
 
   const orderedGroups = _.orderBy(allGroups, (g) => {
     // order by "depth" in frames
@@ -3014,23 +3000,31 @@ const groups = computed(() => {
 
   return orderedGroups;
 });
-const elements = computed(() => _.concat(nodes.value, groups.value));
-const sockets = computed(() =>
-  _.compact(_.flatMap(elements.value, (i) => i.sockets)),
-);
+
+// TODO move this to the store
+const sockets = computed(() => {
+  const elements = _.concat(
+    Object.values(componentsStore.allComponentsById).filter(
+      (n) => !areMyAncestorsCollapsed(n),
+    ),
+    groups.value,
+  );
+  return _.compact(_.flatMap(elements, (i) => i.sockets));
+});
 
 type ToFrom = { to: Vector2d; from: Vector2d };
+// TODO move this to the store
+// This is also a drag bottleneck
 const edges = computed(() => {
   const points: ToFrom[] = [];
-  return componentsStore.diagramEdges
-    .map((edgeDef) => new DiagramEdgeData(edgeDef))
+  return Object.values(componentsStore.diagramEdgesById)
     .filter((e) => {
       // filter out edges connected between components when one is not rendered
       const collapsedIds = [...componentsStore.collapsedComponents].map((key) =>
         key.substring(2),
       );
       const nodesNotDrawn = collapsedIds.flatMap((gId) => {
-        const group = componentsStore.componentsById[gId]!;
+        const group = componentsStore.groupsById[gId]!;
         return allChildrenInGroup(group);
       });
 
@@ -3067,14 +3061,15 @@ const edges = computed(() => {
     });
 });
 
-// quick ways to look up specific element data from a unique key
-// const nodesByKey = computed(() => _.keyBy(nodes.value, (e) => e.uniqueKey));
-// const groupsByKey = computed(() => _.keyBy(groups.value, (e) => e.uniqueKey));
-// const socketsByKey = computed(() => _.keyBy(sockets.value, (e) => e.uniqueKey));
-const edgesByKey = computed(() => _.keyBy(edges.value, (e) => e.uniqueKey));
+// this will re-compute on every drag
 const allElementsByKey = computed(() =>
   _.keyBy(
-    [...nodes.value, ...groups.value, ...sockets.value, ...edges.value],
+    [
+      ...Object.values(componentsStore.nodesById),
+      ...groups.value,
+      ...sockets.value, // protected to not run on drag
+      // i removed edges and sockets and re-implemented it's use in one place
+    ],
     (e) => e.uniqueKey,
   ),
 );
@@ -3084,10 +3079,11 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
 }
 
 function nodeShouldBeRendered(key: DiagramElementUniqueKey) {
-  return (
-    groups.value.find((n) => n.uniqueKey === key) ||
-    nodes.value.find((n) => n.uniqueKey === key)
-  );
+  const id = key.substring(2);
+  const node = componentsStore.nodesById[id];
+  let isRendered = false;
+  if (node) isRendered = !areMyAncestorsCollapsed(node);
+  return isRendered || groups.value.find((n) => n.uniqueKey === key);
 }
 
 // Selection rects
@@ -3129,13 +3125,8 @@ function getDiagramElementKeyForComponentId(
   componentId?: ComponentId | null,
 ): string | undefined {
   if (!componentId) return;
-  const component = componentsStore.componentsById[componentId];
-  if (component) {
-    if (component.isGroup) {
-      return DiagramGroupData.generateUniqueKey(component.id);
-    }
-    return DiagramNodeData.generateUniqueKey(component.id);
-  }
+  const component = componentsStore.allComponentsById[componentId];
+  return component?.uniqueKey;
 }
 
 function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
@@ -3145,7 +3136,7 @@ function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
 
 const connectedEdgesByElementKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
-  _.each(edgesByKey.value, (edge) => {
+  Object.values(componentsStore.diagramEdgesById).forEach((edge) => {
     lookup[edge.fromNodeKey] ||= [];
     lookup[edge.fromNodeKey]!.push(edge);
     lookup[edge.toNodeKey] ||= [];
