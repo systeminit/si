@@ -64,6 +64,21 @@ impl PermissionsObject {
             r#type: r#type.to_string(),
         }
     }
+
+    pub fn empty() -> Self {
+        Self {
+            id: "".to_string(),
+            r#type: "".to_string(),
+        }
+    }
+
+    pub fn r#type(&self) -> &str {
+        &self.r#type
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
 }
 
 pub type Relationships = Vec<Relationship>;
@@ -96,6 +111,34 @@ impl Relationship {
         builder.relation(inner.relation);
 
         builder
+    }
+
+    // todo: here and below we stub out with empty strings so we can get out of using options.
+    // There is probably a better way to do this
+    pub fn object(&self) -> PermissionsObject {
+        let (obj_type, obj_id) = match self.clone().inner().resource {
+            Some(o) => (o.object_type, o.object_id),
+            None => (String::new(), String::new()),
+        };
+        PermissionsObject::new(obj_type, obj_id)
+    }
+
+    pub fn subject(&self) -> PermissionsObject {
+        let (obj_type, obj_id) = match self.clone().inner().subject {
+            Some(s) => {
+                if let Some(obj) = s.object {
+                    (obj.object_type, obj.object_id)
+                } else {
+                    (String::new(), String::new())
+                }
+            }
+            None => (String::new(), String::new()),
+        };
+        PermissionsObject::new(obj_type, obj_id)
+    }
+
+    pub fn relation(&self) -> String {
+        self.clone().inner().relation
     }
 
     pub(crate) fn inner(self) -> v1::Relationship {

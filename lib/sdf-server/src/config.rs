@@ -1,6 +1,7 @@
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
+use si_data_spicedb::SpiceDbConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
 use std::{
@@ -124,6 +125,9 @@ pub struct Config {
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
+    #[builder(default = "SpiceDbConfig::default()")]
+    spicedb_config: SpiceDbConfig,
+
     pkgs_path: CanonicalFile,
 
     boot_feature_flags: HashSet<FeatureFlag>,
@@ -226,6 +230,12 @@ impl Config {
     // This Allowlist is a list of email addresses only used in WorkspacePermissionsMode::Allowlist
     pub fn create_workspace_allowlist(&self) -> &Vec<WorkspacePermissions> {
         &self.create_workspace_allowlist
+    }
+
+    /// Gets a referece to the config's spicedb config
+    #[must_use]
+    pub fn spicedb_config(&self) -> &SpiceDbConfig {
+        &self.spicedb_config
     }
 }
 

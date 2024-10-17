@@ -1,4 +1,6 @@
-use si_data_spicedb::{PermissionsObject, Relationship, SpiceDbClient, SpiceDbError};
+use si_data_spicedb::{
+    PermissionsObject, Relationship, Relationships, SpiceDbClient, SpiceDbError,
+};
 use std::result;
 use thiserror::Error;
 
@@ -7,8 +9,11 @@ use thiserror::Error;
 pub enum Error {
     #[error("Builder must contain object, permission, and subject.")]
     PermissionBuilder,
-    #[error("Builder must contain object, relation, and subject.")]
-    RelationBuilder,
+    #[error(
+        "All of the following fields are required for this call: {:?}",
+        required_fields
+    )]
+    RelationBuilder { required_fields: Vec<String> },
     #[error("spicedb client error: {0}")]
     SpiceDb(#[from] SpiceDbError),
 }
@@ -106,6 +111,23 @@ impl RelationBuilder {
         }
     }
 
+    /// Reads existing relations in SpiceDb for a given object and relation
+    pub async fn read(&self, mut client: SpiceDbClient) -> Result<Relationships> {
+        match (self.object.clone(), self.relation.clone()) {
+            (Some(object), Some(relation)) => client
+                .read_relationship(Relationship::new(
+                    object,
+                    relation,
+                    PermissionsObject::empty(),
+                ))
+                .await
+                .map_err(Error::SpiceDb),
+            _ => Err(Error::RelationBuilder {
+                required_fields: vec!["object".to_string(), "relation".to_string()],
+            }),
+        }
+    }
+
     fn check(&self) -> Result<Relationship> {
         match (
             self.object.clone(),
@@ -115,7 +137,13 @@ impl RelationBuilder {
             (Some(object), Some(relation), Some(subject)) => {
                 Ok(Relationship::new(object, relation, subject))
             }
-            _ => Err(Error::RelationBuilder),
+            _ => Err(Error::RelationBuilder {
+                required_fields: vec![
+                    "object".to_string(),
+                    "relation".to_string(),
+                    "subject".to_string(),
+                ],
+            }),
         }
     }
 }

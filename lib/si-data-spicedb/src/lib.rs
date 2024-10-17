@@ -1,4 +1,4 @@
-// #![warn(
+// #![warn
 //     clippy::unwrap_in_result,
 //     clippy::unwrap_used,
 //     clippy::panic,
@@ -16,12 +16,13 @@ use spicedb_client::{builder::WriteRelationshipsRequestBuilder, SpicedbClient};
 use spicedb_grpc::authzed::api::v1::{relationship_update::Operation, WriteRelationshipsRequest};
 use telemetry::prelude::*;
 use thiserror::Error;
-use types::Relationships;
 use url::Url;
 
 mod types;
 
-pub use types::{Permission, PermissionsObject, ReadSchemaResponse, Relationship, ZedToken};
+pub use types::{
+    Permission, PermissionsObject, ReadSchemaResponse, Relationship, Relationships, ZedToken,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -144,6 +145,27 @@ impl Client {
             inner,
             metadata: Arc::new(metadata),
         })
+    }
+
+    #[instrument(
+        name = "spicedb_client::new_sync",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = Empty,
+            db.system = Empty,
+            network.peer.address = Empty,
+            network.protocol.name = Empty,
+            network.transport = Empty,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = Empty,
+            server.port = Empty,
+        ),
+    )]
+    pub fn new_sync(config: &SpiceDbConfig) -> Result<Self> {
+        futures::executor::block_on(Self::new(config))
     }
 
     #[instrument(
