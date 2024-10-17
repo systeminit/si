@@ -44,7 +44,6 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
-use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -170,11 +169,7 @@ impl WorkspaceSnapshotError {
     pub fn is_node_with_id_not_found(&self) -> bool {
         matches!(
             self,
-            Self::WorkspaceSnapshotGraph(
-                crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError::NodeWithIdNotFound(
-                    _,
-                ),
-            )
+            Self::WorkspaceSnapshotGraph(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_,),)
         )
     }
 }
@@ -232,7 +227,7 @@ pub struct CycleCheckGuard {
     cycle_check: Arc<AtomicBool>,
 }
 
-impl std::ops::Drop for CycleCheckGuard {
+impl Drop for CycleCheckGuard {
     fn drop(&mut self) {
         if Arc::strong_count(&self.cycle_check) <= 2 {
             self.cycle_check
@@ -361,26 +356,14 @@ impl From<DependentValueRoot> for Ulid {
 impl WorkspaceSnapshot {
     #[instrument(name = "workspace_snapshot.initial", level = "debug", skip_all)]
     pub async fn initial(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let mut graph: WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphVCurrent::new()?;
-
-        // Create the category nodes under root.
-        for category_node_kind in CategoryNodeKind::iter() {
-            let id = graph.generate_ulid()?;
-            let lineage_id = graph.generate_ulid()?;
-            let category_node_index =
-                graph.add_category_node(id, lineage_id, category_node_kind)?;
-            graph.add_edge(
-                graph.root(),
-                EdgeWeight::new(EdgeWeightKind::new_use()),
-                category_node_index,
-            )?;
-        }
+        let graph: WorkspaceSnapshotGraphVCurrent =
+            WorkspaceSnapshotGraphVCurrent::new(ctx).await?;
 
         // We do not care about any field other than "working_copy" because
         // "write" will populate them using the assigned working copy.
         let initial = Self {
             address: Arc::new(RwLock::new(WorkspaceSnapshotAddress::nil())),
-            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V3(graph)),
+            read_only_graph: Arc::new(WorkspaceSnapshotGraph::V4(graph)),
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
@@ -513,7 +496,7 @@ impl WorkspaceSnapshot {
                 let (new_address, _) = layer_db
                     .workspace_snapshot()
                     .write(
-                        Arc::new(WorkspaceSnapshotGraph::V3(working_copy.clone())),
+                        Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),
                         None,
                         events_tenancy,
                         events_actor,
@@ -605,7 +588,7 @@ impl WorkspaceSnapshot {
     pub async fn serialized(&self) -> WorkspaceSnapshotResult<Vec<u8>> {
         let graph = self.working_copy().await.clone();
         Ok(si_layer_cache::db::serialize::to_vec(
-            &WorkspaceSnapshotGraph::V3(graph),
+            &WorkspaceSnapshotGraph::V4(graph),
         )?)
     }
 
@@ -1325,8 +1308,7 @@ impl WorkspaceSnapshot {
         let idx = self.get_node_index_by_id(current_id).await?;
         self.working_copy_mut()
             .await
-            .update_node_id(idx, new_id, new_lineage_id)
-            .await?;
+            .update_node_id(idx, new_id, new_lineage_id)?;
 
         Ok(())
     }
@@ -1612,6 +1594,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::DeprecatedActionRunner
                 | ContentAddressDiscriminants::Func
                 | ContentAddressDiscriminants::FuncArg
+                | ContentAddressDiscriminants::Geometry
                 | ContentAddressDiscriminants::InputSocket
                 | ContentAddressDiscriminants::JsonValue
                 | ContentAddressDiscriminants::Module
@@ -1622,6 +1605,7 @@ impl WorkspaceSnapshot {
                 | ContentAddressDiscriminants::SchemaVariant
                 | ContentAddressDiscriminants::Secret
                 | ContentAddressDiscriminants::ValidationPrototype
+                | ContentAddressDiscriminants::View
                 | ContentAddressDiscriminants::ManagementPrototype => None,
             },
 
@@ -1633,6 +1617,8 @@ impl WorkspaceSnapshot {
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
+            | NodeWeight::Geometry(_)
+            | NodeWeight::View(_)
             | NodeWeight::InputSocket(_)
             | NodeWeight::Prop(_)
             | NodeWeight::SchemaVariant(_)

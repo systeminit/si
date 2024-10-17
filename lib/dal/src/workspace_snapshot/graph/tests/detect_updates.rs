@@ -14,13 +14,13 @@ mod test {
             node_weight::NodeWeight,
             NodeInformation,
         },
-        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphV3,
+        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphVCurrent,
     };
 
     #[test]
     fn detect_updates_simple_no_conflicts_with_purely_new_content_in_base() {
-        let mut base_graph =
-            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
+        let mut base_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
         let schema_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let schema_index = base_graph
@@ -41,7 +41,7 @@ mod test {
 
         base_graph
             .add_edge(
-                base_graph.root_index,
+                base_graph.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_index,
             )
@@ -73,7 +73,7 @@ mod test {
             .expect("Unable to add Component B");
         let _new_onto_root_component_edge_index = base_graph
             .add_edge(
-                base_graph.root_index,
+                base_graph.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 new_onto_component_index,
             )
@@ -111,8 +111,8 @@ mod test {
 
     #[test]
     fn detect_updates_with_purely_new_content_in_new_graph() {
-        let mut base_graph =
-            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
+        let mut base_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
         let component_id = base_graph.generate_ulid().expect("Unable to generate Ulid");
         let component_index = base_graph
@@ -124,7 +124,7 @@ mod test {
             .expect("Unable to add Schema A");
         base_graph
             .add_edge(
-                base_graph.root_index,
+                base_graph.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 component_index,
             )
@@ -147,7 +147,7 @@ mod test {
             .expect("Unable to add Component B");
         new_graph
             .add_edge(
-                new_graph.root_index,
+                new_graph.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 new_component_index,
             )
@@ -170,8 +170,8 @@ mod test {
 
     #[test]
     fn detect_updates_ordered_container_insert_and_remove() {
-        let mut base_graph =
-            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
+        let mut base_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
         let active_graph = &mut base_graph;
 
         // Create base prop node
@@ -189,7 +189,7 @@ mod test {
 
             active_graph
                 .add_edge(
-                    active_graph.root_index,
+                    active_graph.root(),
                     EdgeWeight::new(EdgeWeightKind::new_use()),
                     prop_index,
                 )
@@ -329,8 +329,8 @@ mod test {
 
     #[test]
     fn detect_updates_add_unordered_child_to_ordered_container() {
-        let mut base_graph =
-            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
+        let mut base_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
         let active_graph = &mut base_graph;
 
         // Create base prop node
@@ -348,7 +348,7 @@ mod test {
 
             active_graph
                 .add_edge(
-                    active_graph.root_index,
+                    active_graph.root(),
                     EdgeWeight::new(EdgeWeightKind::new_use()),
                     prop_index,
                 )
@@ -406,7 +406,7 @@ mod test {
 
             active_graph
                 .add_edge(
-                    active_graph.root_index,
+                    active_graph.root(),
                     EdgeWeight::new(EdgeWeightKind::new_use()),
                     node_index,
                 )
@@ -472,8 +472,8 @@ mod test {
         let nodes = ["a", "b", "c"];
         let edges = [(None, "a"), (None, "b"), (Some("a"), "c"), (Some("c"), "b")];
 
-        let mut base_graph =
-            WorkspaceSnapshotGraphV3::new().expect("Unable to create WorkspaceSnapshotGraph");
+        let mut base_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Add all nodes from the slice and store their references in a hash map.
         let mut node_id_map = HashMap::new();
@@ -498,7 +498,7 @@ mod test {
         // Add all edges from the slice.
         for (source, target) in edges {
             let source = match source {
-                None => base_graph.root_index,
+                None => base_graph.root(),
                 Some(node) => base_graph
                     .get_node_index_by_id(
                         node_id_map
@@ -531,7 +531,7 @@ mod test {
         // Ensure the graph construction worked.
         for (source, target) in edges {
             let source_idx = match source {
-                None => base_graph.root_index,
+                None => base_graph.root(),
                 Some(node) => base_graph
                     .get_node_index_by_id(
                         node_id_map
@@ -633,8 +633,8 @@ mod test {
 
     #[test]
     fn detect_updates_remove_edge_simple() {
-        let mut to_rebase_graph =
-            WorkspaceSnapshotGraphV3::new().expect("unable to make to_rebase_graph");
+        let mut to_rebase_graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("unable to make to_rebase_graph");
 
         let prototype_node_id = to_rebase_graph.generate_ulid().expect("gen ulid");
         let prototype_node = NodeWeight::new_content(

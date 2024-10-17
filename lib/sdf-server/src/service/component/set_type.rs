@@ -1,15 +1,5 @@
 use std::collections::HashMap;
 
-use axum::{
-    extract::{Host, OriginalUri},
-    Json,
-};
-use dal::{
-    component::ComponentGeometry, ChangeSet, Component, ComponentId, ComponentType, Visibility,
-    WsEvent,
-};
-use serde::{Deserialize, Serialize};
-
 use super::ComponentResult;
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -17,12 +7,20 @@ use crate::{
     track,
 };
 
+use axum::{
+    extract::{Host, OriginalUri},
+    Json,
+};
+use dal::diagram::geometry::RawGeometry;
+use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
+use serde::{Deserialize, Serialize};
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SetTypeRequest {
     pub component_id: ComponentId,
     pub component_type: ComponentType,
-    pub overridden_geometry: Option<ComponentGeometry>,
+    pub overridden_geometry: Option<RawGeometry>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
