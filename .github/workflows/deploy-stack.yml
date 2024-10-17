@@ -28,14 +28,15 @@ on:
         description: "version to deploy"
         default: "stable"
 
-# We want to ensure that in-progress cron runs against prod
-# are canceled when we do a deploy so they don't fail erroneously.
+# We only one one deploy happening at a time per environment, so if one is
+# in progress, we'll wait for it to finish before starting the
+# next one.
+# Note that this will also wait for E2E tests to finish, as per the crons workflows
 concurrency:
-  group: e2e-${{ inputs.environment }}
+  group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
-
   invoke-and-check-cdn:
     uses: ./.github/workflows/invoke-and-check-invalidations.yml
     with:
@@ -45,9 +46,9 @@ jobs:
   set-service-versions:
     uses: ./.github/workflows/set-service-version.yml
     strategy:
-     fail-fast: false
-     matrix:
-      service: [ "pinga", "rebaser", "sdf", "veritech", "forklift" ]
+      fail-fast: false
+      matrix:
+        service: ["pinga", "rebaser", "sdf", "veritech", "forklift"]
     with:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
@@ -76,9 +77,9 @@ jobs:
       - set-service-versions
       - set-maintenance-mode
     strategy:
-     fail-fast: false
-     matrix:
-       service: [ "pinga", "rebaser", "veritech", "forklift" ]
+      fail-fast: false
+      matrix:
+        service: ["pinga", "rebaser", "veritech", "forklift"]
     uses: ./.github/workflows/upgrade-service.yml
     with:
       environment: ${{ inputs.environment }}
