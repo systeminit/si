@@ -100,7 +100,7 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
     workspaceId,
     changeSetId,
     defineStore(
-      `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/status`,
+      `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/audit-logs`,
       {
         state: () => ({
           logs: [] as AuditLogDisplay[],
@@ -108,20 +108,20 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
         getters: {},
         actions: {
           async LOAD_PAGE(filters: LogFilters) {
-            return new ApiRequest<{ logs: AuditLog[] }>({
+            return new ApiRequest<AuditLog[]>({
               url: API_PREFIX,
               params: { ...visibility, ...filters },
               onSuccess: (response) => {
-                this.logs = response.logs.map(
+                this.logs = response.map(
                   (log: AuditLog) =>
                     ({
-                      actorId: log.actor.kind,
-                      actorName: log.actorName,
+                      actorId: log.actor.kind ?? "System",
+                      actorName: log.actorName ?? "System",
                       actorEmail: log.actorEmail,
                       service: log.service,
                       kind: log.kind,
                       timestamp: log.timestamp,
-                      ip: log.originIpAddress,
+                      ip: log.originIpAddress ?? "System",
                       changeSetId: log.changeSetId,
                       changeSetName: log.changeSetName,
                     } as AuditLogDisplay),

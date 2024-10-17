@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{OriginalUri, Path, Query},
     Json,
 };
 use dal::{ChangeSetId, WorkspacePk};
@@ -22,10 +22,10 @@ pub struct ListAuditLogsRequest {
     page_size: Option<usize>,
     sort_timestamp_ascending: Option<bool>,
     exclude_system_user: Option<bool>,
-    kind_filter: HashSet<AuditLogKind>,
-    service_filter: HashSet<AuditLogService>,
-    change_set_filter: HashSet<ChangeSetId>,
-    user_filter: HashSet<UserPk>,
+    kind_filter: Option<Vec<AuditLogKind>>,
+    service_filter: Option<Vec<AuditLogService>>,
+    change_set_filter: Option<Vec<ChangeSetId>>,
+    user_filter: Option<Vec<UserPk>>,
 }
 
 pub async fn list_audit_logs(
@@ -34,7 +34,8 @@ pub async fn list_audit_logs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Json(request): Json<ListAuditLogsRequest>,
+    Query(request): Query<ListAuditLogsRequest>,
+    // Json(request): Json<ListAuditLogsRequest>,
 ) -> AuditLogResult<Json<Vec<frontend_types::AuditLog>>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -52,11 +53,22 @@ pub async fn list_audit_logs(
         request.page_size,
         request.sort_timestamp_ascending,
         request.exclude_system_user,
-        request.kind_filter,
-        request.service_filter,
-        request.change_set_filter,
-        request.user_filter,
+        match request.kind_filter {
+            Some(provided) => HashSet::from_iter(provided.into_iter()),
+            None => HashSet::new(),
+        },
+        match request.service_filter {
+            Some(provided) => HashSet::from_iter(provided.into_iter()),
+            None => HashSet::new(),
+        },
+        match request.change_set_filter {
+            Some(provided) => HashSet::from_iter(provided.into_iter()),
+            None => HashSet::new(),
+        },
+        match request.user_filter {
+            Some(provided) => HashSet::from_iter(provided.into_iter()),
+            None => HashSet::new(),
+        },
     )?;
-
     Ok(Json(filtered_and_paginated_audit_logs))
 }

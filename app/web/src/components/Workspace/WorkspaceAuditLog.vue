@@ -136,7 +136,7 @@ import {
   createColumnHelper,
 } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { h, ref } from "vue";
+import { h, ref, computed } from "vue";
 import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
 
 // const range = (len: number) => {
@@ -191,9 +191,8 @@ const logsStore = useLogsStore();
 logsStore.LOAD_PAGE(DEFAULT_FILTERS);
 const logLoadingRequestStatus = logsStore.getRequestStatus("LOAD_PAGE");
 
-const defaultData = logsStore.logs;
 const columnHelper = createColumnHelper<AuditLogDisplay>();
-const data = ref(defaultData);
+const logs = computed(() => logsStore.logs);
 
 const columns = [
   columnHelper.accessor("timestamp", {
@@ -224,7 +223,7 @@ const columns = [
 
 const table = useVueTable({
   get data() {
-    return data.value;
+    return logs.value;
   },
   columns,
   getCoreRowModel: getCoreRowModel(),
