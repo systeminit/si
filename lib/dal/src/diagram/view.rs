@@ -166,14 +166,14 @@ impl View {
         Ok(ctx.layer_db().cas().try_read_as(hash).await?)
     }
 
-    pub async fn add_geometry(
-        &self,
+    pub async fn add_geometry_by_id(
         ctx: &DalContext,
+        view_id: ViewId,
         geometry_id: GeometryId,
     ) -> DiagramResult<()> {
         Self::add_edge_to_geometry(
             ctx,
-            self.id,
+            view_id,
             geometry_id,
             EdgeWeightKind::Use { is_default: false },
         )

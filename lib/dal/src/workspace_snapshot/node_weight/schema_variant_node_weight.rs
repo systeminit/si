@@ -6,11 +6,11 @@ use thiserror::Error;
 use super::{traits::SiVersionedNodeWeight, ContentNodeWeight, NodeWeightError};
 use crate::{
     workspace_snapshot::graph::WorkspaceSnapshotGraphError, DalContext, WorkspaceSnapshotError,
-    WorkspaceSnapshotGraphV3,
 };
 
 pub mod v1;
 
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 pub use v1::SchemaVariantNodeWeightV1;
 
 #[remain::sorted]

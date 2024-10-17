@@ -1,6 +1,5 @@
 pub mod component;
 pub mod schema;
-mod tests;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
@@ -223,7 +222,7 @@ impl WorkspaceSnapshotGraphV4 {
             .into())
     }
 
-    pub async fn update_node_id(
+    pub fn update_node_id(
         &mut self,
         current_idx: NodeIndex,
         new_id: impl Into<Ulid>,

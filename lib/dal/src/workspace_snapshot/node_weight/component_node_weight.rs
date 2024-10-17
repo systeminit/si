@@ -6,8 +6,10 @@ use super::{
     NodeWeightError, NodeWeightResult,
 };
 use crate::layer_db_types::{
-    ComponentContent, ComponentContentV2, GeometryContent, GeometryContentV1,
+    ComponentContent, ComponentContentDiscriminants, ComponentContentV2, GeometryContent,
+    GeometryContentV1,
 };
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
     workspace_snapshot::{
         content_address::{ContentAddress, ContentAddressDiscriminants},
@@ -19,7 +21,7 @@ use crate::{
         NodeInformation,
     },
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
-    WorkspaceSnapshotGraphV4, WorkspaceSnapshotGraphVCurrent,
+    WorkspaceSnapshotGraphVCurrent,
 };
 use petgraph::{prelude::*, visit::EdgeRef, Direction::Incoming};
 use serde::{Deserialize, Serialize};
@@ -129,8 +131,6 @@ impl ComponentNodeWeight {
         default_view_idx: NodeIndex,
         component_node_weight: &ComponentNodeWeight,
     ) -> NodeWeightResult<()> {
-        dbg!("upgrade one");
-
         let component_idx = v4_graph
             .get_node_index_by_id(component_node_weight.id)
             .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
@@ -145,7 +145,11 @@ impl ComponentNodeWeight {
 
         // When migrating from graph v3 to v4 all components should be on v1
         let ComponentContent::V1(content) = component_content.clone() else {
-            return Ok(());
+            let actual = ComponentContentDiscriminants::from(component_content);
+            return Err(NodeWeightError::UnexpectedComponentContentVersion(
+                actual,
+                ComponentContentDiscriminants::V1,
+            ));
         };
 
         // Create geometry node

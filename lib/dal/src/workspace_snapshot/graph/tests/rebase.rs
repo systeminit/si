@@ -11,11 +11,11 @@ mod test {
     use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
-    use crate::WorkspaceSnapshotGraphV4;
+    use crate::WorkspaceSnapshotGraphVCurrent;
 
     #[test]
     fn simulate_rebase() {
-        let mut to_rebase = WorkspaceSnapshotGraphV4::new_for_unit_tests()
+        let mut to_rebase = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
             .expect("Unable to create WorkspaceSnapshotGraph");
 
         // Set up the to rebase graph.
@@ -24,7 +24,7 @@ mod test {
             .expect("could not add category node");
         to_rebase
             .add_edge(
-                to_rebase.root_index,
+                to_rebase.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 schema_category_node_index,
             )
@@ -34,7 +34,7 @@ mod test {
             .expect("could not add category node");
         to_rebase
             .add_edge(
-                to_rebase.root_index,
+                to_rebase.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
                 func_category_node_index,
             )

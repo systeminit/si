@@ -28,6 +28,7 @@ use self::{
 use super::graph::{
     deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
 };
+use crate::layer_db_types::ComponentContentDiscriminants;
 use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
@@ -95,11 +96,13 @@ pub enum NodeWeightError {
     #[error("Content missing from store for node: {0}")]
     MissingContentFromStore(Ulid),
     #[error("Missing Key for Child Entry {0}")]
-    MissingKeytForChildEntry(Ulid),
+    MissingKeyForChildEntry(Ulid),
     #[error("SchemaVariant node weight error: {0}")]
     SchemaVariantNodeWeight(#[from] Box<SchemaVariantNodeWeightError>),
     #[error("try from int error: {0}")]
     TryFromIntError(#[from] TryFromIntError),
+    #[error("Unexpected content version. Got {1} but expected {0}")]
+    UnexpectedComponentContentVersion(ComponentContentDiscriminants, ComponentContentDiscriminants),
     #[error("Unexpected content address variant: {1} expected {0}")]
     UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
     #[error("Unexpected node weight variant. Got {1} but expected {0}")]

@@ -1308,8 +1308,7 @@ impl WorkspaceSnapshot {
         let idx = self.get_node_index_by_id(current_id).await?;
         self.working_copy_mut()
             .await
-            .update_node_id(idx, new_id, new_lineage_id)
-            .await?;
+            .update_node_id(idx, new_id, new_lineage_id)?;
 
         Ok(())
     }

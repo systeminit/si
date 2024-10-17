@@ -218,6 +218,7 @@ pub struct AttributePrototypeContentV1 {
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+#[strum_discriminants(derive(strum::Display))]
 pub enum ComponentContent {
     V1(ComponentContentV1),
     V2(ComponentContentV2),

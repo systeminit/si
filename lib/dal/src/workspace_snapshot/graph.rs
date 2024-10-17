@@ -21,6 +21,7 @@ use crate::{
 pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
+mod tests;
 pub mod v2;
 pub mod v3;
 pub mod v4;

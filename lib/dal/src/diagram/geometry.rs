@@ -128,10 +128,7 @@ impl Geometry {
         Self::add_edge_to_component(ctx, id.into(), component_id, EdgeWeightKind::Represents)
             .await?;
 
-        View::get_by_id(ctx, view_id)
-            .await?
-            .add_geometry(ctx, id.into())
-            .await?;
+        View::add_geometry_by_id(ctx, view_id, id.into()).await?;
 
         Ok(Self::assemble(
             node_weight.get_geometry_node_weight()?,
