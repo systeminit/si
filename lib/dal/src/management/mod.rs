@@ -6,6 +6,8 @@ use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
+use crate::diagram::view::View;
+use crate::diagram::DiagramError;
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -50,6 +52,8 @@ pub enum ManagementError {
     ComponentDoesNotHaveManualAction(String, ComponentId),
     #[error("Component with management placeholder {0} could not be found")]
     ComponentWithPlaceholderNotFound(String),
+    #[error("Diagram Error {0}")]
+    Diagram(#[from] DiagramError),
     #[error("Duplicate component placeholder {0}")]
     DuplicateComponentPlaceholder(String),
     #[error("func error: {0}")]
@@ -76,6 +80,8 @@ pub enum ManagementError {
 
 pub type ManagementResult<T> = Result<T, ManagementError>;
 
+/// Geometry type for deserialization lang-js, so even if we should only care about integers,
+/// until we implement custom deserialization we can't merge it with [RawGeometry](RawGeometry)
 #[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq)]
 pub struct NumericGeometry {
     pub x: f64,
@@ -115,6 +121,7 @@ impl NumericGeometry {
 }
 
 #[inline(always)]
+#[allow(unused)]
 fn avoid_nan_string(n: f64, fallback: f64) -> String {
     if n.is_normal() { n.round() } else { fallback }.to_string()
 }
@@ -122,10 +129,10 @@ fn avoid_nan_string(n: f64, fallback: f64) -> String {
 impl From<NumericGeometry> for RawGeometry {
     fn from(value: NumericGeometry) -> Self {
         Self {
-            x: avoid_nan_string(value.x, 0.0),
-            y: avoid_nan_string(value.y, 0.0),
-            width: value.width.map(|w| avoid_nan_string(w, 500.0)),
-            height: value.height.map(|h| avoid_nan_string(h, 500.0)),
+            x: value.x as isize,
+            y: value.y as isize,
+            width: value.width.map(|w| w as isize),
+            height: value.height.map(|h| h as isize),
         }
     }
 }
@@ -133,10 +140,10 @@ impl From<NumericGeometry> for RawGeometry {
 impl From<RawGeometry> for NumericGeometry {
     fn from(value: RawGeometry) -> Self {
         Self {
-            x: value.x.parse().ok().unwrap_or(0.0),
-            y: value.y.parse().ok().unwrap_or(0.0),
-            width: value.width.and_then(|w| w.parse().ok()),
-            height: value.height.and_then(|h| h.parse().ok()),
+            x: value.x as f64,
+            y: value.y as f64,
+            width: value.width.map(|w| w as f64),
+            height: value.height.map(|h| h as f64),
         }
     }
 }
@@ -413,10 +420,11 @@ impl<'a> ManagementOperator<'a> {
 
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
 
-        let mut component = Component::new(self.ctx, placeholder, variant_id).await?;
+        let view_id = View::get_id_for_default(self.ctx).await?;
+        let mut component = Component::new(self.ctx, placeholder, variant_id, view_id).await?;
         let geometry = if let Some(numeric_geometry) = &operation.geometry {
             component
-                .set_raw_geometry(self.ctx, (*numeric_geometry).into())
+                .set_raw_geometry(self.ctx, (*numeric_geometry).into(), view_id)
                 .await?;
 
             *numeric_geometry
@@ -426,7 +434,7 @@ impl<'a> ManagementOperator<'a> {
             // solitaire staggering
             let auto_geometry = self.last_component_geometry.offset_by(50.0, 50.0);
             component
-                .set_raw_geometry(self.ctx, auto_geometry.into())
+                .set_raw_geometry(self.ctx, auto_geometry.into(), view_id)
                 .await?;
 
             auto_geometry
@@ -435,7 +443,12 @@ impl<'a> ManagementOperator<'a> {
         WsEvent::component_created(
             self.ctx,
             component
-                .into_frontend_type(self.ctx, Added, &mut HashMap::new())
+                .into_frontend_type(
+                    self.ctx,
+                    Some(&component.geometry(self.ctx, view_id).await?),
+                    Added,
+                    &mut HashMap::new(),
+                )
                 .await?,
         )
         .await?
@@ -680,9 +693,10 @@ impl<'a> ManagementOperator<'a> {
             }
 
             if let Some(raw_geometry) = &operation.geometry {
+                let view_id = View::get_id_for_default(self.ctx).await?;
                 let mut component = Component::get_by_id(self.ctx, component_id).await?;
                 component
-                    .set_raw_geometry(self.ctx, raw_geometry.to_owned())
+                    .set_raw_geometry(self.ctx, raw_geometry.to_owned(), view_id)
                     .await?;
             }
         }
@@ -1015,6 +1029,7 @@ async fn update_component(
         component
             .into_frontend_type(
                 ctx,
+                None,
                 component.change_status(ctx).await?,
                 &mut HashMap::new(),
             )

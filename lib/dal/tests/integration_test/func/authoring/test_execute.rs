@@ -1,6 +1,8 @@
 use dal::func::authoring::FuncAuthoringClient;
 use dal::{DalContext, Func};
-use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use si_events::{FuncRun, FuncRunId, FuncRunState};
 use std::sync::Arc;
@@ -13,9 +15,10 @@ async fn test_execute_action_func(ctx: &mut DalContext) {
     let func_args = serde_json::Value::Null;
     let schema_name = "starfield";
 
-    let component = create_component_for_default_schema_name(ctx, schema_name, component_name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -52,9 +55,10 @@ async fn test_execute_attribute_func(ctx: &mut DalContext) {
     let func_args = serde_json::Value::Array(Vec::new());
     let schema_name = "starfield";
 
-    let component = create_component_for_default_schema_name(ctx, schema_name, component_name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -91,9 +95,10 @@ async fn test_execute_code_generation_func(ctx: &mut DalContext) {
     let func_args = serde_json::value::Value::Null;
     let schema_name = "katy perry";
 
-    let component = create_component_for_default_schema_name(ctx, schema_name, component_name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -130,9 +135,10 @@ async fn test_execute_qualification_func(ctx: &mut DalContext) {
     let func_args = serde_json::value::Value::Null;
     let schema_name = "dummy-secret";
 
-    let component = create_component_for_default_schema_name(ctx, schema_name, component_name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -169,9 +175,10 @@ async fn test_execute_with_modified_code(ctx: &mut DalContext) {
     let func_args = serde_json::Value::Array(Vec::new());
     let schema_name = "starfield";
 
-    let component = create_component_for_default_schema_name(ctx, schema_name, component_name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

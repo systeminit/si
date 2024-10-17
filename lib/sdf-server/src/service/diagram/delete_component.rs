@@ -70,7 +70,7 @@ pub async fn delete_components(
             // to_delete=True
             let component: Component = Component::get_by_id(&ctx, component_id).await?;
             let payload = component
-                .into_frontend_type(&ctx, ChangeStatus::Deleted, &mut socket_map)
+                .into_frontend_type_for_default_view(&ctx, ChangeStatus::Deleted, &mut socket_map)
                 .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
@@ -80,7 +80,11 @@ pub async fn delete_components(
             let component: Component =
                 Component::get_by_id(&base_change_set_ctx, component_id).await?;
             let payload = component
-                .into_frontend_type(&base_change_set_ctx, ChangeStatus::Deleted, &mut socket_map)
+                .into_frontend_type_for_default_view(
+                    &base_change_set_ctx,
+                    ChangeStatus::Deleted,
+                    &mut socket_map,
+                )
                 .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?

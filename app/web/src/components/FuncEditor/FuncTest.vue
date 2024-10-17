@@ -480,18 +480,7 @@ const prepareTest = async () => {
       unknown
     >;
 
-    const componentData =
-      componentsStore.rawComponentsById[
-        funcTestSelectorRef.value.selectedComponentId
-      ];
-    const geometry = componentData
-      ? {
-          x: componentData.position.x,
-          y: componentData.position.y,
-          width: componentData.size?.width ?? 0,
-          height: componentData.size?.height ?? 0,
-        }
-      : { x: 0, y: 0, width: 0, height: 0 };
+    const geometry = { x: 0, y: 0, width: 500, height: 500 };
     // TODO recursive toSnakeCase all props
     const thisComponent = {
       this_component: {

@@ -1,8 +1,13 @@
 <template>
   <div ref="outlineRef" class="flex flex-col diagram-outline">
+    <LeftPanelDrawer
+      v-if="ffStore.OUTLINER_VIEWS"
+      :open="drawerIsOpen"
+      @closed="toggleDrawer"
+    />
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle icon="bullet-list-indented">
+        <SidebarSubpanelTitle icon="bullet-list-indented" @click="toggleDrawer">
           <template #label>
             <div class="flex flex-row gap-xs items-center">
               <div>Diagram Outline</div>
@@ -123,10 +128,13 @@ import {
   Filter,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
+import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 import {
   DiagramGroupData,
@@ -148,11 +156,19 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const componentsStore = useComponentsStore();
-const qualificationsStore = useQualificationsStore();
+const drawerIsOpen = ref<boolean>(false);
 
-const fetchComponentsReq =
-  componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
+const toggleDrawer = () => {
+  if (!ffStore.OUTLINER_VIEWS) return;
+  drawerIsOpen.value = !drawerIsOpen.value;
+};
+
+const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
+const qualificationsStore = useQualificationsStore();
+const ffStore = useFeatureFlagsStore();
+
+const fetchComponentsReq = viewStore.getRequestStatus("FETCH_VIEW");
 
 const rootComponents = computed(() => {
   return Object.values(componentsStore.allComponentsById).filter(

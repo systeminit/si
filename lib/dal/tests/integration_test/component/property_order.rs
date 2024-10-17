@@ -1,7 +1,9 @@
 use dal::prop::Prop;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, DalContext};
-use dal_test::expected::{ExpectComponent, ExpectComponentProp, ExpectSchemaVariant, IntoPropPath};
+use dal_test::expected::{
+    ExpectComponent, ExpectComponentProp, ExpectSchemaVariant, ExpectView, IntoPropPath,
+};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -141,8 +143,8 @@ async fn property_order_remains_after_update(ctx: &mut DalContext) -> dal_test::
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create components and verify they retain order on start
-    let abcdef_component = abcdef_schema.create_component(ctx).await;
-    let fedcba_component = fedcba_schema.create_component(ctx).await;
+    let abcdef_component = abcdef_schema.create_component_on_default_view(ctx).await;
+    let fedcba_component = fedcba_schema.create_component_on_default_view(ctx).await;
 
     let abcdef = abcdef_component.prop(ctx, ["root", "domain"]).await;
     let fedcba = fedcba_component.prop(ctx, ["root", "domain"]).await;
@@ -178,7 +180,7 @@ async fn child_property_order_remains_after_update(ctx: &mut DalContext) -> dal_
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create component and verify props retain order on start
-    let component = variant.create_component(ctx).await;
+    let component = variant.create_component_on_default_view(ctx).await;
 
     let abcdef = component.prop(ctx, ["root", "domain", "abcdef"]).await;
     let fedcba = component.prop(ctx, ["root", "domain", "fedcba"]).await;
@@ -214,7 +216,7 @@ async fn child_property_order_remains_after_upgrade(ctx: &mut DalContext) -> dal
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create component and verify props retain order on start
-    let component = variant.create_component(ctx).await;
+    let component = variant.create_component_on_default_view(ctx).await;
 
     let abcdef = component.prop(ctx, ["root", "domain", "abcdef"]).await;
     let fedcba = component.prop(ctx, ["root", "domain", "fedcba"]).await;
@@ -272,7 +274,7 @@ async fn child_property_value_remains_after_update_and_paste(
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create component and verify props retain order on start
-    let component = variant.create_component(ctx).await;
+    let component = variant.create_component_on_default_view(ctx).await;
 
     let abcdef = component.prop(ctx, ["root", "domain", "abcdef"]).await;
     let fedcba = component.prop(ctx, ["root", "domain", "fedcba"]).await;
@@ -326,12 +328,18 @@ async fn child_property_value_remains_after_update_and_paste(
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
     // Ensure they have the right values after copy/pasting
     let component_copy = ExpectComponent(
         component
             .component(ctx)
             .await
-            .copy_paste(ctx, component.geometry(ctx).await)
+            .create_copy(
+                ctx,
+                default_view_id,
+                component.geometry_for_default(ctx).await,
+            )
             .await
             .expect("unable to paste component")
             .id(),

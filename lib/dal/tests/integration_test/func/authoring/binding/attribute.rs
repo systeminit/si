@@ -15,7 +15,7 @@ use dal::{
     OutputSocket, Prop, Schema, SchemaVariant,
 };
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name,
+    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
     get_attribute_value_for_component, get_component_output_socket_value,
     update_attribute_value_for_component, ChangeSetTestHelpers,
 };
@@ -410,12 +410,15 @@ async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
         .expect("could not update");
 
     // Let's ensure that our latest props/sockets are visible in the component
-    let component =
-        create_component_for_default_schema_name(ctx, schema.name.clone(), "demo component 2")
-            .await
-            .expect("could not create component");
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        schema.name.clone(),
+        "demo component 2",
+    )
+    .await
+    .expect("could not create component");
     let connected_component =
-        create_component_for_default_schema_name(ctx, "small even lego", "lego")
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "lego")
             .await
             .expect("could not create component");
     // connect the two components

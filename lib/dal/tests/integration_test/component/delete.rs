@@ -8,7 +8,9 @@ use dal::func::intrinsics::IntrinsicFunc;
 use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, create_component_for_schema_name_with_type,
+    create_component_for_default_schema_name_in_default_view,
+    create_component_for_schema_name_with_type_on_default_view,
+    create_named_component_for_schema_variant_on_default_view,
     update_attribute_value_for_component,
 };
 use dal_test::helpers::{get_component_input_socket_value, ChangeSetTestHelpers};
@@ -18,9 +20,10 @@ use veritech_client::ResourceStatus;
 
 #[test]
 async fn delete(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -35,9 +38,10 @@ async fn delete(ctx: &mut DalContext) {
 
 #[test]
 async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "dummy-secret", "component")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "component")
+            .await
+            .expect("could not create component");
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
         Some(serde_json::json![{"resource": "something"}]),
@@ -84,9 +88,10 @@ async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
 
 #[test]
 async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "dummy-secret", "component")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "component")
+            .await
+            .expect("could not create component");
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
         Some(serde_json::json![{"resource": "something"}]),
@@ -193,28 +198,38 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -357,28 +372,38 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -565,7 +590,7 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
     // 2. Remove only the middle one (which is not really possible via the UI but that's ok)
     // 3. Make sure the component is re-parented to the outer most frame and that data flows as expected
     // create a frame
-    let outer_frame = create_component_for_schema_name_with_type(
+    let outer_frame = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "large odd lego",
         "large odd",
@@ -596,7 +621,7 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     // create another frame that won't pass data
-    let inner_frame = create_component_for_schema_name_with_type(
+    let inner_frame = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "swifty",
         "swifty",
@@ -612,7 +637,7 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
         .expect("could not upsert frame");
 
     // create a component that takes input from the top most
-    let component = create_component_for_schema_name_with_type(
+    let component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "large even lego",
         "large even",
@@ -666,7 +691,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .await
         .expect("could not fork head");
     // create a frame
-    let outer_frame = create_component_for_schema_name_with_type(
+    let outer_frame = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "large odd lego",
         "large odd",
@@ -704,7 +729,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     // create another frame that won't pass data
-    let inner_frame = create_component_for_schema_name_with_type(
+    let inner_frame = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "swifty",
         "swifty",
@@ -720,7 +745,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("could not upsert frame");
 
     // create a component that takes input from the top most
-    let component = create_component_for_schema_name_with_type(
+    let component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "large even lego",
         "large even",

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::ParseIntError};
 
 use super::DiagramResult;
 use crate::{
@@ -6,19 +6,48 @@ use crate::{
     service::force_change_set_response::ForceChangeSetResponse,
 };
 use axum::Json;
-use dal::diagram::geometry::RawGeometry;
+use dal::diagram::view::View;
 use dal::{
     component::{frame::Frame, InferredConnection},
     diagram::SummaryDiagramInferredEdge,
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_frontend_types::RawGeometry;
 use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct StringGeometry {
+    pub x: String,
+    pub y: String,
+    pub height: Option<String>,
+    pub width: Option<String>,
+}
+
+impl TryFrom<StringGeometry> for RawGeometry {
+    type Error = ParseIntError;
+
+    fn try_from(value: StringGeometry) -> Result<Self, Self::Error> {
+        let mut maybe_width: Option<isize> = None;
+        let mut maybe_height: Option<isize> = None;
+        if let (Some(width), Some(height)) = (value.width, value.height) {
+            maybe_width = Some(width.clone().parse::<isize>()?);
+            maybe_height = Some(height.clone().parse::<isize>()?);
+        }
+        Ok(Self {
+            x: value.x.clone().parse::<isize>()?,
+            y: value.y.clone().parse::<isize>()?,
+            width: maybe_width,
+            height: maybe_height,
+        })
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SingleComponentGeometryUpdate {
-    pub geometry: RawGeometry,
+    pub geometry: StringGeometry,
     pub detach: bool,
     pub new_parent: Option<ComponentId>,
 }
@@ -101,7 +130,11 @@ pub async fn set_component_position(
 
         if component_updated {
             let payload = component
-                .into_frontend_type(&ctx, component.change_status(&ctx).await?, &mut socket_map)
+                .into_frontend_type_for_default_view(
+                    &ctx,
+                    component.change_status(&ctx).await?,
+                    &mut socket_map,
+                )
                 .await?;
             WsEvent::component_updated(&ctx, payload)
                 .await?
@@ -109,8 +142,10 @@ pub async fn set_component_position(
                 .await?;
         }
 
-        let geometry = component.geometry(&ctx).await?;
-        let new_geometry = update.geometry.clone();
+        let default_view_id = View::get_id_for_default(&ctx).await?;
+
+        let geometry = component.geometry(&ctx, default_view_id).await?;
+        let new_geometry: RawGeometry = update.geometry.try_into()?;
 
         let (width, height) = {
             let mut size = (None, None);
@@ -119,12 +154,8 @@ pub async fn set_component_position(
 
             if component_type != ComponentType::Component {
                 size = (
-                    new_geometry
-                        .width
-                        .or_else(|| geometry.width().map(|v| v.to_string())),
-                    new_geometry
-                        .height
-                        .or_else(|| geometry.height().map(|v| v.to_string())),
+                    new_geometry.width.or_else(|| geometry.width().copied()),
+                    new_geometry.height.or_else(|| geometry.height().copied()),
                 );
             }
 
@@ -134,28 +165,24 @@ pub async fn set_component_position(
         component
             .set_geometry(
                 &ctx,
+                default_view_id,
                 new_geometry.x,
                 new_geometry.y,
-                width.clone(),
-                height.clone(),
+                width,
+                height,
             )
             .await?;
         components.push(component);
 
-        geometry_list.push((
-            id,
-            RawGeometry {
-                x: update.geometry.x,
-                y: update.geometry.y,
-                width,
-                height,
-            },
-        ))
+        geometry_list.push((id, new_geometry))
     }
+
+    let view_id = View::get_id_for_default(&ctx).await?;
 
     WsEvent::set_component_position(
         &ctx,
         ctx.change_set_id(),
+        view_id,
         geometry_list,
         Some(request.client_ulid),
     )

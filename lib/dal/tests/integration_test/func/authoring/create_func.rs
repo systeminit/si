@@ -8,8 +8,8 @@ use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{AttributeValue, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, create_unlocked_variant_copy_for_schema_name,
-    ChangeSetTestHelpers,
+    create_component_for_default_schema_name_in_default_view,
+    create_unlocked_variant_copy_for_schema_name, ChangeSetTestHelpers,
 };
 use dal_test::test;
 
@@ -38,10 +38,11 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
     )
     .await
     .is_err());
-    let func = Func::find_id_by_name(ctx, func_name.clone())
+
+    Func::find_id_by_name(ctx, func_name.clone())
         .await
         .expect("has func");
-    dbg!(func);
+
     let new_sv = VariantAuthoringClient::create_unlocked_variant_copy(ctx, sv_id)
         .await
         .expect("can unlock sv")
@@ -492,14 +493,14 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     assert_eq!(variant_zero.id(), updated_variant_id);
 
     // Add a component to the diagram
-    let initial_component = create_component_for_default_schema_name(
+    let initial_component = create_component_for_default_schema_name_in_default_view(
         ctx,
         my_asset_schema.name.clone(),
         "demo component",
     )
     .await
     .expect("could not create component");
-    let initial_diagram = Diagram::assemble(ctx)
+    let initial_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());
@@ -553,7 +554,7 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     assert_eq!(FuncKind::CodeGeneration, func.kind);
     assert_eq!(func_name, func.name);
     assert_eq!(Some("main".to_string()), func.handler);
-    assert_eq!(Some("async function main(component: Input): Promise<Output> {\n  return {\n    format: \"json\",\n    code: JSON.stringify(component),\n  };\n}\n".to_string()), 
+    assert_eq!(Some("async function main(component: Input): Promise<Output> {\n  return {\n    format: \"json\",\n    code: JSON.stringify(component),\n  };\n}\n".to_string()),
      func.code_plaintext().expect("has code"));
 
     let mut expected_func: Vec<Func> = schema_funcs

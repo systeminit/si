@@ -29,7 +29,7 @@ use crate::{
     SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
 };
-use si_frontend_types::SummaryDiagramComponent;
+use si_frontend_types::DiagramComponentView;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -489,7 +489,7 @@ impl ActionPrototype {
 impl WsEvent {
     pub async fn resource_refreshed(
         ctx: &DalContext,
-        payload: SummaryDiagramComponent,
+        payload: DiagramComponentView,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,

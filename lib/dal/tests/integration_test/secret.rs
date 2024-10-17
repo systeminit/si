@@ -4,9 +4,9 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::secret::DecryptedSecret;
 use dal::{Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm, SecretVersion};
-use dal_test::expected::{self, ExpectComponent};
+use dal_test::expected::{self, ExpectComponent, ExpectView};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, encrypt_message, ChangeSetTestHelpers,
+    create_component_for_default_schema_name_in_default_view, encrypt_message, ChangeSetTestHelpers,
 };
 use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
@@ -298,21 +298,24 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
         .expect("could not attach secret");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
     // Copy and paste the secret component
     {
         let component = secret_component.component(ctx).await;
 
         let geometry = component
-            .geometry(ctx)
+            .geometry(ctx, default_view_id)
             .await
             .expect("couldn't get geometry");
 
         component
-            .copy_paste(
+            .create_copy(
                 ctx,
+                default_view_id,
                 RawGeometry {
-                    x: geometry.x().to_string(),
-                    y: geometry.y().to_string(),
+                    x: *geometry.x(),
+                    y: *geometry.y(),
                     width: None,
                     height: None,
                 },
@@ -326,18 +329,19 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
     let user_component_geometry = user_component
         .component(ctx)
         .await
-        .geometry(ctx)
+        .geometry(ctx, default_view_id)
         .await
         .expect("couldn't get geometry");
 
     user_component
         .component(ctx)
         .await
-        .copy_paste(
+        .create_copy(
             ctx,
+            default_view_id,
             RawGeometry {
-                x: user_component_geometry.x().to_string(),
-                y: user_component_geometry.y().to_string(),
+                x: *user_component_geometry.x(),
+                y: *user_component_geometry.y(),
                 width: None,
                 height: None,
             },
@@ -477,10 +481,13 @@ async fn update_encrypted_contents_with_dependent_values(
     nw: &WorkspaceSignup,
 ) {
     // Create a component and commit.
-    let component =
-        create_component_for_default_schema_name(ctx, "dummy-secret", "secret-definition")
-            .await
-            .expect("could not create component");
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "dummy-secret",
+        "secret-definition",
+    )
+    .await
+    .expect("could not create component");
     let schema_variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("could not get schema variant id for component");

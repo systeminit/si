@@ -7,7 +7,8 @@ use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, SchemaVariant};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, ChangeSetTestHelpers, PropEditorTestView,
+    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+    PropEditorTestView,
 };
 use dal_test::test;
 use itertools::Itertools;
@@ -97,14 +98,14 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     assert_eq!(variant_zero.id(), updated_variant_id);
 
     // Add a component to the diagram
-    let initial_component = create_component_for_default_schema_name(
+    let initial_component = create_component_for_default_schema_name_in_default_view(
         ctx,
         my_asset_schema.name.clone(),
         "demo component",
     )
     .await
     .expect("could not create component");
-    let initial_diagram = Diagram::assemble(ctx)
+    let initial_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());
@@ -216,7 +217,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     .expect("able to find anotherProp prop for variant one");
 
     // Check that the component has been auto upgraded
-    let one_component_on_the_graph = Diagram::assemble(ctx)
+    let one_component_on_the_graph = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(one_component_on_the_graph.components.len(), 1);
@@ -295,7 +296,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .expect("got prototype");
     assert_eq!(create_prototype.kind, ActionKind::Create);
 
-    let upgraded_graph = Diagram::assemble(ctx)
+    let upgraded_graph = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     let upgraded_component = upgraded_graph
@@ -341,7 +342,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) {
     //
     // Create a new component from the variant, with child
     //
-    let component = variant_zero.create_component(ctx).await;
+    let component = variant_zero.create_component_on_default_view(ctx).await;
     let child = ExpectComponent::create(ctx, "Docker Image").await;
     child.upsert_parent(ctx, component).await;
 
@@ -402,7 +403,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) {
     //
     // Create a new component from the variant, and set its type to Component
     //
-    let component = variant_zero.create_component(ctx).await;
+    let component = variant_zero.create_component_on_default_view(ctx).await;
     component.set_type(ctx, ComponentType::Component).await;
 
     assert_eq!(variant_zero, component.schema_variant(ctx).await);
@@ -441,7 +442,7 @@ async fn create_unlocked_schema_variant_after_component_changes_component_type(
     //
     // Create a new component from the variant, and set its type to Component
     //
-    let component = swifty.create_component(ctx).await;
+    let component = swifty.create_component_on_default_view(ctx).await;
     component.set_type(ctx, ComponentType::Component).await;
 
     assert_eq!(swifty, component.schema_variant(ctx).await);
@@ -508,7 +509,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
         .expect("Unable to get the schema for the variant");
 
     // Create a component, add fields to array, set values
-    let component = create_component_for_default_schema_name(
+    let component = create_component_for_default_schema_name_in_default_view(
         ctx,
         my_asset_schema.name.clone(),
         "demo component",
@@ -757,8 +758,10 @@ async fn upgrade_frame_with_child(ctx: &mut DalContext) {
         .id,
     );
 
-    let frame_component = original_frame_variant.create_component(ctx).await;
-    let child_component = child_variant.create_component(ctx).await;
+    let frame_component = original_frame_variant
+        .create_component_on_default_view(ctx)
+        .await;
+    let child_component = child_variant.create_component_on_default_view(ctx).await;
     child_component.upsert_parent(ctx, frame_component).await;
 
     let inferred_connections = child_component

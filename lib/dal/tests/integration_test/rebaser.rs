@@ -1,7 +1,9 @@
 use base64::{engine::general_purpose, Engine};
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::{AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType};
-use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -254,7 +256,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
 #[test]
 async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) -> dal_test::Result<()> {
     let shared_component_id =
-        create_component_for_default_schema_name(ctx, "swifty", "Shared component")
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "Shared component")
             .await?
             .id();
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -292,10 +294,13 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) -> dal
     // Create a new component in change set B.
     ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
         .await?;
-    let _change_set_b_component_id =
-        create_component_for_default_schema_name(ctx, "swifty", "Change Set B Component")
-            .await?
-            .id();
+    let _change_set_b_component_id = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "swifty",
+        "Change Set B Component",
+    )
+    .await?
+    .id();
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Merge change set A to head.

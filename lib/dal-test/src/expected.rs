@@ -4,6 +4,7 @@
 
 use crate::helpers::ChangeSetTestHelpers;
 use dal::diagram::geometry::RawGeometry;
+use dal::diagram::view::{View, ViewId};
 use dal::{
     self,
     prop::{Prop, PropPath},
@@ -238,7 +239,10 @@ impl ExpectSchema {
     }
 
     pub async fn create_component(self, ctx: &DalContext) -> ExpectComponent {
-        self.default_variant(ctx).await.create_component(ctx).await
+        self.default_variant(ctx)
+            .await
+            .create_component_on_default_view(ctx)
+            .await
     }
 
     pub async fn create_named_component(
@@ -248,7 +252,7 @@ impl ExpectSchema {
     ) -> ExpectComponent {
         self.default_variant(ctx)
             .await
-            .create_named_component(ctx, name)
+            .create_named_component_on_default_view(ctx, name)
             .await
     }
 }
@@ -324,17 +328,20 @@ impl ExpectSchemaVariant {
             .into()
     }
 
-    pub async fn create_component(self, ctx: &DalContext) -> ExpectComponent {
-        self.create_named_component(ctx, generate_fake_name()).await
+    pub async fn create_component_on_default_view(self, ctx: &DalContext) -> ExpectComponent {
+        self.create_named_component_on_default_view(ctx, generate_fake_name())
+            .await
     }
 
-    pub async fn create_named_component(
+    pub async fn create_named_component_on_default_view(
         self,
         ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> ExpectComponent {
+        let view_id = ExpectView::get_id_for_default(ctx).await;
+
         ExpectComponent(
-            Component::new(ctx, name.as_ref().to_string(), self.0)
+            Component::new(ctx, name.as_ref().to_string(), self.0, view_id)
                 .await
                 .expect("create component")
                 .id(),
@@ -380,10 +387,12 @@ impl ExpectComponent {
             .expect("get component by id")
     }
 
-    pub async fn geometry(self, ctx: &DalContext) -> RawGeometry {
+    pub async fn geometry_for_default(self, ctx: &DalContext) -> RawGeometry {
+        let view_id = ExpectView::get_id_for_default(ctx).await;
+
         self.component(ctx)
             .await
-            .geometry(ctx)
+            .geometry(ctx, view_id)
             .await
             .expect("get geometry for component")
             .into_raw()
@@ -398,7 +407,7 @@ impl ExpectComponent {
     }
 
     pub async fn get_type(self, ctx: &DalContext) -> ComponentType {
-        dal::Component::get_type_by_id(ctx, self.0)
+        Component::get_type_by_id(ctx, self.0)
             .await
             .expect("get type by id")
     }
@@ -855,4 +864,20 @@ pub async fn commit_and_update_snapshot_to_visibility(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot")
+}
+
+#[derive(Debug)]
+pub struct ExpectView;
+
+impl ExpectView {
+    pub async fn get_id_for_default(ctx: &DalContext) -> ViewId {
+        View::get_id_for_default(ctx)
+            .await
+            .expect("get default view id")
+    }
+
+    pub async fn create(ctx: &DalContext) -> View {
+        let name = generate_fake_name();
+        View::new(ctx, name).await.expect("create view")
+    }
 }

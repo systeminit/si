@@ -5,7 +5,9 @@ use dal::qualification::{
     QualificationSubCheckStatus, QualificationView,
 };
 use dal::{Component, DalContext};
-use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -13,7 +15,7 @@ const DUMMY_OUTPUT_STREAM_VIEW_LINE: &str = "[THIS IS FAKE DATA]";
 
 #[test]
 async fn list_qualifications(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(
+    let component = create_component_for_default_schema_name_in_default_view(
         ctx,
         "dummy-secret",
         "deserializing serde json value null into an option results in None and that's insane",

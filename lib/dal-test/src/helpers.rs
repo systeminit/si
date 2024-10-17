@@ -15,7 +15,9 @@ use names::{Generator, Name};
 mod change_set;
 mod property_editor_test_view;
 
+use crate::expected::ExpectView;
 pub use change_set::ChangeSetTestHelpers;
+use dal::diagram::view::ViewId;
 pub use property_editor_test_view::PropEditorTestView;
 use serde_json::Value;
 
@@ -77,22 +79,35 @@ pub async fn create_unlocked_variant_copy_for_schema_name(
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
-/// [`Schema`] name.
+/// [`Schema`] name, in the default view
+pub async fn create_component_for_default_schema_name_in_default_view(
+    ctx: &DalContext,
+    schema_name: impl AsRef<str>,
+    name: impl AsRef<str>,
+) -> Result<Component> {
+    let view_id = ExpectView::get_id_for_default(ctx).await;
+    create_component_for_default_schema_name(ctx, schema_name, name, view_id).await
+}
+
+/// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
+/// [`Schema`] name in the provided [dal::diagram::view::View]
 pub async fn create_component_for_default_schema_name(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
+    view_id: ViewId,
 ) -> Result<Component> {
     let schema = Schema::find_by_name(ctx, schema_name)
         .await?
         .ok_or(eyre!("schema not found"))?;
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?)
+
+    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
 /// [`Schema`] name.
-pub async fn create_component_for_unlocked_schema_name(
+pub async fn create_component_for_unlocked_schema_name_on_default_view(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -103,12 +118,20 @@ pub async fn create_component_for_unlocked_schema_name(
     let schema_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema.id())
         .await?
         .ok_or(eyre!("no unlocked schema variant for schema name"))?;
-    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id.id()).await?)
+    let view_id = ExpectView::get_id_for_default(ctx).await;
+
+    Ok(Component::new(
+        ctx,
+        name.as_ref().to_string(),
+        schema_variant_id.id(),
+        view_id,
+    )
+    .await?)
 }
 
 /// Creates a [`Component`] from the default [`SchemaVariant`] corresponding to a provided
 /// [`Schema`] name.
-pub async fn create_component_for_schema_name_with_type(
+pub async fn create_component_for_schema_name_with_type_on_default_view(
     ctx: &DalContext,
     schema_name: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -118,18 +141,34 @@ pub async fn create_component_for_schema_name_with_type(
         .await?
         .ok_or(eyre!("schema not found"))?;
     let schema_variant_id = SchemaVariant::get_default_id_for_schema(ctx, schema.id()).await?;
-    let component = Component::new(ctx, name.as_ref().to_string(), schema_variant_id).await?;
+
+    let view_id = ExpectView::get_id_for_default(ctx).await;
+
+    let component =
+        Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?;
     Component::set_type_by_id_unchecked(ctx, component.id(), component_type).await?;
     Ok(component)
 }
 
 /// Creates a [`Component`] for a given [`SchemaVariantId`](SchemaVariant).
-pub async fn create_component_for_schema_variant(
+pub async fn create_component_for_schema_variant_on_default_view(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> Result<Component> {
     let name = generate_fake_name()?;
-    Ok(Component::new(ctx, &name, schema_variant_id).await?)
+
+    create_named_component_for_schema_variant_on_default_view(ctx, name, schema_variant_id).await
+}
+
+/// Creates a [`Component`] for a given [`SchemaVariantId`](SchemaVariant).
+pub async fn create_named_component_for_schema_variant_on_default_view(
+    ctx: &DalContext,
+    name: impl AsRef<str>,
+    schema_variant_id: SchemaVariantId,
+) -> Result<Component> {
+    let view_id = ExpectView::get_id_for_default(ctx).await;
+
+    Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
 }
 
 /// Connects two [`Components`](Component) for a given set of socket names.

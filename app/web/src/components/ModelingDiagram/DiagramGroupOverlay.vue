@@ -3,8 +3,8 @@
     ref="groupRef"
     :config="{
       id: group.uniqueKey,
-      x: position.x,
-      y: position.y,
+      x: geometry?.x,
+      y: geometry?.y,
       listening: false,
     }"
   >
@@ -48,19 +48,18 @@ import { computed, nextTick, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { CORNER_RADIUS } from "@/components/ModelingDiagram/diagram_constants";
-import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
+import { useViewsStore } from "@/store/views.store";
 import { DiagramGroupData } from "./diagram_types";
 
-const componentsStore = useComponentsStore();
 const statusStore = useStatusStore();
+const viewStore = useViewsStore();
 
 const props = defineProps({
   group: {
     type: Object as PropType<DiagramGroupData>,
     required: true,
   },
-  collapsed: Boolean,
   isHovered: Boolean,
   isSelected: Boolean,
 });
@@ -68,13 +67,9 @@ const props = defineProps({
 const titleTextRef = ref();
 const groupRef = ref();
 
-const size = computed(
-  () =>
-    componentsStore.combinedElementSizes[props.group.uniqueKey] ||
-    props.group.def.size || { width: 500, height: 500 },
-);
+const geometry = computed(() => viewStore.groups[props.group.def.id]);
 
-const nodeWidth = computed(() => size.value.width);
+const nodeWidth = computed(() => geometry.value?.width || 0);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
 const headerTextHeight = ref(20);
@@ -93,17 +88,12 @@ function recalcHeaderHeight() {
 }
 
 // const nodeHeaderHeight = computed(() => headerTextHeight.value);
-const nodeBodyHeight = computed(() => size.value.height);
+const nodeBodyHeight = computed(() => geometry.value?.height);
 // const nodeHeight = computed(
 //   () =>
 //     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 // );
 
-const position = computed(
-  () =>
-    componentsStore.combinedElementPositions[props.group.uniqueKey] ||
-    props.group.def.position,
-);
 // const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 // const deletedIconSize = computed(() =>
 //   Math.min(nodeHeight.value, nodeWidth.value, 300),

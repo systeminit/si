@@ -37,7 +37,12 @@ pub async fn delete_property_editor_value(
     let component = Component::get_by_id(&ctx, request.component_id).await?;
     let mut socket_map = HashMap::new();
     let payload = component
-        .into_frontend_type(&ctx, component.change_status(&ctx).await?, &mut socket_map)
+        .into_frontend_type(
+            &ctx,
+            None,
+            component.change_status(&ctx).await?,
+            &mut socket_map,
+        )
         .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?

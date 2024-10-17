@@ -52,13 +52,13 @@ use crate::{AttributePrototypeId, EdgeWeight, SchemaId, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
 use si_frontend_types::{
-    DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, GridPoint, Size2D,
-    SummaryDiagramComponent,
+    DiagramComponentView, DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide,
+    GeometryAndView, RawGeometry,
 };
 
 use self::inferred_connection_graph::InferredConnectionGraphError;
-use crate::diagram::geometry::{Geometry, RawGeometry};
-use crate::diagram::view::View;
+use crate::diagram::geometry::Geometry;
+use crate::diagram::view::{View, ViewId};
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
@@ -414,6 +414,7 @@ impl Component {
         ctx: &DalContext,
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
+        view_id: ViewId,
     ) -> ComponentResult<Self> {
         let content = ComponentContentV2 {
             timestamp: Timestamp::now(),
@@ -429,10 +430,6 @@ impl Component {
         let component =
             Self::new_with_content_address_and_no_geometry(ctx, name, schema_variant_id, hash)
                 .await?;
-
-        let view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
 
         // Create geometry node
         Geometry::new(ctx, component.id, view_id)
@@ -1467,26 +1464,21 @@ impl Component {
         Ok(None)
     }
 
-    // TODO take in view id
-    pub async fn geometry(&self, ctx: &DalContext) -> ComponentResult<Geometry> {
-        let view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
-
+    pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
         Geometry::get_by_component_and_view(ctx, self.id, view_id)
             .await
             .map_err(|e| ComponentError::Diagram(e.to_string()))
     }
 
-    // TODO take in view id
     pub async fn set_geometry(
         &mut self,
         ctx: &DalContext,
-        x: impl Into<String>,
-        y: impl Into<String>,
-        width: Option<impl Into<String>>,
-        height: Option<impl Into<String>>,
-    ) -> ComponentResult<()> {
+        view_id: ViewId,
+        x: impl Into<isize>,
+        y: impl Into<isize>,
+        width: Option<impl Into<isize>>,
+        height: Option<impl Into<isize>>,
+    ) -> ComponentResult<Geometry> {
         let new_geometry = RawGeometry {
             x: x.into(),
             y: y.into(),
@@ -1494,15 +1486,16 @@ impl Component {
             height: height.map(|h| h.into()),
         };
 
-        self.set_raw_geometry(ctx, new_geometry).await
+        self.set_raw_geometry(ctx, new_geometry, view_id).await
     }
 
     pub async fn set_raw_geometry(
         &mut self,
         ctx: &DalContext,
         raw_geometry: RawGeometry,
-    ) -> ComponentResult<()> {
-        let mut geometry_pre = self.geometry(ctx).await?;
+        view_id: ViewId,
+    ) -> ComponentResult<Geometry> {
+        let mut geometry_pre = self.geometry(ctx, view_id).await?;
         if geometry_pre.clone().into_raw() != raw_geometry {
             geometry_pre
                 .update(ctx, raw_geometry)
@@ -1510,7 +1503,7 @@ impl Component {
                 .map_err(|e| ComponentError::Diagram(e.to_string()))?;
         }
 
-        Ok(())
+        Ok(geometry_pre)
     }
 
     pub async fn set_resource_id(
@@ -2496,6 +2489,7 @@ impl Component {
         Ok(Component::assemble(&component_node_weight, updated))
     }
 
+    /// Remove a [Component] from the graph, and all related nodes
     #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
         let component = Self::get_by_id(ctx, id).await?;
@@ -2537,6 +2531,11 @@ impl Component {
                 }
             }
         }
+
+        // Remove all geometries for the component
+        Geometry::remove_all_for_component_id(ctx, id)
+            .await
+            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
 
         // Remove all actions for this component from queue
         Action::remove_all_for_component_id(ctx, id)
@@ -2740,9 +2739,10 @@ impl Component {
         Ok(results)
     }
 
-    pub async fn copy_paste(
+    pub async fn create_copy(
         &self,
         ctx: &DalContext,
+        view_id: ViewId,
         component_geometry: RawGeometry,
     ) -> ComponentResult<Self> {
         let schema_variant = self.schema_variant(ctx).await?;
@@ -2751,12 +2751,14 @@ impl Component {
             ctx,
             Self::generate_copy_name(self.name(ctx).await?),
             schema_variant.id(),
+            view_id,
         )
         .await?;
 
         pasted_comp
             .set_geometry(
                 ctx,
+                view_id,
                 component_geometry.x,
                 component_geometry.y,
                 component_geometry.width,
@@ -3106,7 +3108,7 @@ impl Component {
         let finalized_new_component = Self::get_by_id(ctx, original_component_id).await?;
         let mut diagram_sockets = HashMap::new();
         let payload = finalized_new_component
-            .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+            .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
             .await?;
         WsEvent::component_upgraded(ctx, payload, finalized_new_component.id())
             .await?
@@ -3442,9 +3444,10 @@ impl Component {
     pub async fn into_frontend_type(
         &self,
         ctx: &DalContext,
+        maybe_geometry: Option<&Geometry>,
         change_status: ChangeStatus,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> ComponentResult<SummaryDiagramComponent> {
+    ) -> ComponentResult<DiagramComponentView> {
         let schema_variant = self.schema_variant(ctx).await?;
 
         let sockets = match diagram_sockets.entry(schema_variant.id()) {
@@ -3499,23 +3502,6 @@ impl Component {
         let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
         let schema_id = schema.id();
 
-        let geometry = self.geometry(ctx).await?;
-
-        let position = GridPoint {
-            x: geometry.x().parse::<f64>()?.round() as isize,
-            y: geometry.y().parse::<f64>()?.round() as isize,
-        };
-        let size = match (geometry.width(), geometry.height()) {
-            (Some(w), Some(h)) => Size2D {
-                height: h.parse()?,
-                width: w.parse()?,
-            },
-            _ => Size2D {
-                height: 500,
-                width: 500,
-            },
-        };
-
         let updated_info = {
             let history_actor = ctx.history_actor();
             let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
@@ -3538,7 +3524,21 @@ impl Component {
 
         let maybe_parent = self.parent(ctx).await?;
 
-        Ok(SummaryDiagramComponent {
+        let geometry = if let Some(geometry) = maybe_geometry {
+            let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
+                .await
+                .map_err(|e| ComponentError::Diagram(e.to_string()))?
+                .into();
+
+            Some(GeometryAndView {
+                view_id,
+                geometry: geometry.clone().into_raw(),
+            })
+        } else {
+            None
+        };
+
+        Ok(DiagramComponentView {
             id: self.id().into(),
             component_id: self.id().into(),
             schema_name: schema.name().to_owned(),
@@ -3548,8 +3548,6 @@ impl Component {
             schema_category: schema_variant.category().to_owned(),
             display_name: self.name(ctx).await?,
             resource_id: self.resource_id(ctx).await?,
-            position,
-            size,
             component_type: self.get_type(ctx).await?.to_string(),
             color: self.color(ctx).await?.unwrap_or("#111111".into()),
             change_status: change_status.into(),
@@ -3562,28 +3560,44 @@ impl Component {
             to_delete: self.to_delete(),
             can_be_upgraded,
             from_base_change_set: false,
+            view_data: geometry,
         })
+    }
+
+    pub async fn into_frontend_type_for_default_view(
+        &self,
+        ctx: &DalContext,
+        change_status: ChangeStatus,
+        diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
+    ) -> ComponentResult<DiagramComponentView> {
+        let default_view_id = View::get_id_for_default(ctx)
+            .await
+            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+        let geometry = self.geometry(ctx, default_view_id).await?;
+
+        self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)
+            .await
     }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentCreatedPayload {
-    pub component: SummaryDiagramComponent,
+    pub component: DiagramComponentView,
     change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpdatedPayload {
-    pub component: SummaryDiagramComponent,
+    pub component: DiagramComponentView,
     pub change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentUpgradedPayload {
-    component: SummaryDiagramComponent,
+    component: DiagramComponentView,
     change_set_id: ChangeSetId,
     original_component_id: ComponentId,
 }
@@ -3607,29 +3621,32 @@ pub struct ConnectionDeletedPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentPosition {
-    x: i32,
-    y: i32,
+    x: isize,
+    y: isize,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentSize {
-    width: Option<i32>,
-    height: Option<i32>,
+    width: Option<isize>,
+    height: Option<isize>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentSetPosition {
     component_id: ComponentId,
-    position: ComponentPosition,
-    size: Option<ComponentSize>,
+    x: isize,
+    y: isize,
+    width: Option<isize>,
+    height: Option<isize>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentSetPositionPayload {
     change_set_id: ChangeSetId,
+    view_id: ViewId,
     positions: Vec<ComponentSetPosition>,
     // Used so the client can ignore the messages it caused. created by the frontend, and not stored
     client_ulid: Option<ulid::Ulid>,
@@ -3712,29 +3729,25 @@ impl WsEvent {
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
+        view_id: ViewId,
         geometries: Vec<(ComponentId, RawGeometry)>,
         client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];
         for (component_id, geometry) in geometries {
-            let position = ComponentPosition {
-                x: geometry.x.parse()?,
-                y: geometry.y.parse()?,
-            };
-            let size = ComponentSize {
-                width: geometry.width.as_ref().map(|w| w.parse()).transpose()?,
-                height: geometry.height.as_ref().map(|w| w.parse()).transpose()?,
-            };
             positions.push(ComponentSetPosition {
                 component_id,
-                position,
-                size: Some(size),
+                x: geometry.x,
+                y: geometry.y,
+                width: geometry.width,
+                height: geometry.height,
             });
         }
         WsEvent::new(
             ctx,
             WsPayload::SetComponentPosition(ComponentSetPositionPayload {
                 change_set_id,
+                view_id,
                 positions,
                 client_ulid,
             }),
@@ -3744,7 +3757,7 @@ impl WsEvent {
 
     pub async fn component_created(
         ctx: &DalContext,
-        component: SummaryDiagramComponent,
+        component: DiagramComponentView,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
@@ -3784,7 +3797,7 @@ impl WsEvent {
 
     pub async fn component_updated(
         ctx: &DalContext,
-        payload: SummaryDiagramComponent,
+        payload: DiagramComponentView,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
@@ -3798,7 +3811,7 @@ impl WsEvent {
 
     pub async fn component_upgraded(
         ctx: &DalContext,
-        payload: SummaryDiagramComponent,
+        payload: DiagramComponentView,
         original_component_id: ComponentId,
     ) -> WsEventResult<Self> {
         WsEvent::new(

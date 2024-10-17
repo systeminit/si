@@ -130,6 +130,7 @@ pub async fn remove_delete_intent(
         let payload = component
             .into_frontend_type(
                 &ctx,
+                None,
                 component.change_status(&ctx).await?,
                 &mut diagram_sockets,
             )

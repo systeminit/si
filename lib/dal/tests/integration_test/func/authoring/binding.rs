@@ -22,8 +22,8 @@ use dal::{
 };
 use dal_test::{
     helpers::{
-        create_component_for_default_schema_name, create_unlocked_variant_copy_for_schema_name,
-        encrypt_message, ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_unlocked_variant_copy_for_schema_name, encrypt_message, ChangeSetTestHelpers,
     },
     test, WorkspaceSignup,
 };
@@ -740,17 +740,19 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     // one is a secret defining component
     // create a complicated component too
     // ensure we're returning the right data
-    let _starfield = create_component_for_default_schema_name(ctx, "starfield", "starfield")
-        .await
-        .expect("could not create component");
-    let source_component = create_component_for_default_schema_name(ctx, "dummy-secret", "source")
-        .await
-        .expect("could not create component");
+    let _starfield =
+        create_component_for_default_schema_name_in_default_view(ctx, "starfield", "starfield")
+            .await
+            .expect("could not create component");
+    let source_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "source")
+            .await
+            .expect("could not create component");
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
     let destination_component =
-        create_component_for_default_schema_name(ctx, "fallout", "destination")
+        create_component_for_default_schema_name_in_default_view(ctx, "fallout", "destination")
             .await
             .expect("could not create component");
     let destination_schema_variant_id =

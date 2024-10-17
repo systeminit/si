@@ -24,4 +24,5 @@ mod resource_metadata;
 mod schema;
 mod secret;
 mod validations;
+mod view;
 mod workspace;

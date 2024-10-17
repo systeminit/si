@@ -15,7 +15,7 @@ use dal::socket::output::OutputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{ChangeSetError, SchemaError, SchemaVariantId, StandardModelError, TransactionsError};
 use dal::{SchemaId, WsEventError};
-use std::num::ParseFloatError;
+use std::num::{ParseFloatError, ParseIntError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -91,6 +91,8 @@ pub enum DiagramError {
     OutputSocket(#[from] OutputSocketError),
     #[error("parse float error: {0}")]
     ParseFloat(#[from] ParseFloatError),
+    #[error("parse int error: {0}")]
+    ParseInt(#[from] ParseIntError),
     #[error("paste failed")]
     Paste,
     #[error(transparent)]

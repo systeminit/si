@@ -5,8 +5,11 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::workspace_snapshot::DependentValueRoot;
 use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
-use dal_test::expected::{self, ExpectComponent};
-use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
+use dal_test::expected::{self, ExpectComponent, ExpectView};
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view,
+    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -21,10 +24,13 @@ mod upgrade;
 
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
-    let component =
-        create_component_for_default_schema_name(ctx, "Docker Image", "a tulip in a cup")
-            .await
-            .expect("could not create component");
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "Docker Image",
+        "a tulip in a cup",
+    )
+    .await
+    .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -183,12 +189,20 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     let schema_variant_id = schema_variant.id();
 
     // Create a component and set geometry.
-    let name = "fsu not top four";
-    let mut component = Component::new(ctx, name, schema_variant_id)
+    let mut component = create_component_for_schema_variant_on_default_view(ctx, schema_variant_id)
         .await
         .expect("could not create component");
+
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
     component
-        .set_geometry(ctx, "1", "-1", Some("500"), Some("500"))
+        .set_geometry(
+            ctx,
+            default_view_id,
+            1isize,
+            1isize,
+            Some(500isize),
+            Some(500isize),
+        )
         .await
         .expect("could not set geometry");
 
@@ -213,7 +227,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     );
 
     // Assemble the diagram just to make sure it works.
-    let _diagram = Diagram::assemble(ctx)
+    let _diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
 }
@@ -221,9 +235,10 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 #[test]
 async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     let name = "across the universe";
-    let component = create_component_for_default_schema_name(ctx, "starfield", name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "starfield", name)
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -404,9 +419,10 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
 #[test]
 async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     let name = "across the universe";
-    let component = create_component_for_default_schema_name(ctx, "starfield", name)
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "starfield", name)
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -507,8 +523,6 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
         .expect("has a view");
 
     assert_eq!(possible_world_a, view);
-
-    dbg!("committing");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -628,10 +642,13 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
 
 #[test]
 async fn set_the_universe(ctx: &mut DalContext) {
-    let component =
-        create_component_for_default_schema_name(ctx, "starfield", "across the universe")
-            .await
-            .expect("could not create component");
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "starfield",
+        "across the universe",
+    )
+    .await
+    .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -713,12 +730,18 @@ async fn paste_component_with_value(ctx: &mut DalContext) {
 
     assert!(parrots.has_value(ctx).await);
 
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
     // Copy/paste the pirate component
     let component_copy = ExpectComponent(
         component
             .component(ctx)
             .await
-            .copy_paste(ctx, component.geometry(ctx).await)
+            .create_copy(
+                ctx,
+                default_view_id,
+                component.geometry_for_default(ctx).await,
+            )
             .await
             .expect("unable to paste component")
             .id(),
@@ -759,12 +782,18 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) {
         downstream_parrots.view(ctx).await
     );
 
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
     // Copy/paste the downstream component
     let downstream_copy = ExpectComponent(
         downstream
             .component(ctx)
             .await
-            .copy_paste(ctx, downstream.geometry(ctx).await)
+            .create_copy(
+                ctx,
+                default_view_id,
+                downstream.geometry_for_default(ctx).await,
+            )
             .await
             .expect("unable to paste component")
             .id(),
