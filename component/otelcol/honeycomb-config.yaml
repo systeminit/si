@@ -7,7 +7,6 @@ receivers:
           allowed_origins:
             - "*"
 
-
 processors:
   batch:
 
@@ -22,72 +21,182 @@ processors:
       - context: spanevent
         statements:
           # js-browser document-load
-          - set(span.attributes["webjs.connectEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "connectEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.connectStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "connectStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domainLookupEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domainLookupEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domainLookupStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domainLookupStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domComplete_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domComplete" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domContentLoadedEventEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domContentLoadedEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domContentLoadedEventStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domContentLoadedEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.domInteractive_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domInteractive" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.fetchStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "fetchStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.firstContentfulPaint_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "firstContentfulPaint" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.firstPaint_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "firstPaint" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.loadEventEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "loadEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.loadEventStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "loadEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.requestStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "requestStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.responseEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "responseEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.responseStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "responseStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.secureConnectionStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "secureConnectionStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.unloadEventEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "unloadEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-          - set(span.attributes["webjs.unloadEventStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "unloadEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.connectEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "connectEnd" and
+            instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.connectStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "connectStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domainLookupEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name ==
+            "domainLookupEnd" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domainLookupStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name ==
+            "domainLookupStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domComplete_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "domComplete"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domContentLoadedEventEnd_ms"],
+            (time_unix_nano - span.start_time_unix_nano) / 1000000) where name
+            == "domContentLoadedEventEnd" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domContentLoadedEventStart_ms"],
+            (time_unix_nano - span.start_time_unix_nano) / 1000000) where name
+            == "domContentLoadedEventStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.domInteractive_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "domInteractive"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.fetchStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "fetchStart" and
+            instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.firstContentfulPaint_ms"],
+            (time_unix_nano - span.start_time_unix_nano) / 1000000) where name
+            == "firstContentfulPaint" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.firstPaint_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "firstPaint" and
+            instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.loadEventEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "loadEventEnd"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.loadEventStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "loadEventStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.requestStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "requestStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.responseEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "responseEnd"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.responseStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "responseStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.secureConnectionStart_ms"],
+            (time_unix_nano - span.start_time_unix_nano) / 1000000) where name
+            == "secureConnectionStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.unloadEventEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "unloadEventEnd"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
+          - set(span.attributes["webjs.unloadEventStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name ==
+            "unloadEventStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-document-load"
 
           # js-browser fetch
-          - set(span.attributes["webjs.connectEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "connectEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.connectStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "connectStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.domainLookupEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "fetchdomainLookupEndStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.domainLookupStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "domainLookupStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.fetchStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "fetchStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.requestStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "requestStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.responseEnd_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "responseEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.responseStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "responseStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-          - set(span.attributes["webjs.secureConnectionStart_ms"], (time_unix_nano - span.start_time_unix_nano) / 1000000) where name == "secureConnectionStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.connectEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "connectEnd" and
+            instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.connectStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "connectStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.domainLookupEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name ==
+            "fetchdomainLookupEndStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.domainLookupStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name ==
+            "domainLookupStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.fetchStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "fetchStart" and
+            instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.requestStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "requestStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.responseEnd_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "responseEnd"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.responseStart_ms"], (time_unix_nano -
+            span.start_time_unix_nano) / 1000000) where name == "responseStart"
+            and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
+          - set(span.attributes["webjs.secureConnectionStart_ms"],
+            (time_unix_nano - span.start_time_unix_nano) / 1000000) where name
+            == "secureConnectionStart" and instrumentation_scope.name ==
+            "@opentelemetry/instrumentation-fetch"
 
   filter:
     error_mode: ignore
     traces:
       spanevent:
         # js-browser document-load
-        - name == "connectEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "connectStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domainLookupEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domainLookupStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domComplete" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domContentLoadedEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domContentLoadedEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "domInteractive" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "fetchStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "firstContentfulPaint" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "firstPaint" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "loadEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "loadEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "requestStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "responseEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "responseStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "secureConnectionStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "unloadEventEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
-        - name == "unloadEventStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-document-load"
+        - name == "connectEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "connectStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domainLookupEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domainLookupStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domComplete" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domContentLoadedEventEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domContentLoadedEventStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "domInteractive" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "fetchStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "firstContentfulPaint" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "firstPaint" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "loadEventEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "loadEventStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "requestStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "responseEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "responseStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "secureConnectionStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "unloadEventEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
+        - name == "unloadEventStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-document-load"
 
         # js-browser fetch
-        - name == "connectEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "connectStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "domainLookupEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "domainLookupStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "fetchStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "requestStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "responseEnd" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "responseStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
-        - name == "secureConnectionStart" and instrumentation_scope.name == "@opentelemetry/instrumentation-fetch"
+        - name == "connectEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "connectStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "domainLookupEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "domainLookupStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "fetchStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "requestStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "responseEnd" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "responseStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
+        - name == "secureConnectionStart" and instrumentation_scope.name ==
+          "@opentelemetry/instrumentation-fetch"
 
 exporters:
   logging:
@@ -105,6 +214,10 @@ extensions:
 
 service:
   pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp]
     traces:
       receivers: [otlp]
       processors:
