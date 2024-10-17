@@ -5,7 +5,7 @@ use axum::{
 use dal::func::binding::FuncBinding;
 use dal::{ChangeSetId, DalContext, Func, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk};
 use si_frontend_types as frontend_types;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
@@ -49,12 +49,13 @@ async fn treat_single_function(
 
     // check if it is to be filtered away
     let mut schema_default_map: HashMap<SchemaId, SchemaVariantId> = HashMap::new();
+    let mut unlocked_variants = HashSet::new();
 
     // If func is unlocked or intrinsic, we always use it,
     // otherwise we return funcs that are bound to default variants
-    // OR not bound anything
+    // OR not bound anything, OR editing variants
     if func.is_locked && !func.is_intrinsic() && !bindings.is_empty() {
-        let mut bindings_to_default_svs = vec![];
+        let mut should_hide = true;
         for binding in &bindings {
             let Some(schema_variant_id) = binding.get_schema_variant() else {
                 continue;
@@ -65,20 +66,30 @@ async fn treat_single_function(
 
             if let Some(default_sv_id) = schema_default_map.get(&schema) {
                 if schema_variant_id == *default_sv_id {
-                    bindings_to_default_svs.push(binding);
+                    should_hide = false;
                 }
             } else {
+                if unlocked_variants.contains(&schema_variant_id) {
+                    should_hide = false;
+                } else {
+                    let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+                    if !variant.is_locked() {
+                        unlocked_variants.insert(schema_variant_id);
+                        should_hide = false;
+                    }
+                }
+
                 let default_for_schema =
                     SchemaVariant::get_default_id_for_schema(ctx, schema).await?;
 
                 schema_default_map.insert(schema, default_for_schema);
 
                 if default_for_schema == schema_variant_id {
-                    bindings_to_default_svs.push(binding);
+                    should_hide = false;
                 }
             }
         }
-        if bindings_to_default_svs.is_empty() {
+        if should_hide {
             return Ok(None);
         }
     }
