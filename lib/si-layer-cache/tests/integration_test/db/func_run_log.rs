@@ -1,9 +1,8 @@
 use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::{sync::Arc, time::Duration};
 
-use si_events::{
-    Actor, ChangeSetId, FuncRunId, FuncRunLog, OutputLine, Tenancy, UserPk, WorkspacePk,
-};
+use si_events::{Actor, ChangeSetId, FuncRunId, FuncRunLog, OutputLine, Tenancy, UserPk};
+use si_id::WorkspacePk;
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDb;
 use tokio::time::Instant;

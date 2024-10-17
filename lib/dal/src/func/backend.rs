@@ -13,7 +13,7 @@ use veritech_client::{
 };
 
 use crate::label_list::ToLabelList;
-use crate::workspace::WorkspaceId;
+use crate::WorkspaceId;
 use crate::{Func, FuncId, PropKind};
 
 pub mod array;

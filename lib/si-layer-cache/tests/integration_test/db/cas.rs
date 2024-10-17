@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
-use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk};
+use si_id::WorkspacePk;
 use si_layer_cache::{
     db::serialize, memory_cache::MemoryCacheConfig, persister::PersistStatus, LayerDb,
 };

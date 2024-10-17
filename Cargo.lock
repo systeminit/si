@@ -833,6 +833,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-events",
+ "si-id",
  "telemetry",
  "telemetry-nats",
  "thiserror",
@@ -1732,6 +1733,7 @@ dependencies = [
  "si-events",
  "si-frontend-types",
  "si-hash",
+ "si-id",
  "si-layer-cache",
  "si-pkg",
  "si-runtime",
@@ -4918,6 +4920,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-events",
+ "si-id",
  "telemetry",
  "telemetry-nats",
  "thiserror",
@@ -4934,6 +4937,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-events",
+ "si-id",
  "strum 0.26.3",
  "thiserror",
  "ulid",
@@ -4956,6 +4960,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-id",
  "si-layer-cache",
  "si-settings",
  "si-std",
@@ -5997,6 +6002,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-hash",
+ "si-id",
  "strum 0.26.3",
  "thiserror",
  "ulid",
@@ -6043,6 +6049,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-id"
+version = "0.1.0"
+dependencies = [
+ "derive_more",
+ "postgres-types",
+ "serde",
+ "ulid",
+]
+
+[[package]]
 name = "si-layer-cache"
 version = "0.1.0"
 dependencies = [
@@ -6066,6 +6082,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-id",
  "si-runtime",
  "si-std",
  "strum 0.26.3",

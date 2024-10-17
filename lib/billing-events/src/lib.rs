@@ -37,8 +37,9 @@ use si_data_nats::{
 };
 use si_events::{
     ChangeSetId, ChangeSetStatus, ComponentId, FuncRunId, SchemaId, SchemaVariantId, UserPk,
-    WorkspacePk, WorkspaceSnapshotAddress,
+    WorkspaceSnapshotAddress,
 };
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;

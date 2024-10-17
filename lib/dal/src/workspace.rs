@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use si_events::{ContentHash, WorkspaceSnapshotAddress};
+use si_id::{WorkspaceId, WorkspacePk};
 use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
 use si_pkg::{
@@ -24,7 +25,7 @@ use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
+    standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
     HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
     TransactionsError, User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
 };
@@ -88,25 +89,6 @@ pub enum WorkspaceError {
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
-
-// TODO(nick): switch to "id!" once "nilId" dies and explodes.
-pk!(WorkspacePk);
-
-// TODO(nick): switch to "id!" once "nilId" dies and explodes.
-pk!(WorkspaceId);
-
-impl From<WorkspacePk> for si_events::WorkspacePk {
-    fn from(value: WorkspacePk) -> Self {
-        let id: ulid::Ulid = value.into();
-        id.into()
-    }
-}
-
-impl From<si_events::WorkspacePk> for WorkspacePk {
-    fn from(value: si_events::WorkspacePk) -> Self {
-        Self(value.into_raw_id())
-    }
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {

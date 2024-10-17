@@ -1,7 +1,8 @@
 use std::{result, sync::Arc};
 
 use dal::DalContextBuilder;
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::ChangeSetId;
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
