@@ -5,7 +5,7 @@ use axum::{
 use dal::func::binding::FuncBinding;
 use dal::{ChangeSetId, DalContext, Func, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk};
 use si_frontend_types as frontend_types;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
@@ -49,11 +49,11 @@ async fn treat_single_function(
 
     // check if it is to be filtered away
     let mut schema_default_map: HashMap<SchemaId, SchemaVariantId> = HashMap::new();
-    let mut unlocked_variants = HashSet::new();
+    let mut unlocked_map: HashMap<SchemaVariantId, bool> = HashMap::new();
 
     // If func is unlocked or intrinsic, we always use it,
     // otherwise we return funcs that are bound to default variants
-    // OR not bound anything, OR editing variants
+    // OR not bound to anything, OR editing variants
     if func.is_locked && !func.is_intrinsic() && !bindings.is_empty() {
         let mut should_hide = true;
         for binding in &bindings {
@@ -69,16 +69,6 @@ async fn treat_single_function(
                     should_hide = false;
                 }
             } else {
-                if unlocked_variants.contains(&schema_variant_id) {
-                    should_hide = false;
-                } else {
-                    let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
-                    if !variant.is_locked() {
-                        unlocked_variants.insert(schema_variant_id);
-                        should_hide = false;
-                    }
-                }
-
                 let default_for_schema =
                     SchemaVariant::get_default_id_for_schema(ctx, schema).await?;
 
@@ -87,6 +77,18 @@ async fn treat_single_function(
                 if default_for_schema == schema_variant_id {
                     should_hide = false;
                 }
+            }
+
+            if let Some(is_unlocked) = unlocked_map.get(&schema_variant_id) {
+                if *is_unlocked {
+                    should_hide = false;
+                }
+            } else {
+                let variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id).await?;
+                if !variant.is_locked() {
+                    should_hide = false;
+                }
+                unlocked_map.insert(schema_variant_id, !variant.is_locked());
             }
         }
         if should_hide {
