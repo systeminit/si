@@ -17,6 +17,7 @@ export const useFeatureFlagsStore = () => {
         ADMIN_PAGE: false,
         SAAS_RELEASE: false,
         ON_DEMAND_ASSETS: false,
+        CHANGE_USER_ROLE: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
@@ -30,6 +31,7 @@ export const useFeatureFlagsStore = () => {
           this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
           this.SAAS_RELEASE = flags.includes("auth_portal_saas_release");
           this.ON_DEMAND_ASSETS = flags.includes("on_demand_assets");
+          this.CHANGE_USER_ROLE = flags.includes("change_user_role");
         });
       },
     }),

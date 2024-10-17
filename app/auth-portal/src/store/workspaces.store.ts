@@ -212,6 +212,27 @@ export const useWorkspacesStore = defineStore("workspaces", {
       });
     },
 
+    async CHANGE_MEMBERSHIP(
+      workspaceId: WorkspaceId,
+      userId: UserId,
+      role: string,
+    ) {
+      return new ApiRequest<WorkspaceMember[]>({
+        method: "post",
+        url: `/workspace/${workspaceId}/membership`,
+        params: {
+          userId,
+          role,
+        },
+        onSuccess: (response) => {
+          this.selectedWorkspaceMembersById = _.keyBy(
+            response as never,
+            (u) => u.userId,
+          );
+        },
+      });
+    },
+
     async REMOVE_USER(email: string, workspaceId: WorkspaceId) {
       return new ApiRequest<WorkspaceMember[]>({
         method: "delete",

@@ -143,5 +143,6 @@ enum InstanceEnvType {
 
 enum RoleType {
   OWNER
+  APPROVER
   EDITOR
 }

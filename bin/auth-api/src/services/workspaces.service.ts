@@ -171,6 +171,7 @@ export async function changeWorkspaceMembership(
 
 const roleTypeMap: { [key: string]: RoleType } = {
   OWNER: RoleType.OWNER,
+  APPROVER: RoleType.APPROVER,
   EDITOR: RoleType.EDITOR,
 };
 
