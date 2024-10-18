@@ -58,28 +58,32 @@ async fn add_remove_approver_from_workspace() {
         .relation(Relation::Approver)
         .subject(ObjectType::User, user_id.clone());
 
-    relation
+    let zed_token = relation
         .create(client.clone())
         .await
-        .expect("could not create relationship");
+        .expect("could not create relationship")
+        .expect("could not unwrap zed token");
 
     let can_approve = PermissionBuilder::new()
         .object(ObjectType::Workspace, workspace_id.clone())
         .permission(Permission::Approve)
-        .subject(ObjectType::User, user_id.clone());
+        .subject(ObjectType::User, user_id.clone())
+        .zed_token(zed_token);
 
     assert!(can_approve
         .has_permission(client.clone())
         .await
-        .expect("could not create relationship"));
+        .expect("could not check permission"));
 
-    relation
+    let zed_token = relation
         .delete(client.clone())
         .await
-        .expect("could not create relationship");
+        .expect("could not delete permission")
+        .expect("could not unwrap zed token");
 
     assert!(!can_approve
+        .zed_token(zed_token)
         .has_permission(client.clone())
         .await
-        .expect("could not create relationship"));
+        .expect("could not check permission"));
 }

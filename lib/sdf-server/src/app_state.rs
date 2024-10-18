@@ -3,6 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
+use si_data_spicedb::SpiceDbClient;
 use std::fmt;
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
@@ -32,6 +33,7 @@ pub struct AppState {
     create_workspace_allowlist: Vec<WorkspacePermissions>,
     pub application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
     shutdown_token: CancellationToken,
+    spicedb_client: Option<SpiceDbClient>,
 }
 
 impl AppState {
@@ -48,6 +50,7 @@ impl AppState {
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
+        spicedb_client: Option<SpiceDbClient>,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
@@ -67,6 +70,7 @@ impl AppState {
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
+            spicedb_client,
         }
     }
 
@@ -100,6 +104,10 @@ impl AppState {
 
     pub fn shutdown_token(&self) -> &CancellationToken {
         &self.shutdown_token
+    }
+
+    pub fn spicedb_client(&self) -> Option<&SpiceDbClient> {
+        self.spicedb_client.as_ref()
     }
 }
 

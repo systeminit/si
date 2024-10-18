@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::Router;
 use dal::{JwtPublicSigningKey, ServicesContext};
 use nats_multiplexer_client::MultiplexerClient;
+use si_data_spicedb::SpiceDbClient;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::sync::RwLock;
@@ -31,6 +32,7 @@ impl AxumApp {
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
+        spicedb_client: Option<SpiceDbClient>,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -44,6 +46,7 @@ impl AxumApp {
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
+            spicedb_client,
         )
     }
 
@@ -65,6 +68,7 @@ impl AxumApp {
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
+        spicedb_client: SpiceDbClient,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -78,6 +82,7 @@ impl AxumApp {
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
+            Some(spicedb_client),
         )
     }
 
@@ -98,6 +103,7 @@ impl AxumApp {
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
+        spicedb_client: Option<SpiceDbClient>,
     ) -> Self {
         let state = AppState::new(
             services_context,
@@ -111,6 +117,7 @@ impl AxumApp {
             create_workspace_allowlist,
             application_runtime_mode,
             shutdown_token,
+            spicedb_client,
         );
 
         let path_filter = Box::new(|path: &str| match path {
