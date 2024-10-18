@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{OriginalUri, Path, Query},
+    async_trait,
+    extract::{FromRequestParts, OriginalUri, Path, Query},
+    http::request::Parts,
     Json,
 };
 use dal::{ChangeSetId, WorkspacePk};
+use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use si_events::{
     audit_log::{AuditLogKind, AuditLogService},
@@ -41,7 +44,7 @@ pub async fn list_audit_logs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Query(request): Query<ListAuditLogsRequest>,
+    Qs2(request): Qs2<ListAuditLogsRequest>,
 ) -> AuditLogResult<Json<ListAuditLogsResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -76,8 +79,25 @@ pub async fn list_audit_logs(
             None => HashSet::new(),
         },
     )?;
+
     Ok(Json(ListAuditLogsResponse {
         logs: filtered_and_paginated_audit_logs,
         total,
     }))
+}
+
+pub struct Qs2<T>(pub T);
+
+#[async_trait]
+impl<S, T> FromRequestParts<S> for Qs2<T>
+where
+    S: Send + Sync,
+    T: serde::de::DeserializeOwned,
+{
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let query = parts.uri.query().unwrap();
+        Ok(Self(serde_qs::from_str(query).unwrap()))
+    }
 }
