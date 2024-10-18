@@ -6,21 +6,40 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
+    action::{
+        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+        Action, ActionError,
+    },
     attribute::value::AttributeValueError,
     prop::{PropError, PropPath},
-    AttributeValue, Component, ComponentError, ComponentId, DalContext, Prop, PropKind,
+    AttributeValue, Component, ComponentError, ComponentId, DalContext, Func, FuncError, Prop,
+    PropKind, WsEvent, WsEventError,
 };
 
 pub mod prototype;
 
 #[derive(Debug, Error)]
 pub enum ManagementError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("cannot add an action of kind {0} because component {1} does not have an action of that kind")]
+    ComponentDoesNotHaveAction(ActionKind, ComponentId),
+    #[error(
+        "cannot add a manual action named {0} because component {1} does not have a manual action with that name"
+    )]
+    ComponentDoesNotHaveManualAction(String, ComponentId),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ManagementResult<T> = Result<T, ManagementError>;
@@ -32,9 +51,22 @@ pub struct ManagementUpdateOperation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActionIdentifier {
+    pub kind: ActionKind,
+    pub manual_func_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ManagementActionOperation {
+    add: Option<Vec<String>>,
+    remove: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementOperations {
-    update: HashMap<String, ManagementUpdateOperation>,
+    update: Option<HashMap<String, ManagementUpdateOperation>>,
+    actions: Option<HashMap<String, ManagementActionOperation>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,16 +103,178 @@ pub async fn operate(
 ) -> ManagementResult<()> {
     // creation should be first
 
-    for (operation_component_id, operation) in operations.update {
-        // We only support operations on self right now
-        if operation_component_id != SELF_ID {
-            continue;
-        }
+    if let Some(updates) = operations.update {
+        for (operation_component_id, operation) in updates {
+            // We only support operations on self right now
+            if operation_component_id != SELF_ID {
+                continue;
+            }
 
-        if let Some(properties) = operation.properties {
-            update_component(ctx, manager_component_id, properties).await?;
+            let real_component_id = manager_component_id;
+
+            if let Some(properties) = operation.properties {
+                update_component(ctx, real_component_id, properties).await?;
+            }
         }
     }
+
+    if let Some(actions) = operations.actions {
+        for (operation_component_id, operations) in actions {
+            // We only support operations on self right now
+            if operation_component_id != SELF_ID {
+                continue;
+            }
+
+            let real_component_id = manager_component_id;
+
+            operate_actions(ctx, real_component_id, operations).await?;
+        }
+
+        WsEvent::action_list_updated(ctx)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    }
+
+    Ok(())
+}
+
+fn identify_action(action_string: String) -> ActionIdentifier {
+    match action_string.as_str() {
+        "create" => ActionIdentifier {
+            kind: ActionKind::Create,
+            manual_func_name: None,
+        },
+        "destroy" => ActionIdentifier {
+            kind: ActionKind::Destroy,
+            manual_func_name: None,
+        },
+        "refresh" => ActionIdentifier {
+            kind: ActionKind::Refresh,
+            manual_func_name: None,
+        },
+        "update" => ActionIdentifier {
+            kind: ActionKind::Update,
+            manual_func_name: None,
+        },
+        _ => ActionIdentifier {
+            kind: ActionKind::Manual,
+            manual_func_name: Some(action_string),
+        },
+    }
+}
+
+async fn operate_actions(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    operation: ManagementActionOperation,
+) -> ManagementResult<()> {
+    if let Some(remove_actions) = operation.remove {
+        for to_remove in remove_actions.into_iter().map(identify_action) {
+            remove_action(ctx, component_id, to_remove).await?;
+        }
+    }
+    if let Some(add_actions) = operation.add {
+        let sv_id = Component::schema_variant_id(ctx, component_id).await?;
+        let available_actions = ActionPrototype::for_variant(ctx, sv_id).await?;
+        for action in add_actions.into_iter().map(identify_action) {
+            add_action(ctx, component_id, action, &available_actions).await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn remove_action(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    action: ActionIdentifier,
+) -> ManagementResult<()> {
+    let actions = Action::find_for_kind_and_component_id(ctx, component_id, action.kind).await?;
+    match action.kind {
+        ActionKind::Create | ActionKind::Destroy | ActionKind::Refresh | ActionKind::Update => {
+            for action_id in actions {
+                Action::remove_by_id(ctx, action_id).await?;
+            }
+        }
+        ActionKind::Manual => {
+            for action_id in actions {
+                let prototype_id = Action::prototype_id(ctx, action_id).await?;
+                let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
+                let func = Func::get_by_id_or_error(ctx, func_id).await?;
+                if Some(func.name) == action.manual_func_name {
+                    Action::remove_by_id(ctx, action_id).await?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn add_action(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    action: ActionIdentifier,
+    available_actions: &[ActionPrototype],
+) -> ManagementResult<()> {
+    let prototype_id = match action.kind {
+        ActionKind::Create | ActionKind::Destroy | ActionKind::Refresh | ActionKind::Update => {
+            if !Action::find_for_kind_and_component_id(ctx, component_id, action.kind)
+                .await?
+                .is_empty()
+            {
+                return Ok(());
+            }
+
+            let Some(action_prototype) = available_actions
+                .iter()
+                .find(|proto| proto.kind == action.kind)
+            else {
+                return Err(ManagementError::ComponentDoesNotHaveAction(
+                    action.kind,
+                    component_id,
+                ));
+            };
+
+            action_prototype.id()
+        }
+        ActionKind::Manual => {
+            let Some(manual_func_name) = action.manual_func_name else {
+                return Err(ManagementError::ComponentDoesNotHaveAction(
+                    ActionKind::Manual,
+                    component_id,
+                ));
+            };
+
+            let mut proto_id = None;
+            for manual_proto in available_actions
+                .iter()
+                .filter(|proto| proto.kind == ActionKind::Manual)
+            {
+                let func = Func::get_by_id_or_error(
+                    ctx,
+                    ActionPrototype::func_id(ctx, manual_proto.id()).await?,
+                )
+                .await?;
+                if func.name == manual_func_name {
+                    proto_id = Some(manual_proto.id());
+                    break;
+                }
+            }
+
+            let Some(proto_id) = proto_id else {
+                return Err(ManagementError::ComponentDoesNotHaveManualAction(
+                    manual_func_name,
+                    component_id,
+                ));
+            };
+
+            proto_id
+        }
+    };
+
+    Action::new(ctx, prototype_id, Some(component_id)).await?;
 
     Ok(())
 }
@@ -217,6 +411,21 @@ async fn update_component(
             }
         }
     }
+
+    let component = Component::get_by_id(ctx, component_id).await?;
+    WsEvent::component_updated(
+        ctx,
+        component
+            .into_frontend_type(
+                ctx,
+                component.change_status(ctx).await?,
+                &mut HashMap::new(),
+            )
+            .await?,
+    )
+    .await?
+    .publish_on_commit(ctx)
+    .await?;
 
     Ok(())
 }
