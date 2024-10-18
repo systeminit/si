@@ -98,10 +98,13 @@ pub async fn run_prototype(
 
     if let Some(result) = result {
         let result: ManagementFuncReturn = result.try_into()?;
-        if let Some(operations) = result.operations {
-            operate(&ctx, component_id, operations).await?;
-            ctx.commit().await?;
+        if result.status == ManagementFuncStatus::Ok {
+            if let Some(operations) = result.operations {
+                operate(&ctx, component_id, operations).await?;
+            }
         }
+
+        ctx.commit().await?;
 
         return Ok(ForceChangeSetResponse::new(
             force_change_set_id,

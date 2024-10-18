@@ -21,9 +21,15 @@ export type ManagementFuncResult =
     | ManagementFuncResultFailure;
 
 export interface ManagementOperations {
-  update: { [key: string]: {
+  update?: { [key: string]: {
     properties?: object;
   } }
+  actions?: {
+    [key: string]: {
+      add?: string[],
+      remove?: string[],
+    }
+  }
 }
 
 export interface ManagementFuncResultSuccess extends ResultSuccess {

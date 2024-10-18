@@ -28,25 +28,25 @@ pub(crate) fn compile_return_types(
         FuncBackendResponseType::String => "type Output = string | null;",
         FuncBackendResponseType::Integer => "type Output = number | null;",
         FuncBackendResponseType::Qualification => {
-            "type Output {
+            "type Output = {
   result: 'success' | 'warning' | 'failure';
   message?: string | null;
 }"
         }
         FuncBackendResponseType::CodeGeneration => {
-            "type Output {
+            "type Output = {
   format: string;
   code: string;
 }"
         }
         FuncBackendResponseType::Validation => {
-            "type Output {
+            "type Output = {
   valid: boolean;
   message: string;
 }"
         }
         FuncBackendResponseType::Action => {
-            "type Output {
+            "type Output = {
     resourceId?: string | null;
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
@@ -62,12 +62,21 @@ pub(crate) fn compile_return_types(
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::Management => {
-            "type Output {
-    status: 'ok' | 'error';
-    ops?: { update: { [key: string]: { properties?: { [key: string]: unknown } } } };
-    message?: string | null;
-    }
-    type Input { thisComponent: { properties: { [key: string]: unknown } } }"
+            r#"
+type Output = {
+  status: 'ok' | 'error';
+  ops?: {
+    update?: { [key: string]: { properties?: { [key: string]: unknown } } };
+    actions?: { [key: string]: {
+      add?: ("create" | "update" | "refresh" | "delete" | string)[];
+      remove?: ("create" | "update" | "refresh" | "delete" | string)[];
+    } }
+
+  };
+  message?: string | null;
+};
+type Input = { thisComponent: { properties: { [key: string]: unknown } } };
+            "#
         }
         _ => "",
         // we no longer serve this from the backend, its static on the front end
