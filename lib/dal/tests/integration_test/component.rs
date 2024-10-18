@@ -7,8 +7,7 @@ use dal::workspace_snapshot::DependentValueRoot;
 use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
-use dal_test::helpers::create_component_for_default_schema_name;
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -17,6 +16,7 @@ mod debug;
 mod delete;
 mod get_code;
 mod get_diff;
+mod property_order;
 mod set_type;
 mod upgrade;
 
