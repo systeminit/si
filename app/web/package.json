@@ -48,6 +48,7 @@
     "@replit/codemirror-vim": "^6.0.11",
     "@si/ts-lib": "workspace:*",
     "@si/vue-lib": "workspace:*",
+    "@tanstack/vue-table": "^8.20.5",
     "@types/async": "^3.2.15",
     "@typescript/vfs": "^1.4.0",
     "@vueuse/head": "^1.1.15",

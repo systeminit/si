@@ -16,6 +16,15 @@
           :name="name as IconNames"
           class="cursor-pointer"
         />
+        <template v-for="(_, name) in SPINNABLE_ICONS" :key="name">
+          <Icon
+            v-for="d in ['left', 'right', 'up', 'down']"
+            :key="d"
+            v-tooltip="`${name}--${d}`"
+            :name="`${name}--${d}` as IconNames"
+            class="cursor-pointer"
+          />
+        </template>
       </div>
 
       <div class="w-full px-lg text-xl text-left">Logo Icons</div>
@@ -219,6 +228,7 @@ import {
   ICONS,
   LOGO_ICONS,
   ColorNamesArray,
+  SPINNABLE_ICONS,
 } from "@si/vue-lib/design-system";
 import { colors } from "@si/vue-lib";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
