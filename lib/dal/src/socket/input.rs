@@ -2,30 +2,33 @@ use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::{borrow::BorrowMut, collections::HashMap};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueError;
-use crate::change_set::ChangeSetError;
-use crate::func::FuncError;
-use crate::layer_db_types::{InputSocketContent, InputSocketContentV2};
-
-use crate::socket::{SocketArity, SocketKind};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{
-    traits::SiVersionedNodeWeight, InputSocketNodeWeight, NodeWeight, NodeWeightDiscriminants,
-    NodeWeightError,
-};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, AttributePrototype, AttributePrototypeId, AttributeValue,
-    AttributeValueId, ComponentError, ComponentId, DalContext, FuncId, HelperError, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
+    attribute::{
+        prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+        value::AttributeValueError,
+    },
+    change_set::ChangeSetError,
+    func::FuncError,
+    id, implement_add_edge_to,
+    layer_db_types::{InputSocketContent, InputSocketContentV2},
+    socket::{SocketArity, SocketKind},
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        node_weight::{
+            traits::SiVersionedNodeWeight, InputSocketNodeWeight, NodeWeight,
+            NodeWeightDiscriminants, NodeWeightError,
+        },
+        InputSocketExt, WorkspaceSnapshotError,
+    },
+    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError,
+    ComponentId, DalContext, FuncId, HelperError, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Timestamp, TransactionsError,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
@@ -114,10 +117,10 @@ pub struct InputSocket {
 
 impl InputSocket {
     pub async fn get_by_id(ctx: &DalContext, id: InputSocketId) -> InputSocketResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let node_weight = workspace_snapshot.get_node_weight_by_id(id).await?;
-
-        Self::get_from_node_weight(ctx, &node_weight).await
+        ctx.workspace_snapshot()?
+            .get_input_socket(ctx, id)
+            .await
+            .map_err(Into::into)
     }
 
     pub fn assemble(id: InputSocketId, arity: SocketArity, inner: InputSocketContentV2) -> Self {
@@ -158,56 +161,6 @@ impl InputSocket {
         self.connection_annotations.clone()
     }
 
-    async fn get_from_node_weight(
-        ctx: &DalContext,
-        node_weight: &NodeWeight,
-    ) -> InputSocketResult<Self> {
-        let input_socket_node_weight = node_weight.get_input_socket_node_weight()?;
-        let content: InputSocketContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&input_socket_node_weight.content_hash())
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
-                input_socket_node_weight.id(),
-            ))?;
-
-        Self::from_node_weight_and_content(&input_socket_node_weight, &content)
-    }
-
-    fn from_node_weight_and_content(
-        input_socket_node_weight: &InputSocketNodeWeight,
-        content: &InputSocketContent,
-    ) -> InputSocketResult<Self> {
-        let input_socket = match content {
-            InputSocketContent::V1(v1_inner) => {
-                let v2_inner = InputSocketContentV2 {
-                    timestamp: v1_inner.timestamp,
-                    name: v1_inner.name.clone(),
-                    inbound_type_definition: v1_inner.inbound_type_definition.clone(),
-                    outbound_type_definition: v1_inner.outbound_type_definition.clone(),
-                    kind: v1_inner.kind,
-                    required: v1_inner.required,
-                    ui_hidden: v1_inner.ui_hidden,
-                    connection_annotations: v1_inner.connection_annotations.clone(),
-                };
-
-                Self::assemble(
-                    input_socket_node_weight.id().into(),
-                    v1_inner.arity,
-                    v2_inner,
-                )
-            }
-            InputSocketContent::V2(inner) => Self::assemble(
-                input_socket_node_weight.id().into(),
-                input_socket_node_weight.inner().arity(),
-                inner.clone(),
-            ),
-        };
-
-        Ok(input_socket)
-    }
-
     implement_add_edge_to!(
         source_id: InputSocketId,
         destination_id: AttributePrototypeId,
@@ -222,28 +175,10 @@ impl InputSocket {
         schema_variant_id: SchemaVariantId,
     ) -> InputSocketResult<Option<Self>> {
         let name = name.as_ref();
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        for socket_node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                schema_variant_id,
-                EdgeWeightKindDiscriminants::Socket,
-            )
-            .await?
-        {
-            let node_weight = workspace_snapshot
-                .get_node_weight(socket_node_index)
-                .await?;
-            if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::InputSocket {
-                let input_socket = Self::get_from_node_weight(ctx, &node_weight).await?;
-                if input_socket.name() == name {
-                    return Ok(Some(input_socket));
-                }
-            }
-        }
-
-        Ok(None)
+        ctx.workspace_snapshot()?
+            .get_input_socket_by_name_opt(ctx, name, schema_variant_id)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn find_with_name_or_error(
@@ -267,64 +202,18 @@ impl InputSocket {
         kind: SocketKind,
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> InputSocketResult<Self> {
-        let name = name.into();
-        debug!(%schema_variant_id, %name, "creating input socket");
-
-        let connection_annotations = if let Some(ca) = connection_annotations {
-            ca
-        } else {
-            vec![ConnectionAnnotation::try_from(name.clone())?]
-        };
-
-        let content = InputSocketContentV2 {
-            timestamp: Timestamp::now(),
-            name: name.clone(),
-            inbound_type_definition: None,
-            outbound_type_definition: None,
-            kind,
-            required: false,
-            ui_hidden: false,
-            connection_annotations,
-        };
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(InputSocketContent::V2(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
+        ctx.workspace_snapshot()?
+            .new_input_socket(
+                ctx,
+                schema_variant_id,
+                name.into(),
+                func_id,
+                arity,
+                kind,
+                connection_annotations,
             )
-            .await?;
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id = workspace_snapshot.generate_ulid().await?;
-        let lineage_id = workspace_snapshot.generate_ulid().await?;
-
-        let node_weight = NodeWeight::new_input_socket(id, lineage_id, arity, hash);
-        workspace_snapshot.add_or_replace_node(node_weight).await?;
-        SchemaVariant::add_edge_to_input_socket(
-            ctx,
-            schema_variant_id,
-            id.into(),
-            EdgeWeightKind::Socket,
-        )
-        .await
-        .map_err(Box::new)?;
-
-        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
-
-        let socket = Self::assemble(id.into(), arity, content);
-
-        Self::add_edge_to_attribute_prototype(
-            ctx,
-            socket.id,
-            attribute_prototype.id(),
-            EdgeWeightKind::Prototype(None),
-        )
-        .await?;
-
-        Ok(socket)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list_ids_for_schema_variant(

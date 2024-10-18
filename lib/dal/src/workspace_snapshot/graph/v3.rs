@@ -32,6 +32,7 @@ use crate::{
 
 pub mod component;
 pub mod schema;
+pub mod socket;
 mod tests;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -233,6 +234,16 @@ impl WorkspaceSnapshotGraphV3 {
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
         self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
+    }
+
+    pub fn add_edge_between_ids(
+        &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        // let from_node_index =
+        todo!()
     }
 
     pub fn add_edge(
@@ -1531,6 +1542,14 @@ impl WorkspaceSnapshotGraphV3 {
         self.touch_node(node_idx);
 
         Ok(())
+    }
+
+    fn get_node_weight_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<NodeWeight> {
+        let node_index = self.get_node_index_by_id(id)?;
+        Ok(self.get_node_weight(node_index)?.to_owned())
     }
 }
 
