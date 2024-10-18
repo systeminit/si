@@ -51,16 +51,16 @@ pub enum LocalUdsInstanceError {
     #[error(transparent)]
     ChildShutdown(#[from] ShutdownError),
     /// Failed to spawn a child process.
-    #[error("failed to spawn cyclone child process")]
+    #[error("failed to spawn cyclone child process: {0}")]
     ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
     #[error(transparent)]
     Client(#[from] ClientError),
     /// Failed to build a container.
-    #[error("failed to build a cyclone container")]
+    #[error("failed to build a cyclone container: {0}")]
     ContainerBuild(#[source] Error),
     /// Failed to run a container.
-    #[error("failed to spawn cyclone container")]
+    #[error("failed to spawn cyclone container: {0}")]
     ContainerRun(#[source] Error),
     /// Error when shutting down a container.
     #[error(transparent)]
@@ -73,16 +73,16 @@ pub enum LocalUdsInstanceError {
     #[error("failed in working with a jail: {0}")]
     Firecracker(#[from] FirecrackerJailError),
     /// Failed to create firecracker-setup file.
-    #[error("failed to create firecracker-setup file")]
+    #[error("failed to create firecracker-setup file: {0}")]
     FirecrackerSetupCreate(#[source] io::Error),
     /// Failed to set permissions on the firecracker-setup file.
-    #[error("failed to set permissions on the firecracker-setup file")]
+    #[error("failed to set permissions on the firecracker-setup file: {0}")]
     FirecrackerSetupPermissions(#[source] io::Error),
     /// Failed to run firecracker-setup file.
     #[error("failed to run firecracker-setup file: {0}")]
     FirecrackerSetupRun(String),
     /// Failed to write to firecracker-setup file.
-    #[error("failed to write to firecracker-setup file")]
+    #[error("failed to write to firecracker-setup file: {0}")]
     FirecrackerSetupWrite(#[source] io::Error),
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
@@ -91,7 +91,7 @@ pub enum LocalUdsInstanceError {
     #[error("failed to setup host")]
     SetupFailed,
     /// Failed to create socket from temporary file.
-    #[error("failed to create temp socket")]
+    #[error("failed to create temp socket: {0}")]
     TempSocket(#[source] io::Error),
     /// Cyclone client `watch` endpoint error.
     #[error(transparent)]
