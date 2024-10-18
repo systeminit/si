@@ -3,8 +3,8 @@
     <v-circle
       :config="{
         id: socket.uniqueKey,
-        x,
-        y,
+        x: 0,
+        y: props.position.y,
         width: socketSize,
         height: socketSize,
         stroke: colors.stroke,
@@ -17,8 +17,8 @@
     <v-circle
       v-if="isSingularArityInput"
       :config="{
-        x,
-        y,
+        x: 0,
+        y: props.position.y,
         width: socketSize / 4,
         height: socketSize / 4,
         fill: colors.fillReverse,
@@ -45,8 +45,8 @@
     <v-text
       ref="socketLabelRef"
       :config="{
-        x: socket.def.nodeSide === 'left' ? 15 : -nodeWidth + 15,
-        y: y - SOCKET_SIZE / 2,
+        x: props.position.x,
+        y: props.position.y - SOCKET_SIZE / 2,
         verticalAlign: 'middle',
         align: socket.def.nodeSide === 'left' ? 'left' : 'right',
         height: SOCKET_SIZE,
@@ -68,9 +68,10 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
-import { computed, PropType } from "vue";
+import { computed } from "vue";
 import tinycolor from "tinycolor2";
 import { useTheme } from "@si/vue-lib/design-system";
+import { Vector2d } from "konva/lib/types";
 import { DiagramEdgeData, DiagramSocketData } from "./diagram_types";
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
@@ -78,21 +79,14 @@ import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const { theme } = useTheme();
 
-const props = defineProps({
-  socket: {
-    type: Object as PropType<DiagramSocketData>,
-    required: true,
-  },
-  connectedEdges: {
-    type: Array as PropType<DiagramEdgeData[]>,
-    default: () => [],
-  },
-  x: { type: Number, default: 0 },
-  y: { type: Number, default: 0 },
-  nodeWidth: { type: Number, required: true },
-  isHovered: Boolean,
-  isSelected: Boolean,
-});
+const props = defineProps<{
+  socket: DiagramSocketData;
+  connectedEdges: DiagramEdgeData[] | undefined;
+  position: Vector2d;
+  nodeWidth: number;
+  isHovered?: boolean;
+  isSelected?: boolean;
+}>();
 
 const emit = defineEmits(["hover:start", "hover:end"]);
 

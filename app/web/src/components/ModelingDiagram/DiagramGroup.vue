@@ -17,7 +17,7 @@
         width: nodeWidth + 8,
         height: nodeHeight + 8,
         x: -halfWidth - 4,
-        y: -4 - nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
+        y: -4 - NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
         strokeWidth: 1,
@@ -83,7 +83,7 @@
         :config="{
           points: [
             -nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
             -nodeWidth / 2,
             nodeBodyHeight,
           ],
@@ -97,7 +97,7 @@
         :config="{
           points: [
             nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
             nodeWidth / 2,
             nodeBodyHeight,
           ],
@@ -147,9 +147,9 @@
         :config="{
           points: [
             -nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
             nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
           ],
           hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
         }"
@@ -162,7 +162,7 @@
           width: GROUP_RESIZE_HANDLE_SIZE,
           height: GROUP_RESIZE_HANDLE_SIZE,
           x: -nodeWidth / 2,
-          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
         }"
         @mouseover="onResizeHover('top-left', $event)"
         @mouseout="onMouseOut"
@@ -173,7 +173,7 @@
           width: GROUP_RESIZE_HANDLE_SIZE,
           height: GROUP_RESIZE_HANDLE_SIZE,
           x: nodeWidth / 2,
-          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
         }"
         @mouseover="onResizeHover('top-right', $event)"
         @mouseout="onMouseOut"
@@ -184,15 +184,15 @@
     <v-group
       v-if="!collapsed"
       :config="{
-        x: -halfWidth - 1,
-        y: nodeHeaderHeight + SOCKET_MARGIN_TOP,
+        x: leftSockets.x,
+        y: leftSockets.y,
       }"
     >
       <DiagramNodeSocket
-        v-for="(socket, i) in leftSockets"
+        v-for="socket in leftSockets.sockets"
         :key="socket.uniqueKey"
         :socket="socket"
-        :y="i * SOCKET_GAP"
+        :position="socket.position"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
@@ -203,18 +203,15 @@
     <v-group
       v-if="!collapsed"
       :config="{
-        x: halfWidth + 1,
-        y:
-          nodeHeaderHeight +
-          SOCKET_MARGIN_TOP +
-          SOCKET_GAP * leftSockets.length,
+        x: rightSockets.x,
+        y: rightSockets.y,
       }"
     >
       <DiagramNodeSocket
-        v-for="(socket, i) in rightSockets"
+        v-for="socket in rightSockets.sockets"
         :key="socket.uniqueKey"
         :socket="socket"
-        :y="i * SOCKET_GAP"
+        :position="socket.position"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
@@ -226,7 +223,7 @@
     <v-group
       :config="{
         x: -halfWidth,
-        y: -nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
+        y: -NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
       }"
     >
       <!-- header background -->
@@ -238,7 +235,7 @@
           x: 0,
           y: 0,
           width: headerWidth,
-          height: headerTextHeight,
+          height: NODE_HEADER_HEIGHT,
         }"
       />
 
@@ -452,10 +449,10 @@
       :size="24 + (diffIconHover ? 4 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
       :y="
-        -nodeHeaderHeight +
+        -NODE_HEADER_HEIGHT +
         GROUP_HEADER_ICON_SIZE / 2 -
         GROUP_HEADER_BOTTOM_MARGIN +
-        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
       "
       icon="bolt"
       origin="center"
@@ -470,10 +467,10 @@
       :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
       :y="
-        -nodeHeaderHeight +
+        -NODE_HEADER_HEIGHT +
         GROUP_HEADER_ICON_SIZE / 2 -
         GROUP_HEADER_BOTTOM_MARGIN +
-        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
       "
       origin="center"
       @click="onClick('diff')"
@@ -501,6 +498,7 @@ import {
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
   GROUP_HEADER_BOTTOM_MARGIN,
+  NODE_HEADER_HEIGHT,
   GROUP_HEADER_ICON_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
@@ -630,20 +628,13 @@ const headerWidth = computed(() =>
     : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
 );
 
-const actualSockets = computed(() =>
-  _.filter(props.group.sockets, (s) => {
-    const should_skip = s.def.label === "Frame";
-
-    return !should_skip;
-  }),
-);
-
 const leftSockets = computed(() =>
-  _.filter(actualSockets.value, (s) => s.def.nodeSide === "left"),
+  props.group.layoutLeftSockets(nodeWidth.value),
 );
 const rightSockets = computed(() =>
-  _.filter(actualSockets.value, (s) => s.def.nodeSide === "right"),
+  props.group.layoutRightSockets(nodeWidth.value),
 );
+
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
@@ -655,31 +646,13 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const headerTextHeight = ref(20);
-watch(
-  [nodeWidth, () => props.group.def.title, () => props.group.def.subtitle],
-  () => {
-    // we have to let the new header be drawn on the canvas before we can check the height
-    nextTick(recalcHeaderHeight);
-  },
-  { immediate: true },
-);
-
-function recalcHeaderHeight() {
-  headerTextHeight.value =
-    titleTextRef.value?.getNode()?.getSelfRect().height || 20;
-  headerTextHeight.value *= 1.7;
-}
-
-const nodeHeaderHeight = computed(() => headerTextHeight.value);
 const nodeBodyHeight = computed(() =>
   !props.collapsed
     ? Math.max(size.value.height, MIN_NODE_DIMENSION)
     : size.value.height,
 );
 const nodeHeight = computed(
-  () =>
-    nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
+  () => NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 );
 
 const position = computed(
@@ -688,7 +661,7 @@ const position = computed(
     props.group.def.position,
 );
 
-watch([nodeWidth, nodeHeight, position, actualSockets], () => {
+watch([nodeWidth, nodeHeight, position, leftSockets, rightSockets], () => {
   // we call on nextTick to let the component actually update itself on the stage first
   // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
   nextTick(() => emit("resize"));

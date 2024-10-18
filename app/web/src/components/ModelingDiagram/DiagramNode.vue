@@ -78,7 +78,7 @@
         ref="subtitleTextRef"
         :config="{
           x: -halfWidth + 10,
-          y: headerTextHeight + 6,
+          y: NODE_HEADER_TEXT_HEIGHT + 6,
           verticalAlign: 'top',
           align: 'left',
           text: node.def.subtitle,
@@ -100,7 +100,7 @@
         :color="colors.parentColor"
         :size="16"
         :x="-halfWidth + 12"
-        :y="nodeHeaderHeight + nodeBodyHeight - 12"
+        :y="NODE_HEADER_HEIGHT + nodeBodyHeight - 12"
         icon="frame"
         @mouseout="onMouseOut"
         @mouseover="(e) => onMouseOver(e, 'parent')"
@@ -109,7 +109,12 @@
       <!-- header bottom border -->
       <v-line
         :config="{
-          points: [-halfWidth, nodeHeaderHeight, halfWidth, nodeHeaderHeight],
+          points: [
+            -halfWidth,
+            NODE_HEADER_HEIGHT,
+            halfWidth,
+            NODE_HEADER_HEIGHT,
+          ],
           stroke: colors.border,
           strokeWidth: 1,
           listening: false,
@@ -148,7 +153,7 @@
         ref="overlay"
         :config="{
           x: -halfWidth,
-          y: nodeHeaderHeight,
+          y: NODE_HEADER_HEIGHT,
           opacity: 0,
           listening: false,
         }"
@@ -171,7 +176,7 @@
         :color="getToneColorHex('action')"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 36"
-        :y="nodeHeaderHeight / 2"
+        :y="NODE_HEADER_HEIGHT / 2"
         icon="bolt"
         origin="center"
       />
@@ -183,7 +188,7 @@
         :icon="topRightIcon"
         :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 12"
-        :y="nodeHeaderHeight / 2"
+        :y="NODE_HEADER_HEIGHT / 2"
         origin="center"
         @click="onClick('diff')"
         @mouseout="diffIconHover = false"
@@ -225,17 +230,17 @@
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
       <v-group
         :config="{
-          x: -halfWidth,
-          y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
+          x: leftSockets.x,
+          y: leftSockets.y,
         }"
       >
         <DiagramNodeSocket
-          v-for="(socket, i) in leftSockets"
+          v-for="socket in leftSockets.sockets"
           :key="socket.uniqueKey"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
           :nodeWidth="nodeWidth"
           :socket="socket"
-          :y="i * SOCKET_GAP"
+          :position="socket.position"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
         />
@@ -243,21 +248,17 @@
 
       <v-group
         :config="{
-          x: halfWidth,
-          y:
-            nodeHeaderHeight +
-            SOCKET_MARGIN_TOP +
-            subtitleTextHeight +
-            SOCKET_GAP * leftSockets.length,
+          x: rightSockets.x,
+          y: rightSockets.y,
         }"
       >
         <DiagramNodeSocket
-          v-for="(socket, i) in rightSockets"
+          v-for="socket in rightSockets.sockets"
           :key="socket.uniqueKey"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
           :nodeWidth="nodeWidth"
           :socket="socket"
-          :y="i * SOCKET_GAP"
+          :position="socket.position"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
         />
@@ -310,6 +311,9 @@ import {
   SOCKET_MARGIN_TOP,
   SOCKET_SIZE,
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
+  NODE_SUBTITLE_TEXT_HEIGHT,
+  NODE_HEADER_HEIGHT,
+  NODE_HEADER_TEXT_HEIGHT,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -380,30 +384,12 @@ const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
 
-const actualSockets = computed(() =>
-  _.filter(props.node.sockets, (s) => {
-    const should_skip = s.def.label === "Frame";
-
-    return !should_skip;
-  }),
+const leftSockets = computed(() =>
+  props.node.layoutLeftSockets(nodeWidth.value),
 );
-
-const leftSockets = computed(() => {
-  const leftSockets = _.filter(
-    actualSockets.value,
-    (s) => s.def.nodeSide === "left",
-  );
-
-  return _.sortBy(leftSockets, (s) => s.def.label);
-});
-const rightSockets = computed(() => {
-  const rightSockets = _.filter(
-    actualSockets.value,
-    (s) => s.def.nodeSide === "right",
-  );
-
-  return _.sortBy(rightSockets, (s) => s.def.label);
-});
+const rightSockets = computed(() =>
+  props.node.layoutRightSockets(nodeWidth.value),
+);
 
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
@@ -427,42 +413,21 @@ const truncatedNodeTitle = computed(() => {
 const nodeWidth = computed(() => NODE_WIDTH);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
-const headerTextHeight = ref(20);
-const subtitleTextHeight = ref(0);
-watch(
-  [nodeWidth, () => props.node.def.title, () => props.node.def.subtitle],
-  () => {
-    // we have to let the new header be drawn on the canvas before we can check the height
-    nextTick(recalcHeaderHeight);
-  },
-  { immediate: true },
-);
-
-function recalcHeaderHeight() {
-  headerTextHeight.value =
-    titleTextRef.value?.getNode()?.getSelfRect().height || 20;
-  subtitleTextHeight.value = props.node.def.subtitle
-    ? subtitleTextRef.value?.getNode()?.getSelfRect().height
-    : 10;
-}
-
-const nodeHeaderHeight = computed(
-  () => headerTextHeight.value + subtitleTextHeight.value + 6 + 4,
-);
 const nodeBodyHeight = computed(() => {
   return (
-    subtitleTextHeight.value +
+    NODE_SUBTITLE_TEXT_HEIGHT +
     SOCKET_MARGIN_TOP +
-    SOCKET_GAP * (leftSockets.value.length + rightSockets.value.length - 1) +
+    SOCKET_GAP *
+      (leftSockets.value.sockets.length +
+        rightSockets.value.sockets.length -
+        1) +
     SOCKET_SIZE / 2 +
     // TODO: this isn't right yet!
     NODE_PADDING_BOTTOM +
     (statusIcons?.value.length ? 30 : 0)
   );
 });
-const nodeHeight = computed(
-  () => nodeHeaderHeight.value + nodeBodyHeight.value,
-);
+const nodeHeight = computed(() => NODE_HEADER_HEIGHT + nodeBodyHeight.value);
 
 const parentComponentId = computed(() => props.node.def.parentId);
 
@@ -474,6 +439,7 @@ const position = computed(
 
 // note: this fires once the node is done rendering
 // height and width aren't mutable for nodes
+// TODO this goes away into the new store
 watch([nodeWidth, nodeHeight], () => {
   nextTick(() => {
     componentsStore.renderedNodeSizes[props.node.uniqueKey] = {
@@ -483,7 +449,8 @@ watch([nodeWidth, nodeHeight], () => {
   });
 });
 
-watch([nodeWidth, nodeHeight, position, actualSockets], () => {
+// i dont think we'll need this?!
+watch([nodeWidth, nodeHeight, position, leftSockets, rightSockets], () => {
   // we call on nextTick to let the component actually update itself on the stage first
   // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
   nextTick(() => {
