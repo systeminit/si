@@ -7,7 +7,8 @@ use crate::{
         graph::{SchemaVariantExt, WorkspaceSnapshotGraphResult},
         node_weight::NodeWeight,
     },
-    SchemaId, SchemaVariantError, SchemaVariantId, WorkspaceSnapshotGraphV3,
+    EdgeWeight, EdgeWeightKind, InputSocketId, SchemaId, SchemaVariantError, SchemaVariantId,
+    WorkspaceSnapshotGraphV3,
 };
 
 impl SchemaVariantExt for WorkspaceSnapshotGraphV3 {
@@ -45,5 +46,19 @@ impl SchemaVariantExt for WorkspaceSnapshotGraphV3 {
         Ok(schema_id
             .ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))
             .map_err(Box::new)?)
+    }
+
+    fn schema_variant_add_edge_to_input_socket(
+        &mut self,
+        schema_variant_id: SchemaVariantId,
+        input_socket_id: InputSocketId,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        self.add_edge_between_ids(
+            schema_variant_id.into(),
+            EdgeWeight::new(EdgeWeightKind::Socket),
+            input_socket_id.into(),
+        )?;
+
+        Ok(())
     }
 }

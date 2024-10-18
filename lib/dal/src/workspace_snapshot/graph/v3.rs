@@ -236,6 +236,16 @@ impl WorkspaceSnapshotGraphV3 {
         self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
     }
 
+    pub fn add_edge_between_ids(
+        &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        // let from_node_index =
+        todo!()
+    }
+
     pub fn add_edge(
         &mut self,
         from_node_index: NodeIndex,

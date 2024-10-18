@@ -9,10 +9,10 @@ use crate::{
     workspace_snapshot::{
         graph::{InputSocketExt as InputSocketExtGraph, LineageId},
         node_weight::{traits::SiVersionedNodeWeight, InputSocketNodeWeight},
-        WorkspaceSnapshotResult,
+        SchemaVariantExt, WorkspaceSnapshotResult,
     },
-    DalContext, FuncId, InputSocket, InputSocketId, SchemaVariantId, SocketArity, SocketKind,
-    Timestamp, WorkspaceSnapshot, WorkspaceSnapshotError,
+    DalContext, EdgeWeight, EdgeWeightKind, FuncId, InputSocket, InputSocketId, SchemaVariantId,
+    SocketArity, SocketKind, Timestamp, WorkspaceSnapshot, WorkspaceSnapshotError,
 };
 
 #[async_trait]
@@ -34,7 +34,7 @@ pub trait InputSocketExt {
 
     /// Create a new [`InputSocket`].
     async fn new_input_socket(
-        &mut self,
+        &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         name: String,
@@ -48,7 +48,7 @@ pub trait InputSocketExt {
 #[async_trait]
 impl InputSocketExt for WorkspaceSnapshot {
     async fn new_input_socket(
-        &mut self,
+        &self,
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         name: String,
@@ -88,7 +88,7 @@ impl InputSocketExt for WorkspaceSnapshot {
 
         let input_socket_id: InputSocketId = self.generate_ulid().await?.into();
         let lineage_id: LineageId = self.generate_ulid().await?.into();
-        let input_socket_node_weight = self.working_copy().await.new_input_socket(
+        let input_socket_node_weight = self.working_copy_mut().await.new_input_socket(
             schema_variant_id,
             input_socket_id,
             lineage_id,
@@ -102,7 +102,8 @@ impl InputSocketExt for WorkspaceSnapshot {
         )
         .map_err(Box::new)?;
 
-        // Add edge to schema variant
+        self.schema_variant_add_edge_to_input_socket(schema_variant_id, input_socket_id)
+            .await?;
         // new AttributePrototype
         // Add edge to AttributePrototype
 

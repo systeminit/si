@@ -193,7 +193,7 @@ impl WorkspaceSnapshotError {
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
 /// The workspace graph. The public interface for this is provided through the the various `Ext`
-/// traits that are also implemented for [`WorkspaceSnapshot`].
+/// traits that are implemented for [`WorkspaceSnapshot`].
 ///
 /// ## Internals
 ///
