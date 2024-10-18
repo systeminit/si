@@ -101,9 +101,10 @@ pub async fn run_prototype(
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
                 operate(&ctx, component_id, operations).await?;
-                ctx.commit().await?;
             }
         }
+
+        ctx.commit().await?;
 
         return Ok(ForceChangeSetResponse::new(
             force_change_set_id,
