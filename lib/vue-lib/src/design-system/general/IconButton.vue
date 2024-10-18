@@ -133,4 +133,6 @@ const iconShowing = computed(() => {
 const iconToneDefault = computed(() =>
   props.iconIdleTone ? props.iconIdleTone : props.iconTone,
 );
+
+defineExpose({ startActive, endActive, onHover, onEndHover });
 </script>

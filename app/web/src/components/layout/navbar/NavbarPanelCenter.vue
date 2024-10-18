@@ -23,13 +23,27 @@
     >
       <Icon name="beaker" />
     </NavbarButton>
+
+    <NavbarButton
+      v-if="featureFlagsStore.AUDIT_PAGE"
+      tooltipText="Audit"
+      :selected="route.matched.some((r) => r.name === 'workspace-audit')"
+      :linkTo="{
+        name: 'workspace-audit',
+        params: { changeSetId: 'auto' },
+      }"
+    >
+      <Icon name="eye" />
+    </NavbarButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import { Icon } from "@si/vue-lib/design-system";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
+const featureFlagsStore = useFeatureFlagsStore();
 </script>

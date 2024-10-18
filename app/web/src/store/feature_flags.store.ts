@@ -12,6 +12,7 @@ const FLAG_MAPPING = {
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
   MANAGEMENT_FUNCTIONS: "management-functions",
+  AUDIT_PAGE: "audit-page",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

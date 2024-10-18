@@ -108,6 +108,7 @@ const props = defineProps({
     type: String as PropType<DropdownMenuVariant>,
     default: "compact",
   },
+  alignCenter: Boolean,
 });
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -271,6 +272,8 @@ function readjustMenuPosition() {
   posX.value = anchorRect.x;
   if (props.submenu) {
     posX.value = anchorRect.right;
+  } else if (props.alignCenter) {
+    posX.value = anchorRect.x + anchorRect.width / 2 - menuRect.width / 2;
   }
   // NOTE - window.innerWidth was including scrollbar width, so throwing off calc
   const windowWidth = document.documentElement.clientWidth;

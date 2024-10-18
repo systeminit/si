@@ -175,7 +175,7 @@ pub fn filter_and_paginate(
     service_filter: HashSet<AuditLogService>,
     change_set_filter: HashSet<ChangeSetId>,
     user_filter: HashSet<UserPk>,
-) -> AuditLogResult<Vec<si_frontend_types::AuditLog>> {
+) -> AuditLogResult<(Vec<si_frontend_types::AuditLog>, usize)> {
     // First, filter the logs based on our chosen filters. This logic works by processing each
     // audit log and assuming each log is within our desired scope by default. The instant that a
     // log does not meet our scope, we continue!
@@ -220,8 +220,10 @@ pub fn filter_and_paginate(
         filtered_audit_logs.reverse();
     }
 
+    let total = filtered_audit_logs.len();
+
     // Finally, paginate and return.
-    Ok(paginate(filtered_audit_logs, page, page_size))
+    Ok((paginate(filtered_audit_logs, page, page_size), total))
 }
 
 fn paginate(
