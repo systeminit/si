@@ -102,6 +102,7 @@ overflow hidden */
           >
             <DiagramNode
               v-if="!areMyAncestorsCollapsed(node)"
+              :key="node.uniqueKey"
               :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
               :debug="enableDebugMode"
               :isHovered="elementIsHovered(node)"

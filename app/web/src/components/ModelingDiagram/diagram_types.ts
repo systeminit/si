@@ -1,3 +1,4 @@
+import * as _ from "lodash-es";
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
 import { Vector2d } from "konva/lib/types";
@@ -5,6 +6,12 @@ import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import {
+  NODE_HEADER_HEIGHT,
+  SOCKET_GAP,
+  SOCKET_MARGIN_TOP,
+  SOCKET_TOP_MARGIN,
+} from "./diagram_constants";
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
@@ -27,8 +34,13 @@ export abstract class DiagramElementData {
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
 
-export class DiagramNodeData extends DiagramElementData {
+interface DiagramSocketDataWithPosition extends DiagramSocketData {
+  position: Vector2d;
+}
+abstract class DiagramNodeHasSockets extends DiagramElementData {
   public sockets: DiagramSocketData[];
+  public readonly socketStartingY: number =
+    NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   constructor(readonly def: DiagramNodeDef) {
     super();
@@ -36,6 +48,55 @@ export class DiagramNodeData extends DiagramElementData {
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
   }
 
+  layoutLeftSockets(nodeWidth: number) {
+    if (!this.sockets) return { x: 0, y: 0, sockets: [] };
+    const layout: DiagramSocketDataWithPosition[] = [];
+    const sockets = _.sortBy(
+      this.sockets
+        .filter((s) => s.def.label !== "Frame")
+        .filter((s) => s.def.nodeSide === "left"),
+      (s) => s.def.label,
+    );
+    for (const [i, socket] of sockets.entries()) {
+      const y = i * SOCKET_GAP;
+      const x = 15;
+      socket.position = { x, y };
+      layout.push(socket as DiagramSocketDataWithPosition);
+    }
+    return {
+      x: (nodeWidth / 2) * -1,
+      y: this.socketStartingY,
+      sockets: layout,
+    };
+  }
+
+  layoutRightSockets(nodeWidth: number) {
+    if (!this.sockets) return { x: 0, y: 0, sockets: [] };
+    const numLeft = this.sockets
+      .filter((s) => s.def.nodeSide === "left")
+      .filter((s) => s.def.label !== "Frame").length;
+    const layout: DiagramSocketDataWithPosition[] = [];
+    const sockets = _.sortBy(
+      this.sockets
+        .filter((s) => s.def.label !== "Frame")
+        .filter((s) => s.def.nodeSide === "right"),
+      (s) => s.def.label,
+    );
+    for (const [i, socket] of sockets.entries()) {
+      const y = i * SOCKET_GAP;
+      const x = -nodeWidth + 15;
+      socket.position = { x, y };
+      layout.push(socket as DiagramSocketDataWithPosition);
+    }
+    return {
+      x: nodeWidth / 2,
+      y: this.socketStartingY + SOCKET_GAP * numLeft,
+      sockets: layout,
+    };
+  }
+}
+
+export class DiagramNodeData extends DiagramNodeHasSockets {
   get uniqueKey() {
     return DiagramNodeData.generateUniqueKey(this.def.id);
   }
@@ -49,15 +110,7 @@ export class DiagramNodeData extends DiagramElementData {
   }
 }
 
-export class DiagramGroupData extends DiagramElementData {
-  public sockets?: DiagramSocketData[];
-
-  constructor(readonly def: DiagramNodeDef) {
-    super();
-    this.sockets =
-      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
-  }
-
+export class DiagramGroupData extends DiagramNodeHasSockets {
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
   }
@@ -72,6 +125,8 @@ export class DiagramGroupData extends DiagramElementData {
 }
 
 export class DiagramSocketData extends DiagramElementData {
+  position?: Vector2d;
+
   constructor(
     readonly parent: DiagramNodeData | DiagramGroupData,
     readonly def: DiagramSocketDef,
