@@ -30,9 +30,11 @@ start_and_track_ssm_session() {
   echo "Info: tracking SSM execution ID: $command_id"
 
   # Poll for command status with a timeout of 60 seconds
-  timeout=180
+  timeout=720
   elapsed=0
   interval=5
+
+  echo "Info: running with a timeout of $timeout, interval of $interval"
 
   while [ $elapsed -lt $timeout ]; do
     status=$(check_ssm_command_status)
