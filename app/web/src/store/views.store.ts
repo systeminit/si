@@ -1,7 +1,9 @@
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { IRect, Vector2d } from "konva/lib/types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ViewId, View, Components, Sockets, Edges } from "@/api/sdf/dal/views";
+import { DiagramElementUniqueKey } from "@/components/ModelingDiagram/diagram_types";
 import handleStoreError from "./errors";
 
 import { useChangeSetsStore } from "./change_sets.store";
@@ -67,13 +69,43 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
              * but those could just be a `structuredClone` of this data
              * */
             this.components = view.components;
+            // currently edges store their socket location information
+            // internally... maybe we should stop that
             this.edges = view.edges;
+            // derive the socket position from the component position
+            // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
           }
+        },
+        async LIST_VIEWS() {
+          // TODO
+        },
+        // no viewId means load the default
+        async SELECT_VIEW(viewId?: ViewId) {
+          // TODO, fetch, and set to selected view
+        },
+        async MOVE_COMPONENTS(
+          components: DiagramElementUniqueKey[],
+          positionDelta: Vector2d,
+          writeToChangeSet?: boolean,
+          broadcastToClients?: boolean,
+        ) {
+          // TODO, bump all elements and their sockets by the vector
+        },
+        async RESIZE_COMPONENT(
+          component: DiagramElementUniqueKey,
+          position: IRect,
+          positionDelta: Vector2d,
+          writeToChangeSet?: boolean,
+          broadcastToClients?: boolean,
+        ) {
+          // TODO, sockets need to be re-positioned if delta X or Y is not 0
         },
       },
       onActivated() {
         if (!changeSetId) return;
+        this.SELECT_VIEW();
+        this.LIST_VIEWS();
 
         const realtimeStore = useRealtimeStore();
 
