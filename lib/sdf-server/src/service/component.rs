@@ -133,6 +133,10 @@ impl IntoResponse for ComponentError {
             ComponentError::KeyAlreadyExists(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
+            ComponentError::DalComponent(err) => match err {
+                DalComponentError::NotFound(_) => (StatusCode::NOT_FOUND, err.to_string()),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
