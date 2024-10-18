@@ -1,5 +1,5 @@
 //! This module contains [`Component`], which is an instance of a
-//! [`SchemaVariant`](SchemaVariant) and a _model_ of a "real world resource".
+//! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
@@ -33,7 +33,7 @@ use crate::code_view::CodeViewError;
 use crate::diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge};
 use crate::func::argument::FuncArgumentError;
 use crate::history_event::HistoryEventMetadata;
-use crate::layer_db_types::{ComponentContent, ComponentContentV2};
+use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::module::{Module, ModuleError};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
@@ -56,9 +56,6 @@ use si_frontend_types::{
     SummaryDiagramComponent,
 };
 
-use self::inferred_connection_graph::InferredConnectionGraphError;
-use crate::diagram::geometry::{Geometry, RawGeometry};
-use crate::diagram::view::View;
 use crate::{
     id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
@@ -66,6 +63,8 @@ use crate::{
     StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
     WsEventError, WsEventResult, WsPayload,
 };
+
+use self::inferred_connection_graph::InferredConnectionGraphError;
 
 pub mod code;
 pub mod debug;
@@ -76,6 +75,11 @@ pub mod properties;
 pub mod qualification;
 pub mod resource;
 pub mod socket;
+
+pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_WIDTH: &str = "500";
+pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -116,8 +120,6 @@ pub enum ComponentError {
     ComponentMissingValue(ComponentId, PropId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
-    #[error("diagram error: {0}")]
-    Diagram(String),
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
@@ -276,14 +278,31 @@ pub struct Component {
     #[serde(flatten)]
     timestamp: Timestamp,
     to_delete: bool,
+    x: String,
+    y: String,
+    width: Option<String>,
+    height: Option<String>,
 }
 
-impl From<Component> for ComponentContentV2 {
+impl From<Component> for ComponentContentV1 {
     fn from(value: Component) -> Self {
         Self {
             timestamp: value.timestamp,
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height,
         }
     }
+}
+
+// Used to transfer the size and position of a component
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ComponentGeometry {
+    pub x: String,
+    pub y: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -294,16 +313,45 @@ pub struct ControllingFuncData {
 }
 
 impl Component {
-    pub fn assemble(node_weight: &ComponentNodeWeight, content: ComponentContentV2) -> Self {
+    pub fn assemble(node_weight: &ComponentNodeWeight, content: ComponentContentV1) -> Self {
         Self {
             id: node_weight.id().into(),
             timestamp: content.timestamp,
             to_delete: node_weight.to_delete(),
+            x: content.x,
+            y: content.y,
+            width: content.width,
+            height: content.height,
         }
     }
 
     pub fn id(&self) -> ComponentId {
         self.id
+    }
+
+    pub fn x(&self) -> &str {
+        &self.x
+    }
+
+    pub fn y(&self) -> &str {
+        &self.y
+    }
+
+    pub fn width(&self) -> Option<&str> {
+        self.width.as_deref()
+    }
+
+    pub fn height(&self) -> Option<&str> {
+        self.height.as_deref()
+    }
+
+    pub fn geometry(&self) -> ComponentGeometry {
+        ComponentGeometry {
+            x: self.x.to_owned(),
+            y: self.y.to_owned(),
+            width: self.width.to_owned(),
+            height: self.height.to_owned(),
+        }
     }
 
     pub fn timestamp(&self) -> &Timestamp {
@@ -406,15 +454,19 @@ impl Component {
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Self> {
-        let content = ComponentContentV2 {
+        let content = ComponentContentV1 {
             timestamp: Timestamp::now(),
+            x: DEFAULT_COMPONENT_X_POSITION.to_string(),
+            y: DEFAULT_COMPONENT_Y_POSITION.to_string(),
+            width: None,
+            height: None,
         };
 
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
-                Arc::new(ComponentContent::V2(content.clone()).into()),
+                Arc::new(ComponentContent::V1(content.clone()).into()),
                 None,
                 ctx.events_tenancy(),
                 ctx.events_actor(),
@@ -424,7 +476,6 @@ impl Component {
         Self::new_with_content_address(ctx, name, schema_variant_id, hash).await
     }
 
-    /// Create new component node but retain existing content address
     pub async fn new_with_content_address(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -453,14 +504,6 @@ impl Component {
             EdgeWeightKind::new_use(),
         )
         .await?;
-
-        // Create geometry node
-        let view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
-        Geometry::new(ctx, id.into(), view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
 
         let mut dvu_roots = vec![];
 
@@ -1273,7 +1316,7 @@ impl Component {
     async fn try_get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<(ComponentNodeWeight, ComponentContentV2)>> {
+    ) -> ComponentResult<Option<(ComponentNodeWeight, ComponentContentV1)>> {
         if let Some((component_node_weight, content_hash)) =
             Self::try_get_node_weight_and_content_hash(ctx, component_id).await?
         {
@@ -1286,7 +1329,9 @@ impl Component {
                     component_id.into(),
                 ))?;
 
-            return Ok(Some((component_node_weight, content.extract())));
+            let ComponentContent::V1(inner) = content;
+
+            return Ok(Some((component_node_weight, inner)));
         }
 
         Ok(None)
@@ -1295,7 +1340,7 @@ impl Component {
     async fn get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV2)> {
+    ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV1)> {
         Self::try_get_node_weight_and_content(ctx, component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))
@@ -1381,7 +1426,10 @@ impl Component {
         for node_weight in node_weights {
             match contents.get(&node_weight.content_hash()) {
                 Some(content) => {
-                    components.push(Self::assemble(&node_weight, content.to_owned().extract()));
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let ComponentContent::V1(inner) = content;
+
+                    components.push(Self::assemble(&node_weight, inner.to_owned()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -1455,18 +1503,6 @@ impl Component {
         Ok(None)
     }
 
-    // TODO take in view id
-    pub async fn geometry(&self, ctx: &DalContext) -> ComponentResult<Geometry> {
-        let view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
-
-        Geometry::get_by_component_and_view(ctx, self.id, view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))
-    }
-
-    // TODO take in view id
     pub async fn set_geometry(
         &mut self,
         ctx: &DalContext,
@@ -1474,24 +1510,35 @@ impl Component {
         y: impl Into<String>,
         width: Option<impl Into<String>>,
         height: Option<impl Into<String>>,
-    ) -> ComponentResult<()> {
-        let mut geometry_pre = self.geometry(ctx).await?;
+    ) -> ComponentResult<Self> {
+        let id: ComponentId = self.id;
 
-        let geometry_post = RawGeometry {
-            x: x.into(),
-            y: y.into(),
-            width: width.map(|w| w.into()),
-            height: height.map(|h| h.into()),
-        };
+        let before = ComponentContentV1::from(self.clone());
+        self.x = x.into();
+        self.y = y.into();
+        self.width = width.map(|w| w.into());
+        self.height = height.map(|h| h.into());
+        let updated = ComponentContentV1::from(self.clone());
 
-        if geometry_pre.clone().raw() != geometry_post {
-            geometry_pre
-                .update(ctx, geometry_post)
-                .await
-                .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+        if updated != before {
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(ComponentContent::V1(updated).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            ctx.workspace_snapshot()?
+                .update_content(id.into(), hash)
+                .await?;
         }
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
 
-        Ok(())
+        Ok(Self::assemble(&node_weight, content))
     }
 
     pub async fn set_resource_id(
@@ -2434,7 +2481,7 @@ impl Component {
         let original_component = self.clone();
         let mut component = self;
 
-        let before = ComponentContentV2::from(component.clone());
+        let before = ComponentContentV1::from(component.clone());
         lambda(&mut component)?;
 
         // The `to_delete` lives on the node itself, not in the content, so we need to be a little
@@ -2456,13 +2503,13 @@ impl Component {
                 .await?;
         }
 
-        let updated = ComponentContentV2::from(component.clone());
+        let updated = ComponentContentV1::from(component.clone());
         if updated != before {
             let (hash, _) = ctx
                 .layer_db()
                 .cas()
                 .write(
-                    Arc::new(ComponentContent::V2(updated.clone()).into()),
+                    Arc::new(ComponentContent::V1(updated.clone()).into()),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
@@ -2729,7 +2776,7 @@ impl Component {
     pub async fn copy_paste(
         &self,
         ctx: &DalContext,
-        component_geometry: RawGeometry,
+        component_geometry: ComponentGeometry,
     ) -> ComponentResult<Self> {
         let schema_variant = self.schema_variant(ctx).await?;
 
@@ -3382,13 +3429,11 @@ impl Component {
         let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
         let schema_id = schema.id();
 
-        let geometry = self.geometry(ctx).await?;
-
         let position = GridPoint {
-            x: geometry.x().parse::<f64>()?.round() as isize,
-            y: geometry.y().parse::<f64>()?.round() as isize,
+            x: self.x().parse::<f64>()?.round() as isize,
+            y: self.y().parse::<f64>()?.round() as isize,
         };
-        let size = match (geometry.width(), geometry.height()) {
+        let size = match (self.width(), self.height()) {
             (Some(w), Some(h)) => Size2D {
                 height: h.parse()?,
                 width: w.parse()?,
@@ -3595,21 +3640,21 @@ impl WsEvent {
     pub async fn set_component_position(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
-        geometries: Vec<(ComponentId, RawGeometry)>,
+        components: Vec<Component>,
         client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];
-        for (component_id, geometry) in geometries {
+        for component in components {
             let position = ComponentPosition {
-                x: geometry.x.parse()?,
-                y: geometry.y.parse()?,
+                x: component.x.parse()?,
+                y: component.y.parse()?,
             };
             let size = ComponentSize {
-                width: geometry.width.as_ref().map(|w| w.parse()).transpose()?,
-                height: geometry.height.as_ref().map(|w| w.parse()).transpose()?,
+                width: component.width.as_ref().map(|w| w.parse()).transpose()?,
+                height: component.height.as_ref().map(|w| w.parse()).transpose()?,
             };
             positions.push(ComponentSetPosition {
-                component_id,
+                component_id: component.id(),
                 position,
                 size: Some(size),
             });

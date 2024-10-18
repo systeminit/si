@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use dal::{
     cached_module::CachedModule,
     change_status::ChangeStatus,
-    component::frame::Frame,
+    component::{frame::Frame, DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH},
     generate_name,
     pkg::{import_pkg_from_pkg, ImportOptions},
     ChangeSet, Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
@@ -124,7 +124,6 @@ pub async fn create_component(
 
     let variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
-    let initial_geometry = component.geometry(&ctx).await?;
 
     component
         .set_geometry(
@@ -133,10 +132,10 @@ pub async fn create_component(
             request.y.clone(),
             request
                 .width
-                .or_else(|| initial_geometry.width().map(ToString::to_string)),
+                .or_else(|| Some(DEFAULT_COMPONENT_WIDTH.to_string())),
             request
                 .height
-                .or_else(|| initial_geometry.height().map(ToString::to_string)),
+                .or_else(|| Some(DEFAULT_COMPONENT_HEIGHT.to_string())),
         )
         .await?;
 

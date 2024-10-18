@@ -15,12 +15,12 @@ mod test {
             },
         },
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
-        WorkspaceSnapshotGraphVCurrent,
+        WorkspaceSnapshotGraphV3,
     };
 
     #[test]
     fn correct_exclusive_outgoing_edges() -> WorkspaceSnapshotGraphResult<()> {
-        let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()?;
+        let mut graph = WorkspaceSnapshotGraphV3::new()?;
 
         let schema_variant_1_id = graph.generate_ulid()?;
         let schema_variant_2_id = graph.generate_ulid()?;
@@ -59,7 +59,7 @@ mod test {
         let component_idx = graph.add_or_replace_node(component.clone())?;
 
         graph.add_edge(
-            graph.root(),
+            graph.root_index,
             EdgeWeight::new(EdgeWeightKind::new_use()),
             component_idx,
         )?;
@@ -172,7 +172,7 @@ mod test {
 
     #[test]
     fn correct_exclusive_outgoing_action_edges() -> WorkspaceSnapshotGraphResult<()> {
-        let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()?;
+        let mut graph = WorkspaceSnapshotGraphV3::new()?;
 
         let action_id = graph.generate_ulid()?;
         let prototype_1_id = graph.generate_ulid()?;

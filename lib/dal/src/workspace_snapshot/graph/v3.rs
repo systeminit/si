@@ -21,8 +21,8 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
+            detect_updates::{Detector, Update},
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
         CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
@@ -32,6 +32,7 @@ use crate::{
 
 pub mod component;
 pub mod schema;
+mod tests;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraphV3 {
@@ -116,14 +117,6 @@ impl WorkspaceSnapshotGraphV3 {
     /// Access the internal petgraph for this snapshot
     pub fn graph(&self) -> &StableGraph<NodeWeight, EdgeWeight> {
         &self.graph
-    }
-
-    pub(crate) fn node_index_by_id(&self) -> &HashMap<Ulid, NodeIndex> {
-        &self.node_index_by_id
-    }
-
-    pub(crate) fn node_indices_by_lineage_id(&self) -> &HashMap<Ulid, HashSet<NodeIndex>> {
-        &self.node_indices_by_lineage_id
     }
 
     pub fn generate_ulid(&self) -> WorkspaceSnapshotGraphResult<Ulid> {
@@ -568,6 +561,10 @@ impl WorkspaceSnapshotGraphV3 {
         Ok(maybe_equivalent_node)
     }
 
+    pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
+        Detector::new(self, updated_graph).detect_updates()
+    }
+
     #[allow(dead_code)]
     pub fn dot(&self) {
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
@@ -738,7 +735,6 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
-                    EdgeWeightKindDiscriminants::Represents => "black",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
@@ -785,7 +781,6 @@ impl WorkspaceSnapshotGraphV3 {
                             ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
-                            ContentAddressDiscriminants::Geometry => "black",
                             ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
                             ContentAddressDiscriminants::Module => "yellow",
@@ -798,7 +793,6 @@ impl WorkspaceSnapshotGraphV3 {
                             ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
                             ContentAddressDiscriminants::ManagementPrototype => "black",
-                            ContentAddressDiscriminants::View => "black",
                         };
                         (discrim.to_string(), color)
                     }
@@ -831,10 +825,6 @@ impl WorkspaceSnapshotGraphV3 {
                         CategoryNodeKind::DependentValueRoots => {
                             ("Dependent Values (Category)".into(), "black")
                         }
-                        CategoryNodeKind::View => ("Views (Category)".into(), "black"),
-                        CategoryNodeKind::DiagramObject => {
-                            ("Diagram Objects (Category)".into(), "black")
-                        }
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
@@ -851,7 +841,6 @@ impl WorkspaceSnapshotGraphV3 {
                         format!("Func Arg\n{}", func_arg_node_weight.name()),
                         "black",
                     ),
-                    NodeWeight::Geometry(_) => ("Geometry\n".to_string(), "green"),
                     NodeWeight::InputSocket(_) => ("Input Socket".to_string(), "black"),
                     NodeWeight::Ordering(_) => {
                         (NodeWeightDiscriminants::Ordering.to_string(), "gray")
@@ -872,7 +861,6 @@ impl WorkspaceSnapshotGraphV3 {
                         format!("FinishedDependentValue\n{}", node_weight.value_id()),
                         "red",
                     ),
-                    NodeWeight::View(_) => ("View\n".to_string(), "black"),
                     NodeWeight::ManagementPrototype(_) => {
                         ("ManagementPrototype".to_string(), "black")
                     }
@@ -1408,7 +1396,6 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
-                    | EdgeWeightKind::Represents
                     | EdgeWeightKind::Root
                     | EdgeWeightKind::SocketValue
                     | EdgeWeightKind::ValidationOutput
@@ -1527,7 +1514,6 @@ impl WorkspaceSnapshotGraphV3 {
     /// we treat node weights as immutable and replace them by creating a new
     /// node with a new node weight and replacing references to point to the new
     /// node.
-    #[allow(dead_code)]
     pub(crate) fn update_node_weight<L>(
         &mut self,
         node_idx: NodeIndex,
