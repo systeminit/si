@@ -1052,6 +1052,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return componentUpdate;
           },
 
+          async SET_PARENT(componentId: ComponentId, newParentId: ComponentId) {
+            // TODO
+          },
+
           async SET_COMPONENT_GEOMETRY(
             componentUpdates: SingleSetComponentGeometryData[],
             clientUlid: string,
