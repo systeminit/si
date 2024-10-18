@@ -134,6 +134,8 @@ pub enum AttributeValueError {
     },
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
+    #[error("object field is not a child prop of the object prop: {0}")]
+    FieldNotChildOfObject(AttributeValueId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -206,6 +208,8 @@ pub enum AttributeValueError {
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
     UnexpectedGraphLayout(&'static str),
+    #[error("reached unreachable code")]
+    Unreachable,
     #[error("validation error: {0}")]
     Validation(#[from] ValidationError),
     #[error("value source error: {0}")]
@@ -1745,12 +1749,13 @@ impl AttributeValue {
     ) -> AttributeValueResult<Option<String>> {
         Ok(ctx
             .workspace_snapshot()?
-            .edges_directed(attribute_value_id, Incoming)
+            .edges_directed_for_edge_weight_kind(
+                attribute_value_id,
+                Incoming,
+                EdgeWeightKindDiscriminants::Contain,
+            )
             .await?
-            .iter()
-            .find(|(edge_weight, _, _)| {
-                matches!(edge_weight.kind(), EdgeWeightKind::Contain(Some(_)))
-            })
+            .first()
             .and_then(|(edge_weight, _, _)| match edge_weight.kind() {
                 EdgeWeightKind::Contain(key) => key.to_owned(),
                 _ => None,
@@ -2389,6 +2394,23 @@ impl AttributeValue {
         Ok(Some(parent_av_id))
     }
 
+    async fn get_child_av_ids_from_ordering_node(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .ordering_node_for_container(id)
+            .await?
+            .map(|ordering_weight| {
+                ordering_weight
+                    .order()
+                    .iter()
+                    .map(|&id| id.into())
+                    .collect()
+            }))
+    }
+
     /// Get the child attribute values for this attribute value, if any exist.
     /// Returns them in order. All container values (Object, Map, Array), are
     /// ordered, so this will always return the child attribute values of a
@@ -2397,30 +2419,66 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+        if let Some(prop) = Self::prop_for_id(ctx, id).await? {
+            match prop.kind {
+                PropKind::Boolean | PropKind::Integer | PropKind::Json | PropKind::String => {
+                    Ok(vec![])
+                }
+                PropKind::Array | PropKind::Map => {
+                    Self::get_child_av_ids_from_ordering_node(ctx, id)
+                        .await?
+                        .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))
+                }
+                // Unlike maps or arrays, we want to walk object
+                // attribute values in prop order, not attribute
+                // value order, so that we always return them in the
+                // same order (the order the props were created for
+                // the schema variant), not the order they were set
+                // on the attribute value
+                //
+                // TODO doing this on read papers over the fact that we're storing them in an
+                // order we do not prefer. We should really just ensure it's impossible to
+                // create a node with these out of sync, or remove the ordering node from
+                // object props altogether.
+                PropKind::Object => {
+                    // NOTE probably can get the unordered ones if it comes down to it.
+                    let child_ids = Self::get_child_av_ids_from_ordering_node(ctx, id)
+                        .await?
+                        .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))?;
+                    let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop.id).await?;
 
-        if let Some(ordering) = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordering)
-            .await?
-            .pop()
-        {
-            let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
-            if let NodeWeight::Ordering(ordering_weight) = node_weight {
-                Ok(ordering_weight
-                    .order()
-                    .clone()
-                    .into_iter()
-                    .map(|ulid| ulid.into())
-                    .collect())
-            } else {
-                Err(AttributeValueError::NodeWeightMismatch(
-                    ordering,
-                    NodeWeightDiscriminants::Ordering,
-                ))
+                    // Get the mapping from PropId -> AttributeValueId
+                    let mut av_prop_map = HashMap::with_capacity(child_ids.len());
+                    for &child_id in &child_ids {
+                        let child_prop_id = Self::prop_id_for_id_or_error(ctx, child_id).await?;
+                        av_prop_map.insert(child_prop_id, child_id);
+                    }
+
+                    // For each PropId (in schema order), look up the AttributeValueId
+                    let child_ids_in_prop_order: Vec<AttributeValueId> = child_prop_ids
+                        .iter()
+                        .filter_map(|child_prop_id| av_prop_map.get(child_prop_id).copied())
+                        .collect();
+
+                    // Make sure we actually returned all the children
+                    if child_ids_in_prop_order.len() != child_ids.len() {
+                        for child_id in child_ids {
+                            if !child_ids_in_prop_order.contains(&child_id) {
+                                return Err(AttributeValueError::FieldNotChildOfObject(child_id));
+                            }
+                        }
+                        // Unreachable: child_ids_in_prop_order can only be <= av_prop_map.
+                        return Err(AttributeValueError::Unreachable);
+                    }
+
+                    Ok(child_ids_in_prop_order)
+                }
             }
         } else {
-            // Leaves don't have ordering nodes
-            Ok(vec![])
+            // TODO can this ever happen? Seems like AttributeValueError::MissingPropEdge()
+            Ok(Self::get_child_av_ids_from_ordering_node(ctx, id)
+                .await?
+                .unwrap_or(vec![]))
         }
     }
 
@@ -2432,9 +2490,17 @@ impl AttributeValue {
         first_parent: AttributeValueId,
         second_parent: AttributeValueId,
     ) -> AttributeValueResult<Vec<ChildAttributeValuePair>> {
+        // The resulting pairs
+        let mut pairs: Vec<ChildAttributeValuePair> = Vec::new();
+
+        // The index in `pairs` for a given key
         let mut pair_index = HashMap::<KeyOrIndex, usize>::new();
+
+        // Add the children of the first parent first, in order.
         let first_children = Self::get_child_av_ids_in_order(ctx, first_parent).await?;
-        let mut pairs: Vec<ChildAttributeValuePair> = Vec::with_capacity(first_children.len());
+        pairs.reserve(first_children.len());
+
+        // Go through
         for (index, first_child) in first_children.iter().enumerate() {
             let key = Self::key_for_id(ctx, *first_child).await?;
             let key_or_index = match &key {
