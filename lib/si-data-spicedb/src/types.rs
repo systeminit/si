@@ -1,6 +1,9 @@
 use std::ops;
 
-use spicedb_client::builder::{RelationshipBuilder, RelationshipFilterBuilder};
+use spicedb_client::{
+    builder::{RelationshipBuilder, RelationshipFilterBuilder},
+    types::ConsistencyRequirement,
+};
 use spicedb_grpc::authzed::api::v1::{self, ObjectReference, SubjectReference};
 
 /// ZedToken is used to provide causality metadata between Write and Check requests.
@@ -64,6 +67,21 @@ impl PermissionsObject {
             r#type: r#type.to_string(),
         }
     }
+
+    pub fn empty() -> Self {
+        Self {
+            id: "".to_string(),
+            r#type: "".to_string(),
+        }
+    }
+
+    pub fn r#type(&self) -> &str {
+        &self.r#type
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
 }
 
 pub type Relationships = Vec<Relationship>;
@@ -91,11 +109,40 @@ impl Relationship {
 
         if let Some(resource) = inner.resource {
             builder.resource_type(resource.object_type);
+            builder.resource_id(resource.object_id);
         }
 
         builder.relation(inner.relation);
 
         builder
+    }
+
+    // todo: here and below we stub out with empty strings so we can get out of using options.
+    // There is probably a better way to do this
+    pub fn object(&self) -> PermissionsObject {
+        let (obj_type, obj_id) = match self.clone().inner().resource {
+            Some(o) => (o.object_type, o.object_id),
+            None => (String::new(), String::new()),
+        };
+        PermissionsObject::new(obj_type, obj_id)
+    }
+
+    pub fn subject(&self) -> PermissionsObject {
+        let (obj_type, obj_id) = match self.clone().inner().subject {
+            Some(s) => {
+                if let Some(obj) = s.object {
+                    (obj.object_type, obj.object_id)
+                } else {
+                    (String::new(), String::new())
+                }
+            }
+            None => (String::new(), String::new()),
+        };
+        PermissionsObject::new(obj_type, obj_id)
+    }
+
+    pub fn relation(&self) -> String {
+        self.clone().inner().relation
     }
 
     pub(crate) fn inner(self) -> v1::Relationship {
@@ -124,6 +171,7 @@ pub struct Permission {
     resource: PermissionsObject,
     permission: String,
     subject: PermissionsObject,
+    zed_token: Option<ZedToken>,
 }
 
 impl Permission {
@@ -131,17 +179,25 @@ impl Permission {
         resource: PermissionsObject,
         permission: impl ToString,
         subject: PermissionsObject,
+        zed_token: Option<ZedToken>,
     ) -> Self {
         Self {
             resource,
             permission: permission.to_string(),
             subject,
+            zed_token,
         }
     }
 
     pub(crate) fn into_request(self) -> v1::CheckPermissionRequest {
+        let requirement = match self.zed_token {
+            Some(z) => ConsistencyRequirement::AtLeastAsFresh(v1::ZedToken { token: z.0 }),
+            None => ConsistencyRequirement::MinimizeLatency(true),
+        };
         v1::CheckPermissionRequest {
-            consistency: None,
+            consistency: Some(v1::Consistency {
+                requirement: Some(requirement),
+            }),
             resource: Some(ObjectReference {
                 object_type: self.resource.r#type,
                 object_id: self.resource.id,
@@ -161,5 +217,9 @@ impl Permission {
 
     pub(crate) fn has_permission(permissionship: i32) -> bool {
         i32::from(v1::check_permission_response::Permissionship::HasPermission) == permissionship
+    }
+
+    pub fn set_zed_token(&mut self, zed_token: Option<ZedToken>) {
+        self.zed_token = zed_token;
     }
 }

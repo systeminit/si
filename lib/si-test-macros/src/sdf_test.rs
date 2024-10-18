@@ -227,6 +227,7 @@ struct SdfTestFnSetupExpander {
     router: Option<Rc<Ident>>,
     auth_token: Option<Rc<Ident>>,
     auth_token_ref: Option<Rc<Ident>>,
+    spicedb_client: Option<Rc<Ident>>,
 }
 
 impl SdfTestFnSetupExpander {
@@ -261,6 +262,7 @@ impl SdfTestFnSetupExpander {
             router: None,
             auth_token: None,
             auth_token_ref: None,
+            spicedb_client: None,
         }
     }
 
@@ -363,6 +365,7 @@ impl SdfTestFnSetupExpander {
         let ws_multiplexer_client = ws_multiplexer_client.as_ref();
         let crdt_multiplexer_client = self.setup_crdt_multiplexer_client();
         let crdt_multiplexer_client = crdt_multiplexer_client.as_ref();
+        let spicedb_client = self.setup_spicedb_client();
 
         let var = Ident::new("router", Span::call_site());
         self.code_extend(quote! {
@@ -386,6 +389,7 @@ impl SdfTestFnSetupExpander {
                         ::tokio::sync::RwLock::new(::sdf_server::ApplicationRuntimeMode::Running)
                     ),
                     #cancellation_token.clone(),
+                    #spicedb_client,
                 ).into_inner()
             };
         });
@@ -426,6 +430,22 @@ impl SdfTestFnSetupExpander {
         self.auth_token_ref = Some(Rc::new(var));
 
         self.auth_token_ref.as_ref().unwrap().clone()
+    }
+
+    fn setup_spicedb_client(&mut self) -> Rc<Ident> {
+        if let Some(ref ident) = self.spicedb_client {
+            return ident.clone();
+        }
+
+        let var = Ident::new("spicedb_client", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+               ::si_data_spicedb::SpiceDbClient::new_sync(&::si_data_spicedb::SpiceDbConfig::default())?
+            };
+        });
+        self.spicedb_client = Some(Rc::new(var));
+
+        self.spicedb_client.as_ref().unwrap().clone()
     }
 
     fn finish(self) -> SdfTestFnSetup {

@@ -7,8 +7,10 @@ use dal::{
     WorkspaceSnapshotGraph,
 };
 use hyper::Uri;
+use permissions::{ObjectType, Relation, RelationBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use si_data_spicedb::SpiceDbClient;
 use telemetry::tracing::warn;
 
 use super::{SessionError, SessionResult};
@@ -93,6 +95,7 @@ async fn find_or_create_user_and_workspace(
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: &[String],
     on_demand_assets: bool,
+    spicedb_client: Option<SpiceDbClient>,
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
@@ -183,6 +186,20 @@ async fn find_or_create_user_and_workspace(
         }
     };
 
+    if let Some(client) = spicedb_client {
+        // the creator is the owner. Currently, owners cannot be changed so this should always be
+        // true. Once we map the auth-api roles to spicedb we can rely on that to tell us this
+        // information.
+        if auth_api_workspace.creator_user_id == user.pk() {
+            set_owner_as_owner(
+                client,
+                auth_api_user.id.to_string(),
+                workspace.pk().to_string(),
+            )
+            .await?;
+        }
+    }
+
     // ensure workspace is associated to user
     user.associate_workspace(&ctx, *workspace.pk()).await?;
 
@@ -230,6 +247,7 @@ pub async fn auth_connect(
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
         request.on_demand_assets.unwrap_or(false),
+        state.spicedb_client().cloned(),
     )
     .await?;
 
@@ -278,6 +296,7 @@ pub async fn auth_reconnect(
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
         auth_response_body.on_demand_assets.unwrap_or(false),
+        state.spicedb_client().cloned(),
     )
     .await?;
 
@@ -313,4 +332,24 @@ pub async fn user_has_permission_to_create_workspace(
             }
         }
     }
+}
+
+async fn set_owner_as_owner(
+    client: SpiceDbClient,
+    user_id: String,
+    workspace_id: String,
+) -> SessionResult<()> {
+    let owner_relation = RelationBuilder::new()
+        .object(ObjectType::Workspace, workspace_id.clone())
+        .relation(Relation::Owner);
+
+    // check if an owner exists already
+    if owner_relation.read(client.clone()).await?.is_empty() {
+        // if not, add this user as the owner
+        owner_relation
+            .subject(ObjectType::User, user_id)
+            .create(client.clone())
+            .await?;
+    };
+    Ok(())
 }

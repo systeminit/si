@@ -6,6 +6,7 @@ use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_nats::NatsClient;
+use si_data_spicedb::SpiceDbClient;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::{
@@ -96,6 +97,11 @@ impl Server {
 
         let application_runtime_mode = Arc::new(RwLock::new(ApplicationRuntimeMode::Running));
 
+        let mut spicedb_client = None;
+        if config.spicedb_config().enabled {
+            spicedb_client = Some(SpiceDbClient::new(config.spicedb_config()).await?);
+        }
+
         prepare_maintenance_mode_watcher(application_runtime_mode.clone(), token.clone())?;
 
         // Spawn helping tasks and track them for graceful shutdown
@@ -117,6 +123,7 @@ impl Server {
             config.create_workspace_allowlist().clone(),
             application_runtime_mode,
             token,
+            spicedb_client,
         )
         .await
     }
@@ -136,6 +143,7 @@ impl Server {
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         token: CancellationToken,
+        spicedb_client: Option<SpiceDbClient>,
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
             services_context.clone(),
@@ -148,6 +156,7 @@ impl Server {
             create_workspace_allowlist,
             application_runtime_mode,
             token.clone(),
+            spicedb_client,
         )
         .into_inner();
 

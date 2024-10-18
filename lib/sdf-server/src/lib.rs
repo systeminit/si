@@ -14,6 +14,7 @@
 
 use std::io;
 
+use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
 mod app;
@@ -63,6 +64,8 @@ pub enum ServerError {
     NatsMultiplexer(#[from] ::nats_multiplexer::MultiplexerError),
     #[error("Failed to set up signal handler")]
     Signal(#[source] io::Error),
+    #[error("Permissions error: {0}")]
+    SpiceDb(#[from] SpiceDbError),
     #[error("unix domain socket incoming stream error: {0}")]
     Uds(#[from] uds::UdsIncomingStreamError),
 }

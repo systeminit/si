@@ -1,4 +1,4 @@
-// #![warn(
+// #![warn
 //     clippy::unwrap_in_result,
 //     clippy::unwrap_used,
 //     clippy::panic,
@@ -16,12 +16,13 @@ use spicedb_client::{builder::WriteRelationshipsRequestBuilder, SpicedbClient};
 use spicedb_grpc::authzed::api::v1::{relationship_update::Operation, WriteRelationshipsRequest};
 use telemetry::prelude::*;
 use thiserror::Error;
-use types::Relationships;
 use url::Url;
 
 mod types;
 
-pub use types::{Permission, PermissionsObject, ReadSchemaResponse, Relationship, ZedToken};
+pub use types::{
+    Permission, PermissionsObject, ReadSchemaResponse, Relationship, Relationships, ZedToken,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -144,6 +145,27 @@ impl Client {
             inner,
             metadata: Arc::new(metadata),
         })
+    }
+
+    #[instrument(
+        name = "spicedb_client::new_sync",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = Empty,
+            db.system = Empty,
+            network.peer.address = Empty,
+            network.protocol.name = Empty,
+            network.transport = Empty,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = Empty,
+            server.port = Empty,
+        ),
+    )]
+    pub fn new_sync(config: &SpiceDbConfig) -> Result<Self> {
+        futures::executor::block_on(Self::new(config))
     }
 
     #[instrument(
@@ -341,7 +363,6 @@ impl Client {
     )]
     pub async fn check_permissions(&mut self, permission: Permission) -> Result<bool> {
         let span = current_span_for_instrument_at!("debug");
-        dbg!(&permission);
 
         let resp = self
             .inner
@@ -357,6 +378,7 @@ impl Client {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpiceDbConfig {
+    pub enabled: bool,
     pub endpoint: Url,
     pub preshared_key: SensitiveString,
 }
@@ -364,6 +386,7 @@ pub struct SpiceDbConfig {
 impl Default for SpiceDbConfig {
     fn default() -> Self {
         Self {
+            enabled: false,
             endpoint: Url::parse("http://localhost:50051").expect("string is a valid URL"),
             preshared_key: SensitiveString::from("hobgoblin"),
         }

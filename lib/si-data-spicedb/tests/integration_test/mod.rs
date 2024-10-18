@@ -142,7 +142,7 @@ async fn check_permissions() {
     let scott_aprover_workspace =
         Relationship::new(workspace_object.clone(), "approver", user_object.clone());
 
-    client
+    let zed_token = client
         .create_relationships(vec![scott_aprover_workspace.clone()])
         .await
         .expect("failed to create a relation");
@@ -151,8 +151,9 @@ async fn check_permissions() {
         workspace_object.clone(),
         "approve",
         user_object.clone(),
+        zed_token.clone(),
     );
-    let bad_perms = Permission::new(workspace_object, "approve", user_object2);
+    let bad_perms = Permission::new(workspace_object, "approve", user_object2, zed_token);
 
     assert!(client
         .check_permissions(perms)
