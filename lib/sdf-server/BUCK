@@ -44,6 +44,7 @@ rust_library(
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
+        "//third-party/rust:serde_qs",
         "//third-party/rust:serde_with",
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:strum",

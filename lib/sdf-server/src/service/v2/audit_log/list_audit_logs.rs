@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{OriginalUri, Path, Query},
+    extract::{OriginalUri, Path},
     Json,
 };
 use dal::{ChangeSetId, WorkspacePk};
@@ -13,7 +13,7 @@ use si_events::{
 use si_frontend_types as frontend_types;
 
 use super::AuditLogResult;
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::extract::{AccessBuilder, HandlerContext, PosthogClient, QueryWithVecParams};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -41,7 +41,7 @@ pub async fn list_audit_logs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Query(request): Query<ListAuditLogsRequest>,
+    QueryWithVecParams(request): QueryWithVecParams<ListAuditLogsRequest>,
 ) -> AuditLogResult<Json<ListAuditLogsResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -76,6 +76,7 @@ pub async fn list_audit_logs(
             None => HashSet::new(),
         },
     )?;
+
     Ok(Json(ListAuditLogsResponse {
         logs: filtered_and_paginated_audit_logs,
         total,
