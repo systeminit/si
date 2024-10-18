@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::{AuditLogKind, AuditLogService};
 use si_events::ulid::Ulid;
+use si_events::{Actor, ChangeSetId, WorkspacePk};
 use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
 use thiserror::Error;
@@ -58,6 +60,7 @@ pub enum ContentTypes {
     Validation(ValidationContent),
     OutputSocket(OutputSocketContent),
     ManagementPrototype(ManagementPrototypeContent),
+    AuditLog(AuditLogContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -113,6 +116,7 @@ impl_into_content_types!(Secret);
 impl_into_content_types!(StaticArgumentValue);
 impl_into_content_types!(Validation);
 impl_into_content_types!(ManagementPrototype);
+impl_into_content_types!(AuditLog);
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually
@@ -621,4 +625,20 @@ pub struct ManagementPrototypeContentV1 {
     pub name: String,
     pub managed_schemas: Option<HashSet<SchemaId>>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum AuditLogContent {
+    V1(AuditLogContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AuditLogContentV1 {
+    pub actor: Actor,
+    pub service: AuditLogService,
+    pub kind: AuditLogKind,
+    pub timestamp: String,
+    pub origin_ip_address: Option<String>,
+    pub workspace_id: WorkspacePk,
+    pub change_set_id: ChangeSetId,
 }

@@ -7,6 +7,7 @@ load(
 rust_library(
     name = "dal",
     deps = [
+        "//lib/audit-logs:audit-logs",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
         "//lib/module-index-client:module-index-client",

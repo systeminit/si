@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
+use chrono::Utc;
 use futures::future::BoxFuture;
 use futures::Future;
 use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
@@ -12,8 +13,9 @@ use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::audit_log::{AuditLogKind, AuditLogService};
 use si_events::rebase_batch_address::RebaseBatchAddress;
-use si_events::WorkspaceSnapshotAddress;
+use si_events::{ContentHash, WorkspaceSnapshotAddress};
 use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
 use si_layer_cache::LayerDbError;
@@ -28,7 +30,7 @@ use veritech_client::Client as VeritechClient;
 use crate::feature_flags::FeatureFlagService;
 use crate::jetstream_streams::JetstreamStreams;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
-use crate::layer_db_types::ContentTypes;
+use crate::layer_db_types::{AuditLogContent, AuditLogContentV1, ContentTypes};
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::DependentValueRoot;
@@ -246,10 +248,17 @@ impl ConnectionState {
                     workspace_pk,
                     change_set_id,
                     updates_address,
+                    audit_logs,
                 } = maybe_rebase
                 {
-                    rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address)
-                        .await?;
+                    rebase_with_reply(
+                        rebaser,
+                        workspace_pk,
+                        change_set_id,
+                        updates_address,
+                        audit_logs,
+                    )
+                    .await?;
                 }
 
                 trace!("no active transactions present when commit was called");
@@ -280,10 +289,17 @@ impl ConnectionState {
                     workspace_pk,
                     change_set_id,
                     updates_address,
+                    audit_logs,
                 } = maybe_rebase
                 {
-                    rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address)
-                        .await?;
+                    rebase_with_reply(
+                        rebaser,
+                        workspace_pk,
+                        change_set_id,
+                        updates_address,
+                        audit_logs,
+                    )
+                    .await?;
                 }
 
                 Ok(Self::Connections(conns))
@@ -337,6 +353,7 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set for this context
     change_set: Option<ChangeSet>,
+    audit_log_hashes: Arc<Mutex<Vec<ContentHash>>>,
 }
 
 impl DalContext {
@@ -415,7 +432,14 @@ impl DalContext {
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
     ) -> TransactionsResult<()> {
-        rebase_with_reply(self.rebaser(), workspace_pk, change_set_id, updates_address).await
+        rebase_with_reply(
+            self.rebaser(),
+            workspace_pk,
+            change_set_id,
+            updates_address,
+            self.audit_log_hashes.lock().await.clone(),
+        )
+        .await
     }
 
     pub async fn run_async_rebase_from_change_set(
@@ -452,6 +476,7 @@ impl DalContext {
                 change_set_id.into(),
                 updates_address,
                 from_change_set_id.into(),
+                self.audit_log_hashes.lock().await.clone(),
             )
             .await
             .map_err(Into::into)
@@ -532,8 +557,12 @@ impl DalContext {
                 workspace_pk: self.workspace_pk()?,
                 change_set_id: self.change_set_id(),
                 updates_address,
+                audit_logs: self.audit_log_hashes.lock().await.clone(),
             },
-            None => DelayedRebaseWithReply::NoUpdates,
+            None => {
+                todo!("publish audit logs here!");
+                DelayedRebaseWithReply::NoUpdates
+            }
         };
 
         if self.blocking {
@@ -626,8 +655,12 @@ impl DalContext {
                 workspace_pk: self.workspace_pk()?,
                 change_set_id: self.change_set_id(),
                 updates_address,
+                audit_logs: self.audit_log_hashes.lock().await.clone(),
             },
-            None => DelayedRebaseWithReply::NoUpdates,
+            None => {
+                todo!("we need to publish all audit logs here!");
+                DelayedRebaseWithReply::NoUpdates
+            }
         };
 
         self.blocking_commit_internal(maybe_rebase).await
@@ -949,6 +982,35 @@ impl DalContext {
     pub fn access_builder(&self) -> AccessBuilder {
         AccessBuilder::new(self.tenancy, self.history_actor)
     }
+
+    pub async fn write_audit_log(
+        &self,
+        service: AuditLogService,
+        kind: AuditLogKind,
+    ) -> TransactionsResult<()> {
+        let content = AuditLogContentV1 {
+            actor: self.events_actor(),
+            service,
+            kind,
+            timestamp: Utc::now().to_rfc3339(),
+            origin_ip_address: None,
+            workspace_id: self.workspace_pk()?.into(),
+            change_set_id: self.change_set_id().into(),
+        };
+        let (hash, _) = self
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(AuditLogContent::V1(content).into()),
+                None,
+                self.events_tenancy(),
+                self.events_actor(),
+            )
+            .await?;
+        let audit_log_hashes = self.audit_log_hashes.clone();
+        audit_log_hashes.lock().await.push(hash);
+        Ok(())
+    }
 }
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
@@ -1045,6 +1107,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            audit_log_hashes: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -1067,6 +1130,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            audit_log_hashes: Arc::new(Mutex::new(Vec::new())),
         };
 
         ctx.update_snapshot_to_visibility().await?;
@@ -1091,6 +1155,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            audit_log_hashes: Arc::new(Mutex::new(Vec::new())),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1118,6 +1183,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set: None,
+            audit_log_hashes: Arc::new(Mutex::new(Vec::new())),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {
@@ -1365,11 +1431,19 @@ impl Transactions {
             workspace_pk,
             change_set_id,
             updates_address,
+            audit_logs,
         } = maybe_rebase
         {
             // remove the dependent value job since it will be handled by the rebaser
             self.job_queue.remove_dependent_values_jobs().await;
-            rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address).await?;
+            rebase_with_reply(
+                rebaser,
+                workspace_pk,
+                change_set_id,
+                updates_address,
+                audit_logs,
+            )
+            .await?;
         }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;
@@ -1402,11 +1476,19 @@ impl Transactions {
             workspace_pk,
             change_set_id,
             updates_address,
+            audit_logs,
         } = maybe_rebase
         {
             span.record("si.change_set.id", change_set_id.to_string());
             span.record("si.workspace.id", workspace_pk.to_string());
-            rebase_with_reply(rebaser, workspace_pk, change_set_id, updates_address).await?;
+            rebase_with_reply(
+                rebaser,
+                workspace_pk,
+                change_set_id,
+                updates_address,
+                audit_logs,
+            )
+            .await?;
         }
 
         let nats_conn = self.nats_txn.commit_into_conn().await?;
@@ -1455,6 +1537,7 @@ enum DelayedRebaseWithReply<'a> {
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddress,
+        audit_logs: Vec<ContentHash>,
     },
 }
 
@@ -1473,11 +1556,17 @@ async fn rebase_with_reply(
     workspace_pk: WorkspacePk,
     change_set_id: ChangeSetId,
     updates_address: RebaseBatchAddress,
+    audit_logs: Vec<ContentHash>,
 ) -> TransactionsResult<()> {
     let timeout = Duration::from_secs(60);
 
     let (request_id, reply_fut) = rebaser
-        .enqueue_updates_with_reply(workspace_pk.into(), change_set_id.into(), updates_address)
+        .enqueue_updates_with_reply(
+            workspace_pk.into(),
+            change_set_id.into(),
+            updates_address,
+            audit_logs,
+        )
         .await?;
 
     let reply_fut = reply_fut.instrument(info_span!(
