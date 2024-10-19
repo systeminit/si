@@ -344,6 +344,7 @@ const _configurableProps = computed(() => {
 
   const _props = variant.props
     .filter((p) => p.eligibleToReceiveData)
+    .filter((p) => !p.hidden)
     .filter((p) => !ignoreProps.includes(p.id));
 
   const propValues = {} as Record<
