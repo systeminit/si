@@ -19,4 +19,5 @@ export interface Prop {
   eligibleToReceiveData: boolean;
   // this is for input sources
   eligibleToSendData: boolean;
+  hidden: boolean;
 }
