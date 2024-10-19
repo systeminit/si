@@ -2233,7 +2233,6 @@ impl SchemaVariant {
                 EdgeWeightKindDiscriminants::Action
                 | EdgeWeightKindDiscriminants::Contain
                 | EdgeWeightKindDiscriminants::FrameContains
-                | EdgeWeightKindDiscriminants::Represents
                 | EdgeWeightKindDiscriminants::Ordering
                 | EdgeWeightKindDiscriminants::Ordinal
                 | EdgeWeightKindDiscriminants::Prop

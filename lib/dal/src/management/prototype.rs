@@ -188,7 +188,7 @@ impl ManagementPrototype {
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
         let manager_component_view = manager_component.view(ctx).await?;
-        let geometry = manager_component.geometry(ctx).await?;
+        let geometry = manager_component.geometry();
 
         let args = serde_json::json!({
             "this_component": {

@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 
-use super::DiagramResult;
-use crate::{
-    extract::{AccessBuilder, HandlerContext},
-    service::force_change_set_response::ForceChangeSetResponse,
-};
 use axum::Json;
-use dal::diagram::geometry::RawGeometry;
 use dal::{
-    component::{frame::Frame, InferredConnection},
+    component::{frame::Frame, ComponentGeometry, InferredConnection},
     diagram::SummaryDiagramInferredEdge,
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use super::DiagramResult;
+use crate::{
+    extract::{AccessBuilder, HandlerContext},
+    service::force_change_set_response::ForceChangeSetResponse,
+};
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SingleComponentGeometryUpdate {
-    pub geometry: RawGeometry,
+    pub geometry: ComponentGeometry,
     pub detach: bool,
     pub new_parent: Option<ComponentId>,
 }
@@ -52,7 +52,6 @@ pub async fn set_component_position(
     let mut diagram_inferred_edges: Vec<SummaryDiagramInferredEdge> = vec![];
 
     let mut socket_map = HashMap::new();
-    let mut geometry_list = vec![];
     for (id, update) in request.data_by_component_id {
         let mut component = Component::get_by_id(&ctx, id).await?;
 
@@ -109,9 +108,6 @@ pub async fn set_component_position(
                 .await?;
         }
 
-        let geometry = component.geometry(&ctx).await?;
-        let new_geometry = update.geometry.clone();
-
         let (width, height) = {
             let mut size = (None, None);
 
@@ -119,12 +115,14 @@ pub async fn set_component_position(
 
             if component_type != ComponentType::Component {
                 size = (
-                    new_geometry
+                    update
+                        .geometry
                         .width
-                        .or_else(|| geometry.width().map(|v| v.to_string())),
-                    new_geometry
+                        .or_else(|| component.width().map(|v| v.to_string())),
+                    update
+                        .geometry
                         .height
-                        .or_else(|| geometry.width().map(|v| v.to_string())),
+                        .or_else(|| component.height().map(|v| v.to_string())),
                 );
             }
 
@@ -132,17 +130,15 @@ pub async fn set_component_position(
         };
 
         component
-            .set_geometry(&ctx, new_geometry.x, new_geometry.y, width, height)
+            .set_geometry(&ctx, update.geometry.x, update.geometry.y, width, height)
             .await?;
         components.push(component);
-
-        geometry_list.push((id, update.geometry))
     }
 
     WsEvent::set_component_position(
         &ctx,
         ctx.change_set_id(),
-        geometry_list,
+        components,
         Some(request.client_ulid),
     )
     .await?

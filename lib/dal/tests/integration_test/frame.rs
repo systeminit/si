@@ -1274,6 +1274,42 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .expect("is some");
     assert_eq!(input_value, serde_json::json!("1"));
 
+    {
+        let workspace_snapshot = ctx.workspace_snapshot().unwrap();
+        let mut inferred_connection_graph = workspace_snapshot
+            .inferred_connection_graph(ctx)
+            .await
+            .unwrap();
+        let first_child_schema_variant =
+            Component::schema_variant_id(ctx, first_child_component.id())
+                .await
+                .unwrap();
+        let parent_schema_variant = Component::schema_variant_id(ctx, parent_frame.id())
+            .await
+            .unwrap();
+        let first_grand_parent_schema_variant =
+            Component::schema_variant_id(ctx, first_grand_parent_frame.id())
+                .await
+                .unwrap();
+        dbg!(
+            first_child_component.id(),
+            SchemaVariant::list_all_sockets(ctx, first_child_schema_variant)
+                .await
+                .unwrap(),
+            first_grand_parent_frame.id(),
+            SchemaVariant::list_all_sockets(ctx, first_grand_parent_schema_variant)
+                .await
+                .unwrap(),
+            parent_frame.id(),
+            SchemaVariant::list_all_sockets(ctx, parent_schema_variant)
+                .await
+                .unwrap(),
+            inferred_connection_graph
+                .inferred_incoming_connections_for_component(ctx, parent_frame.id())
+                .await
+                .unwrap()
+        );
+    }
     // the parent is updated with 2
     let input_value = get_component_input_socket_value(ctx, parent_frame.id(), "two")
         .await

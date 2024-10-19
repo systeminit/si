@@ -12,7 +12,7 @@ use crate::{
         node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
         NodeInformation,
     },
-    ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphVCurrent,
+    ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphV3,
 };
 
 use super::{
@@ -103,12 +103,6 @@ impl ContentNodeWeight {
             ContentAddress::OutputSocket(_) => ContentAddress::OutputSocket(content_hash),
             ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::Geometry(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Geometry".to_string(),
-                    "Content".to_string(),
-                ));
-            }
             ContentAddress::InputSocket(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "InputSocket".to_string(),
@@ -146,12 +140,6 @@ impl ContentNodeWeight {
             ContentAddress::ValidationOutput(_) => ContentAddress::ValidationOutput(content_hash),
             ContentAddress::ManagementPrototype(_) => {
                 ContentAddress::ManagementPrototype(content_hash)
-            }
-            ContentAddress::View(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Geometry".to_string(),
-                    "Content".to_string(),
-                ));
             }
         };
 
@@ -201,7 +189,7 @@ impl From<DeprecatedContentNodeWeightV1> for ContentNodeWeight {
 }
 
 fn remove_outgoing_prototype_argument_value_targets_to_dest(
-    graph: &WorkspaceSnapshotGraphVCurrent,
+    graph: &WorkspaceSnapshotGraphV3,
     prototype_idx: NodeIndex,
     source: NodeInformation,
     destination_component_id: ComponentId,
@@ -232,7 +220,7 @@ fn remove_outgoing_prototype_argument_value_targets_to_dest(
 }
 
 fn protect_arity_for_input_socket(
-    graph: &WorkspaceSnapshotGraphVCurrent,
+    graph: &WorkspaceSnapshotGraphV3,
     mut updates: Vec<Update>,
     self_node: &ContentNodeWeight,
 ) -> Vec<Update> {
@@ -307,7 +295,7 @@ fn protect_arity_for_input_socket(
 impl CorrectTransforms for ContentNodeWeight {
     fn correct_transforms(
         &self,
-        graph: &WorkspaceSnapshotGraphVCurrent,
+        graph: &WorkspaceSnapshotGraphV3,
         updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
