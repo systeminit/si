@@ -94,11 +94,24 @@ impl ActionDependencyGraph {
                     .or_insert_with(|| {
                         component_dependencies.add_node(incoming_connection.from_component_id)
                     });
+                if let Some(&source_component_index) =
+                    component_dependencies_index_by_id.get(&incoming_connection.from_component_id)
+                {
+                    // The edges of this graph go `output_socket_component (source) ->
+                    // input_socket_component (target)`, matching the flow of the data between
+                    // components.
+                    component_dependencies.update_edge(source_component_index, component_index, ());
+                }
             }
             for inferred_connection in component_tree
                 .inferred_incoming_connections_for_component(ctx, component_id)
                 .await?
             {
+                component_dependencies_index_by_id
+                    .entry(inferred_connection.source_component_id)
+                    .or_insert_with(|| {
+                        component_dependencies.add_node(inferred_connection.source_component_id)
+                    });
                 if let Some(&source_component_index) =
                     component_dependencies_index_by_id.get(&inferred_connection.source_component_id)
                 {

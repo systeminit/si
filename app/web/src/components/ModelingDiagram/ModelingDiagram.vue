@@ -3068,7 +3068,7 @@ const allElementsByKey = computed(() =>
       ...Object.values(componentsStore.nodesById),
       ...groups.value,
       ...sockets.value, // protected to not run on drag
-      // i removed edges and sockets and re-implemented it's use in one place
+      ...edges.value,
     ],
     (e) => e.uniqueKey,
   ),
