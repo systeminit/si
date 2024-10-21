@@ -1,4 +1,6 @@
-use si_data_spicedb::{PermissionsObject, Relationship, SpiceDbClient, SpiceDbError};
+use si_data_spicedb::{
+    PermissionsObject, Relationship, Relationships, SpiceDbClient, SpiceDbError, ZedToken,
+};
 use std::result;
 use thiserror::Error;
 
@@ -7,8 +9,11 @@ use thiserror::Error;
 pub enum Error {
     #[error("Builder must contain object, permission, and subject.")]
     PermissionBuilder,
-    #[error("Builder must contain object, relation, and subject.")]
-    RelationBuilder,
+    #[error(
+        "All of the following fields are required for this call: {:?}",
+        required_fields
+    )]
+    RelationBuilder { required_fields: Vec<String> },
     #[error("spicedb client error: {0}")]
     SpiceDb(#[from] SpiceDbError),
 }
@@ -32,6 +37,7 @@ pub enum Permission {
 #[strum(serialize_all = "snake_case")]
 pub enum Relation {
     Approver,
+    Owner,
 }
 
 /// RelationBuilder allows defining a relationship in SpiceDb.
@@ -52,6 +58,7 @@ pub struct RelationBuilder {
     object: Option<PermissionsObject>,
     relation: Option<Relation>,
     subject: Option<PermissionsObject>,
+    zed_token: Option<ZedToken>,
 }
 
 impl RelationBuilder {
@@ -60,6 +67,7 @@ impl RelationBuilder {
             object: None,
             relation: None,
             subject: None,
+            zed_token: None,
         }
     }
 
@@ -78,31 +86,48 @@ impl RelationBuilder {
         self
     }
 
+    pub fn zed_token(mut self, token: ZedToken) -> Self {
+        self.zed_token = Some(token.clone());
+        self
+    }
+
     /// Creates a new relationship in SpiceDb
-    pub async fn create(&self, mut client: SpiceDbClient) -> Result<()> {
+    pub async fn create(&self, mut client: SpiceDbClient) -> Result<Option<ZedToken>> {
         match self.check() {
-            Ok(relationship) => {
-                client
-                    .create_relationships(vec![relationship])
-                    .await
-                    .map_err(Error::SpiceDb)?;
-                Ok(())
-            }
+            Ok(relationship) => client
+                .create_relationships(vec![relationship])
+                .await
+                .map_err(Error::SpiceDb),
             Err(err) => Err(err),
         }
     }
 
     /// Deletes an existing relationship in SpiceDb
-    pub async fn delete(&self, mut client: SpiceDbClient) -> Result<()> {
+    pub async fn delete(&self, mut client: SpiceDbClient) -> Result<Option<ZedToken>> {
         match self.check() {
-            Ok(relationship) => {
-                client
-                    .delete_relationships(vec![relationship])
-                    .await
-                    .map_err(Error::SpiceDb)?;
-                Ok(())
-            }
+            Ok(relationship) => client
+                .delete_relationships(vec![relationship])
+                .await
+                .map_err(Error::SpiceDb),
             Err(err) => Err(err),
+        }
+    }
+
+    /// Reads existing relations in SpiceDb for a given object and relation
+    pub async fn read(&self, mut client: SpiceDbClient) -> Result<Relationships> {
+        match (self.object.clone(), self.relation.clone()) {
+            (Some(object), Some(relation)) => client
+                .read_relationship(Relationship::new(
+                    object,
+                    relation,
+                    PermissionsObject::empty(),
+                    self.zed_token.clone(),
+                ))
+                .await
+                .map_err(Error::SpiceDb),
+            _ => Err(Error::RelationBuilder {
+                required_fields: vec!["object".to_string(), "relation".to_string()],
+            }),
         }
     }
 
@@ -112,10 +137,19 @@ impl RelationBuilder {
             self.relation.clone(),
             self.subject.clone(),
         ) {
-            (Some(object), Some(relation), Some(subject)) => {
-                Ok(Relationship::new(object, relation, subject))
-            }
-            _ => Err(Error::RelationBuilder),
+            (Some(object), Some(relation), Some(subject)) => Ok(Relationship::new(
+                object,
+                relation,
+                subject,
+                self.zed_token.clone(),
+            )),
+            _ => Err(Error::RelationBuilder {
+                required_fields: vec![
+                    "object".to_string(),
+                    "relation".to_string(),
+                    "subject".to_string(),
+                ],
+            }),
         }
     }
 }
@@ -144,6 +178,7 @@ pub struct PermissionBuilder {
     object: Option<PermissionsObject>,
     permission: Option<Permission>,
     subject: Option<PermissionsObject>,
+    zed_token: Option<ZedToken>,
 }
 
 impl PermissionBuilder {
@@ -152,6 +187,7 @@ impl PermissionBuilder {
             object: None,
             permission: None,
             subject: None,
+            zed_token: None,
         }
     }
 
@@ -167,6 +203,11 @@ impl PermissionBuilder {
 
     pub fn subject(mut self, object_type: ObjectType, id: impl ToString) -> Self {
         self.subject = Some(PermissionsObject::new(object_type, id));
+        self
+    }
+
+    pub fn zed_token(mut self, token: ZedToken) -> Self {
+        self.zed_token = Some(token.clone());
         self
     }
 
@@ -187,9 +228,14 @@ impl PermissionBuilder {
             self.permission.clone(),
             self.subject.clone(),
         ) {
-            (Some(object), Some(permission), Some(subject)) => Ok(
-                si_data_spicedb::Permission::new(object, permission, subject),
-            ),
+            (Some(object), Some(permission), Some(subject)) => {
+                Ok(si_data_spicedb::Permission::new(
+                    object,
+                    permission,
+                    subject,
+                    self.zed_token.clone(),
+                ))
+            }
             _ => Err(Error::PermissionBuilder),
         }
     }

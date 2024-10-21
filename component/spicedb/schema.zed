@@ -2,5 +2,6 @@
 
   definition workspace {
       relation approver: user
-      permission approve = approver
+      relation owner: user
+      permission approve = approver+owner
   }

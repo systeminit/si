@@ -1,6 +1,7 @@
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
+use si_data_spicedb::SpiceDbConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
 use std::{
@@ -124,6 +125,9 @@ pub struct Config {
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
+    #[builder(default = "SpiceDbConfig::default()")]
+    spicedb_config: SpiceDbConfig,
+
     pkgs_path: CanonicalFile,
 
     boot_feature_flags: HashSet<FeatureFlag>,
@@ -227,6 +231,12 @@ impl Config {
     pub fn create_workspace_allowlist(&self) -> &Vec<WorkspacePermissions> {
         &self.create_workspace_allowlist
     }
+
+    /// Gets a referece to the config's spicedb config
+    #[must_use]
+    pub fn spicedb_config(&self) -> &SpiceDbConfig {
+        &self.spicedb_config
+    }
 }
 
 impl ConfigBuilder {
@@ -271,6 +281,8 @@ pub struct ConfigFile {
     create_workspace_permissions: WorkspacePermissionsMode,
     #[serde(default)]
     create_workspace_allowlist: Vec<WorkspacePermissions>,
+    #[serde(default)]
+    spicedb_config: SpiceDbConfig,
 }
 
 impl Default for ConfigFile {
@@ -291,6 +303,7 @@ impl Default for ConfigFile {
             boot_feature_flags: Default::default(),
             create_workspace_permissions: Default::default(),
             create_workspace_allowlist: Default::default(),
+            spicedb_config: Default::default(),
         }
     }
 }
@@ -321,6 +334,7 @@ impl TryFrom<ConfigFile> for Config {
         config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
         config.create_workspace_permissions(value.create_workspace_permissions);
         config.create_workspace_allowlist(value.create_workspace_allowlist);
+        config.spicedb_config(value.spicedb_config);
         config.build().map_err(Into::into)
     }
 }
@@ -456,6 +470,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         Some(postgres_cert.clone().try_into()?);
     config.pkgs_path = pkgs_path;
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
+    config.spicedb_config.enabled = true;
 
     Ok(())
 }
@@ -515,6 +530,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         Some(postgres_cert.clone().try_into()?);
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
     config.pkgs_path = pkgs_path;
+    config.spicedb_config.enabled = true;
 
     Ok(())
 }

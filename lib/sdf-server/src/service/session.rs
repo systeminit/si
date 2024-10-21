@@ -9,7 +9,7 @@ use dal::{
     WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
+use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
 use crate::AppState;
@@ -40,10 +40,14 @@ pub enum SessionError {
     LoginFailed,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("Permissions error: {0}")]
+    Permissions(#[from] permissions::Error),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("SpiceDb error: {0}")]
+    SpiceDb(#[from] SpiceDbError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("user error: {0}")]
