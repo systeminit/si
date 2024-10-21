@@ -402,7 +402,13 @@ export const useFuncStore = () => {
             optimistic: () => {
               if (isHead) return () => {};
 
-              const current = this.funcsById[func.funcId];
+              const current = _.cloneDeep(this.funcsById[func.funcId]);
+              const editing = this.funcsById[func.funcId];
+              if (editing) {
+                editing.displayName = func.displayName;
+                editing.description = func.description;
+              }
+
               return () => {
                 if (current) {
                   this.funcsById[func.funcId] = current;
