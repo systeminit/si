@@ -1,9 +1,15 @@
+use dal::action::dependency_graph::ActionDependencyGraph;
+use dal::component::frame::Frame;
 use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
     action::ActionState, AttributeValue, Component, DalContext,
 };
 use dal_test::helpers::create_component_for_default_schema_name;
+use dal_test::helpers::create_component_for_schema_name_with_type;
 use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    connect_components_with_socket_names, disconnect_components_with_socket_names,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -326,4 +332,197 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     // }
 
     // assert_eq!(deletion_action_count, 1);
+}
+
+#[test]
+async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
+    // create two components and connect them via edge
+    let first_component = create_component_for_schema_name_with_type(
+        ctx,
+        "small odd lego",
+        "first component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+    let second_component = create_component_for_schema_name_with_type(
+        ctx,
+        "small even lego",
+        "second component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+
+    connect_components_with_socket_names(
+        ctx,
+        first_component.id(),
+        "two",
+        second_component.id(),
+        "two",
+    )
+    .await
+    .expect("could not create connection");
+
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert_eq!(actions.len(), 2);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component.id())
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    dbg!(action_graph.get_all_dependencies(first_component_action));
+    dbg!(action_graph.get_all_dependencies(second_component_actions));
+    dbg!(action_graph.direct_dependencies_of(first_component_action));
+    dbg!(action_graph.direct_dependencies_of(second_component_actions));
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![second_component_actions]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(second_component_actions),
+        vec![first_component_action]
+    );
+    // now let's remove the connection and put the second component inside the first
+    disconnect_components_with_socket_names(
+        ctx,
+        first_component.id(),
+        "two",
+        second_component.id(),
+        "two",
+    )
+    .await
+    .expect("could not create connection");
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert_eq!(actions.len(), 2);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component.id())
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(second_component_actions),
+        vec![]
+    );
+
+    Frame::upsert_parent(ctx, second_component.id(), first_component.id())
+        .await
+        .expect("could not upsert");
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+    // make sure two actions are enqueued
+    assert_eq!(actions.len(), 2);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component.id())
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![second_component_actions]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(second_component_actions),
+        vec![first_component_action]
+    );
+
+    // now let's add another component and draw an edge.
+    let third_component = create_component_for_schema_name_with_type(
+        ctx,
+        "small even lego",
+        "third component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await
+    .expect("could not create component");
+
+    connect_components_with_socket_names(
+        ctx,
+        first_component.id(),
+        "two",
+        third_component.id(),
+        "two",
+    )
+    .await
+    .expect("could not create connection");
+
+    // make sure actions are ordered correctly
+    let actions = Action::list_topologically(ctx)
+        .await
+        .expect("could not list actions");
+
+    // make sure three actions are enqueued now
+    assert_eq!(actions.len(), 3);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component.id())
+        .await
+        .expect("could not get actions")
+        .pop()
+        .expect("doesn't have one");
+    let second_component_action = Action::find_for_component_id(ctx, second_component.id())
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let third_component_action = Action::find_for_component_id(ctx, third_component.id())
+        .await
+        .expect("could not list actions")
+        .pop()
+        .expect("didnt have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx)
+        .await
+        .expect("could not get graph");
+    let dependencies = action_graph.get_all_dependencies(first_component_action);
+    assert_eq!(dependencies.len(), 2);
+    assert!(dependencies.contains(&second_component_action));
+    assert!(dependencies.contains(&third_component_action));
+    assert_eq!(
+        action_graph.direct_dependencies_of(second_component_action),
+        vec![first_component_action]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(third_component_action),
+        vec![first_component_action]
+    );
 }
