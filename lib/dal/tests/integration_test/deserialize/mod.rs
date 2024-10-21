@@ -19,7 +19,7 @@ use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 
 const CURRENT_SERIALIZED_GRAPH_DIR_PATH: &str = "./lib/dal/tests";
-const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-10-14.snapshot";
+const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-10-17.snapshot";
 
 // If you're modifying this, you probably just added a new node or edge weight. Before you replace
 // the snapshot with one that includes the new weights, ensure that your current code passes the
@@ -131,6 +131,16 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 Ulid::new(),
                 ContentHash::new("management".as_bytes()),
             ),
+            NodeWeightDiscriminants::Geometry => NodeWeight::new_geometry(
+                Ulid::new(),
+                Ulid::new(),
+                ContentHash::new("geometry".as_bytes()),
+            ),
+            NodeWeightDiscriminants::View => NodeWeight::new_view(
+                Ulid::new(),
+                Ulid::new(),
+                ContentHash::new("geometry".as_bytes()),
+            ),
         };
 
         let idx = graph.add_or_replace_node(weight).expect("add node");
@@ -178,6 +188,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::Use => EdgeWeightKind::new_use(),
             EdgeWeightKindDiscriminants::ValidationOutput => EdgeWeightKind::ValidationOutput,
             EdgeWeightKindDiscriminants::ManagementPrototype => EdgeWeightKind::ManagementPrototype,
+            EdgeWeightKindDiscriminants::Represents => EdgeWeightKind::Represents,
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);
@@ -206,14 +217,16 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
 // `CURRENT_SERIALIZED_GRAPH_FILENAME` with the filename of the new graph.
 #[test]
 #[ignore = "only run this when you want to produce a new serialized graph"]
-async fn write_deserialization_data(_ctx: &DalContext) {
-    let mut graph = WorkspaceSnapshotGraphVCurrent::new().expect("make new");
+async fn write_deserialization_data(ctx: &DalContext) {
+    let mut graph = WorkspaceSnapshotGraphVCurrent::new(ctx)
+        .await
+        .expect("make new");
 
     make_me_one_with_everything(&mut graph);
 
     graph.cleanup_and_merkle_tree_hash().expect("hash it");
 
-    let real_graph = WorkspaceSnapshotGraph::V3(graph);
+    let real_graph = WorkspaceSnapshotGraph::V4(graph);
     let serialized = serialize::to_vec(&real_graph).expect("serialize");
 
     let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
@@ -236,7 +249,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
 
     let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&bytes).expect("deserialize");
 
-    assert_eq!(18, graph.node_count());
+    assert_eq!(31, graph.node_count());
 
     // Where we can, verify that the enums on the node weights match what we expect
     for (node_weight, _) in graph.nodes() {
@@ -247,12 +260,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             }
             NodeWeight::AttributePrototypeArgument(_) => {}
             NodeWeight::AttributeValue(_) => {}
-            NodeWeight::Category(category_node_weight) => {
-                assert_eq!(
-                    CategoryNodeKind::DependentValueRoots,
-                    category_node_weight.kind()
-                );
-            }
+            NodeWeight::Category(_) => {}
             NodeWeight::Component(_) => {}
             NodeWeight::Content(_) => {}
             NodeWeight::DependentValueRoot(_) => {}
@@ -271,6 +279,8 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             }
             NodeWeight::SchemaVariant(_) => {}
             NodeWeight::ManagementPrototype(_) => {}
+            NodeWeight::Geometry(_) => {}
+            NodeWeight::View(_) => {}
         }
     }
 }

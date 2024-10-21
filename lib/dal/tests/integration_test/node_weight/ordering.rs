@@ -97,7 +97,7 @@ async fn correct_transforms_removed_edges(ctx: &mut DalContext) {
     let change_set_3 = expected::fork_from_head_change_set(ctx).await;
     exposed_ports.children(ctx).await[1].remove(ctx).await;
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
-    assert_eq!(json!(["1", "22"]), dbg!(exposed_ports.get(ctx).await));
+    assert_eq!(json!(["1", "22"]), exposed_ports.get(ctx).await);
 
     // Apply both changesets
     expected::update_visibility_and_snapshot_to_visibility(ctx, change_set_2.id).await;

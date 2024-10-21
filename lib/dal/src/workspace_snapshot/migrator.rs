@@ -12,16 +12,19 @@ use super::{
         schema_variant_node_weight::SchemaVariantNodeWeightError,
     },
 };
+use crate::workspace_snapshot::migrator::v4::migrate_v3_to_v4;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
     dependency_graph::DependencyGraph,
     workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
-    ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, Workspace, WorkspaceError,
-    WorkspaceSnapshotError,
+    ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, Visibility, Workspace, WorkspaceError,
+    WorkspaceSnapshot, WorkspaceSnapshotError,
 };
 use si_events::WorkspaceSnapshotAddress;
 
 pub mod v2;
 pub mod v3;
+pub mod v4;
 
 #[derive(Error, Debug)]
 #[remain::sorted]
@@ -32,6 +35,8 @@ pub enum SnapshotGraphMigratorError {
     InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("SchemaVariantNodeWeight error: {0}")]
     SchemaVariantNodeWeight(#[from] SchemaVariantNodeWeightError),
     #[error("unexpected graph version {1:?} for snapshot {0}, cannot migrate")]
@@ -140,7 +145,19 @@ impl SnapshotGraphMigrator {
                         ctx.events_actor(),
                     )
                     .await?;
-                change_set.update_pointer(ctx, new_snapshot_address).await?;
+
+                // NOTE(victor): The context that gets passed in does not have a workspace snapshot
+                // on it, since its main purpose is to allow access to the services context.
+                // We need to create a context for each migrated changeset here to run operations
+                // that depend on the graph
+                let mut ctx_after_migration =
+                    ctx.clone_with_new_visibility(Visibility::from(change_set.id));
+                let migrated_snapshot = WorkspaceSnapshot::find(ctx, new_snapshot_address).await?;
+                ctx_after_migration.set_workspace_snapshot(migrated_snapshot);
+
+                change_set
+                    .update_pointer(&ctx_after_migration, new_snapshot_address)
+                    .await?;
                 info!(
                     "Migrated snapshot {} for change set {} with base change set of {:?}",
                     snapshot_address, change_set_id, change_set.base_change_set_id,
@@ -197,7 +214,11 @@ impl SnapshotGraphMigrator {
                     working_graph =
                         WorkspaceSnapshotGraph::V3(migrate_v2_to_v3(ctx, inner_graph).await?);
                 }
-                WorkspaceSnapshotGraph::V3(_) => {
+                WorkspaceSnapshotGraph::V3(inner_graph) => {
+                    working_graph =
+                        WorkspaceSnapshotGraph::V4(migrate_v3_to_v4(ctx, inner_graph).await?);
+                }
+                WorkspaceSnapshotGraph::V4(_) => {
                     // Nothing to do, this is the newest version,
                     break;
                 }

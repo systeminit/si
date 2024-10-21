@@ -21,6 +21,7 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) {
     // that the value of "/root/si/name" comes in, as expected. The name is set when creating a
     // component, so we do not need to do additional setup.
     let expected = "you should see this name in the arguments";
+
     let component = Component::new(ctx, expected, schema_variant_id)
         .await
         .expect("could not create component");
