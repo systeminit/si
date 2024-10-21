@@ -1,7 +1,7 @@
 use chrono::Utc;
 use dal::module::Module;
 use dal::pkg::export::PkgExporter;
-use dal::{DalContext, Schema};
+use dal::{DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use si_pkg::{SocketSpecArity, SocketSpecKind};
@@ -219,6 +219,13 @@ async fn dummy_sync(ctx: &DalContext) {
     expected
         .installable
         .push(dummy_latest_module_installable.clone());
+    expected.contributable.extend(
+        SchemaVariant::list_user_facing(ctx)
+            .await
+            .expect("list_user_facing")
+            .into_iter()
+            .map(|sv| sv.schema_variant_id),
+    );
 
     // Perform the sync and check that the result is what we expect.
     let actual = Module::sync(
@@ -232,6 +239,16 @@ async fn dummy_sync(ctx: &DalContext) {
     )
     .await
     .expect("could not sync");
+
+    let mut expected_contributable = expected.contributable.clone();
+    expected_contributable.sort();
+    let mut actual_contributable = actual.contributable.clone();
+    actual_contributable.sort();
+
+    assert_eq!(expected_contributable, actual_contributable);
+
+    expected.contributable.clone_from(&actual.contributable);
+
     assert_eq!(
         expected, // expected
         actual    // actual

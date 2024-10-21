@@ -1,7 +1,7 @@
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::prop::PropPath;
-use dal::ComponentType;
 use dal::{BuiltinsResult, DalContext};
+use dal::{ComponentType, SchemaId};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, PropSpecKind, PropSpecWidgetKind,
     SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpecArity, SocketSpecData,
@@ -15,6 +15,7 @@ use crate::test_exclusive_schemas::{
 
 pub(crate) async fn migrate_test_exclusive_schema_fake_docker_image(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
@@ -114,7 +115,15 @@ pub(crate) async fn migrate_test_exclusive_schema_fake_docker_image(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
