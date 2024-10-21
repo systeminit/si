@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { InstanceEnvType } from "@prisma/client";
+import { InstanceEnvType, RoleType } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import {
@@ -24,7 +24,10 @@ import {
 import { validate } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
-import { makeAuthConnectUrl, createSdfAuthToken } from "../services/auth.service";
+import {
+  makeAuthConnectUrl,
+  createSdfAuthToken,
+} from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
 import { posthog } from "../lib/posthog";
@@ -63,6 +66,21 @@ async function extractOwnWorkspaceIdParam(ctx: CustomRouteContext) {
   }
 
   return workspace;
+}
+
+async function isWorkspaceOwner(ctx: CustomRouteContext) {
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  const authUser = extractAuthUser(ctx);
+  const memberRole = await userRoleForWorkspace(authUser.id, workspace.id);
+  if (memberRole !== RoleType.OWNER) {
+    throw new ApiError(
+      "Forbidden",
+      "You do not have the correct permisison to edit this workspace",
+    );
+  }
+
+  return true;
 }
 
 router.get("/workspaces/:workspaceId", async (ctx) => {
@@ -123,6 +141,7 @@ router.post("/workspaces/new", async (ctx) => {
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
   const authUser = extractAuthUser(ctx);
+  await isWorkspaceOwner(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
@@ -184,6 +203,7 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
 router.post("/workspace/:workspaceId/membership", async (ctx) => {
   // user must be logged in
   const authUser = extractAuthUser(ctx);
+  await isWorkspaceOwner(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
@@ -222,6 +242,7 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
 router.post("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
   const authUser = extractAuthUser(ctx);
+  await isWorkspaceOwner(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
@@ -253,6 +274,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
 router.delete("/workspace/:workspaceId/members", async (ctx) => {
   // user must be logged in
   const authUser = extractAuthUser(ctx);
+  await isWorkspaceOwner(ctx);
 
   const workspace = await extractOwnWorkspaceIdParam(ctx);
 
