@@ -220,6 +220,8 @@ pub fn filter_and_paginate(
         filtered_audit_logs.reverse();
     }
 
+    // Count the number of audit logs after filtering, but before pagination. We need this so that
+    // the frontend can know how many pages exists when paginating data.
     let total = filtered_audit_logs.len();
 
     // Finally, paginate and return.

@@ -271,6 +271,36 @@ async fn tenancy_from_claim(
     Ok(Tenancy(dal::Tenancy::new(claim.workspace_pk)))
 }
 
+/// Use instead of [`axum::extract::Query`] when the query contains array params using "[]"
+/// notation.
+///
+/// Inspiration : https://dev.to/pongsakornsemsuwan/rust-axum-extracting-query-param-of-vec-4pdm
+pub struct QueryWithVecParams<T>(pub T);
+
+#[async_trait]
+impl<T> FromRequestParts<AppState> for QueryWithVecParams<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let query = parts
+            .uri
+            .query()
+            .ok_or(not_found_error("no query string found in uri"))?;
+        let deserialized = serde_qs::from_str(query).map_err(|err| {
+            unprocessable_entity_error(&format!(
+                "could not deserialize query string: {query} (error: {err})"
+            ))
+        })?;
+        Ok(Self(deserialized))
+    }
+}
+
 fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
     let status_code = StatusCode::INTERNAL_SERVER_ERROR;
     (
@@ -292,6 +322,34 @@ fn unauthorized_error() -> (StatusCode, Json<serde_json::Value>) {
         Json(serde_json::json!({
             "error": {
                 "message": "unauthorized",
+                "statusCode": status_code.as_u16(),
+                "code": 42,
+            },
+        })),
+    )
+}
+
+fn not_found_error(message: &str) -> (StatusCode, Json<serde_json::Value>) {
+    let status_code = StatusCode::NOT_FOUND;
+    (
+        status_code,
+        Json(serde_json::json!({
+            "error": {
+                "message": message,
+                "statusCode": status_code.as_u16(),
+                "code": 42,
+            },
+        })),
+    )
+}
+
+fn unprocessable_entity_error(message: &str) -> (StatusCode, Json<serde_json::Value>) {
+    let status_code = StatusCode::UNPROCESSABLE_ENTITY;
+    (
+        status_code,
+        Json(serde_json::json!({
+            "error": {
+                "message": message,
                 "statusCode": status_code.as_u16(),
                 "code": 42,
             },

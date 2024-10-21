@@ -9,34 +9,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
-axum = { workspace = true }
-base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
-chrono = { workspace = true }
-clap = { workspace = true }
-convert_case = { workspace = true }
 dal = { path = "../../lib/dal" }
-derive_builder = { workspace = true }
-futures = { workspace = true }
-futures-lite = { workspace = true }
-hyper = { workspace = true }
 module-index-client = { path = "../../lib/module-index-client" }
-names = { workspace = true }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-nix = { workspace = true }
-once_cell = { workspace = true }
-pathdiff = { workspace = true }
 permissions = { path = "../../lib/permissions" }
-rand = { workspace = true }
 rebaser-client = { path = "../../lib/rebaser-client" }
-remain = { workspace = true }
-reqwest = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-serde_with = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
@@ -48,10 +28,33 @@ si-pkg = { path = "../../lib/si-pkg" }
 si-posthog = { path = "../../lib/si-posthog-rs" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
-sodiumoxide = { workspace = true }
-strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
+async-trait = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+convert_case = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+futures-lite = { workspace = true }
+hyper = { workspace = true }
+names = { workspace = true }
+nix = { workspace = true }
+once_cell = { workspace = true }
+pathdiff = { workspace = true }
+rand = { workspace = true }
+remain = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_qs = { workspace = true }
+serde_with = { workspace = true }
+sodiumoxide = { workspace = true }
+strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
@@ -62,11 +65,11 @@ tower-http = { workspace = true }
 tracing-tunnel = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
-veritech-client = { path = "../../lib/veritech-client" }
 y-sync = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
+
 pretty_assertions_sorted = { workspace = true }
 serde_url_params = { workspace = true }
 tokio-util = { workspace = true }
