@@ -1,5 +1,9 @@
-use axum::{extract::State, Json};
-use dal::User;
+use axum::{
+    extract::{Host, OriginalUri, State},
+    http::uri::Uri,
+    Json,
+};
+use dal::{DalContext, User};
 use permissions::{ObjectType, Relation, RelationBuilder};
 use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbClient;
@@ -7,9 +11,9 @@ use strum::{Display, EnumString};
 
 use super::{SessionError, SessionResult};
 use crate::{
-    extract::{AccessBuilder, HandlerContext, RawAccessToken},
+    extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken},
     service::session::AuthApiErrBody,
-    AppState,
+    track, AppState,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -42,10 +46,14 @@ pub struct RefreshWorkspaceMembersResponse {
     pub success: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn refresh_workspace_members(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     State(state): State<AppState>,
     Json(request): Json<RefreshWorkspaceMembersRequest>,
 ) -> SessionResult<Json<RefreshWorkspaceMembersResponse>> {
@@ -71,6 +79,8 @@ pub async fn refresh_workspace_members(
     }
 
     let workspace_members = res.json::<Vec<WorkspaceMember>>().await?;
+    let ctx = builder.build_head(access_builder).await?;
+    let posthog_client = PosthogClient(posthog_client.clone());
 
     if let Some(client) = state.spicedb_client() {
         let approvers: Vec<_> = workspace_members
@@ -79,10 +89,18 @@ pub async fn refresh_workspace_members(
             .filter(|u| matches!(u.role, WorkspaceRole::Approver))
             .map(|u| u.user_id)
             .collect();
-        sync_workspace_approvers(client.clone(), request.workspace_id.clone(), approvers).await?;
+        sync_workspace_approvers(
+            &ctx,
+            client.clone(),
+            request.workspace_id.clone(),
+            approvers,
+            &original_uri,
+            &host_name,
+            &posthog_client,
+        )
+        .await?;
     }
 
-    let ctx = builder.build_head(access_builder).await?;
     let members = User::list_members_for_workspace(&ctx, request.workspace_id.clone()).await?;
     let member_ids: Vec<_> = workspace_members.into_iter().map(|w| w.user_id).collect();
     let users_to_remove: Vec<_> = members
@@ -99,9 +117,13 @@ pub async fn refresh_workspace_members(
 }
 
 async fn sync_workspace_approvers(
+    ctx: &DalContext,
     client: SpiceDbClient,
     workspace_id: String,
     new_approver_ids: Vec<String>,
+    original_uri: &Uri,
+    host_name: &String,
+    PosthogClient(posthog_client): &PosthogClient,
 ) -> SessionResult<()> {
     let existing_approvers = RelationBuilder::new()
         .object(ObjectType::Workspace, workspace_id.clone())
@@ -129,18 +151,42 @@ async fn sync_workspace_approvers(
         RelationBuilder::new()
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
-            .subject(ObjectType::User, user)
+            .subject(ObjectType::User, user.clone())
             .create(client.clone())
             .await?;
+
+        track(
+            posthog_client,
+            ctx,
+            original_uri,
+            host_name,
+            "add_approver",
+            serde_json::json!({
+                "how": "/session/refresh_workspace_member",
+                "user_pk": user,
+            }),
+        );
     }
 
     for user in to_remove {
         RelationBuilder::new()
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
-            .subject(ObjectType::User, user)
+            .subject(ObjectType::User, user.clone())
             .delete(client.clone())
             .await?;
+
+        track(
+            posthog_client,
+            ctx,
+            original_uri,
+            host_name,
+            "remove_approver",
+            serde_json::json!({
+                "how": "/session/refresh_workspace_member",
+                "user_pk": user,
+            }),
+        );
     }
     Ok(())
 }
