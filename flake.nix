@@ -105,6 +105,7 @@
         google-cloud-sdk
         linode-cli
         flyctl
+        azure-cli
       ];
 
       buck2Derivation = {
