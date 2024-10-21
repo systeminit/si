@@ -152,7 +152,7 @@ execute_configuration_management() {
               BASE_LOOP=$(losetup --find --show --read-only ./rootfs.ext4)
               OVERLAY_FILE=./rootfs-overlay
               touch $OVERLAY_FILE
-              truncate --size=5368709120 $OVERLAY_FILE
+              truncate --size=10737418240 $OVERLAY_FILE
               OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
               BASE_SZ=$(blockdev --getsz $BASE_LOOP)
               OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
