@@ -21,9 +21,11 @@ use crate::{
 pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
+pub mod traits;
 pub mod v2;
 pub mod v3;
 
+pub use traits::{schema::SchemaVariantExt, socket::input::InputSocketExt};
 pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 
