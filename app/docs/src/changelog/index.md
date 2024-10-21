@@ -11,6 +11,13 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 2024-10-21
+
+- Asset import
+- Role based access control
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/4aKb6enbpcw?si=u1OSD_kdCYpRFFgU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## 2024-10-14
 
 - Workspace Admin Updates
