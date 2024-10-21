@@ -58,6 +58,7 @@ pub struct RelationBuilder {
     object: Option<PermissionsObject>,
     relation: Option<Relation>,
     subject: Option<PermissionsObject>,
+    zed_token: Option<ZedToken>,
 }
 
 impl RelationBuilder {
@@ -66,6 +67,7 @@ impl RelationBuilder {
             object: None,
             relation: None,
             subject: None,
+            zed_token: None,
         }
     }
 
@@ -81,6 +83,11 @@ impl RelationBuilder {
 
     pub fn subject(mut self, object_type: ObjectType, id: impl ToString) -> Self {
         self.subject = Some(PermissionsObject::new(object_type, id));
+        self
+    }
+
+    pub fn zed_token(mut self, token: ZedToken) -> Self {
+        self.zed_token = Some(token.clone());
         self
     }
 
@@ -114,6 +121,7 @@ impl RelationBuilder {
                     object,
                     relation,
                     PermissionsObject::empty(),
+                    self.zed_token.clone(),
                 ))
                 .await
                 .map_err(Error::SpiceDb),
@@ -129,9 +137,12 @@ impl RelationBuilder {
             self.relation.clone(),
             self.subject.clone(),
         ) {
-            (Some(object), Some(relation), Some(subject)) => {
-                Ok(Relationship::new(object, relation, subject))
-            }
+            (Some(object), Some(relation), Some(subject)) => Ok(Relationship::new(
+                object,
+                relation,
+                subject,
+                self.zed_token.clone(),
+            )),
             _ => Err(Error::RelationBuilder {
                 required_fields: vec![
                     "object".to_string(),

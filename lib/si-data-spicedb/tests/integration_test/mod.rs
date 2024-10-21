@@ -84,12 +84,15 @@ async fn write_and_read_relationship() {
 
     let workspace_object = PermissionsObject::new("workspace", "456".to_string());
     let user_object = PermissionsObject::new("user", "scott".to_string());
-    let scott_aprover_workspace = Relationship::new(workspace_object, "approver", user_object);
+    let mut scott_aprover_workspace =
+        Relationship::new(workspace_object, "approver", user_object, None);
 
-    client
+    let zed_token = client
         .create_relationships(vec![scott_aprover_workspace.clone()])
         .await
         .expect("failed to create a relation");
+
+    scott_aprover_workspace.set_zed_token(zed_token);
 
     let resp = client
         .read_relationship(scott_aprover_workspace.clone())
@@ -98,10 +101,12 @@ async fn write_and_read_relationship() {
 
     assert!(resp.len() == 1);
 
-    client
+    let zed_token = client
         .delete_relationships(vec![scott_aprover_workspace.clone()])
         .await
         .expect("failed to delete relation");
+
+    scott_aprover_workspace.set_zed_token(zed_token);
 
     let resp = client
         .read_relationship(scott_aprover_workspace.clone())
@@ -139,8 +144,12 @@ async fn check_permissions() {
     let workspace_object = PermissionsObject::new("workspace", "789".to_string());
     let user_object = PermissionsObject::new("user", "scott".to_string());
     let user_object2 = PermissionsObject::new("user", "fletcher".to_string());
-    let scott_aprover_workspace =
-        Relationship::new(workspace_object.clone(), "approver", user_object.clone());
+    let scott_aprover_workspace = Relationship::new(
+        workspace_object.clone(),
+        "approver",
+        user_object.clone(),
+        None,
+    );
 
     let zed_token = client
         .create_relationships(vec![scott_aprover_workspace.clone()])

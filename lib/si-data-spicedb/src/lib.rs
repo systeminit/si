@@ -254,7 +254,7 @@ impl Client {
 
         let results: result::Result<Vec<_>, _> = self
             .inner
-            .read_relationships(relationship.into_request())
+            .read_relationships(relationship.into_read_request())
             .await?
             .try_collect()
             .await;
