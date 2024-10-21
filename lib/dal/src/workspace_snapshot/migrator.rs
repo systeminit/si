@@ -93,6 +93,11 @@ impl SnapshotGraphMigrator {
             }
         }
 
+        info!(
+            "Migrating {} snapshot(s)",
+            change_set_graph.independent_ids().len(),
+        );
+
         loop {
             let change_sets_to_migrate = change_set_graph.independent_ids();
             if change_sets_to_migrate.is_empty() {
@@ -113,9 +118,11 @@ impl SnapshotGraphMigrator {
                 }
 
                 let snapshot_address = change_set.workspace_snapshot_address;
-                info!(
+                trace!(
                     "Migrating snapshot {} for change set {} with base change set of {:?}",
-                    snapshot_address, change_set_id, change_set.base_change_set_id,
+                    snapshot_address,
+                    change_set_id,
+                    change_set.base_change_set_id,
                 );
 
                 let new_snapshot = match self.migrate_snapshot(ctx, snapshot_address).await {
@@ -158,9 +165,11 @@ impl SnapshotGraphMigrator {
                 change_set
                     .update_pointer(&ctx_after_migration, new_snapshot_address)
                     .await?;
-                info!(
+                trace!(
                     "Migrated snapshot {} for change set {} with base change set of {:?}",
-                    snapshot_address, change_set_id, change_set.base_change_set_id,
+                    snapshot_address,
+                    change_set_id,
+                    change_set.base_change_set_id,
                 );
 
                 change_set_graph.remove_id(change_set_id);
