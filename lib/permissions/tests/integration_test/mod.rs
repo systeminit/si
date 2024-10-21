@@ -44,7 +44,7 @@ async fn write_schema(mut client: SpiceDbClient) {
 async fn add_remove_approver_from_workspace() {
     let config = spicedb_config();
 
-    let client = Client::new(&config)
+    let mut client = Client::new(&config)
         .await
         .expect("failed to connect to spicedb");
 
@@ -59,7 +59,7 @@ async fn add_remove_approver_from_workspace() {
         .subject(ObjectType::User, user_id.clone());
 
     let zed_token = relation
-        .create(client.clone())
+        .create(&mut client)
         .await
         .expect("could not create relationship")
         .expect("could not unwrap zed token");
@@ -71,19 +71,19 @@ async fn add_remove_approver_from_workspace() {
         .zed_token(zed_token);
 
     assert!(can_approve
-        .has_permission(client.clone())
+        .has_permission(&mut client)
         .await
         .expect("could not check permission"));
 
     let zed_token = relation
-        .delete(client.clone())
+        .delete(&mut client)
         .await
         .expect("could not delete permission")
         .expect("could not unwrap zed token");
 
     assert!(!can_approve
         .zed_token(zed_token)
-        .has_permission(client.clone())
+        .has_permission(&mut client)
         .await
         .expect("could not check permission"));
 }

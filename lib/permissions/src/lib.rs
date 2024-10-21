@@ -1,6 +1,7 @@
 use si_data_spicedb::{
     PermissionsObject, Relationship, Relationships, SpiceDbClient, SpiceDbError, ZedToken,
 };
+use si_events::{UserPk, WorkspacePk};
 use std::result;
 use thiserror::Error;
 
@@ -20,20 +21,21 @@ pub enum Error {
 
 type Result<T> = result::Result<T, Error>;
 
-#[derive(strum::Display, Debug)]
+#[derive(Clone, Copy, strum::Display, Debug)]
 #[strum(serialize_all = "snake_case")]
 pub enum ObjectType {
     User,
     Workspace,
 }
 
-#[derive(Clone, strum::Display)]
+#[derive(Clone, Copy, strum::Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum Permission {
     Approve,
+    Manage,
 }
 
-#[derive(Clone, strum::Display, Debug)]
+#[derive(Clone, Copy, strum::Display, Debug)]
 #[strum(serialize_all = "snake_case")]
 pub enum Relation {
     Approver,
@@ -76,6 +78,10 @@ impl RelationBuilder {
         self
     }
 
+    pub fn workspace_object(self, id: WorkspacePk) -> Self {
+        self.object(ObjectType::Workspace, id)
+    }
+
     pub fn relation(mut self, relation: Relation) -> Self {
         self.relation = Some(relation);
         self
@@ -86,13 +92,17 @@ impl RelationBuilder {
         self
     }
 
+    pub fn user_subject(self, id: UserPk) -> Self {
+        self.subject(ObjectType::User, id)
+    }
+
     pub fn zed_token(mut self, token: ZedToken) -> Self {
         self.zed_token = Some(token.clone());
         self
     }
 
     /// Creates a new relationship in SpiceDb
-    pub async fn create(&self, mut client: SpiceDbClient) -> Result<Option<ZedToken>> {
+    pub async fn create(&self, client: &mut SpiceDbClient) -> Result<Option<ZedToken>> {
         match self.check() {
             Ok(relationship) => client
                 .create_relationships(vec![relationship])
@@ -103,7 +113,7 @@ impl RelationBuilder {
     }
 
     /// Deletes an existing relationship in SpiceDb
-    pub async fn delete(&self, mut client: SpiceDbClient) -> Result<Option<ZedToken>> {
+    pub async fn delete(&self, client: &mut SpiceDbClient) -> Result<Option<ZedToken>> {
         match self.check() {
             Ok(relationship) => client
                 .delete_relationships(vec![relationship])
@@ -114,8 +124,8 @@ impl RelationBuilder {
     }
 
     /// Reads existing relations in SpiceDb for a given object and relation
-    pub async fn read(&self, mut client: SpiceDbClient) -> Result<Relationships> {
-        match (self.object.clone(), self.relation.clone()) {
+    pub async fn read(&self, client: &mut SpiceDbClient) -> Result<Relationships> {
+        match (self.object.clone(), self.relation) {
             (Some(object), Some(relation)) => client
                 .read_relationship(Relationship::new(
                     object,
@@ -132,11 +142,7 @@ impl RelationBuilder {
     }
 
     fn check(&self) -> Result<Relationship> {
-        match (
-            self.object.clone(),
-            self.relation.clone(),
-            self.subject.clone(),
-        ) {
+        match (self.object.clone(), self.relation, self.subject.clone()) {
             (Some(object), Some(relation), Some(subject)) => Ok(Relationship::new(
                 object,
                 relation,
@@ -196,6 +202,10 @@ impl PermissionBuilder {
         self
     }
 
+    pub fn workspace_object(self, id: WorkspacePk) -> Self {
+        self.object(ObjectType::Workspace, id)
+    }
+
     pub fn permission(mut self, permission: Permission) -> Self {
         self.permission = Some(permission);
         self
@@ -206,13 +216,17 @@ impl PermissionBuilder {
         self
     }
 
+    pub fn user_subject(self, id: UserPk) -> Self {
+        self.subject(ObjectType::User, id)
+    }
+
     pub fn zed_token(mut self, token: ZedToken) -> Self {
         self.zed_token = Some(token.clone());
         self
     }
 
     /// Checks if the given subject has the given permission in the given object
-    pub async fn has_permission(&self, mut client: SpiceDbClient) -> Result<bool> {
+    pub async fn has_permission(&self, client: &mut SpiceDbClient) -> Result<bool> {
         match self.check() {
             Ok(perms) => Ok(client
                 .check_permissions(perms)
@@ -223,11 +237,7 @@ impl PermissionBuilder {
     }
 
     fn check(&self) -> Result<si_data_spicedb::Permission> {
-        match (
-            self.object.clone(),
-            self.permission.clone(),
-            self.subject.clone(),
-        ) {
+        match (self.object.clone(), self.permission, self.subject.clone()) {
             (Some(object), Some(permission), Some(subject)) => {
                 Ok(si_data_spicedb::Permission::new(
                     object,

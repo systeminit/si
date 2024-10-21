@@ -60,7 +60,10 @@ pub fn routes(state: AppState) -> Router {
             crate::service::qualification::routes(),
         )
         .nest("/api/secret", crate::service::secret::routes())
-        .nest("/api/session", crate::service::session::routes())
+        .nest(
+            "/api/session",
+            crate::service::session::routes(state.clone()),
+        )
         .nest("/api/ws", crate::service::ws::routes())
         .nest("/api/module", crate::service::module::routes())
         .nest("/api/variant", crate::service::variant::routes())

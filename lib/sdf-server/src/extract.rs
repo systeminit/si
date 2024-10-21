@@ -186,6 +186,10 @@ impl FromRequestParts<AppState> for Authorization {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        if let Some(claim) = parts.extensions.get::<UserClaim>() {
+            return Ok(Self(*claim));
+        }
+
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
         let mut ctx = builder.build_default().await.map_err(internal_error)?;
         let jwt_public_signing_key = state.jwt_public_signing_key().clone();
@@ -209,6 +213,8 @@ impl FromRequestParts<AppState> for Authorization {
         if !is_authorized {
             return Err(unauthorized_error());
         }
+
+        parts.extensions.insert(claim);
 
         Ok(Self(claim))
     }
@@ -315,7 +321,7 @@ fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::V
     )
 }
 
-fn unauthorized_error() -> (StatusCode, Json<serde_json::Value>) {
+pub fn unauthorized_error() -> (StatusCode, Json<serde_json::Value>) {
     let status_code = StatusCode::UNAUTHORIZED;
     (
         status_code,
