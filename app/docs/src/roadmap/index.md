@@ -45,6 +45,17 @@ to also discovering related infrastructure.
 You can collapse and expand infrastructure today, but we want to be able to
 create custom views, allow you to drill down, etc.
 
+### Current Opportunity: Views
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/qpNxaAojuzI?si=XLnnJy7uWF4ruEVY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+Views allow the creation of custom views within the workspace. Views are a
+semantic representation of a group of components and components can exist in
+multiple views. Components in a view can connect to components in another view.
+This enables teams to create diagrams that are specific to their application or
+area of specialization.
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-views)
+
 ## Enterprise features
 
 Custom authentication, ubiquitous access control, history, etc.
