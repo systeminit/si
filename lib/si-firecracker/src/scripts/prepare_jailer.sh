@@ -91,7 +91,7 @@ function rootfs_prep() {
   # Bind mounted permissions propagate, so jails would conflict.
   OVERLAY_FILE=$JAIL/$OVERLAY
   touch $OVERLAY_FILE
-  truncate --size=5368709120 $OVERLAY_FILE
+  truncate --size=10737418240 $OVERLAY_FILE
   OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
   OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
   echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create $OVERLAY
