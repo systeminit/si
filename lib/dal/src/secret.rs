@@ -623,7 +623,7 @@ impl Secret {
     ) -> SecretResult<Vec<ComponentId>> {
         let secret_details = self.encrypted_secret_key().to_string();
         let mut connected_components = Vec::new();
-        let mut secret_props = Vec::new();
+        let mut secret_prop_ids = Vec::new();
         let schema_variants = SchemaVariant::list_user_facing(ctx).await?;
         for schema_variant in schema_variants {
             let secrets_prop = Prop::find_prop_by_path(
@@ -632,16 +632,13 @@ impl Secret {
                 &RootPropChild::Secrets.prop_path(),
             )
             .await?;
-            let secret_props_children =
-                Prop::direct_child_props_ordered(ctx, secrets_prop.clone().id()).await?;
-            for secret_child in secret_props_children {
-                secret_props.push(secret_child.clone());
-            }
+            secret_prop_ids
+                .extend(Prop::direct_child_prop_ids_ordered(ctx, secrets_prop.id).await?);
         }
 
-        for secret_prop in secret_props {
+        for secret_prop_id in secret_prop_ids {
             let all_connected_attribute_values =
-                Prop::all_attribute_values_everywhere_for_prop_id(ctx, secret_prop.id()).await?;
+                Prop::all_attribute_values_everywhere_for_prop_id(ctx, secret_prop_id).await?;
             for connected_av in all_connected_attribute_values {
                 let av = AttributeValue::get_by_id_or_error(ctx, connected_av).await?;
                 if let Some(val) = av.value(ctx).await? {

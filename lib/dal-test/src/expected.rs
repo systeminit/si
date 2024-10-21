@@ -206,6 +206,17 @@ impl ExpectSchema {
         ExpectSchema(name.as_ref().lookup_schema(ctx).await)
     }
 
+    pub async fn create(ctx: &DalContext) -> ExpectSchema {
+        Self::create_named(ctx, generate_fake_name()).await
+    }
+
+    pub async fn create_named(ctx: &DalContext, name: impl AsRef<str>) -> ExpectSchema {
+        Schema::new(ctx, name.as_ref())
+            .await
+            .expect("create schema")
+            .into()
+    }
+
     pub fn id(self) -> SchemaId {
         self.0
     }

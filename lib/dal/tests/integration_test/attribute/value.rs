@@ -1,57 +1,30 @@
-use dal::prop::PropPath;
-use dal::{AttributeValue, Component, DalContext, Prop, Schema};
+use dal::{AttributeValue, DalContext};
+use dal_test::expected::ExpectComponent;
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal_test::{test, Result};
 use pretty_assertions_sorted::assert_eq;
+use serde_json::json;
 
 #[test]
-async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) {
-    let schema = Schema::find_by_name(ctx, "swifty")
-        .await
-        .expect("could not perform find by name")
-        .expect("schema not found");
-    let schema_variant_id = schema
-        .get_default_schema_variant_id(ctx)
-        .await
-        .expect("could not perform get default schema variant")
-        .expect("schema variant not found");
-
+async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) -> Result<()> {
     // Create a component and commit. For context, the test exclusive schema has the identity
     // function set on "/root/domain/name" with an input from "/root/si/name". We need to ensure
     // that the value of "/root/si/name" comes in, as expected. The name is set when creating a
     // component, so we do not need to do additional setup.
     let expected = "you should see this name in the arguments";
-    let component = Component::new(ctx, expected, schema_variant_id)
-        .await
-        .expect("could not create component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    let component = ExpectComponent::create_named(ctx, "swifty", expected).await;
+    let name_prop = component.prop(ctx, ["root", "domain", "name"]).await;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Ensure that the arguments look as we expect.
-    let prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        schema_variant_id,
-        &PropPath::new(["root", "domain", "name"]),
-    )
-    .await
-    .expect("could not find prop id by path");
-    let mut attribute_value_ids =
-        Component::attribute_values_for_prop_id(ctx, component.id(), prop_id)
-            .await
-            .expect("could not list attribute value ids for prop id");
-    let attribute_value_id = attribute_value_ids
-        .pop()
-        .expect("empty attribute value ids");
-    assert!(attribute_value_ids.is_empty());
+    let name_av_id = name_prop.attribute_value(ctx).await.id();
     let (_, arguments) =
-        AttributeValue::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
-            .await
-            .expect("could not prepare arguments");
+        AttributeValue::prepare_arguments_for_prototype_function_execution(ctx, name_av_id).await?;
     assert_eq!(
-        serde_json::json![{
+        json![{
             "identity": expected
-        }], // expected
-        arguments // actual
+        }],
+        arguments
     );
+    Ok(())
 }
