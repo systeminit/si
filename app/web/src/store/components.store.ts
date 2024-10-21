@@ -948,6 +948,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.movedElementPositions = {};
 
                 this.rawComponentsById = _.keyBy(response.components, "id");
+                this.allComponentsById = {};
+                this.nodesById = {};
+                this.groupsById = {};
                 response.components.forEach((component) => {
                   this.processRawComponent(component.id, false);
                 });
