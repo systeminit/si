@@ -23,6 +23,7 @@ mod config;
 mod extract;
 mod init;
 mod migrations;
+pub mod middleware;
 mod nats_multiplexer;
 mod routes;
 mod runnable;

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
-use crate::AppState;
+use crate::{middleware::WorkspacePermissionLayer, AppState};
 
 use super::ApiError;
 
@@ -56,8 +56,8 @@ pub enum SessionError {
     Workspace(#[from] WorkspaceError),
     #[error("workspace {0} not yet migrated to new snapshot graph version. Migration required")]
     WorkspaceNotYetMigrated(WorkspacePk),
-    #[error("you do not have permission to create a workspace on this instance")]
-    WorkspacePermissions,
+    #[error("invalid workspace permission: {0}")]
+    WorkspacePermission(&'static str),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,7 +73,7 @@ impl IntoResponse for SessionError {
         let (status_code, error_message) = match self {
             SessionError::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
             SessionError::InvalidWorkspace(_) => (StatusCode::CONFLICT, self.to_string()),
-            SessionError::WorkspacePermissions => (StatusCode::UNAUTHORIZED, self.to_string()),
+            SessionError::WorkspacePermission(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
             SessionError::AuthApiError(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
@@ -82,7 +82,7 @@ impl IntoResponse for SessionError {
     }
 }
 
-pub fn routes() -> Router<AppState> {
+pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/connect", post(auth_connect::auth_connect))
         .route("/reconnect", get(auth_connect::auth_reconnect))
@@ -93,6 +93,8 @@ pub fn routes() -> Router<AppState> {
         .route("/load_workspaces", get(load_workspaces::load_workspaces))
         .route(
             "/refresh_workspace_members",
-            post(refresh_workspace_members::refresh_workspace_members),
+            post(refresh_workspace_members::refresh_workspace_members).layer(
+                WorkspacePermissionLayer::new(state, permissions::Permission::Manage),
+            ),
         )
 }

@@ -95,7 +95,7 @@ async fn find_or_create_user_and_workspace(
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: &[String],
     on_demand_assets: bool,
-    spicedb_client: Option<SpiceDbClient>,
+    spicedb_client: Option<&mut SpiceDbClient>,
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, auth_api_user.id).await?;
@@ -144,7 +144,9 @@ async fn find_or_create_user_and_workspace(
                     &user.email(),
                     create_workspace_allowlist
                 );
-                return Err(SessionError::WorkspacePermissions);
+                return Err(SessionError::WorkspacePermission(
+                    "you do not have permission to create a workspace on this instance",
+                ));
             }
 
             let workspace = if on_demand_assets {
@@ -247,7 +249,7 @@ pub async fn auth_connect(
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
         request.on_demand_assets.unwrap_or(false),
-        state.spicedb_client().cloned(),
+        state.spicedb_client_clone().as_mut(),
     )
     .await?;
 
@@ -296,7 +298,7 @@ pub async fn auth_reconnect(
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
         auth_response_body.on_demand_assets.unwrap_or(false),
-        state.spicedb_client().cloned(),
+        state.spicedb_client_clone().as_mut(),
     )
     .await?;
 
@@ -335,7 +337,7 @@ pub async fn user_has_permission_to_create_workspace(
 }
 
 async fn set_owner_as_owner(
-    client: SpiceDbClient,
+    client: &mut SpiceDbClient,
     user_id: String,
     workspace_id: String,
 ) -> SessionResult<()> {
@@ -344,11 +346,11 @@ async fn set_owner_as_owner(
         .relation(Relation::Owner);
 
     // check if an owner exists already
-    if owner_relation.read(client.clone()).await?.is_empty() {
+    if owner_relation.read(client).await?.is_empty() {
         // if not, add this user as the owner
         owner_relation
             .subject(ObjectType::User, user_id)
-            .create(client.clone())
+            .create(client)
             .await?;
     };
     Ok(())

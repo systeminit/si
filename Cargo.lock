@@ -4240,6 +4240,7 @@ dependencies = [
  "remain",
  "serde",
  "si-data-spicedb",
+ "si-events",
  "strum 0.26.3",
  "thiserror",
  "tokio",

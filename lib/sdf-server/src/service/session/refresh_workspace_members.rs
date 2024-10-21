@@ -46,7 +46,7 @@ pub async fn refresh_workspace_members(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Json(request): Json<RefreshWorkspaceMembersRequest>,
 ) -> SessionResult<Json<RefreshWorkspaceMembersResponse>> {
     let client = reqwest::Client::new();
@@ -79,7 +79,7 @@ pub async fn refresh_workspace_members(
             .filter(|u| matches!(u.role, WorkspaceRole::Approver))
             .map(|u| u.user_id)
             .collect();
-        sync_workspace_approvers(client.clone(), request.workspace_id.clone(), approvers).await?;
+        sync_workspace_approvers(client, request.workspace_id.clone(), approvers).await?;
     }
 
     let ctx = builder.build_head(access_builder).await?;
@@ -99,14 +99,14 @@ pub async fn refresh_workspace_members(
 }
 
 async fn sync_workspace_approvers(
-    client: SpiceDbClient,
+    client: &mut SpiceDbClient,
     workspace_id: String,
     new_approver_ids: Vec<String>,
 ) -> SessionResult<()> {
     let existing_approvers = RelationBuilder::new()
         .object(ObjectType::Workspace, workspace_id.clone())
         .relation(Relation::Approver)
-        .read(client.clone())
+        .read(client)
         .await?;
 
     let existing_approver_ids: Vec<_> = existing_approvers
@@ -130,7 +130,7 @@ async fn sync_workspace_approvers(
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
             .subject(ObjectType::User, user)
-            .create(client.clone())
+            .create(client)
             .await?;
     }
 
@@ -139,7 +139,7 @@ async fn sync_workspace_approvers(
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
             .subject(ObjectType::User, user)
-            .delete(client.clone())
+            .delete(client)
             .await?;
     }
     Ok(())
