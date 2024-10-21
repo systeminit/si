@@ -3092,6 +3092,11 @@ impl Component {
         // ========================================
         // Delete original component
         // ========================================
+        // Remove all children from the "old" frame before we delete it. We'll add them all to the
+        // new frame after we've deleted the old one.
+        for &child in &original_children {
+            Frame::orphan_child(ctx, child).await.map_err(Box::new)?;
+        }
 
         // Remove the original resource so that we don't queue a delete action
         original_component.clear_resource(ctx).await?;
