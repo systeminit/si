@@ -225,7 +225,7 @@ impl DependentValueGraph {
 
             match value_is_for {
                 ValueIsFor::Prop(prop_id) => {
-                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    let prop = Prop::get_by_id(ctx, prop_id).await?;
                     if prop.kind == PropKind::Object {
                         // The children of an object might themselves be the
                         // input to another function, so we have to add them to

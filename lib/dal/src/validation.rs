@@ -20,7 +20,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     id, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
-    Component, ComponentId, FuncError, HistoryEventError, Prop, Timestamp,
+    Component, ComponentId, FuncError, HistoryEventError, Timestamp,
 };
 use crate::{ComponentError, DalContext, TransactionsError};
 
@@ -253,17 +253,10 @@ impl ValidationOutput {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<Option<String>> {
-        Ok(
-            if let Some(prop_id) = AttributeValue::prop_id_for_id(ctx, attribute_value_id)
-                .await
-                .map_err(Box::new)?
-            {
-                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
-                prop.validation_format
-            } else {
-                None
-            },
-        )
+        Ok(AttributeValue::prop_opt(ctx, attribute_value_id)
+            .await
+            .map_err(Box::new)?
+            .and_then(|prop| prop.validation_format))
     }
 
     /// If an attribute value is for a [Prop](Prop) that has a `validation_format`, run a validation

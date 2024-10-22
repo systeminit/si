@@ -640,7 +640,7 @@ impl Secret {
             let all_connected_attribute_values =
                 Prop::all_attribute_values_everywhere_for_prop_id(ctx, secret_prop_id).await?;
             for connected_av in all_connected_attribute_values {
-                let av = AttributeValue::get_by_id_or_error(ctx, connected_av).await?;
+                let av = AttributeValue::get_by_id(ctx, connected_av).await?;
                 if let Some(val) = av.value(ctx).await? {
                     if val == secret_details {
                         let connected_component =

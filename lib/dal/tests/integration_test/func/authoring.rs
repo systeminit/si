@@ -110,7 +110,7 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
     let AttributeFuncDestination::Prop(prop_output) = output_location else {
         panic!("output location is wrong");
     };
-    let prop_name = Prop::get_by_id_or_error(ctx, prop_output)
+    let prop_name = Prop::get_by_id(ctx, prop_output)
         .await
         .expect("prop exists");
     assert_eq!(
@@ -207,7 +207,7 @@ async fn create_unlocked_copy_attribute_func(ctx: &mut DalContext) {
         panic!("output location is wrong");
     };
     // prop name is galaxies
-    let prop_name = Prop::get_by_id_or_error(ctx, prop_output)
+    let prop_name = Prop::get_by_id(ctx, prop_output)
         .await
         .expect("prop exists");
     assert_eq!(

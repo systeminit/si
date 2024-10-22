@@ -97,8 +97,7 @@ impl AttributeBinding {
             AttributePrototype::eventual_parent(ctx, attribute_prototype_id).await?;
         let output_location = match eventual_parent {
             AttributePrototypeEventualParent::Component(_, attribute_value_id) => {
-                let prop_id =
-                    AttributeValue::prop_id_for_id_or_error(ctx, attribute_value_id).await?;
+                let prop_id = AttributeValue::prop_id(ctx, attribute_value_id).await?;
                 AttributeFuncDestination::Prop(prop_id)
             }
             AttributePrototypeEventualParent::SchemaVariantFromOutputSocket(
@@ -741,7 +740,7 @@ impl AttributeBinding {
                     if let AttributeFuncArgumentSource::Prop(prop_id) =
                         arg.attribute_func_input_location
                     {
-                        let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                        let prop = Prop::get_by_id(ctx, prop_id).await?;
                         let ts_type = prop.ts_type(ctx).await?;
 
                         if let std::collections::hash_map::Entry::Vacant(e) =
@@ -759,7 +758,7 @@ impl AttributeBinding {
                     let output_type = if let AttributeFuncDestination::Prop(output_prop_id) =
                         attribute.output_location
                     {
-                        Prop::get_by_id_or_error(ctx, output_prop_id)
+                        Prop::get_by_id(ctx, output_prop_id)
                             .await?
                             .ts_type(ctx)
                             .await?

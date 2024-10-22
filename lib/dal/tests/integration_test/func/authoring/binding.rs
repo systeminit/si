@@ -582,7 +582,7 @@ async fn for_intrinsics(ctx: &mut DalContext) {
                     let AttributeFuncDestination::Prop(prop_id) = binding.output_location else {
                         panic!("Non-Prop is set to unset, which is unexpected!")
                     };
-                    let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                    let prop = Prop::get_by_id(ctx, prop_id)
                         .await
                         .expect("couldn't get prop");
                     let path = prop.path(ctx).await.expect("could not get prop path");
@@ -613,7 +613,7 @@ async fn for_intrinsics(ctx: &mut DalContext) {
                 assert_eq!(2, attribute_bindings.len());
                 for binding in attribute_bindings {
                     if let AttributeFuncDestination::Prop(prop_id) = binding.output_location {
-                        let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                        let prop = Prop::get_by_id(ctx, prop_id)
                             .await
                             .expect("couldn't get prop");
                         let path = prop.path(ctx).await.expect("bad");
@@ -631,7 +631,7 @@ async fn for_intrinsics(ctx: &mut DalContext) {
                                 else {
                                     panic!("Non-Prop is set to unset, which is unexpected!")
                                 };
-                                let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                                let prop = Prop::get_by_id(ctx, prop_id)
                                     .await
                                     .expect("couldn't get prop");
                                 let path = prop

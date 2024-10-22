@@ -221,7 +221,7 @@ pub async fn get_component_input_socket_value(
         .pop()
         .ok_or(eyre!("no input socket match found"))?;
     let input_socket_av =
-        AttributeValue::get_by_id_or_error(ctx, component_input_socket.attribute_value_id).await?;
+        AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
     Ok(input_socket_av.view(ctx).await?)
 }
 
@@ -244,7 +244,7 @@ pub async fn get_component_output_socket_value(
         .pop()
         .ok_or(eyre!("no input socket match found"))?;
     let output_socket_av =
-        AttributeValue::get_by_id_or_error(ctx, component_output_socket.attribute_value_id).await?;
+        AttributeValue::get_by_id(ctx, component_output_socket.attribute_value_id).await?;
     Ok(output_socket_av.view(ctx).await?)
 }
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
@@ -279,7 +279,7 @@ pub async fn get_attribute_value_for_component(
         .ok_or(eyre!("unexpected, no attribute values found for prop"))?;
     assert!(attribute_value_ids.is_empty());
 
-    let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
+    let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
 
     let value = attribute_value.view(ctx).await?;
     Ok(value)
@@ -318,7 +318,7 @@ pub async fn fetch_resource_last_synced_value(
         return Err(eyre!("unexpected: more than one attribute value found"));
     }
 
-    let last_synced_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id)
+    let last_synced_value = AttributeValue::get_by_id(ctx, attribute_value_id)
         .await?
         .view(ctx)
         .await?;

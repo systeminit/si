@@ -53,8 +53,8 @@ impl PropertyEditorValues {
         // Get the root attribute value and load it into the work queue.
         let root_av_id = Component::root_attribute_value_id(ctx, component_id).await?;
         let root_value_id = PropertyEditorValueId::from(root_av_id);
-        let root_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, root_av_id).await?;
-        let root_av = AttributeValue::get_by_id_or_error(ctx, root_av_id).await?;
+        let root_prop_id = AttributeValue::prop_id(ctx, root_av_id).await?;
+        let root_av = AttributeValue::get_by_id(ctx, root_av_id).await?;
 
         let validation = ValidationOutputNode::find_for_attribute_value_id(ctx, root_av_id)
             .await?
@@ -99,7 +99,7 @@ impl PropertyEditorValues {
 
                 // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
                 // get the content from the store. Perhaps, there's a more efficient way that we can do this.
-                let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id).await?;
+                let prop_id = AttributeValue::prop_id(ctx, av_id).await?;
                 let value_id = PropertyEditorValueId::from(av_id);
 
                 let sockets_for_av =
@@ -130,7 +130,7 @@ impl PropertyEditorValues {
                     .map(|node| node.validation);
 
                 // Get the value
-                let mut value = AttributeValue::get_by_id_or_error(ctx, av_id)
+                let mut value = AttributeValue::get_by_id(ctx, av_id)
                     .await?
                     .value_or_default(ctx, prop_id)
                     .await?;
@@ -289,7 +289,7 @@ impl PropertyEditorValue {
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
-        let prop = Prop::get_by_id_or_error(ctx, self.prop_id.into()).await?;
+        let prop = Prop::get_by_id(ctx, self.prop_id.into()).await?;
         Ok(prop)
     }
 }

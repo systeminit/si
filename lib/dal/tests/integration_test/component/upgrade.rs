@@ -565,7 +565,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
             .expect("unable to get reference av id")
             .to_owned();
 
-        let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+        let prop_id = AttributeValue::prop_id(ctx, av_id)
             .await
             .expect("get prop_id for attribute value");
 
@@ -641,7 +641,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
             .expect("unable to get reference av id")
             .to_owned();
 
-        let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+        let prop_id = AttributeValue::prop_id(ctx, av_id)
             .await
             .expect("get prop_id for attribute value");
 

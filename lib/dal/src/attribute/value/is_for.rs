@@ -78,7 +78,7 @@ impl ValueIsFor {
                 format!("Input Socket: {}", socket.name())
             }
             ValueIsFor::Prop(prop_id) => {
-                let prop = Prop::get_by_id_or_error(ctx, *prop_id).await?;
+                let prop = Prop::get_by_id(ctx, *prop_id).await?;
                 format!("Prop: {}", prop.path(ctx).await?.with_replaced_sep("."))
             }
         })

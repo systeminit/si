@@ -349,7 +349,7 @@ impl Component {
         for value_id in Component::attribute_values_for_prop_id(ctx, id, root_prop_id).await? {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == id {
-                let root_value = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
+                let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
                 return Ok(root_value.view(ctx).await?);
             }
         }
@@ -633,7 +633,7 @@ impl Component {
         // component. If so, attempt to copy it over.
         let mut value_q = VecDeque::from([(old_root_id, None, None)]);
         while let Some((old_av_id, old_key_or_index, new_parent_id)) = value_q.pop_front() {
-            let old_av = AttributeValue::get_by_id_or_error(ctx, old_av_id).await?;
+            let old_av = AttributeValue::get_by_id(ctx, old_av_id).await?;
 
             let maybe_old_component_prototype_id =
                 AttributeValue::component_prototype_id(ctx, old_av_id).await?;
@@ -651,8 +651,8 @@ impl Component {
                 continue;
             };
 
-            let new_prop = Prop::get_by_id_or_error(ctx, new_prop_id).await?;
-            let old_prop = Prop::get_by_id_or_error(ctx, old_prop_id).await?;
+            let new_prop = Prop::get_by_id(ctx, new_prop_id).await?;
+            let old_prop = Prop::get_by_id(ctx, old_prop_id).await?;
 
             // Prop kinds could have changed for the same prop. We could
             // try and coerce values, but it's safer to just skip.  Even if
@@ -1580,7 +1580,7 @@ impl Component {
     ) -> ComponentResult<Option<ResourceData>> {
         let value_id = Self::attribute_value_for_prop_by_id(ctx, id, &["root", "resource"]).await?;
 
-        let av = AttributeValue::get_by_id_or_error(ctx, value_id).await?;
+        let av = AttributeValue::get_by_id(ctx, value_id).await?;
 
         match av.view(ctx).await? {
             Some(serde_value) => {
@@ -1604,7 +1604,7 @@ impl Component {
         let name_value_id =
             Self::attribute_value_for_prop_by_id(ctx, id, &["root", "si", "name"]).await?;
 
-        let name_av = AttributeValue::get_by_id_or_error(ctx, name_value_id).await?;
+        let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
 
         Ok(match name_av.view(ctx).await? {
             Some(serde_value) => serde_json::from_value(serde_value)?,
@@ -1627,8 +1627,7 @@ impl Component {
             let resource_id_value_id =
                 Self::attribute_value_for_prop_id(ctx, self.id, prop_id).await?;
 
-            let resource_id_av =
-                AttributeValue::get_by_id_or_error(ctx, resource_id_value_id).await?;
+            let resource_id_av = AttributeValue::get_by_id(ctx, resource_id_value_id).await?;
 
             Ok(match resource_id_av.view(ctx).await? {
                 Some(serde_value) => serde_json::from_value(serde_value)?,
@@ -1643,7 +1642,7 @@ impl Component {
         let color_value_id = self
             .attribute_value_for_prop(ctx, &["root", "si", "color"])
             .await?;
-        let color_av = AttributeValue::get_by_id_or_error(ctx, color_value_id).await?;
+        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
         Ok(match color_av.view(ctx).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
@@ -1659,7 +1658,7 @@ impl Component {
         let type_value_id =
             Self::attribute_value_for_prop_by_id(ctx, component_id, &["root", "si", "type"])
                 .await?;
-        let type_value = AttributeValue::get_by_id_or_error(ctx, type_value_id)
+        let type_value = AttributeValue::get_by_id(ctx, type_value_id)
             .await?
             .view(ctx)
             .await?

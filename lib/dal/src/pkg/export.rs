@@ -613,7 +613,7 @@ impl PkgExporter {
         if let Some(root_prop_id) =
             Prop::find_prop_id_by_path_opt(ctx, variant_id, &prop_path).await?
         {
-            root_prop = Prop::get_by_id_or_error(ctx, root_prop_id).await?
+            root_prop = Prop::get_by_id(ctx, root_prop_id).await?
         } else if is_optional_prop {
             return Ok(());
         } else {
@@ -635,7 +635,7 @@ impl PkgExporter {
         let mut traversal_stack: Vec<TraversalStackEntry> = Vec::new();
 
         while let Some((prop_id, parent_prop_id)) = stack.pop() {
-            let child_prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+            let child_prop = Prop::get_by_id(ctx, prop_id).await?;
             let mut builder = PropSpec::builder();
 
             builder.unique_id(prop_id);
@@ -849,7 +849,7 @@ impl PkgExporter {
                         // attribute function on the component.
                     },
                     crate::attribute::prototype::argument::value_source::ValueSource::Prop(prop_id) =>{
-                        let prop = Prop::get_by_id_or_error(ctx, prop_id)
+                        let prop = Prop::get_by_id(ctx, prop_id)
                             .await?
                             .path(ctx)
                             .await?;

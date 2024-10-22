@@ -259,7 +259,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -303,7 +303,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -423,7 +423,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -470,7 +470,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -515,7 +515,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)
@@ -545,7 +545,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, units_value_id)
+    let view = AttributeValue::get_by_id(ctx, units_value_id)
         .await
         .expect("value exists")
         .view(ctx)

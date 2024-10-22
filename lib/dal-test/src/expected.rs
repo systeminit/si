@@ -689,7 +689,7 @@ impl ExpectAttributeValue {
     }
 
     pub async fn attribute_value(self, ctx: &DalContext) -> AttributeValue {
-        dal::AttributeValue::get_by_id_or_error(ctx, self.0)
+        dal::AttributeValue::get_by_id(ctx, self.0)
             .await
             .expect("get prop value by id failed")
     }
@@ -762,9 +762,7 @@ impl ExpectProp {
     }
 
     pub async fn prop(self, ctx: &DalContext) -> Prop {
-        Prop::get_by_id_or_error(ctx, self.0)
-            .await
-            .expect("get prop by id")
+        Prop::get_by_id(ctx, self.0).await.expect("get prop by id")
     }
 
     pub async fn direct_single_child(self, ctx: &DalContext) -> ExpectProp {

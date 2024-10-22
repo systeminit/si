@@ -24,16 +24,7 @@ impl Component {
         let qualification_map_value_id =
             Self::find_qualification_map_attribute_value_id(ctx, component_id).await?;
 
-        let qualification_av_ids =
-            AttributeValue::get_child_av_ids_in_order(ctx, qualification_map_value_id).await?;
-
-        let mut avs = vec![];
-        for av_id in qualification_av_ids {
-            let attribute_value = AttributeValue::get_by_id_or_error(ctx, av_id).await?;
-            avs.push(attribute_value);
-        }
-
-        Ok(avs)
+        Ok(AttributeValue::get_child_avs_in_order(ctx, qualification_map_value_id).await?)
     }
     pub async fn list_qualification_statuses(
         ctx: &DalContext,
