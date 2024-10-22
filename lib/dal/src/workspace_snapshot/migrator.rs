@@ -1,8 +1,3 @@
-use si_layer_cache::LayerDbError;
-use std::sync::Arc;
-use telemetry::prelude::*;
-use thiserror::Error;
-
 use super::{
     graph::{
         WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
@@ -21,6 +16,11 @@ use crate::{
     WorkspaceSnapshot, WorkspaceSnapshotError,
 };
 use si_events::WorkspaceSnapshotAddress;
+use si_layer_cache::LayerDbError;
+use std::sync::Arc;
+use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::DecodeError;
 
 pub mod v2;
 pub mod v3;
@@ -31,6 +31,8 @@ pub mod v4;
 pub enum SnapshotGraphMigratorError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("ulid decode error: {0}")]
+    Decode(#[from] DecodeError),
     #[error("InputSocketNodeWeight error: {0}")]
     InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
@@ -108,7 +110,8 @@ impl SnapshotGraphMigrator {
                 let mut change_set = ChangeSet::find(ctx, change_set_id)
                     .await?
                     .ok_or(ChangeSetError::ChangeSetNotFound(change_set_id))?;
-                if change_set.workspace_id.is_none() {
+                if change_set.workspace_id.is_none() || change_set.status == ChangeSetStatus::Failed
+                {
                     // These are broken/garbage change sets generated during migrations of the
                     // "universal" workspace/change set. They're not actually accessible via normal
                     // means, as we generally follow the chain starting at the workspace, and these
@@ -129,7 +132,9 @@ impl SnapshotGraphMigrator {
                     Ok(new_snapshot) => new_snapshot,
                     Err(err) => {
                         let err_string = err.to_string();
-                        if err_string.contains("missing from store for node") {
+                        if err_string.contains("missing from store for node")
+                            || err_string.contains("workspace snapshot graph missing at address")
+                        {
                             error!(error = ?err, "Migration error: {err_string}, marking change set {} for workspace {:?} as failed", change_set.id, change_set.workspace_id);
                             change_set
                                 .update_status(ctx, ChangeSetStatus::Failed)

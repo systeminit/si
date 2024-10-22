@@ -1,3 +1,4 @@
+use si_events::ulid::Ulid;
 use std::sync::Arc;
 use telemetry::prelude::*;
 
@@ -27,8 +28,8 @@ pub async fn migrate_v3_to_v4(
 
     // Create new category nodes
     {
-        let id = v4_graph.generate_ulid()?;
-        let lineage_id = v4_graph.generate_ulid()?;
+        let id = Ulid::from_string("01JAV0CFT9T1D4PQPPC97EJMCH")?;
+        let lineage_id = Ulid::from_string("01JAV0CFT9T1D4PQPPC97EJMCH")?;
         let category_node_index =
             v4_graph.add_category_node(id, lineage_id, CategoryNodeKind::DiagramObject)?;
         v4_graph.add_edge(
@@ -39,8 +40,8 @@ pub async fn migrate_v3_to_v4(
     }
 
     let category_node_index = {
-        let id = v4_graph.generate_ulid()?;
-        let lineage_id = v4_graph.generate_ulid()?;
+        let id = Ulid::from_string("01JAV09VAT1A091VNXW3JQJ90B")?;
+        let lineage_id = Ulid::from_string("01JAV09VAT1A091VNXW3JQJ90B")?;
         let category_node_index =
             v4_graph.add_category_node(id, lineage_id, CategoryNodeKind::View)?;
         v4_graph.add_edge(
@@ -54,8 +55,11 @@ pub async fn migrate_v3_to_v4(
 
     // Create default view
     let default_view_idx = {
-        let id = v4_graph.generate_ulid()?;
-        let lineage_id = v4_graph.generate_ulid()?;
+        // Note(victor): This is hardcoded so we can ensure migrated changesets all have the same view
+        // when we merge it to main. Since right now  workspaces are isolated, having the same default view id
+        // shouldn't cause any problems
+        let id = Ulid::from_string("01JATWJV2RA407RZFZBQ9PT5ES")?;
+        let lineage_id = Ulid::from_string("01JATWJV2RA407RZFZBQ9PT5ES")?;
 
         let content = ViewContent::V1(ViewContentV1 {
             timestamp: Timestamp::now(),
