@@ -1,6 +1,3 @@
-pub mod geometry;
-pub mod view;
-
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::collections::HashMap;
@@ -18,21 +15,17 @@ use crate::component::inferred_connection_graph::InferredConnectionGraphError;
 use crate::component::{
     ComponentError, ComponentResult, IncomingConnection, InferredConnection, OutgoingConnection,
 };
-use crate::diagram::geometry::GeometryId;
-use crate::diagram::view::ViewId;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HelperError,
-    HistoryEventError, InputSocketId, OutputSocketId, SchemaVariantId, StandardModelError,
-    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
+    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HistoryEventError,
+    InputSocketId, OutputSocketId, SchemaVariantId, StandardModelError, TransactionsError,
+    Workspace, WorkspaceError, WorkspaceSnapshot,
 };
 use si_frontend_types::{DiagramSocket, SummaryDiagramComponent};
-use si_layer_cache::LayerDbError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -53,8 +46,6 @@ pub enum DiagramError {
     ComponentNotFound,
     #[error("component status not found for component: {0}")]
     ComponentStatusNotFound(ComponentId),
-    #[error("default view not found")]
-    DefaultViewNotFound,
     #[error("deletion timestamp not found")]
     DeletionTimeStamp,
     #[error("destination attribute prototype not found for inter component attribute prototype argument: {0}")]
@@ -63,24 +54,14 @@ pub enum DiagramError {
     DestinationInputSocketNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("geometry not found: {0}")]
-    GeometryNotFound(GeometryId),
-    #[error("geometry not found for component {0} on view {1}")]
-    GeometryNotFoundForComponentAndView(ComponentId, ViewId),
-    #[error("Helper error: {0}")]
-    Helper(#[from] HelperError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
-    #[error("layerdb error: {0}")]
-    LayerDb(#[from] LayerDbError),
     #[error("node not found")]
     NodeNotFound,
-    #[error("node weight error: {0}")]
-    NodeWeight(#[from] NodeWeightError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] OutputSocketError),
     #[error(transparent)]
@@ -107,17 +88,14 @@ pub enum DiagramError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error("view category node not found")]
-    ViewCategoryNotFound,
-    #[error("view not found: {0}")]
-    ViewNotFound(ViewId),
-    #[error("view not found for geometry id: {0}")]
-    ViewNotFoundForGeometry(GeometryId),
     #[error("Workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
+
+pub type NodeId = ComponentId;
+pub type EdgeId = AttributePrototypeArgumentId;
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
 

@@ -8,10 +8,10 @@ pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_layer_cache::db::serialize;
-use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
-use telemetry::prelude::*;
 use thiserror::Error;
+
+use telemetry::prelude::*;
 
 use crate::{
     workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
@@ -21,17 +21,14 @@ use crate::{
 pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
-mod tests;
 pub mod v2;
 pub mod v3;
-pub mod v4;
 
 pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
-pub use v4::WorkspaceSnapshotGraphV4;
 
 pub type LineageId = Ulid;
-pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV4;
+pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV3;
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]
@@ -61,8 +58,6 @@ pub enum WorkspaceSnapshotGraphError {
     IncompatibleNodeTypes,
     #[error("Invalid value graph")]
     InvalidValueGraph,
-    #[error("layerdb error: {0}")]
-    LayerDb(#[from] LayerDbError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex poisoning: {0}")]
@@ -99,8 +94,6 @@ pub enum WorkspaceSnapshotGraph {
     V2(WorkspaceSnapshotGraphV2),
     /// Added `InputSocket` and `SchemaVariant` `NodeWeight` variants.
     V3(WorkspaceSnapshotGraphV3),
-    /// Added `View`, `Geometry` and `DiagramObject` categories,
-    V4(WorkspaceSnapshotGraphV4),
 }
 
 impl std::ops::Deref for WorkspaceSnapshotGraph {
@@ -121,19 +114,19 @@ impl WorkspaceSnapshotGraph {
     /// Return a reference to the most up to date enum variant for the graph type
     pub fn inner(&self) -> &WorkspaceSnapshotGraphVCurrent {
         match self {
-            Self::Legacy | Self::V1(_) | Self::V2(_) | Self::V3(_) => {
+            Self::Legacy | Self::V1(_) | Self::V2(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
             }
-            Self::V4(inner) => inner,
+            Self::V3(inner) => inner,
         }
     }
 
     pub fn inner_mut(&mut self) -> &mut WorkspaceSnapshotGraphVCurrent {
         match self {
-            Self::Legacy | Self::V1(_) | Self::V2(_) | Self::V3(_) => {
+            Self::Legacy | Self::V1(_) | Self::V2(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
             }
-            Self::V4(inner) => inner,
+            Self::V3(inner) => inner,
         }
     }
 

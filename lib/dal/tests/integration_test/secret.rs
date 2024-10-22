@@ -1,4 +1,4 @@
-use dal::diagram::geometry::RawGeometry;
+use dal::component::ComponentGeometry;
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
@@ -299,45 +299,31 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     // Copy and paste the secret component
-    {
-        let component = secret_component.component(ctx).await;
-
-        let geometry = component
-            .geometry(ctx)
-            .await
-            .expect("couldn't get geometry");
-
-        component
-            .copy_paste(
-                ctx,
-                RawGeometry {
-                    x: geometry.x().to_string(),
-                    y: geometry.y().to_string(),
-                    width: None,
-                    height: None,
-                },
-            )
-            .await
-            .expect("paste");
-    }
+    secret_component
+        .component(ctx)
+        .await
+        .copy_paste(
+            ctx,
+            ComponentGeometry {
+                x: secret_component.component(ctx).await.x().to_string(),
+                y: secret_component.component(ctx).await.y().to_string(),
+                width: None,
+                height: None,
+            },
+        )
+        .await
+        .expect("paste");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     // Copy and paste the user component
-    let user_component_geometry = user_component
-        .component(ctx)
-        .await
-        .geometry(ctx)
-        .await
-        .expect("couldn't get geometry");
-
     user_component
         .component(ctx)
         .await
         .copy_paste(
             ctx,
-            RawGeometry {
-                x: user_component_geometry.x().to_string(),
-                y: user_component_geometry.y().to_string(),
+            ComponentGeometry {
+                x: user_component.component(ctx).await.x().to_string(),
+                y: user_component.component(ctx).await.y().to_string(),
                 width: None,
                 height: None,
             },

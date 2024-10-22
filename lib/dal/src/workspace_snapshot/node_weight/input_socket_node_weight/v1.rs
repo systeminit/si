@@ -3,8 +3,6 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
 
-use super::{InputSocketNodeWeight, InputSocketNodeWeightError, InputSocketNodeWeightResult};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 use crate::{
     layer_db_types::{InputSocketContent, InputSocketContentV2},
     workspace_snapshot::{
@@ -16,8 +14,10 @@ use crate::{
         },
         ContentAddressDiscriminants,
     },
-    DalContext, EdgeWeightKindDiscriminants, SocketArity, Timestamp,
+    DalContext, EdgeWeightKindDiscriminants, SocketArity, Timestamp, WorkspaceSnapshotGraphV3,
 };
+
+use super::{InputSocketNodeWeight, InputSocketNodeWeightError, InputSocketNodeWeightResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::InputSocket)]

@@ -200,7 +200,7 @@ impl Workspace {
     pub async fn setup_builtin(ctx: &mut DalContext) -> WorkspaceResult<()> {
         // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(mut found_builtin) = Self::find_builtin(ctx).await? {
-            // 'reset' the workspace snapshot so that we remigrate all builtins on each startup
+            // 'reset' the workspace snapshot' so that we remigrate all builtins on each startup
             let new_snapshot = WorkspaceSnapshot::initial(ctx).await?;
             let new_snap_address = new_snapshot.write(ctx).await?;
             let new_change_set =
