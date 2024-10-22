@@ -39,13 +39,7 @@ impl DiskCache {
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Vec<u8>> {
-        let data = cacache::read(self.write_path.as_ref(), key.clone()).await?;
-
-        // we need to ensure that recently-accessed items have up to date metadata so the TTL does
-        // not clean them up inappropriately
-        self.update_cache_entry(key.clone(), data.clone());
-
-        Ok(data)
+        Ok(cacache::read(self.write_path.as_ref(), key.clone()).await?)
     }
 
     pub async fn contains_key(&self, key: Arc<str>) -> LayerDbResult<bool> {
@@ -80,6 +74,7 @@ impl DiskCache {
         Ok(())
     }
 
+    #[instrument(name = "layer_db.disk_cache.cleanup", level = "info", skip_all)]
     async fn cleanup(&self) {
         let mut would_remove = 0;
         let mut removed = 0;
@@ -88,6 +83,7 @@ impl DiskCache {
             .expect("unable to get the current time, what does this mean? How could this happen?")
             .as_millis();
 
+        info!("Disk cache cleanup starting...");
         for md in cacache::list_sync(self.write_path.as_ref()).flatten() {
             tokio::task::yield_now().await;
             if now - md.time > self.ttl.as_millis() {
@@ -132,11 +128,6 @@ impl DiskCache {
                 }
             }
         });
-    }
-
-    fn update_cache_entry(&self, key: Arc<str>, value: Vec<u8>) {
-        let me = self.clone();
-        tokio::spawn(async move { me.insert(key, value).await });
     }
 }
 
