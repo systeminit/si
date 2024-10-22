@@ -1,6 +1,6 @@
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{prop::PropPath, ComponentType};
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
     SchemaVariantSpecData, SiPkg,
@@ -13,6 +13,7 @@ const CATEGORY: &str = "validations";
 
 pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
@@ -81,13 +82,22 @@ pub(crate) async fn migrate_test_exclusive_schema_bad_validations(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub(crate) async fn migrate_test_exclusive_schema_validated_output(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
@@ -163,13 +173,22 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub(crate) async fn migrate_test_exclusive_schema_validated_input(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
@@ -252,7 +271,15 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_input(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

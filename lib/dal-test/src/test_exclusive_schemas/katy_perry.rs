@@ -1,6 +1,6 @@
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{prop::PropPath, ComponentType};
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
     SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
@@ -14,6 +14,7 @@ use crate::test_exclusive_schemas::{
 
 pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut kp_builder = PkgSpec::builder();
 
@@ -117,7 +118,15 @@ pub(crate) async fn migrate_test_exclusive_schema_katy_perry(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(kp_spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

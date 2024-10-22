@@ -1,7 +1,7 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, PropSpecKind, PropSpecWidgetKind,
@@ -15,7 +15,10 @@ use crate::test_exclusive_schemas::{
 };
 use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
-pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_fallout(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
 
     let schema_name = "fallout";
@@ -175,7 +178,15 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> B
         .build()?;
 
     let pkg = SiPkg::load_from_spec(fallout_spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

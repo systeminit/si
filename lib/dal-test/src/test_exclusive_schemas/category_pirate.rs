@@ -1,6 +1,6 @@
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{prop::PropPath, ComponentType};
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
     SchemaVariantSpecData, SiPkg,
@@ -13,7 +13,10 @@ use crate::test_exclusive_schemas::{
 
 const CATEGORY: &str = "pirate";
 
-pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_pirate(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "pirate";
@@ -127,12 +130,23 @@ pub(crate) async fn migrate_test_exclusive_schema_pirate(ctx: &DalContext) -> Bu
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
-pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_pet_shop(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
     let schema_name = "pet_shop";
@@ -213,7 +227,15 @@ pub(crate) async fn migrate_test_exclusive_schema_pet_shop(ctx: &DalContext) -> 
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

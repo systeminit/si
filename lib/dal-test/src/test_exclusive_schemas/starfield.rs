@@ -1,9 +1,9 @@
 use dal::action::prototype::ActionKind;
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::prop::PropPath;
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
@@ -15,6 +15,7 @@ use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
 pub(crate) async fn migrate_test_exclusive_schema_starfield(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut starfield_builder = PkgSpec::builder();
 
@@ -411,14 +412,23 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
         .schema(starfield_schema)
         .build()?;
 
-    let starfield_pkg = SiPkg::load_from_spec(starfield_spec)?;
-    import_pkg_from_pkg(ctx, &starfield_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(starfield_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub(crate) async fn migrate_test_exclusive_schema_morningstar(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut morningstar_builder = PkgSpec::builder();
     let schema_name = "morningstar";
@@ -538,13 +548,23 @@ pub(crate) async fn migrate_test_exclusive_schema_morningstar(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(morningstar_spec)?;
-
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
-pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_etoiles(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> BuiltinsResult<()> {
     let mut etoiles_builder = PkgSpec::builder();
 
     let schema_name = "etoiles";
@@ -815,14 +835,23 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(ctx: &DalContext) -> B
         .schema(etoiles_schema)
         .build()?;
 
-    let etoiles_pkg = SiPkg::load_from_spec(etoiles_spec)?;
-    import_pkg_from_pkg(ctx, &etoiles_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(etoiles_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub(crate) async fn migrate_test_exclusive_schema_private_language(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut private_lang_builder = PkgSpec::builder();
 
@@ -930,8 +959,16 @@ pub(crate) async fn migrate_test_exclusive_schema_private_language(
         .schema(private_lang_schema)
         .build()?;
 
-    let private_lang_pkg = SiPkg::load_from_spec(private_lang_spec)?;
-    import_pkg_from_pkg(ctx, &private_lang_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(private_lang_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

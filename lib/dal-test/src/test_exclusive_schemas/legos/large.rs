@@ -1,7 +1,7 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::import_pkg_from_pkg;
-use dal::ComponentType;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{BuiltinsResult, DalContext};
+use dal::{ComponentType, SchemaId};
 use si_pkg::{
     ActionFuncSpec, PkgSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData,
     SiPkg,
@@ -15,6 +15,7 @@ use crate::test_exclusive_schemas::{
 
 pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut large_lego_builder = PkgSpec::builder();
 
@@ -140,14 +141,23 @@ pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(
         .schema(large_lego_schema)
         .build()?;
 
-    let large_lego_pkg = SiPkg::load_from_spec(large_lego_spec)?;
-    import_pkg_from_pkg(ctx, &large_lego_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(large_lego_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut large_lego_builder = PkgSpec::builder();
 
@@ -272,8 +282,16 @@ pub(crate) async fn migrate_test_exclusive_schema_large_even_lego(
         .schema(large_lego_schema)
         .build()?;
 
-    let large_lego_pkg = SiPkg::load_from_spec(large_lego_spec)?;
-    import_pkg_from_pkg(ctx, &large_lego_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(large_lego_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

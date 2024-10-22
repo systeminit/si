@@ -1,9 +1,9 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
 use dal::schema::variant::leaves::LeafKind;
-use dal::{BuiltinsResult, DalContext};
+use dal::{BuiltinsResult, DalContext, SchemaId};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
@@ -18,11 +18,20 @@ use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
 
 pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let spec = build_dummy_secret_spec()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

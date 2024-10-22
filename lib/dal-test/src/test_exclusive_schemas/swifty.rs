@@ -1,7 +1,7 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::import_pkg_from_pkg;
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{prop::PropPath, ComponentType};
-use dal::{BuiltinsResult, DalContext, PropKind};
+use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncSpecData, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
@@ -15,7 +15,10 @@ use crate::test_exclusive_schemas::{
     create_identity_func, PKG_CREATED_BY, PKG_VERSION,
 };
 
-pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
+pub(crate) async fn migrate_test_exclusive_schema_swifty(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
 
     let schema_name = "swifty";
@@ -186,8 +189,16 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> Bu
         .schema(swifty_schema)
         .build()?;
 
-    let swifty_pkg = SiPkg::load_from_spec(swifty_spec)?;
-    import_pkg_from_pkg(ctx, &swifty_pkg, None).await?;
+    let pkg = SiPkg::load_from_spec(swifty_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }

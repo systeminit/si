@@ -1,6 +1,6 @@
 use dal::func::argument::FuncArgumentKind;
-use dal::pkg::import_pkg_from_pkg;
-use dal::{BuiltinsResult, DalContext};
+use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::{BuiltinsResult, DalContext, SchemaId};
 use dal::{ComponentType, PropKind};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
@@ -15,6 +15,7 @@ use crate::test_exclusive_schemas::{
 
 pub(crate) async fn migrate_test_exclusive_schema_fake_butane(
     ctx: &DalContext,
+    schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
     let mut builder = PkgSpec::builder();
 
@@ -224,7 +225,15 @@ pub(crate) async fn migrate_test_exclusive_schema_fake_butane(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schema_id: Some(schema_id.into()),
+            ..Default::default()
+        }),
+    )
+    .await?;
 
     Ok(())
 }
