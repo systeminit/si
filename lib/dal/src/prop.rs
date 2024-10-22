@@ -742,25 +742,12 @@ impl Prop {
         Ok(Self::assemble(node_weight, inner))
     }
 
-    pub async fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
-        if !matches!(self.kind, PropKind::Array | PropKind::Map) {
-            return Err(PropError::ElementPropNotOnKind(self.id, self.kind));
-        }
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for maybe_elem_node_idx in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKind::new_use().into())
+    pub async fn element_prop_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropId> {
+        Self::direct_child_prop_ids_unordered(ctx, prop_id)
             .await?
-        {
-            if let NodeWeight::Prop(prop_inner) = workspace_snapshot
-                .get_node_weight(maybe_elem_node_idx)
-                .await?
-            {
-                return Ok(prop_inner.id().into());
-            }
-        }
-
-        Err(PropError::MapOrArrayMissingElementProp(self.id))
+            .first()
+            .copied()
+            .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))
     }
 
     pub async fn find_child_prop_index_by_name(
@@ -1108,41 +1095,30 @@ impl Prop {
         }
         Ok(prop)
     }
+    pub async fn direct_child_prop_ids_ordered(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Vec<PropId>> {
+        match ctx
+            .workspace_snapshot()?
+            .ordered_children_for_node(prop_id)
+            .await?
+        {
+            Some(child_ulids) => Ok(child_ulids.into_iter().map(Into::into).collect()),
+            None => Ok(vec![]),
+        }
+    }
 
     pub async fn direct_child_props_ordered(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<Prop>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let child_prop_ids = Self::direct_child_prop_ids_ordered(ctx, prop_id).await?;
 
-        let kind = workspace_snapshot
-            .get_node_weight_by_id(prop_id)
-            .await?
-            .get_prop_node_weight()?
-            .kind();
-
-        let ordered_child_props = match kind {
-            PropKind::Json | PropKind::Boolean | PropKind::Integer | PropKind::String => Vec::new(),
-            PropKind::Array | PropKind::Map | PropKind::Object => {
-                let ordered_child_prop_ids = workspace_snapshot
-                    .ordered_children_for_node(prop_id)
-                    .await?
-                    .ok_or(WorkspaceSnapshotError::OrderingNotFound(prop_id.into()))?;
-
-                let mut ordered_child_props = Vec::new();
-                for ordered_child_prop_id in ordered_child_prop_ids {
-                    if let NodeWeight::Prop(child_prop_weight) = workspace_snapshot
-                        .get_node_weight_by_id(ordered_child_prop_id)
-                        .await?
-                    {
-                        let child_prop =
-                            Self::get_by_id_or_error(ctx, child_prop_weight.id().into()).await?;
-                        ordered_child_props.push(child_prop);
-                    }
-                }
-                ordered_child_props
-            }
-        };
+        let mut ordered_child_props = Vec::with_capacity(child_prop_ids.len());
+        for child_prop_id in child_prop_ids {
+            ordered_child_props.push(Self::get_by_id_or_error(ctx, child_prop_id).await?)
+        }
 
         Ok(ordered_child_props)
     }
@@ -1175,24 +1151,14 @@ impl Prop {
             PropKind::Integer => "number".to_string(),
             PropKind::String => "string".to_string(),
             PropKind::Array => {
-                let child_props = Self::direct_child_props_ordered(ctx, self.id).await?;
-                let first_child_prop = child_props
-                    .first()
-                    .ok_or(PropError::ArrayMissingChildElement(self.id))?;
-
-                let child_prop_ts_type = first_child_prop.ts_type(ctx).await?;
-
-                format!("{}[]", child_prop_ts_type)
+                let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
+                let element_prop = Self::get_by_id_or_error(ctx, element_prop_id).await?;
+                format!("{}[]", element_prop.ts_type(ctx).await?)
             }
             PropKind::Map => {
-                let child_props = Self::direct_child_props_ordered(ctx, self.id).await?;
-                let first_child_prop = child_props
-                    .first()
-                    .ok_or(PropError::ArrayMissingChildElement(self.id))?;
-
-                let child_prop_ts_type = first_child_prop.ts_type(ctx).await?;
-
-                format!("Record<string, {}>", child_prop_ts_type)
+                let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
+                let element_prop = Self::get_by_id_or_error(ctx, element_prop_id).await?;
+                format!("Record<string, {}>", element_prop.ts_type(ctx).await?)
             }
             PropKind::Object => {
                 let mut object_type = "{\n".to_string();

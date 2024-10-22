@@ -1482,7 +1482,7 @@ async fn get_prototype_for_context(
             ));
         }
 
-        let element_prop_id = map_prop.element_prop_id(ctx).await?;
+        let element_prop_id = Prop::element_prop_id(ctx, map_prop.id).await?;
         Ok(
             match AttributePrototype::find_for_prop(ctx, element_prop_id, &key).await? {
                 None => {

@@ -252,42 +252,29 @@ async fn delete_func_node(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
+async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) -> dal_test::Result<()> {
     let shared_component_id =
         create_component_for_default_schema_name(ctx, "swifty", "Shared component")
-            .await
-            .expect("could not create component")
+            .await?
             .id();
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("Unable to commit_and_update_snapshot_to_visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     // Swifty is in HEAD
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("Unable to merge to base change set");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     // Both change sets have Swifty in HEAD
     let change_set_a =
-        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set A")
-            .await
-            .expect("Unable to create change set A");
+        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set A").await?;
     let change_set_b =
-        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set B")
-            .await
-            .expect("Unable to create change set B");
+        ChangeSetTestHelpers::fork_from_head_change_set_with_name(ctx, "Change set B").await?;
 
     // Modify the shared component in change set A.
     ctx.update_visibility_and_snapshot_to_visibility(change_set_a.id)
-        .await
-        .expect("Unable to switch to change set A");
+        .await?;
     let cs_a_name_av_id = {
-        let component = Component::get_by_id(ctx, shared_component_id)
-            .await
-            .expect("Unable to get shared component in change set A");
+        let component = Component::get_by_id(ctx, shared_component_id).await?;
         component
             .attribute_values_for_prop(ctx, &["root", "si", "name"])
-            .await
-            .expect("Unable to get attribute values for si.name")
+            .await?
             .first()
             .copied()
             .expect("si.name attribute value not found")
@@ -298,53 +285,38 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
         cs_a_name_av_id,
         Some(serde_json::json!("Modified in change set A")),
     )
-    .await
-    .expect("Unable to update shared component name in change set A");
+    .await?;
     // Change set A is committed to the rebaser
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("Unable to commit_and_update_snapshot_to_visibility for change set A");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create a new component in change set B.
     ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
-        .await
-        .expect("Unable to switch to change set B");
+        .await?;
     let _change_set_b_component_id =
         create_component_for_default_schema_name(ctx, "swifty", "Change Set B Component")
-            .await
-            .expect("could not creat component")
+            .await?
             .id();
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("Unable to commit_and_update_snapshot_to_visibility for change set B");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Merge change set A to head.
     ctx.update_visibility_and_snapshot_to_visibility(change_set_a.id)
-        .await
-        .expect("Unable to switch to change set A");
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("Unable to merge change set A");
+        .await?;
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     // Make sure the shared component looks as we'd expect.
     let expected_qualification_item_count = 1;
-    let shared_component = Component::get_by_id(ctx, shared_component_id)
-        .await
-        .expect("Unable to get shared component in change set A");
+    let shared_component = Component::get_by_id(ctx, shared_component_id).await?;
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "si", "name"])
-        .await
-        .expect("Unable to get attribute values for si.name");
+        .await?;
     assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "domain", "name"])
-        .await
-        .expect("Unable to get attribute values for domain.name");
+        .await?;
     assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
-        .await
-        .expect("Unable to get attribute values for qualification.qualificationItem");
+        .await?;
     assert_eq!(
         av_ids.len(),
         expected_qualification_item_count,
@@ -353,33 +325,27 @@ async fn correctly_detect_unrelated_unmodified_data(ctx: &mut DalContext) {
 
     // Merge change set B to head.
     ctx.update_visibility_and_snapshot_to_visibility(change_set_b.id)
-        .await
-        .expect("Unable to switch to change set B");
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("Unable to merge change set B");
+        .await?;
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     // Make sure merging change set B didn't affect anything it didn't touch.
-    let shared_component = Component::get_by_id(ctx, shared_component_id)
-        .await
-        .expect("Unable to get shared component in change set A");
+    let shared_component = Component::get_by_id(ctx, shared_component_id).await?;
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "si", "name"])
-        .await
-        .expect("Unable to get attribute values for si.name");
+        .await?;
     assert_eq!(av_ids.len(), 1, "Found more than one AV for si.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "domain", "name"])
-        .await
-        .expect("Unable to get attribute values for domain.name");
+        .await?;
     assert_eq!(av_ids.len(), 1, "Found more than one AV for domain.name");
     let av_ids = shared_component
         .attribute_values_for_prop(ctx, &["root", "qualification", "qualificationItem"])
-        .await
-        .expect("Unable to get attribute values for qualification.qualificationItem");
+        .await?;
     assert_eq!(
         av_ids.len(),
         expected_qualification_item_count,
         "Found more than one AV for qualification.qualificationItem"
     );
+
+    Ok(())
 }
