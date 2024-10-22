@@ -2406,12 +2406,39 @@ impl AttributeValue {
         {
             let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
             if let NodeWeight::Ordering(ordering_weight) = node_weight {
-                Ok(ordering_weight
+                let child_ids: Vec<AttributeValueId> = ordering_weight
                     .order()
                     .clone()
                     .into_iter()
                     .map(|ulid| ulid.into())
-                    .collect())
+                    .collect();
+
+                // Get the mapping from PropId -> AttributeValueId
+                if Self::prop_for_id(ctx, id)
+                    .await?
+                    .is_some_and(|p| p.kind == PropKind::Object)
+                {
+                    let mut av_prop_map = HashMap::with_capacity(child_ids.len());
+                    for &child_id in &child_ids {
+                        let child_prop_id = Self::prop_id_for_id_or_error(ctx, child_id).await?;
+                        if let Some(_) = av_prop_map.insert(child_prop_id, child_id) {
+                            let component =
+                                Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
+                                    .await
+                                    .map_err(Box::new)?;
+                            error!(
+                                "Multiple AVs for prop {} (path {}) in component {}, schema {}",
+                                Prop::get_by_id_or_error(ctx, child_prop_id).await?.name,
+                                Prop::path_by_id(ctx, child_prop_id).await?,
+                                component.name(ctx).await.map_err(Box::new)?,
+                                component.schema(ctx).await.map_err(Box::new)?.name
+                            );
+                            panic!("omg");
+                        }
+                    }
+                }
+
+                Ok(child_ids)
             } else {
                 Err(AttributeValueError::NodeWeightMismatch(
                     ordering,
