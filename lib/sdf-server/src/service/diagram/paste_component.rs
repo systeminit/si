@@ -1,30 +1,28 @@
 use std::collections::HashMap;
 
-use axum::{
-    extract::{Host, OriginalUri},
-    http::uri::Uri,
-    Json,
-};
-use dal::{
-    change_status::ChangeStatus,
-    component::{frame::Frame, ComponentGeometry},
-    diagram::SummaryDiagramEdge,
-    ChangeSet, Component, ComponentId, DalContext, Visibility, WsEvent,
-};
-use serde::{Deserialize, Serialize};
-
 use super::{DiagramError, DiagramResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
+use axum::{
+    extract::{Host, OriginalUri},
+    http::uri::Uri,
+    Json,
+};
+use dal::diagram::geometry::RawGeometry;
+use dal::{
+    change_status::ChangeStatus, component::frame::Frame, diagram::SummaryDiagramEdge, ChangeSet,
+    Component, ComponentId, DalContext, Visibility, WsEvent,
+};
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::too_many_arguments)]
 async fn paste_single_component(
     ctx: &DalContext,
     component_id: ComponentId,
-    component_geometry: ComponentGeometry,
+    component_geometry: RawGeometry,
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
@@ -53,7 +51,7 @@ async fn paste_single_component(
 #[serde(rename_all = "camelCase")]
 pub struct PasteSingleComponentPayload {
     id: ComponentId,
-    component_geometry: ComponentGeometry,
+    component_geometry: RawGeometry,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

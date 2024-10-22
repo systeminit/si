@@ -5,11 +5,16 @@ sources:
     type: "journald"
     include_units: ["$SI_SERVICE"]
     journal_directory: "/var/log/journal"
+  sdf-migration:
+    type: "journald"
+    include_matches:
+      SYSLOG_IDENTIFIER: ["sdf-migration"]
+    journal_directory: "/var/log/journal"
 
 sinks:
   cloudwatch:
     type: "aws_cloudwatch_logs"
-    inputs: ["$SI_SERVICE-journal"]
+    inputs: ["$SI_SERVICE-journal", "sdf-migration"]
     compression: "gzip"
     encoding:
       codec: "text"
