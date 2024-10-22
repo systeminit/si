@@ -17,6 +17,7 @@ import botocore.session as bc
 from botocore.client import Config
 import time
 from si_logger import logger
+import logging
 
 
 class DatabaseConnectParams(TypedDict):
@@ -54,12 +55,15 @@ class Redshift:
     def __init__(
         self,
         session: boto3.Session,
+        *,
         wait_interval_seconds: float = 0.25,
+        report_interval_seconds: float = 5,
         **database_params: Unpack[DatabaseConnectParams],
     ):
         self._session = session
         self._database_params = database_params
         self._wait_interval_seconds = wait_interval_seconds
+        self._report_interval_seconds = report_interval_seconds
         self._client = self._connect()
 
     def query(self, Sql: str, **Parameters: object):
@@ -94,6 +98,8 @@ class Redshift:
             )
         )
 
+        last_report = time.time()
+
         while True:
             response = self.with_client(
                 lambda client: client.describe_statement(Id=statement["Id"])
@@ -110,9 +116,11 @@ class Redshift:
                 case "ABORTED":
                     raise Exception(f"Query aborted (Id={statement['Id']})")
 
-            logger.debug(
-                f"Query status: {status}. Waiting {self._wait_interval_seconds}s for completion... (Id={statement['Id']})"
-            )
+            if time.time() - last_report >= self._report_interval_seconds:
+                last_report = time.time()
+                logger.log(logging.INFO,
+                    f"Query status: {status}. Waiting {self._wait_interval_seconds}s for completion... (Id={statement['Id']})"
+                )
 
             time.sleep(self._wait_interval_seconds)
 
