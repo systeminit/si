@@ -72,7 +72,7 @@ impl SocketDebugView {
 
         let prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, attribute_value_id).await?;
-        let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
+        let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
         let output_socket =
             OutputSocket::get_by_id(ctx, component_output_socket.output_socket_id).await?;
         let connection_annotations = output_socket
@@ -119,7 +119,7 @@ impl SocketDebugView {
         let prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, component_input_socket.attribute_value_id)
                 .await?;
-        let attribute_value = AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
+        let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
         let input_socket =
             InputSocket::get_by_id(ctx, component_input_socket.input_socket_id).await?;
         let connection_annotations = input_socket

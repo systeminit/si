@@ -1472,7 +1472,7 @@ async fn get_prototype_for_context(
                 key.to_owned().expect("check above ensures this is some"),
             ))?,
         };
-        let map_prop = Prop::get_by_id_or_error(ctx, map_prop_id).await?;
+        let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
 
         if map_prop.kind != PropKind::Map {
             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(

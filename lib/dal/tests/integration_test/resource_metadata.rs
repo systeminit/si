@@ -162,7 +162,7 @@ async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         .expect("should be able to find avs for last synced")
         .pop()
         .expect("should have an av for last synced");
-    let last_synced_value = AttributeValue::get_by_id_or_error(ctx, last_synced_av_id)
+    let last_synced_value = AttributeValue::get_by_id(ctx, last_synced_av_id)
         .await
         .expect("should be able to get last synced av")
         .view(ctx)

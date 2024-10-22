@@ -27,7 +27,7 @@ async fn attribute_value_names(
     let av_id = prop.attribute_value(ctx).await.id();
     let mut result = vec![];
     for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, av_id).await? {
-        let prop = AttributeValue::prop_for_id_or_error(ctx, child_av_id).await?;
+        let prop = AttributeValue::prop(ctx, child_av_id).await?;
         result.push(prop.name);
     }
     Ok(result)

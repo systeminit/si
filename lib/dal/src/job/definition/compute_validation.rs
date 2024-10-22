@@ -101,7 +101,7 @@ impl JobConsumer for ComputeValidation {
                 continue;
             }
 
-            let value = AttributeValue::get_by_id_or_error(ctx, av_id)
+            let value = AttributeValue::get_by_id(ctx, av_id)
                 .await?
                 .value(ctx)
                 .await?;

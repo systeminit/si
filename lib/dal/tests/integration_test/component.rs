@@ -329,7 +329,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
     .await
     .expect("able to set universe value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, rigid_designator_value_id)
+    let view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
         .await
         .expect("get av")
         .view(ctx)
@@ -343,14 +343,13 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let naming_and_necessity_view =
-        AttributeValue::get_by_id_or_error(ctx, naming_and_necessity_value_id)
-            .await
-            .expect("able to get attribute value for `naming_and_necessity_value_id`")
-            .view(ctx)
-            .await
-            .expect("able to get view for `naming_and_necessity_value_id`")
-            .expect("naming and necessity has a value");
+    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
+        .await
+        .expect("able to get attribute value for `naming_and_necessity_value_id`")
+        .view(ctx)
+        .await
+        .expect("able to get view for `naming_and_necessity_value_id`")
+        .expect("naming and necessity has a value");
 
     // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
     // phosphorus if it receives hesperus)
@@ -367,7 +366,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) {
         .copied()
         .expect("a value exists for the root prop");
 
-    let root_value = AttributeValue::get_by_id_or_error(ctx, root_value_id)
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
         .await
         .expect("able to get the value for the root prop attriburte value id");
 
@@ -506,7 +505,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
     .await
     .expect("able to set universe value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, possible_world_a_value_id)
+    let view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
         .await
         .expect("get av")
         .view(ctx)
@@ -522,14 +521,13 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let naming_and_necessity_view =
-        AttributeValue::get_by_id_or_error(ctx, naming_and_necessity_value_id)
-            .await
-            .expect("able to get attribute value for `naming_and_necessity_value_id`")
-            .view(ctx)
-            .await
-            .expect("able to get view for `naming_and_necessity_value_id`")
-            .expect("naming and necessity has a value");
+    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
+        .await
+        .expect("able to get attribute value for `naming_and_necessity_value_id`")
+        .view(ctx)
+        .await
+        .expect("able to get view for `naming_and_necessity_value_id`")
+        .expect("naming and necessity has a value");
 
     // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
     // phosphorus if it receives hesperus)
@@ -546,7 +544,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) {
         .copied()
         .expect("a value exists for the root prop");
 
-    let root_value = AttributeValue::get_by_id_or_error(ctx, root_value_id)
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
         .await
         .expect("able to get the value for the root prop attriburte value id");
 
@@ -684,7 +682,7 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .await
         .expect("able to set universe value");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
         .view(ctx)
@@ -698,7 +696,7 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let view = AttributeValue::get_by_id_or_error(ctx, universe_value_id)
+    let view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
         .expect("get av")
         .view(ctx)

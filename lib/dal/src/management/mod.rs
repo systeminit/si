@@ -324,12 +324,12 @@ async fn update_component(
             continue;
         }
 
-        let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+        let prop = Prop::get_by_id(ctx, prop_id).await?;
 
         match prop.kind {
             PropKind::String | PropKind::Boolean | PropKind::Integer | PropKind::Json => {
                 // todo: type check!
-                let view = AttributeValue::get_by_id_or_error(ctx, path_attribute_value_id)
+                let view = AttributeValue::get_by_id(ctx, path_attribute_value_id)
                     .await?
                     .view(ctx)
                     .await?;
@@ -375,7 +375,7 @@ async fn update_component(
                             if AttributeValue::is_set_by_dependent_function(ctx, *child_id).await? {
                                 continue;
                             }
-                            let view = AttributeValue::get_by_id_or_error(ctx, *child_id)
+                            let view = AttributeValue::get_by_id(ctx, *child_id)
                                 .await?
                                 .view(ctx)
                                 .await?;
@@ -397,7 +397,7 @@ async fn update_component(
             }
             PropKind::Array => {
                 if matches!(current_val, serde_json::Value::Array(_)) {
-                    let view = AttributeValue::get_by_id_or_error(ctx, path_attribute_value_id)
+                    let view = AttributeValue::get_by_id(ctx, path_attribute_value_id)
                         .await?
                         .view(ctx)
                         .await?;

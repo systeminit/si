@@ -63,7 +63,7 @@ async fn execute_management_func(ctx: &DalContext) {
     .await
     .expect("get four");
 
-    let two_av = AttributeValue::get_by_id_or_error(ctx, av_id)
+    let two_av = AttributeValue::get_by_id(ctx, av_id)
         .await
         .expect("a fleetwood to my mac");
 

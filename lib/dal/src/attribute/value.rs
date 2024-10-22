@@ -572,7 +572,7 @@ impl AttributeValue {
         if let ValueIsFor::Prop(prop_id) = value_is_for {
             match func_values.unprocessed_value() {
                 Some(unprocessed_value) => {
-                    let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                    let prop = Prop::get_by_id(ctx, prop_id).await?;
                     match prop.kind {
                         PropKind::Object | PropKind::Map => {
                             func_values.set_processed_value(Some(serde_json::json!({})))
@@ -714,8 +714,7 @@ impl AttributeValue {
                                 )
                                 .await?
                             {
-                                let attribute_value =
-                                    AttributeValue::get_by_id_or_error(ctx, av_id).await?;
+                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
                                 // XXX: We need to properly handle the difference between "there is
                                 // XXX: no value" vs "the value is null", but right now we collapse
                                 // XXX: the two to just be "null" when passing these to a function.
@@ -823,7 +822,7 @@ impl AttributeValue {
             // XXX: We need to properly handle the difference between "there is
             // XXX: no value" vs "the value is null", but right now we collapse
             // XXX: the two to just be "null" when passing these to a function.
-            let output_av = AttributeValue::get_by_id_or_error(
+            let output_av = AttributeValue::get_by_id(
                 ctx,
                 OutputSocket::component_attribute_value_for_output_socket_id(
                     ctx,
@@ -899,7 +898,7 @@ impl AttributeValue {
             Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
         }
 
-        let should_populate_nested = Self::prop_for_id(ctx, attribute_value_id)
+        let should_populate_nested = Self::prop_opt(ctx, attribute_value_id)
             .await?
             .map(|prop| prop.kind.is_container())
             .unwrap_or(false);
@@ -1104,7 +1103,7 @@ impl AttributeValue {
                 prop_node.kind()
             };
 
-            let attribute_value = Self::get_by_id_or_error(ctx, attribute_value_id).await?;
+            let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
 
             // If value is for scalar, just go to parent
             if !prop_kind.is_scalar() {
@@ -1237,7 +1236,7 @@ impl AttributeValue {
                             attribute_value_id,
                         ),
                     )?;
-                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
 
                 (prop.kind, prop_id)
             };
@@ -1334,7 +1333,6 @@ impl AttributeValue {
 
     #[async_recursion]
     pub async fn view(&self, ctx: &DalContext) -> AttributeValueResult<Option<serde_json::Value>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
         let attribute_value_id = self.id;
 
         match AttributeValue::is_for(ctx, attribute_value_id).await? {
@@ -1349,78 +1347,30 @@ impl AttributeValue {
                     return Ok(None);
                 }
 
-                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
 
                 match prop.kind {
                     PropKind::Object => {
                         let mut object_view: IndexMap<String, serde_json::Value> = IndexMap::new();
-                        let mut av_prop_map = HashMap::new();
 
-                        for child_av_id in
-                            AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                                .await?
+                        for child_av in
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
                         {
-                            let child_av =
-                                AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
-
-                            if let ValueIsFor::Prop(child_prop_id) =
-                                AttributeValue::is_for(ctx, child_av.id()).await?
-                            {
-                                av_prop_map.insert(child_prop_id, child_av);
-                            } else {
-                                return Err(AttributeValueError::UnexpectedGraphLayout("a child attribute value of an object has no outgoing Prop edge but has an outgoing Socket edge"));
-                            }
-                        }
-
-                        // Unlike maps or arrays, we want to walk the
-                        // attribute values in prop order, not attribute
-                        // value order, so that we always return them in the
-                        // same order (the order the props were created for
-                        // the schema variant), not the order they were set
-                        // on the attribute value
-                        for child_prop in Prop::direct_child_props_ordered(ctx, prop_id).await? {
-                            if let Some(child_av) = av_prop_map.get(&child_prop.id()) {
-                                let child_view = child_av.view(ctx).await?;
-                                if let Some(view) = child_view {
-                                    object_view.insert(child_prop.name, view);
-                                }
+                            if let Some(view) = child_av.view(ctx).await? {
+                                let prop = Self::prop(ctx, child_av.id).await?;
+                                object_view.insert(prop.name, view);
                             }
                         }
 
                         Ok(Some(serde_json::to_value(object_view)?))
                     }
                     PropKind::Map => {
-                        let mut map_view: IndexMap<String, serde_json::Value> = IndexMap::new();
+                        let mut map_view = IndexMap::new();
 
-                        let child_av_keys: HashMap<NodeIndex, String> = {
-                            workspace_snapshot
-                                .edges_directed_for_edge_weight_kind(
-                                    attribute_value_id,
-                                    Outgoing,
-                                    EdgeWeightKindDiscriminants::Contain,
-                                )
-                                .await?
-                                .iter()
-                                .filter_map(|(edge_weight, _, target_idx)| {
-                                    if let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() {
-                                        Some((*target_idx, key.to_owned()))
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect()
-                        };
-
-                        for child_av_id in
-                            AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id)
-                                .await?
+                        for child_av in
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
                         {
-                            let node_index =
-                                workspace_snapshot.get_node_index_by_id(child_av_id).await?;
-
-                            if let Some(key) = child_av_keys.get(&node_index) {
-                                let child_av =
-                                    AttributeValue::get_by_id_or_error(ctx, child_av_id).await?;
+                            if let Some(key) = child_av.key(ctx).await? {
                                 if let Some(view) = child_av.view(ctx).await? {
                                     map_view.insert(key.to_owned(), view);
                                 }
@@ -1430,21 +1380,12 @@ impl AttributeValue {
                         Ok(Some(serde_json::to_value(map_view)?))
                     }
                     PropKind::Array => {
-                        let mut array_view = vec![];
+                        let mut array_view = Vec::new();
 
-                        let element_av_ids = {
-                            workspace_snapshot
-                                .ordered_children_for_node(attribute_value_id)
-                                .await?
-                                .ok_or(AttributeValueError::UnexpectedGraphLayout(
-                                    "array attribute value has no ordering node",
-                                ))?
-                        };
-
-                        for element_av_id in element_av_ids {
-                            let av = AttributeValue::get_by_id_or_error(ctx, element_av_id.into())
-                                .await?;
-                            if let Some(view) = av.view(ctx).await? {
+                        for element_av in
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
+                        {
+                            if let Some(view) = element_av.view(ctx).await? {
                                 array_view.push(view);
                             }
                         }
@@ -2242,7 +2183,7 @@ impl AttributeValue {
         Ok(())
     }
 
-    pub async fn get_by_id_or_error(
+    pub async fn get_by_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Self> {
@@ -2259,26 +2200,35 @@ impl AttributeValue {
         Ok(node_weight.into())
     }
 
-    pub async fn prop_for_id(
+    pub async fn prop_opt(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<Prop>> {
-        let prop_id = Self::prop_id_for_id(ctx, attribute_value_id).await?;
+        let prop_id = Self::prop_id_opt(ctx, attribute_value_id).await?;
         Ok(match prop_id {
-            Some(prop_id) => Some(Prop::get_by_id_or_error(ctx, prop_id).await?),
+            Some(prop_id) => Some(Prop::get_by_id(ctx, prop_id).await?),
             None => None,
         })
     }
 
-    pub async fn prop_for_id_or_error(
+    pub async fn prop(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Prop> {
-        let prop_id = Self::prop_id_for_id_or_error(ctx, attribute_value_id).await?;
-        Ok(Prop::get_by_id_or_error(ctx, prop_id).await?)
+        let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
+        Ok(Prop::get_by_id(ctx, prop_id).await?)
     }
 
-    pub async fn prop_id_for_id(
+    pub async fn prop_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        Self::prop_id_opt(ctx, attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+    }
+
+    async fn prop_id_opt(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<PropId>> {
@@ -2294,29 +2244,19 @@ impl AttributeValue {
         {
             let target_node_weight = workspace_snapshot.get_node_weight(target).await?;
             if let NodeWeight::Prop(prop_node_weight) = &target_node_weight {
-                maybe_prop_id = match maybe_prop_id {
-                    Some(already_found_prop_id) => {
-                        return Err(AttributeValueError::MultiplePropsFound(
-                            prop_node_weight.id().into(),
-                            already_found_prop_id,
-                            attribute_value_id,
-                        ));
-                    }
-                    None => Some(target_node_weight.id().into()),
-                };
+                if let Some(already_found_prop_id) = maybe_prop_id {
+                    return Err(AttributeValueError::MultiplePropsFound(
+                        prop_node_weight.id().into(),
+                        already_found_prop_id,
+                        attribute_value_id,
+                    ));
+                }
+
+                maybe_prop_id = Some(target_node_weight.id().into());
             }
         }
 
         Ok(maybe_prop_id)
-    }
-
-    pub async fn prop_id_for_id_or_error(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<PropId> {
-        Self::prop_id_for_id(ctx, attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 
     async fn fetch_value_from_store(
@@ -2389,9 +2329,9 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id(ctx, parent_av_id).await?;
 
-            let parent_prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
             if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
                 return Ok(None);
@@ -2408,18 +2348,13 @@ impl AttributeValue {
     async fn get_child_av_ids_from_ordering_node(
         ctx: &DalContext,
         id: AttributeValueId,
-    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
-        Ok(ctx
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let ordered_ulids = ctx
             .workspace_snapshot()?
-            .ordering_node_for_container(id)
+            .ordered_children_for_node(id)
             .await?
-            .map(|ordering_weight| {
-                ordering_weight
-                    .order()
-                    .iter()
-                    .map(|&id| id.into())
-                    .collect()
-            }))
+            .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))?;
+        Ok(ordered_ulids.iter().map(|&id| id.into()).collect())
     }
 
     /// Get the child attribute values for this attribute value, if any exist.
@@ -2430,81 +2365,72 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        if let Some(prop) = Self::prop_for_id(ctx, id).await? {
-            match prop.kind {
-                PropKind::Boolean | PropKind::Integer | PropKind::Json | PropKind::String => {
-                    Ok(vec![])
-                }
-                PropKind::Array | PropKind::Map => {
-                    Self::get_child_av_ids_from_ordering_node(ctx, id)
-                        .await?
-                        .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))
-                }
-                // Unlike maps or arrays, we want to walk object
-                // attribute values in prop order, not attribute
-                // value order, so that we always return them in the
-                // same order (the order the props were created for
-                // the schema variant), not the order they were set
-                // on the attribute value
-                //
-                // TODO doing this on read papers over the fact that we're storing them in an
-                // order we do not prefer. We should really just ensure it's impossible to
-                // create a node with these out of sync, or remove the ordering node from
-                // AttributeValue object-type props altogether.
-                PropKind::Object => {
-                    // NOTE probably can get the unordered ones if it comes down to it.
-                    let child_ids = Self::get_child_av_ids_from_ordering_node(ctx, id)
-                        .await?
-                        .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))?;
-                    let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop.id).await?;
+        let prop = Self::prop(ctx, id).await?;
+        match prop.kind {
+            PropKind::Boolean | PropKind::Integer | PropKind::Json | PropKind::String => Ok(vec![]),
+            PropKind::Array | PropKind::Map => {
+                Self::get_child_av_ids_from_ordering_node(ctx, id).await
+            }
+            // Unlike maps or arrays, we want to walk object
+            // attribute values in prop order, not attribute
+            // value order, so that we always return them in the
+            // same order (the order the props were created for
+            // the schema variant), not the order they were set
+            // on the attribute value
+            //
+            // TODO doing this on read papers over the fact that we're storing them in an
+            // order we do not prefer. We should really just ensure it's impossible to
+            // create a node with these out of sync, or remove the ordering node from
+            // AttributeValue object-type props altogether.
+            PropKind::Object => {
+                // NOTE probably can get the unordered ones if it comes down to it.
+                let child_ids = Self::get_child_av_ids_from_ordering_node(ctx, id).await?;
+                let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop.id).await?;
 
-                    // Get the mapping from PropId -> AttributeValueId
-                    let mut av_prop_map = HashMap::with_capacity(child_ids.len());
+                // Get the mapping from PropId -> AttributeValueId
+                let mut av_prop_map = HashMap::with_capacity(child_ids.len());
+                for &child_id in &child_ids {
+                    let child_prop_id = Self::prop_id(ctx, child_id).await?;
+                    if av_prop_map.insert(child_prop_id, child_id).is_some() {
+                        // If the prop showed up in more than one AV, something is wrong.
+                        // Due to a bug, this sometimes happens in the wild; we're investigating.
+                        let component =
+                            Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
+                                .await?;
+                        warn!(
+                            "Multiple AVs for prop {} in component {}, schema {}",
+                            Prop::path_by_id(ctx, child_prop_id).await?,
+                            component.name(ctx).await?,
+                            component.schema(ctx).await?.name
+                        );
+                        // TODO error instead when this bug is fixed
+                        // return Err(AttributeValueError::MultipleAttributeValuesSameProp(
+                        //     old_child_id,
+                        //     child_id,
+                        //     child_prop_id,
+                        // ));
+                    }
+                }
+
+                // For each PropId (in schema order), look up the AttributeValueId
+                let mut child_ids_in_prop_order: Vec<AttributeValueId> = child_prop_ids
+                    .iter()
+                    .filter_map(|child_prop_id| av_prop_map.get(child_prop_id).copied())
+                    .collect();
+
+                // Make sure we actually returned all the children
+                if child_ids_in_prop_order.len() != child_ids.len() {
                     for &child_id in &child_ids {
-                        let child_prop_id = Self::prop_id_for_id_or_error(ctx, child_id).await?;
-                        if av_prop_map.insert(child_prop_id, child_id).is_some() {
-                            // If the prop showed up in more than one AV, something is wrong.
-                            // Due to a bug, this sometimes happens in the wild; we're investigating.
+                        if !child_ids_in_prop_order.contains(&child_id) {
+                            let child_prop_id = Self::prop_id(ctx, child_id).await?;
+                            // If the prop wasn't a duplicate (caught earlier)
+                            // TODO this appears when the above bug happens; reenable this
+                            // when said bug is fixed
+                            // return Err(AttributeValueError::FieldNotChildOfObject(child_id));
                             let component =
                                 Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
                                     .await?;
                             warn!(
-                                "Multiple AVs for prop {} in component {}, schema {}",
-                                Prop::path_by_id(ctx, child_prop_id).await?,
-                                component.name(ctx).await?,
-                                component.schema(ctx).await?.name
-                            );
-                            // TODO error instead when this bug is fixed
-                            // return Err(AttributeValueError::MultipleAttributeValuesSameProp(
-                            //     old_child_id,
-                            //     child_id,
-                            //     child_prop_id,
-                            // ));
-                        }
-                    }
-
-                    // For each PropId (in schema order), look up the AttributeValueId
-                    let mut child_ids_in_prop_order: Vec<AttributeValueId> = child_prop_ids
-                        .iter()
-                        .filter_map(|child_prop_id| av_prop_map.get(child_prop_id).copied())
-                        .collect();
-
-                    // Make sure we actually returned all the children
-                    if child_ids_in_prop_order.len() != child_ids.len() {
-                        for &child_id in &child_ids {
-                            if !child_ids_in_prop_order.contains(&child_id) {
-                                let child_prop_id =
-                                    Self::prop_id_for_id_or_error(ctx, child_id).await?;
-                                // If the prop wasn't a duplicate (caught earlier)
-                                // TODO this appears when the above bug happens; reenable this
-                                // when said bug is fixed
-                                // return Err(AttributeValueError::FieldNotChildOfObject(child_id));
-                                let component = Component::get_by_id(
-                                    ctx,
-                                    Self::component_id(ctx, child_id).await?,
-                                )
-                                .await?;
-                                warn!(
                                     "Child AV with prop {} (parent ID {:?}) not found in corresponding parent prop {} (ID {}) in component {}, schema {}",
                                     Prop::path_by_id(ctx, child_prop_id).await?,
                                     Prop::parent_prop_id_by_id(ctx, child_prop_id).await?,
@@ -2513,23 +2439,33 @@ impl AttributeValue {
                                     component.name(ctx).await?,
                                     component.schema(ctx).await?.name
                                 );
-                                child_ids_in_prop_order.push(child_id);
-                            }
+                            child_ids_in_prop_order.push(child_id);
                         }
-                        // TODO this appears because we're skipping above errors until the bug is fixed
-                        // // Unreachable: child_ids_in_prop_order can only be <= av_prop_map.
-                        // return Err(AttributeValueError::Unreachable);
                     }
-
-                    Ok(child_ids_in_prop_order)
+                    // TODO this appears because we're skipping above errors until the bug is fixed
+                    // // Unreachable: child_ids_in_prop_order can only be <= av_prop_map.
+                    // return Err(AttributeValueError::Unreachable);
                 }
+
+                Ok(child_ids_in_prop_order)
             }
-        } else {
-            // TODO can this ever happen? Seems like AttributeValueError::MissingPropEdge()
-            Ok(Self::get_child_av_ids_from_ordering_node(ctx, id)
-                .await?
-                .unwrap_or(vec![]))
         }
+    }
+
+    /// Get the child attribute values for this attribute value, if any exist.
+    /// Returns them in order. All container values (Object, Map, Array), are
+    /// ordered, so this will always return the child attribute values of a
+    /// container values.
+    pub async fn get_child_avs_in_order(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValue>> {
+        let child_ids = Self::get_child_av_ids_in_order(ctx, id).await?;
+        let mut child_avs = Vec::with_capacity(child_ids.len());
+        for child_id in child_ids {
+            child_avs.push(Self::get_by_id(ctx, child_id).await?);
+        }
+        Ok(child_avs)
     }
 
     ///
@@ -2634,7 +2570,7 @@ impl AttributeValue {
         while let Some(mut attribute_value_id) = work_queue.pop_front() {
             let attribute_path = match Self::is_for(ctx, attribute_value_id).await? {
                 ValueIsFor::Prop(prop_id) => {
-                    let prop_name = Prop::get_by_id_or_error(ctx, prop_id).await?.name;
+                    let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
                     // check the parent of this attribute value
                     // if the parent is an array or map, we need to add the key/index to the attribute value path
                     if let Some(parent_attribute_value_id) =
@@ -2705,28 +2641,25 @@ impl AttributeValue {
         Ok(
             match Self::parent_attribute_value_id(ctx, child_id).await? {
                 Some(pav_id) => match Self::is_for(ctx, pav_id).await? {
-                    ValueIsFor::Prop(prop_id) => {
-                        match Prop::get_by_id_or_error(ctx, prop_id).await?.kind {
-                            PropKind::Array => {
-                                match ctx
-                                    .workspace_snapshot()?
-                                    .ordering_node_for_container(pav_id)
-                                    .await?
-                                {
-                                    Some(ordering_node) => {
-                                        let index =
-                                            ordering_node.get_index_for_id(child_id.into())?;
-                                        Some(KeyOrIndex::Index(index))
-                                    }
-                                    None => None,
-                                }
-                            }
-                            PropKind::Map => Self::get_key_of_child_entry(ctx, pav_id, child_id)
+                    ValueIsFor::Prop(prop_id) => match Prop::get_by_id(ctx, prop_id).await?.kind {
+                        PropKind::Array => {
+                            match ctx
+                                .workspace_snapshot()?
+                                .ordering_node_for_container(pav_id)
                                 .await?
-                                .map(KeyOrIndex::Key),
-                            _ => None,
+                            {
+                                Some(ordering_node) => {
+                                    let index = ordering_node.get_index_for_id(child_id.into())?;
+                                    Some(KeyOrIndex::Index(index))
+                                }
+                                None => None,
+                            }
                         }
-                    }
+                        PropKind::Map => Self::get_key_of_child_entry(ctx, pav_id, child_id)
+                            .await?
+                            .map(KeyOrIndex::Key),
+                        _ => None,
+                    },
                     _ => None,
                 },
                 None => None,
@@ -2766,7 +2699,7 @@ impl AttributeValue {
             if let ValueIsFor::Prop(prop_id) =
                 AttributeValue::is_for(ctx, attribute_value_id).await?
             {
-                let prop = Prop::get_by_id_or_error(ctx, prop_id).await?;
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
                 if prop.kind == PropKind::Object {
                     for child_value_id in
                         AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?

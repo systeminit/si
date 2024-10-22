@@ -552,7 +552,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .into_iter()
         .next()
         .expect("got av");
-    let odd_component_1_mat_view = AttributeValue::get_by_id_or_error(ctx, odd_component_1_av)
+    let odd_component_1_mat_view = AttributeValue::get_by_id(ctx, odd_component_1_av)
         .await
         .expect("got av")
         .view(ctx)
@@ -570,7 +570,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .into_iter()
         .next()
         .expect("got av");
-    let odd_component_2_mat_view = AttributeValue::get_by_id_or_error(ctx, odd_component_2_av)
+    let odd_component_2_mat_view = AttributeValue::get_by_id(ctx, odd_component_2_av)
         .await
         .expect("got av")
         .view(ctx)
@@ -3297,7 +3297,7 @@ async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         .expect("could not get attribute values")
         .pop()
         .expect("has a value");
-        let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
+        let component_secret_value = AttributeValue::get_by_id(ctx, component_secret_av)
             .await
             .expect("could not get attribute value by id")
             .value(ctx)
@@ -3378,7 +3378,7 @@ async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         .expect("could not get attribute values")
         .pop()
         .expect("has a value");
-        let component_secret_value = AttributeValue::get_by_id_or_error(ctx, component_secret_av)
+        let component_secret_value = AttributeValue::get_by_id(ctx, component_secret_av)
             .await
             .expect("could not get attribute value by id")
             .value(ctx)

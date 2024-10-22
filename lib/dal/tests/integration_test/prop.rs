@@ -61,7 +61,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     ];
 
     for container_prop_path in &container_props {
-        let container_prop = Prop::get_by_id_or_error(
+        let container_prop = Prop::get_by_id(
             ctx,
             Prop::find_prop_id_by_path(
                 ctx,
@@ -82,7 +82,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     }
 
     for item_prop_path in &item_props {
-        let item_prop = Prop::get_by_id_or_error(
+        let item_prop = Prop::get_by_id(
             ctx,
             Prop::find_prop_id_by_path(
                 ctx,

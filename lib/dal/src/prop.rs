@@ -719,7 +719,7 @@ impl Prop {
         Ok(result)
     }
 
-    pub async fn get_by_id_or_error(ctx: &DalContext, id: PropId) -> PropResult<Self> {
+    pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ::si_events::ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
@@ -870,7 +870,7 @@ impl Prop {
         path: &PropPath,
     ) -> PropResult<Self> {
         let prop_id = Self::find_prop_id_by_path(ctx, schema_variant_id, path).await?;
-        Self::get_by_id_or_error(ctx, prop_id).await
+        Self::get_by_id(ctx, prop_id).await
     }
 
     implement_add_edge_to!(
@@ -990,7 +990,7 @@ impl Prop {
     ) -> PropResult<()> {
         let value = serde_json::to_value(value)?;
 
-        let prop = Self::get_by_id_or_error(ctx, prop_id).await?;
+        let prop = Self::get_by_id(ctx, prop_id).await?;
         if !prop.kind.is_scalar() {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
@@ -1117,7 +1117,7 @@ impl Prop {
 
         let mut ordered_child_props = Vec::with_capacity(child_prop_ids.len());
         for child_prop_id in child_prop_ids {
-            ordered_child_props.push(Self::get_by_id_or_error(ctx, child_prop_id).await?)
+            ordered_child_props.push(Self::get_by_id(ctx, child_prop_id).await?)
         }
 
         Ok(ordered_child_props)
@@ -1152,12 +1152,12 @@ impl Prop {
             PropKind::String => "string".to_string(),
             PropKind::Array => {
                 let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
-                let element_prop = Self::get_by_id_or_error(ctx, element_prop_id).await?;
+                let element_prop = Self::get_by_id(ctx, element_prop_id).await?;
                 format!("{}[]", element_prop.ts_type(ctx).await?)
             }
             PropKind::Map => {
                 let element_prop_id = Self::element_prop_id(ctx, self.id).await?;
-                let element_prop = Self::get_by_id_or_error(ctx, element_prop_id).await?;
+                let element_prop = Self::get_by_id(ctx, element_prop_id).await?;
                 format!("Record<string, {}>", element_prop.ts_type(ctx).await?)
             }
             PropKind::Object => {

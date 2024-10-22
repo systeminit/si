@@ -107,8 +107,7 @@ impl PropEditorTestView {
                 .get(child_id)
                 .ok_or(eyre!("could not get value for child"))?
                 .clone();
-            let real_prop =
-                Prop::get_by_id_or_error(ctx, value.prop_id.into_inner().into()).await?;
+            let real_prop = Prop::get_by_id(ctx, value.prop_id.into_inner().into()).await?;
             if real_prop.hidden {
                 continue;
             }

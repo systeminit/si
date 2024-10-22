@@ -31,7 +31,7 @@ impl PropertyEditorSchema {
         // Get the root prop and load it into the work queue.
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
-        let root_prop = Prop::get_by_id_or_error(ctx, root_prop_id).await?;
+        let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
         let root_property_editor_prop = builder.build(ctx, root_prop).await?;
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);

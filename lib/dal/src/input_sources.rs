@@ -140,7 +140,7 @@ impl InputSources {
         schema_variant_id: SchemaVariantId,
     ) -> InputSourcesResult<Vec<InputSourceProp>> {
         let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id).await?;
-        let root_prop = Prop::get_by_id_or_error(ctx, root_prop_id).await?;
+        let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
 
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop);

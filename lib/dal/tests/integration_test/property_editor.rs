@@ -122,7 +122,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
         AttributeValue::get_child_av_ids_in_order(ctx, parrot_names_value_id)
             .await
             .expect("get the vec of child ids");
-    let parrot_names_third_item = AttributeValue::get_by_id_or_error(
+    let parrot_names_third_item = AttributeValue::get_by_id(
         ctx,
         *parrot_names_child_ids
             .get(2)
@@ -142,7 +142,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     let treasure_child_ids = AttributeValue::get_child_av_ids_in_order(ctx, treasure_map_value_id)
         .await
         .expect("get the vec of child ids");
-    let treasure_second_item = AttributeValue::get_by_id_or_error(
+    let treasure_second_item = AttributeValue::get_by_id(
         ctx,
         *treasure_child_ids
             .get(1)
@@ -191,7 +191,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // Check that the items around the removed item are correct
 
     // Get the second item in the array
-    let parrot_names_second_item = AttributeValue::get_by_id_or_error(
+    let parrot_names_second_item = AttributeValue::get_by_id(
         ctx,
         *parrot_names_child_ids
             .get(1)
@@ -208,7 +208,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     assert_eq!(parrot_names_second_item_value, Some("samantha".into()));
 
     // Get the third item in the array
-    let parrot_names_third_item = AttributeValue::get_by_id_or_error(
+    let parrot_names_third_item = AttributeValue::get_by_id(
         ctx,
         *parrot_names_child_ids
             .get(2)
@@ -242,7 +242,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // Check that the items around the removed item are correct
 
     // Get the first item in the treasure map
-    let treasure_first_item = AttributeValue::get_by_id_or_error(
+    let treasure_first_item = AttributeValue::get_by_id(
         ctx,
         *treasure_child_ids
             .first()
@@ -267,7 +267,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     assert_eq!(treasure_first_item_key, Some("ohio".to_string()));
 
     // Get the second item in the treasure map
-    let treasure_second_item = AttributeValue::get_by_id_or_error(
+    let treasure_second_item = AttributeValue::get_by_id(
         ctx,
         *treasure_child_ids
             .get(1)
@@ -311,7 +311,7 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+    let prop_id = AttributeValue::prop_id(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -411,7 +411,7 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+    let prop_id = AttributeValue::prop_id(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -507,7 +507,7 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let prop_id = AttributeValue::prop_id_for_id_or_error(ctx, av_id)
+    let prop_id = AttributeValue::prop_id(ctx, av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -588,7 +588,7 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
         .pop()
         .expect("there should only be one value id");
 
-    let parrots_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrots_av_id)
+    let parrots_prop_id = AttributeValue::prop_id(ctx, parrots_av_id)
         .await
         .expect("get prop_id for attribute value");
 
@@ -676,7 +676,7 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
 
         let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
 
-        let parrot_entry_prop_id = AttributeValue::prop_id_for_id_or_error(ctx, parrot_entry_av_id)
+        let parrot_entry_prop_id = AttributeValue::prop_id(ctx, parrot_entry_av_id)
             .await
             .expect("get prop_id for attribute value");
 

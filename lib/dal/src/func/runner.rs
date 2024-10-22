@@ -1465,7 +1465,7 @@ impl FuncRunner {
                             Self::auth_funcs_for_secret_child_prop_id(ctx, secret_child_prop_id)
                                 .await?;
                         let attribute_value =
-                            AttributeValue::get_by_id_or_error(ctx, attribute_value_id).await?;
+                            AttributeValue::get_by_id(ctx, attribute_value_id).await?;
                         let maybe_value = attribute_value.value(ctx).await?;
 
                         // NOTE(nick): in the future, we could likely run auth funcs without secret inputs without
@@ -1516,7 +1516,7 @@ impl FuncRunner {
         ctx: &DalContext,
         secret_child_prop_id: PropId,
     ) -> FuncRunnerResult<Vec<Func>> {
-        let secret_child_prop = Prop::get_by_id_or_error(ctx, secret_child_prop_id).await?;
+        let secret_child_prop = Prop::get_by_id(ctx, secret_child_prop_id).await?;
 
         let secret_definition_name = secret_child_prop
             .widget_options
