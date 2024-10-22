@@ -119,6 +119,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
         variantList: [] as SchemaVariant[],
+        uninstalledVariantList: [] as UninstalledVariant[],
         variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
 
         executeSchemaVariantTaskId: undefined as string | undefined,
@@ -492,6 +493,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             params: { ...visibility },
             onSuccess: (response) => {
               this.variantList = response.installed;
+              this.uninstalledVariantList = response.uninstalled;
             },
           });
         },
