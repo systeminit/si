@@ -9,10 +9,10 @@ use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::NodeInformation;
 use crate::{EdgeWeight, EdgeWeightKind, NodeWeightDiscriminants};
 
-use super::{detect_updates::Update, WorkspaceSnapshotGraphVCurrent};
+use super::{detect_updates::Update, WorkspaceSnapshotGraphV3};
 
 pub fn correct_transforms(
-    graph: &WorkspaceSnapshotGraphVCurrent,
+    graph: &WorkspaceSnapshotGraphV3,
     mut updates: Vec<Update>,
     from_different_change_set: bool,
 ) -> CorrectTransformsResult<Vec<Update>> {
@@ -67,7 +67,7 @@ pub fn correct_transforms(
 
 /// Produce the NewNode and NewEdge updates required for adding a dependent value root to the graph
 pub fn add_dependent_value_root_updates(
-    graph: &WorkspaceSnapshotGraphVCurrent,
+    graph: &WorkspaceSnapshotGraphV3,
     value_ids: &HashSet<Ulid>,
 ) -> CorrectTransformsResult<Vec<Update>> {
     let mut updates = vec![];

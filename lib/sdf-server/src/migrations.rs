@@ -84,35 +84,12 @@ impl Migrator {
         Self { services_context }
     }
 
-    #[instrument(
-        name = "sdf.migrator.run_migrations",
-        level = "info",
-        skip_all,
-        fields(
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-        )
-    )]
+    #[instrument(name = "sdf.migrator.run_migrations", level = "info", skip_all)]
     pub async fn run_migrations(self) -> MigratorResult<()> {
-        let span = current_span_for_instrument_at!("info");
-
-        self.migrate_layer_db_database()
-            .await
-            .map_err(|err| span.record_err(err))?;
-
-        self.migrate_dal_database()
-            .await
-            .map_err(|err| span.record_err(err))?;
-
-        self.migrate_snapshots()
-            .await
-            .map_err(|err| span.record_err(err))?;
-
-        self.migrate_builtins_from_module_index()
-            .await
-            .map_err(|err| span.record_err(err))?;
-
-        span.record_ok();
+        self.migrate_layer_db_database().await?;
+        self.migrate_dal_database().await?;
+        self.migrate_snapshots().await?;
+        self.migrate_builtins_from_module_index().await?;
         Ok(())
     }
 

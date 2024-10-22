@@ -1221,7 +1221,6 @@ impl WorkspaceSnapshotGraphV2 {
                     | EdgeWeightKind::ActionPrototype
                     | EdgeWeightKind::Contain(None)
                     | EdgeWeightKind::FrameContains
-                    | EdgeWeightKind::Represents
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Socket

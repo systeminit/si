@@ -36,8 +36,6 @@ pub enum ContentAddress {
     // TODO(victor): remove this when we migrate the graph next
     ValidationPrototype(ContentHash),
     ManagementPrototype(ContentHash),
-    Geometry(ContentHash),
-    View(ContentHash),
 }
 
 impl ContentAddress {
@@ -50,13 +48,12 @@ impl ContentAddress {
             | ContentAddress::DeprecatedAction(id)
             | ContentAddress::DeprecatedActionBatch(id)
             | ContentAddress::DeprecatedActionRunner(id)
+            | ContentAddress::OutputSocket(id)
             | ContentAddress::FuncArg(id)
             | ContentAddress::Func(id)
-            | ContentAddress::Geometry(id)
             | ContentAddress::InputSocket(id)
             | ContentAddress::JsonValue(id)
             | ContentAddress::Module(id)
-            | ContentAddress::OutputSocket(id)
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)
@@ -64,7 +61,6 @@ impl ContentAddress {
             | ContentAddress::StaticArgumentValue(id)
             | ContentAddress::ValidationPrototype(id)
             | ContentAddress::ValidationOutput(id)
-            | ContentAddress::View(id)
             | ContentAddress::ManagementPrototype(id) => Some(*id),
         }
         .unwrap_or_default()
