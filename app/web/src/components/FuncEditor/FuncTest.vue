@@ -479,11 +479,24 @@ const prepareTest = async () => {
       string,
       unknown
     >;
+
+    const componentData =
+      componentsStore.rawComponentsById[
+        funcTestSelectorRef.value.selectedComponentId
+      ];
+    const geometry = componentData
+      ? {
+          x: componentData.position.x,
+          y: componentData.position.y,
+          width: componentData.size?.width ?? 0,
+          height: componentData.size?.height ?? 0,
+        }
+      : { x: 0, y: 0, width: 0, height: 0 };
     // TODO recursive toSnakeCase all props
     const thisComponent = {
       this_component: {
-        kind: "standard",
         properties: props,
+        geometry,
       },
     };
     testInputCode.value = JSON.stringify(thisComponent, null, 2);
