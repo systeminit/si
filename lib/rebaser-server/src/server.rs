@@ -62,6 +62,7 @@ impl ServerMetadata {
 pub struct Server {
     metadata: Arc<ServerMetadata>,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+    server_tracker: TaskTracker,
 }
 
 impl fmt::Debug for Server {
@@ -159,6 +160,7 @@ impl Server {
 
         let ctx_builder = DalContext::builder(services_context, false);
 
+        let server_tracker = TaskTracker::new();
         let state = AppState::new(
             metadata.clone(),
             nats,
@@ -166,6 +168,7 @@ impl Server {
             ctx_builder,
             quiescent_period,
             shutdown_token.clone(),
+            server_tracker.clone(),
         );
 
         let app = ServiceBuilder::new()
@@ -198,7 +201,11 @@ impl Server {
             ),
         };
 
-        Ok(Self { metadata, inner })
+        Ok(Self {
+            metadata,
+            inner,
+            server_tracker,
+        })
     }
 
     /// Runs the service to completion or until the first internal error is encountered.
@@ -213,6 +220,9 @@ impl Server {
     /// internal error was encountered).
     pub async fn try_run(self) -> Result<()> {
         self.inner.await.map_err(Error::Naxum)?;
+        info!("rebaser inner loop exited, now shutting down the server tracker's tasks");
+        self.server_tracker.close();
+        self.server_tracker.wait().await;
         info!("rebaser main loop shutdown complete");
         Ok(())
     }

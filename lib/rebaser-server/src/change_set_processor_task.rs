@@ -27,7 +27,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_stream::StreamExt as _;
-use tokio_util::sync::CancellationToken;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use self::app_state::AppState;
 use crate::ServerMetadata;
@@ -67,12 +67,20 @@ impl ChangeSetProcessorTask {
         run_notify: Arc<Notify>,
         quiescent_period: Duration,
         task_token: CancellationToken,
+        server_tracker: TaskTracker,
     ) -> Self {
         let connection_metadata = nats.metadata_clone();
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
 
-        let state = AppState::new(workspace_id, change_set_id, nats, ctx_builder, run_notify);
+        let state = AppState::new(
+            workspace_id,
+            change_set_id,
+            nats,
+            ctx_builder,
+            run_notify,
+            server_tracker,
+        );
 
         let quiescence_token = CancellationToken::new();
 
@@ -361,6 +369,7 @@ mod handlers {
             nats,
             ctx_builder,
             run_notify,
+            server_tracker,
         } = state;
         let mut ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id.into(), change_set_id.into())
@@ -370,7 +379,7 @@ mod handlers {
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
 
-        let rebase_status = perform_rebase(&mut ctx, &request)
+        let rebase_status = perform_rebase(&mut ctx, &request, &server_tracker)
             .await
             .unwrap_or_else(|err| {
                 error!(
@@ -457,6 +466,7 @@ mod app_state {
     use si_data_nats::NatsClient;
     use si_events::{ChangeSetId, WorkspacePk};
     use tokio::sync::Notify;
+    use tokio_util::task::TaskTracker;
 
     /// Application state.
     #[derive(Clone, Debug)]
@@ -471,6 +481,9 @@ mod app_state {
         pub(crate) ctx_builder: DalContextBuilder,
         /// Signal to run a DVU job
         pub(crate) run_notify: Arc<Notify>,
+        /// A task tracker for server-level tasks that can outlive the lifetime of a change set
+        /// processor task
+        pub(crate) server_tracker: TaskTracker,
     }
 
     impl AppState {
@@ -481,6 +494,7 @@ mod app_state {
             nats: NatsClient,
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
+            server_tracker: TaskTracker,
         ) -> Self {
             Self {
                 workspace_id,
@@ -488,6 +502,7 @@ mod app_state {
                 nats,
                 ctx_builder,
                 run_notify,
+                server_tracker,
             }
         }
     }
