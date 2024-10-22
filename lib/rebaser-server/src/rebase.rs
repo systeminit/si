@@ -12,6 +12,7 @@ use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
+use tokio_util::task::TaskTracker;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -55,6 +56,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 pub async fn perform_rebase(
     ctx: &mut DalContext,
     request: &EnqueueUpdatesRequest,
+    server_tracker: &TaskTracker,
 ) -> RebaseResult<RebaseStatus> {
     let span = current_span_for_instrument_at!("info");
 
@@ -123,14 +125,12 @@ pub async fn perform_rebase(
     ctx.commit_no_rebase().await?;
 
     {
-        let ictx = ctx.clone();
-        // TODO(fnichol): this spawn needs to be tracked or it will be trivially cancelled on shut
-        // down
-        tokio::spawn(async move {
-            if let Err(error) =
-                evict_unused_snapshots(&ictx, &to_rebase_workspace_snapshot_address).await
+        let ctx_clone = ctx.clone();
+        server_tracker.spawn(async move {
+            if let Err(err) =
+                evict_unused_snapshots(&ctx_clone, &to_rebase_workspace_snapshot_address).await
             {
-                error!(?error, "Eviction error: {:?}", error);
+                error!(?err, "eviction error");
             }
             // TODO: RebaseBatch eviction?
         });
@@ -143,34 +143,34 @@ pub async fn perform_rebase(
                 && cs.id != to_rebase_change_set.id
                 && request.from_change_set_id != Some(cs.id.into())
         }) {
-            let ctx_clone = ctx.clone();
             let workspace_pk = *workspace.pk();
             let updates_address = request.updates_address;
-            // TODO(fnichol): this spawn needs to be tracked or it will be trivially cancelled
-            // on shut down
-            tokio::task::spawn(async move {
-                debug!(
-                    "replaying batch {} onto {} from {}",
-                    updates_address, target_change_set.id, to_rebase_change_set.id
-                );
-
-                if let Err(err) = replay_changes(
-                    &ctx_clone,
-                    workspace_pk,
-                    target_change_set.id,
-                    updates_address,
-                    to_rebase_change_set.id,
-                )
-                .await
-                {
-                    error!(
-                        err = ?err,
-                        "error replaying rebase batch {} changes onto {}",
-                        updates_address,
-                        target_change_set.id
+            {
+                let ctx_clone = ctx.clone();
+                server_tracker.spawn(async move {
+                    debug!(
+                        "replaying batch {} onto {} from {}",
+                        updates_address, target_change_set.id, to_rebase_change_set.id
                     );
-                }
-            });
+
+                    if let Err(err) = replay_changes(
+                        &ctx_clone,
+                        workspace_pk,
+                        target_change_set.id,
+                        updates_address,
+                        to_rebase_change_set.id,
+                    )
+                    .await
+                    {
+                        error!(
+                            err = ?err,
+                            "error replaying rebase batch {} changes onto {}",
+                            updates_address,
+                            target_change_set.id
+                        );
+                    }
+                });
+            }
         }
     }
 
