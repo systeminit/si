@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-#[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
-pub enum AuditLogService {
-    AuthApi,
-    Pinga,
-    Rebaser,
-    Sdf,
+use crate::Actor;
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct AuditLog {
+    pub actor: Actor,
+    pub kind: AuditLogKind,
+    pub timestamp: String,
+    pub origin_ip_address: Option<String>,
 }
 
 #[remain::sorted]

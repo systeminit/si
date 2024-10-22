@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{
-    audit_log::{AuditLogKind, AuditLogService},
-    Actor,
-};
+use si_events::{audit_log::AuditLogKind, Actor};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -10,7 +7,6 @@ pub struct AuditLog {
     pub actor: Actor,
     pub actor_name: Option<String>,
     pub actor_email: Option<String>,
-    pub service: AuditLogService,
     pub kind: AuditLogKind,
     pub timestamp: String,
     pub origin_ip_address: Option<String>,

@@ -4,10 +4,7 @@ use std::{collections::HashSet, str::FromStr};
 
 use chrono::Utc;
 use rand::{thread_rng, Rng};
-use si_events::{
-    audit_log::{AuditLogKind, AuditLogService},
-    Actor, UserPk,
-};
+use si_events::{audit_log::AuditLogKind, Actor, UserPk};
 use thiserror::Error;
 use ulid::MonotonicError;
 
@@ -97,22 +94,19 @@ pub async fn generate(
             _ => (Actor::System, None, None, None),
         };
 
-        let (service, kind, change_set_id, change_set_name) = match actor {
+        let (kind, change_set_id, change_set_name) = match actor {
             Actor::User(_) => match dice_roll(2) {
                 1 => (
-                    AuditLogService::Sdf,
                     AuditLogKind::CreateComponent,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
                 ),
                 2 => (
-                    AuditLogService::Sdf,
                     AuditLogKind::DeleteComponent,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
                 ),
                 _ => (
-                    AuditLogService::Sdf,
                     AuditLogKind::UpdatePropertyEditorValue,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
@@ -120,25 +114,21 @@ pub async fn generate(
             },
             Actor::System => match dice_roll(4) {
                 1 => (
-                    AuditLogService::Rebaser,
                     AuditLogKind::PerformedRebase,
                     head_change_set_id,
                     head_change_set.name.to_owned(),
                 ),
                 2 => (
-                    AuditLogService::Rebaser,
                     AuditLogKind::PerformedRebase,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
                 ),
                 3 => (
-                    AuditLogService::Pinga,
                     AuditLogKind::RanAction,
                     head_change_set_id,
                     head_change_set.name.to_owned(),
                 ),
                 _ => (
-                    AuditLogService::Pinga,
                     AuditLogKind::RanDependentValuesUpdate,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
@@ -150,7 +140,6 @@ pub async fn generate(
             actor,
             actor_name,
             actor_email,
-            service,
             kind,
             timestamp: Utc::now().to_rfc3339(),
             origin_ip_address,
@@ -172,7 +161,6 @@ pub fn filter_and_paginate(
     sort_timestamp_ascending: Option<bool>,
     exclude_system_user: Option<bool>,
     kind_filter: HashSet<AuditLogKind>,
-    service_filter: HashSet<AuditLogService>,
     change_set_filter: HashSet<ChangeSetId>,
     user_filter: HashSet<UserPk>,
 ) -> AuditLogResult<(Vec<si_frontend_types::AuditLog>, usize)> {
@@ -182,10 +170,6 @@ pub fn filter_and_paginate(
     let mut filtered_audit_logs = Vec::new();
     for audit_log in audit_logs {
         if !kind_filter.is_empty() && !kind_filter.contains(&audit_log.kind) {
-            continue;
-        }
-
-        if !service_filter.is_empty() && !service_filter.contains(&audit_log.service) {
             continue;
         }
 

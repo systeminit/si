@@ -17,7 +17,6 @@ async fn generation_filtering_pagination(ctx: &DalContext) {
         HashSet::new(),
         HashSet::new(),
         HashSet::new(),
-        HashSet::new(),
     )
     .expect("could not filter and paginate");
     assert_eq!(

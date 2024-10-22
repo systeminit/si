@@ -10,6 +10,7 @@ pub mod xxhash_type;
 mod actor;
 mod cas;
 mod change_set_status;
+mod event_session;
 mod func;
 mod func_execution;
 mod func_run;
@@ -30,6 +31,7 @@ pub use crate::{
     change_set_status::ChangeSetStatus,
     content_hash::ContentHash,
     encrypted_secret::EncryptedSecretKey,
+    event_session::EventSessionId,
     func::{FuncArgumentId, FuncId},
     func_execution::*,
     func_run::{

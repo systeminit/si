@@ -3767,6 +3767,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "naxum-api-types"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "derive_more",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "strum 0.26.3",
+ "thiserror",
+ "ulid",
+]
+
+[[package]]
 name = "nix"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4223,6 +4238,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88b39c9bfcfc231068454382784bb460aae594343fb030d46e9f50a645418412"
 dependencies = [
  "base64ct",
+]
+
+[[package]]
+name = "pending-events"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "telemetry",
+ "telemetry-nats",
+ "thiserror",
 ]
 
 [[package]]
@@ -4927,16 +4956,12 @@ dependencies = [
 name = "rebaser-core"
 version = "0.1.0"
 dependencies = [
- "ciborium",
- "derive_more",
+ "naxum-api-types",
  "remain",
  "serde",
- "serde_json",
  "si-data-nats",
  "si-events",
  "strum 0.26.3",
- "thiserror",
- "ulid",
 ]
 
 [[package]]
