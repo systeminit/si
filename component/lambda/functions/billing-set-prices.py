@@ -138,6 +138,3 @@ def lambda_handler(_event=None, _context=None):
                 },
             },
         )
-
-
-lambda_handler()

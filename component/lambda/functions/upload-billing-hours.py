@@ -108,6 +108,3 @@ def lambda_handler(lambda_event={}, _context=None):
             f"Uploaded {uploaded_events} events in {batch_hours}-hour batch starting {-first_hour_start} hours ago!"
         )
         last_hour_end = first_hour_start if uploaded_events > 0 else None
-
-
-lambda_handler()

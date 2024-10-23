@@ -11,7 +11,10 @@ from typing import (
     overload,
 )
 import boto3
-from mypy_boto3_redshift_data import RedshiftDataAPIServiceClient
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from mypy_boto3_redshift_data import RedshiftDataAPIServiceClient
 import botocore
 import botocore.session as bc
 from botocore.client import Config
