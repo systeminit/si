@@ -13,7 +13,7 @@ from typing import (
     Union,
     cast,
 )
-import requests  # from pip._vendor import requests
+from pip._vendor import requests
 import urllib.parse
 from si_logger import logger
 
