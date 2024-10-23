@@ -4,10 +4,6 @@ on:
   schedule:
     - cron: "45 14 * * 1-5" # Deploys every weekday at 3pm UTC
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
   deploy-production:
     uses: ./.github/workflows/deploy-stack.yml
