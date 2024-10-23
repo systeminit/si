@@ -2,16 +2,19 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
+use chrono::Utc;
 use futures::future::BoxFuture;
 use futures::Future;
+use pending_events::{PendingEventsError, PendingEventsWorkQueue};
 use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
 use rebaser_client::api_types::enqueue_updates_response::EnqueueUpdatesResponse;
 use rebaser_client::{RebaserClient, RequestId};
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
-use si_data_nats::{NatsClient, NatsError, NatsTxn};
+use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::audit_log::{AuditLog, AuditLogKind};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::EventSessionId;
 use si_events::WorkspaceSnapshotAddress;
@@ -985,6 +988,21 @@ impl DalContext {
     pub fn access_builder(&self) -> AccessBuilder {
         AccessBuilder::new(self.tenancy, self.history_actor)
     }
+
+    pub async fn write_audit_log(&self, kind: AuditLogKind) -> TransactionsResult<()> {
+        let pending_events_work_queue =
+            PendingEventsWorkQueue::get_or_create(jetstream::new(self.nats_conn().to_owned()))
+                .await?;
+        pending_events_work_queue
+            .publish_audit_log(
+                &self.workspace_pk()?.to_string(),
+                &self.change_set_id().to_string(),
+                self.event_session_id,
+                &AuditLog::new(self.events_actor(), kind, Utc::now()),
+            )
+            .await?;
+        Ok(())
+    }
 }
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
@@ -1241,19 +1259,21 @@ pub enum TransactionsError {
     ChangeSetNotFound(ChangeSetId),
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
-    #[error(transparent)]
+    #[error("job queue processor error: {0}")]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error("tokio join error: {0}")]
     Join(#[from] tokio::task::JoinError),
-    #[error(transparent)]
+    #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("no base change set for change set: {0}")]
     NoBaseChangeSet(ChangeSetId),
-    #[error(transparent)]
+    #[error("pending events error: {0}")]
+    PendingEvents(#[from] PendingEventsError),
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error(transparent)]
+    #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
     #[error("rebase of batch {0} for change set id {1} failed: {2}")]
     RebaseFailed(RebaseBatchAddress, ChangeSetId, String),
@@ -1261,13 +1281,13 @@ pub enum TransactionsError {
     Rebaser(#[from] rebaser_client::ClientError),
     #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
     RebaserReplyDeadlineElasped(Duration, RequestId),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow rt error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
-    #[error(transparent)]
+    #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
-    #[error("Unable to acquire lock: {0}")]
+    #[error("unable to acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("cannot commit transactions on invalid connections state")]
     TxnCommit,
