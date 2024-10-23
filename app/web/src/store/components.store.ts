@@ -393,7 +393,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           rawEdgesById: {} as Record<EdgeId, Edge>,
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
-          uninstalledVariants: [] as UninstalledVariant[],
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -532,12 +531,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           categories(): Categories {
             const featureFlagsStore = useFeatureFlagsStore();
+            const assetStore = useAssetStore();
             const installedGroups = _.groupBy(
-              useAssetStore().variantList,
+              assetStore.variantList,
               "category",
             );
             const uninstalledGroups = featureFlagsStore.ON_DEMAND_ASSETS
-              ? _.groupBy(this.uninstalledVariants, "category")
+              ? _.groupBy(assetStore.uninstalledVariantList, "category")
               : {};
 
             const mergedKeys = _.uniq([
@@ -1276,11 +1276,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   categoryVariant.type === "uninstalled" &&
                   response.installedVariant
                 ) {
+                  const assetStore = useAssetStore();
                   const installedVariant = response.installedVariant;
-                  this.uninstalledVariants = this.uninstalledVariants.filter(
-                    (variant) => variant.schemaId !== installedVariant.schemaId,
-                  );
-                  useAssetStore().schemaVariants.push(installedVariant);
+                  assetStore.uninstalledVariantList =
+                    assetStore.uninstalledVariantList.filter(
+                      (variant) =>
+                        variant.schemaId !== installedVariant.schemaId,
+                    );
+                  assetStore.schemaVariants.push(installedVariant);
                 }
               },
             });
