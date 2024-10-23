@@ -1,5 +1,6 @@
 use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
 
+use asset_sprayer::AssetSprayer;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::{JwtPublicSigningKey, ServicesContext};
 use hyper::server::accept::Accept;
@@ -95,6 +96,17 @@ impl Server {
         )
         .await?;
 
+        let asset_sprayer = config
+            .openai()
+            .clone()
+            .into_openai_config_opt()
+            .map(|openai_config| {
+                AssetSprayer::new(
+                    async_openai::Client::with_config(openai_config),
+                    config.asset_sprayer().clone(),
+                )
+            });
+
         let application_runtime_mode = Arc::new(RwLock::new(ApplicationRuntimeMode::Running));
 
         let mut spicedb_client = None;
@@ -117,6 +129,7 @@ impl Server {
             jwt_public_signing_key,
             posthog_client,
             config.auth_api_url(),
+            asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
             *config.create_workspace_permissions(),
@@ -137,6 +150,7 @@ impl Server {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
+        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
@@ -150,6 +164,7 @@ impl Server {
             jwt_public_signing_key,
             posthog_client,
             auth_api_url,
+            asset_sprayer,
             ws_multiplexer_client,
             crdt_multiplexer_client,
             create_workspace_permissions,

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use asset_sprayer::AssetSprayer;
 use axum::Router;
 use dal::{JwtPublicSigningKey, ServicesContext};
 use nats_multiplexer_client::MultiplexerClient;
@@ -26,6 +27,7 @@ impl AxumApp {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
+        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
@@ -39,6 +41,7 @@ impl AxumApp {
             jwt_public_signing_key,
             posthog_client,
             auth_api_url,
+            asset_sprayer,
             false,
             ws_multiplexer_client,
             crdt_multiplexer_client,
@@ -62,6 +65,7 @@ impl AxumApp {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
+        asset_sprayer: Option<AssetSprayer>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
@@ -75,6 +79,7 @@ impl AxumApp {
             jwt_public_signing_key,
             posthog_client,
             auth_api_url,
+            asset_sprayer,
             true,
             ws_multiplexer_client,
             crdt_multiplexer_client,
@@ -96,6 +101,7 @@ impl AxumApp {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
+        asset_sprayer: Option<AssetSprayer>,
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
@@ -110,6 +116,7 @@ impl AxumApp {
             jwt_public_signing_key,
             posthog_client,
             auth_api_url,
+            asset_sprayer,
             for_tests,
             ws_multiplexer_client,
             crdt_multiplexer_client,

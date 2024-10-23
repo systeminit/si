@@ -1,5 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
+use asset_sprayer::AssetSprayer;
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
@@ -27,6 +28,7 @@ pub struct AppState {
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
     auth_api_url: String, // TODO(victor) store the auth client on state instead of just the URL
+    asset_sprayer: Option<AssetSprayer>,
     for_tests: bool,
     nats_multiplexer_clients: NatsMultiplexerClients,
     create_workspace_permissions: WorkspacePermissionsMode,
@@ -43,6 +45,7 @@ impl AppState {
         jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
         posthog_client: impl Into<PosthogClient>,
         auth_api_url: impl AsRef<str>,
+        asset_sprayer: Option<AssetSprayer>,
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
@@ -57,13 +60,13 @@ impl AppState {
             crdt: Arc::new(Mutex::new(crdt_multiplexer_client)),
         };
 
-        let auth_api_url = auth_api_url.as_ref().to_string();
         Self {
             services_context: services_context.into(),
             jwt_public_signing_key: jwt_public_signing_key.into(),
             broadcast_groups: Default::default(),
             posthog_client: posthog_client.into(),
-            auth_api_url,
+            auth_api_url: auth_api_url.as_ref().to_string(),
+            asset_sprayer,
             for_tests,
             nats_multiplexer_clients,
             create_workspace_permissions,
@@ -84,6 +87,10 @@ impl AppState {
 
     pub fn auth_api_url(&self) -> &String {
         &self.auth_api_url
+    }
+
+    pub fn asset_sprayer(&self) -> Option<&AssetSprayer> {
+        self.asset_sprayer.as_ref()
     }
 
     pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {

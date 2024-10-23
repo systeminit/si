@@ -1,3 +1,4 @@
+use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
@@ -92,10 +93,10 @@ pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
-    #[builder(default = "IncomingStream::default()")]
+    #[builder(default)]
     incoming_stream: IncomingStream,
 
-    #[builder(default = "PgPoolConfig::default()")]
+    #[builder(default)]
     pg_pool: PgPoolConfig,
 
     #[builder(default = "default_module_index_url()")]
@@ -104,28 +105,34 @@ pub struct Config {
     #[builder(default = "default_auth_api_url()")]
     auth_api_url: String,
 
-    #[builder(default = "NatsConfig::default()")]
+    #[builder(default)]
+    openai: SIOpenAIConfig,
+
+    #[builder(default)]
+    asset_sprayer: AssetSprayerConfig,
+
+    #[builder(default)]
     nats: NatsConfig,
 
-    #[builder(default = "PosthogConfig::default()")]
+    #[builder(default)]
     posthog: PosthogConfig,
 
-    #[builder(default = "SymmetricCryptoServiceConfig::default()")]
+    #[builder(default)]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
-    #[builder(default = "MigrationMode::default()")]
+    #[builder(default)]
     migration_mode: MigrationMode,
 
-    #[builder(default = "VeritechCryptoConfig::default()")]
+    #[builder(default)]
     crypto: VeritechCryptoConfig,
 
-    #[builder(default = "JwtConfig::default()")]
+    #[builder(default)]
     jwt_signing_public_key: JwtConfig,
 
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
-    #[builder(default = "SpiceDbConfig::default()")]
+    #[builder(default)]
     spicedb_config: SpiceDbConfig,
 
     pkgs_path: CanonicalFile,
@@ -211,6 +218,16 @@ impl Config {
         &self.auth_api_url
     }
 
+    /// OpenAI API configuration
+    pub fn openai(&self) -> &SIOpenAIConfig {
+        &self.openai
+    }
+
+    /// Prompts directory for the asset sprayer
+    pub fn asset_sprayer(&self) -> &AssetSprayerConfig {
+        &self.asset_sprayer
+    }
+
     /// Feature flags defined at boot time, via config files or the FEATURES env variable
     #[must_use]
     pub fn boot_feature_flags(&self) -> &HashSet<FeatureFlag> {
@@ -273,6 +290,10 @@ pub struct ConfigFile {
     pub module_index_url: String,
     #[serde(default = "default_auth_api_url")]
     pub auth_api_url: String,
+    #[serde(default)]
+    pub openai: SIOpenAIConfig,
+    #[serde(default)]
+    pub asset_sprayer: AssetSprayerConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
@@ -299,6 +320,8 @@ impl Default for ConfigFile {
             layer_db_config: default_layer_db_config(),
             module_index_url: default_module_index_url(),
             auth_api_url: default_auth_api_url(),
+            openai: Default::default(),
+            asset_sprayer: Default::default(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
             boot_feature_flags: Default::default(),
             create_workspace_permissions: Default::default(),
@@ -318,24 +341,27 @@ impl TryFrom<ConfigFile> for Config {
     fn try_from(mut value: ConfigFile) -> Result<Self> {
         detect_and_configure_development(&mut value)?;
 
-        let mut config = Config::builder();
-        config.instance_id(value.instance_id);
-        config.pg_pool(value.pg);
-        config.nats(value.nats);
-        config.migration_mode(value.migration_mode);
-        config.jwt_signing_public_key(value.jwt_signing_public_key);
-        config.crypto(value.crypto);
-        config.pkgs_path(value.pkgs_path.try_into()?);
-        config.posthog(value.posthog);
-        config.module_index_url(value.module_index_url);
-        config.auth_api_url(value.auth_api_url);
-        config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
-        config.layer_db_config(value.layer_db_config);
-        config.boot_feature_flags(value.boot_feature_flags.into_iter().collect::<HashSet<_>>());
-        config.create_workspace_permissions(value.create_workspace_permissions);
-        config.create_workspace_allowlist(value.create_workspace_allowlist);
-        config.spicedb_config(value.spicedb_config);
-        config.build().map_err(Into::into)
+        Ok(Config {
+            instance_id: value.instance_id,
+            pg_pool: value.pg,
+            nats: value.nats,
+            incoming_stream: IncomingStream::default(), // TODO this OK?
+            migration_mode: value.migration_mode,
+            jwt_signing_public_key: value.jwt_signing_public_key,
+            crypto: value.crypto,
+            pkgs_path: value.pkgs_path.try_into()?,
+            posthog: value.posthog,
+            module_index_url: value.module_index_url,
+            auth_api_url: value.auth_api_url,
+            openai: value.openai,
+            asset_sprayer: value.asset_sprayer,
+            symmetric_crypto_service: value.symmetric_crypto_service.try_into()?,
+            layer_db_config: value.layer_db_config,
+            boot_feature_flags: value.boot_feature_flags.into_iter().collect::<HashSet<_>>(),
+            create_workspace_permissions: value.create_workspace_permissions,
+            create_workspace_allowlist: value.create_workspace_allowlist,
+            spicedb_config: value.spicedb_config,
+        })
     }
 }
 

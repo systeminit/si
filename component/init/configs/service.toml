@@ -24,6 +24,15 @@ $SI_NATS_CREDS
 """
 url = "$SI_NATS_URL"
 
+[openai]
+api_key = "$SI_OPENAI_API_KEY"
+api_base = "$SI_OPENAI_API_BASE"
+api_version = "$SI_OPENAI_API_VERSION"
+org_id = "$SI_OPENAI_ORG_ID"
+
+[asset_sprayer]
+prompts_dir = "$SI_ASSET_SPRAYER_PROMPTS_DIR"
+
 [pg]
 user = "si"
 password = "$SI_PG_PASSWORD"

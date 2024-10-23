@@ -1,3 +1,4 @@
+use asset_sprayer::AssetSprayerError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -12,12 +13,15 @@ use crate::{service::ApiError, AppState};
 
 pub mod create_unlocked_copy;
 mod delete_unlocked_variant;
+mod generate_aws_asset_schema;
 mod get_variant;
 mod list_variants;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SchemaVariantsAPIError {
+    #[error("asset sprayer error: {0}")]
+    AssetSprayer(#[from] AssetSprayerError),
     #[error("cached module error: {0}")]
     CachedModule(#[from] CachedModuleError),
     #[error("cannot delete locked schema variant: {0}")]
@@ -34,6 +38,8 @@ pub enum SchemaVariantsAPIError {
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] dal::schema::variant::authoring::VariantAuthoringError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -69,5 +75,9 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:schema_variant_id",
             delete(delete_unlocked_variant::delete_unlocked_variant),
+        )
+        .route(
+            "/:schema_variant_id/generate_aws_asset_schema",
+            get(generate_aws_asset_schema::generate_aws_asset_schema),
         )
 }

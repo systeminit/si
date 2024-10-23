@@ -13,6 +13,7 @@ const FLAG_MAPPING = {
   ON_DEMAND_ASSETS: "on_demand_assets",
   MANAGEMENT_FUNCTIONS: "management-functions",
   AUDIT_PAGE: "audit-page",
+  AI_GENERATOR: "ai-generator",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
