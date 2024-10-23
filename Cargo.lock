@@ -6110,6 +6110,7 @@ dependencies = [
  "si-std",
  "strum 0.26.3",
  "telemetry",
+ "telemetry-utils",
  "tempfile",
  "thiserror",
  "tokio",

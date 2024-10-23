@@ -6,6 +6,8 @@ use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::db::serialize;
+use telemetry::tracing::info;
+use telemetry_utils::metric;
 
 #[derive(Clone, Debug)]
 enum MaybeDeserialized<V>
@@ -47,13 +49,17 @@ where
 
     pub async fn get(&self, key: &str) -> Option<V> {
         match self.cache.get(key).await {
-            Some(MaybeDeserialized::DeserializedValue(value)) => Some(value),
+            Some(MaybeDeserialized::DeserializedValue(value)) => {
+                metric!(counter.layer_cache.hit.memory = 1);
+                Some(value)
+            }
             Some(MaybeDeserialized::RawBytes(bytes)) => {
                 // If we fail to deserialize the raw bytes for some reason, pretend that we never
                 // had the key in the first place, and also remove it from the cache.
                 match serialize::from_bytes_async::<V>(&bytes).await {
                     Ok(deserialized) => {
                         self.insert(key.into(), deserialized.clone()).await;
+                        metric!(counter.layer_cache.hit.memory = 1);
                         Some(deserialized)
                     }
                     Err(e) => {
