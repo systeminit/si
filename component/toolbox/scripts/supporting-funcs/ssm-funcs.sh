@@ -29,8 +29,8 @@ start_and_track_ssm_session() {
   command_id=$(echo "$output" | jq -r '.Command.CommandId')
   echo "Info: tracking SSM execution ID: $command_id"
 
-  # Poll for command status with a timeout of 60 seconds
-  timeout=760
+  # Poll for command status
+  timeout=1200 # 20 minutes
   elapsed=0
   interval=5
 
@@ -55,6 +55,11 @@ start_and_track_ssm_session() {
       --instance-id "$instance_id" \
       | jq -r '.StandardOutputContent')
     echo "$output" >"$results_directory/$instance_id.json"
+  elif [ "$status" == "InProgress" ]; then
+    output="{\"instance_id\": \"$instance_id\", \"status\": \"error\", \"message\": \"Caller timeout out after waiting\"}"
+    echo "$output" >"$results_directory/$instance_id.json"
+    echo "The github action has timed out, but the task may still be running. Check the ssm logs on aws"
+    return
   else
     echo "Command failed with status: $status"
     exit_code=$(aws ssm get-command-invocation \

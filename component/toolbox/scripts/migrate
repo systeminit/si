@@ -107,20 +107,23 @@ stop_results_file=stop_results.json
 upgrade_results_file=upgrade_results.json
 mkdir -p "$results_directory/"
 
-# attempt on each SDF until one succeeds or they all fail
-while read -r line; do
-    instance_id=$(echo "$line" | awk '{print $2}')
-    start_and_track_ssm_session "$instance_id" "$sdf_migrate_script" "$results_directory" "InstanceId=$instance_id"
 
-    await_file_results "$results_directory" 1
-    concat_and_output_json "$results_directory" "$check_results_file"
+# Run migration on the first SDF instance listed
+read -r line <<< "$instances"
 
-    if jq -e 'all(.[]; .status == "success")' "$results_directory/$check_results_file" > /dev/null; then
-      echo "SDF database has been migrated"
-      echo "----------------------------------------"
-      exit 0
-    fi
-done <<< "$instances"
+instance_id=$(echo "$line" | awk '{print $2}')
 
-echo "Error: One or more of the checks failed to push a node into maintenance mode, try again later or look at the logs"
+echo "Running on $instance_id"
+
+start_and_track_ssm_session "$instance_id" "$sdf_migrate_script" "$results_directory" "InstanceId=$instance_id"
+
+
+if jq -e '.status == "success"' "$results_directory/$instance_id.json" > /dev/null; then
+  echo "SDF database has been migrated"
+  echo "----------------------------------------"
+  exit 0
+fi
+
+cat "$results_directory/$instance_id.json"
+echo "Error: Failed to migrate system, try again later or look at the logs"
 exit 2
