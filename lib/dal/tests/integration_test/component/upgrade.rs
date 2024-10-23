@@ -6,10 +6,12 @@ use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Component, ComponentType, DalContext, Prop, SchemaVariant};
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
-use dal_test::helpers::{create_component_for_default_schema_name, PropEditorTestView};
+use dal_test::helpers::{
+    create_component_for_default_schema_name, ChangeSetTestHelpers, PropEditorTestView,
+};
 use dal_test::test;
 use itertools::Itertools;
-use pretty_assertions_sorted::assert_eq;
+use pretty_assertions_sorted::{assert_eq, assert_ne};
 use serde_json::json;
 use std::collections::VecDeque;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
@@ -665,6 +667,211 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) {
                 .expect("could not get value")
         );
     }
+}
+
+#[test]
+async fn upgrade_frame_with_child(ctx: &mut DalContext) {
+    let frame_original_code_definition = r#"
+        function main() {
+            const theProp = new PropBuilder()
+                .setName("The Prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            const outputSocket = new SocketDefinitionBuilder()
+                .setName("Socket Data")
+                .setArity("one")
+                .setValueFrom(
+                    new ValueFromBuilder()
+                        .setKind("prop")
+                        .setPropPath(["root", "domain", "The Prop"])
+                        .build()
+                )
+                .build();
+
+            return new AssetBuilder()
+                .addProp(theProp)
+                .addOutputSocket(outputSocket)
+                .build()
+        }
+    "#;
+    let original_frame_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "Initial Variant",
+            None,
+            None,
+            "Category name",
+            "#0000ff",
+            frame_original_code_definition,
+        )
+        .await
+        .expect("Unable to create frame schema and variant")
+        .id,
+    );
+    update_schema_variant_component_type(
+        ctx,
+        original_frame_variant,
+        ComponentType::ConfigurationFrameDown,
+    )
+    .await;
+
+    let component_code_definition = r#"
+        function main() {
+            const theProp = new PropBuilder()
+                .setName("The Prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .setValueFrom(
+                    new ValueFromBuilder()
+                        .setKind("inputSocket")
+                        .setSocketName("Socket Data")
+                        .build()
+                )
+                .build();
+
+            const inputSocket = new SocketDefinitionBuilder()
+                .setName("Socket Data")
+                .setArity("one")
+                .build();
+
+            return new AssetBuilder()
+                .addProp(theProp)
+                .addInputSocket(inputSocket)
+                .build();
+        }
+    "#;
+
+    let child_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "Child Variant",
+            None,
+            None,
+            "Another Category",
+            "#0077cc",
+            component_code_definition,
+        )
+        .await
+        .expect("Unable to create child component schema and variant")
+        .id,
+    );
+
+    let frame_component = original_frame_variant.create_component(ctx).await;
+    let child_component = child_variant.create_component(ctx).await;
+    child_component.upsert_parent(ctx, frame_component).await;
+
+    let inferred_connections = child_component
+        .component(ctx)
+        .await
+        .inferred_incoming_connections(ctx)
+        .await
+        .expect("Unable to get inferred incoming connections for child component.");
+
+    assert_eq!(1, inferred_connections.len());
+    let inferred_connection = inferred_connections
+        .first()
+        .expect("Unable to get first element of a single element Vec.");
+    assert_eq!(frame_component.id(), inferred_connection.from_component_id,);
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
+        .await
+        .expect("Unable to apply change set");
+    let change_set = ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+        .await
+        .expect("Unable to fork change set");
+    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+        .await
+        .expect("Unable to update ctx");
+
+    let updated_frame_variant = original_frame_variant.create_unlocked_copy(ctx).await;
+    let updated_frame_code_definition = r#"
+        function main() {
+            const theProp = new PropBuilder()
+                .setName("The Prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            const outputSocket = new SocketDefinitionBuilder()
+                .setName("Socket Data")
+                .setArity("one")
+                .setValueFrom(
+                    new ValueFromBuilder()
+                        .setKind("prop")
+                        .setPropPath(["root", "domain", "The Prop"])
+                        .build()
+                )
+                .build();
+
+            const anotherProp = new PropBuilder()
+                .setName("Another Prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+
+            return new AssetBuilder()
+                .addProp(theProp)
+                .addProp(anotherProp)
+                .addOutputSocket(outputSocket)
+                .build()
+        }
+
+    "#;
+    let frame_variant = original_frame_variant.schema_variant(ctx).await;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        updated_frame_variant.id(),
+        frame_variant
+            .schema(ctx)
+            .await
+            .expect("Unable to get frame schema.")
+            .name
+            .clone(),
+        frame_variant.display_name(),
+        frame_variant.category(),
+        frame_variant.description(),
+        frame_variant.link(),
+        frame_variant
+            .get_color(ctx)
+            .await
+            .expect("Unable to get schema variant color."),
+        frame_variant.component_type(),
+        Some(updated_frame_code_definition),
+    )
+    .await
+    .expect("Unable to update variant.");
+
+    let regenerated_frame_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::regenerate_variant(ctx, updated_frame_variant.id())
+            .await
+            .expect("Unable to regenerate variant."),
+    );
+
+    assert_ne!(original_frame_variant.id(), regenerated_frame_variant.id());
+    assert_eq!(updated_frame_variant.id(), regenerated_frame_variant.id());
+
+    let upgraded_frame_component = frame_component
+        .component(ctx)
+        .await
+        .upgrade_to_new_variant(ctx, regenerated_frame_variant.id())
+        .await
+        .expect("Unable to upgrade frame component to new variant.");
+
+    let inferred_connections = child_component
+        .component(ctx)
+        .await
+        .inferred_incoming_connections(ctx)
+        .await
+        .expect("Unable to get inferred incoming connections for child component.");
+
+    assert_eq!(1, inferred_connections.len());
+    let inferred_connection = inferred_connections
+        .first()
+        .expect("Unable to get first element of a single element Vec.");
+    assert_eq!(
+        upgraded_frame_component.id(),
+        inferred_connection.from_component_id
+    );
 }
 
 async fn update_schema_variant_component_type(
