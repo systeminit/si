@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy-production:
-    uses: ./.github/workflows/deploy-after-wait.yml
+    uses: ./.github/workflows/deploy-stack.yml
     with:
       environment: production
       wait_duration: 900
