@@ -6,10 +6,7 @@ use axum::{
 };
 use dal::{ChangeSetId, WorkspacePk};
 use serde::{Deserialize, Serialize};
-use si_events::{
-    audit_log::{AuditLogKind, AuditLogService},
-    UserPk,
-};
+use si_events::{audit_log::AuditLogKind, UserPk};
 use si_frontend_types as frontend_types;
 
 use super::AuditLogResult;
@@ -23,7 +20,6 @@ pub struct ListAuditLogsRequest {
     sort_timestamp_ascending: Option<bool>,
     exclude_system_user: Option<bool>,
     kind_filter: Option<Vec<AuditLogKind>>,
-    service_filter: Option<Vec<AuditLogService>>,
     change_set_filter: Option<Vec<ChangeSetId>>,
     user_filter: Option<Vec<UserPk>>,
 }
@@ -60,10 +56,6 @@ pub async fn list_audit_logs(
         request.sort_timestamp_ascending,
         request.exclude_system_user,
         match request.kind_filter {
-            Some(provided) => HashSet::from_iter(provided.into_iter()),
-            None => HashSet::new(),
-        },
-        match request.service_filter {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
