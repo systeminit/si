@@ -81,7 +81,7 @@ RUN set -eux; \
         echo 'bash-prompt-prefix = (nix:$name)\040'; \
     } >"$HOME/.config/nix/nix.conf"; \
     . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
-    nix-env -iA nixpkgs.nixFlakes; \
+    nix-env -iA nixpkgs.nixVersions.stable; \
     grep 'Nix installer' "$HOME/.profile" >>"$HOME/.bashrc"; \
     \
     git config --global --add safe.directory /workdir; \
