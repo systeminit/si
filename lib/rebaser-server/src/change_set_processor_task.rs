@@ -295,15 +295,12 @@ mod handlers {
         extract::State,
         response::{IntoResponse, Response},
     };
-    use rebaser_core::{
-        api_types::{
-            enqueue_updates_request::EnqueueUpdatesRequest,
-            enqueue_updates_response::{
-                v1::RebaseStatus, EnqueueUpdatesResponse, EnqueueUpdatesResponseVCurrent,
-            },
-            ApiWrapper, SerializeError,
+    use rebaser_core::api_types::{
+        enqueue_updates_request::EnqueueUpdatesRequest,
+        enqueue_updates_response::{
+            v1::RebaseStatus, EnqueueUpdatesResponse, EnqueueUpdatesResponseVCurrent,
         },
-        ContentInfo,
+        ApiWrapper, ContentInfo, SerializeError,
     };
     use si_data_nats::HeaderMap;
     use telemetry::prelude::*;

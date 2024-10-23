@@ -2,13 +2,15 @@ use std::result;
 
 use futures::{future::BoxFuture, StreamExt as _};
 use rebaser_core::{
+    api_types::HeaderMapParseMessageInfoError,
     api_types::{
         enqueue_updates_request::{EnqueueUpdatesRequest, EnqueueUpdatesRequestVCurrent},
         enqueue_updates_response::EnqueueUpdatesResponse,
     },
-    content_info::HeaderMapParseMessageInfoError,
+    api_types::{
+        ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
+    },
     nats::{self, NATS_HEADER_REPLY_INBOX_NAME},
-    ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
 };
 use si_data_nats::{
     async_nats::{self, jetstream::context::PublishError},
@@ -23,7 +25,7 @@ use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
-pub use rebaser_core::{api_types, RequestId};
+pub use rebaser_core::{api_types, api_types::RequestId};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
