@@ -4990,6 +4990,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "naxum",
+ "pending-events",
  "rebaser-client",
  "rebaser-core",
  "remain",

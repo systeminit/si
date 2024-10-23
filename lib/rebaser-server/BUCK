@@ -6,6 +6,7 @@ rust_library(
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/naxum:naxum",
+        "//lib/pending-events:pending-events",
         "//lib/rebaser-client:rebaser-client",
         "//lib/rebaser-core:rebaser-core",
         "//lib/si-crypto:si-crypto",
