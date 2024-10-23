@@ -1,9 +1,13 @@
+pub mod component;
+pub mod schema;
+
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     fs::File,
     io::Write,
     sync::{Arc, Mutex},
 };
+use strum::IntoEnumIterator;
 
 use petgraph::{
     algo,
@@ -17,24 +21,23 @@ use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 use ulid::Generator;
 
+use crate::layer_db_types::{ViewContent, ViewContentV1};
 use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            detect_updates::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
+            detect_updates::{Detector, Update},
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
         CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
     },
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    Timestamp,
 };
 
-pub mod component;
-pub mod schema;
-
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraphV3 {
+pub struct WorkspaceSnapshotGraphV4 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
@@ -46,7 +49,7 @@ pub struct WorkspaceSnapshotGraphV3 {
     touched_node_indices: HashSet<NodeIndex>,
 }
 
-impl std::fmt::Debug for WorkspaceSnapshotGraphV3 {
+impl std::fmt::Debug for WorkspaceSnapshotGraphV4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
@@ -56,8 +59,87 @@ impl std::fmt::Debug for WorkspaceSnapshotGraphV3 {
     }
 }
 
-impl WorkspaceSnapshotGraphV3 {
-    pub fn new() -> WorkspaceSnapshotGraphResult<Self> {
+impl WorkspaceSnapshotGraphV4 {
+    pub async fn new(ctx: &DalContext) -> WorkspaceSnapshotGraphResult<Self> {
+        let mut result = Self::new_with_categories_only()?;
+
+        let (_, view_category_idx) = result
+            .get_category_node(None, CategoryNodeKind::View)?
+            .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
+                CategoryNodeKind::View,
+            ))?;
+
+        // Create default view
+        {
+            let id = result.generate_ulid()?;
+            let lineage_id = result.generate_ulid()?;
+
+            let content = ViewContent::V1(ViewContentV1 {
+                timestamp: Timestamp::now(),
+                name: "DEFAULT".to_owned(),
+            });
+
+            let (content_address, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(content.clone().into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
+            let default_view_node_idx = result.add_or_replace_node(node_weight.clone())?;
+
+            result.add_edge(
+                view_category_idx,
+                EdgeWeight::new(EdgeWeightKind::new_use_default()),
+                default_view_node_idx,
+            )?;
+
+            default_view_node_idx
+        };
+
+        Ok(result)
+    }
+
+    // Creates a graph with default view node with faked content, so we can unit test the graph without
+    // passing in a context with access to the content store
+    #[allow(unused)]
+    pub(crate) fn new_for_unit_tests() -> WorkspaceSnapshotGraphResult<Self> {
+        let mut result = Self::new_with_categories_only()?;
+
+        let (_, view_category_idx) = result
+            .get_category_node(None, CategoryNodeKind::View)?
+            .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
+                CategoryNodeKind::View,
+            ))?;
+
+        // Create default view
+        {
+            let id = result.generate_ulid()?;
+            let lineage_id = result.generate_ulid()?;
+
+            let content_address = ContentHash::from("PLACEHOLDER");
+
+            let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
+            let default_view_node_idx = result.add_or_replace_node(node_weight.clone())?;
+
+            result.add_edge(
+                view_category_idx,
+                EdgeWeight::new(EdgeWeightKind::new_use_default()),
+                default_view_node_idx,
+            )?;
+
+            default_view_node_idx
+        };
+
+        Ok(result)
+    }
+
+    pub fn new_with_categories_only() -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> =
             StableDiGraph::with_capacity(1024, 1024);
         let mut generator = Generator::new();
@@ -80,6 +162,19 @@ impl WorkspaceSnapshotGraphV3 {
         };
 
         result.add_node_finalize(node_id, lineage_id, root_index)?;
+
+        // Create the category nodes under root.
+        for category_node_kind in CategoryNodeKind::iter() {
+            let id = result.generate_ulid()?;
+            let lineage_id = result.generate_ulid()?;
+            let category_node_index =
+                result.add_category_node(id, lineage_id, category_node_kind)?;
+            result.add_edge(
+                result.root(),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
+                category_node_index,
+            )?;
+        }
 
         Ok(result)
     }
@@ -118,14 +213,6 @@ impl WorkspaceSnapshotGraphV3 {
         &self.graph
     }
 
-    pub(crate) fn node_index_by_id(&self) -> &HashMap<Ulid, NodeIndex> {
-        &self.node_index_by_id
-    }
-
-    pub(crate) fn node_indices_by_lineage_id(&self) -> &HashMap<Ulid, HashSet<NodeIndex>> {
-        &self.node_indices_by_lineage_id
-    }
-
     pub fn generate_ulid(&self) -> WorkspaceSnapshotGraphResult<Ulid> {
         Ok(self
             .ulid_generator
@@ -135,7 +222,7 @@ impl WorkspaceSnapshotGraphV3 {
             .into())
     }
 
-    pub async fn update_node_id(
+    pub fn update_node_id(
         &mut self,
         current_idx: NodeIndex,
         new_id: impl Into<Ulid>,
@@ -568,6 +655,10 @@ impl WorkspaceSnapshotGraphV3 {
         Ok(maybe_equivalent_node)
     }
 
+    pub fn detect_updates(&self, updated_graph: &Self) -> Vec<Update> {
+        Detector::new(self, updated_graph).detect_updates()
+    }
+
     #[allow(dead_code)]
     pub fn dot(&self) {
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
@@ -968,7 +1059,7 @@ impl WorkspaceSnapshotGraphV3 {
 
     pub fn import_component_subgraph(
         &mut self,
-        other: &WorkspaceSnapshotGraphV3,
+        other: &WorkspaceSnapshotGraphV4,
         component_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
         // * DFS event-based traversal.
@@ -989,7 +1080,7 @@ impl WorkspaceSnapshotGraphV3 {
     /// This assumes that the SchemaVariant for the Component is already present in [`self`][Self].
     fn import_component_subgraph_process_dfs_event(
         &mut self,
-        other: &WorkspaceSnapshotGraphV3,
+        other: &WorkspaceSnapshotGraphV4,
         edges_by_tail: &mut HashMap<NodeIndex, Vec<(NodeIndex, EdgeWeight)>>,
         event: DfsEvent<NodeIndex>,
     ) -> WorkspaceSnapshotGraphResult<petgraph::visit::Control<()>> {
@@ -1527,7 +1618,6 @@ impl WorkspaceSnapshotGraphV3 {
     /// we treat node weights as immutable and replace them by creating a new
     /// node with a new node weight and replacing references to point to the new
     /// node.
-    #[allow(dead_code)]
     pub(crate) fn update_node_weight<L>(
         &mut self,
         node_idx: NodeIndex,
@@ -1549,7 +1639,7 @@ impl WorkspaceSnapshotGraphV3 {
 }
 
 fn ordering_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV3,
+    snapshot: &WorkspaceSnapshotGraphV4,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -1571,7 +1661,7 @@ fn ordering_node_indexes_for_node_index(
 }
 
 fn prop_node_indexes_for_node_index(
-    snapshot: &WorkspaceSnapshotGraphV3,
+    snapshot: &WorkspaceSnapshotGraphV4,
     node_index: NodeIndex,
 ) -> Vec<NodeIndex> {
     snapshot
@@ -1592,7 +1682,7 @@ fn prop_node_indexes_for_node_index(
 }
 
 fn ensure_only_one_default_use_edge(
-    graph: &mut WorkspaceSnapshotGraphV3,
+    graph: &mut WorkspaceSnapshotGraphV4,
     source_idx: NodeIndex,
 ) -> WorkspaceSnapshotGraphResult<()> {
     let existing_default_targets: Vec<NodeIndex> = graph

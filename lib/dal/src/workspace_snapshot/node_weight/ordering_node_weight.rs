@@ -89,7 +89,7 @@ impl OrderingNodeWeight {
             .order
             .iter()
             .position(|&key| key == id)
-            .ok_or(NodeWeightError::MissingKeytForChildEntry(id))?;
+            .ok_or(NodeWeightError::MissingKeyForChildEntry(id))?;
 
         let ret: i64 = (*index)
             .try_into()

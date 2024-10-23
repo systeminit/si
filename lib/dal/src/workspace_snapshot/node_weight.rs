@@ -18,10 +18,20 @@ use crate::{
         vector_clock::VectorClockError,
     },
     ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
-    WorkspaceSnapshotGraphV3,
+    WorkspaceSnapshotGraphVCurrent,
 };
-use traits::SiNodeWeight;
 
+use self::{
+    input_socket_node_weight::InputSocketNodeWeightError,
+    schema_variant_node_weight::SchemaVariantNodeWeightError,
+};
+use super::graph::{
+    deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
+};
+use crate::layer_db_types::ComponentContentDiscriminants;
+use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
+use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
+use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
 pub use attribute_prototype_argument_node_weight::{
@@ -40,13 +50,6 @@ pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 pub use schema_variant_node_weight::SchemaVariantNodeWeight;
 
-use self::{
-    input_socket_node_weight::InputSocketNodeWeightError,
-    schema_variant_node_weight::SchemaVariantNodeWeightError,
-};
-
-use super::graph::{deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update};
-
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;
 pub mod attribute_prototype_argument_node_weight;
@@ -58,12 +61,14 @@ pub mod dependent_value_root_node_weight;
 pub mod finished_dependent_value_root_node_weight;
 pub mod func_argument_node_weight;
 pub mod func_node_weight;
+pub mod geometry_node_weight;
 pub mod input_socket_node_weight;
 pub mod management_prototype_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
 pub mod schema_variant_node_weight;
 pub mod secret_node_weight;
+pub mod view_node_weight;
 
 pub mod traits;
 
@@ -91,11 +96,13 @@ pub enum NodeWeightError {
     #[error("Content missing from store for node: {0}")]
     MissingContentFromStore(Ulid),
     #[error("Missing Key for Child Entry {0}")]
-    MissingKeytForChildEntry(Ulid),
+    MissingKeyForChildEntry(Ulid),
     #[error("SchemaVariant node weight error: {0}")]
     SchemaVariantNodeWeight(#[from] Box<SchemaVariantNodeWeightError>),
     #[error("try from int error: {0}")]
     TryFromIntError(#[from] TryFromIntError),
+    #[error("Unexpected content version. Got {1} but expected {0}")]
+    UnexpectedComponentContentVersion(ComponentContentDiscriminants, ComponentContentDiscriminants),
     #[error("Unexpected content address variant: {1} expected {0}")]
     UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
     #[error("Unexpected node weight variant. Got {1} but expected {0}")]
@@ -104,6 +111,8 @@ pub enum NodeWeightError {
     VectorClock(#[from] VectorClockError),
     #[error("WorkspaceSnapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
+    #[error("WorkspaceSnapshotGraph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] Box<WorkspaceSnapshotGraphError>),
 }
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
@@ -130,6 +139,8 @@ pub enum NodeWeight {
     InputSocket(InputSocketNodeWeight),
     SchemaVariant(SchemaVariantNodeWeight),
     ManagementPrototype(ManagementPrototypeNodeWeight),
+    Geometry(GeometryNodeWeight),
+    View(ViewNodeWeight),
 }
 
 impl NodeWeight {
@@ -152,6 +163,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.content_hash(),
             NodeWeight::SchemaVariant(weight) => weight.content_hash(),
             NodeWeight::ManagementPrototype(weight) => weight.content_hash(),
+            NodeWeight::Geometry(w) => w.content_hash(),
+            NodeWeight::View(w) => w.content_hash(),
         }
     }
 
@@ -174,6 +187,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.content_store_hashes(),
             NodeWeight::SchemaVariant(weight) => weight.content_store_hashes(),
             NodeWeight::ManagementPrototype(weight) => weight.content_store_hashes(),
+            NodeWeight::Geometry(weight) => weight.content_store_hashes(),
+            NodeWeight::View(weight) => weight.content_store_hashes(),
         }
     }
 
@@ -188,6 +203,7 @@ impl NodeWeight {
             | NodeWeight::Component(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
+            | NodeWeight::Geometry(_)
             | NodeWeight::Ordering(_)
             | NodeWeight::Prop(_)
             | NodeWeight::Secret(_)
@@ -195,6 +211,7 @@ impl NodeWeight {
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::InputSocket(_)
             | NodeWeight::ManagementPrototype(_)
+            | NodeWeight::View(_)
             | NodeWeight::SchemaVariant(_) => None,
         }
     }
@@ -218,6 +235,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.id(),
             NodeWeight::SchemaVariant(weight) => weight.id(),
             NodeWeight::ManagementPrototype(weight) => weight.id(),
+            NodeWeight::Geometry(weight) => weight.id(),
+            NodeWeight::View(weight) => weight.id(),
         }
     }
 
@@ -240,6 +259,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.lineage_id(),
             NodeWeight::SchemaVariant(weight) => weight.lineage_id(),
             NodeWeight::ManagementPrototype(weight) => weight.lineage_id(),
+            NodeWeight::Geometry(weight) => weight.lineage_id(),
+            NodeWeight::View(weight) => weight.lineage_id(),
         }
     }
 
@@ -313,6 +334,14 @@ impl NodeWeight {
                 weight.set_id(id.into());
                 weight.set_lineage_id(lineage_id);
             }
+            NodeWeight::Geometry(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::View(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
         }
     }
 
@@ -335,6 +364,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.merkle_tree_hash(),
             NodeWeight::SchemaVariant(weight) => weight.merkle_tree_hash(),
             NodeWeight::ManagementPrototype(weight) => weight.merkle_tree_hash(),
+            NodeWeight::Geometry(w) => w.merkle_tree_hash(),
+            NodeWeight::View(w) => w.merkle_tree_hash(),
         }
     }
 
@@ -366,6 +397,14 @@ impl NodeWeight {
             | NodeWeight::DependentValueRoot(_)
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+            NodeWeight::Geometry(w) => {
+                traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
+                Ok(())
+            }
+            NodeWeight::View(w) => {
+                traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
+                Ok(())
+            }
         }
     }
 
@@ -391,6 +430,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.node_hash(),
             NodeWeight::SchemaVariant(weight) => weight.node_hash(),
             NodeWeight::ManagementPrototype(weight) => weight.node_hash(),
+            NodeWeight::Geometry(weight) => weight.node_hash(),
+            NodeWeight::View(weight) => weight.node_hash(),
         }
     }
 
@@ -413,6 +454,8 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::SchemaVariant(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::ManagementPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Geometry(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::View(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -433,6 +476,8 @@ impl NodeWeight {
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)
+            | NodeWeight::Geometry(_)
+            | NodeWeight::View(_)
             | NodeWeight::Prop(_)
             | NodeWeight::Secret(_)
             | NodeWeight::InputSocket(_)
@@ -462,6 +507,8 @@ impl NodeWeight {
             NodeWeight::Content(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Func(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::FuncArgument(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Geometry(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::View(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Ordering(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Prop(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Secret(weight) => weight.exclusive_outgoing_edges(),
@@ -536,6 +583,26 @@ impl NodeWeight {
             NodeWeight::Component(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Component,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_geometry_node_weight(&self) -> NodeWeightResult<GeometryNodeWeight> {
+        match self {
+            NodeWeight::Geometry(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Geometry,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_view_node_weight(&self) -> NodeWeightResult<ViewNodeWeight> {
+        match self {
+            NodeWeight::View(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::View,
                 other.into(),
             )),
         }
@@ -737,6 +804,18 @@ impl NodeWeight {
         ))
     }
 
+    pub fn new_geometry(geometry_id: Ulid, lineage_id: Ulid, content_hash: ContentHash) -> Self {
+        NodeWeight::Geometry(GeometryNodeWeight::new(
+            geometry_id,
+            lineage_id,
+            content_hash,
+        ))
+    }
+
+    pub fn new_view(view_id: Ulid, lineage_id: Ulid, content_hash: ContentHash) -> Self {
+        NodeWeight::View(ViewNodeWeight::new(view_id, lineage_id, content_hash))
+    }
+
     pub fn new_prop(
         prop_id: Ulid,
         lineage_id: Ulid,
@@ -865,7 +944,7 @@ impl From<DeprecatedNodeWeightV1> for NodeWeight {
 impl CorrectTransforms for NodeWeight {
     fn correct_transforms(
         &self,
-        workspace_snapshot_graph: &WorkspaceSnapshotGraphV3,
+        workspace_snapshot_graph: &WorkspaceSnapshotGraphVCurrent,
         updates: Vec<Update>,
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
@@ -955,6 +1034,16 @@ impl CorrectTransforms for NodeWeight {
                 updates,
                 from_different_change_set,
             ),
+            NodeWeight::Geometry(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
+            NodeWeight::View(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
@@ -981,6 +1070,8 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ManagementPrototype(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::Geometry(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::View(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 }

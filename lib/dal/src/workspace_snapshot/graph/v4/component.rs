@@ -1,6 +1,6 @@
 use petgraph::prelude::*;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
     component::ComponentResult,
     workspace_snapshot::{
@@ -9,7 +9,7 @@ use crate::{
     ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
 };
 
-impl WorkspaceSnapshotGraphV3 {
+impl WorkspaceSnapshotGraphV4 {
     pub fn frame_contains_components(
         &self,
         component_id: ComponentId,

@@ -1,5 +1,4 @@
 use dal::attribute::value::DependentValueGraph;
-use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
@@ -189,13 +188,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
         .await
         .expect("could not create component");
     component
-        .set_geometry(
-            ctx,
-            "1",
-            "-1",
-            Some(DEFAULT_COMPONENT_WIDTH),
-            Some(DEFAULT_COMPONENT_HEIGHT),
-        )
+        .set_geometry(ctx, "1", "-1", Some("500"), Some("500"))
         .await
         .expect("could not set geometry");
 
