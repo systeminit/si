@@ -8,7 +8,7 @@ export INIT_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output t
 # prep attached storage
 mkfs -t xfs /dev/nvme1n1
 mkdir -p /layer_cache
-mount /dev/nvme1n1 /layer_cache
+mount -o logbsize=256k /dev/nvme1n1 /layer_cache
 
 # get build metadata
 METADATA=$(curl -Ls https://artifacts.systeminit.com/${SI_SERVICE}/${SI_VERSION}/omnibus/linux/x86_64/${SI_SERVICE}-${SI_VERSION}-omnibus-linux-x86_64.tar.gz.metadata.json)

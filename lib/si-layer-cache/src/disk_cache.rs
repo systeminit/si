@@ -6,6 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -39,7 +40,9 @@ impl DiskCache {
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Vec<u8>> {
-        Ok(cacache::read(self.write_path.as_ref(), key.clone()).await?)
+        let data = cacache::read(self.write_path.as_ref(), key.clone()).await?;
+        metric!(counter.layer_cache.hit.disk = 1);
+        Ok(data)
     }
 
     pub async fn contains_key(&self, key: Arc<str>) -> LayerDbResult<bool> {

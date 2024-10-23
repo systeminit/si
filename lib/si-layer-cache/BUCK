@@ -13,6 +13,7 @@ rust_library(
         "//lib/si-runtime-rs:si-runtime",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:async-trait",
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",

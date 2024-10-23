@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use si_data_pg::{postgres_types::ToSql, PgPool, PgPoolConfig, PgRow};
+use telemetry::tracing::info;
+use telemetry_utils::metric;
 
 use crate::error::LayerDbResult;
 
@@ -64,7 +66,10 @@ impl PgLayer {
         let maybe_row = client.query_opt(&self.get_value_query, &[&key]).await?;
 
         match maybe_row {
-            Some(row) => Ok(Some(row.get("value"))),
+            Some(row) => {
+                metric!(counter.layer_cache.hit.pg = 1);
+                Ok(Some(row.get("value")))
+            }
             None => Ok(None),
         }
     }
@@ -94,6 +99,7 @@ impl PgLayer {
             .query(&self.get_value_many_query, &[&key_refs])
             .await?
         {
+            metric!(counter.layer_cache.hit.pg = 1);
             result.insert(
                 row.get::<&str, String>("key").to_owned(),
                 row.get::<&str, Vec<u8>>("value"),
