@@ -748,7 +748,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const component = this.rawComponentsById[componentId];
             if (!component) return;
             const elm = processRawComponent(component, this.rawComponentsById);
+
+            // data replacement here
             this.allComponentsById[elm.def.id] = elm;
+            // if component changes type it should only be in one group
+            // so first remove
+            delete this.groupsById[elm.def.id];
+            delete this.nodesById[elm.def.id];
+            // and then add as appropriate
             if (elm instanceof DiagramGroupData)
               this.groupsById[elm.def.id] = elm;
             else this.nodesById[elm.def.id] = elm;
