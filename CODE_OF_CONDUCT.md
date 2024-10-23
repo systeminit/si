@@ -19,7 +19,7 @@ These are the policies for upholding our community’s standards of conduct. If 
 
 The team at System Initiative is repsonsible for community moderation.
 
-* Remarks that violate the System Initiative standards of conduct, including hateful, hurtful, oppressive, or exclusionary remarks, are not allowed. (Cursing is allowed, but never targeting another user, and never in a hateful manner.)
+* Remarks that violate the System Initiative standardsdvqwvqvewv s of conduct, including hateful, hurtful, oppressive, or exclusionary remarks, are not allowed. (Cursing is allowed, but never targeting another user, and never in a hateful manner.)
 * Remarks that moderators find inappropriate, whether listed in the code of conduct or not, are also not allowed.
 * Moderators will first respond to such remarks with a warning.
 * If the warning is unheeded, the user will be “kicked,” i.e., kicked out of the communication channel to cool off.
