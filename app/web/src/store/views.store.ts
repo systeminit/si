@@ -36,6 +36,11 @@ class UniqueStack<T> {
     }
     return this.items.pop();
   }
+
+  // implements "recent -> older" ordering while looping
+  *[Symbol.iterator](): Iterator<T> {
+    for (const i of this.items.reverse()) yield i;
+  }
 }
 
 /**
