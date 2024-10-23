@@ -11,6 +11,9 @@ on:
       version:
         type: string
         default: "stable"
+      wait_duration:
+        type: number
+        default: 0
 
   workflow_dispatch:
     inputs:
@@ -27,6 +30,11 @@ on:
         required: true
         description: "version to deploy"
         default: "stable"
+      wait_duration:
+        type: number
+        required: false
+        description: "How long to wait before deploying"
+        default: 0
 
 # We only one one deploy happening at a time per environment, so if one is
 # in progress, we'll wait for it to finish before starting the
@@ -37,6 +45,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
+  wait:
+    name: wait
+    runs-on: ubuntu-latest
+    steps:
+      - name: wait
+        run: |
+          echo "Sleeping for ${{ inputs.wait_duration }}"
+          sleep ${{ inputs.wait_duration }}
+
   invoke-and-check-cdn:
     uses: ./.github/workflows/invoke-and-check-invalidations.yml
     with:
@@ -45,6 +63,8 @@ jobs:
 
   set-service-versions:
     uses: ./.github/workflows/set-service-version.yml
+    needs: 
+      - invoke-and-check-cdn
     strategy:
       fail-fast: false
       matrix:
@@ -57,8 +77,8 @@ jobs:
 
   set-maintenance-mode:
     needs:
-      - invoke-and-check-cdn
       - set-service-versions
+      - wait
     uses: ./.github/workflows/set-maintenance-mode.yml
     with:
       environment: ${{ inputs.environment }}
