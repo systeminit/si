@@ -29,20 +29,29 @@ use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Error;
+use shuttle_core::FINAL_MESSAGE_HEADER_KEY;
 use si_data_nats::{
-    async_nats::jetstream::{
-        context::{CreateStreamError, PublishError},
-        stream::{Config, RetentionPolicy},
+    async_nats::{
+        self,
+        jetstream::{
+            context::{CreateStreamError, PublishError},
+            stream::{Config, RetentionPolicy},
+        },
     },
-    jetstream,
+    jetstream, HeaderMap, Subject,
 };
-use si_events::{audit_log::AuditLog, EventSessionId};
+use si_events::{audit_log::AuditLog, ChangeSetId, EventSessionId, WorkspacePk};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
-const STREAM_NAME: &str = "PENDING_EVENTS";
-const PUBLISH_SUBJECT: &str = "pending.event";
+// TODO(nick): switch out of beta.
+// const STREAM_NAME: &str = "PENDING_EVENTS";
+// const STREAM_DESCRIPTION: &str = "Pending events"
+// const SUBJECT_PREFIX: &str = "pending.event";
+const STREAM_NAME: &str = "PENDING_EVENTS_BETA";
+const STREAM_DESCRIPTION: &str = "Pending events (beta)";
+const SUBJECT_PREFIX: &str = "beta.pending.event";
 const THIRTY_DAYS_IN_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 #[allow(missing_docs)]
@@ -62,56 +71,116 @@ type Result<T> = std::result::Result<T, PendingEventsError>;
 /// A wrapper around the pending events stream's NATS Jetstream context with helper methods for
 /// interacting with the stream.
 #[derive(Debug, Clone)]
-pub struct PendingEventsWorkQueue {
+pub struct PendingEventsStream {
     context: jetstream::Context,
 }
 
-impl PendingEventsWorkQueue {
-    /// "Gets" or creates the NATS JetStream stream for the pending events work queue.
+impl PendingEventsStream {
+    /// "Gets" or creates the pending events stream wrapper with an underlying NATS JetStream stream.
     pub async fn get_or_create(context: jetstream::Context) -> Result<Self> {
-        let work_queue = Self { context };
-        work_queue
+        let object = Self { context };
+        object.stream().await?;
+        Ok(object)
+    }
+
+    /// "Gets" or creates the NATS JetStream stream for the pending events stream wrapper.
+    pub async fn stream(&self) -> Result<async_nats::jetstream::stream::Stream> {
+        Ok(self
             .context
             .get_or_create_stream(Config {
-                name: work_queue.prefixed_stream_name(STREAM_NAME),
-                description: Some("Work queue of pending events".to_string()),
-                subjects: vec![work_queue.prefixed_subject(PUBLISH_SUBJECT, ">")],
+                name: self.prefixed_stream_name(STREAM_NAME),
+                description: Some(STREAM_DESCRIPTION.to_string()),
+                subjects: vec![self.prefixed_subject(SUBJECT_PREFIX, ">")],
                 retention: RetentionPolicy::Limits,
                 max_age: Duration::from_secs(THIRTY_DAYS_IN_SECONDS),
                 ..Default::default()
             })
-            .await?;
-        Ok(work_queue)
+            .await?)
     }
 
     /// Publishes a pending audit log.
     #[instrument(
-        name = "pending_events_work_queue.publish_audit_log",
-        level = "info",
-        skip_all,
-        fields(
-            si.workspace.id = workspace_id,
-        )
+        name = "pending_events_stream.publish_audit_log",
+        level = "debug",
+        skip_all
     )]
     pub async fn publish_audit_log(
         &self,
-        workspace_id: &str,
-        change_set_id: &str,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
         event_session_id: EventSessionId,
         audit_log: &AuditLog,
     ) -> Result<()> {
         self.publish_message_inner(
-            PUBLISH_SUBJECT,
-            &format!("{workspace_id}.{change_set_id}.{event_session_id}.audit_log"),
+            SUBJECT_PREFIX,
+            &Self::assemble_audit_log_parameters(
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+                event_session_id,
+            ),
+            None,
             audit_log,
         )
         .await
+    }
+
+    /// Publishes a pending audit log.
+    #[instrument(
+        name = "pending_events_stream.publish_audit_log_final_message",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn publish_audit_log_final_message(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        event_session_id: EventSessionId,
+    ) -> Result<()> {
+        let mut headers = propagation::empty_injected_headers();
+        headers.insert(FINAL_MESSAGE_HEADER_KEY, "");
+        self.publish_message_inner(
+            SUBJECT_PREFIX,
+            &Self::assemble_audit_log_parameters(
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+                event_session_id,
+            ),
+            Some(headers),
+            &serde_json::json!({}),
+        )
+        .await
+    }
+
+    /// Returns the subject for publishing and consuming [`AuditLogs`](AuditLog).
+    pub fn subject_for_audit_log(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        event_session_id: EventSessionId,
+    ) -> Subject {
+        Subject::from(self.prefixed_subject(
+            SUBJECT_PREFIX,
+            &Self::assemble_audit_log_parameters(
+                &workspace_id.to_string(),
+                &change_set_id.to_string(),
+                event_session_id,
+            ),
+        ))
+    }
+
+    fn assemble_audit_log_parameters(
+        workspace_id: &str,
+        change_set_id: &str,
+        event_session_id: EventSessionId,
+    ) -> String {
+        format!("{workspace_id}.{change_set_id}.{event_session_id}.audit_log")
     }
 
     async fn publish_message_inner(
         &self,
         subject: &str,
         parameters: &str,
+        headers: Option<HeaderMap>,
         message: &impl Serialize,
     ) -> Result<()> {
         let subject = self.prefixed_subject(subject, parameters);
@@ -119,7 +188,7 @@ impl PendingEventsWorkQueue {
             .context
             .publish_with_headers(
                 subject,
-                propagation::empty_injected_headers(),
+                headers.unwrap_or(propagation::empty_injected_headers()),
                 serde_json::to_vec(message)?.into(),
             )
             .await?;

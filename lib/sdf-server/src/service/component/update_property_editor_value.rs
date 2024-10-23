@@ -9,6 +9,7 @@ use dal::{
     SecretId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::ComponentResult;
 use crate::{
@@ -45,6 +46,8 @@ pub async fn update_property_editor_value(
 
     // Determine how to update the value based on whether it corresponds to a secret. The vast
     // majority of the time, the request will not be for a secret.
+    ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue)
+        .await?;
     if request.is_for_secret {
         if let Some(value) = request.value.as_ref() {
             let secret_id: SecretId = serde_json::from_value(value.to_owned())?;

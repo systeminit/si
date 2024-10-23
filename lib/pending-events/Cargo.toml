@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+shuttle-core = { path = "../../lib/shuttle-core" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }

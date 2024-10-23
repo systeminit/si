@@ -10,6 +10,7 @@ use dal::{
     DalContext, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::DiagramResult;
 use crate::{
@@ -50,6 +51,7 @@ pub async fn delete_components(
         let incoming_connections = component.incoming_connections(&ctx).await?.clone();
         let outgoing_connections = component.outgoing_connections(&ctx).await?.clone();
 
+        ctx.write_audit_log(AuditLogKind::DeleteComponent).await?;
         let component_still_exists = delete_single_component(
             &ctx,
             component_id,

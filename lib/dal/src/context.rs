@@ -10,8 +10,9 @@ use rebaser_client::{RebaserClient, RequestId};
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
-use si_data_nats::{NatsClient, NatsError, NatsTxn};
+use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::audit_log::AuditLogKind;
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::EventSessionId;
 use si_events::WorkspaceSnapshotAddress;
@@ -24,8 +25,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time;
+use tokio_util::task::TaskTracker;
 use veritech_client::Client as VeritechClient;
 
+use crate::audit_logging::AuditLoggingError;
 use crate::feature_flags::FeatureFlagService;
 use crate::jetstream_streams::JetstreamStreams;
 use crate::job::definition::AttributeValueBasedJobIdentifier;
@@ -33,6 +36,7 @@ use crate::layer_db_types::ContentTypes;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::DependentValueRoot;
+use crate::{audit_logging, slow_rt, EncryptedSecret, Workspace, WorkspaceError};
 use crate::{
     change_set::{ChangeSet, ChangeSetId},
     job::{
@@ -45,7 +49,6 @@ use crate::{
     AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
     WorkspaceSnapshot,
 };
-use crate::{slow_rt, EncryptedSecret, Workspace, WorkspaceError};
 
 pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph, RebaseBatch>;
 
@@ -561,8 +564,10 @@ impl DalContext {
                 event_session_id: self.event_session_id,
             },
             None => {
-                // TODO(nick): flush all audit logs for this session. If there's no rebase, then
-                // either we need to do it, or we need to tell someone else to do it.
+                // Since we are not rebasing, we need to write the final message and flush all
+                // pending audit logs.
+                self.write_audit_log_final_message().await?;
+                self.publish_pending_audit_logs(None, None).await?;
                 DelayedRebaseWithReply::NoUpdates
             }
         };
@@ -599,6 +604,10 @@ impl DalContext {
             Some(csp_ref) => Ok(csp_ref),
             None => Err(TransactionsError::ChangeSetNotSet),
         }
+    }
+
+    pub fn event_session_id(&self) -> EventSessionId {
+        self.event_session_id
     }
 
     pub fn layer_db(&self) -> DalLayerDb {
@@ -660,8 +669,10 @@ impl DalContext {
                 event_session_id: self.event_session_id,
             },
             None => {
-                // TODO(nick): flush all audit logs for this session. If there's no rebase, then
-                // either we need to do it, or we need to tell someone else to do it.
+                // Since we are not rebasing, we need to write the final message and flush all
+                // pending audit logs.
+                self.write_audit_log_final_message().await?;
+                self.publish_pending_audit_logs(None, None).await?;
                 DelayedRebaseWithReply::NoUpdates
             }
         };
@@ -985,6 +996,41 @@ impl DalContext {
     pub fn access_builder(&self) -> AccessBuilder {
         AccessBuilder::new(self.tenancy, self.history_actor)
     }
+
+    /// Returns a new [`jetstream::Context`].
+    pub fn jetstream_context(&self) -> jetstream::Context {
+        jetstream::new(self.nats_conn().to_owned())
+    }
+
+    /// Convenience wrapper around [`audit_logging::write`].
+    #[instrument(name = "dal_context.write_audit_log", level = "debug", skip_all)]
+    pub async fn write_audit_log(&self, kind: AuditLogKind) -> TransactionsResult<()> {
+        Ok(audit_logging::write(self, kind).await?)
+    }
+
+    /// Convenience wrapper around [`audit_logging::write_final_message`].
+    #[instrument(
+        name = "dal_context.audit_log_write_final_message",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn write_audit_log_final_message(&self) -> TransactionsResult<()> {
+        Ok(audit_logging::write_final_message(self).await?)
+    }
+
+    /// Convenience wrapper around [`audit_logging::publish_pending`].
+    #[instrument(
+        name = "dal_context.publish_pending_audit_logs",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn publish_pending_audit_logs(
+        &self,
+        tracker: Option<TaskTracker>,
+        override_event_session_id: Option<si_events::EventSessionId>,
+    ) -> TransactionsResult<()> {
+        Ok(audit_logging::publish_pending(self, tracker, override_event_session_id).await?)
+    }
 }
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
@@ -1228,6 +1274,8 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error, EnumDiscriminants)]
 pub enum TransactionsError {
+    #[error("audit logging error: {0}")]
+    AuditLogging(#[from] AuditLoggingError),
     #[error("expected a {0:?} activity, but received a {1:?}")]
     BadActivity(ActivityPayloadDiscriminants, ActivityPayloadDiscriminants),
     /// Intentionally a bit vague as its used when either the user in question doesn't have access
@@ -1241,19 +1289,19 @@ pub enum TransactionsError {
     ChangeSetNotFound(ChangeSetId),
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
-    #[error(transparent)]
+    #[error("job queue processor error: {0}")]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error("tokio join error: {0}")]
     Join(#[from] tokio::task::JoinError),
-    #[error(transparent)]
+    #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("no base change set for change set: {0}")]
     NoBaseChangeSet(ChangeSetId),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error(transparent)]
+    #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
     #[error("rebase of batch {0} for change set id {1} failed: {2}")]
     RebaseFailed(RebaseBatchAddress, ChangeSetId, String),
@@ -1261,13 +1309,13 @@ pub enum TransactionsError {
     Rebaser(#[from] rebaser_client::ClientError),
     #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
     RebaserReplyDeadlineElasped(Duration, RequestId),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow rt error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
-    #[error(transparent)]
+    #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
-    #[error("Unable to acquire lock: {0}")]
+    #[error("unable to acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("cannot commit transactions on invalid connections state")]
     TxnCommit,

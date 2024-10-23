@@ -1,14 +1,17 @@
 use std::result;
 
 use futures::{future::BoxFuture, StreamExt as _};
+use pending_events::{PendingEventsError, PendingEventsStream};
 use rebaser_core::{
+    api_types::HeaderMapParseMessageInfoError,
     api_types::{
         enqueue_updates_request::{EnqueueUpdatesRequest, EnqueueUpdatesRequestVCurrent},
         enqueue_updates_response::EnqueueUpdatesResponse,
     },
-    content_info::HeaderMapParseMessageInfoError,
+    api_types::{
+        ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
+    },
     nats::{self, NATS_HEADER_REPLY_INBOX_NAME},
-    ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
 };
 use si_data_nats::{
     async_nats::{self, jetstream::context::PublishError},
@@ -23,13 +26,15 @@ use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
-pub use rebaser_core::{api_types, RequestId};
+pub use rebaser_core::{api_types, api_types::RequestId};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("error creating jetstream stream: {0}")]
     CreateStream(#[source] async_nats::jetstream::context::CreateStreamError),
+    #[error("pending events error: {0}")]
+    PendingEvents(#[from] PendingEventsError),
     #[error("request publish error: {0}")]
     Publish(#[from] PublishError),
     #[error("error deserializing reply: {0}")]
@@ -212,6 +217,12 @@ impl Client {
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
         let id = RequestId::new();
+
+        let pending_events_stream =
+            PendingEventsStream::get_or_create(self.context.to_owned()).await?;
+        pending_events_stream
+            .publish_audit_log_final_message(workspace_id, change_set_id, event_session_id)
+            .await?;
 
         let request = EnqueueUpdatesRequest::new_current(EnqueueUpdatesRequestVCurrent {
             id,

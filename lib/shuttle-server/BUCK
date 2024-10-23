@@ -1,9 +1,10 @@
 load("@prelude-si//:macros.bzl", "rust_library", "rust_test")
 
 rust_library(
-    name = "shuttle",
+    name = "shuttle-server",
     deps = [
         "//lib/naxum:naxum",
+        "//lib/shuttle-core:shuttle-core",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",
@@ -29,7 +30,7 @@ rust_test(
         "//third-party/rust:serde_json",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
-        ":shuttle",
+        ":shuttle-server",
     ],
     crate_root = "tests/integration.rs",
     srcs = glob([

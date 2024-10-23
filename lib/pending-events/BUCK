@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "pending-events",
     deps = [
+        "//lib/shuttle-core:shuttle-core",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",

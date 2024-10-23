@@ -90,18 +90,7 @@ where
 pub struct ContentType<'a>(Cow<'a, str>);
 
 impl<'a> ContentType<'a> {
-    /// The content type wrapper around the JSON header value.
-    pub const JSON: ContentType<'static> = ContentType(Cow::Borrowed(Self::JSON_STR));
-
-    /// The raw JSON header value.
-    pub const JSON_STR: &'static str = "application/json";
-
-    /// Returns the interior data.
-    pub fn into_inner(self) -> Cow<'a, str> {
-        self.0
-    }
-
-    /// Retunrs the interior data as a borrowed string.
+    /// Returns the interior data as a borrowed string.
     pub fn as_str(&self) -> &str {
         self.0.as_ref()
     }
@@ -130,12 +119,7 @@ impl From<&HeaderValue> for ContentType<'_> {
 pub struct MessageType(String);
 
 impl MessageType {
-    /// Returns the interior data.
-    pub fn into_inner(self) -> String {
-        self.0
-    }
-
-    /// Retunrs the interior data as a borrowed string.
+    /// Returns the interior data as a borrowed string.
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
@@ -164,11 +148,6 @@ impl From<&HeaderValue> for MessageType {
 pub struct MessageVersion(u64);
 
 impl MessageVersion {
-    /// Returns the interior data.
-    pub fn into_inner(self) -> u64 {
-        self.0
-    }
-
     /// Returns the interior data as an unsigned integer.
     pub fn as_u64(&self) -> u64 {
         self.0

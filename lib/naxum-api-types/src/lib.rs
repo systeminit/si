@@ -29,9 +29,9 @@ use serde::{de::DeserializeOwned, Serialize};
 use strum::VariantNames;
 use thiserror::Error;
 
-pub mod content_info;
+mod content_info;
 
-pub use content_info::*;
+pub use content_info::{ContentInfo, HeaderMapParseMessageInfoError};
 
 const CONTENT_TYPE_CBOR: &str = "application/cbor";
 const CONTENT_TYPE_JSON: &str = "application/json";

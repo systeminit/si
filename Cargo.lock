@@ -320,6 +320,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "audit-logs"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "telemetry",
+ "telemetry-nats",
+ "thiserror",
+]
+
+[[package]]
 name = "auth-api-client"
 version = "0.1.0"
 dependencies = [
@@ -1688,6 +1702,7 @@ version = "0.1.0"
 dependencies = [
  "async-recursion",
  "async-trait",
+ "audit-logs",
  "base64 0.22.1",
  "billing-events",
  "blake3",
@@ -1712,6 +1727,7 @@ dependencies = [
  "object-tree",
  "once_cell",
  "paste",
+ "pending-events",
  "petgraph",
  "pinga-core",
  "postcard",
@@ -1726,6 +1742,7 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with",
+ "shuttle-server",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
@@ -4248,6 +4265,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "shuttle-core",
  "si-data-nats",
  "si-events",
  "telemetry",
@@ -4941,6 +4959,7 @@ name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "pending-events",
  "pin-project-lite",
  "rebaser-core",
  "remain",
@@ -4969,15 +4988,18 @@ dependencies = [
 name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
+ "audit-logs",
  "buck2-resources",
  "dal",
  "derive_builder",
  "futures",
  "naxum",
+ "pending-events",
  "rebaser-client",
  "rebaser-core",
  "remain",
  "serde",
+ "shuttle-server",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
@@ -5941,13 +5963,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "shuttle"
+name = "shuttle-core"
+version = "0.1.0"
+
+[[package]]
+name = "shuttle-server"
 version = "0.1.0"
 dependencies = [
  "futures",
  "naxum",
  "remain",
  "serde_json",
+ "shuttle-core",
  "si-data-nats",
  "si-events",
  "telemetry",

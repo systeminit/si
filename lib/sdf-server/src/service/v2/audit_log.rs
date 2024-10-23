@@ -12,10 +12,10 @@ pub mod list_audit_logs;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AuditLogError {
-    #[error("audit log error: {0}")]
-    AuditLog(#[from] dal::audit_log::AuditLogError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] dal::TransactionsError),
+    #[error("dal audit logging error: {0}")]
+    DalAuditLogging(#[from] dal::audit_logging::AuditLoggingError),
+    #[error("dal transactions error: {0}")]
+    DalTransactions(#[from] dal::TransactionsError),
 }
 
 pub type AuditLogResult<T> = Result<T, AuditLogError>;

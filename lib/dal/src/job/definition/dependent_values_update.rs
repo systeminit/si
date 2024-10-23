@@ -7,7 +7,7 @@ use telemetry_utils::metric;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_events::FuncRunValue;
+use si_events::{audit_log::AuditLogKind, FuncRunValue};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -231,6 +231,9 @@ impl DependentValuesUpdate {
         let start = tokio::time::Instant::now();
         let span = Span::current();
         metric!(counter.dvu_concurrency_count = 1);
+        ctx.write_audit_log(AuditLogKind::RunDependentValuesUpdate)
+            .await?;
+
         let roots = ctx.workspace_snapshot()?.take_dependent_values().await?;
 
         let mut unfinished_values: HashSet<Ulid> = HashSet::new();

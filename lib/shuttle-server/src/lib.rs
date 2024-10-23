@@ -57,9 +57,7 @@ mod app_state;
 mod handlers;
 mod middleware;
 
-/// The header key used to indicate to a running shuttle instance that it has consumed everything
-/// and can shut down. The header value and message body are ignored.
-pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
+pub use shuttle_core::FINAL_MESSAGE_HEADER_KEY;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -107,11 +105,12 @@ impl Shuttle {
     pub async fn new(
         nats: NatsClient,
         tracker: TaskTracker,
-        token: CancellationToken,
         limits_based_source_stream: async_nats::jetstream::stream::Stream,
         source_subject: Subject,
         destination_subject: Subject,
     ) -> Result<Self> {
+        let self_shutdown_token = CancellationToken::new();
+
         let deliver_subject = nats.new_inbox();
         let connection_metadata = nats.metadata_clone();
         let context = jetstream::new(nats);
@@ -140,7 +139,7 @@ impl Shuttle {
         let state = crate::app_state::AppState::new(
             context.clone(),
             destination_subject.clone(),
-            token.clone(),
+            self_shutdown_token.clone(),
         );
 
         let app = ServiceBuilder::new()
@@ -159,7 +158,7 @@ impl Shuttle {
             .map_response(Response::into_response);
 
         let inner = naxum::serve(incoming, app.into_make_service())
-            .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+            .with_graceful_shutdown(naxum::wait_on_cancelled(self_shutdown_token));
 
         Ok(Self {
             source_subject,

@@ -25,7 +25,7 @@ pub(crate) async fn default(
 ) -> HandlerResult<()> {
     if let Some(headers) = msg.headers() {
         if headers.get(FINAL_MESSAGE_HEADER_KEY).is_some() {
-            state.token.cancel();
+            state.self_shutdown_token.cancel();
             return Ok(());
         }
     }
