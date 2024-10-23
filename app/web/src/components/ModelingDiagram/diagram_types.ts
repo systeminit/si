@@ -8,8 +8,12 @@ import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import {
   NODE_HEADER_HEIGHT,
+  NODE_PADDING_BOTTOM,
+  NODE_SUBTITLE_TEXT_HEIGHT,
+  NODE_WIDTH,
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
+  SOCKET_SIZE,
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
 
@@ -97,8 +101,30 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
 }
 
 export class DiagramNodeData extends DiagramNodeHasSockets {
+  width: number = NODE_WIDTH;
+
   get uniqueKey() {
     return DiagramNodeData.generateUniqueKey(this.def.id);
+  }
+
+  get bodyHeight() {
+    return (
+      NODE_SUBTITLE_TEXT_HEIGHT +
+      SOCKET_MARGIN_TOP +
+      SOCKET_GAP *
+        (this.layoutLeftSockets(this.width).sockets.length +
+          this.layoutRightSockets(this.width).sockets.length -
+          1) +
+      SOCKET_SIZE / 2 +
+      // TODO: this isn't right yet!
+      NODE_PADDING_BOTTOM +
+      // (statusIcons?.value.length ? 30 : 0)
+      30 // keeping this there as a constant for the moment
+    );
+  }
+
+  get height() {
+    return this.bodyHeight + NODE_HEADER_HEIGHT;
   }
 
   static generateUniqueKey(id: string | number) {

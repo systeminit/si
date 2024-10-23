@@ -304,14 +304,8 @@ import {
   CORNER_RADIUS,
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
-  NODE_PADDING_BOTTOM,
-  NODE_WIDTH,
   SELECTION_COLOR,
-  SOCKET_GAP,
-  SOCKET_MARGIN_TOP,
-  SOCKET_SIZE,
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
-  NODE_SUBTITLE_TEXT_HEIGHT,
   NODE_HEADER_HEIGHT,
   NODE_HEADER_TEXT_HEIGHT,
 } from "./diagram_constants";
@@ -410,23 +404,10 @@ const truncatedNodeTitle = computed(() => {
   } else return props.node.def.title;
 });
 
-const nodeWidth = computed(() => NODE_WIDTH);
+const nodeWidth = computed(() => props.node.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
-const nodeBodyHeight = computed(() => {
-  return (
-    NODE_SUBTITLE_TEXT_HEIGHT +
-    SOCKET_MARGIN_TOP +
-    SOCKET_GAP *
-      (leftSockets.value.sockets.length +
-        rightSockets.value.sockets.length -
-        1) +
-    SOCKET_SIZE / 2 +
-    // TODO: this isn't right yet!
-    NODE_PADDING_BOTTOM +
-    (statusIcons?.value.length ? 30 : 0)
-  );
-});
+const nodeBodyHeight = computed(() => props.node.bodyHeight);
 const nodeHeight = computed(() => NODE_HEADER_HEIGHT + nodeBodyHeight.value);
 
 const parentComponentId = computed(() => props.node.def.parentId);
