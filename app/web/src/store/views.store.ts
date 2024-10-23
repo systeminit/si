@@ -10,6 +10,34 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 
+class UniqueStack<T> {
+  items: T[];
+
+  constructor() {
+    this.items = [];
+  }
+
+  idx(i: T) {
+    return this.items.findIndex((_i) => _i === i);
+  }
+
+  push(i: T) {
+    if (this.idx(i) !== -1) this.items.push(i);
+  }
+
+  remove(i: T) {
+    const idx = this.idx(i);
+    if (idx !== -1) this.items.splice(idx, 1);
+  }
+
+  pop() {
+    if (this.items.length === 0) {
+      return null;
+    }
+    return this.items.pop();
+  }
+}
+
 /**
  * In general we treat the front end POSITION data as truth
  * And push it to the backend, retries, last wins, etc
@@ -37,6 +65,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/views`, {
       state: () => ({
         selectedViewId: null as ViewId | null,
+        recentViews: new UniqueStack() as UniqueStack<ViewId>,
 
         // every views data goes here
         viewsById: {} as Record<ViewId, View>,
@@ -49,6 +78,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
          * */
         components: {} as Components,
         edges: {} as Edges,
+        // DiagramNodeSocket can find isConnected here, so it doesn't re-render with every drag
+        edgeIds: new Set() as Set<DiagramElementUniqueKey>,
         sockets: {} as Sockets,
       }),
       getters: {
@@ -58,6 +89,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
+            // move the currently selected view to the top of the
+            if (this.selectedViewId) {
+              this.pushRecentView(this.selectedViewId);
+            }
             this.selectedViewId = id;
             /* *
              * i think i want to set these as in-memory references
@@ -72,10 +107,17 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             // currently edges store their socket location information
             // internally... maybe we should stop that
             this.edges = view.edges;
+            this.edgeIds = new Set(Object.keys(view.edges));
             // derive the socket position from the component position
             // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
           }
+        },
+        closeRecentView(id: ViewId) {
+          this.recentViews.remove(id);
+        },
+        pushRecentView(id: ViewId) {
+          this.recentViews.push(id);
         },
         async LIST_VIEWS() {
           // TODO

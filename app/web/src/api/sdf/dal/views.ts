@@ -1,4 +1,4 @@
-import { IRect } from "konva/lib/types";
+import { IRect, Vector2d } from "konva/lib/types";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
   DiagramEdgeData,
@@ -9,7 +9,12 @@ import {
 
 export type ViewId = string;
 
-export type Components = Record<DiagramElementUniqueKey, IRect>;
+export type GroupGeometry = IRect;
+export type ComponentGeometry = Vector2d;
+export type Components = Record<
+  DiagramElementUniqueKey,
+  GroupGeometry | ComponentGeometry
+>;
 export type Edges = Record<DiagramElementUniqueKey, DiagramEdgeData>;
 export type Sockets = Record<
   DiagramElementUniqueKey,
