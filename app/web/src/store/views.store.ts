@@ -269,22 +269,34 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO
           this.viewsById[viewId] = { components, groups };
         },
+        // REDO the 409 conflicts and retry logic
         async MOVE_COMPONENTS(
-          components: DiagramElementUniqueKey[],
+          clientUlid: string,
+          components: (DiagramGroupData | DiagramNodeData)[],
           positionDelta: Vector2d,
-          writeToChangeSet?: boolean,
-          broadcastToClients?: boolean,
+          opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
           // TODO, bump all elements and their sockets by the vector
         },
         async RESIZE_COMPONENT(
-          component: DiagramElementUniqueKey,
-          position: IRect,
-          positionDelta: Vector2d,
-          writeToChangeSet?: boolean,
-          broadcastToClients?: boolean,
+          clientUlid: string,
+          component: DiagramGroupData,
+          geometry: IRect,
+          opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
-          // TODO, sockets need to be re-positioned if delta X or Y is not 0
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const origGeometry = structuredClone(this.groups[component.def.id]!);
+          const delta: Vector2d = {
+            x: origGeometry.x - geometry.x,
+            y: origGeometry.y - geometry.y,
+          };
+
+          this.groups[component.def.id] = { ...geometry };
+
+          if (delta.x !== 0 || delta.y !== 0) {
+            // TODO, sockets need to be re-positioned if delta X or Y is not 0
+          }
+          // TODO, save, broadcast
         },
       },
       onActivated() {

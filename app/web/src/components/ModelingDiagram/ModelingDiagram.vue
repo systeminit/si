@@ -1453,37 +1453,6 @@ const draggedCollapsedElementsPositionsPreDrag = ref<
 >({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
-interface updateElementPositionAndSizeArgs {
-  elements: elementPositionAndSize[];
-  writeToChangeSet?: boolean;
-  broadcastToClients?: boolean;
-}
-function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
-  /*
-    Replaces most common uses of `sendMovedElementPosition`
-    Nearly every instance of `send...` also mutated these two dictionaries, encapsulating that logic
-    It will also call `send...`, optionally
-  */
-  _.forEach(e.elements, (e) => {
-    if (e.position) {
-      componentsStore.movedElementPositions[e.uniqueKey] = { ...e.position };
-    }
-    if (e.size) {
-      e.size.height = Math.max(e.size.height, MIN_NODE_DIMENSION);
-      e.size.width = Math.max(e.size.width, MIN_NODE_DIMENSION);
-      componentsStore.resizedElementSizes[e.uniqueKey] = { ...e.size };
-    }
-  });
-
-  if (e.writeToChangeSet || e.broadcastToClients) {
-    sendMovedElementPosition({
-      ...e,
-      componentData: e.elements.map(({ uniqueKey }) => ({
-        key: uniqueKey,
-      })),
-    });
-  }
-}
 type MoveElementsPayload = {
   // used to send the already existing elements position and size
   componentData: ComponentData[];
@@ -2059,9 +2028,7 @@ const moveElementsState = computed(() => {
 const resizeElement = ref<DiagramGroupData>();
 const resizeElementActive = computed(() => !!resizeElement.value);
 const resizeElementDirection = ref<SideAndCornerIdentifiers>();
-const resizedElementSizesPreResize = reactive<
-  Record<DiagramElementUniqueKey, Size2D>
->({});
+const resizedElementGeometryPreResize = ref<IRect>();
 
 function beginResizeElement() {
   if (!lastMouseDownElement.value) return;
@@ -2073,26 +2040,22 @@ function beginResizeElement() {
 
   resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
-  const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
   const irect = viewStore.groups[lastMouseDownElement.value.def.id]!;
-  resizedElementSizesPreResize[resizeTargetKey] = { ...irect };
-  draggedElementsPositionsPreDrag.value[resizeTargetKey] = { ...irect };
+  resizedElementGeometryPreResize.value = { ...irect };
 }
 
 function endResizeElement() {
+  resizedElementGeometryPreResize.value = undefined;
   const el = resizeElement.value;
   if (!el) return;
   // currently only groups can be resized... this is mostly for TS
   if (!(el instanceof DiagramGroupData)) return;
-  if (componentsStore.collapsedComponents.has(el.uniqueKey)) return;
 
-  const size = componentsStore.resizedElementSizes[el.uniqueKey];
-  const position = componentsStore.movedElementPositions[el.uniqueKey];
-  if (!size || !position) {
+  const geometry = viewStore.groups[el.def.id];
+  if (!geometry) {
     return;
   }
-  updateElementPositionAndSize({
-    elements: [{ position, size, uniqueKey: el.uniqueKey }],
+  viewStore.RESIZE_COMPONENT(diagramUlid.value, el, geometry, {
     writeToChangeSet: true,
   });
 
@@ -2102,12 +2065,6 @@ function endResizeElement() {
 function onResizeMove() {
   if (!resizeElement.value || !resizeElementDirection.value) return;
 
-  const resizeTargetKey = resizeElement.value.uniqueKey;
-  const resizeTargetId = resizeElement.value.def.id;
-
-  const node = resizeElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
 
@@ -2131,25 +2088,21 @@ function onResizeMove() {
     y: 0,
   };
 
-  const presentSize = resizedElementSizesPreResize[resizeTargetKey];
-  const presentPosition = componentsStore.collapsedComponents.has(
-    resizeTargetKey,
-  )
-    ? draggedCollapsedElementsPositionsPreDrag.value[resizeTargetKey]
-    : draggedElementsPositionsPreDrag.value[resizeTargetKey];
-
-  if (!presentSize || !presentPosition) {
+  if (!resizedElementGeometryPreResize.value) {
     return;
   }
 
-  const rightBound = presentPosition.x + presentSize.width / 2;
+  const rightBound =
+    resizedElementGeometryPreResize.value.x +
+    resizedElementGeometryPreResize.value.width / 2;
 
   // Ensure the component never gets smaller than its minimum dimensions
   switch (resizeElementDirection.value) {
     case "bottom":
       {
         sizeDelta.x = 0;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -2159,7 +2112,8 @@ function onResizeMove() {
       {
         sizeDelta.x = 0;
         sizeDelta.y = -sizeDelta.y;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -2170,7 +2124,8 @@ function onResizeMove() {
       {
         sizeDelta.y = 0;
         sizeDelta.x = -sizeDelta.x;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -2180,7 +2135,8 @@ function onResizeMove() {
     case "right":
       {
         sizeDelta.y = 0;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -2189,13 +2145,15 @@ function onResizeMove() {
       break;
     case "bottom-left":
       {
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2204,11 +2162,13 @@ function onResizeMove() {
       break;
     case "bottom-right":
       {
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2218,14 +2178,16 @@ function onResizeMove() {
     case "top-left":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2235,13 +2197,15 @@ function onResizeMove() {
     case "top-right":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2253,18 +2217,19 @@ function onResizeMove() {
   }
 
   const newNodeSize = {
-    width: presentSize.width + sizeDelta.x,
-    height: presentSize.height + sizeDelta.y,
+    width: resizedElementGeometryPreResize.value.width + sizeDelta.x,
+    height: resizedElementGeometryPreResize.value.height + sizeDelta.y,
   };
 
   // Get the correctly cached position for the element being resized
   const newNodePosition = {
-    x: presentPosition.x + positionDelta.x / 2,
-    y: presentPosition.y + positionDelta.y,
+    x: resizedElementGeometryPreResize.value.x + positionDelta.x / 2,
+    y: resizedElementGeometryPreResize.value.y + positionDelta.y,
   };
 
   // Make sure the frame doesn't shrink to be smaller than it's children
-  const contentsBox = viewStore.contentBoundingBoxesByGroupId[resizeTargetId];
+  const contentsBox =
+    viewStore.contentBoundingBoxesByGroupId[resizeElement.value.def.id];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2286,7 +2251,9 @@ function onResizeMove() {
       if (newNodeRect.y > contentsBox.y) {
         newNodeRect.y = contentsBox.y;
         newNodeRect.height =
-          presentPosition.y + presentSize.height - contentsBox.y;
+          resizedElementGeometryPreResize.value.y +
+          resizedElementGeometryPreResize.value.height -
+          contentsBox.y;
       }
     }
 
@@ -2318,10 +2285,10 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = node.parentId;
-  const parentGeometry = viewStore.groups[parentId || ""];
+  const parentGeometry =
+    viewStore.groups[resizeElement.value.def.parentId || ""];
 
-  if (parentId && parentGeometry) {
+  if (parentGeometry) {
     // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
       ...newNodePosition,
@@ -2344,8 +2311,8 @@ function onResizeMove() {
     if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
       newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
       newNodeRect.height =
-        presentPosition.y +
-        presentSize.height -
+        resizedElementGeometryPreResize.value.y +
+        resizedElementGeometryPreResize.value.height -
         parentContentRect.y -
         GROUP_INNER_Y_BOUNDARY_OFFSET;
     }
@@ -2377,16 +2344,13 @@ function onResizeMove() {
     newNodeSize.height = newNodeRect.height;
   }
 
-  updateElementPositionAndSize({
-    elements: [
-      {
-        uniqueKey: resizeElement.value.uniqueKey,
-        position: newNodePosition,
-        size: newNodeSize,
-      },
-    ],
-    broadcastToClients: true,
-  });
+  // TODO, also fix this for struct style
+  viewStore.RESIZE_COMPONENT(
+    diagramUlid.value,
+    resizeElement.value,
+    { ...newNodePosition, ...newNodeSize },
+    { broadcastToClients: true },
+  );
 }
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
