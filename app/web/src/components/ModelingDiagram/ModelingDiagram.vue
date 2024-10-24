@@ -860,29 +860,9 @@ async function onKeyDown(e: KeyboardEvent) {
       componentsStore.selectedComponent.def.id,
     );
   }
-  if (!props.readOnly && e.code === "Backslash") {
-    if (e.metaKey) {
-      // collapse all
-      componentsStore.toggleCollapse(
-        "hotkey",
-        ...[...componentsStore.collapsedComponents].map((uniqueKey) =>
-          uniqueKey.substring(2),
-        ),
-      );
-    } else {
-      // collapse selected
-      componentsStore.toggleSelectedCollapse("hotkey");
-    }
-  }
   if (!props.readOnly && e.key === "n" && componentsStore.selectedComponentId) {
-    // rename component
-    const collapsed = componentsStore.collapsedComponents.has(
-      `g-${componentsStore.selectedComponentId}`,
-    );
-    if (!collapsed) {
-      e.preventDefault();
-      renameOnDiagramByComponentId(componentsStore.selectedComponentId);
-    }
+    e.preventDefault();
+    renameOnDiagramByComponentId(componentsStore.selectedComponentId);
   }
 }
 
@@ -2868,27 +2848,6 @@ function getSocketLocationInfo(
 ) {
   if (edge) {
     // if from component is collapsed, return the position of its center
-    const componentId =
-      direction === "from" ? edge.def.fromComponentId : edge.def.toComponentId;
-    const component = componentsStore.allComponentsById[componentId];
-    if (component) {
-      const collapsedKey = componentsStore.collapsedComponents.has(
-        component.uniqueKey,
-      )
-        ? component.uniqueKey
-        : areMyAncestorsCollapsed(component);
-      if (collapsedKey) {
-        const position = structuredClone(
-          toRaw(componentsStore.collapsedElementPositions[collapsedKey]),
-        );
-        const size = componentsStore.collapsedElementSizes[collapsedKey];
-        if (position && size) {
-          position.y += size.height / 2;
-          return { center: position };
-        }
-      }
-    }
-
     const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
     return socketsLocationInfo[key];
   }
@@ -2923,45 +2882,27 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
 
-const areMyAncestorsCollapsed = (
-  component: DiagramNodeData | DiagramGroupData,
-): DiagramElementUniqueKey | null => {
-  if (component.def.ancestorIds)
-    for (const cId of component.def.ancestorIds) {
-      const c = componentsStore.rawComponentsById[cId];
-      if (c) {
-        const key =
-          c.componentType === ComponentType.Component
-            ? `n-${c.id}`
-            : `g-${c.id}`;
-        if (componentsStore.collapsedComponents.has(key)) return key;
-      }
-    }
-  return null;
-};
-
 const groups = computed(() => {
-  const allGroups = Object.values(componentsStore.groupsById).filter(
-    (g) => !areMyAncestorsCollapsed(g),
-  );
+  const orderedGroups = _.orderBy(
+    Object.values(componentsStore.groupsById),
+    (g) => {
+      // order by "depth" in frames
+      let zIndex = g.def.ancestorIds?.length || 0;
 
-  const orderedGroups = _.orderBy(allGroups, (g) => {
-    // order by "depth" in frames
-    let zIndex = g.def.ancestorIds?.length || 0;
-
-    // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
-    if (dragElementsActive.value) {
-      if (
-        _.intersection(
-          [g.def.componentId, ...(g.def.ancestorIds || [])],
-          componentsStore.selectedComponentIds,
-        ).length
-      ) {
-        zIndex += 1000;
+      // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
+      if (dragElementsActive.value) {
+        if (
+          _.intersection(
+            [g.def.componentId, ...(g.def.ancestorIds || [])],
+            componentsStore.selectedComponentIds,
+          ).length
+        ) {
+          zIndex += 1000;
+        }
       }
-    }
-    return zIndex;
-  });
+      return zIndex;
+    },
+  );
 
   return orderedGroups;
 });
@@ -2969,9 +2910,7 @@ const groups = computed(() => {
 // TODO move this to the store
 const sockets = computed(() => {
   const elements = _.concat(
-    Object.values(componentsStore.allComponentsById).filter(
-      (n) => !areMyAncestorsCollapsed(n),
-    ),
+    Object.values(componentsStore.nodesById),
     groups.value,
   );
   return _.compact(_.flatMap(elements, (i) => i.sockets));
@@ -2983,23 +2922,6 @@ type ToFrom = { to: Vector2d; from: Vector2d };
 const edges = computed(() => {
   const points: ToFrom[] = [];
   return Object.values(componentsStore.diagramEdgesById)
-    .filter((e) => {
-      // filter out edges connected between components when one is not rendered
-      const collapsedIds = [...componentsStore.collapsedComponents].map((key) =>
-        key.substring(2),
-      );
-      const nodesNotDrawn = collapsedIds.flatMap((gId) => {
-        const group = componentsStore.groupsById[gId]!;
-        return allChildrenInGroup(group);
-      });
-
-      if (
-        nodesNotDrawn.includes(e.def.toComponentId) ||
-        nodesNotDrawn.includes(e.def.fromComponentId)
-      )
-        return false;
-      else return true;
-    })
     .map((e) => {
       e.fromPoint = getSocketLocationInfo("from", e);
       e.toPoint = getSocketLocationInfo("to", e);
@@ -3043,14 +2965,6 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
 
-function nodeShouldBeRendered(key: DiagramElementUniqueKey) {
-  const id = key.substring(2);
-  const node = componentsStore.nodesById[id];
-  let isRendered = false;
-  if (node) isRendered = !areMyAncestorsCollapsed(node);
-  return isRendered || groups.value.find((n) => n.uniqueKey === key);
-}
-
 // Selection rects
 const selectionRects = computed(() => {
   const rects = [] as (Size2D & Vector2d)[];
@@ -3068,9 +2982,7 @@ const selectionRects = computed(() => {
         r.height += adjust;
         r.y -= adjust;
       }
-      if (nodeShouldBeRendered(uniqueKey)) {
-        rects.push(r);
-      }
+      rects.push(r);
     }
   });
   return rects;

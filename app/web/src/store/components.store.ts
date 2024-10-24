@@ -38,7 +38,6 @@ import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { DefaultMap } from "@/utils/defaultmap";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { trackEvent } from "@/utils/tracking";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
@@ -348,8 +347,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
     workspaceId,
   };
 
-  const { SIZE_PREFIX, POS_PREFIX } = getCollapsedPrefixes(workspaceId);
-
   return addStoreHooks(
     workspaceId,
     changeSetId,
@@ -378,12 +375,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           >,
 
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
-          collapsedComponents: new Set() as Set<DiagramElementUniqueKey>,
-          collapsedElementPositions: {} as Record<
-            DiagramElementUniqueKey,
-            Vector2d
-          >,
-          collapsedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
 
           rawEdgesById: {} as Record<EdgeId, Edge>,
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
@@ -655,150 +646,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
             });
-          },
-
-          expandComponents(...keys: DiagramElementUniqueKey[]) {
-            keys.forEach((key) => {
-              this.collapsedComponents.delete(key);
-              delete this.collapsedElementPositions[key];
-              delete this.collapsedElementSizes[key];
-            });
-            this.persistCollapsed();
-          },
-
-          persistCollapsed() {
-            window.localStorage.setItem(
-              `${workspaceId}-collapsed-components`,
-              JSON.stringify(Array.from(this.collapsedComponents)),
-            );
-          },
-
-          removeCollapsedData(key: DiagramElementUniqueKey) {
-            // TODO: rework if this ends up being expensive...
-            const { SIZE_PREFIX, POS_PREFIX } =
-              getCollapsedPrefixes(workspaceId);
-            window.localStorage.removeItem(`${SIZE_PREFIX}-${key}`);
-            window.localStorage.removeItem(`${POS_PREFIX}-${key}`);
-          },
-
-          initMinimzedElementPositionAndSize(key: DiagramElementUniqueKey) {
-            const { SIZE_PREFIX, POS_PREFIX } =
-              getCollapsedPrefixes(workspaceId);
-            let position;
-            let size;
-            position = loadCollapsedData(POS_PREFIX, key) as
-              | Vector2d
-              | undefined;
-            if (!position) position = this.combinedElementPositions[key];
-            size = loadCollapsedData(SIZE_PREFIX, key) as Size2D | undefined;
-            if (!size)
-              size = this.collapsedElementSizes[key] || DEFAULT_COLLAPSED_SIZE;
-            return { position, size };
-          },
-
-          updateMinimzedElementPositionAndSize(
-            ...elms: elementPositionAndSize[]
-          ) {
-            elms.forEach((elm) => {
-              this.collapsedComponents.add(elm.uniqueKey);
-              if (elm.size) {
-                this.collapsedElementSizes[elm.uniqueKey] = elm.size;
-                window.localStorage.setItem(
-                  `${SIZE_PREFIX}-${elm.uniqueKey}`,
-                  JSON.stringify(elm.size),
-                );
-              }
-              if (elm.position) {
-                this.collapsedElementPositions[elm.uniqueKey] = elm.position;
-                window.localStorage.setItem(
-                  `${POS_PREFIX}-${elm.uniqueKey}`,
-                  JSON.stringify(elm.position),
-                );
-              }
-            });
-            this.persistCollapsed();
-          },
-
-          toggleCollapse(source: string, ...ids: ComponentId[]) {
-            let collapsing = false;
-            const components = [] as DiagramGroupData[];
-            ids.forEach((id) => {
-              const component = this.groupsById[id];
-              if (component) {
-                components.push(component);
-
-                if (!this.collapsedComponents.has(component.uniqueKey)) {
-                  collapsing = true;
-                }
-              }
-            });
-            if (collapsing) {
-              const collapsed = [] as ComponentCollapseTrackingData[];
-              components.forEach((component) => {
-                const { position, size } =
-                  this.initMinimzedElementPositionAndSize(component.uniqueKey);
-                this.updateMinimzedElementPositionAndSize({
-                  uniqueKey: component.uniqueKey,
-                  position,
-                  size,
-                });
-                collapsed.push({
-                  schemaVariantName: component.def.schemaVariantName,
-                  schemaName: component.def.schemaName,
-                  hasParent: !!component.def.parentId,
-                });
-              });
-              trackEvent("collapse-components", {
-                source,
-                components: collapsed,
-              });
-            } else {
-              const expanded = [] as ComponentCollapseTrackingData[];
-              components.forEach((component) => {
-                this.expandComponents(component.uniqueKey);
-                expanded.push({
-                  schemaVariantName: component.def.schemaVariantName,
-                  schemaName: component.def.schemaName,
-                  hasParent: !!component.def.parentId,
-                });
-              });
-              trackEvent("expand-components", {
-                source: "context-menu",
-                components: expanded,
-              });
-            }
-          },
-
-          toggleSelectedCollapse(source: string) {
-            this.toggleCollapse(source, ...this.selectedComponentIds);
-          },
-
-          collapseOrExpandComponents(...ids: ComponentId[]) {
-            let result;
-            const components = [] as DiagramGroupData[];
-            for (let i = 0; i < ids.length; i++) {
-              const id = ids[i];
-              if (id) {
-                const uniqueKey = `g-${id}`;
-                const component = this.groupsById[id];
-                if (component) {
-                  components.push(component);
-
-                  if (!this.collapsedComponents.has(uniqueKey)) {
-                    return "Collapse";
-                  } else {
-                    result = "Expand";
-                  }
-                }
-              }
-            }
-            return result;
-          },
-
-          collapseOrExpandSelectedComponents() {
-            return this.collapseOrExpandComponents(
-              ...this.selectedComponentIds,
-            );
           },
 
           FETCH_ALL_COMPONENTS() {
@@ -1638,29 +1485,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         onActivated() {
           if (!changeSetId) return;
-
-          try {
-            const minimzedString = window.localStorage.getItem(
-              `${workspaceId}-collapsed-components`,
-            );
-            if (minimzedString) {
-              const collapsed = JSON.parse(minimzedString);
-              this.collapsedComponents = new Set(collapsed);
-            }
-          } catch (e) {
-            /* empty */
-          }
-
-          this.collapsedComponents.forEach((key) => {
-            this.collapsedElementPositions[key] = loadCollapsedData(
-              POS_PREFIX,
-              key,
-            );
-            this.collapsedElementSizes[key] = loadCollapsedData(
-              SIZE_PREFIX,
-              key,
-            );
-          });
 
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(
