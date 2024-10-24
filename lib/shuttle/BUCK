@@ -1,0 +1,43 @@
+load("@prelude-si//:macros.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "shuttle",
+    deps = [
+        "//lib/naxum:naxum",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//lib/telemetry-nats-rs:telemetry-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio-util",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+    extra_test_targets = [":test-integration"],
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//lib/telemetry-nats-rs:telemetry-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        ":shuttle",
+    ],
+    crate_root = "tests/integration.rs",
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    env = {
+        "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
+)
