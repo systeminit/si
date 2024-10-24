@@ -11303,6 +11303,12 @@ cargo.rust_library(
     deps = [":num-traits-0.2.19"],
 )
 
+alias(
+    name = "ordered-float",
+    actual = ":ordered-float-4.4.0",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "ordered-float-4.4.0.crate",
     sha256 = "83e7ccb95e240b7c9506a3d544f10d935e142cc90b0a1d56954fb44d89ad6b97",
@@ -11319,10 +11325,15 @@ cargo.rust_library(
     edition = "2021",
     features = [
         "default",
+        "serde",
         "std",
     ],
     visibility = [],
-    deps = [":num-traits-0.2.19"],
+    deps = [
+        ":num-traits-0.2.19",
+        ":rand-0.8.5",
+        ":serde-1.0.210",
+    ],
 )
 
 http_archive(
@@ -13297,6 +13308,8 @@ cargo.rust_library(
         "getrandom",
         "libc",
         "rand_chacha",
+        "serde",
+        "serde1",
         "small_rng",
         "std",
         "std_rng",
@@ -13319,6 +13332,7 @@ cargo.rust_library(
     deps = [
         ":rand_chacha-0.3.1",
         ":rand_core-0.6.4",
+        ":serde-1.0.210",
     ],
 )
 
@@ -13406,10 +13420,15 @@ cargo.rust_library(
     features = [
         "alloc",
         "getrandom",
+        "serde",
+        "serde1",
         "std",
     ],
     visibility = [],
-    deps = [":getrandom-0.2.15"],
+    deps = [
+        ":getrandom-0.2.15",
+        ":serde-1.0.210",
+    ],
 )
 
 http_archive(
@@ -18090,6 +18109,7 @@ cargo.rust_binary(
         ":opentelemetry-otlp-0.15.0",
         ":opentelemetry-semantic-conventions-0.14.0",
         ":opentelemetry_sdk-0.22.1",
+        ":ordered-float-4.4.0",
         ":ouroboros-0.18.4",
         ":parking_lot-0.12.3",
         ":paste-1.0.15",

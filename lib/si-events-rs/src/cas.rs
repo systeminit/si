@@ -1,10 +1,11 @@
+use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Eq, Hash, Clone)]
 pub enum CasValueNumber {
     U64(u64),
     I64(i64),
-    F64(f64),
+    F64(OrderedFloat<f64>),
 }
 
 /// A type that can be converted to and from serde_json::Value types infallibly,
@@ -13,7 +14,7 @@ pub enum CasValueNumber {
 /// type, but we still want to store arbitrary payloads in our content store.
 /// The alternative is to serialize the value to a string and then serialize
 /// that string with postcard.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Eq, Hash, Clone)]
 #[remain::sorted]
 pub enum CasValue {
     /// An array of values
@@ -52,10 +53,10 @@ impl From<serde_json::Value> for CasValue {
                         .expect("serde_json said it was an i64 but refused to give me one"),
                 )
             } else if n.is_f64() {
-                CasValueNumber::F64(
+                CasValueNumber::F64(ordered_float::OrderedFloat(
                     n.as_f64()
                         .expect("serde_json said it was an f64 but refused to give me one"),
-                )
+                ))
             } else {
                 panic!("the arbitrary_precision feature of serde_json is not supported");
             }),
@@ -82,7 +83,7 @@ impl From<CasValue> for serde_json::Value {
             CasValue::Number(n) => serde_json::Value::Number(match n {
                 CasValueNumber::U64(n) => n.into(),
                 CasValueNumber::I64(n) => n.into(),
-                CasValueNumber::F64(n) => serde_json::value::Number::from_f64(n)
+                CasValueNumber::F64(n) => serde_json::value::Number::from_f64(*n)
                     .expect("cannot deserialize an infinite or NAN f64 value"),
             }),
             CasValue::String(s) => serde_json::Value::String(s),

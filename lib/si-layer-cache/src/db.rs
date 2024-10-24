@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::{future::IntoFuture, io, sync::Arc};
 
@@ -17,9 +16,7 @@ use ulid::Ulid;
 use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::db::func_run::FuncRunDb;
 use crate::db::func_run_log::FuncRunLogDb;
-use crate::disk_cache::{DiskCache, DiskCacheConfig};
 use crate::hybrid_cache::CacheConfig;
-use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
     error::LayerDbResult,
@@ -330,7 +327,7 @@ pub struct LayerDbConfig {
 }
 
 impl LayerDbConfig {
-    pub fn default_for_service(service: &str) -> Self {
+    pub fn default_for_service() -> Self {
         Self {
             pg_pool_config: Default::default(),
             nats_config: Default::default(),

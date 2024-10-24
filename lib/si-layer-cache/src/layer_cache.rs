@@ -143,30 +143,20 @@ where
         }
     }
 
-    pub fn insert_from_cache_updates(
-        &self,
-        key: Arc<str>,
-        serialize_value: Vec<u8>,
-    ) -> LayerDbResult<()> {
-        Ok(self
-            .cache
-            .insert_raw_bytes(key.clone(), serialize_value.clone()))
+    pub fn insert_from_cache_updates(&self, key: Arc<str>, serialize_value: Vec<u8>) {
+        self.cache
+            .insert_raw_bytes(key.clone(), serialize_value.clone());
     }
 
     pub fn insert_or_update(&self, key: Arc<str>, value: V) {
         self.cache.insert(key, value);
     }
 
-    pub async fn insert_or_update_from_cache_updates(
-        &self,
-        key: Arc<str>,
-        serialize_value: Vec<u8>,
-    ) -> LayerDbResult<()> {
+    pub fn insert_or_update_from_cache_updates(&self, key: Arc<str>, serialize_value: Vec<u8>) {
         self.insert_from_cache_updates(key, serialize_value)
     }
 
-    pub fn evict_from_cache_updates(&self, key: Arc<str>) -> LayerDbResult<()> {
+    pub fn evict_from_cache_updates(&self, key: Arc<str>) {
         self.cache.remove(&key);
-        Ok(())
     }
 }

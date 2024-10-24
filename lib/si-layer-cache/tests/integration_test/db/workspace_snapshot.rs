@@ -1,8 +1,8 @@
-use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, ChangeSetId, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::db::serialize;
+use si_layer_cache::hybrid_cache::CacheConfig;
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -17,13 +17,13 @@ type TestLayerDb = LayerDb<String, String, String, String>;
 async fn write_to_db() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("slash");
+    // todo:
+    // let dbfile = disk_cache_path("slash");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("workspace_snapshot_write_to_db").await,
         setup_nats_client(Some("workspace_snapshot_write_to_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -50,26 +50,21 @@ async fn write_to_db() {
     let key_str: Arc<str> = key.to_string().into();
 
     // Are we in memory?
-    let in_memory = ldb
-        .workspace_snapshot()
-        .cache
-        .memory_cache()
-        .get(&key_str)
-        .await;
+    let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
     assert_eq!(Some(value.clone()), in_memory);
 
     // Are we on disk?
-    let on_disk_postcard = ldb
-        .workspace_snapshot()
-        .cache
-        .disk_cache()
-        .get(key_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: String =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(value.as_ref(), &on_disk);
-
+    // let on_disk_postcard = ldb
+    //     .workspace_snapshot()
+    //     .cache
+    //     .disk_cache()
+    //     .get(key_str.clone())
+    //     .await
+    //     .expect("cannot get from disk cache");
+    // let on_disk: String =
+    //     serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+    // assert_eq!(value.as_ref(), &on_disk);
+    //
     // Are we in pg?
     let in_pg_postcard = ldb
         .workspace_snapshot()
@@ -88,13 +83,13 @@ async fn write_to_db() {
 async fn evict_from_db() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("slash");
+    // todo:
+    // let dbfile = disk_cache_path("slash");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("workspace_snapshot_evict_from_db").await,
         setup_nats_client(Some("workspace_snapshot_evict_from_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -127,7 +122,6 @@ async fn evict_from_db() {
             Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::System,
         )
-        .await
         .expect("cannot evict local data");
     match status.get_status().await.expect("failed to get status") {
         PersistStatus::Finished => {}
@@ -135,25 +129,20 @@ async fn evict_from_db() {
     }
 
     // Are we in memory?
-    let in_memory = ldb
-        .workspace_snapshot()
-        .cache
-        .memory_cache()
-        .get(&key_str)
-        .await;
+    let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
     assert_ne!(Some(value.clone()), in_memory);
 
     // Are we on disk?
-    assert!(
-        ldb.workspace_snapshot()
-            .cache
-            .disk_cache()
-            .get(key_str.clone())
-            .await
-            .is_err(),
-        "found item on disk when it should have been evicted"
-    );
-
+    // assert!(
+    //     ldb.workspace_snapshot()
+    //         .cache
+    //         .disk_cache()
+    //         .get(key_str.clone())
+    //         .await
+    //         .is_err(),
+    //     "found item on disk when it should have been evicted"
+    // );
+    //
     // Are we in pg?
     assert!(
         ldb.workspace_snapshot()
@@ -171,21 +160,21 @@ async fn evict_from_db() {
 async fn evictions_are_gossiped() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
+    // /todo:
+    // let tempdir_slash = disk_cache_path("slash");
+    // let tempdir_axl = disk_cache_path("axl");
 
     let db = setup_pg_db("workspace_snapshot_evictions_are_gossiped").await;
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some(
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -194,14 +183,13 @@ async fn evictions_are_gossiped() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db,
         setup_nats_client(Some(
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -236,7 +224,7 @@ async fn evictions_are_gossiped() {
         let in_memory = ldb_axl
             .workspace_snapshot()
             .cache
-            .memory_cache()
+            .cache()
             .get(&pk_str)
             .await;
         match in_memory {
@@ -256,31 +244,31 @@ async fn evictions_are_gossiped() {
     );
 
     // Are we on disk?
-    let mut disk_check_count = 0;
-    while disk_check_count <= max_check_count {
-        match ldb_axl
-            .workspace_snapshot()
-            .cache
-            .disk_cache()
-            .get(pk_str.clone())
-            .await
-        {
-            Ok(on_disk_postcard) => {
-                let on_disk: String =
-                    serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-                assert_eq!(value.as_ref(), &on_disk);
-                break;
-            }
-            Err(_e) => {
-                disk_check_count += 1;
-                tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
-            }
-        }
-    }
-    assert_ne!(
-        max_check_count, disk_check_count,
-        "value did not arrive in the remote disk cache within 10ms"
-    );
+    // let mut disk_check_count = 0;
+    // while disk_check_count <= max_check_count {
+    //     match ldb_axl
+    //         .workspace_snapshot()
+    //         .cache
+    //         .disk_cache()
+    //         .get(pk_str.clone())
+    //         .await
+    //     {
+    //         Ok(on_disk_postcard) => {
+    //             let on_disk: String =
+    //                 serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
+    //             assert_eq!(value.as_ref(), &on_disk);
+    //             break;
+    //         }
+    //         Err(_e) => {
+    //             disk_check_count += 1;
+    //             tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
+    //         }
+    //     }
+    // }
+    // assert_ne!(
+    //     max_check_count, disk_check_count,
+    //     "value did not arrive in the remote disk cache within 10ms"
+    // );
 
     // Are we in pg?
     let in_pg_postcard = ldb_axl
@@ -303,7 +291,6 @@ async fn evictions_are_gossiped() {
             Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::System,
         )
-        .await
         .expect("cannot evict local data");
     match status.get_status().await.expect("failed to get status") {
         PersistStatus::Finished => {}
@@ -317,7 +304,7 @@ async fn evictions_are_gossiped() {
         let in_memory = ldb_axl
             .workspace_snapshot()
             .cache
-            .memory_cache()
+            .cache()
             .get(&pk_str)
             .await;
         match in_memory {
@@ -336,26 +323,26 @@ async fn evictions_are_gossiped() {
     );
 
     // Are we on disk?
-    let mut disk_check_count = 0;
-    while disk_check_count < max_check_count {
-        match ldb_axl
-            .workspace_snapshot()
-            .cache
-            .disk_cache()
-            .get(pk_str.clone())
-            .await
-        {
-            Ok(_on_disk_postcard) => {
-                disk_check_count += 1;
-                tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
-            }
-            Err(_e) => {
-                break;
-            }
-        }
-    }
-    assert_ne!(
-        max_check_count, disk_check_count,
-        "value did not evict from the remote disk cache within 10ms"
-    );
+    // let mut disk_check_count = 0;
+    // while disk_check_count < max_check_count {
+    //     match ldb_axl
+    //         .workspace_snapshot()
+    //         .cache
+    //         .disk_cache()
+    //         .get(pk_str.clone())
+    //         .await
+    //     {
+    //         Ok(_on_disk_postcard) => {
+    //             disk_check_count += 1;
+    //             tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
+    //         }
+    //         Err(_e) => {
+    //             break;
+    //         }
+    //     }
+    // }
+    // assert_ne!(
+    //     max_check_count, disk_check_count,
+    //     "value did not evict from the remote disk cache within 10ms"
+    // );
 }

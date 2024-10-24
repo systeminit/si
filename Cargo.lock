@@ -4483,6 +4483,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83e7ccb95e240b7c9506a3d544f10d935e142cc90b0a1d56954fb44d89ad6b97"
 dependencies = [
  "num-traits",
+ "rand 0.8.5",
+ "serde",
 ]
 
 [[package]]
@@ -5274,6 +5276,7 @@ dependencies = [
  "libc",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
+ "serde",
 ]
 
 [[package]]
@@ -5312,6 +5315,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom 0.2.15",
+ "serde",
 ]
 
 [[package]]
@@ -6472,6 +6476,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "derive_more",
+ "ordered-float 4.4.0",
  "paste",
  "postgres-types",
  "remain",

@@ -91,7 +91,7 @@ pub enum WorkspaceSnapshotGraphError {
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
 
-#[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants)]
+#[derive(Debug, Deserialize, Serialize, Clone, EnumDiscriminants, Eq, Hash, PartialEq)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum WorkspaceSnapshotGraph {
     Legacy,
@@ -144,7 +144,7 @@ impl WorkspaceSnapshotGraph {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct RebaseBatch {
     updates: Vec<Update>,
 }
