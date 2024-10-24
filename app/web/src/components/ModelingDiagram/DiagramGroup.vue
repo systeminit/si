@@ -240,17 +240,6 @@
       />
 
       <DiagramIcon
-        icon="chevron"
-        origin="top-left"
-        :rotation="collapsed ? 90 : 180"
-        :size="40"
-        :x="38"
-        :y="collapsed ? 2 : 42"
-        :color="colors.headerText"
-        @click="toggleChevron"
-      />
-
-      <DiagramIcon
         :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
         origin="top-left"
         :size="32"
@@ -504,7 +493,6 @@ import {
   GROUP_TITLE_FONT_SIZE,
   SELECTION_COLOR,
 } from "@/components/ModelingDiagram/diagram_constants";
-import { trackEvent } from "@/utils/tracking";
 import {
   QualificationStatus,
   statusIconsForComponent,
@@ -729,36 +717,6 @@ const highlightAsNewParent = computed(() => {
       props.group.uniqueKey
   );
 });
-
-const component = computed(
-  () => componentsStore.rawComponentsById[props.group.def.id],
-);
-
-const toggleChevron = () => {
-  if (componentsStore.collapsedComponents.has(props.group.uniqueKey)) {
-    componentsStore.expandComponents(props.group.uniqueKey);
-    trackEvent("expand-components", {
-      source: "diagram-group",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
-  } else {
-    const { position, size } =
-      componentsStore.initMinimzedElementPositionAndSize(props.group.uniqueKey);
-    componentsStore.updateMinimzedElementPositionAndSize({
-      uniqueKey: props.group.uniqueKey,
-      position,
-      size,
-    });
-    trackEvent("collapse-components", {
-      source: "diagram-group",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
-  }
-};
 
 // RENAME ON DIAGRAM STUFF
 const renameHitboxSelfRect = ref();
