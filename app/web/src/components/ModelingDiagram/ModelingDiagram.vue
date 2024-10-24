@@ -1437,13 +1437,13 @@ const currentSelectionMovableElements = computed(() => {
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
-const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
+const edgeScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 function beginDragElements() {
   if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;
 
-  totalScrolledDuringDrag.value = { x: 0, y: 0 };
+  edgeScrolledDuringDrag.value = { x: 0, y: 0 };
 
   draggedElementsPositionsPreDrag.value =
     currentSelectionMovableElements.value.reduce((obj, el) => {
@@ -1464,13 +1464,13 @@ function onDragElementsMove() {
     x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
-        totalScrolledDuringDrag.value.x) /
+        edgeScrolledDuringDrag.value.x) /
         zoomLevel.value,
     ),
     y: Math.round(
       (containerPointerPos.value.y -
         lastMouseDownContainerPointerPos.value.y +
-        totalScrolledDuringDrag.value.y) /
+        edgeScrolledDuringDrag.value.y) /
         zoomLevel.value,
     ),
   };
@@ -1619,8 +1619,8 @@ function triggerDragToEdgeScrolling() {
   }
 
   // track total amount scrolled because we need to offset from original drag click location
-  totalScrolledDuringDrag.value.x += deltaX;
-  totalScrolledDuringDrag.value.y += deltaY;
+  edgeScrolledDuringDrag.value.x += deltaX;
+  edgeScrolledDuringDrag.value.y += deltaY;
 
   // adjust amount to scroll by zoom before we apply it
   if (deltaX !== 0) deltaX /= zoomLevel.value;
@@ -1763,13 +1763,13 @@ function onResizeMove() {
     x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
-        totalScrolledDuringDrag.value.x) /
+        edgeScrolledDuringDrag.value.x) /
         zoomLevel.value,
     ),
     y: Math.round(
       (containerPointerPos.value.y -
         lastMouseDownContainerPointerPos.value.y +
-        totalScrolledDuringDrag.value.y) /
+        edgeScrolledDuringDrag.value.y) /
         zoomLevel.value,
     ),
   };
