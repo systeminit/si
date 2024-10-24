@@ -2121,23 +2121,16 @@ function beginResizeElement() {
   if (!lastMouseDownElement.value) return;
   if (lastMouseDownHoverMeta.value?.type !== "resize") return;
 
-  const node = lastMouseDownElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
   if (!(lastMouseDownElement.value instanceof DiagramGroupData)) return;
 
   resizeElement.value = lastMouseDownElement.value;
-  if (componentsStore.collapsedComponents.has(resizeElement.value.uniqueKey))
-    return;
 
   resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
   const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
-  resizedElementSizesPreResize[resizeTargetKey] =
-    componentsStore.resizedElementSizes[resizeTargetKey] || node.size;
-
-  draggedElementsPositionsPreDrag.value[resizeTargetKey] =
-    componentsStore.movedElementPositions[resizeTargetKey] || node.position;
+  const irect = viewStore.groups[lastMouseDownElement.value.def.id]!;
+  resizedElementSizesPreResize[resizeTargetKey] = { ...irect };
+  draggedElementsPositionsPreDrag.value[resizeTargetKey] = { ...irect };
 }
 
 function endResizeElement() {
@@ -2325,8 +2318,7 @@ function onResizeMove() {
   };
 
   // Make sure the frame doesn't shrink to be smaller than it's children
-  const contentsBox =
-    componentsStore.contentBoundingBoxesByGroupId[resizeTargetId];
+  const contentsBox = viewStore.contentBoundingBoxesByGroupId[resizeTargetId];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2394,8 +2386,7 @@ function onResizeMove() {
     const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
     if (parent && parentShape) {
       const parentPosition =
-        componentsStore.movedElementPositions[parent.uniqueKey] ??
-        parent.def.position;
+        componentsStore[parent.uniqueKey] ?? parent.def.position;
 
       const parentContentRect = {
         x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
@@ -2632,7 +2623,7 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   let right;
   let bottom;
   for (const id of componentIds) {
-    const geometry = componentsStore.renderedGeometriesByComponentId[id];
+    const geometry = viewStore.components[id] || viewStore.groups[id];
     if (!geometry) continue;
 
     const thisBoundaries = {
@@ -2749,7 +2740,7 @@ async function triggerPasteElements() {
   }
 
   const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
-    const thisGeometry = componentsStore.renderedGeometriesByComponentId[id];
+    const thisGeometry = viewStore.components[id] || viewStore.groups[id];
 
     if (!thisGeometry) throw new Error("Rendered Component not found");
 
@@ -3162,9 +3153,9 @@ function getCenterPointOfElement(el: DiagramElementData) {
     if (!fromPoint || !toPoint) return;
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-    const position = _.clone(
-      componentsStore.combinedElementPositions[el.uniqueKey] || el.def.position,
-    );
+    const comp =
+      viewStore.components[el.def.id] || viewStore.groups[el.def.id]!;
+    const position = structuredClone(comp);
     if (el.def.size) {
       position.y += el.def.size.height / 2;
     }
@@ -3188,9 +3179,8 @@ const renameEndFunc = ref();
 function fixRenameInputPosition() {
   if (renameElement.value) {
     const componentBox =
-      componentsStore.renderedGeometriesByComponentId[
-        renameElement.value.def.id
-      ];
+      viewStore.components[renameElement.value.def.id] ||
+      viewStore.groups[renameElement.value.def.id];
     if (componentBox && renameInputWrapperRef.value) {
       const { x, y } = convertGridCoordsToContainerCoords(componentBox);
       const z = zoomLevel.value;
@@ -3255,7 +3245,7 @@ function renameOnDiagram(
   endFunc: () => void,
 ) {
   const componentBox =
-    componentsStore.renderedGeometriesByComponentId[el.def.id];
+    viewStore.components[el.def.id] || viewStore.groups[el.def.id];
 
   if (componentBox && renameInputWrapperRef.value && renameInputRef.value) {
     renameElement.value = el;

@@ -1,4 +1,4 @@
-import { IRect, Vector2d } from "konva/lib/types";
+import { IRect } from "konva/lib/types";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
   DiagramEdgeData,
