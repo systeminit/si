@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { Vector2d, IRect } from "konva/lib/types";
+import { Vector2d } from "konva/lib/types";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
@@ -37,12 +37,6 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { DefaultMap } from "@/utils/defaultmap";
-import {
-  GROUP_BOTTOM_INTERNAL_PADDING,
-  GROUP_DEFAULT_HEIGHT,
-  GROUP_DEFAULT_WIDTH,
-  GROUP_INTERNAL_PADDING,
-} from "@/components/ModelingDiagram/diagram_constants";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { trackEvent } from "@/utils/tracking";
 import handleStoreError from "./errors";
@@ -599,94 +593,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             // all other subtabs (currently) are in the component tab
             return ["component", slug];
-          },
-
-          // The area that encloses all the components children
-          contentBoundingBoxesByGroupId(): Record<ComponentId, IRect> {
-            const boxDictionary: Record<string, IRect> = {};
-
-            for (const group of Object.values(this.groupsById)) {
-              const childIds = group.def.childIds;
-              if (!childIds) continue;
-
-              let top;
-              let bottom;
-              let left;
-              let right;
-
-              for (const childId of childIds) {
-                let geometry = this.renderedGeometriesByComponentId[childId];
-                // in the case of frames being collapsed, look up the positions
-                if (!geometry) {
-                  const comp = this.allComponentsById[childId];
-                  // if nodes aren't rendered we won't have data for them, they cannot be collapsed either
-                  if (
-                    !comp ||
-                    comp.def.componentType === ComponentType.Component
-                  )
-                    continue;
-                  const size = this.resizedElementSizes[comp.uniqueKey];
-                  const pos = this.movedElementPositions[comp.uniqueKey];
-                  if (!size) continue;
-                  if (!pos) continue;
-                  geometry = { ...size, ...pos };
-                }
-
-                if (!top || geometry.y < top) top = geometry.y;
-
-                const thisLeft = geometry.x - geometry.width / 2;
-                if (!left || thisLeft < left) left = thisLeft;
-
-                const thisRight = geometry.x + geometry.width / 2;
-                if (!right || thisRight > right) right = thisRight;
-
-                const thisBottom = geometry.y + geometry.height;
-                if (!bottom || thisBottom > bottom) bottom = thisBottom;
-              }
-
-              if (
-                left === undefined ||
-                right === undefined ||
-                top === undefined ||
-                bottom === undefined
-              )
-                continue;
-
-              boxDictionary[group.def.id] = {
-                x: left - GROUP_INTERNAL_PADDING,
-                y: top - GROUP_INTERNAL_PADDING,
-                width: right - left + GROUP_INTERNAL_PADDING * 2,
-                height:
-                  bottom -
-                  top +
-                  GROUP_INTERNAL_PADDING +
-                  GROUP_BOTTOM_INTERNAL_PADDING,
-              };
-            }
-
-            return boxDictionary;
-          },
-          combinedElementPositions: (
-            state,
-          ): Record<DiagramElementUniqueKey, Vector2d> => {
-            const pos = _.clone(state.movedElementPositions);
-            for (const [key, p] of Object.entries(
-              state.collapsedElementPositions,
-            )) {
-              pos[key] = p;
-            }
-            return pos;
-          },
-          combinedElementSizes: (
-            state,
-          ): Record<DiagramElementUniqueKey, Size2D> => {
-            const size = _.clone(state.resizedElementSizes);
-            for (const [key, s] of Object.entries(
-              state.collapsedElementSizes,
-            )) {
-              size[key] = s;
-            }
-            return size;
           },
         },
         actions: {
@@ -1756,9 +1662,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             );
           });
 
-          // trigger initial load
-          this.FETCH_DIAGRAM_DATA();
-
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(
             router.currentRoute,
@@ -1946,7 +1849,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the applied change set has rebased into this change set,
                   // then refetch (i.e. there might be updates!)
                   if (data.toRebaseChangeSetId === changeSetId) {
-                    this.FETCH_DIAGRAM_DATA();
+                    this.FETCH_ALL_COMPONENTS();
                   }
                 },
               },

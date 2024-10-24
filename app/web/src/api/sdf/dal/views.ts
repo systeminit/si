@@ -9,12 +9,8 @@ import {
 
 export type ViewId = string;
 
-export type GroupGeometry = IRect;
-export type ComponentGeometry = Vector2d;
-export type Components = Record<
-  DiagramElementUniqueKey,
-  GroupGeometry | ComponentGeometry
->;
+export type Components = Record<ComponentId, IRect>;
+export type Groups = Record<ComponentId, IRect>;
 export type Edges = Record<DiagramElementUniqueKey, DiagramEdgeData>;
 export type Sockets = Record<
   DiagramElementUniqueKey,
@@ -25,6 +21,7 @@ export interface View {
   id: ViewId;
   name: string;
   components: Components;
+  groups: Groups;
   edges: Edges;
   sockets: Sockets;
 }

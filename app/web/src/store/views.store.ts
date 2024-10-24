@@ -2,13 +2,24 @@ import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { ViewId, View, Components, Sockets, Edges } from "@/api/sdf/dal/views";
+import {
+  ViewId,
+  View,
+  Components,
+  Sockets,
+  Edges,
+  Groups,
+} from "@/api/sdf/dal/views";
 import {
   DiagramElementUniqueKey,
   DiagramGroupData,
   DiagramNodeData,
 } from "@/components/ModelingDiagram/diagram_types";
-import { RawComponent, RawEdge } from "@/api/sdf/dal/component";
+import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
+import {
+  GROUP_BOTTOM_INTERNAL_PADDING,
+  GROUP_INTERNAL_PADDING,
+} from "@/components/ModelingDiagram/diagram_constants";
 import handleStoreError from "./errors";
 
 import { useChangeSetsStore } from "./change_sets.store";
@@ -89,6 +100,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
          * and can make `renderedGeometriesByComponentId` unnecessary
          * */
         components: {} as Components,
+        groups: {} as Groups,
         edges: {} as Edges,
         // DiagramNodeSocket can find isConnected here, so it doesn't re-render with every drag
         edgeIds: new Set() as Set<DiagramElementUniqueKey>,
@@ -96,6 +108,63 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
       }),
       getters: {
         selectedView: (state) => state.viewsById[state.selectedViewId || ""],
+        // NOTE: this is computed for now, but we could easily make this state
+        // and re-compute it for only which elements get moved (if it becomes a bottleneck)
+        contentBoundingBoxesByGroupId(state): Record<ComponentId, IRect> {
+          const boxDictionary: Record<string, IRect> = {};
+          const groups = Object.keys(state.groups)
+            .map((c) => componentsStore.groupsById[c.substring(2)])
+            .filter((c): c is DiagramGroupData => !!c);
+
+          for (const group of groups) {
+            const childIds = group.def.childIds;
+            if (!childIds) continue;
+
+            let top;
+            let bottom;
+            let left;
+            let right;
+
+            for (const childId of childIds) {
+              const geometry =
+                state.groups[childId] || state.components[childId];
+              if (!geometry) continue;
+
+              if (!top || geometry.y < top) top = geometry.y;
+
+              const thisLeft = geometry.x - geometry.width / 2;
+              if (!left || thisLeft < left) left = thisLeft;
+
+              const thisRight = geometry.x + geometry.width / 2;
+              if (!right || thisRight > right) right = thisRight;
+
+              const thisBottom = geometry.y + geometry.height;
+              if (!bottom || thisBottom > bottom) bottom = thisBottom;
+            }
+
+            if (
+              left === undefined ||
+              right === undefined ||
+              top === undefined ||
+              bottom === undefined
+            )
+              continue;
+
+            // i dont know if i need these paddings yet
+            boxDictionary[group.def.id] = {
+              x: left - GROUP_INTERNAL_PADDING,
+              y: top - GROUP_INTERNAL_PADDING,
+              width: right - left + GROUP_INTERNAL_PADDING * 2,
+              height:
+                bottom -
+                top +
+                GROUP_INTERNAL_PADDING +
+                GROUP_BOTTOM_INTERNAL_PADDING,
+            };
+          }
+
+          return boxDictionary;
+        },
       },
       actions: {
         selectView(id: ViewId) {
@@ -116,6 +185,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
              * but those could just be a `structuredClone` of this data
              * */
             this.components = view.components;
+            this.groups = view.groups;
             // currently edges store their socket location information
             // internally... maybe we should stop that
             this.edges = view.edges;
@@ -135,7 +205,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO
         },
         // no viewId means load the default
-        async SELECT_VIEW(viewId?: ViewId) {
+        async FETCH_VIEW(viewId?: ViewId) {
           // TODO, fetch, and set to selected view
           return new ApiRequest<{
             viewId: ViewId;
@@ -150,40 +220,54 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onSuccess: (response) => {
               componentsStore.SET_COMPONENTS_FROM_VIEW(response);
-              const components: (DiagramGroupData | DiagramNodeData)[] = [];
+              const components: DiagramNodeData[] = [];
+              const groups: DiagramGroupData[] = [];
               for (const component of response.components) {
                 // doing this to piggy back on the position data, but it will change with Victor's changes!
                 const c = componentsStore.allComponentsById[component.id];
-                if (c) components.push(c);
+                if (c) {
+                  if (c.def.isGroup) groups.push(c as DiagramGroupData);
+                  else components.push(c as DiagramNodeData);
+                }
               }
-              this.SET_COMPONENTS_FROM_VIEW(response.viewId, { components });
+              this.SET_COMPONENTS_FROM_VIEW(response.viewId, {
+                components,
+                groups,
+              });
               this.selectView(response.viewId);
 
               // fire this and don't wait for it
               componentsStore.FETCH_ALL_COMPONENTS();
+              // load all other view geometry
             },
           });
         },
         SET_COMPONENTS_FROM_VIEW(
           viewId: ViewId,
           response: {
-            components: (DiagramGroupData | DiagramNodeData)[];
+            components: DiagramNodeData[];
+            groups: DiagramGroupData[];
             edges?: RawEdge[];
             inferredEdges?: RawEdge[];
           },
         ) {
           const components: Components = {};
+          const groups: Groups = {};
           for (const component of response.components) {
-            let c;
-            if (component.def.isGroup) {
-              c = { ...component.def.position, ...component.def.size };
-            } else {
-              c = { ...component.def.position };
-            }
-            components[component.uniqueKey] = c;
+            const geo = { ...component.def.position } as IRect;
+            geo.width = component.width;
+            geo.height = component.height;
+            components[component.def.id] = geo;
+          }
+          for (const group of response.groups) {
+            groups[group.def.id] = {
+              ...group.def.position,
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              ...group.def.size!,
+            };
           }
           // TODO
-          this.viewsById[viewId] = { components };
+          this.viewsById[viewId] = { components, groups };
         },
         async MOVE_COMPONENTS(
           components: DiagramElementUniqueKey[],
@@ -205,7 +289,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
       },
       onActivated() {
         if (!changeSetId) return;
-        this.SELECT_VIEW();
+        this.FETCH_VIEW();
         this.LIST_VIEWS();
 
         const realtimeStore = useRealtimeStore();
@@ -226,6 +310,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the applied change set has rebased into this change set,
                 // then refetch (i.e. there might be updates!)
                 if (data.toRebaseChangeSetId === changeSetId) {
+                  this.FETCH_VIEW();
+                  this.LIST_VIEWS();
+                  // LOAD ALL OTHER VIEW DATA, if its dirty
                 }
               },
             },
@@ -240,5 +327,5 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         };
       },
     }),
-  );
+  )();
 };
