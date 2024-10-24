@@ -182,24 +182,6 @@ type PendingComponent = {
   componentId?: ComponentId;
 };
 
-export type ComponentData = {
-  key: DiagramElementUniqueKey;
-  detach?: boolean;
-  newParent?: ComponentId;
-};
-
-export interface elementPositionAndSize {
-  uniqueKey: DiagramElementUniqueKey;
-  position?: Vector2d;
-  size?: Size2D; // only frames have a size
-}
-
-export type ComponentCollapseTrackingData = {
-  schemaVariantName?: string;
-  schemaName?: string;
-  hasParent: boolean;
-};
-
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
 export const COLLAPSED_HALFWIDTH = DEFAULT_COLLAPSED_SIZE.width / 2;
 export const COLLAPSED_HALFHEIGHT = DEFAULT_COLLAPSED_SIZE.height / 2;

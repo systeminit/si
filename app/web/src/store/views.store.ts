@@ -20,6 +20,7 @@ import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,
 } from "@/components/ModelingDiagram/diagram_constants";
+import { vectorAdd } from "@/components/ModelingDiagram/utils/math";
 import handleStoreError from "./errors";
 
 import { useChangeSetsStore } from "./change_sets.store";
@@ -269,6 +270,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO
           this.viewsById[viewId] = { components, groups };
         },
+        /**
+         * @param clientUlid whoami
+         * @param components the selected components acted upon
+         * @param positionDelta the vector to adjust all elements
+         * @param opts broadcast and persistence
+         */
         // REDO the 409 conflicts and retry logic
         async MOVE_COMPONENTS(
           clientUlid: string,
@@ -276,7 +283,21 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           positionDelta: Vector2d,
           opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
-          // TODO, bump all elements and their sockets by the vector
+          if (positionDelta.x !== 0 || positionDelta.y !== 0)
+            components.forEach((c) => {
+              let orig;
+              if (c.def.isGroup) orig = this.groups[c.def.id];
+              else orig = this.components[c.def.id];
+              if (!orig) return;
+
+              const newPos = vectorAdd({ ...orig }, positionDelta);
+              orig.x = newPos.x;
+              orig.y = newPos.y;
+
+              // find all sockets and adjust
+              // find all children by bounding box, not parentage, and adjust
+            });
+          // TODO, save, broadcast
         },
         async RESIZE_COMPONENT(
           clientUlid: string,
