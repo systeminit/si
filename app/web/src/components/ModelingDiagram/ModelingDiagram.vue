@@ -858,6 +858,7 @@ function onKeyUp(e: KeyboardEvent) {
 const mouseIsDown = ref(false);
 const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
+const prevDragTotal = ref<Vector2d>({ x: 0, y: 0 });
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownElementKey = ref<DiagramElementUniqueKey>();
 const lastMouseDownHoverMeta = ref<ElementHoverMeta | null>(null);
@@ -1460,6 +1461,7 @@ function onDragElementsMove() {
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
 
+  // this is the max delta from the original mouse down point
   const delta: Vector2d = {
     x: Math.round(
       (containerPointerPos.value.x -
@@ -1531,11 +1533,16 @@ function onDragElementsMove() {
   }
 
   const result = vectorAdd(delta, adjust);
+  // when we update the stores, we don't want to use the max delta
+  // i just need the difference between the last and this, to move the elements
+  const deltaFromLast = vectorSubtract(result, prevDragTotal.value);
+  // but keep the total vector for the next iteration through the loop!
+  prevDragTotal.value = { ...result };
 
   viewStore.MOVE_COMPONENTS(
     diagramUlid.value,
     currentSelectionMovableElements.value,
-    result,
+    deltaFromLast,
     { broadcastToClients: true },
   );
 
@@ -1544,6 +1551,7 @@ function onDragElementsMove() {
 
 function endDragElements() {
   dragElementsActive.value = false;
+  prevDragTotal.value = { x: 0, y: 0 };
 
   viewStore.MOVE_COMPONENTS(
     diagramUlid.value,
