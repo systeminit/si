@@ -427,7 +427,7 @@ impl VariantAuthoringClient {
         let schema_spec = metadata.to_schema_spec(new_variant_spec)?;
         let email = ctx.history_actor().email(ctx).await?;
         let pkg_spec = PkgSpec::builder()
-            .name(&schema_name.clone())
+            .name(schema_name.clone())
             .created_by(&email)
             .funcs(variant_funcs.clone())
             .func(asset_func_spec)
@@ -561,7 +561,7 @@ impl VariantAuthoringClient {
         let email = ctx.history_actor().email(ctx).await?;
 
         let pkg_spec = PkgSpec::builder()
-            .name(&schema_name.clone())
+            .name(schema_name.clone())
             .created_by(&email)
             .funcs(variant_funcs.clone())
             .func(asset_func_spec)

@@ -266,17 +266,14 @@ mod workspace_updates {
                                 .source()
                                 .and_then(|err| err.downcast_ref::<tungstenite::Error>())
                             {
-                                Some(ws_err) => match ws_err {
                                     // If the websocket has cleanly closed, we should cleanly finish as
                                     // well--this is not an error condition
-                                    tungstenite::Error::ConnectionClosed
-                                    | tungstenite::Error::AlreadyClosed => {
+                                    Some(tungstenite::Error::ConnectionClosed)
+                                    | Some(tungstenite::Error::AlreadyClosed) => {
                                         trace!("websocket has cleanly closed, ending");
                                         return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
-                                    }
-                                    _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
                                 },
-                                None => return Err(WorkspaceUpdatesError::WsSendIo(err)),
+                                _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
                             }
                         }
                     }

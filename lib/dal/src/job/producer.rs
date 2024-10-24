@@ -9,7 +9,7 @@ use super::consumer::{JobConsumerMetadata, JobInfo};
 #[derive(Error, Debug)]
 pub enum JobProducerError {
     #[error("arg {0:?} not found at index {1}")]
-    ArgNotFound(JobInfo, usize),
+    ArgNotFound(Box<JobInfo>, usize),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 }

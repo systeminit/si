@@ -359,7 +359,7 @@ impl PkgExporter {
 
         for kind in SiPropFuncSpecKind::iter() {
             let prop =
-                Prop::find_prop_by_path(ctx, variant_id, &PropPath::new(&kind.prop_path())).await?;
+                Prop::find_prop_by_path(ctx, variant_id, &PropPath::new(kind.prop_path())).await?;
 
             if let Some(prototype_id) =
                 AttributePrototype::find_for_prop(ctx, prop.id, &None).await?
