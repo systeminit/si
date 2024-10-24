@@ -93,10 +93,7 @@ overflow hidden */
             "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
-          <template
-            v-for="node of componentsStore.nodesById"
-            :key="node.uniqueKey"
-          >
+          <template v-for="node of nodes" :key="node.uniqueKey">
             <DiagramNode
               :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
               :debug="enableDebugMode"
@@ -2873,14 +2870,29 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
 
+// TODO, add viewId as a prop to the ModelingDiagram!
+const nodes = computed(() => {
+  const componentIds = Object.keys(viewStore.components);
+  const components: DiagramNodeData[] = [];
+  componentIds.forEach((id) => {
+    const c = componentsStore.nodesById[id];
+    if (c) components.push(c);
+  });
+  return components;
+});
+
 const groups = computed(() => {
+  const componentIds = Object.keys(viewStore.groups);
   const orderedGroups = _.orderBy(
-    Object.values(componentsStore.groupsById),
+    Object.values(componentsStore.groupsById).filter((g) =>
+      componentIds.includes(g.def.id),
+    ),
     (g) => {
       // order by "depth" in frames
       let zIndex = g.def.ancestorIds?.length || 0;
 
       // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
+      // TODO change this to being position comparisons not parentage
       if (dragElementsActive.value) {
         if (
           _.intersection(
