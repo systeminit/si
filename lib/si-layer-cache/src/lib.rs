@@ -22,6 +22,7 @@
 //! * On a miss, the data is read from Postgres, inserted into sled, inserted into moka, and
 //! returned to the user
 //!
+#![allow(clippy::doc_lazy_continuation)]
 
 pub mod activities;
 mod activity_client;

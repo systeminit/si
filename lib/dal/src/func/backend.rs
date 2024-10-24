@@ -41,7 +41,7 @@ pub enum FuncBackendError {
     #[error("dispatch func missing handler {0}")]
     DispatchMissingHandler(FuncId),
     #[error("function result action run error: {0:?}")]
-    FunctionResultActionRun(FunctionResult<ActionRunResultSuccess>),
+    FunctionResultActionRun(FunctionResult<Box<ActionRunResultSuccess>>),
     #[error("invalid data - expected a valid array entry value, got: {0}")]
     InvalidArrayEntryData(serde_json::Value),
     #[error("result failure: kind={kind}, message={message}, backend={backend}")]
@@ -437,7 +437,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         };
 
         span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
+        span.record("si.func.result", tracing::field::debug(&value));
         Ok(value)
     }
 
@@ -486,7 +486,7 @@ pub trait FuncBackend {
         let value = self.inline().await?;
 
         span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
+        span.record("si.func.result", tracing::field::debug(&value));
         Ok(value)
     }
 

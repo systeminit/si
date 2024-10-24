@@ -72,7 +72,8 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::module_inception,
-    clippy::module_name_repetitions
+    clippy::module_name_repetitions,
+    clippy::doc_lazy_continuation
 )]
 
 mod graph;

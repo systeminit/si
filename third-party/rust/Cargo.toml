@@ -24,7 +24,7 @@ authors = ["System Initiative Inc. <info@systeminit.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/systeminit/si"
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.82"
 publish = false
 
 [dependencies]

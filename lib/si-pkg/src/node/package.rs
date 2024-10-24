@@ -45,7 +45,7 @@ impl NameStr for PackageNode {
 
 impl WriteBytes for PackageNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
-        write_key_value_line(writer, KEY_KIND_STR, &self.kind.to_string())?;
+        write_key_value_line(writer, KEY_KIND_STR, self.kind.to_string())?;
         write_key_value_line(writer, KEY_NAME_STR, self.name())?;
         write_key_value_line(writer, KEY_VERSION_STR, &self.version)?;
         write_key_value_line(writer, KEY_DESCRIPTION_STR, &self.description)?;

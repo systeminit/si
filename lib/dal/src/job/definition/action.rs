@@ -185,8 +185,8 @@ async fn prepare_for_execution(
 
     let prototype_id = Action::prototype_id(ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-    span.record("si.action.kind", &tracing::field::debug(&prototype.kind));
-    span.record("si.component.id", &tracing::field::debug(&component_id));
+    span.record("si.action.kind", tracing::field::debug(&prototype.kind));
+    span.record("si.component.id", tracing::field::debug(&component_id));
     Action::set_state(ctx, action_id, ActionState::Running).await?;
 
     // Updates the action's state
