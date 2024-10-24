@@ -118,20 +118,12 @@ const rightClickMenuItems = computed(() => {
       header: true,
     });
 
-    // checks if this is a collapsed frame
-    const collapsed = componentsStore.collapsedComponents.has(
-      `g-${selectedComponentId.value}`,
-    );
-
-    // rename
-    if (!collapsed) {
-      items.push({
-        label: "Rename",
-        shortcut: "N",
-        icon: "cursor",
-        onSelect: renameComponent,
-      });
-    }
+    items.push({
+      label: "Rename",
+      shortcut: "N",
+      icon: "cursor",
+      onSelect: renameComponent,
+    });
 
     // set component type
     {
@@ -185,22 +177,6 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
-    // expand and collapse for a single frame
-    if (selectedComponent.value.def.componentType !== ComponentType.Component) {
-      const verb = collapsed ? "Expand" : "Collapse";
-      items.push({
-        label: verb,
-        icon: componentsStore.collapsedComponents.has(
-          `g-${selectedComponentId.value}`,
-        )
-          ? "chevron--down"
-          : "chevron--right",
-        onSelect: menuCollapse,
-        disabled,
-        shortcut: "\\",
-      });
-    }
-
     // copy, restore, delete
     items.push({
       label: `Copy`,
@@ -231,21 +207,6 @@ const rightClickMenuItems = computed(() => {
       label: `${selectedComponentIds.value.length} ${typeDisplayName()}`,
       header: true,
     });
-
-    // expand and collapse for multiple frames
-    const collapseOrExpand =
-      componentsStore.collapseOrExpandSelectedComponents();
-    if (collapseOrExpand) {
-      const verb = collapseOrExpand;
-      items.push({
-        label: verb,
-        icon:
-          collapseOrExpand === "Collapse" ? "chevron--down" : "chevron--right",
-        onSelect: menuCollapse,
-        disabled,
-        shortcut: "\\",
-      });
-    }
 
     items.push({
       label: `Copy`,
@@ -393,10 +354,6 @@ function open(
   if (elementPosition) elementPos.value = elementPosition;
   contextMenuRef.value?.open(e, anchorToMouse);
 }
-
-const menuCollapse = () => {
-  componentsStore.toggleSelectedCollapse("context-menu");
-};
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
