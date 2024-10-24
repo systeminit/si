@@ -79,9 +79,9 @@ composite_rejection! {
     }
 }
 
-/// An extractor for [`rebaser_core::ContentInfo`].
+/// An extractor for [`rebaser_core::api_types::ContentInfo`].
 #[derive(Debug)]
-pub struct ContentInfo(pub rebaser_core::ContentInfo<'static>);
+pub struct ContentInfo(pub rebaser_core::api_types::ContentInfo<'static>);
 
 #[async_trait]
 impl<S> FromMessageHead<S> for ContentInfo {
@@ -89,8 +89,8 @@ impl<S> FromMessageHead<S> for ContentInfo {
 
     async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
         let headers = head.headers.as_ref().ok_or(HeadersMissing)?;
-        let content_info =
-            rebaser_core::ContentInfo::try_from(headers).map_err(HeadersParseError::from_err)?;
+        let content_info = rebaser_core::api_types::ContentInfo::try_from(headers)
+            .map_err(HeadersParseError::from_err)?;
 
         Ok(Self(content_info))
     }

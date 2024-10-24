@@ -34,6 +34,7 @@ mod change_set_processor_task;
 mod config;
 pub mod extract;
 mod handlers;
+mod naxum_forwarder;
 mod rebase;
 mod serial_dvu_task;
 mod server;

@@ -7,10 +7,12 @@ load(
 rust_library(
     name = "dal",
     deps = [
+        "//lib/audit-logs:audit-logs",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
         "//lib/module-index-client:module-index-client",
         "//lib/object-tree:object-tree",
+        "//lib/pending-events:pending-events",
         "//lib/pinga-core:pinga-core",
         "//lib/rebaser-client:rebaser-client",
         "//lib/si-crypto:si-crypto",

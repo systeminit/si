@@ -7,7 +7,9 @@ use dal::{
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
-use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
+use si_events::{
+    rebase_batch_address::RebaseBatchAddress, EventSessionId, WorkspaceSnapshotAddress,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -174,6 +176,17 @@ pub async fn perform_rebase(
         }
     }
 
+    {
+        if let Some(event_session_id) = request.event_session_id {
+            let ctx_clone = ctx.clone();
+            server_tracker.spawn(async move {
+                if let Err(err) = publish_pending_audit_logs(&ctx_clone, event_session_id).await {
+                    error!(?err, "failed to publish pending audit logs");
+                }
+            });
+        }
+    }
+
     if !updating_head {
         if let Some(source_change_set_id) = request.from_change_set_id {
             let mut event = WsEvent::change_set_applied(
@@ -238,4 +251,12 @@ async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
     Workspace::get_by_pk(ctx, &workspace_pk)
         .await?
         .ok_or(RebaseError::WorkspaceMissing(workspace_pk))
+}
+
+async fn publish_pending_audit_logs(
+    ctx: &DalContext,
+    event_session_id: EventSessionId,
+) -> RebaseResult<()> {
+    // TODO(nick): start here!
+    Ok(())
 }
