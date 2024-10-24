@@ -46,6 +46,8 @@ pub enum LayerDbError {
     CouldNotConvertToKeyFromString(String),
     #[error("decompression error: {0}")]
     Decompress(String),
+    #[error("Foyer error: {0}")]
+    Foyer(#[source] std::io::Error),
     #[error("failed to parse content hash from str: {0}")]
     HashParse(#[from] ContentHashParseError),
     #[error("incomplete key: {0}")]

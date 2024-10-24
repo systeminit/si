@@ -10516,6 +10516,76 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "ntapi-0.4.1.crate",
+    sha256 = "e8a3895c6391c39d7fe7ebc444a87eb2991b2a0bc718fdabd071eec617fc68e4",
+    strip_prefix = "ntapi-0.4.1",
+    urls = ["https://static.crates.io/crates/ntapi/0.4.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "ntapi-0.4.1",
+    srcs = [":ntapi-0.4.1.crate"],
+    crate = "ntapi",
+    crate_root = "ntapi-0.4.1.crate/src/lib.rs",
+    edition = "2018",
+    env = {
+        "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_NAME": "ntapi",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION": "0.4.1",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "OUT_DIR": "$(location :ntapi-0.4.1-build-script-run[out_dir])",
+    },
+    features = [
+        "default",
+        "user",
+    ],
+    rustc_flags = ["@$(location :ntapi-0.4.1-build-script-run[rustc_flags])"],
+    visibility = [],
+    deps = [":winapi-0.3.9"],
+)
+
+cargo.rust_binary(
+    name = "ntapi-0.4.1-build-script-build",
+    srcs = [":ntapi-0.4.1.crate"],
+    crate = "build_script_build",
+    crate_root = "ntapi-0.4.1.crate/build.rs",
+    edition = "2018",
+    env = {
+        "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_NAME": "ntapi",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION": "0.4.1",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+    },
+    features = [
+        "default",
+        "user",
+    ],
+    visibility = [],
+)
+
+buildscript_run(
+    name = "ntapi-0.4.1-build-script-run",
+    package_name = "ntapi",
+    buildscript_rule = ":ntapi-0.4.1-build-script-build",
+    features = [
+        "default",
+        "user",
+    ],
+    version = "0.4.1",
+)
+
+http_archive(
     name = "nu-ansi-term-0.46.0.crate",
     sha256 = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84",
     strip_prefix = "nu-ansi-term-0.46.0",
@@ -17609,6 +17679,77 @@ cargo.rust_library(
     deps = [":futures-core-0.3.31"],
 )
 
+alias(
+    name = "sysinfo",
+    actual = ":sysinfo-0.32.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "sysinfo-0.32.0.crate",
+    sha256 = "e3b5ae3f4f7d64646c46c4cae4e3f01d1c5d255c7406fdd7c7f999a94e488791",
+    strip_prefix = "sysinfo-0.32.0",
+    urls = ["https://static.crates.io/crates/sysinfo/0.32.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "sysinfo-0.32.0",
+    srcs = [":sysinfo-0.32.0.crate"],
+    crate = "sysinfo",
+    crate_root = "sysinfo-0.32.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "component",
+        "default",
+        "disk",
+        "multithread",
+        "network",
+        "system",
+        "user",
+        "windows",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":libc-0.2.161"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":libc-0.2.161"],
+        ),
+        "macos-arm64": dict(
+            deps = [
+                ":core-foundation-sys-0.8.7",
+                ":libc-0.2.161",
+            ],
+        ),
+        "macos-x86_64": dict(
+            deps = [
+                ":core-foundation-sys-0.8.7",
+                ":libc-0.2.161",
+            ],
+        ),
+        "windows-gnu": dict(
+            deps = [
+                ":libc-0.2.161",
+                ":ntapi-0.4.1",
+                ":windows-0.57.0",
+            ],
+        ),
+        "windows-msvc": dict(
+            deps = [
+                ":libc-0.2.161",
+                ":ntapi-0.4.1",
+                ":windows-0.57.0",
+            ],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":memchr-2.7.4",
+        ":rayon-1.10.0",
+    ],
+)
+
 http_archive(
     name = "tagptr-0.2.0.crate",
     sha256 = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417",
@@ -17988,6 +18129,7 @@ cargo.rust_binary(
         ":stream-cancel-0.8.2",
         ":strum-0.26.3",
         ":syn-2.0.82",
+        ":sysinfo-0.32.0",
         ":tar-0.4.42",
         ":tempfile-3.13.0",
         ":test-log-0.2.16",
@@ -20402,18 +20544,26 @@ cargo.rust_library(
     crate_root = "winapi-0.3.9.crate/src/lib.rs",
     edition = "2015",
     features = [
+        "cfg",
         "consoleapi",
         "errhandlingapi",
+        "evntrace",
         "fileapi",
         "handleapi",
         "impl-default",
+        "in6addr",
+        "inaddr",
+        "minwinbase",
         "minwindef",
+        "ntsecapi",
         "processenv",
         "processthreadsapi",
         "profileapi",
         "synchapi",
         "winbase",
+        "windef",
         "winerror",
+        "winioctl",
         "winnt",
         "winuser",
     ],
@@ -20436,18 +20586,26 @@ cargo.rust_binary(
     crate_root = "winapi-0.3.9.crate/build.rs",
     edition = "2015",
     features = [
+        "cfg",
         "consoleapi",
         "errhandlingapi",
+        "evntrace",
         "fileapi",
         "handleapi",
         "impl-default",
+        "in6addr",
+        "inaddr",
+        "minwinbase",
         "minwindef",
+        "ntsecapi",
         "processenv",
         "processthreadsapi",
         "profileapi",
         "synchapi",
         "winbase",
+        "windef",
         "winerror",
+        "winioctl",
         "winnt",
         "winuser",
     ],
@@ -20459,18 +20617,26 @@ buildscript_run(
     package_name = "winapi",
     buildscript_rule = ":winapi-0.3.9-build-script-build",
     features = [
+        "cfg",
         "consoleapi",
         "errhandlingapi",
+        "evntrace",
         "fileapi",
         "handleapi",
         "impl-default",
+        "in6addr",
+        "inaddr",
+        "minwinbase",
         "minwindef",
+        "ntsecapi",
         "processenv",
         "processthreadsapi",
         "profileapi",
         "synchapi",
         "winbase",
+        "windef",
         "winerror",
+        "winioctl",
         "winnt",
         "winuser",
     ],
@@ -20550,6 +20716,72 @@ third_party_rust_prebuilt_cxx_library(
 )
 
 http_archive(
+    name = "windows-0.57.0.crate",
+    sha256 = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143",
+    strip_prefix = "windows-0.57.0",
+    urls = ["https://static.crates.io/crates/windows/0.57.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-0.57.0",
+    srcs = [":windows-0.57.0.crate"],
+    crate = "windows",
+    crate_root = "windows-0.57.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "Wdk",
+        "Wdk_System",
+        "Wdk_System_SystemInformation",
+        "Wdk_System_SystemServices",
+        "Wdk_System_Threading",
+        "Win32",
+        "Win32_Foundation",
+        "Win32_NetworkManagement",
+        "Win32_NetworkManagement_IpHelper",
+        "Win32_NetworkManagement_Ndis",
+        "Win32_NetworkManagement_NetManagement",
+        "Win32_Networking",
+        "Win32_Networking_WinSock",
+        "Win32_Security",
+        "Win32_Security_Authentication",
+        "Win32_Security_Authentication_Identity",
+        "Win32_Security_Authorization",
+        "Win32_Storage",
+        "Win32_Storage_FileSystem",
+        "Win32_System",
+        "Win32_System_Com",
+        "Win32_System_Diagnostics",
+        "Win32_System_Diagnostics_Debug",
+        "Win32_System_IO",
+        "Win32_System_Ioctl",
+        "Win32_System_Kernel",
+        "Win32_System_Memory",
+        "Win32_System_Performance",
+        "Win32_System_Power",
+        "Win32_System_ProcessStatus",
+        "Win32_System_Registry",
+        "Win32_System_RemoteDesktop",
+        "Win32_System_Rpc",
+        "Win32_System_SystemInformation",
+        "Win32_System_SystemServices",
+        "Win32_System_Threading",
+        "Win32_System_Variant",
+        "Win32_System_WindowsProgramming",
+        "Win32_System_Wmi",
+        "Win32_UI",
+        "Win32_UI_Shell",
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":windows-core-0.57.0",
+        ":windows-targets-0.52.6",
+    ],
+)
+
+http_archive(
     name = "windows-0.58.0.crate",
     sha256 = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6",
     strip_prefix = "windows-0.58.0",
@@ -20602,6 +20834,33 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "windows-core-0.57.0.crate",
+    sha256 = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d",
+    strip_prefix = "windows-core-0.57.0",
+    urls = ["https://static.crates.io/crates/windows-core/0.57.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-core-0.57.0",
+    srcs = [":windows-core-0.57.0.crate"],
+    crate = "windows_core",
+    crate_root = "windows-core-0.57.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":windows-implement-0.57.0",
+        ":windows-interface-0.57.0",
+        ":windows-result-0.1.2",
+        ":windows-targets-0.52.6",
+    ],
+)
+
+http_archive(
     name = "windows-core-0.58.0.crate",
     sha256 = "6ba6d44ec8c2591c134257ce647b7ea6b20335bf6379a27dac5f1641fcf59f99",
     strip_prefix = "windows-core-0.58.0",
@@ -20630,6 +20889,29 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "windows-implement-0.57.0.crate",
+    sha256 = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7",
+    strip_prefix = "windows-implement-0.57.0",
+    urls = ["https://static.crates.io/crates/windows-implement/0.57.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-implement-0.57.0",
+    srcs = [":windows-implement-0.57.0.crate"],
+    crate = "windows_implement",
+    crate_root = "windows-implement-0.57.0.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.88",
+        ":quote-1.0.37",
+        ":syn-2.0.82",
+    ],
+)
+
+http_archive(
     name = "windows-implement-0.58.0.crate",
     sha256 = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b",
     strip_prefix = "windows-implement-0.58.0",
@@ -20642,6 +20924,29 @@ cargo.rust_library(
     srcs = [":windows-implement-0.58.0.crate"],
     crate = "windows_implement",
     crate_root = "windows-implement-0.58.0.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.88",
+        ":quote-1.0.37",
+        ":syn-2.0.82",
+    ],
+)
+
+http_archive(
+    name = "windows-interface-0.57.0.crate",
+    sha256 = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7",
+    strip_prefix = "windows-interface-0.57.0",
+    urls = ["https://static.crates.io/crates/windows-interface/0.57.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-interface-0.57.0",
+    srcs = [":windows-interface-0.57.0.crate"],
+    crate = "windows_interface",
+    crate_root = "windows-interface-0.57.0.crate/src/lib.rs",
     edition = "2021",
     proc_macro = True,
     visibility = [],
@@ -20695,6 +21000,28 @@ cargo.rust_library(
         ":windows-strings-0.1.0",
         ":windows-targets-0.52.6",
     ],
+)
+
+http_archive(
+    name = "windows-result-0.1.2.crate",
+    sha256 = "5e383302e8ec8515204254685643de10811af0ed97ea37210dc26fb0032647f8",
+    strip_prefix = "windows-result-0.1.2",
+    urls = ["https://static.crates.io/crates/windows-result/0.1.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-result-0.1.2",
+    srcs = [":windows-result-0.1.2.crate"],
+    crate = "windows_result",
+    crate_root = "windows-result-0.1.2.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [":windows-targets-0.52.6"],
 )
 
 http_archive(

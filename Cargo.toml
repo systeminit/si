@@ -182,6 +182,7 @@ spicedb-grpc = "0.1.1"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }
 syn = { version = "2.0.55", features = ["full", "extra-traits"] }
+sysinfo = "0.32.0"
 tar = "0.4.40"
 tempfile = "3.10.1"
 test-log = { version = "0.2.15", default-features = false, features = ["trace"] }
