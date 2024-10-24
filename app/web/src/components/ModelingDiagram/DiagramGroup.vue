@@ -234,7 +234,7 @@
         :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
         origin="top-left"
         :size="32"
-        :x="32"
+        :x="2"
         :y="5"
         :color="colors.headerText"
       />
@@ -261,7 +261,7 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
+          x: GROUP_HEADER_ICON_SIZE - 2,
           y: 2,
           verticalAlign: 'top',
           align: 'left',
@@ -282,7 +282,7 @@
       <v-text
         ref="subtitleTextRef"
         :config="{
-          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
+          x: GROUP_HEADER_ICON_SIZE - 2,
           y: 20,
           verticalAlign: 'top',
           align: 'left',
@@ -669,7 +669,7 @@ const renameHitbox = computed(() => {
         ...raw,
         width,
         height: GROUP_TITLE_FONT_SIZE + 6,
-        x: 32 + GROUP_HEADER_ICON_SIZE,
+        x: GROUP_HEADER_ICON_SIZE - 2,
         y: 4,
       };
       return box;
