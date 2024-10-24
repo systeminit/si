@@ -577,31 +577,6 @@ const onResize: ResizeObserverCallback = (entries) => {
 const debouncedOnResize = _.debounce(onResize, 50);
 const resizeObserver = new ResizeObserver(debouncedOnResize);
 
-// fill both movedElementPositions and resizedElementSizes from data-loading
-// and watch for new components entering the stage, fill them in here
-// TODO: jobelenus, move this to the store, no more WATCH
-watch(componentsStore.allComponentsById, () => {
-  Object.values(componentsStore.allComponentsById).forEach((component) => {
-    // don't overwrite existing values (this causes elements to return to previous positions)
-    const e: elementPositionAndSize = {
-      uniqueKey: component.uniqueKey,
-      position: {
-        x: component.def.position.x,
-        y: component.def.position.y,
-      } as Vector2d,
-    };
-    if (component.def.isGroup) {
-      e.size = {
-        width: component.def.size?.width,
-        height: component.def.size?.height,
-      } as Size2D;
-    }
-    if (!componentsStore.movedElementPositions[component.uniqueKey]) {
-      updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
-    }
-  });
-});
-
 // this is all a little ugly, but basically we are waiting until custom fonts are loaded to initialize and display the canvas
 // or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
 const isMounted = ref(false);
@@ -660,29 +635,27 @@ watch(
           callback: ({ changeSetId, clientUlid, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
             if (clientUlid === diagramUlid.value) return;
+            // TODO: make sure to update the correct view based on ID
 
-            const elements: elementPositionAndSize[] = [];
             for (const { componentId, position, size } of positions) {
-              const gKey = DiagramGroupData.generateUniqueKey(componentId);
-              const nKey = DiagramNodeData.generateUniqueKey(componentId);
-              if (componentsStore.movedElementPositions[gKey]) {
-                elements.push({
-                  uniqueKey: gKey,
-                  position,
-                  size,
-                } as elementPositionAndSize);
-              } else if (componentsStore.movedElementPositions[nKey]) {
-                elements.push({
-                  uniqueKey: nKey,
-                  position,
-                });
+              const component = componentsStore.allComponentsById[componentId];
+              if (component) {
+                let viewComponent;
+                if (component.def.isGroup) {
+                  viewComponent = viewStore.groups[componentId];
+                  if (viewComponent && size?.height && size?.width) {
+                    viewComponent.height = size.height;
+                    viewComponent.width = size.width;
+                  }
+                } else {
+                  viewComponent = viewStore.components[componentId];
+                }
+                if (viewComponent) {
+                  viewComponent.x = position.x;
+                  viewComponent.y = position.y;
+                }
               }
             }
-            updateElementPositionAndSize({
-              elements,
-              writeToChangeSet: false,
-              broadcastToClients: false,
-            });
           },
         },
       ],
@@ -2058,17 +2031,22 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   debouncedNudgeFn();
 }
 
+/**
+ * Move the parent and all children the same amount
+ * @param el any diagram component
+ * @param nudgeVector the vector amount we are moving
+ */
 const recursivePositionCompute = (
   el: DiagramGroupData | DiagramNodeData,
   nudgeVector: Vector2d,
 ): elementPositionAndSize[] => {
   const elements: elementPositionAndSize[] = [];
-  const newPosition = vectorAdd(
-    componentsStore.movedElementPositions[el.uniqueKey] || el.def.position,
-    nudgeVector,
-  );
+  const viewEl = viewStore.components[el.def.id] || viewStore.groups[el.def.id];
+  if (!viewEl) return [];
+  const newPosition = vectorAdd(viewEl, nudgeVector);
   elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
 
+  // TODO: don't make this parent-age based, instead use bounding box
   _.each(el.def.childIds, (id) => {
     if (
       !currentSelectionMovableElements.value.find(
@@ -2373,8 +2351,9 @@ function onResizeMove() {
 
   // Make sure the frame doesn't get larger than parent
   const parentId = node.parentId;
+  const parentGeometry = viewStore.groups[parentId || ""];
 
-  if (parentId) {
+  if (parentId && parentGeometry) {
     // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
       ...newNodePosition,
@@ -2382,52 +2361,46 @@ function onResizeMove() {
       x: newNodePosition.x - newNodeSize.width / 2,
     };
 
-    const parent = groups.value.find((g) => g.def.componentId === parentId);
-    const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
-    if (parent && parentShape) {
-      const parentPosition =
-        componentsStore[parent.uniqueKey] ?? parent.def.position;
+    // Unsure I need these constants
+    const parentContentRect = {
+      x: parentGeometry.x - parentGeometry.width / 2 + GROUP_INTERNAL_PADDING,
+      y: parentGeometry.y + GROUP_INTERNAL_PADDING,
+      width: parentGeometry.width - GROUP_INTERNAL_PADDING * 2,
+      height:
+        parentGeometry.height -
+        GROUP_INTERNAL_PADDING -
+        GROUP_BOTTOM_INTERNAL_PADDING,
+    };
 
-      const parentContentRect = {
-        x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
-        y: parentPosition.y + GROUP_INTERNAL_PADDING,
-        width: parentShape.width() - GROUP_INTERNAL_PADDING * 2,
-        height:
-          parentShape.height() -
-          GROUP_INTERNAL_PADDING -
-          GROUP_BOTTOM_INTERNAL_PADDING,
-      };
+    // Top Collision
+    if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
+      newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
+      newNodeRect.height =
+        presentPosition.y +
+        presentSize.height -
+        parentContentRect.y -
+        GROUP_INNER_Y_BOUNDARY_OFFSET;
+    }
 
-      // Top Collision
-      if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
-        newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
-        newNodeRect.height =
-          presentPosition.y +
-          presentSize.height -
-          parentContentRect.y -
-          GROUP_INNER_Y_BOUNDARY_OFFSET;
-      }
+    // Bottom collision
+    const bottom = parentContentRect.y + parentContentRect.height;
+    if (bottom < newNodeRect.y + newNodeRect.height) {
+      newNodeRect.height = bottom - newNodeRect.y;
+    }
 
-      // Bottom collision
-      const bottom = parentContentRect.y + parentContentRect.height;
-      if (bottom < newNodeRect.y + newNodeRect.height) {
-        newNodeRect.height = bottom - newNodeRect.y;
-      }
+    // Right collision
+    const parentRight = parentContentRect.x + parentContentRect.width;
+    const childRight = newNodeRect.x + newNodeRect.width;
+    if (childRight > parentRight) {
+      newNodeRect.width = parentRight - newNodeRect.x;
+    }
 
-      // Right collision
-      const parentRight = parentContentRect.x + parentContentRect.width;
-      const childRight = newNodeRect.x + newNodeRect.width;
-      if (childRight > parentRight) {
-        newNodeRect.width = parentRight - newNodeRect.x;
-      }
-
-      // Left collision
-      const parentLeft = parentContentRect.x;
-      const childLeft = newNodeRect.x;
-      if (childLeft < parentLeft) {
-        newNodeRect.x = parentLeft;
-        newNodeRect.width = rightBound - parentLeft;
-      }
+    // Left collision
+    const parentLeft = parentContentRect.x;
+    const childLeft = newNodeRect.x;
+    if (childLeft < parentLeft) {
+      newNodeRect.x = parentLeft;
+      newNodeRect.width = rightBound - parentLeft;
     }
 
     newNodePosition.x = newNodeRect.x + newNodeRect.width / 2;
@@ -2688,8 +2661,7 @@ async function triggerPasteElements() {
 
   // if we're pasting into a new parent, fit the selection area into it first by shrinking and then translating
   if (newParentId) {
-    const parentGeometry =
-      componentsStore.renderedGeometriesByComponentId[newParentId];
+    const parentGeometry = viewStore.groups[newParentId];
     if (!parentGeometry) throw new Error("Couldn't get parent geometry");
 
     // the x in component geometry is centered, so we need to translate it to represent the top left
@@ -3085,17 +3057,7 @@ const selectionRects = computed(() => {
   currentSelectionKeys.value.forEach((uniqueKey) => {
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
-    let rect = componentsStore.renderedGeometriesByComponentId[id];
-    if (isGroup) {
-      const pos = componentsStore.combinedElementPositions[
-        uniqueKey
-      ] as Vector2d;
-      const size = componentsStore.combinedElementSizes[uniqueKey] as Size2D;
-      rect = {
-        ...pos,
-        ...size,
-      };
-    }
+    const rect = viewStore.components[id] || viewStore.components[id];
     if (rect) {
       const r = structuredClone(rect);
       r.x -= r.width / 2;
