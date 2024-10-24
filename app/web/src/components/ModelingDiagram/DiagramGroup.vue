@@ -3,8 +3,8 @@
     ref="groupRef"
     :config="{
       id: group.uniqueKey,
-      x: position.x,
-      y: position.y,
+      x: irect.x,
+      y: irect.y,
       ...(isDeleted && { opacity: 0.5 }),
     }"
     @mouseover="onMouseOver"
@@ -481,7 +481,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
+import { computed, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -502,16 +502,14 @@ import {
   GROUP_HEADER_ICON_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
-  MIN_NODE_DIMENSION,
   SELECTION_COLOR,
-  SOCKET_GAP,
-  SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { trackEvent } from "@/utils/tracking";
 import {
   QualificationStatus,
   statusIconsForComponent,
 } from "@/store/qualifications.store";
+import { useViewsStore } from "@/store/views.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -565,7 +563,6 @@ const statusIconHovers = ref(
 );
 
 const emit = defineEmits<{
-  (e: "resize"): void;
   (e: "rename", v: () => void): void;
 }>();
 
@@ -576,11 +573,11 @@ const subtitleTextRef = ref();
 const groupRef = ref();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
-const size = computed(
-  () =>
-    componentsStore.combinedElementSizes[props.group.uniqueKey] ||
-    props.group.def.size || { width: 500, height: 500 },
+const irect = computed(
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  () => viewStore.groups[props.group.def.id]!,
 );
 
 const isDeleted = computed(
@@ -616,11 +613,7 @@ const childCount = computed(() => {
   return undeletedChildren.length;
 });
 
-const nodeWidth = computed(() =>
-  props.collapsed
-    ? size.value.width
-    : Math.max(size.value.width, MIN_NODE_DIMENSION),
-);
+const nodeWidth = computed(() => irect.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
   !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
@@ -646,26 +639,10 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const nodeBodyHeight = computed(() =>
-  !props.collapsed
-    ? Math.max(size.value.height, MIN_NODE_DIMENSION)
-    : size.value.height,
-);
+const nodeBodyHeight = computed(() => irect.value.height);
 const nodeHeight = computed(
   () => NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 );
-
-const position = computed(
-  () =>
-    componentsStore.combinedElementPositions[props.group.uniqueKey] ||
-    props.group.def.position,
-);
-
-watch([nodeWidth, nodeHeight, position, leftSockets, rightSockets], () => {
-  // we call on nextTick to let the component actually update itself on the stage first
-  // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
-  nextTick(() => emit("resize"));
-});
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);

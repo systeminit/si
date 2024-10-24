@@ -331,7 +331,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits<{
-  (e: "resize"): void;
   (e: "rename", v: () => void): void;
 }>();
 
