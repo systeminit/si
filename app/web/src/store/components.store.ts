@@ -413,16 +413,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
 
-          // Local cache of positions and sizes
-          movedElementPositions: {} as Record<
-            DiagramElementUniqueKey,
-            Vector2d
-          >,
-          // frames, stored
-          resizedElementSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
-          // non-frames, measured not stored
-          renderedNodeSizes: {} as Record<DiagramElementUniqueKey, Size2D>,
-
           // size of components when dragged to the stage
           inflightElementSizes: {} as Record<RequestUlid, ComponentId[]>,
           // prevents run away retries, unknown what circumstances could lead to this, but protecting ourselves
@@ -611,41 +601,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return ["component", slug];
           },
 
-          // The following getters use reported back from the diagram. Don't use to render the diagram.
-          // TODO Move these to a diagram stores and (maybe?) make it not computed
-          renderedGeometriesByComponentId(): Record<
-            ComponentId,
-            Vector2d & Size2D
-          > {
-            const dictionary: Record<ComponentId, Vector2d & Size2D> = {};
-
-            Object.values(this.allComponentsById).forEach((c) => {
-              let size: Size2D;
-              if (c.def.isGroup) {
-                size = this.resizedElementSizes[c.uniqueKey] ??
-                  c.def.size ?? {
-                    width: GROUP_DEFAULT_WIDTH,
-                    height: GROUP_DEFAULT_HEIGHT,
-                  };
-              } else {
-                const renderedSize = this.renderedNodeSizes[c.uniqueKey];
-
-                if (!renderedSize) return;
-
-                size = renderedSize;
-              }
-
-              const position =
-                this.movedElementPositions[c.uniqueKey] ?? c.def.position;
-
-              dictionary[c.def.id] = {
-                ...position,
-                ...size,
-              };
-            });
-
-            return dictionary;
-          },
           // The area that encloses all the components children
           contentBoundingBoxesByGroupId(): Record<ComponentId, IRect> {
             const boxDictionary: Record<string, IRect> = {};
@@ -939,72 +894,69 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...this.selectedComponentIds,
             );
           },
-          // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
-          async FETCH_DIAGRAM_DATA() {
-            return new ApiRequest<{
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-            }>({
-              url: "diagram/get_diagram",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.resizedElementSizes = {};
-                this.movedElementPositions = {};
 
-                this.rawComponentsById = _.keyBy(response.components, "id");
-                this.allComponentsById = {};
-                this.nodesById = {};
-                this.groupsById = {};
-                response.components.forEach((component) => {
-                  this.processRawComponent(component.id, false);
-                });
+          FETCH_ALL_COMPONENTS() {
+            // TODO
+          },
 
-                const edges =
-                  response.edges && response.edges.length > 0
-                    ? response.edges.map(edgeFromRawEdge(false))
-                    : [];
-                const inferred =
-                  response.inferredEdges && response.inferredEdges.length > 0
-                    ? response.inferredEdges.map(edgeFromRawEdge(true))
-                    : [];
-                this.rawEdgesById = _.keyBy([...edges, ...inferred], "id");
-                Object.keys(this.rawEdgesById).forEach((edgeId) => {
-                  this.processRawEdge(edgeId);
-                });
-
-                // remove invalid component IDs from the selection
-                const validComponentIds = _.intersection(
-                  this.selectedComponentIds,
-                  _.keys(this.rawComponentsById),
-                );
-                this.setSelectedComponentId(validComponentIds);
-
-                // find any pending inserts that we know the component id of
-                // and have now been loaded - and remove them from the pending inserts
-                const pendingInsertsByComponentId = _.keyBy(
-                  this.pendingInsertedComponents,
-                  (p) => p.componentId || "",
-                );
-                const pendingComponentIdsThatAreComplete = _.compact(
-                  _.intersection(
-                    _.map(this.pendingInsertedComponents, (p) => p.componentId),
-                    _.keys(this.rawComponentsById),
-                  ),
-                );
-                _.each(pendingComponentIdsThatAreComplete, (id) => {
-                  const tempId = pendingInsertsByComponentId[id]?.tempId;
-                  if (tempId) delete this.pendingInsertedComponents[tempId];
-                }); // and set the selection to the new component
-                if (pendingComponentIdsThatAreComplete[0]) {
-                  this.setSelectedComponentId(
-                    pendingComponentIdsThatAreComplete[0],
-                  );
-                }
-              },
+          SET_COMPONENTS_FROM_VIEW(response: {
+            components: RawComponent[];
+            edges: RawEdge[];
+            inferredEdges: RawEdge[];
+          }) {
+            // i want to avoid strict assignments here, so i can re-use this
+            // this.rawComponentsById = _.keyBy(response.components, "id");
+            for (const component of response.components) {
+              this.rawComponentsById[component.id] = component;
+            }
+            // this.allComponentsById = {};
+            // this.nodesById = {};
+            // this.groupsById = {};
+            response.components.forEach((component) => {
+              this.processRawComponent(component.id, false);
             });
+
+            const edges =
+              response.edges && response.edges.length > 0
+                ? response.edges.map(edgeFromRawEdge(false))
+                : [];
+            const inferred =
+              response.inferredEdges && response.inferredEdges.length > 0
+                ? response.inferredEdges.map(edgeFromRawEdge(true))
+                : [];
+            this.rawEdgesById = _.keyBy([...edges, ...inferred], "id");
+            Object.keys(this.rawEdgesById).forEach((edgeId) => {
+              this.processRawEdge(edgeId);
+            });
+
+            // remove invalid component IDs from the selection
+            const validComponentIds = _.intersection(
+              this.selectedComponentIds,
+              _.keys(this.rawComponentsById),
+            );
+            this.setSelectedComponentId(validComponentIds);
+
+            // find any pending inserts that we know the component id of
+            // and have now been loaded - and remove them from the pending inserts
+            const pendingInsertsByComponentId = _.keyBy(
+              this.pendingInsertedComponents,
+              (p) => p.componentId || "",
+            );
+            const pendingComponentIdsThatAreComplete = _.compact(
+              _.intersection(
+                _.map(this.pendingInsertedComponents, (p) => p.componentId),
+                _.keys(this.rawComponentsById),
+              ),
+            );
+            _.each(pendingComponentIdsThatAreComplete, (id) => {
+              const tempId = pendingInsertsByComponentId[id]?.tempId;
+              if (tempId) delete this.pendingInsertedComponents[tempId];
+            }); // and set the selection to the new component
+            if (pendingComponentIdsThatAreComplete[0]) {
+              this.setSelectedComponentId(
+                pendingComponentIdsThatAreComplete[0],
+              );
+            }
           },
 
           async FETCH_COMPONENT_DEBUG_VIEW(componentId: ComponentId) {
@@ -1019,37 +971,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.debugDataByComponentId[componentId] = debugData;
               },
             });
-          },
-
-          constructGeometryData(componentData: ComponentData[]) {
-            const componentUpdate: SingleSetComponentGeometryData[] = [];
-            for (const { key, detach, newParent } of componentData) {
-              const position = this.movedElementPositions[key];
-              if (position) {
-                position.x = Math.round(position.x);
-                position.y = Math.round(position.y);
-              }
-              const size = this.resizedElementSizes[key];
-              if (size) {
-                size.width = Math.round(size.width);
-                size.height = Math.round(size.height);
-              }
-              const componentId = DiagramNodeData.componentIdFromUniqueKey(
-                DiagramGroupData.componentIdFromUniqueKey(key),
-              );
-              if (position && componentId) {
-                componentUpdate.push({
-                  geometry: {
-                    componentId,
-                    position,
-                    size,
-                  },
-                  detach,
-                  newParent,
-                });
-              }
-            }
-            return componentUpdate;
           },
 
           async SET_PARENT(componentId: ComponentId, newParentId: ComponentId) {

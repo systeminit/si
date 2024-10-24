@@ -3,10 +3,16 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ViewId, View, Components, Sockets, Edges } from "@/api/sdf/dal/views";
-import { DiagramElementUniqueKey } from "@/components/ModelingDiagram/diagram_types";
+import {
+  DiagramElementUniqueKey,
+  DiagramGroupData,
+  DiagramNodeData,
+} from "@/components/ModelingDiagram/diagram_types";
+import { RawComponent, RawEdge } from "@/api/sdf/dal/component";
 import handleStoreError from "./errors";
 
 import { useChangeSetsStore } from "./change_sets.store";
+import { useComponentsStore } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 
@@ -51,6 +57,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
+  const componentsStore = useComponentsStore(forceChangeSetId);
 
   let changeSetId: ChangeSetId | undefined;
   if (forceChangeSetId) {
@@ -130,6 +137,53 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         // no viewId means load the default
         async SELECT_VIEW(viewId?: ViewId) {
           // TODO, fetch, and set to selected view
+          return new ApiRequest<{
+            viewId: ViewId;
+            components: RawComponent[];
+            edges: RawEdge[];
+            inferredEdges: RawEdge[];
+          }>({
+            url: "diagram/get_diagram",
+            params: {
+              ...visibilityParams,
+              viewId,
+            },
+            onSuccess: (response) => {
+              componentsStore.SET_COMPONENTS_FROM_VIEW(response);
+              const components: (DiagramGroupData | DiagramNodeData)[] = [];
+              for (const component of response.components) {
+                // doing this to piggy back on the position data, but it will change with Victor's changes!
+                const c = componentsStore.allComponentsById[component.id];
+                if (c) components.push(c);
+              }
+              this.SET_COMPONENTS_FROM_VIEW(response.viewId, { components });
+              this.selectView(response.viewId);
+
+              // fire this and don't wait for it
+              componentsStore.FETCH_ALL_COMPONENTS();
+            },
+          });
+        },
+        SET_COMPONENTS_FROM_VIEW(
+          viewId: ViewId,
+          response: {
+            components: (DiagramGroupData | DiagramNodeData)[];
+            edges?: RawEdge[];
+            inferredEdges?: RawEdge[];
+          },
+        ) {
+          const components: Components = {};
+          for (const component of response.components) {
+            let c;
+            if (component.def.isGroup) {
+              c = { ...component.def.position, ...component.def.size };
+            } else {
+              c = { ...component.def.position };
+            }
+            components[component.uniqueKey] = c;
+          }
+          // TODO
+          this.viewsById[viewId] = { components };
         },
         async MOVE_COMPONENTS(
           components: DiagramElementUniqueKey[],
