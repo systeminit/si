@@ -50,6 +50,7 @@ pub fn routes(state: AppState) -> Router {
     router = router
         .nest("/api/action", crate::service::action::routes())
         .nest("/api/node_debug", crate::service::node_debug::routes())
+        .nest("/api/ai", crate::service::ai::routes())
         .nest("/api/attribute", crate::service::attribute::routes())
         .nest("/api/change_set", crate::service::change_set::routes())
         .nest("/api/component", crate::service::component::routes())

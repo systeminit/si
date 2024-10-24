@@ -9,6 +9,7 @@ use telemetry::prelude::*;
 use tracing_tunnel::TracingLevel;
 
 pub mod action;
+pub mod ai;
 pub mod async_route;
 pub mod attribute;
 pub mod change_set;

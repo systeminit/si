@@ -27,9 +27,8 @@
 
 use async_openai::{
     types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestSystemMessageContent,
-        ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageArgs,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+        ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessageArgs,
         ChatCompletionRequestUserMessageContent, CreateChatCompletionRequestArgs,
     },
     Client,
@@ -55,22 +54,12 @@ const INSTRUCTIONS: &str = include_str!("instructions.txt");
 const SI_SCHEMA_DOC_URL: &str = "https://raw.githubusercontent.com/systeminit/si/refs/heads/main/app/docs/src/reference/asset/schema.md";
 const AWS_CLI_BASE_URL: &str = "https://docs.aws.amazon.com/cli/latest/reference/";
 
-pub struct NoChoicesError;
-impl std::fmt::Display for NoChoicesError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "No choices were returned from the AI.")
-    }
-}
-
 pub async fn si_schema_doc() -> AssetSprayerResult<String> {
     Ok(format!("The official documentation for System Initiative asset schemas, retrieved from {}, is after the colon and takes up the rest of this message: {}", SI_SCHEMA_DOC_URL, reqwest::get(SI_SCHEMA_DOC_URL).await?.text().await?))
 }
 
 pub async fn aws_cli_doc_message(command: &str, subcommand: &str) -> AssetSprayerResult<String> {
-    let url = format!(
-        "https://docs.aws.amazon.com/cli/latest/reference/{}/{}.html",
-        command, subcommand
-    );
+    let url = format!("{}/{}/{}.html", AWS_CLI_BASE_URL, command, subcommand);
     let doc = reqwest::get(&url).await?.text().await?;
     Ok(format!("The official HTML documentation for 'aws {} {}', retrieved from {}, is after the colon and takes up the rest of this message: {}", command, subcommand, url, doc))
 }

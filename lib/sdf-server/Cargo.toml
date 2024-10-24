@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+asset-sprayer = { path = "../../lib/asset-sprayer" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
 module-index-client = { path = "../../lib/module-index-client" }

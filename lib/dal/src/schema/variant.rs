@@ -1057,6 +1057,11 @@ impl SchemaVariant {
         self.asset_func_id
     }
 
+    pub fn asset_func_id_or_error(&self) -> SchemaVariantResult<FuncId> {
+        self.asset_func_id
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))
+    }
+
     pub fn is_builtin(&self) -> bool {
         self.is_builtin
     }
@@ -1079,10 +1084,7 @@ impl SchemaVariant {
     }
 
     pub async fn get_asset_func(&self, ctx: &DalContext) -> SchemaVariantResult<Func> {
-        let asset_func_id = self
-            .asset_func_id
-            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id))?;
-
+        let asset_func_id = self.asset_func_id_or_error()?;
         Ok(Func::get_by_id_or_error(ctx, asset_func_id).await?)
     }
 
