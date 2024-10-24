@@ -80,7 +80,6 @@
 <script lang="ts">
 type DiagramOutlineRootCtx = {
   filterModeActive: ComputedRef<boolean>;
-  collapsedComponents: Set<DiagramElementUniqueKey>;
   itemClickHandler: (
     e: MouseEvent,
     component: DiagramNodeData | DiagramGroupData,
@@ -111,7 +110,6 @@ import {
   onBeforeUnmount,
   onMounted,
   provide,
-  reactive,
   ref,
   watch,
 } from "vue";
@@ -132,7 +130,6 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 import {
-  DiagramElementUniqueKey,
   DiagramGroupData,
   DiagramNodeData,
 } from "../ModelingDiagram/diagram_types";
@@ -318,8 +315,6 @@ watch(
   },
 );
 
-const collapsedComponents = reactive<Set<DiagramElementUniqueKey>>(new Set());
-
 function itemClickHandler(
   e: MouseEvent,
   component: Component,
@@ -413,7 +408,6 @@ function itemClickHandler(
 const rootCtx = {
   filterModeActive,
   itemClickHandler,
-  collapsedComponents,
 };
 provide(DiagramOutlineCtxInjectionKey, rootCtx);
 
