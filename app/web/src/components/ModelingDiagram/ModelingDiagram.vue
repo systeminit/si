@@ -307,6 +307,7 @@ import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
+import { useViewsStore } from "@/store/views.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useAssetStore } from "@/store/asset.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -395,11 +396,11 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const statusStore = useStatusStore();
 const modelingEventBus = componentsStore.eventBus;
 
-const fetchDiagramReqStatus =
-  componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
+const fetchDiagramReqStatus = viewStore.getRequestStatus("FETCH_VIEW");
 
 const enableDebugMode = false;
 

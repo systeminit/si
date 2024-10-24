@@ -279,7 +279,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
+import { computed, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -287,6 +287,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import {
   QualificationStatus,
   statusIconsForComponent,
@@ -335,6 +336,7 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const componentId = computed(() => props.node.def.componentId);
 
 const statusIcons = computed(() =>
@@ -412,32 +414,8 @@ const nodeHeight = computed(() => NODE_HEADER_HEIGHT + nodeBodyHeight.value);
 
 const parentComponentId = computed(() => props.node.def.parentId);
 
-const position = computed(
-  () =>
-    componentsStore.movedElementPositions[props.node.uniqueKey] ||
-    props.node.def.position,
-);
-
-// note: this fires once the node is done rendering
-// height and width aren't mutable for nodes
-// TODO this goes away into the new store
-watch([nodeWidth, nodeHeight], () => {
-  nextTick(() => {
-    componentsStore.renderedNodeSizes[props.node.uniqueKey] = {
-      width: nodeWidth.value,
-      height: nodeHeight.value,
-    };
-  });
-});
-
-// i dont think we'll need this?!
-watch([nodeWidth, nodeHeight, position, leftSockets, rightSockets], () => {
-  // we call on nextTick to let the component actually update itself on the stage first
-  // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
-  nextTick(() => {
-    emit("resize");
-  });
-});
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const position = computed(() => viewStore.components[props.node.def.id]!);
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.node.def.color || DEFAULT_NODE_COLOR);
