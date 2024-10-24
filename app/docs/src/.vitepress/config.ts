@@ -117,6 +117,10 @@ export default defineConfig({
             link: "/how-tos/aws-ecs",
           },
           {
+            text: "AWS ECR ECS",
+            link: "/how-tos/aws-ecr-ecs",
+          },
+          {
             text: "AWS Static Cloudfront Website",
             link: "/how-tos/aws-static-cloudfront",
           },

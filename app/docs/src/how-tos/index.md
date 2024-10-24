@@ -10,6 +10,8 @@ relying on your pre-existing knowledge.
 - [AWS HA EC2 Infrastructure](./aws-ha-ec2) - learn how to model a highly
   available infrastructure for application deployment in AWS EC2
 - [AWS ECS](./aws-ecs) - learn how to model and deploy an application to AWS ECS
+- [AWS ECR ECS](./aws-ecr-ecs) - learn how to model and deploy an application to
+  AWS ECS that's hosted in AWS ECR
 - [AWS Cloudfront Static Website](./aws-static-cloudfront) - learn how to deploy
   a static website with S3 and Cloudfront
 - [AWS macOS Instances](./aws-macos) - learn how to create macOS instances on
