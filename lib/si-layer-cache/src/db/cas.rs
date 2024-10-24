@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
@@ -21,7 +22,7 @@ pub const PARTITION_KEY: &str = "cas";
 #[derive(Debug, Clone)]
 pub struct CasDb<V>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     pub cache: LayerCache<Arc<V>>,
     persister_client: PersisterClient,
@@ -29,7 +30,7 @@ where
 
 impl<V> CasDb<V>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     pub fn new(cache: LayerCache<Arc<V>>, persister_client: PersisterClient) -> Self {
         CasDb {
@@ -49,7 +50,7 @@ where
         let key = ContentHash::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value.clone()).await;
+        self.cache.insert(cache_key.clone(), value.clone());
 
         let event = LayeredEvent::new(
             LayeredEventKind::CasInsertion,

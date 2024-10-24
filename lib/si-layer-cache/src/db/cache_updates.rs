@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -32,10 +33,13 @@ pub struct CacheUpdatesTask<
     WorkspaceSnapshotValue,
     RebaseBatchValue,
 > where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    EncryptedSecretValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    WorkspaceSnapshotValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    RebaseBatchValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<CasValue>>,
     encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>>,
@@ -51,10 +55,13 @@ pub struct CacheUpdatesTask<
 impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
     CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    EncryptedSecretValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    WorkspaceSnapshotValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    RebaseBatchValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
@@ -122,10 +129,10 @@ where
 
 struct CacheUpdateTask<Q, R, S, T>
 where
-    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    Q: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    R: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    S: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     cas_cache: LayerCache<Arc<Q>>,
     encrypted_secret_cache: LayerCache<Arc<R>>,
@@ -137,10 +144,10 @@ where
 
 impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
 where
-    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    Q: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    R: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    S: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    T: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     fn new(
         cas_cache: LayerCache<Arc<Q>>,
@@ -167,8 +174,7 @@ where
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.cas_cache
-                        .insert_from_cache_updates(event.key, serialized_value)
-                        .await?;
+                        .insert_from_cache_updates(event.key, serialized_value);
                 }
             }
             crate::event::LayeredEventKind::EncryptedSecretInsertion => {
@@ -176,8 +182,7 @@ where
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.encrypted_secret_cache
-                        .insert_from_cache_updates(event.key, serialized_value)
-                        .await?;
+                        .insert_from_cache_updates(event.key, serialized_value);
                 }
             }
             crate::event::LayeredEventKind::Raw => {
@@ -189,14 +194,11 @@ where
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.rebase_batch_cache
-                        .insert_from_cache_updates(event.key, serialized_value)
-                        .await?;
+                        .insert_from_cache_updates(event.key, serialized_value);
                 }
             }
             crate::event::LayeredEventKind::RebaseBatchEvict => {
-                self.rebase_batch_cache
-                    .evict_from_cache_updates(event.key)
-                    .await?;
+                self.rebase_batch_cache.evict_from_cache_updates(event.key);
             }
 
             crate::event::LayeredEventKind::SnapshotWrite => {
@@ -204,14 +206,11 @@ where
                     let serialized_value =
                         Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
                     self.snapshot_cache
-                        .insert_from_cache_updates(event.key, serialized_value)
-                        .await?;
+                        .insert_from_cache_updates(event.key, serialized_value);
                 }
             }
             crate::event::LayeredEventKind::SnapshotEvict => {
-                self.snapshot_cache
-                    .evict_from_cache_updates(event.key)
-                    .await?;
+                self.snapshot_cache.evict_from_cache_updates(event.key);
             }
             crate::event::LayeredEventKind::FuncRunWrite => {
                 let serialized_value =

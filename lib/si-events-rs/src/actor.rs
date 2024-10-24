@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 use ulid::Ulid;
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Display)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Display, Hash)]
 pub enum Actor {
     System,
     User(UserPk),

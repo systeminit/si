@@ -156,8 +156,7 @@ impl FuncRunDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone())
-            .await;
+            .insert_or_update(cache_key.clone(), value.clone());
 
         let event = LayeredEvent::new(
             LayeredEventKind::FuncRunWrite,

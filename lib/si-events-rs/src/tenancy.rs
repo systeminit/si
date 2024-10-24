@@ -5,7 +5,7 @@ use crate::id;
 id!(WorkspacePk);
 id!(ChangeSetId);
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Tenancy {
     pub change_set_id: ChangeSetId,
     pub workspace_pk: WorkspacePk,

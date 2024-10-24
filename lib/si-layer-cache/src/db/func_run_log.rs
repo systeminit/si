@@ -43,8 +43,7 @@ impl FuncRunLogDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone())
-            .await;
+            .insert_or_update(cache_key.clone(), value.clone());
 
         // We must insert directly before we persist, so that we get it in order.
         self.insert_to_pg(value.clone()).await?;

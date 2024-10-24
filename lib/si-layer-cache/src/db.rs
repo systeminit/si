@@ -2,6 +2,7 @@ use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::{future::IntoFuture, io, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -17,6 +18,7 @@ use crate::db::encrypted_secret::EncryptedSecretDb;
 use crate::db::func_run::FuncRunDb;
 use crate::db::func_run_log::FuncRunLogDb;
 use crate::disk_cache::{DiskCache, DiskCacheConfig};
+use crate::hybrid_cache::CacheConfig;
 use crate::memory_cache::MemoryCacheConfig;
 use crate::{
     activity_client::ActivityClient,
@@ -42,10 +44,13 @@ pub mod workspace_snapshot;
 #[derive(Debug, Clone)]
 pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    EncryptedSecretValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    WorkspaceSnapshotValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    RebaseBatchValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     cas: CasDb<CasValue>,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
@@ -63,10 +68,13 @@ where
 impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
     LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    CasValue: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    EncryptedSecretValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    WorkspaceSnapshotValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
+    RebaseBatchValue:
+        Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
@@ -78,37 +86,21 @@ where
         let nats_client = NatsClient::new(&config.nats_config).await?;
 
         Self::from_services(
-            config.disk_cache_config,
             pg_pool,
             nats_client,
             compute_executor,
-            config.memory_cache_config,
+            config.cache_config,
             token,
         )
         .await
     }
 
-    #[allow(unused)]
-    fn spawn_cleanup_tasks(caches: &[&DiskCache], cancellation_token: CancellationToken) {
-        let mut cleanup_tracker = HashMap::new();
-
-        for disk_cache in caches {
-            let write_path = disk_cache.write_path().display().to_string();
-            cleanup_tracker.insert(write_path, *disk_cache);
-        }
-
-        for cache in cleanup_tracker.into_values() {
-            cache.start_cleanup_task(cancellation_token.clone())
-        }
-    }
-
     #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
-        disk_cache_config: DiskCacheConfig,
         pg_pool: PgPool,
         nats_client: NatsClient,
         compute_executor: DedicatedExecutor,
-        memory_cache_config: MemoryCacheConfig,
+        cache_config: CacheConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let instance_id = Ulid::new();
@@ -121,62 +113,50 @@ where
         let cas_cache: LayerCache<Arc<CasValue>> = LayerCache::new(
             cas::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let encrypted_secret_cache: LayerCache<Arc<EncryptedSecretValue>> = LayerCache::new(
             encrypted_secret::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let func_run_cache: LayerCache<Arc<FuncRun>> = LayerCache::new(
             func_run::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let func_run_log_cache: LayerCache<Arc<FuncRunLog>> = LayerCache::new(
             func_run_log::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let rebase_batch_cache: LayerCache<Arc<RebaseBatchValue>> = LayerCache::new(
             rebase_batch::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
+        )
+        .await?;
 
         let snapshot_cache: LayerCache<Arc<WorkspaceSnapshotValue>> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             pg_pool.clone(),
-            memory_cache_config.clone(),
-            disk_cache_config.clone(),
+            cache_config.clone(),
             compute_executor.clone(),
-        )?;
-
-        // Self::spawn_cleanup_tasks(
-        //     &[
-        //         cas_cache.disk_cache(),
-        //         encrypted_secret_cache.disk_cache(),
-        //         func_run_cache.disk_cache(),
-        //         func_run_log_cache.disk_cache(),
-        //         rebase_batch_cache.disk_cache(),
-        //         snapshot_cache.disk_cache(),
-        //     ],
-        //     token.clone(),
-        // );
+        )
+        .await?;
 
         let cache_updates_task = CacheUpdatesTask::create(
             instance_id,
@@ -194,7 +174,6 @@ where
 
         let persister_task = PersisterTask::create(
             rx,
-            disk_cache_config.clone(),
             pg_pool.clone(),
             &nats_client,
             instance_id,
@@ -347,8 +326,7 @@ mod private {
 pub struct LayerDbConfig {
     pub pg_pool_config: PgPoolConfig,
     pub nats_config: NatsConfig,
-    pub memory_cache_config: MemoryCacheConfig,
-    pub disk_cache_config: DiskCacheConfig,
+    pub cache_config: CacheConfig,
 }
 
 impl LayerDbConfig {
@@ -356,8 +334,7 @@ impl LayerDbConfig {
         Self {
             pg_pool_config: Default::default(),
             nats_config: Default::default(),
-            memory_cache_config: Default::default(),
-            disk_cache_config: DiskCacheConfig::default_for_service(service),
+            cache_config: Default::default(),
         }
     }
 }

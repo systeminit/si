@@ -14,7 +14,7 @@ id!(AttributePrototypeId);
 id!(AttributePrototypeArgumentId);
 id!(ManagementPrototypeId);
 
-#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
+#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum FuncRunState {
     Created,
     Dispatched,
@@ -55,6 +55,7 @@ pub enum FuncKind {
     EnumString,
     Clone,
     Copy,
+    Hash,
 )]
 pub enum FuncBackendKind {
     Array,
@@ -94,6 +95,7 @@ pub enum FuncBackendKind {
     EnumString,
     Clone,
     Copy,
+    Hash,
 )]
 pub enum FuncBackendResponseType {
     Action,
@@ -134,14 +136,14 @@ pub enum ActionKind {
     Update,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Serialize, Deserialize, Hash)]
 pub enum ActionResultState {
     Success,
     Failure,
     Unknown,
 }
 
-#[derive(Debug, Clone, Builder, Serialize, Deserialize)]
+#[derive(Debug, Clone, Builder, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct FuncRun {
     #[builder(default = "FuncRunId::new()")]
     id: FuncRunId,

@@ -1,4 +1,4 @@
-use foyer::{DirectFsDeviceOptions, Engine, EvictionConfig, HybridCache, HybridCacheBuilder};
+use foyer::{DirectFsDeviceOptions, Engine, HybridCache, HybridCacheBuilder};
 use std::sync::Arc;
 use std::{hash::Hash, path::PathBuf};
 use telemetry::tracing::error;
@@ -25,20 +25,21 @@ where
     cache: HybridCache<Arc<str>, MaybeDeserialized<V>>,
 }
 
-// impl<V> Default for HybridCache<V>
+// todo: do we need this?
+// impl<V> Default for Cache<V>
 // where
 //     V: Serialize + DeserializeOwned + Clone + Eq + Send + Sync + 'static + std::hash::Hash,
 // {
 //     fn default() -> Self {
-//         Self::new(HybridCacheConfig::default())
+//         Self::new(HybridCacheConfig::default()).await
 //     }
 // }
-//
+
 impl<V> Cache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Hash + Eq + PartialEq + Send + Sync + 'static,
 {
-    pub async fn new(config: HybridCacheConfig) -> LayerDbResult<Self> {
+    pub async fn new(config: CacheConfig) -> LayerDbResult<Self> {
         // todo: unwrapping
         Ok(Self {
             cache: HybridCacheBuilder::new()
@@ -86,31 +87,29 @@ where
         self.cache
             .insert(key, MaybeDeserialized::DeserializedValue(value));
     }
-    //
-    //     pub async fn insert_raw_bytes(&self, key: Arc<str>, raw_bytes: Vec<u8>) {
-    //         self.cache
-    //             .insert(key, MaybeDeserialized::RawBytes(raw_bytes))
-    //             .await;
-    //     }
+
+    pub fn insert_raw_bytes(&self, key: Arc<str>, raw_bytes: Vec<u8>) {
+        self.cache
+            .insert(key, MaybeDeserialized::RawBytes(raw_bytes));
+    }
 
     pub fn remove(&self, key: &str) {
         self.cache.remove(key);
     }
+
+    pub fn contains(&self, key: &str) -> bool {
+        self.cache.contains(key)
+    }
 }
 
-//     pub fn contains(&self, key: &str) -> bool {
-//         self.cache.contains_key(key)
-//     }
-// }
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct HybridCacheConfig {
+pub struct CacheConfig {
     disk: PathBuf,
     memory: u64,
     name: String,
 }
 
-impl Default for HybridCacheConfig {
+impl Default for CacheConfig {
     fn default() -> Self {
         let sys = sysinfo::System::new();
         let path = tempfile::TempDir::with_prefix_in("default-cache-", "/tmp")

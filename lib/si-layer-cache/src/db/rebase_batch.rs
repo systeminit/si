@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::{sync::Arc, time::Instant};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -20,7 +21,7 @@ pub const PARTITION_KEY: &str = "rebase_batches";
 #[derive(Debug, Clone)]
 pub struct RebaseBatchDb<V>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     pub cache: LayerCache<Arc<V>>,
     persister_client: PersisterClient,
@@ -28,7 +29,7 @@ where
 
 impl<V> RebaseBatchDb<V>
 where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Eq + PartialEq + Hash + Send + Sync + 'static,
 {
     pub fn new(cache: LayerCache<Arc<V>>, persister_client: PersisterClient) -> Self {
         Self {
@@ -50,7 +51,7 @@ where
         let key = RebaseBatchAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value_clone).await;
+        self.cache.insert(cache_key.clone(), value_clone);
 
         let event = LayeredEvent::new(
             LayeredEventKind::RebaseBatchWrite,
@@ -102,7 +103,7 @@ where
         let mut tried = 0;
         let read_wait = Instant::now();
         while tried < MAX_TRIES {
-            if let Some(v) = self.cache.memory_cache().get(&key).await {
+            if let Some(v) = self.cache.cache().get(&key).await {
                 span.record("si.layer_cache.memory_cache.hit", true);
                 span.record(
                     "si.layer_cache.memory_cache.read_wait_ms",
@@ -134,7 +135,7 @@ where
         actor: Actor,
     ) -> LayerDbResult<PersisterStatusReader> {
         let cache_key = key.to_string();
-        self.cache.remove_from_memory(&cache_key).await;
+        self.cache.remove_from_memory(&cache_key);
 
         let event = LayeredEvent::new(
             LayeredEventKind::RebaseBatchEvict,

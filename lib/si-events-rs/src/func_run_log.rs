@@ -66,7 +66,7 @@ pub struct OutputLine {
     pub timestamp: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct FuncRunLog {
     id: FuncRunLogId,
     tenancy: Tenancy,
