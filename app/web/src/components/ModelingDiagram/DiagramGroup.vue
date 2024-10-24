@@ -77,112 +77,104 @@
     />
 
     <!-- resize handles -->
-    <template v-if="!collapsed">
-      <!--  left side handle  -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-            -nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- right side handle   -->
-      <v-line
-        :config="{
-          points: [
-            nodeWidth / 2,
-            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-            nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('right', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Handle -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            nodeBodyHeight,
-            nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('bottom', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Left Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: -nodeWidth / 2,
-          y: nodeBodyHeight,
-        }"
-        @mouseover="onResizeHover('bottom-left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Right Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: nodeWidth / 2,
-          y: nodeBodyHeight,
-        }"
-        @mouseover="onResizeHover('bottom-right', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Handle -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-            nodeWidth / 2,
-            -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('top', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Left Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: -nodeWidth / 2,
-          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-        }"
-        @mouseover="onResizeHover('top-left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Right Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: nodeWidth / 2,
-          y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
-        }"
-        @mouseover="onResizeHover('top-right', $event)"
-        @mouseout="onMouseOut"
-      />
-    </template>
+    <!--  left side handle  -->
+    <v-line
+      :config="{
+        points: [
+          -nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          -nodeWidth / 2,
+          nodeBodyHeight,
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- right side handle   -->
+    <v-line
+      :config="{
+        points: [
+          nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          nodeBodyHeight,
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Handle -->
+    <v-line
+      :config="{
+        points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('bottom', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Left Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: nodeBodyHeight,
+      }"
+      @mouseover="onResizeHover('bottom-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Right Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: nodeBodyHeight,
+      }"
+      @mouseover="onResizeHover('bottom-right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Handle -->
+    <v-line
+      :config="{
+        points: [
+          -nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('top', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Left Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Right Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-right', $event)"
+      @mouseout="onMouseOut"
+    />
 
     <!-- sockets -->
     <v-group
-      v-if="!collapsed"
       :config="{
         x: leftSockets.x,
         y: leftSockets.y,
@@ -201,7 +193,6 @@
     </v-group>
 
     <v-group
-      v-if="!collapsed"
       :config="{
         x: rightSockets.x,
         y: rightSockets.y,
@@ -252,7 +243,6 @@
 
       <!-- rename hitbox -->
       <v-rect
-        v-if="!collapsed"
         :config="{
           ...renameHitbox,
           ...(debug && { fill: 'red' }),
@@ -322,69 +312,9 @@
       @mouseout="onMouseOut"
     />
 
-    <!-- status icons for collapsed children-->
-    <v-group
-      v-if="collapsed"
-      :config="{
-        x: halfWidth - 2,
-        y: 0,
-      }"
-    >
-      <v-text
-        :config="{
-          x: -58,
-          y: nodeBodyHeight - 25,
-          verticalAlign: 'top',
-          align: 'right',
-          width: 32,
-          text: `${group.def.numChildrenResources}`,
-          fill: colors.labelText,
-          fontSize: 16,
-          fontStyle: 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: false,
-        }"
-      ></v-text>
-      <DiagramIcon
-        icon="check-hex"
-        :color="getToneColorHex('success')"
-        :size="24"
-        :x="0"
-        :y="nodeBodyHeight - 5"
-        origin="bottom-right"
-      />
-      <v-text
-        :config="{
-          x: -112,
-          y: nodeBodyHeight - 25,
-          verticalAlign: 'top',
-          align: 'right',
-          width: 32,
-          text: `${group.def.numChildren}`,
-          fill: colors.labelText,
-          fontSize: 16,
-          fontStyle: 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: false,
-        }"
-      />
-      <DiagramIcon
-        icon="check-hex-outline"
-        :color="getToneColorHex('success')"
-        :size="24"
-        :x="-55"
-        :y="nodeBodyHeight - 5"
-        origin="bottom-right"
-      />
-    </v-group>
-
     <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length && !collapsed"
+      v-if="statusIcons?.length"
       :config="{
         x: halfWidth - 2,
         y: 0,
@@ -529,7 +459,6 @@ const props = defineProps({
     type: String as PropType<QualificationStatus>,
     required: false,
   },
-  collapsed: Boolean,
   debug: Boolean,
 });
 

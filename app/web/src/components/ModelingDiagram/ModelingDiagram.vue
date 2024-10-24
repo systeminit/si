@@ -78,9 +78,6 @@ overflow hidden */
           <DiagramGroup
             v-for="group in groups"
             :key="group.uniqueKey"
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
-            "
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
             :debug="enableDebugMode"
             :group="group"
@@ -101,8 +98,6 @@ overflow hidden */
             :key="node.uniqueKey"
           >
             <DiagramNode
-              v-if="!areMyAncestorsCollapsed(node)"
-              :key="node.uniqueKey"
               :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
               :debug="enableDebugMode"
               :isHovered="elementIsHovered(node)"
@@ -139,9 +134,6 @@ overflow hidden */
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
-            "
             :group="group"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
@@ -275,7 +267,6 @@ import {
   Ref,
   provide,
   inject,
-  toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import Konva from "konva";

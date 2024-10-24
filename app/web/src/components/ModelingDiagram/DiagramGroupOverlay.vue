@@ -60,7 +60,6 @@ const props = defineProps({
     type: Object as PropType<DiagramGroupData>,
     required: true,
   },
-  collapsed: Boolean,
   isHovered: Boolean,
   isSelected: Boolean,
 });
