@@ -57,10 +57,12 @@ async fn integration() -> std::result::Result<(), Box<dyn error::Error>> {
 
     // Spawn the shuttle instance using a tracker.
     let tracker = TaskTracker::new();
+    let tracker_clone = tracker.clone();
     let source_stream_clone = source_stream.clone();
     tracker.spawn(async move {
         match Shuttle::new(
             client,
+            tracker_clone,
             CancellationToken::new(),
             source_stream_clone,
             Subject::from(format!("{}.shuttle.test.source.some.inner.*", prefix)),

@@ -37,19 +37,21 @@ use naxum::{
     response::{IntoResponse, Response},
     ServiceBuilder, ServiceExt, TowerServiceExt,
 };
-use si_data_nats::NatsClient;
 use si_data_nats::{
     async_nats::{
         self,
-        jetstream::{consumer::StreamErrorKind, stream::ConsumerErrorKind},
+        jetstream::{
+            consumer::StreamErrorKind, context::RequestErrorKind, stream::ConsumerErrorKind,
+        },
     },
     jetstream, Subject,
 };
+use si_data_nats::{jetstream::Context, NatsClient};
 use si_events::ulid::Ulid;
 use telemetry::prelude::*;
 use telemetry::tracing::error;
 use thiserror::Error;
-use tokio_util::sync::CancellationToken;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 mod app_state;
 mod handlers;
@@ -65,6 +67,8 @@ pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 pub enum ShuttleError {
     #[error("async nats consumer error: {0}")]
     AsyncNatsConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
+    #[error("async nats request error: {0}")]
+    AsyncNatsRequest(#[from] async_nats::error::Error<RequestErrorKind>),
     #[error("async nats stream error: {0}")]
     AsyncNatsStream(#[from] async_nats::error::Error<StreamErrorKind>),
     #[error("naxum error: {0}")]
@@ -78,6 +82,10 @@ type Result<T> = std::result::Result<T, ShuttleError>;
 pub struct Shuttle {
     source_subject: Subject,
     destination_subject: Subject,
+    consumer_name: String,
+    source_stream_name: String,
+    context: Context,
+    tracker: TaskTracker,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
 }
 
@@ -86,6 +94,8 @@ impl std::fmt::Debug for Shuttle {
         f.debug_struct("Shuttle")
             .field("source_subject", &self.source_subject)
             .field("destination_subject", &self.destination_subject)
+            .field("consumer_name", &self.consumer_name)
+            .field("source_stream_name", &self.source_stream_name)
             .finish_non_exhaustive()
     }
 }
@@ -94,6 +104,7 @@ impl Shuttle {
     /// Creates a new running [`Shuttle`] instance.
     pub async fn new(
         nats: NatsClient,
+        tracker: TaskTracker,
         token: CancellationToken,
         limits_based_source_stream: async_nats::jetstream::stream::Stream,
         source_subject: Subject,
@@ -103,10 +114,18 @@ impl Shuttle {
         let connection_metadata = nats.metadata_clone();
         let context = jetstream::new(nats);
 
+        let consumer_name = format!("shuttle-{}", Ulid::new());
+        let source_stream_name = limits_based_source_stream
+            .get_info()
+            .await?
+            .config
+            .name
+            .to_owned();
+
         let incoming = {
             limits_based_source_stream
                 .create_consumer(async_nats::jetstream::consumer::push::OrderedConfig {
-                    name: Some(format!("shuttle-{}", Ulid::new())),
+                    name: Some(consumer_name.to_owned()),
                     deliver_subject,
                     filter_subject: source_subject.to_string(),
                     ..Default::default()
@@ -116,8 +135,11 @@ impl Shuttle {
                 .await?
         };
 
-        let state =
-            crate::app_state::AppState::new(context, destination_subject.clone(), token.clone());
+        let state = crate::app_state::AppState::new(
+            context.clone(),
+            destination_subject.clone(),
+            token.clone(),
+        );
 
         let app = ServiceBuilder::new()
             .layer(
@@ -140,6 +162,10 @@ impl Shuttle {
         Ok(Self {
             source_subject,
             destination_subject,
+            consumer_name,
+            source_stream_name,
+            context,
+            tracker,
             inner: Box::new(inner.into_future()),
         })
     }
@@ -148,6 +174,15 @@ impl Shuttle {
     pub async fn try_run(self) -> Result<()> {
         self.inner.await.map_err(ShuttleError::Naxum)?;
         trace!(%self.source_subject, %self.destination_subject, "shuttle main loop shutdown complete");
+        self.tracker.spawn(async move {
+            if let Err(err) = self
+                .context
+                .delete_consumer_from_stream(self.consumer_name, self.source_stream_name)
+                .await
+            {
+                error!(?err, "error deleting consumer from stream")
+            }
+        });
         Ok(())
     }
 }
