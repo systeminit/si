@@ -2605,11 +2605,11 @@ const edges = computed(() => {
     });
 });
 
-// this will re-compute on every drag
+// this will re-compute on every drag until all the position data is removed
 const allElementsByKey = computed(() =>
   _.keyBy(
     [
-      ...Object.values(componentsStore.nodesById),
+      ...nodes.value,
       ...groups.value,
       ...sockets.value, // protected to not run on drag
       ...edges.value,
