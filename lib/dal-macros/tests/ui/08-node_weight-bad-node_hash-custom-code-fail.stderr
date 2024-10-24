@@ -5,7 +5,7 @@ error: Invalid custom code for node_hash calculation: unexpected token
 14 | |     id: Ulid,
    | |____________^
 
-warning: unused imports: `NodeWeightDiscriminants`, `SiNodeWeight`
+warning: unused imports: `NodeWeightDiscriminants` and `SiNodeWeight`
  --> tests/ui/08-node_weight-bad-node_hash-custom-code-fail.rs:4:67
   |
 4 |         traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
@@ -28,7 +28,9 @@ error[E0277]: the trait bound `TestingNodeWeight: SiVersionedNodeWeight` is not 
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`, which is required by `for<'a> NodeInformation: From<&'a TestingNodeWeight>`
    |
    = help: the following other types implement trait `SiVersionedNodeWeight`:
+             GeometryNodeWeight
              ManagementPrototypeNodeWeight
+             ViewNodeWeight
              dal::workspace_snapshot::node_weight::InputSocketNodeWeight
              dal::workspace_snapshot::node_weight::SchemaVariantNodeWeight
    = note: required for `TestingNodeWeight` to implement `SiNodeWeight`

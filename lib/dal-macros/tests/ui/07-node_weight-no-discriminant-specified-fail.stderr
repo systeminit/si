@@ -17,7 +17,7 @@ error: unexpected end of input, expected identifier
    |
    = note: this error originates in the derive macro `dal_macros::SiNodeWeight` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: unused imports: `NodeWeightDiscriminants`, `SiNodeWeight`
+warning: unused imports: `NodeWeightDiscriminants` and `SiNodeWeight`
  --> tests/ui/07-node_weight-no-discriminant-specified-fail.rs:4:67
   |
 4 |         traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
@@ -40,7 +40,9 @@ error[E0277]: the trait bound `TestingNodeWeight: SiVersionedNodeWeight` is not 
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SiVersionedNodeWeight` is not implemented for `TestingNodeWeight`, which is required by `for<'a> NodeInformation: From<&'a TestingNodeWeight>`
    |
    = help: the following other types implement trait `SiVersionedNodeWeight`:
+             GeometryNodeWeight
              ManagementPrototypeNodeWeight
+             ViewNodeWeight
              dal::workspace_snapshot::node_weight::InputSocketNodeWeight
              dal::workspace_snapshot::node_weight::SchemaVariantNodeWeight
    = note: required for `TestingNodeWeight` to implement `SiNodeWeight`
