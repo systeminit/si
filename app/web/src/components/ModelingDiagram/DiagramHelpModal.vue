@@ -96,23 +96,6 @@
         </div>
         <div>Press ⌘ and E to erase selection.</div>
       </div>
-      <div class="flex flex-row items-center gap-xs">
-        <div class="w-12 flex flex-row items-center justify-center">
-          <div class="text-xl font-bold leading-none flex-grow text-center">
-            \
-          </div>
-        </div>
-        <div>Press the backslash key to collapse selected frame(s).</div>
-      </div>
-      <div class="flex flex-row items-center gap-xs">
-        <div class="w-12 flex flex-row items-center justify-center">
-          <Icon name="command" />
-          <div class="text-xl font-bold leading-none flex-grow text-center">
-            \
-          </div>
-        </div>
-        <div>Press ⌘ and \ to collapse all frames.</div>
-      </div>
     </div>
   </Modal>
 </template>
