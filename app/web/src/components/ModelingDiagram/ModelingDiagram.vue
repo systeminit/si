@@ -264,6 +264,7 @@ import {
   Ref,
   provide,
   inject,
+  toRaw,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import Konva from "konva";
@@ -2608,12 +2609,7 @@ const edges = computed(() => {
 // this will re-compute on every drag until all the position data is removed
 const allElementsByKey = computed(() =>
   _.keyBy(
-    [
-      ...nodes.value,
-      ...groups.value,
-      ...sockets.value, // protected to not run on drag
-      ...edges.value,
-    ],
+    [...nodes.value, ...groups.value, ...sockets.value, ...edges.value],
     (e) => e.uniqueKey,
   ),
 );
@@ -2630,7 +2626,7 @@ const selectionRects = computed(() => {
     const id = uniqueKey.slice(2); // remove the prefix
     const rect = viewStore.components[id] || viewStore.components[id];
     if (rect) {
-      const r = structuredClone(rect);
+      const r = structuredClone(toRaw(rect));
       r.x -= r.width / 2;
       if (isGroup) {
         // deal with top bar height outside the component's
