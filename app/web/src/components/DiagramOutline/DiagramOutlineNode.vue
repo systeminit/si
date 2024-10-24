@@ -222,7 +222,7 @@ const props = defineProps<{
 }>();
 
 const rootCtx = useDiagramOutlineContext();
-const { filterModeActive } = rootCtx;
+const { filterModeActive, collapsedComponents } = rootCtx;
 
 const nodeRef = ref<HTMLElement>();
 const htmlid = `diagram-outline-node-${props.component.def.id}`;
@@ -230,19 +230,18 @@ const htmlid = `diagram-outline-node-${props.component.def.id}`;
 const isOpen = ref(true);
 
 const toggleGroup = () => {
-  componentsStore.toggleCollapse(
-    "diagram-outline-node",
-    props.component.def.id,
-  );
+  if (collapsedComponents.has(props.component.def.id))
+    collapsedComponents.delete(props.component.def.id);
+  else collapsedComponents.add(props.component.def.id);
 };
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 
 watch(
-  componentsStore.collapsedComponents,
+  collapsedComponents,
   () => {
-    if (componentsStore.collapsedComponents.has(props.component.uniqueKey)) {
+    if (collapsedComponents.has(props.component.uniqueKey)) {
       isOpen.value = false;
     } else {
       isOpen.value = true;
