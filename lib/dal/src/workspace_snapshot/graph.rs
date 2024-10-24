@@ -14,6 +14,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    socket::input::InputSocketError,
     workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
     ComponentError, SchemaVariantError,
 };
@@ -22,10 +23,12 @@ pub mod correct_transforms;
 pub mod deprecated;
 pub mod detect_updates;
 mod tests;
+pub mod traits;
 pub mod v2;
 pub mod v3;
 pub mod v4;
 
+pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
 pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 pub use v4::WorkspaceSnapshotGraphV4;
@@ -59,6 +62,8 @@ pub enum WorkspaceSnapshotGraphError {
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("Incompatible node types")]
     IncompatibleNodeTypes,
+    #[error("InputSocket error {0}")]
+    InputSocketError(#[from] Box<InputSocketError>),
     #[error("Invalid value graph")]
     InvalidValueGraph,
     #[error("layerdb error: {0}")]

@@ -1,10 +1,10 @@
 use petgraph::prelude::*;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
     component::ComponentResult,
     workspace_snapshot::{
-        edge_weight::EdgeWeightKindDiscriminants, node_weight::NodeWeightDiscriminants,
+        edge_weight::EdgeWeightKindDiscriminants, graph::WorkspaceSnapshotGraphV4,
+        node_weight::NodeWeightDiscriminants,
     },
     ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
 };

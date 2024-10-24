@@ -30,9 +30,6 @@ use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
-pub mod component;
-pub mod schema;
-
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraphV3 {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
