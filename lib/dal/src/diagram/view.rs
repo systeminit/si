@@ -9,8 +9,9 @@ use crate::{
     id, implement_add_edge_to, EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotError,
 };
 use crate::{DalContext, EdgeWeightKind};
-use jwt_simple::prelude::{Deserialize, Serialize};
+use chrono::Utc;
 use petgraph::Outgoing;
+use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
 use std::sync::Arc;
@@ -45,6 +46,20 @@ impl View {
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
+    }
+
+    pub fn id(&self) -> ViewId {
+        self.id
+    }
+
+    pub fn timestamp(&self) -> &Timestamp {
+        &self.timestamp
+    }
+
+    pub async fn is_default(&self, ctx: &DalContext) -> DiagramResult<bool> {
+        let default_id = Self::get_id_for_default(ctx).await?;
+
+        Ok(default_id == self.id)
     }
 
     fn assemble(node_weight: ViewNodeWeight, content: ViewContent) -> Self {
@@ -94,6 +109,63 @@ impl View {
     pub async fn get_by_id(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, view_id).await?;
         Ok(Self::assemble(node_weight, content))
+    }
+
+    pub async fn find_by_name(ctx: &DalContext, name: &str) -> DiagramResult<Option<Self>> {
+        for view_node_weight in Self::list_node_weights(ctx).await? {
+            let content = Self::try_get_content(ctx, &view_node_weight.content_hash())
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    view_node_weight.id(),
+                ))?;
+
+            let view = Self::assemble(view_node_weight, content);
+
+            if view.name == name {
+                return Ok(Some(view));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn list_node_weights(ctx: &DalContext) -> DiagramResult<Vec<ViewNodeWeight>> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let category_node = snap
+            .get_category_node(None, CategoryNodeKind::View)
+            .await?
+            .ok_or(DiagramError::ViewCategoryNotFound)?;
+
+        let mut views = vec![];
+        for view_idx in snap
+            .outgoing_targets_for_edge_weight_kind(category_node, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let view_node_weight = snap
+                .get_node_weight(view_idx)
+                .await?
+                .get_view_node_weight()?;
+
+            views.push(view_node_weight);
+        }
+
+        Ok(views)
+    }
+
+    pub async fn list(ctx: &DalContext) -> DiagramResult<Vec<Self>> {
+        let mut views = vec![];
+        for view_node_weight in Self::list_node_weights(ctx).await? {
+            let content = Self::try_get_content(ctx, &view_node_weight.content_hash())
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    view_node_weight.id(),
+                ))?;
+
+            views.push(Self::assemble(view_node_weight, content));
+        }
+
+        Ok(views)
     }
 
     pub async fn get_id_for_default(ctx: &DalContext) -> DiagramResult<ViewId> {
@@ -187,7 +259,10 @@ impl View {
             .write(
                 Arc::new(
                     ViewContent::V1(ViewContentV1 {
-                        timestamp: self.timestamp,
+                        timestamp: Timestamp {
+                            created_at: self.timestamp.created_at,
+                            updated_at: Utc::now(),
+                        },
                         name: name.as_ref().to_owned(),
                     })
                     .into(),

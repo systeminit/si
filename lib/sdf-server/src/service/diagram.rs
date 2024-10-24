@@ -20,9 +20,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::AppState;
-
 use super::ApiError;
+use crate::AppState;
 
 pub mod create_component;
 pub mod create_connection;
@@ -117,7 +116,7 @@ pub enum DiagramError {
     #[error("No installable module found for schema id {0}")]
     UninstalledSchemaNotFound(SchemaId),
     #[error(transparent)]
-    WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnasphot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
