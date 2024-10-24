@@ -14,6 +14,7 @@ blake3 = { workspace = true }
 bytes = { workspace = true }
 cacache = { workspace = true }
 chrono = { workspace = true }
+foyer = { workspace = true }
 futures = { workspace = true }
 lazy_static = { workspace = true }
 miniz_oxide = { workspace = true }

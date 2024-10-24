@@ -19,6 +19,7 @@ rust_library(
         "//third-party/rust:bytes",
         "//third-party/rust:cacache",
         "//third-party/rust:chrono",
+        "//third-party/rust:foyer",
         "//third-party/rust:futures",
         "//third-party/rust:lazy_static",
         "//third-party/rust:miniz_oxide",

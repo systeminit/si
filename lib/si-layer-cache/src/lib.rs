@@ -30,6 +30,7 @@ pub mod db;
 pub mod disk_cache;
 pub mod error;
 pub mod event;
+pub mod hybrid_cache;
 pub mod layer_cache;
 pub mod memory_cache;
 mod nats;
