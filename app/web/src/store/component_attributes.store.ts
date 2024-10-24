@@ -20,6 +20,7 @@ import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { APIComponentGeometry, useComponentsStore } from "./components.store";
+import { useViewsStore } from "./views.store";
 
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: string;
@@ -327,16 +328,15 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 componentStore.allComponentsById[component.def.parentId];
               if (!parent) throw new Error("Could not find parent in store");
 
-              const componentGeometry =
-                componentStore.renderedGeometriesByComponentId[
-                  component.def.id
-                ];
+              const viewStore = useViewsStore();
+              const componentGeometry = component.def.isGroup
+                ? viewStore.groups[component.def.id]
+                : viewStore.components[component.def.id];
 
               if (!componentGeometry)
                 throw new Error("Could not rendered geometry for component");
 
-              const parentGeometry =
-                componentStore.renderedGeometriesByComponentId[parent.def.id];
+              const parentGeometry = viewStore.groups[parent.def.id];
 
               if (!parentGeometry)
                 throw new Error("Could not rendered geometry for parent");

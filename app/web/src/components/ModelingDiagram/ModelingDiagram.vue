@@ -78,9 +78,6 @@ overflow hidden */
           <DiagramGroup
             v-for="group in groups"
             :key="group.uniqueKey"
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
-            "
             :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
             :debug="enableDebugMode"
             :group="group"
@@ -96,12 +93,8 @@ overflow hidden */
             "
             @resize="onNodeLayoutOrLocationChange(group)"
           />
-          <template
-            v-for="node of componentsStore.nodesById"
-            :key="node.uniqueKey"
-          >
+          <template v-for="node of nodes" :key="node.uniqueKey">
             <DiagramNode
-              v-if="!areMyAncestorsCollapsed(node)"
               :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
               :debug="enableDebugMode"
               :isHovered="elementIsHovered(node)"
@@ -138,9 +131,6 @@ overflow hidden */
           <DiagramGroupOverlay
             v-for="group in groups"
             :key="group.uniqueKey"
-            :collapsed="
-              componentsStore.collapsedComponents.has(group.uniqueKey)
-            "
             :group="group"
             @resize="onNodeLayoutOrLocationChange(group)"
           />
@@ -294,19 +284,13 @@ import { useToast } from "vue-toastification";
 import { ulid } from "ulid";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
-import {
-  useComponentsStore,
-  ComponentData,
-  elementPositionAndSize,
-  COLLAPSED_HALFWIDTH,
-  COLLAPSED_HALFHEIGHT,
-} from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
-import { useAuthStore } from "@/store/auth.store";
+import { useViewsStore } from "@/store/views.store";
 import { useAssetStore } from "@/store/asset.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useStatusStore } from "@/store/status.store";
@@ -314,7 +298,6 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
-  DiagramNodeDef,
   Direction,
   RightClickElementEvent,
   DiagramNodeData,
@@ -374,7 +357,6 @@ const toast = useToast();
 const assetStore = useAssetStore();
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
-const authStore = useAuthStore();
 const qualificationStore = useQualificationsStore();
 
 // scroll pan multiplied by this and zoom level when panning
@@ -394,11 +376,11 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const statusStore = useStatusStore();
 const modelingEventBus = componentsStore.eventBus;
 
-const fetchDiagramReqStatus =
-  componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
+const fetchDiagramReqStatus = viewStore.getRequestStatus("FETCH_VIEW");
 
 const enableDebugMode = false;
 
@@ -575,31 +557,6 @@ const onResize: ResizeObserverCallback = (entries) => {
 const debouncedOnResize = _.debounce(onResize, 50);
 const resizeObserver = new ResizeObserver(debouncedOnResize);
 
-// fill both movedElementPositions and resizedElementSizes from data-loading
-// and watch for new components entering the stage, fill them in here
-// TODO: jobelenus, move this to the store, no more WATCH
-watch(componentsStore.allComponentsById, () => {
-  Object.values(componentsStore.allComponentsById).forEach((component) => {
-    // don't overwrite existing values (this causes elements to return to previous positions)
-    const e: elementPositionAndSize = {
-      uniqueKey: component.uniqueKey,
-      position: {
-        x: component.def.position.x,
-        y: component.def.position.y,
-      } as Vector2d,
-    };
-    if (component.def.isGroup) {
-      e.size = {
-        width: component.def.size?.width,
-        height: component.def.size?.height,
-      } as Size2D;
-    }
-    if (!componentsStore.movedElementPositions[component.uniqueKey]) {
-      updateElementPositionAndSize({ elements: [e] }); // and don't save or broadcast
-    }
-  });
-});
-
 // this is all a little ugly, but basically we are waiting until custom fonts are loaded to initialize and display the canvas
 // or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
 const isMounted = ref(false);
@@ -658,29 +615,27 @@ watch(
           callback: ({ changeSetId, clientUlid, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
             if (clientUlid === diagramUlid.value) return;
+            // TODO: make sure to update the correct view based on ID
 
-            const elements: elementPositionAndSize[] = [];
             for (const { componentId, position, size } of positions) {
-              const gKey = DiagramGroupData.generateUniqueKey(componentId);
-              const nKey = DiagramNodeData.generateUniqueKey(componentId);
-              if (componentsStore.movedElementPositions[gKey]) {
-                elements.push({
-                  uniqueKey: gKey,
-                  position,
-                  size,
-                } as elementPositionAndSize);
-              } else if (componentsStore.movedElementPositions[nKey]) {
-                elements.push({
-                  uniqueKey: nKey,
-                  position,
-                });
+              const component = componentsStore.allComponentsById[componentId];
+              if (component) {
+                let viewComponent;
+                if (component.def.isGroup) {
+                  viewComponent = viewStore.groups[componentId];
+                  if (viewComponent && size?.height && size?.width) {
+                    viewComponent.height = size.height;
+                    viewComponent.width = size.width;
+                  }
+                } else {
+                  viewComponent = viewStore.components[componentId];
+                }
+                if (viewComponent) {
+                  viewComponent.x = position.x;
+                  viewComponent.y = position.y;
+                }
               }
             }
-            updateElementPositionAndSize({
-              elements,
-              writeToChangeSet: false,
-              broadcastToClients: false,
-            });
           },
         },
       ],
@@ -885,29 +840,9 @@ async function onKeyDown(e: KeyboardEvent) {
       componentsStore.selectedComponent.def.id,
     );
   }
-  if (!props.readOnly && e.code === "Backslash") {
-    if (e.metaKey) {
-      // collapse all
-      componentsStore.toggleCollapse(
-        "hotkey",
-        ...[...componentsStore.collapsedComponents].map((uniqueKey) =>
-          uniqueKey.substring(2),
-        ),
-      );
-    } else {
-      // collapse selected
-      componentsStore.toggleSelectedCollapse("hotkey");
-    }
-  }
   if (!props.readOnly && e.key === "n" && componentsStore.selectedComponentId) {
-    // rename component
-    const collapsed = componentsStore.collapsedComponents.has(
-      `g-${componentsStore.selectedComponentId}`,
-    );
-    if (!collapsed) {
-      e.preventDefault();
-      renameOnDiagramByComponentId(componentsStore.selectedComponentId);
-    }
+    e.preventDefault();
+    renameOnDiagramByComponentId(componentsStore.selectedComponentId);
   }
 }
 
@@ -923,6 +858,7 @@ function onKeyUp(e: KeyboardEvent) {
 const mouseIsDown = ref(false);
 const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
+const prevDragTotal = ref<Vector2d>({ x: 0, y: 0 });
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownElementKey = ref<DiagramElementUniqueKey>();
 const lastMouseDownHoverMeta = ref<ElementHoverMeta | null>(null);
@@ -1474,9 +1410,6 @@ function endDragSelect(doSelection = true) {
 
 /*
  * MOVING DIAGRAM ELEMENTS (nodes/groups/annotations/etc) ///////////////////////////////////////
- *
- * `movedElementPositions` and `resizedElementSizes` should only be SET via the updateElementPositionAndSize fn
- * You can read from those reactive dictionaries w/o issue
  */
 const dragElementsActive = ref(false);
 const currentSelectionMovableElements = computed(() => {
@@ -1505,239 +1438,41 @@ const currentSelectionMovableElements = computed(() => {
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
-const draggedCollapsedElementsPositionsPreDrag = ref<
-  Record<DiagramElementUniqueKey, Vector2d | undefined>
->({});
-const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
-
-interface updateElementPositionAndSizeArgs {
-  elements: elementPositionAndSize[];
-  writeToChangeSet?: boolean;
-  broadcastToClients?: boolean;
-}
-function updateElementPositionAndSize(e: updateElementPositionAndSizeArgs) {
-  /*
-    Replaces most common uses of `sendMovedElementPosition`
-    Nearly every instance of `send...` also mutated these two dictionaries, encapsulating that logic
-    It will also call `send...`, optionally
-  */
-  _.forEach(e.elements, (e) => {
-    if (e.position) {
-      componentsStore.movedElementPositions[e.uniqueKey] = { ...e.position };
-    }
-    if (e.size) {
-      e.size.height = Math.max(e.size.height, MIN_NODE_DIMENSION);
-      e.size.width = Math.max(e.size.width, MIN_NODE_DIMENSION);
-      componentsStore.resizedElementSizes[e.uniqueKey] = { ...e.size };
-    }
-  });
-
-  if (e.writeToChangeSet || e.broadcastToClients) {
-    sendMovedElementPosition({
-      ...e,
-      componentData: e.elements.map(({ uniqueKey }) => ({
-        key: uniqueKey,
-      })),
-    });
-  }
-}
-type MoveElementsPayload = {
-  // used to send the already existing elements position and size
-  componentData: ComponentData[];
-  writeToChangeSet?: boolean;
-  broadcastToClients?: boolean;
-};
-
-function sendMovedElementPosition(e: MoveElementsPayload) {
-  if (!e.writeToChangeSet && !e.broadcastToClients) return;
-  if (!e.componentData) return;
-
-  const componentUpdate = componentsStore.constructGeometryData(
-    e.componentData,
-  );
-
-  if (componentUpdate.length > 0) {
-    if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_GEOMETRY(
-        componentUpdate,
-        diagramUlid.value,
-      );
-    }
-
-    if (
-      e.broadcastToClients &&
-      changeSetsStore.selectedChangeSetId &&
-      authStore.userPk
-    ) {
-      realtimeStore.sendMessage({
-        kind: "ComponentSetPosition",
-        data: {
-          positions: _.map(componentUpdate, (c) => c.geometry),
-          clientUlid: diagramUlid.value,
-          changeSetId: changeSetsStore.selectedChangeSetId,
-        },
-      });
-    }
-  }
-}
+const edgeScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 function beginDragElements() {
   if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;
 
-  totalScrolledDuringDrag.value = { x: 0, y: 0 };
+  edgeScrolledDuringDrag.value = { x: 0, y: 0 };
 
-  draggedElementsPositionsPreDrag.value = Object.values(
-    componentsStore.allComponentsById,
-  ).reduce((obj, el) => {
-    obj[el.uniqueKey] =
-      componentsStore.movedElementPositions[el.uniqueKey] || el.def.position;
-    return obj;
-  }, {} as Record<DiagramElementUniqueKey, Vector2d>);
+  draggedElementsPositionsPreDrag.value =
+    currentSelectionMovableElements.value.reduce((obj, el) => {
+      const geo = el.def.isGroup
+        ? viewStore.groups[el.def.id]
+        : viewStore.components[el.def.id];
 
-  const collapsedByKeys = {} as Record<string, DiagramGroupData>;
-  for (const [uniqueKey, el] of Object.entries(allElementsByKey.value)) {
-    if (componentsStore.collapsedComponents.has(uniqueKey)) {
-      collapsedByKeys[uniqueKey] = el as DiagramGroupData;
-    }
-  }
-  if (Object.keys(collapsedByKeys).length > 0)
-    draggedCollapsedElementsPositionsPreDrag.value = _.mapValues(
-      collapsedByKeys,
-      (el) => componentsStore.collapsedElementPositions[el.uniqueKey]!,
-    );
-  else draggedCollapsedElementsPositionsPreDrag.value = {};
+      if (geo) obj[el.uniqueKey] = { ...geo };
+      return obj;
+    }, {} as Record<DiagramElementUniqueKey, Vector2d>);
 }
-
-function endDragElements() {
-  dragElementsActive.value = false;
-  // fire off final move event
-  const componentData: {
-    key: DiagramElementUniqueKey;
-    detach?: boolean;
-    newParent?: ComponentId;
-  }[] = [];
-
-  // treating attach/detach as idempotent from the FE, always call it, even if we don't think we have a parent
-  // we may be compensating for what we don't know, the backend can resolve no-ops
-  const detach = !cursorWithinGroupKey.value;
-  let newParent: DiagramGroupData | undefined;
-  if (cursorWithinGroupKey.value) {
-    newParent = allElementsByKey.value[
-      cursorWithinGroupKey.value
-    ] as DiagramGroupData;
-  }
-
-  const singleItemInSelection =
-    currentSelectionMovableElements.value.length === 1;
-
-  _.each(currentSelectionMovableElements.value, (el) => {
-    if (componentsStore.collapsedComponents.has(el.uniqueKey)) return;
-
-    if (!componentsStore.movedElementPositions[el.uniqueKey]) return;
-    componentData.push({
-      key: el.uniqueKey,
-      detach,
-      newParent: newParent?.def.id,
-    });
-
-    // note - we've already filtered out children that are selected along with their parents,
-    // so we don't need to worry about accidentally moving them more than once
-    if (el instanceof DiagramGroupData) {
-      const childEls = allChildren(el);
-      componentData.push(
-        ..._.map(childEls, (childEl) => ({ key: childEl.uniqueKey })),
-      );
-    }
-
-    if (singleItemInSelection) {
-      if (el.def.parentId !== newParent?.def.id) {
-        // and the parent has no children?
-        if (newParent?.def.childIds?.length === 0) {
-          // and the parent has a size (is a group), and I am a group?
-          if (newParent.def.size && el.def.isGroup) {
-            // expand me to the inner size of the parent frame
-            const fitWithinParent = {
-              position:
-                componentsStore.movedElementPositions[newParent.uniqueKey] ??
-                newParent.def.position,
-              size:
-                componentsStore.resizedElementSizes[newParent.uniqueKey] ??
-                newParent.def.size,
-            };
-            const [position, size] = fitChildInsideParentFrame(
-              fitWithinParent.position,
-              fitWithinParent.size,
-            );
-
-            updateElementPositionAndSize({
-              elements: [
-                {
-                  uniqueKey: el.uniqueKey,
-                  position,
-                  size,
-                },
-              ],
-            });
-          }
-        }
-      }
-    }
-  });
-
-  const payload = {
-    componentData,
-    writeToChangeSet: true,
-  } as MoveElementsPayload;
-
-  sendMovedElementPosition(payload);
-}
-
-let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
-
-// TODO(victor) This can be optimized
-// This needs to be recursive to find child components at all depths
-const allChildren = (el: DiagramGroupData): DiagramElementData[] => {
-  const children: DiagramElementData[] = [];
-  el.def.childIds?.forEach((childId) => {
-    const c = Object.values(componentsStore.allComponentsById).find(
-      (n) => n.def.id === childId,
-    );
-    if (c) {
-      children.push(c);
-      if (c.def.isGroup) children.push(...allChildren(c));
-    }
-  });
-  return children;
-};
-
-const allChildrenInGroup = (el: DiagramGroupData): ComponentId[] => {
-  const children: ComponentId[] = [];
-  el?.def.childIds?.forEach((childId) => {
-    const c = componentsStore.allComponentsById[childId];
-    if (c && c.def.isGroup) {
-      children.push(c.def.id);
-      children.push(...allChildrenInGroup(c));
-    }
-  });
-  return children;
-};
 
 function onDragElementsMove() {
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
 
+  // this is the max delta from the original mouse down point
   const delta: Vector2d = {
     x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
-        totalScrolledDuringDrag.value.x) /
+        edgeScrolledDuringDrag.value.x) /
         zoomLevel.value,
     ),
     y: Math.round(
       (containerPointerPos.value.y -
         lastMouseDownContainerPointerPos.value.y +
-        totalScrolledDuringDrag.value.y) /
+        edgeScrolledDuringDrag.value.y) /
         zoomLevel.value,
     ),
   };
@@ -1753,23 +1488,17 @@ function onDragElementsMove() {
     cursorWithinGroupKey.value || ""
   ] as DiagramGroupData;
 
-  const collapsedElements: elementPositionAndSize[] = [];
-  const elements: elementPositionAndSize[] = [];
-  _.each(currentSelectionMovableElements.value, (el) => {
-    if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
-    const newPosition = vectorAdd(
-      componentsStore.collapsedComponents.has(el.uniqueKey)
-        ? draggedCollapsedElementsPositionsPreDrag.value[el.uniqueKey]!
-        : draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
-      delta,
-    );
+  const adjust: Vector2d = { x: 0, y: 0 };
+  if (parentOrCandidate) {
+    currentSelectionMovableElements.value.forEach((el) => {
+      if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
+      const newPosition = vectorAdd(
+        draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
+        delta,
+      );
 
-    // if we are going to move the element within a new parent we may need to adjust
-    // the position to stay inside of it
-    if (
-      parentOrCandidate &&
-      !componentsStore.collapsedComponents.has(el.uniqueKey)
-    ) {
+      // if we are going to move the element within a new parent we may need to adjust
+      // the position to stay inside of it
       const parentRect = nodesLocationInfo[parentOrCandidate.uniqueKey];
       const elRect = nodesLocationInfo[el.uniqueKey];
       if (!parentRect || !elRect) return;
@@ -1791,122 +1520,48 @@ function onDragElementsMove() {
       };
 
       if (!rectContainsAnother(parentRectWithBuffer, movedElRect)) {
-        const adjust = getAdjustmentRectToContainAnother(
+        const _adjust = getAdjustmentRectToContainAnother(
           parentRectWithBuffer,
           movedElRect,
         );
-        newPosition.x -= adjust.x;
-        newPosition.y -= adjust.y;
+        adjust.x =
+          Math.abs(_adjust.x) > Math.abs(adjust.x) ? _adjust.x : adjust.x;
+        adjust.y =
+          Math.abs(_adjust.y) > Math.abs(adjust.y) ? _adjust.y : adjust.y;
       }
-    }
-
-    // keep the collapsed component within its parent bounding box
-    if (
-      componentsStore.collapsedComponents.has(el.uniqueKey) &&
-      el.def.parentId
-    ) {
-      const parent = componentsStore.rawComponentsById[el.def.parentId];
-      if (parent) {
-        const parentKey =
-          parent.componentType === ComponentType.Component
-            ? `n-${parent.id}`
-            : `g-${parent.id}`;
-        const parentRect = nodesLocationInfo[parentKey];
-        if (parentRect) {
-          // enforce left side
-          if (
-            newPosition.x <
-            parentRect.x + COLLAPSED_HALFWIDTH + GROUP_INTERNAL_PADDING
-          )
-            newPosition.x =
-              parentRect.x + COLLAPSED_HALFWIDTH + GROUP_INTERNAL_PADDING;
-
-          // enforce top
-          if (
-            newPosition.y <
-            parentRect.y + HEADER_SIZE + GROUP_INTERNAL_PADDING
-          )
-            newPosition.y = parentRect.y + HEADER_SIZE + GROUP_INTERNAL_PADDING;
-
-          // enforce right
-          const rightBound =
-            parentRect.x +
-            parentRect.width -
-            COLLAPSED_HALFWIDTH -
-            GROUP_INTERNAL_PADDING;
-          if (newPosition.x > rightBound) newPosition.x = rightBound;
-
-          // enforce bottom
-          const bottomBound =
-            parentRect.y +
-            parentRect.height -
-            COLLAPSED_HALFHEIGHT -
-            GROUP_INTERNAL_PADDING -
-            GROUP_BOTTOM_INTERNAL_PADDING * 2;
-          if (newPosition.y > bottomBound) newPosition.y = bottomBound;
-        }
-      }
-    }
-
-    if (
-      el instanceof DiagramGroupData &&
-      !componentsStore.collapsedComponents.has(el.uniqueKey)
-    ) {
-      const childEls = allChildren(el);
-
-      const actualParentDelta = vectorBetween(
-        draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
-        newPosition,
-      );
-
-      _.each(childEls, (childEl) => {
-        const newChildPosition = vectorAdd(
-          draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
-          actualParentDelta,
-        );
-
-        elements.push({
-          uniqueKey: childEl.uniqueKey,
-          position: newChildPosition,
-        });
-
-        if (componentsStore.collapsedComponents.has(childEl.uniqueKey)) {
-          const newUnCollapsedPosition = vectorAdd(
-            draggedCollapsedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
-            actualParentDelta,
-          );
-          collapsedElements.push({
-            uniqueKey: childEl.uniqueKey,
-            position: newUnCollapsedPosition,
-          });
-        } else {
-          // clear out the collaposed position data of children if its no longer collapsed and its parent has moved
-          componentsStore.removeCollapsedData(childEl.uniqueKey);
-        }
-      });
-    }
-
-    // track the position locally, so we don't need to rely on parent to store the temporary position
-    if (componentsStore.collapsedComponents.has(el.uniqueKey)) {
-      collapsedElements.push({
-        uniqueKey: el.uniqueKey,
-        position: newPosition,
-      });
-    } else {
-      elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
-    }
-  });
-  if (elements.length > 0)
-    updateElementPositionAndSize({
-      elements,
-      writeToChangeSet: false,
-      broadcastToClients: true,
     });
-  if (collapsedElements.length > 0)
-    componentsStore.updateMinimzedElementPositionAndSize(...collapsedElements);
+  }
+
+  const result = vectorAdd(delta, adjust);
+  // when we update the stores, we don't want to use the max delta
+  // i just need the difference between the last and this, to move the elements
+  const deltaFromLast = vectorSubtract(result, prevDragTotal.value);
+  // but keep the total vector for the next iteration through the loop!
+  prevDragTotal.value = { ...result };
+
+  viewStore.MOVE_COMPONENTS(
+    diagramUlid.value,
+    currentSelectionMovableElements.value,
+    deltaFromLast,
+    { broadcastToClients: true },
+  );
 
   checkDiagramEdgeForScroll();
 }
+
+function endDragElements() {
+  dragElementsActive.value = false;
+  prevDragTotal.value = { x: 0, y: 0 };
+
+  viewStore.MOVE_COMPONENTS(
+    diagramUlid.value,
+    currentSelectionMovableElements.value,
+    { x: 0, y: 0 },
+    { writeToChangeSet: true },
+  );
+}
+
+let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
 
 function checkDiagramEdgeForScroll() {
   // check if dragging to the edge of the screen, which will trigger scrolling
@@ -1972,8 +1627,8 @@ function triggerDragToEdgeScrolling() {
   }
 
   // track total amount scrolled because we need to offset from original drag click location
-  totalScrolledDuringDrag.value.x += deltaX;
-  totalScrolledDuringDrag.value.y += deltaY;
+  edgeScrolledDuringDrag.value.x += deltaX;
+  edgeScrolledDuringDrag.value.y += deltaY;
 
   // adjust amount to scroll by zoom before we apply it
   if (deltaX !== 0) deltaX /= zoomLevel.value;
@@ -2002,22 +1657,13 @@ function alignSelection(direction: Direction) {
   else if (direction === "down") alignedY = _.max(yPositions);
   else if (direction === "left") alignedX = _.min(xPositions);
   else if (direction === "right") alignedX = _.max(xPositions);
-  const elements: elementPositionAndSize[] = [];
-  _.forEach(currentSelectionMovableElements.value, (el) => {
-    const position = {
-      x: alignedX === undefined ? el.def.position.x : alignedX,
-      y: alignedY === undefined ? el.def.position.y : alignedY,
-    } as Vector2d;
-    elements.push({
-      position,
-      uniqueKey: el.uniqueKey,
-    });
-  });
-  updateElementPositionAndSize({
-    elements,
-    writeToChangeSet: true,
-  });
-  // TODO: move viewport to show selection
+
+  viewStore.MOVE_COMPONENTS(
+    diagramUlid.value,
+    currentSelectionMovableElements.value,
+    { x: alignedX ?? 0, y: alignedY ?? 0 },
+    { writeToChangeSet: true },
+  );
 }
 
 type VoidFn = () => void;
@@ -2032,55 +1678,25 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
 
-  const elements = currentSelectionMovableElements.value.reduce<
-    elementPositionAndSize[]
-  >((elms, el) => {
-    const e = recursivePositionCompute(el, nudgeVector);
-    elms.push(...e);
-    return elms;
-  }, []);
-  updateElementPositionAndSize({
-    elements,
-    broadcastToClients: true,
-  });
-  const componentData = elements.map(({ uniqueKey }) => ({ key: uniqueKey }));
+  viewStore.MOVE_COMPONENTS(
+    diagramUlid.value,
+    currentSelectionMovableElements.value,
+    nudgeVector,
+    { broadcastToClients: true },
+  );
   if (!debouncedNudgeFn) {
     debouncedNudgeFn = _.debounce(() => {
-      sendMovedElementPosition({
-        componentData,
-        writeToChangeSet: true,
-      });
+      viewStore.MOVE_COMPONENTS(
+        diagramUlid.value,
+        currentSelectionMovableElements.value,
+        { x: 0, y: 0 },
+        { writeToChangeSet: true },
+      );
       debouncedNudgeFn = null;
     }, 300);
   }
   debouncedNudgeFn();
 }
-
-const recursivePositionCompute = (
-  el: DiagramGroupData | DiagramNodeData,
-  nudgeVector: Vector2d,
-): elementPositionAndSize[] => {
-  const elements: elementPositionAndSize[] = [];
-  const newPosition = vectorAdd(
-    componentsStore.movedElementPositions[el.uniqueKey] || el.def.position,
-    nudgeVector,
-  );
-  elements.push({ uniqueKey: el.uniqueKey, position: newPosition });
-
-  _.each(el.def.childIds, (id) => {
-    if (
-      !currentSelectionMovableElements.value.find(
-        (e) => e.def.componentId === id,
-      )
-    ) {
-      const node = componentsStore.allComponentsById[id];
-      if (node) {
-        elements.push(...recursivePositionCompute(node, nudgeVector));
-      }
-    }
-  });
-  return elements;
-};
 
 // we calculate which group (if any) the cursor is within without using hover events
 // which is useful when dragging elements in/out of groups
@@ -2111,47 +1727,34 @@ const moveElementsState = computed(() => {
 const resizeElement = ref<DiagramGroupData>();
 const resizeElementActive = computed(() => !!resizeElement.value);
 const resizeElementDirection = ref<SideAndCornerIdentifiers>();
-const resizedElementSizesPreResize = reactive<
-  Record<DiagramElementUniqueKey, Size2D>
->({});
+const resizedElementGeometryPreResize = ref<IRect>();
 
 function beginResizeElement() {
   if (!lastMouseDownElement.value) return;
   if (lastMouseDownHoverMeta.value?.type !== "resize") return;
 
-  const node = lastMouseDownElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
   if (!(lastMouseDownElement.value instanceof DiagramGroupData)) return;
 
   resizeElement.value = lastMouseDownElement.value;
-  if (componentsStore.collapsedComponents.has(resizeElement.value.uniqueKey))
-    return;
 
   resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
-  const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
-  resizedElementSizesPreResize[resizeTargetKey] =
-    componentsStore.resizedElementSizes[resizeTargetKey] || node.size;
-
-  draggedElementsPositionsPreDrag.value[resizeTargetKey] =
-    componentsStore.movedElementPositions[resizeTargetKey] || node.position;
+  const irect = viewStore.groups[lastMouseDownElement.value.def.id]!;
+  resizedElementGeometryPreResize.value = { ...irect };
 }
 
 function endResizeElement() {
+  resizedElementGeometryPreResize.value = undefined;
   const el = resizeElement.value;
   if (!el) return;
   // currently only groups can be resized... this is mostly for TS
   if (!(el instanceof DiagramGroupData)) return;
-  if (componentsStore.collapsedComponents.has(el.uniqueKey)) return;
 
-  const size = componentsStore.resizedElementSizes[el.uniqueKey];
-  const position = componentsStore.movedElementPositions[el.uniqueKey];
-  if (!size || !position) {
+  const geometry = viewStore.groups[el.def.id];
+  if (!geometry) {
     return;
   }
-  updateElementPositionAndSize({
-    elements: [{ position, size, uniqueKey: el.uniqueKey }],
+  viewStore.RESIZE_COMPONENT(diagramUlid.value, el, geometry, {
     writeToChangeSet: true,
   });
 
@@ -2161,12 +1764,6 @@ function endResizeElement() {
 function onResizeMove() {
   if (!resizeElement.value || !resizeElementDirection.value) return;
 
-  const resizeTargetKey = resizeElement.value.uniqueKey;
-  const resizeTargetId = resizeElement.value.def.id;
-
-  const node = resizeElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
 
@@ -2174,13 +1771,13 @@ function onResizeMove() {
     x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
-        totalScrolledDuringDrag.value.x) /
+        edgeScrolledDuringDrag.value.x) /
         zoomLevel.value,
     ),
     y: Math.round(
       (containerPointerPos.value.y -
         lastMouseDownContainerPointerPos.value.y +
-        totalScrolledDuringDrag.value.y) /
+        edgeScrolledDuringDrag.value.y) /
         zoomLevel.value,
     ),
   };
@@ -2190,25 +1787,21 @@ function onResizeMove() {
     y: 0,
   };
 
-  const presentSize = resizedElementSizesPreResize[resizeTargetKey];
-  const presentPosition = componentsStore.collapsedComponents.has(
-    resizeTargetKey,
-  )
-    ? draggedCollapsedElementsPositionsPreDrag.value[resizeTargetKey]
-    : draggedElementsPositionsPreDrag.value[resizeTargetKey];
-
-  if (!presentSize || !presentPosition) {
+  if (!resizedElementGeometryPreResize.value) {
     return;
   }
 
-  const rightBound = presentPosition.x + presentSize.width / 2;
+  const rightBound =
+    resizedElementGeometryPreResize.value.x +
+    resizedElementGeometryPreResize.value.width / 2;
 
   // Ensure the component never gets smaller than its minimum dimensions
   switch (resizeElementDirection.value) {
     case "bottom":
       {
         sizeDelta.x = 0;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -2218,7 +1811,8 @@ function onResizeMove() {
       {
         sizeDelta.x = 0;
         sizeDelta.y = -sizeDelta.y;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
@@ -2229,7 +1823,8 @@ function onResizeMove() {
       {
         sizeDelta.y = 0;
         sizeDelta.x = -sizeDelta.x;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -2239,7 +1834,8 @@ function onResizeMove() {
     case "right":
       {
         sizeDelta.y = 0;
-        const minDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minDelta) {
           sizeDelta.x = minDelta;
         }
@@ -2248,13 +1844,15 @@ function onResizeMove() {
       break;
     case "bottom-left":
       {
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2263,11 +1861,13 @@ function onResizeMove() {
       break;
     case "bottom-right":
       {
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2277,14 +1877,16 @@ function onResizeMove() {
     case "top-left":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
         sizeDelta.x = -sizeDelta.x;
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2294,13 +1896,15 @@ function onResizeMove() {
     case "top-right":
       {
         sizeDelta.y = -sizeDelta.y;
-        const minYDelta = MIN_NODE_DIMENSION - presentSize.height;
+        const minYDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.height;
         if (sizeDelta.y < minYDelta) {
           sizeDelta.y = minYDelta;
         }
         positionDelta.y = -sizeDelta.y;
 
-        const minXDelta = MIN_NODE_DIMENSION - presentSize.width;
+        const minXDelta =
+          MIN_NODE_DIMENSION - resizedElementGeometryPreResize.value.width;
         if (sizeDelta.x < minXDelta) {
           sizeDelta.x = minXDelta;
         }
@@ -2312,19 +1916,19 @@ function onResizeMove() {
   }
 
   const newNodeSize = {
-    width: presentSize.width + sizeDelta.x,
-    height: presentSize.height + sizeDelta.y,
+    width: resizedElementGeometryPreResize.value.width + sizeDelta.x,
+    height: resizedElementGeometryPreResize.value.height + sizeDelta.y,
   };
 
   // Get the correctly cached position for the element being resized
   const newNodePosition = {
-    x: presentPosition.x + positionDelta.x / 2,
-    y: presentPosition.y + positionDelta.y,
+    x: resizedElementGeometryPreResize.value.x + positionDelta.x / 2,
+    y: resizedElementGeometryPreResize.value.y + positionDelta.y,
   };
 
   // Make sure the frame doesn't shrink to be smaller than it's children
   const contentsBox =
-    componentsStore.contentBoundingBoxesByGroupId[resizeTargetId];
+    viewStore.contentBoundingBoxesByGroupId[resizeElement.value.def.id];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2346,7 +1950,9 @@ function onResizeMove() {
       if (newNodeRect.y > contentsBox.y) {
         newNodeRect.y = contentsBox.y;
         newNodeRect.height =
-          presentPosition.y + presentSize.height - contentsBox.y;
+          resizedElementGeometryPreResize.value.y +
+          resizedElementGeometryPreResize.value.height -
+          contentsBox.y;
       }
     }
 
@@ -2378,9 +1984,10 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = node.parentId;
+  const parentGeometry =
+    viewStore.groups[resizeElement.value.def.parentId || ""];
 
-  if (parentId) {
+  if (parentGeometry) {
     // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
       ...newNodePosition,
@@ -2388,53 +1995,46 @@ function onResizeMove() {
       x: newNodePosition.x - newNodeSize.width / 2,
     };
 
-    const parent = groups.value.find((g) => g.def.componentId === parentId);
-    const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
-    if (parent && parentShape) {
-      const parentPosition =
-        componentsStore.movedElementPositions[parent.uniqueKey] ??
-        parent.def.position;
+    // Unsure I need these constants
+    const parentContentRect = {
+      x: parentGeometry.x - parentGeometry.width / 2 + GROUP_INTERNAL_PADDING,
+      y: parentGeometry.y + GROUP_INTERNAL_PADDING,
+      width: parentGeometry.width - GROUP_INTERNAL_PADDING * 2,
+      height:
+        parentGeometry.height -
+        GROUP_INTERNAL_PADDING -
+        GROUP_BOTTOM_INTERNAL_PADDING,
+    };
 
-      const parentContentRect = {
-        x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
-        y: parentPosition.y + GROUP_INTERNAL_PADDING,
-        width: parentShape.width() - GROUP_INTERNAL_PADDING * 2,
-        height:
-          parentShape.height() -
-          GROUP_INTERNAL_PADDING -
-          GROUP_BOTTOM_INTERNAL_PADDING,
-      };
+    // Top Collision
+    if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
+      newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
+      newNodeRect.height =
+        resizedElementGeometryPreResize.value.y +
+        resizedElementGeometryPreResize.value.height -
+        parentContentRect.y -
+        GROUP_INNER_Y_BOUNDARY_OFFSET;
+    }
 
-      // Top Collision
-      if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
-        newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
-        newNodeRect.height =
-          presentPosition.y +
-          presentSize.height -
-          parentContentRect.y -
-          GROUP_INNER_Y_BOUNDARY_OFFSET;
-      }
+    // Bottom collision
+    const bottom = parentContentRect.y + parentContentRect.height;
+    if (bottom < newNodeRect.y + newNodeRect.height) {
+      newNodeRect.height = bottom - newNodeRect.y;
+    }
 
-      // Bottom collision
-      const bottom = parentContentRect.y + parentContentRect.height;
-      if (bottom < newNodeRect.y + newNodeRect.height) {
-        newNodeRect.height = bottom - newNodeRect.y;
-      }
+    // Right collision
+    const parentRight = parentContentRect.x + parentContentRect.width;
+    const childRight = newNodeRect.x + newNodeRect.width;
+    if (childRight > parentRight) {
+      newNodeRect.width = parentRight - newNodeRect.x;
+    }
 
-      // Right collision
-      const parentRight = parentContentRect.x + parentContentRect.width;
-      const childRight = newNodeRect.x + newNodeRect.width;
-      if (childRight > parentRight) {
-        newNodeRect.width = parentRight - newNodeRect.x;
-      }
-
-      // Left collision
-      const parentLeft = parentContentRect.x;
-      const childLeft = newNodeRect.x;
-      if (childLeft < parentLeft) {
-        newNodeRect.x = parentLeft;
-        newNodeRect.width = rightBound - parentLeft;
-      }
+    // Left collision
+    const parentLeft = parentContentRect.x;
+    const childLeft = newNodeRect.x;
+    if (childLeft < parentLeft) {
+      newNodeRect.x = parentLeft;
+      newNodeRect.width = rightBound - parentLeft;
     }
 
     newNodePosition.x = newNodeRect.x + newNodeRect.width / 2;
@@ -2443,16 +2043,12 @@ function onResizeMove() {
     newNodeSize.height = newNodeRect.height;
   }
 
-  updateElementPositionAndSize({
-    elements: [
-      {
-        uniqueKey: resizeElement.value.uniqueKey,
-        position: newNodePosition,
-        size: newNodeSize,
-      },
-    ],
-    broadcastToClients: true,
-  });
+  viewStore.RESIZE_COMPONENT(
+    diagramUlid.value,
+    resizeElement.value,
+    { ...newNodePosition, ...newNodeSize },
+    { broadcastToClients: true },
+  );
 }
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
@@ -2630,7 +2226,7 @@ const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
   let right;
   let bottom;
   for (const id of componentIds) {
-    const geometry = componentsStore.renderedGeometriesByComponentId[id];
+    const geometry = viewStore.components[id] || viewStore.groups[id];
     if (!geometry) continue;
 
     const thisBoundaries = {
@@ -2695,8 +2291,7 @@ async function triggerPasteElements() {
 
   // if we're pasting into a new parent, fit the selection area into it first by shrinking and then translating
   if (newParentId) {
-    const parentGeometry =
-      componentsStore.renderedGeometriesByComponentId[newParentId];
+    const parentGeometry = viewStore.groups[newParentId];
     if (!parentGeometry) throw new Error("Couldn't get parent geometry");
 
     // the x in component geometry is centered, so we need to translate it to represent the top left
@@ -2747,7 +2342,7 @@ async function triggerPasteElements() {
   }
 
   const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
-    const thisGeometry = componentsStore.renderedGeometriesByComponentId[id];
+    const thisGeometry = viewStore.components[id] || viewStore.groups[id];
 
     if (!thisGeometry) throw new Error("Rendered Component not found");
 
@@ -2903,27 +2498,6 @@ function getSocketLocationInfo(
 ) {
   if (edge) {
     // if from component is collapsed, return the position of its center
-    const componentId =
-      direction === "from" ? edge.def.fromComponentId : edge.def.toComponentId;
-    const component = componentsStore.allComponentsById[componentId];
-    if (component) {
-      const collapsedKey = componentsStore.collapsedComponents.has(
-        component.uniqueKey,
-      )
-        ? component.uniqueKey
-        : areMyAncestorsCollapsed(component);
-      if (collapsedKey) {
-        const position = structuredClone(
-          toRaw(componentsStore.collapsedElementPositions[collapsedKey]),
-        );
-        const size = componentsStore.collapsedElementSizes[collapsedKey];
-        if (position && size) {
-          position.y += size.height / 2;
-          return { center: position };
-        }
-      }
-    }
-
     const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
     return socketsLocationInfo[key];
   }
@@ -2958,45 +2532,42 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
 
-const areMyAncestorsCollapsed = (
-  component: DiagramNodeData | DiagramGroupData,
-): DiagramElementUniqueKey | null => {
-  if (component.def.ancestorIds)
-    for (const cId of component.def.ancestorIds) {
-      const c = componentsStore.rawComponentsById[cId];
-      if (c) {
-        const key =
-          c.componentType === ComponentType.Component
-            ? `n-${c.id}`
-            : `g-${c.id}`;
-        if (componentsStore.collapsedComponents.has(key)) return key;
-      }
-    }
-  return null;
-};
+// TODO, add viewId as a prop to the ModelingDiagram!
+const nodes = computed(() => {
+  const componentIds = Object.keys(viewStore.components);
+  const components: DiagramNodeData[] = [];
+  componentIds.forEach((id) => {
+    const c = componentsStore.nodesById[id];
+    if (c) components.push(c);
+  });
+  return components;
+});
 
 const groups = computed(() => {
-  const allGroups = Object.values(componentsStore.groupsById).filter(
-    (g) => !areMyAncestorsCollapsed(g),
-  );
+  const componentIds = Object.keys(viewStore.groups);
+  const orderedGroups = _.orderBy(
+    Object.values(componentsStore.groupsById).filter((g) =>
+      componentIds.includes(g.def.id),
+    ),
+    (g) => {
+      // order by "depth" in frames
+      let zIndex = g.def.ancestorIds?.length || 0;
 
-  const orderedGroups = _.orderBy(allGroups, (g) => {
-    // order by "depth" in frames
-    let zIndex = g.def.ancestorIds?.length || 0;
-
-    // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
-    if (dragElementsActive.value) {
-      if (
-        _.intersection(
-          [g.def.componentId, ...(g.def.ancestorIds || [])],
-          componentsStore.selectedComponentIds,
-        ).length
-      ) {
-        zIndex += 1000;
+      // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
+      // TODO change this to being position comparisons not parentage
+      if (dragElementsActive.value) {
+        if (
+          _.intersection(
+            [g.def.componentId, ...(g.def.ancestorIds || [])],
+            componentsStore.selectedComponentIds,
+          ).length
+        ) {
+          zIndex += 1000;
+        }
       }
-    }
-    return zIndex;
-  });
+      return zIndex;
+    },
+  );
 
   return orderedGroups;
 });
@@ -3004,9 +2575,7 @@ const groups = computed(() => {
 // TODO move this to the store
 const sockets = computed(() => {
   const elements = _.concat(
-    Object.values(componentsStore.allComponentsById).filter(
-      (n) => !areMyAncestorsCollapsed(n),
-    ),
+    Object.values(componentsStore.nodesById),
     groups.value,
   );
   return _.compact(_.flatMap(elements, (i) => i.sockets));
@@ -3018,23 +2587,6 @@ type ToFrom = { to: Vector2d; from: Vector2d };
 const edges = computed(() => {
   const points: ToFrom[] = [];
   return Object.values(componentsStore.diagramEdgesById)
-    .filter((e) => {
-      // filter out edges connected between components when one is not rendered
-      const collapsedIds = [...componentsStore.collapsedComponents].map((key) =>
-        key.substring(2),
-      );
-      const nodesNotDrawn = collapsedIds.flatMap((gId) => {
-        const group = componentsStore.groupsById[gId]!;
-        return allChildrenInGroup(group);
-      });
-
-      if (
-        nodesNotDrawn.includes(e.def.toComponentId) ||
-        nodesNotDrawn.includes(e.def.fromComponentId)
-      )
-        return false;
-      else return true;
-    })
     .map((e) => {
       e.fromPoint = getSocketLocationInfo("from", e);
       e.toPoint = getSocketLocationInfo("to", e);
@@ -3061,15 +2613,10 @@ const edges = computed(() => {
     });
 });
 
-// this will re-compute on every drag
+// this will re-compute on every drag until all the position data is removed
 const allElementsByKey = computed(() =>
   _.keyBy(
-    [
-      ...Object.values(componentsStore.nodesById),
-      ...groups.value,
-      ...sockets.value, // protected to not run on drag
-      ...edges.value,
-    ],
+    [...nodes.value, ...groups.value, ...sockets.value, ...edges.value],
     (e) => e.uniqueKey,
   ),
 );
@@ -3078,33 +2625,15 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
 
-function nodeShouldBeRendered(key: DiagramElementUniqueKey) {
-  const id = key.substring(2);
-  const node = componentsStore.nodesById[id];
-  let isRendered = false;
-  if (node) isRendered = !areMyAncestorsCollapsed(node);
-  return isRendered || groups.value.find((n) => n.uniqueKey === key);
-}
-
 // Selection rects
 const selectionRects = computed(() => {
   const rects = [] as (Size2D & Vector2d)[];
   currentSelectionKeys.value.forEach((uniqueKey) => {
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
-    let rect = componentsStore.renderedGeometriesByComponentId[id];
-    if (isGroup) {
-      const pos = componentsStore.combinedElementPositions[
-        uniqueKey
-      ] as Vector2d;
-      const size = componentsStore.combinedElementSizes[uniqueKey] as Size2D;
-      rect = {
-        ...pos,
-        ...size,
-      };
-    }
+    const rect = viewStore.components[id] || viewStore.components[id];
     if (rect) {
-      const r = structuredClone(rect);
+      const r = structuredClone(toRaw(rect));
       r.x -= r.width / 2;
       if (isGroup) {
         // deal with top bar height outside the component's
@@ -3113,9 +2642,7 @@ const selectionRects = computed(() => {
         r.height += adjust;
         r.y -= adjust;
       }
-      if (nodeShouldBeRendered(uniqueKey)) {
-        rects.push(r);
-      }
+      rects.push(r);
     }
   });
   return rects;
@@ -3160,9 +2687,9 @@ function getCenterPointOfElement(el: DiagramElementData) {
     if (!fromPoint || !toPoint) return;
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-    const position = _.clone(
-      componentsStore.combinedElementPositions[el.uniqueKey] || el.def.position,
-    );
+    const comp =
+      viewStore.components[el.def.id] || viewStore.groups[el.def.id]!;
+    const position = structuredClone(comp);
     if (el.def.size) {
       position.y += el.def.size.height / 2;
     }
@@ -3186,9 +2713,8 @@ const renameEndFunc = ref();
 function fixRenameInputPosition() {
   if (renameElement.value) {
     const componentBox =
-      componentsStore.renderedGeometriesByComponentId[
-        renameElement.value.def.id
-      ];
+      viewStore.components[renameElement.value.def.id] ||
+      viewStore.groups[renameElement.value.def.id];
     if (componentBox && renameInputWrapperRef.value) {
       const { x, y } = convertGridCoordsToContainerCoords(componentBox);
       const z = zoomLevel.value;
@@ -3253,7 +2779,7 @@ function renameOnDiagram(
   endFunc: () => void,
 ) {
   const componentBox =
-    componentsStore.renderedGeometriesByComponentId[el.def.id];
+    viewStore.components[el.def.id] || viewStore.groups[el.def.id];
 
   if (componentBox && renameInputWrapperRef.value && renameInputRef.value) {
     renameElement.value = el;

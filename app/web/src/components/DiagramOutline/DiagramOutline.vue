@@ -123,6 +123,7 @@ import {
   Filter,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
@@ -149,10 +150,10 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 
-const fetchComponentsReq =
-  componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
+const fetchComponentsReq = viewStore.getRequestStatus("FETCH_VIEW");
 
 const rootComponents = computed(() => {
   return Object.values(componentsStore.allComponentsById).filter(

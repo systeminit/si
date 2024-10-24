@@ -194,7 +194,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
@@ -230,26 +230,11 @@ const htmlid = `diagram-outline-node-${props.component.def.id}`;
 const isOpen = ref(true);
 
 const toggleGroup = () => {
-  componentsStore.toggleCollapse(
-    "diagram-outline-node",
-    props.component.def.id,
-  );
+  isOpen.value = !isOpen.value;
 };
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
-
-watch(
-  componentsStore.collapsedComponents,
-  () => {
-    if (componentsStore.collapsedComponents.has(props.component.uniqueKey)) {
-      isOpen.value = false;
-    } else {
-      isOpen.value = true;
-    }
-  },
-  { immediate: true },
-);
 
 const refreshRequestStatus = componentsStore.getRequestStatus(
   "REFRESH_RESOURCE_INFO",
