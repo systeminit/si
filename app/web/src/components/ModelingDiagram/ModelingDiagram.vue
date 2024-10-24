@@ -2035,7 +2035,6 @@ function onResizeMove() {
     newNodeSize.height = newNodeRect.height;
   }
 
-  // TODO, also fix this for struct style
   viewStore.RESIZE_COMPONENT(
     diagramUlid.value,
     resizeElement.value,

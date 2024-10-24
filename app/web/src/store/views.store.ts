@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
+import { toRaw } from "vue";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   ViewId,
@@ -305,8 +306,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           geometry: IRect,
           opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          const origGeometry = structuredClone(this.groups[component.def.id]!);
+          const origGeometry = structuredClone(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            toRaw(this.groups[component.def.id]!),
+          );
           const delta: Vector2d = {
             x: origGeometry.x - geometry.x,
             y: origGeometry.y - geometry.y,
