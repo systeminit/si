@@ -8,6 +8,7 @@ pub mod func;
 pub mod management;
 pub mod module;
 pub mod variant;
+pub mod view;
 
 const PREFIX: &str = "/workspaces/:workspace_id/change-sets/:change_set_id";
 
@@ -19,4 +20,5 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .nest(&format!("{PREFIX}/modules"), module::v2_routes())
         .nest(&format!("{PREFIX}/schema-variants"), variant::v2_routes())
         .nest(&format!("{PREFIX}/management"), management::v2_routes())
+        .nest(&format!("{PREFIX}/views"), view::v2_routes())
 }
