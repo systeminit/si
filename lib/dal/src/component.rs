@@ -48,7 +48,7 @@ use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_we
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
-use crate::{AttributePrototypeId, SocketArity};
+use crate::{AttributePrototypeId, EdgeWeight, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
 use si_frontend_types::{
@@ -421,11 +421,26 @@ impl Component {
             )
             .await?;
 
-        Self::new_with_content_address(ctx, name, schema_variant_id, hash).await
+        let component =
+            Self::new_with_content_address_and_no_geometry(ctx, name, schema_variant_id, hash)
+                .await?;
+
+        let view_id = View::get_id_for_default(ctx)
+            .await
+            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+
+        // Create geometry node
+        Geometry::new(ctx, component.id, view_id)
+            .await
+            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+
+        Ok(component)
     }
 
     /// Create new component node but retain existing content address
-    pub async fn new_with_content_address(
+    /// This is used to create the replacement nodes on upgrade, so geometries for it need
+    /// to be created by hand. Anywhere else you want to use [Self::new](Self::new)
+    pub async fn new_with_content_address_and_no_geometry(
         ctx: &DalContext,
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
@@ -453,14 +468,6 @@ impl Component {
             EdgeWeightKind::new_use(),
         )
         .await?;
-
-        // Create geometry node
-        let view_id = View::get_id_for_default(ctx)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
-        Geometry::new(ctx, id.into(), view_id)
-            .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
 
         let mut dvu_roots = vec![];
 
@@ -2953,16 +2960,36 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
+        let geometry_ids = Geometry::list_ids_by_component(ctx, self.id)
+            .await
+            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
         // ================================================================================
-        let new_component_with_temp_id = Component::new_with_content_address(
+        let new_component_with_temp_id = Component::new_with_content_address_and_no_geometry(
             ctx,
             original_component_name.clone(),
             schema_variant_id,
             original_component_node_weight.content_hash(),
         )
         .await?;
+
+        // Move geometries to new component
+        for geometry_id in geometry_ids {
+            snap.remove_edge_for_ulids(
+                geometry_id,
+                self.id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?;
+            snap.add_edge(
+                geometry_id,
+                EdgeWeight::new(EdgeWeightKind::Represents),
+                new_component_with_temp_id.id,
+            )
+            .await?;
+        }
 
         let new_schema_variant_id = new_component_with_temp_id.schema_variant(ctx).await?.id();
         if new_schema_variant_id != schema_variant_id {

@@ -141,6 +141,31 @@ impl Geometry {
         Ok(Self::assemble(node_weight, content))
     }
 
+    pub async fn list_ids_by_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> DiagramResult<Vec<ViewId>> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let mut geometries = vec![];
+        for geometry_idx in snap
+            .incoming_sources_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?
+        {
+            let node_weight = snap
+                .get_node_weight(geometry_idx)
+                .await?
+                .get_geometry_node_weight()?;
+
+            geometries.push(node_weight.id().into())
+        }
+
+        Ok(geometries)
+    }
+
     pub async fn get_by_component_and_view(
         ctx: &DalContext,
         component_id: ComponentId,
