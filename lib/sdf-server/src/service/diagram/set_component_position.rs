@@ -132,11 +132,25 @@ pub async fn set_component_position(
         };
 
         component
-            .set_geometry(&ctx, new_geometry.x, new_geometry.y, width, height)
+            .set_geometry(
+                &ctx,
+                new_geometry.x,
+                new_geometry.y,
+                width.clone(),
+                height.clone(),
+            )
             .await?;
         components.push(component);
 
-        geometry_list.push((id, update.geometry))
+        geometry_list.push((
+            id,
+            RawGeometry {
+                x: update.geometry.x,
+                y: update.geometry.y,
+                width,
+                height,
+            },
+        ))
     }
 
     WsEvent::set_component_position(
