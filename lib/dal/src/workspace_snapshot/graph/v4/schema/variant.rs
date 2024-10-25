@@ -1,16 +1,17 @@
 use petgraph::prelude::*;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
     workspace_snapshot::{
-        content_address::ContentAddressDiscriminants, edge_weight::EdgeWeightKindDiscriminants,
-        graph::WorkspaceSnapshotGraphResult, node_weight::NodeWeight,
+        content_address::ContentAddressDiscriminants,
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::{SchemaVariantExt, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
+        node_weight::NodeWeight,
     },
-    SchemaId, SchemaVariantError, SchemaVariantId,
+    EdgeWeight, EdgeWeightKind, InputSocketId, SchemaId, SchemaVariantError, SchemaVariantId,
 };
 
-impl WorkspaceSnapshotGraphV4 {
-    pub fn schema_id_for_schema_variant_id(
+impl SchemaVariantExt for WorkspaceSnapshotGraphV4 {
+    fn schema_id_for_schema_variant_id(
         &self,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotGraphResult<SchemaId> {
@@ -44,5 +45,43 @@ impl WorkspaceSnapshotGraphV4 {
         Ok(schema_id
             .ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))
             .map_err(Box::new)?)
+    }
+
+    fn schema_variant_add_edge_to_input_socket(
+        &mut self,
+        schema_variant_id: SchemaVariantId,
+        input_socket_id: InputSocketId,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        self.add_edge_between_ids(
+            schema_variant_id.into(),
+            EdgeWeight::new(EdgeWeightKind::Socket),
+            input_socket_id.into(),
+        )?;
+
+        Ok(())
+    }
+
+    fn schema_variant_ids_for_schema_id_opt(
+        &self,
+        schema_id: SchemaId,
+    ) -> WorkspaceSnapshotGraphResult<Option<Vec<SchemaVariantId>>> {
+        let schema_node_index = match self.node_index_by_id.get(&schema_id.into()) {
+            Some(schema_idx) => *schema_idx,
+            None => return Ok(None),
+        };
+
+        let mut result = Vec::new();
+        for (_edge_weight, _schema_node_idx, schema_variant_idx) in self
+            .edges_directed_for_edge_weight_kind(
+                schema_node_index,
+                Direction::Outgoing,
+                EdgeWeightKindDiscriminants::Use,
+            )
+        {
+            let variant_node_weight = self.get_node_weight(schema_variant_idx)?;
+            result.push(variant_node_weight.id().into());
+        }
+
+        Ok(Some(result))
     }
 }

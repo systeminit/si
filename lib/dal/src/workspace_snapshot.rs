@@ -1,4 +1,7 @@
-//! Mostly everything is a node or an edge!
+//! This is the primary interface for business logic to interact with the graph. All interaction
+//! should be done through one of the `Ext` traits that [`WorkspaceSnapshot`] implements to avoid
+//! having code outside of the specific graph version implementation that requires having knowledge
+//! of how the internals of that specific version of the graph work.
 
 // #![warn(
 //     missing_debug_implementations,
@@ -27,8 +30,11 @@ pub mod graph;
 pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
+pub mod traits;
 pub mod update;
 pub mod vector_clock;
+
+pub use traits::{schema::variant::SchemaVariantExt, socket::input::InputSocketExt};
 
 use graph::correct_transforms::correct_transforms;
 use graph::detect_updates::Update;
@@ -51,19 +57,21 @@ use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::{
     InferredConnectionGraph, InferredConnectionGraphError,
 };
 use crate::component::{ComponentResult, IncomingConnection};
 use crate::slow_rt::{self, SlowRuntimeError};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+use crate::socket::connection_annotation::ConnectionAnnotationError;
+use crate::socket::input::InputSocketError;
+use crate::workspace_snapshot::{
+    content_address::ContentAddressDiscriminants,
+    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
+    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
 };
-use crate::workspace_snapshot::graph::{LineageId, WorkspaceSnapshotGraphDiscriminants};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
     SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
@@ -97,6 +105,8 @@ impl From<&NodeWeight> for NodeInformation {
 pub enum WorkspaceSnapshotError {
     #[error("Action error: {0}")]
     Action(#[from] Box<ActionError>),
+    #[error("AttributePrototype error: {0}")]
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("Attribute Prototype Argument: {0}")]
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("could not find category node of kind: {0:?}")]
@@ -107,10 +117,14 @@ pub enum WorkspaceSnapshotError {
     ChangeSetMissingWorkspaceSnapshotAddress(ChangeSetId),
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
+    #[error("ConnectionAnnotation error: {0}")]
+    ConnectionAnnotation(#[from] Box<ConnectionAnnotationError>),
     #[error("error correcting transforms: {0}")]
     CorrectTransforms(#[from] CorrectTransformsError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
+    #[error("InputSocket error: {0}")]
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("layer db error: {0}")]
@@ -176,16 +190,19 @@ impl WorkspaceSnapshotError {
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
-/// The workspace graph. The concurrency types used here to give us interior
-/// mutability in the tokio run time are *not* sufficient to prevent data races
-/// when operating on the same graph on different threads, since our graph
-/// operations are not "atomic" and the graph *WILL* end up being read from
-/// different threads while a write operation is still in progress if it is
-/// shared between threads for modification. For example after a node is added
-/// but *before* the edges necessary to place that node in the right spot in the
-/// graph have been added. We need a more general solution here, but for now an
-/// example of synchronization when accessing a snapshot across threads can be
-/// found in [`crate::job::definition::DependentValuesUpdate`].
+/// The workspace graph. The public interface for this is provided through the the various `Ext`
+/// traits that are implemented for [`WorkspaceSnapshot`].
+///
+/// ## Internals
+///
+/// The concurrency types used here to give us interior mutability in the tokio run time are *not*
+/// sufficient to prevent data races when operating on the same graph on different threads, since
+/// our graph operations are not "atomic" and the graph *WILL* end up being read from different
+/// threads while a write operation is still in progress if it is shared between threads for
+/// modification. For example after a node is added but *before* the edges necessary to place that
+/// node in the right spot in the graph have been added. We need a more general solution here, but
+/// for now an example of synchronization when accessing a snapshot across threads can be found in
+/// [`crate::job::definition::DependentValuesUpdate`].
 #[derive(Debug, Clone)]
 pub struct WorkspaceSnapshot {
     address: Arc<RwLock<WorkspaceSnapshotAddress>>,
@@ -1644,16 +1661,6 @@ impl WorkspaceSnapshot {
         }
 
         Ok(None)
-    }
-
-    pub async fn schema_id_for_schema_variant_id(
-        &self,
-        schema_variant_id: SchemaVariantId,
-    ) -> WorkspaceSnapshotResult<SchemaId> {
-        self.working_copy()
-            .await
-            .schema_id_for_schema_variant_id(schema_variant_id)
-            .map_err(Into::into)
     }
 
     pub async fn schema_variant_id_for_component_id(
