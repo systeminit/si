@@ -42,7 +42,6 @@
     </label>
 
     <Transition
-      v-show="showFilters"
       name="expand-height"
       enterActiveClass="transition-[height] overflow-hidden"
       leaveActiveClass="transition-[height] overflow-hidden"
@@ -53,7 +52,7 @@
       :onBeforeLeave="captureHeight"
       :onAfterLeave="clearHeight"
     >
-      <div ref="transitionRef">
+      <div v-show="showFilters" ref="transitionRef">
         <div
           class="px-xs pt-xs pb-2xs flex flex-row flex-wrap gap-2xs select-none"
         >
