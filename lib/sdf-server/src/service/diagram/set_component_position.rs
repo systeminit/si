@@ -124,7 +124,7 @@ pub async fn set_component_position(
                         .or_else(|| geometry.width().map(|v| v.to_string())),
                     new_geometry
                         .height
-                        .or_else(|| geometry.width().map(|v| v.to_string())),
+                        .or_else(|| geometry.height().map(|v| v.to_string())),
                 );
             }
 
