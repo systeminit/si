@@ -1,12 +1,15 @@
 <template>
   <th
     ref="thRef"
-    v-tooltip="headerTooltip"
+    v-tooltip="tooltip"
     :colSpan="header.colSpan"
     :class="
       clsx(
         'h-8 sticky top-0',
-        header.id !== 'ip' && 'cursor-pointer hover:underline',
+        header.id !== 'ip' &&
+          header.id !== 'json' &&
+          'cursor-pointer hover:underline',
+        header.id === 'json' && 'w-8 px-2xs',
         themeClasses('bg-shade-0', 'bg-shade-100'),
       )
     "
@@ -14,27 +17,56 @@
     @mouseup="endActive"
     @click.stop="onClick"
   >
-    <div class="w-full p-xs truncate">
-      <FlexRender
-        v-if="!header.isPlaceholder"
-        :render="label"
-        :props="header.getContext()"
-      />
+    <div
+      :class="
+        clsx(
+          header.id !== 'json' && 'w-full p-xs truncate',
+          windowWidth <= 1100 && 'flex flex-row items-center h-8',
+        )
+      "
+    >
       <IconButton
-        v-if="icon !== 'none'"
-        ref="iconButtonRef"
-        class="absolute right-xs top-2xs"
-        :icon="icon"
+        v-if="header.id === 'json' && anyRowsOpen"
+        icon="collapse-row"
         iconTone="neutral"
+        size="sm"
         @click.stop="onClick"
       />
-      <DropdownMenu
-        v-if="header.id !== 'timestamp'"
-        ref="dropdownMenuRef"
-        :items="dropdownMenuItems"
-        :anchorTo="{ $el: thRef }"
-        alignCenter
-      />
+      <template v-else>
+        <template v-if="windowWidth > 1100">
+          <FlexRender
+            v-if="!header.isPlaceholder"
+            :render="label"
+            :props="header.getContext()"
+          />
+          <IconButton
+            v-if="icon !== 'none'"
+            ref="iconButtonRef"
+            class="absolute right-xs top-2xs"
+            :icon="icon"
+            iconTone="neutral"
+            @click.stop="onClick"
+          />
+        </template>
+        <template v-else>
+          <div class="flex-grow">{{ label }}</div>
+          <IconButton
+            v-if="icon !== 'none'"
+            ref="iconButtonRef"
+            class="flex-none"
+            :icon="icon"
+            iconTone="neutral"
+            @click.stop="onClick"
+          />
+        </template>
+        <DropdownMenu
+          v-if="header.id !== 'timestamp' && header.id !== 'json'"
+          ref="dropdownMenuRef"
+          :items="dropdownMenuItems"
+          :anchorTo="{ $el: thRef }"
+          alignCenter
+        />
+      </template>
     </div>
   </th>
 </template>
@@ -48,7 +80,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { FlexRender, Header } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { computed, PropType, ref } from "vue";
+import { computed, onMounted, onUnmounted, PropType, ref } from "vue";
 import { AuditLogKind, AuditLogService, LogFilters } from "@/store/logs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { AdminUser } from "@/store/admin.store";
@@ -87,6 +119,7 @@ const props = defineProps({
     type: Array as PropType<AdminUser[]>,
     default: [] as AdminUser[],
   },
+  anyRowsOpen: { type: Boolean },
 });
 
 const label = computed(() => props.header.column.columnDef.header as string);
@@ -148,8 +181,18 @@ const headerText = computed(() => {
   } else return `Filter by ${label.value}`;
 });
 
-const headerTooltip = computed(() => {
+const tooltip = computed(() => {
   if (props.header.id === "ip") return null;
+  else if (props.header.id === "json") {
+    if (props.anyRowsOpen) {
+      return {
+        content: "Collapse All",
+        delay: { show: 0, hide: 100 },
+        instantMove: true,
+      };
+    }
+    return null;
+  }
 
   return {
     content: headerText.value,
@@ -207,6 +250,13 @@ const endActive = () => {
   active.value = false;
   iconButtonRef.value?.endActive();
 };
+
+const windowWidth = ref(window.innerWidth);
+const onWidthChange = () => {
+  windowWidth.value = window.innerWidth;
+};
+onMounted(() => window.addEventListener("resize", onWidthChange));
+onUnmounted(() => window.removeEventListener("resize", onWidthChange));
 
 const emit = defineEmits<{
   (e: "select"): void;

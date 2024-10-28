@@ -1,11 +1,18 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
-  <span class="timestamp" v-html="dateStr"></span>
+  <span
+    v-tooltip="tooltip"
+    :class="
+      clsx('timestamp', enableDetailTooltip && 'cursor-pointer hover:underline')
+    "
+    v-html="dateStr"
+  ></span>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
+import clsx from "clsx";
 import { TimestampSize, dateString } from "../utils/timestamp";
 
 const props = defineProps({
@@ -19,6 +26,7 @@ const props = defineProps({
     type: String as PropType<TimestampSize>,
     default: "normal",
   },
+  enableDetailTooltip: { type: Boolean },
 
   // Classes to apply to the date or time text, TODO(Wendy) - not supported for size mini or relative
   dateClasses: { type: String },
@@ -34,5 +42,15 @@ const dateStr = computed(() => {
     props.dateClasses,
     props.timeClasses,
   );
+});
+
+const tooltip = computed(() => {
+  if (!props.enableDetailTooltip) return null;
+
+  return {
+    content: props.date,
+    delay: { show: 0, hide: 100 },
+    instantMove: true,
+  };
 });
 </script>
