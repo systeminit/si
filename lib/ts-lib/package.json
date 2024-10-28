@@ -16,7 +16,7 @@
     "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.12",
-    "eslint": "^8.36.0",
+    "eslint": "^8.57.1",
     "typescript": "^4.9.5"
   }
 }
