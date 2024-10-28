@@ -4,17 +4,15 @@
 
     <NavbarButton
       tooltipText="Documentation"
+      icon="question-circle"
       externalLinkTo="https://docs.systeminit.com/"
-    >
-      <Icon name="question-circle" />
-    </NavbarButton>
+    />
 
     <NavbarButton
       tooltipText="Discord Community"
+      icon="logo-discord"
       externalLinkTo="https://discord.gg/system-init"
-    >
-      <Icon name="logo-discord" />
-    </NavbarButton>
+    />
 
     <WorkspaceSettingsMenu />
 
@@ -23,7 +21,6 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon } from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";

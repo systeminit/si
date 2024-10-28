@@ -20,6 +20,7 @@
     @mouseleave="toggleHover"
   >
     <slot :open="isSelectedOrMenuOpen" :hovered="hovered" />
+    <Icon v-if="icon" :name="icon" />
 
     <DropdownMenu v-if="slots.dropdownContent" ref="dropdownRef">
       <slot name="dropdownContent" />
@@ -34,16 +35,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useSlots } from "vue";
+import { computed, ref, useSlots, PropType } from "vue";
 import { RouterLink } from "vue-router";
 import clsx from "clsx";
-import { DropdownMenu } from "@si/vue-lib/design-system";
+import { DropdownMenu, IconNames, Icon } from "@si/vue-lib/design-system";
 
 const props = defineProps({
   selected: { type: Boolean },
   tooltipText: { type: String },
   linkTo: { type: [String, Object] },
   externalLinkTo: { type: String },
+  icon: { type: String as PropType<IconNames> },
 });
 
 const dropdownRef = ref<InstanceType<typeof DropdownMenu>>();

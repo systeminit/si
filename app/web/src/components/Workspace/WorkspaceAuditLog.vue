@@ -7,10 +7,10 @@
         <div :class="clsx('w-full flex-none')">
           <div class="flex items-center gap-2xs p-xs">
             <Icon name="eye" class="flex-none" />
-            <div class="flex-grow text-lg font-bold">
-              Audit Logs (this feature is not complete, mock data)
-            </div>
-            <div class="flex items-center gap-2xs pr-xs">
+            <div class="flex-grow text-lg font-bold truncate">Audit Logs</div>
+            <div
+              class="flex items-center gap-2xs pr-xs whitespace-nowrap flex-none"
+            >
               <div>Page</div>
               <div class="font-bold">
                 {{ currentFilters.page }} of {{ totalPages }}
@@ -69,7 +69,10 @@
       <button class="border p-2" @click="rerender">Rerender</button> -->
         </div>
       </template>
-      <table v-if="logLoadingRequestStatus.isSuccess" class="w-full relative">
+      <table
+        v-if="logLoadingRequestStatus.isSuccess"
+        class="w-full relative border-collapse"
+      >
         <thead>
           <tr
             v-for="headerGroup in table.getHeaderGroups()"
@@ -81,6 +84,7 @@
               :header="header"
               :filters="currentFilters"
               :users="users"
+              :anyRowsOpen="anyRowsOpen"
               @select="onHeaderClick(header.id)"
               @clearFilters="clearFilters(header.id)"
               @toggleFilter="(f) => toggleFilter(header.id, f)"
@@ -88,36 +92,34 @@
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="row in table.getRowModel().rows"
-            :key="row.id"
-            :class="
-              clsx(
-                'h-md text-sm',
-                themeClasses(
-                  'odd:bg-neutral-200 even:bg-neutral-100',
-                  'odd:bg-neutral-700 even:bg-neutral-800',
-                ),
-              )
-            "
-          >
-            <td
-              v-for="cell in row.getVisibleCells()"
-              :key="cell.id"
-              align="center"
+          <template v-for="row in table.getRowModel().rows" :key="row.id">
+            <tr
               :class="
                 clsx(
-                  'border-x border-collapse',
-                  themeClasses('border-neutral-300', 'border-neutral-900'),
+                  'h-md text-sm',
+                  themeClasses(
+                    'odd:bg-neutral-200 even:bg-neutral-100',
+                    'odd:bg-neutral-700 even:bg-neutral-800',
+                  ),
                 )
               "
             >
-              <FlexRender
-                :render="cell.column.columnDef.cell"
-                :props="cell.getContext()"
+              <AuditLogCell
+                v-for="cell in row.getVisibleCells()"
+                :key="cell.id"
+                :cell="cell"
+                :rowExpanded="rowCollapseState[Number(cell.row.id)]"
+                @toggleExpand="toggleRowExpand(Number(cell.row.id))"
               />
-            </td>
-          </tr>
+            </tr>
+            <AuditLogDrawer
+              :row="row"
+              :colspan="columns.length"
+              :json="JSON.stringify(logs[Number(row.id)], null, 2)"
+              :expanded="rowCollapseState[Number(row.id)]"
+            />
+            <tr class="invisible"></tr>
+          </template>
         </tbody>
       </table>
       <RequestStatusMessage
@@ -139,19 +141,23 @@ import {
   Timestamp,
 } from "@si/vue-lib/design-system";
 import {
-  FlexRender,
   getCoreRowModel,
   getPaginationRowModel,
   useVueTable,
   createColumnHelper,
 } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { h, computed, ref } from "vue";
+import { h, computed, ref, withDirectives, resolveDirective } from "vue";
+import { trackEvent } from "@/utils/tracking";
 import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
 import { AdminUser, useAdminStore } from "@/store/admin.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import AuditLogHeader from "../AuditLogHeader.vue";
+import AuditLogCell from "../AuditLogCell.vue";
+import AuditLogDrawer from "../AuditLogDrawer.vue";
+
+const PAGE_SIZE = 50; // Currently this is fixed, might make it variable later
 
 const adminStore = useAdminStore();
 const workspacesStore = useWorkspacesStore();
@@ -159,7 +165,16 @@ const changeSetsStore = useChangeSetsStore();
 
 const users = ref([] as AdminUser[]);
 
-const PAGE_SIZE = 50; // Currently this is fixed, might make it variable later
+const rowCollapseState = ref(new Array(PAGE_SIZE).fill(false));
+const anyRowsOpen = computed(() => rowCollapseState.value.some(Boolean));
+
+const toggleRowExpand = (id: number) => {
+  rowCollapseState.value[id] = !rowCollapseState.value[id];
+};
+
+const collapseAllRows = () => {
+  rowCollapseState.value = new Array(PAGE_SIZE).fill(false);
+};
 const DEFAULT_FILTERS = {
   page: 1,
   pageSize: PAGE_SIZE,
@@ -170,10 +185,12 @@ const DEFAULT_FILTERS = {
   changeSetFilter: [changeSetsStore.selectedChangeSetId],
   userFilter: [],
 } as LogFilters;
-const currentFilters = ref({ ...DEFAULT_FILTERS });
+const currentFilters = ref<LogFilters>({ ...DEFAULT_FILTERS });
 const logsStore = useLogsStore();
 const loadLogs = async () => {
+  collapseAllRows();
   logsStore.LOAD_PAGE(currentFilters.value);
+  trackEvent("load-audit-logs", currentFilters.value);
   if (workspacesStore.urlSelectedWorkspaceId) {
     const result = await adminStore.LIST_WORKSPACE_USERS(
       workspacesStore.urlSelectedWorkspaceId,
@@ -193,12 +210,33 @@ const logs = computed(() => logsStore.logs);
 const totalPages = computed(() => Math.ceil(logsStore.total / PAGE_SIZE));
 
 const columns = [
+  {
+    id: "json",
+    header: "",
+    cell: "",
+  },
   columnHelper.accessor("timestamp", {
     header: "Timestamp",
-    cell: (info) => h(Timestamp, { date: info.getValue(), relative: true }),
+    cell: (info) =>
+      h(Timestamp, {
+        date: info.getValue(),
+        relative: true,
+        enableDetailTooltip: true,
+      }),
   }),
   columnHelper.accessor("changeSetName", {
     header: "Change Set",
+    cell: (info) =>
+      withDirectives(
+        h("div", {
+          innerText: info.getValue(),
+          class: "hover:underline cursor-pointer",
+        }),
+        [[resolveDirective("tooltip"), info.row.getValue("changeSetId")]],
+      ),
+  }),
+  columnHelper.accessor("changeSetId", {
+    header: "Change Set Id",
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("kind", {
@@ -223,6 +261,11 @@ const table = useVueTable({
   get data() {
     return logs.value;
   },
+  initialState: {
+    columnVisibility: {
+      changeSetId: false,
+    },
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -234,6 +277,8 @@ const onHeaderClick = (id: string) => {
     currentFilters.value.sortTimestampAscending =
       !currentFilters.value.sortTimestampAscending;
     loadLogs();
+  } else if (id === "json" && anyRowsOpen.value) {
+    collapseAllRows();
   }
 };
 

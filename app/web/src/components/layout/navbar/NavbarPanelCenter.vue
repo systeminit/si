@@ -4,43 +4,39 @@
   >
     <NavbarButton
       tooltipText="Model"
+      icon="diagram"
       :selected="route.name === 'workspace-compose'"
       :linkTo="{
         name: 'workspace-compose',
         params: { changeSetId: 'auto' },
       }"
-    >
-      <Icon name="diagram" />
-    </NavbarButton>
+    />
 
     <NavbarButton
       tooltipText="Customize"
+      icon="beaker"
       :selected="route.matched.some((r) => r.name === 'workspace-lab')"
       :linkTo="{
         name: 'workspace-lab',
         params: { changeSetId: 'auto' },
       }"
-    >
-      <Icon name="beaker" />
-    </NavbarButton>
+    />
 
     <NavbarButton
       v-if="featureFlagsStore.AUDIT_PAGE"
       tooltipText="Audit"
+      icon="eye"
       :selected="route.matched.some((r) => r.name === 'workspace-audit')"
       :linkTo="{
         name: 'workspace-audit',
         params: { changeSetId: 'auto' },
       }"
-    >
-      <Icon name="eye" />
-    </NavbarButton>
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import { Icon } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 

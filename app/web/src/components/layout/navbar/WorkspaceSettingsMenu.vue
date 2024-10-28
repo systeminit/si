@@ -1,8 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <NavbarButton tooltipText="Workspace Settings">
-    <Icon name="settings" />
-
+  <NavbarButton icon="settings" tooltipText="Workspace Settings">
     <template #dropdownContent>
       <DropdownMenuItem
         icon="settings"
@@ -43,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { DropdownMenuItem, Icon } from "@si/vue-lib/design-system";
+import { DropdownMenuItem } from "@si/vue-lib/design-system";
 import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import WorkspaceImportModal from "@/components/WorkspaceImportModal.vue";
