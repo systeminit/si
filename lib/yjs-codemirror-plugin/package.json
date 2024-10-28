@@ -48,7 +48,7 @@
     "@codemirror/view": "^6.0.0",
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@types/node": "^18.15.11",
+    "@types/node": "^18.19.59",
     "codemirror": "^6.0.0",
     "concurrently": "^5.3.0",
     "http-server": "^14.1.0",
