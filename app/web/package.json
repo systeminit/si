@@ -118,7 +118,6 @@
     "cypress": "^13.8.1",
     "cypress-vite": "^1.5.0",
     "eslint": "^8.36.0",
-    "faker": "^6.6.6",
     "graphology-types": "^0.24.7",
     "unplugin-icons": "^0.17.1",
     "vite": "^5.0.10",

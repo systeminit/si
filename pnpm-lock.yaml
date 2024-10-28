@@ -406,9 +406,6 @@ importers:
       eslint:
         specifier: ^8.36.0
         version: 8.57.1
-      faker:
-        specifier: ^6.6.6
-        version: 6.6.6
       graphology-types:
         specifier: ^0.24.7
         version: 0.24.7
@@ -11125,10 +11122,6 @@ packages:
   /extsprintf@1.3.0:
     resolution: {integrity: sha512-11Ndz7Nv+mvAC1j0ktTa7fAb0vLyGGX+rMHNBYQviQDGU0Hw7lhctJANqbPhu9nV9/izT/IntTgZ7Im/9LJs9g==}
     engines: {'0': node >=0.6.0}
-    dev: true
-
-  /faker@6.6.6:
-    resolution: {integrity: sha512-9tCqYEDHI5RYFQigXFwF1hnCwcWCOJl/hmll0lr5D2Ljjb0o4wphb69wikeJDz5qCEzXCoPvG6ss5SDP6IfOdg==}
     dev: true
 
   /fast-content-type-parse@1.1.0:

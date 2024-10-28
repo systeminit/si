@@ -407,7 +407,7 @@ const customFontsLoaded = useCustomFontsLoaded();
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
-const diagramUlid = computed(() => ulid());
+const diagramUlid = ulid();
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -657,7 +657,7 @@ watch(
           eventType: "SetComponentPosition",
           callback: ({ changeSetId, clientUlid, positions }) => {
             if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-            if (clientUlid === diagramUlid.value) return;
+            if (clientUlid === diagramUlid) return;
 
             const elements: elementPositionAndSize[] = [];
             for (const { componentId, position, size } of positions) {
@@ -1558,10 +1558,7 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
 
   if (componentUpdate.length > 0) {
     if (e.writeToChangeSet) {
-      componentsStore.SET_COMPONENT_GEOMETRY(
-        componentUpdate,
-        diagramUlid.value,
-      );
+      componentsStore.SET_COMPONENT_GEOMETRY(componentUpdate, diagramUlid);
     }
 
     if (
@@ -1573,7 +1570,7 @@ function sendMovedElementPosition(e: MoveElementsPayload) {
         kind: "ComponentSetPosition",
         data: {
           positions: _.map(componentUpdate, (c) => c.geometry),
-          clientUlid: diagramUlid.value,
+          clientUlid: diagramUlid,
           changeSetId: changeSetsStore.selectedChangeSetId,
         },
       });
