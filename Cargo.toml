@@ -11,7 +11,6 @@ members = [
     "bin/rebaser",
     "bin/sdf",
     "bin/veritech",
-    "lib/naxum-api-types",
     "lib/auth-api-client",
     "lib/billing-events",
     "lib/buck2-resources",
@@ -32,11 +31,12 @@ members = [
     "lib/nats-multiplexer-core",
     "lib/nats-subscriber",
     "lib/naxum",
+    "lib/naxum-api-types",
     "lib/object-tree",
     "lib/pending-events",
+    "lib/permissions",
     "lib/pinga-core",
     "lib/pinga-server",
-    "lib/permissions",
     "lib/rebaser-client",
     "lib/rebaser-core",
     "lib/rebaser-server",
@@ -102,7 +102,7 @@ console = "0.15.8"
 convert_case = "0.6.0"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 crossbeam-channel = "0.5.12"
-crossbeam-queue = {version = "0.3.10"}
+crossbeam-queue = { version = "0.3.10" }
 darling = "0.20.10"
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"

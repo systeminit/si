@@ -305,6 +305,7 @@
             [
               alejandra
               buildkite-test-collector-rust
+              cargo-sort
               docker-compose
               jq
               nats-top

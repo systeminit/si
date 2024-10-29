@@ -1,18 +1,17 @@
 [package]
 name = "rebaser-core"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 naxum-api-types = { path = "../../lib/naxum-api-types" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-events = { path = "../../lib/si-events-rs" }
-
 remain = { workspace = true }
 serde = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-events = { path = "../../lib/si-events-rs" }
 strum = { workspace = true }

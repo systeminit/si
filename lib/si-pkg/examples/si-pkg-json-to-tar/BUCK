@@ -6,6 +6,7 @@ load(
 rust_binary(
     name = "si-pkg-json-to-tar",
     srcs = ["main.rs"],
+    cargo_toml = None,
     crate_root = "main.rs",
     deps = [
         "//lib/si-pkg:si-pkg",

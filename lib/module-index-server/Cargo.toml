@@ -1,32 +1,25 @@
 [package]
 name = "module-index-server"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 auth-api-client = { path = "../../lib/auth-api-client" }
-buck2-resources = { path = "../../lib/buck2-resources" }
-module-index-types = { path = "../../lib/module-index-types" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-hash = { path = "../../lib/si-hash" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-posthog = { path = "../../lib/si-posthog-rs" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
 
 axum = { workspace = true }
 base64 = { workspace = true }
+buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
 jwt-simple = { workspace = true }
+module-index-types = { path = "../../lib/module-index-types" }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }
@@ -34,7 +27,14 @@ rust-s3 = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-hash = { path = "../../lib/si-hash" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-posthog = { path = "../../lib/si-posthog-rs" }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
 stream-cancel = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }

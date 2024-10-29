@@ -1,21 +1,20 @@
 [package]
 name = "naxum-api-types"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
-si-data-nats = { path = "../../lib/si-data-nats" }
-
 ciborium = { workspace = true }
 derive_more = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 ulid = { workspace = true }

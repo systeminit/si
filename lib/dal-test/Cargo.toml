@@ -1,12 +1,12 @@
 [package]
 name = "dal-test"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 async-recursion = { workspace = true }
@@ -17,6 +17,7 @@ dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 derive_more = { workspace = true }
 forklift-server = { path = "../../lib/forklift-server" }
+itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }
@@ -48,4 +49,3 @@ ulid =  { workspace = true }
 uuid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
-itertools = { workspace = true }

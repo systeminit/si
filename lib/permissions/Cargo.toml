@@ -1,18 +1,18 @@
 [package]
 name = "permissions"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 remain = { workspace = true }
-strum = { workspace = true }
-si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 serde = { workspace = true }
+si-data-spicedb = { path = "../../lib/si-data-spicedb" }
+strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

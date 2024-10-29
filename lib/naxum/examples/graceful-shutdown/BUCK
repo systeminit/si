@@ -6,6 +6,7 @@ load(
 rust_binary(
     name = "graceful-shutdown",
     srcs = ["main.rs"],
+    cargo_toml = None,
     crate_root = "main.rs",
     deps = [
         "//lib/naxum:naxum",

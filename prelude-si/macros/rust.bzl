@@ -4,6 +4,7 @@ load(
     _cargo_doc = "cargo_doc",
     _cargo_doc_check = "cargo_doc_check",
     _cargo_fmt = "cargo_fmt",
+    _cargo_sort_check = "cargo_sort_check",
 )
 load(
     "@prelude-si//:rust.bzl",
@@ -20,6 +21,7 @@ def rust_binary(
         name,
         srcs,
         deps,
+        cargo_toml = "Cargo.toml",
         crate_root = "src/main.rs",
         edition = "2021",
         resources = [],
@@ -29,7 +31,6 @@ def rust_binary(
         extra_test_targets = [],
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_binary(
         name = name,
         edition = edition,
@@ -84,10 +85,21 @@ def rust_binary(
         visibility = visibility,
     )
 
+    check_format_targets = [":check-format-rust"]
+
+    if cargo_toml != None:
+        _cargo_sort_check(
+            name = "check-format-cargo",
+            src = cargo_toml,
+            visibility = visibility,
+        )
+
+        check_format_targets.append(":check-format-cargo")
+
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
-            tests = [":check-format-rust"],
+            tests = check_format_targets,
             visibility = visibility,
         )
 
@@ -161,6 +173,7 @@ def rust_library(
         name,
         srcs,
         deps,
+        cargo_toml = "Cargo.toml",
         crate_root = "src/lib.rs",
         edition = "2021",
         resources = [],
@@ -171,7 +184,6 @@ def rust_library(
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_library(
         name = name,
         edition = edition,
@@ -227,10 +239,21 @@ def rust_library(
         visibility = visibility,
     )
 
+    check_format_targets = [":check-format-rust"]
+
+    if cargo_toml != None:
+        _cargo_sort_check(
+            name = "check-format-cargo",
+            src = cargo_toml,
+            visibility = visibility,
+        )
+
+        check_format_targets.append(":check-format-cargo")
+
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
-            tests = [":check-format-rust"],
+            tests = check_format_targets,
             visibility = visibility,
         )
 
@@ -305,7 +328,6 @@ def rust_test(
         edition = "2021",
         visibility = ["PUBLIC"],
         **kwargs):
-
     native.rust_test(
         name = name,
         edition = edition,

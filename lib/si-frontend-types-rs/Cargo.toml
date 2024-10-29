@@ -1,19 +1,19 @@
 [package]
 name = "si-frontend-types"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
-module-index-types = { path = "../../lib/module-index-types" }
-si-events = { path = "../../lib/si-events-rs" }
 
 chrono = { workspace = true }
+module-index-types = { path = "../../lib/module-index-types" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-events = { path = "../../lib/si-events-rs" }
 strum = { workspace = true }

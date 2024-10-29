@@ -1,15 +1,15 @@
 [package]
 name = "si-pkg"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
-base64.workspace = true
+base64 = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 indexmap = { workspace = true }

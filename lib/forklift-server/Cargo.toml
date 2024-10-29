@@ -1,12 +1,12 @@
 [package]
 name = "forklift-server"
 edition = "2021"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
-publish.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 billing-events = { path = "../../lib/billing-events" }
