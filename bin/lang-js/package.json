@@ -67,7 +67,7 @@
     "node-fetch": "^2",
     "toml": "^3.0.0",
     "typescript": "^4.9.5",
-    "vm2": "^3.9.11"
+    "vm2": "^3.9.19"
   },
   "volta": {
     "extends": "../../package.json"
