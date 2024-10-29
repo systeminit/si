@@ -1,58 +1,36 @@
-// TODO(nick): move this into its own crate.
-
 use std::{collections::HashSet, str::FromStr};
 
 use chrono::Utc;
 use rand::{thread_rng, Rng};
 use si_events::{audit_log::AuditLogKind, Actor, UserPk};
-use thiserror::Error;
-use ulid::MonotonicError;
+use si_frontend_types::AuditLog as FrontendAuditLog;
 
-use crate::{
-    ChangeSet, ChangeSetError, ChangeSetId, DalContext, TransactionsError, Workspace,
-    WorkspaceError, WorkspacePk,
-};
+use crate::{ChangeSet, ChangeSetId, DalContext, Workspace};
 
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum AuditLogError {
-    #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
-    #[error("change set not found: {0}")]
-    ChangeSetNotFound(ChangeSetId),
-    #[error("monotonic error: {0}")]
-    Monotonic(#[from] MonotonicError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("ulid decode error: {0}")]
-    UlidDecode(#[from] ulid::DecodeError),
-    #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-    #[error("workspace not found: {0}")]
-    WorkspaceNotFound(WorkspacePk),
-}
+use super::{AuditLoggingError, AuditLoggingResult};
 
-pub type AuditLogResult<T> = Result<T, AuditLogError>;
-
-/// Generate somewhat believable, but fake [`si_frontend_types::AuditLogs`](si_frontend_types::AuditLog).
+/// Generate somewhat believable, but fake, audit logs for the frontend.
 pub async fn generate(
     ctx: &DalContext,
     generation_count: usize,
-) -> AuditLogResult<Vec<si_frontend_types::AuditLog>> {
-    let workspace_pk = ctx.workspace_pk()?;
+) -> AuditLoggingResult<Vec<FrontendAuditLog>> {
+    let workspace_pk = ctx.workspace_pk().map_err(Box::new)?;
     let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
-        .await?
-        .ok_or(AuditLogError::WorkspaceNotFound(workspace_pk))?;
+        .await
+        .map_err(Box::new)?
+        .ok_or(AuditLoggingError::WorkspaceNotFound(workspace_pk))?;
 
     let current_change_set_id = ctx.change_set_id();
     let current_change_set = ChangeSet::find(ctx, current_change_set_id)
-        .await?
-        .ok_or(AuditLogError::ChangeSetNotFound(current_change_set_id))?;
+        .await
+        .map_err(Box::new)?
+        .ok_or(AuditLoggingError::ChangeSetNotFound(current_change_set_id))?;
 
     let head_change_set_id = workspace.default_change_set_id();
     let head_change_set = ChangeSet::find(ctx, head_change_set_id)
-        .await?
-        .ok_or(AuditLogError::ChangeSetNotFound(current_change_set_id))?;
+        .await
+        .map_err(Box::new)?
+        .ok_or(AuditLoggingError::ChangeSetNotFound(current_change_set_id))?;
 
     let mut generator = ulid::Generator::new();
     let user_max = (generator.generate()?, "Max Verstappen", "max@siandrbr.dev");
@@ -114,29 +92,29 @@ pub async fn generate(
             },
             Actor::System => match dice_roll(4) {
                 1 => (
-                    AuditLogKind::PerformedRebase,
+                    AuditLogKind::PerformRebase,
                     head_change_set_id,
                     head_change_set.name.to_owned(),
                 ),
                 2 => (
-                    AuditLogKind::PerformedRebase,
+                    AuditLogKind::PerformRebase,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
                 ),
                 3 => (
-                    AuditLogKind::RanAction,
+                    AuditLogKind::RunAction,
                     head_change_set_id,
                     head_change_set.name.to_owned(),
                 ),
                 _ => (
-                    AuditLogKind::RanDependentValuesUpdate,
+                    AuditLogKind::RunDependentValuesUpdate,
                     current_change_set_id,
                     current_change_set.name.to_owned(),
                 ),
             },
         };
 
-        audit_logs.push(si_frontend_types::AuditLog {
+        audit_logs.push(FrontendAuditLog {
             actor,
             actor_name,
             actor_email,
@@ -155,7 +133,7 @@ pub async fn generate(
 
 #[allow(clippy::too_many_arguments)]
 pub fn filter_and_paginate(
-    audit_logs: Vec<si_frontend_types::AuditLog>,
+    audit_logs: Vec<FrontendAuditLog>,
     page: Option<usize>,
     page_size: Option<usize>,
     sort_timestamp_ascending: Option<bool>,
@@ -163,7 +141,7 @@ pub fn filter_and_paginate(
     kind_filter: HashSet<AuditLogKind>,
     change_set_filter: HashSet<ChangeSetId>,
     user_filter: HashSet<UserPk>,
-) -> AuditLogResult<(Vec<si_frontend_types::AuditLog>, usize)> {
+) -> AuditLoggingResult<(Vec<FrontendAuditLog>, usize)> {
     // First, filter the logs based on our chosen filters. This logic works by processing each
     // audit log and assuming each log is within our desired scope by default. The instant that a
     // log does not meet our scope, we continue!
@@ -213,10 +191,10 @@ pub fn filter_and_paginate(
 }
 
 fn paginate(
-    logs: Vec<si_frontend_types::AuditLog>,
+    logs: Vec<FrontendAuditLog>,
     page: Option<usize>,
     page_size: Option<usize>,
-) -> Vec<si_frontend_types::AuditLog> {
+) -> Vec<FrontendAuditLog> {
     if let Some(page_size) = page_size {
         let target_page = page.unwrap_or(1);
 

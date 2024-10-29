@@ -3,11 +3,14 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-server",
     deps = [
+        "//lib/audit-logs:audit-logs",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/naxum:naxum",
+        "//lib/pending-events:pending-events",
         "//lib/rebaser-client:rebaser-client",
         "//lib/rebaser-core:rebaser-core",
+        "//lib/shuttle-server:shuttle-server",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",

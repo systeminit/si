@@ -5,19 +5,19 @@ use tokio_util::sync::CancellationToken;
 pub(crate) struct AppState {
     pub(crate) context: Context,
     pub(crate) destination_subject: Subject,
-    pub(crate) token: CancellationToken,
+    pub(crate) self_shutdown_token: CancellationToken,
 }
 
 impl AppState {
     pub(crate) fn new(
         context: Context,
         destination_subject: Subject,
-        token: CancellationToken,
+        self_shutdown_token: CancellationToken,
     ) -> Self {
         Self {
             context,
             destination_subject,
-            token,
+            self_shutdown_token,
         }
     }
 }

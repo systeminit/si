@@ -1,5 +1,5 @@
 [package]
-name = "shuttle"
+name = "shuttle-server"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 naxum = { path = "../../lib/naxum" }
+shuttle-core = { path = "../../lib/shuttle-core" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }

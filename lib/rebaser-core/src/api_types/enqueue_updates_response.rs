@@ -3,10 +3,9 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use naxum_api_types::{ApiVersionsWrapper, ApiWrapper, RequestId, UpgradeError};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumDiscriminants, EnumIs, EnumString, VariantNames};
-
-use crate::{ApiVersionsWrapper, ApiWrapper, RequestId, UpgradeError};
 
 pub mod v1;
 

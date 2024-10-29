@@ -1,12 +1,15 @@
+use audit_logs::AuditLogsError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     workspace_snapshot::WorkspaceSnapshotError,
     DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk, WorkspaceSnapshot,
     WsEvent, WsEventError,
 };
+use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
 };
+use shuttle_server::ShuttleError;
 use si_events::{rebase_batch_address::RebaseBatchAddress, WorkspaceSnapshotAddress};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -17,6 +20,8 @@ use tokio_util::task::TaskTracker;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
+    #[error("audit logs error: {0}")]
+    AuditLogs(#[from] AuditLogsError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("layerdb error: {0}")]
@@ -25,6 +30,10 @@ pub(crate) enum RebaseError {
     MissingChangeSet(ChangeSetId),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddress),
+    #[error("pending events error: {0}")]
+    PendingEvents(#[from] PendingEventsError),
+    #[error("shuttle error: {0}")]
+    Shuttle(#[from] ShuttleError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace error: {0}")]
@@ -171,6 +180,21 @@ pub async fn perform_rebase(
                     }
                 });
             }
+        }
+    }
+
+    {
+        if let Some(event_session_id) = request.event_session_id {
+            let ctx_clone = ctx.clone();
+            let server_tracker_clone = server_tracker.to_owned();
+            server_tracker.spawn(async move {
+                if let Err(err) = ctx_clone
+                    .publish_pending_audit_logs(Some(server_tracker_clone), Some(event_session_id))
+                    .await
+                {
+                    error!(?err, "failed to publish pending audit logs");
+                }
+            });
         }
     }
 

@@ -1,0 +1,9 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "shuttle-core",
+    deps = [],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

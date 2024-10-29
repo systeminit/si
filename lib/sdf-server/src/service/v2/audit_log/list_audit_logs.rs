@@ -46,10 +46,10 @@ pub async fn list_audit_logs(
     // NOTE(nick): right now, we just generate a ton of logs and then apply our filters. This is
     // obviously wasteful, but this will be driven with real data, real queries and real database
     // goodies in the future.
-    let audit_logs = dal::audit_log::generate(&ctx, 200).await?;
+    let audit_logs = dal::audit_logging::generate(&ctx, 200).await?;
 
     // NOTE(nick): this will be replaced with real queries.
-    let (filtered_and_paginated_audit_logs, total) = dal::audit_log::filter_and_paginate(
+    let (filtered_and_paginated_audit_logs, total) = dal::audit_logging::filter_and_paginate(
         audit_logs,
         request.page,
         request.page_size,

@@ -7,12 +7,15 @@ load(
 rust_library(
     name = "dal",
     deps = [
+        "//lib/audit-logs:audit-logs",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
         "//lib/module-index-client:module-index-client",
         "//lib/object-tree:object-tree",
+        "//lib/pending-events:pending-events",
         "//lib/pinga-core:pinga-core",
         "//lib/rebaser-client:rebaser-client",
+        "//lib/shuttle-server:shuttle-server",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
@@ -65,6 +68,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-stream",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:tryhard",
         "//third-party/rust:ulid",
         "//third-party/rust:url",
@@ -89,7 +93,9 @@ rust_library(
 rust_test(
     name = "test-integration",
     deps = [
+        "//lib/audit-logs:audit-logs",
         "//lib/dal-test:dal-test",
+        "//lib/pending-events:pending-events",
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",

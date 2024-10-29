@@ -15,6 +15,7 @@ use dal::{
     ChangeSet, Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
     Visibility, WsEvent,
 };
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
@@ -123,6 +124,7 @@ pub async fn create_component(
     };
 
     let variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+    ctx.write_audit_log(AuditLogKind::CreateComponent).await?;
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
     let initial_geometry = component.geometry(&ctx).await?;
 
