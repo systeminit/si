@@ -11,7 +11,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
-use super::ComponentResult;
+use super::{ComponentError, ComponentResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -44,10 +44,14 @@ pub async fn update_property_editor_value(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
+    // Cache the "before value" before updating for audit logging.
+    let before_value = AttributeValue::get_by_id(&ctx, request.attribute_value_id)
+        .await?
+        .value(&ctx)
+        .await?;
+
     // Determine how to update the value based on whether it corresponds to a secret. The vast
     // majority of the time, the request will not be for a secret.
-    ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue)
-        .await?;
     if request.is_for_secret {
         if let Some(value) = request.value.as_ref() {
             let secret_id: SecretId = serde_json::from_value(value.to_owned())?;
@@ -57,21 +61,76 @@ pub async fn update_property_editor_value(
             Secret::attach_for_attribute_value(&ctx, request.attribute_value_id, None).await?;
         }
     } else {
-        AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
+        AttributeValue::update(&ctx, request.attribute_value_id, request.value.to_owned()).await?;
     }
 
-    // Track
     let component = Component::get_by_id(&ctx, request.component_id).await?;
+
     {
         let component_schema = component.schema(&ctx).await?;
+        let component_schema_variant = component.schema_variant(&ctx).await?;
         let prop = Prop::get_by_id(&ctx, request.prop_id).await?;
 
-        // In this context, there will always be a parent attribute value id
-        let parent_prop = if let Some(att_val_id) = request.parent_attribute_value_id {
-            AttributeValue::prop_opt(&ctx, att_val_id).await?
+        let parent_prop = if let Some(attribute_value_id) = request.parent_attribute_value_id {
+            AttributeValue::prop_opt(&ctx, attribute_value_id).await?
         } else {
             None
         };
+
+        // Determine the value after updating for audit logging.
+        if request.is_for_secret {
+            let (before_secret_id, before_secret_name) = if let Some(inner) = before_value {
+                let secret_key = Secret::key_from_value_in_attribute_value(inner.to_owned())?;
+                let secret_id = Secret::get_id_by_key_or_error(&ctx, secret_key).await?;
+                let secret_name = Secret::get_by_id_or_error(&ctx, secret_id)
+                    .await?
+                    .name()
+                    .to_string();
+                (Some(secret_id.into()), Some(secret_name))
+            } else {
+                (None, None)
+            };
+
+            let (after_secret_id, after_secret_name) = if let Some(inner) = request.value {
+                let secret_id: SecretId = serde_json::from_value(inner)
+                    .map_err(ComponentError::SecretIdDeserialization)?;
+                let secret_name = Secret::get_by_id_or_error(&ctx, secret_id)
+                    .await?
+                    .name()
+                    .to_string();
+                (Some(secret_id.into()), Some(secret_name))
+            } else {
+                (None, None)
+            };
+
+            ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValueForSecret {
+                component_id: request.component_id.into(),
+                component_name: component.name(&ctx).await?,
+                schema_variant_id: component_schema_variant.id().into(),
+                schema_variant_display_name: component_schema_variant.display_name().to_string(),
+                prop_id: prop.id.into(),
+                prop_name: prop.name.to_owned(),
+                attribute_value_id: request.attribute_value_id.into(),
+                before_secret_name,
+                before_secret_id,
+                after_secret_name,
+                after_secret_id,
+            })
+            .await?;
+        } else {
+            ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue {
+                component_id: request.component_id.into(),
+                component_name: component.name(&ctx).await?,
+                schema_variant_id: component_schema_variant.id().into(),
+                schema_variant_display_name: component_schema_variant.display_name().to_string(),
+                prop_id: prop.id.into(),
+                prop_name: prop.name.to_owned(),
+                attribute_value_id: request.attribute_value_id.into(),
+                before_value,
+                after_value: request.value,
+            })
+            .await?;
+        }
 
         track(
             &posthog_client,

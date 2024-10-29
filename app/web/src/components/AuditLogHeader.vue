@@ -81,7 +81,7 @@ import {
 import { FlexRender, Header } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { computed, onMounted, onUnmounted, PropType, ref } from "vue";
-import { AuditLogKind, AuditLogService, LogFilters } from "@/store/logs.store";
+import { LogFilters } from "@/store/logs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { AdminUser } from "@/store/admin.store";
 
@@ -96,15 +96,14 @@ const props = defineProps({
     type: Object as PropType<
       Header<
         {
-          actorId: string;
-          actorName: string;
-          actorEmail?: string | undefined;
-          service: string;
+          userName: string;
+          userId?: string;
+          userEmail?: string;
           kind: string;
           timestamp: string;
-          ip: string;
-          changeSetId: string;
-          changeSetName: string;
+          changeSetId?: string;
+          changeSetName?: string;
+          metadata: Record<string, unknown>;
         },
         unknown
       >
@@ -136,35 +135,32 @@ const icon = computed(() => {
 });
 
 const filterOptions = computed(() => {
-  if (props.header.id === "kind") {
-    return Object.values(AuditLogKind).map((k) => {
-      return { label: k, value: k };
-    });
-  } else if (props.header.id === "service") {
-    return Object.values(AuditLogService).map((k) => {
-      return { label: k, value: k };
-    });
-  } else if (props.header.id === "changeSetName") {
+  // TODO(nick): restore this header.
+  // if (props.header.id === "kind") {
+  //  return Object.values().map((k) => {
+  //    return { label: k, value: k };
+  //  });
+  // } else if (props.header.id === "changeSetName") {
+  if (props.header.id === "changeSetName") {
     return changeSetsStore.allChangeSets.map((changeSet) => {
       return { label: changeSet.name, value: changeSet.id };
     });
-  } else if (props.header.id === "actorName") {
-    const actors = props.users.map((user) => {
+  } else if (props.header.id === "userName") {
+    const users = props.users.map((user) => {
       return { label: user.name, value: user.id };
     });
-    actors.unshift({ label: "System", value: "System" });
+    users.unshift({ label: "System", value: "System" });
 
-    return actors;
+    return users;
   }
   return [];
 });
 
 const selectedFilters = computed(() => {
   if (props.header.id === "kind") return props.filters.kindFilter;
-  else if (props.header.id === "service") return props.filters.serviceFilter;
   else if (props.header.id === "changeSetName")
     return props.filters.changeSetFilter;
-  else if (props.header.id === "actorName") return props.filters.userFilter;
+  else if (props.header.id === "userName") return props.filters.userFilter;
   else return [];
 });
 

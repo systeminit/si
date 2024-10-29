@@ -1,5 +1,6 @@
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
+import * as _ from "lodash-es";
 import { FuncRunId } from "@/store/func_runs.store";
 
 export interface AdminWorkspace {
@@ -33,7 +34,12 @@ export const useAdminStore = () => {
     null,
     null,
     defineStore(`wsNONE/admin`, {
-      state: () => ({}),
+      state: () => ({
+        users: [] as AdminUser[],
+      }),
+      getters: {
+        usersById: (state) => _.keyBy(state.users, (u) => u.id),
+      },
       actions: {
         async SEARCH_WORKSPACES(query?: string) {
           return new ApiRequest<
@@ -60,6 +66,9 @@ export const useAdminStore = () => {
           return new ApiRequest<{ users: AdminUser[] }>({
             method: "get",
             url: `${API_PREFIX}/workspaces/${workspaceId}/users`,
+            onSuccess: (response) => {
+              this.users = response.users;
+            },
           });
         },
         async GET_SNAPSHOT(workspaceId: string, changeSetId: string) {

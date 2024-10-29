@@ -8,6 +8,16 @@
           <div class="flex items-center gap-2xs p-xs">
             <Icon name="eye" class="flex-none" />
             <div class="flex-grow text-lg font-bold truncate">Audit Logs</div>
+            <IconButton
+              :requestStatus="logLoadingRequestStatus"
+              icon="refresh"
+              loadingIcon="loader"
+              loadingTooltip="Getting the latest set of audit logs..."
+              size="sm"
+              tooltip="Get the latest set of audit logs"
+              tooltipPlacement="top"
+              @click="loadLogs"
+            />
             <div
               class="flex items-center gap-2xs pr-xs whitespace-nowrap flex-none"
             >
@@ -150,8 +160,7 @@ import clsx from "clsx";
 import { h, computed, ref, withDirectives, resolveDirective } from "vue";
 import { trackEvent } from "@/utils/tracking";
 import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
-import { AdminUser, useAdminStore } from "@/store/admin.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import { AdminUser } from "@/store/admin.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import AuditLogHeader from "../AuditLogHeader.vue";
 import AuditLogCell from "../AuditLogCell.vue";
@@ -159,10 +168,9 @@ import AuditLogDrawer from "../AuditLogDrawer.vue";
 
 const PAGE_SIZE = 50; // Currently this is fixed, might make it variable later
 
-const adminStore = useAdminStore();
-const workspacesStore = useWorkspacesStore();
 const changeSetsStore = useChangeSetsStore();
 
+// FIXME(nick): we should not be using admin user or admin store stuff outside of the admin dashboard.
 const users = ref([] as AdminUser[]);
 
 const rowCollapseState = ref(new Array(PAGE_SIZE).fill(false));
@@ -191,16 +199,6 @@ const loadLogs = async () => {
   collapseAllRows();
   logsStore.LOAD_PAGE(currentFilters.value);
   trackEvent("load-audit-logs", currentFilters.value);
-  if (workspacesStore.urlSelectedWorkspaceId) {
-    const result = await adminStore.LIST_WORKSPACE_USERS(
-      workspacesStore.urlSelectedWorkspaceId,
-    );
-    if (result?.result.success) {
-      users.value = result.result.data.users;
-      return;
-    }
-  }
-  users.value = [];
 };
 loadLogs();
 const logLoadingRequestStatus = logsStore.getRequestStatus("LOAD_PAGE");
@@ -240,21 +238,13 @@ const columns = [
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("kind", {
-    header: "Event Kind",
+    header: "Kind",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("actorName", {
-    header: "Actor",
+  columnHelper.accessor("userName", {
+    header: "User",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("ip", {
-    header: "Origin IP Address",
-    cell: (info) => info.getValue(),
-  }),
-  // columnHelper.accessor("service", {
-  //   header: "Service",
-  //   cell: (info) => info.getValue(),
-  // }),
 ];
 
 const table = useVueTable({
@@ -288,17 +278,12 @@ const toggleFilter = (id: string, filterId: string) => {
       const i = currentFilters.value.kindFilter.indexOf(filterId);
       currentFilters.value.kindFilter.splice(i, 1);
     } else currentFilters.value.kindFilter.push(filterId);
-  } else if (id === "service") {
-    if (currentFilters.value.serviceFilter.includes(filterId)) {
-      const i = currentFilters.value.serviceFilter.indexOf(filterId);
-      currentFilters.value.serviceFilter.splice(i, 1);
-    } else currentFilters.value.serviceFilter.push(filterId);
   } else if (id === "changeSetName") {
     if (currentFilters.value.changeSetFilter.includes(filterId)) {
       const i = currentFilters.value.changeSetFilter.indexOf(filterId);
       currentFilters.value.changeSetFilter.splice(i, 1);
     } else currentFilters.value.changeSetFilter.push(filterId);
-  } else if (id === "actorName") {
+  } else if (id === "userName") {
     if (currentFilters.value.userFilter.includes(filterId)) {
       const i = currentFilters.value.userFilter.indexOf(filterId);
       currentFilters.value.userFilter.splice(i, 1);
@@ -314,7 +299,7 @@ const clearFilters = (id: string) => {
     currentFilters.value.serviceFilter = [];
   } else if (id === "changeSetName") {
     currentFilters.value.changeSetFilter = [];
-  } else if (id === "actorName") {
+  } else if (id === "userName") {
     currentFilters.value.userFilter = [];
   }
   loadLogs();

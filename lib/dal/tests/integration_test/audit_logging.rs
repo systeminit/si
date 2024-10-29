@@ -1,35 +1,12 @@
-use std::collections::HashSet;
-
 use audit_logs::AuditLogsStream;
-use dal::{audit_logging, Component, DalContext, Schema};
-use dal_test::{
-    helpers::{update_attribute_value_for_component, ChangeSetTestHelpers},
-    test,
+use dal::{
+    audit_logging, prop::PropPath, AttributeValue, Component, DalContext, Prop, Schema,
+    SchemaVariant,
 };
+use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pending_events::PendingEventsStream;
+use pretty_assertions_sorted::assert_eq;
 use si_events::audit_log::AuditLogKind;
-
-#[test]
-async fn generation_filtering_pagination(ctx: &DalContext) {
-    let audit_logs = audit_logging::generate(ctx, 200)
-        .await
-        .expect("could not generate audit logs");
-    let (filtered_and_paginated_audit_logs, _) = audit_logging::filter_and_paginate(
-        audit_logs,
-        Some(2),
-        Some(25),
-        None,
-        None,
-        HashSet::new(),
-        HashSet::new(),
-        HashSet::new(),
-    )
-    .expect("could not filter and paginate");
-    assert_eq!(
-        25,                                      // expected
-        filtered_and_paginated_audit_logs.len()  // actual
-    )
-}
 
 #[test]
 async fn round_trip(ctx: &mut DalContext) {
@@ -42,14 +19,23 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not get default schema variant id")
         .expect("no default schema variant id found");
+    let schema_variant = SchemaVariant::get_by_id_or_error(ctx, schema_variant_id)
+        .await
+        .expect("could not get schema variant");
 
     // Create a component and commit. Mimic sdf by audit logging here.
-    ctx.write_audit_log(AuditLogKind::CreateComponent)
-        .await
-        .expect("could not write audit log");
-    let component = Component::new(ctx, "nyj despair club", schema_variant_id)
+    let component_name = "nyj despair_club";
+    let component = Component::new(ctx, component_name, schema_variant_id)
         .await
         .expect("could not create component");
+    ctx.write_audit_log(AuditLogKind::CreateComponent {
+        name: component_name.to_string(),
+        component_id: component.id().into(),
+        schema_variant_id: schema_variant_id.into(),
+        schema_variant_name: schema_variant.display_name().to_string(),
+    })
+    .await
+    .expect("could not write audit log");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -84,7 +70,7 @@ async fn round_trip(ctx: &mut DalContext) {
             .messages
     );
     assert_eq!(
-        3,
+        1,
         destination_stream
             .get_info()
             .await
@@ -93,18 +79,53 @@ async fn round_trip(ctx: &mut DalContext) {
             .messages
     );
 
-    // Update a property editor value and commit. Mimic sdf by audit logging here.
-    ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue)
+    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
+    // look as we expect.
+    let first_run_audit_logs = audit_logging::list(ctx)
         .await
-        .expect("could not write audit log");
-    update_attribute_value_for_component(
-        ctx,
-        component.id(),
-        &["root", "domain", "name"],
-        serde_json::json!["pain."],
-    )
+        .expect("could not list audit logs");
+    let second_run_audit_logs = audit_logging::list(ctx)
+        .await
+        .expect("could not list audit logs");
+    assert_eq!(first_run_audit_logs, second_run_audit_logs);
+    assert_eq!(1, first_run_audit_logs.len());
+
+    // Update a property editor value and commit. Mimic sdf by audit logging here.
+    let prop_path_raw = ["root", "domain", "name"];
+    let prop = Prop::find_prop_by_path(ctx, schema_variant_id, &PropPath::new(prop_path_raw))
+        .await
+        .expect("could not find prop by path");
+    let mut attribute_value_ids = component
+        .attribute_values_for_prop(ctx, &prop_path_raw)
+        .await
+        .expect("could not get attribute values for prop");
+    let attribute_value_id = attribute_value_ids
+        .pop()
+        .expect("no attribute values found");
+    assert!(attribute_value_ids.is_empty());
+    let before_value = AttributeValue::get_by_id(ctx, attribute_value_id)
+        .await
+        .expect("could not get attribute value by id")
+        .value(ctx)
+        .await
+        .expect("could not get value for attribute value");
+    let after_value = Some(serde_json::json!("pain."));
+    AttributeValue::update(ctx, attribute_value_id, after_value.to_owned())
+        .await
+        .expect("could not update attribute value");
+    ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue {
+        component_id: component.id().into(),
+        component_name: component_name.to_string(),
+        schema_variant_id: schema_variant_id.into(),
+        schema_variant_display_name: schema_variant.display_name().to_string(),
+        prop_id: prop.id.into(),
+        prop_name: prop.name.to_owned(),
+        attribute_value_id: attribute_value_id.into(),
+        before_value,
+        after_value,
+    })
     .await
-    .expect("could not update attribute value");
+    .expect("could not write audit log");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -120,7 +141,7 @@ async fn round_trip(ctx: &mut DalContext) {
             .messages
     );
     assert_eq!(
-        5,
+        2,
         destination_stream
             .get_info()
             .await
@@ -129,10 +150,26 @@ async fn round_trip(ctx: &mut DalContext) {
             .messages
     );
 
-    // Delete a component and commit. Mimic sdf by audit logging here.
-    ctx.write_audit_log(AuditLogKind::DeleteComponent)
+    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
+    // look as we expect.
+    let first_run_audit_logs = audit_logging::list(ctx)
         .await
-        .expect("could not write audit log");
+        .expect("could not list audit logs");
+    let second_run_audit_logs = audit_logging::list(ctx)
+        .await
+        .expect("could not list audit logs");
+    assert_eq!(first_run_audit_logs, second_run_audit_logs);
+    assert_eq!(2, first_run_audit_logs.len());
+
+    // Delete a component and commit. Mimic sdf by audit logging here.
+    ctx.write_audit_log(AuditLogKind::DeleteComponent {
+        name: component_name.to_string(),
+        component_id: component.id().into(),
+        schema_variant_id: schema_variant_id.into(),
+        schema_variant_name: schema_variant.display_name().to_string(),
+    })
+    .await
+    .expect("could not write audit log");
     assert!(component
         .delete(ctx)
         .await
@@ -153,7 +190,7 @@ async fn round_trip(ctx: &mut DalContext) {
             .messages
     );
     assert_eq!(
-        6,
+        3,
         destination_stream
             .get_info()
             .await
@@ -161,4 +198,15 @@ async fn round_trip(ctx: &mut DalContext) {
             .state
             .messages
     );
+
+    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
+    // look as we expect.
+    let first_run_audit_logs = audit_logging::list(ctx)
+        .await
+        .expect("could not list audit logs");
+    let second_run_audit_logs = audit_logging::list(ctx)
+        .await
+        .expect("could not list audit logs");
+    assert_eq!(first_run_audit_logs, second_run_audit_logs);
+    assert_eq!(3, first_run_audit_logs.len());
 }

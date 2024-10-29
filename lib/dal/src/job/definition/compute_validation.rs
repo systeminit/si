@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_events::audit_log::AuditLogKind;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 
@@ -87,9 +86,6 @@ impl JobConsumer for ComputeValidation {
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         metric!(counter.compute_validation_concurrency_count = 1);
-        ctx.write_audit_log(AuditLogKind::RunComputeValidations)
-            .await?;
-
         for &av_id in &self.attribute_values {
             // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
             // may have been removed from the snapshot between when the CV job was created and when we're processing

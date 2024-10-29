@@ -48,6 +48,12 @@ impl From<UserPk> for si_events::UserPk {
     }
 }
 
+impl From<si_events::UserPk> for UserPk {
+    fn from(value: si_events::UserPk) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {
     pk: UserPk,

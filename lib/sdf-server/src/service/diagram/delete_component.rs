@@ -51,7 +51,6 @@ pub async fn delete_components(
         let incoming_connections = component.incoming_connections(&ctx).await?.clone();
         let outgoing_connections = component.outgoing_connections(&ctx).await?.clone();
 
-        ctx.write_audit_log(AuditLogKind::DeleteComponent).await?;
         let component_still_exists = delete_single_component(
             &ctx,
             component_id,
@@ -144,17 +143,27 @@ async fn delete_single_component(
     host_name: &String,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<bool> {
-    let comp = Component::get_by_id(ctx, component_id).await?;
+    let component = Component::get_by_id(ctx, component_id).await?;
+    let component_name = component.name(ctx).await?;
+    let component_schema_variant = component.schema_variant(ctx).await?;
 
-    let id = comp.id();
-    let comp_schema = comp.schema(ctx).await?;
+    let id = component.id();
+    let component_schema = component.schema(ctx).await?;
 
     let component_still_exists = if force_erase {
         Component::remove(ctx, id).await?;
         false
     } else {
-        comp.delete(ctx).await?.is_some()
+        component.delete(ctx).await?.is_some()
     };
+
+    ctx.write_audit_log(AuditLogKind::DeleteComponent {
+        component_id: id.into(),
+        name: component_name,
+        schema_variant_id: component_schema_variant.id().into(),
+        schema_variant_name: component_schema_variant.display_name().to_string(),
+    })
+    .await?;
 
     track(
         posthog_client,
@@ -165,7 +174,7 @@ async fn delete_single_component(
         serde_json::json!({
             "how": "/diagram/delete_component",
             "component_id": id,
-            "component_schema_name": comp_schema.name(),
+            "component_schema_name": component_schema.name(),
             "change_set_id": ctx.change_set_id(),
         }),
     );
