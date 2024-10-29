@@ -59,7 +59,7 @@
     "lodash-es": "^4.17.21",
     "mitt": "^3.0.1",
     "pinia": "^2.2.4",
-    "posthog-js": "^1.51.4",
+    "posthog-js": "^1.57.2",
     "tailwindcss-capsize": "^3.0.3",
     "ulid": "^2.3.0",
     "vue": "^3.5.12",

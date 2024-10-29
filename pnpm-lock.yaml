@@ -826,8 +826,8 @@ importers:
         specifier: ^2.2.4
         version: 2.2.4(typescript@4.9.5)(vue@3.5.12)
       posthog-js:
-        specifier: ^1.51.4
-        version: 1.51.4
+        specifier: ^1.57.2
+        version: 1.177.0
       tailwindcss-capsize:
         specifier: ^3.0.3
         version: 3.0.3(tailwindcss@3.2.2)
@@ -16584,13 +16584,6 @@ packages:
       web-vitals: 4.2.4
     dev: false
 
-  /posthog-js@1.51.4:
-    resolution: {integrity: sha512-YaozVcVdnsoj7yuwXo8mBHrQCagmZSR799QvaRfwL9EhDWMqCnV1Kh0Dj1GjX9/fLYIHYU4Tl8iKtqGkdt/Nxg==}
-    dependencies:
-      fflate: 0.4.8
-      rrweb-snapshot: 1.1.14
-    dev: false
-
   /posthog-node@2.6.0(debug@4.3.4):
     resolution: {integrity: sha512-/BiFw/jwdP0uJSRAIoYqLoBTjZ612xv74b1L/a3T/p1nJVL8e0OrHuxbJW56c6WVW/IKm9gBF/zhbqfaz0XgJQ==}
     engines: {node: '>=15.0.0'}
@@ -17597,10 +17590,6 @@ packages:
 
   /rrweb-cssom@0.7.1:
     resolution: {integrity: sha512-TrEMa7JGdVm0UThDJSx7ddw5nVm3UJS9o9CCIZ72B1vSyEZoziDqBYP3XIoi/12lKrJR8rE3jeFHMok2F/Mnsg==}
-    dev: false
-
-  /rrweb-snapshot@1.1.14:
-    resolution: {integrity: sha512-eP5pirNjP5+GewQfcOQY4uBiDnpqxNRc65yKPW0eSoU1XamDfc4M8oqpXGMyUyvLyxFDB0q0+DChuxxiU2FXBQ==}
     dev: false
 
   /run-async@2.4.1:
