@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{Host, OriginalUri, Path},
     Json,
 };
 use dal::{ChangeSetId, WorkspacePk};
@@ -11,6 +11,7 @@ use si_frontend_types as frontend_types;
 
 use super::AuditLogResult;
 use crate::extract::{AccessBuilder, HandlerContext, PosthogClient, QueryWithVecParams};
+use crate::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +35,9 @@ pub struct ListAuditLogsResponse {
 pub async fn list_audit_logs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     QueryWithVecParams(request): QueryWithVecParams<ListAuditLogsRequest>,
 ) -> AuditLogResult<Json<ListAuditLogsResponse>> {
@@ -55,19 +57,36 @@ pub async fn list_audit_logs(
         request.page_size,
         request.sort_timestamp_ascending,
         request.exclude_system_user,
-        match request.kind_filter {
+        match request.kind_filter.clone() {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
-        match request.change_set_filter {
+        match request.change_set_filter.clone() {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
-        match request.user_filter {
+        match request.user_filter.clone() {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
     )?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        &host_name,
+        "list_audit_logs",
+        serde_json::json!({
+            "page": request.page,
+            "page_size": request.page_size,
+            "sort_timestamp_asc": request.sort_timestamp_ascending,
+            "exclude_system_user": request. exclude_system_user,
+            "kind_filter": request.kind_filter,
+            "change_set_filter": request.change_set_filter,
+            "user_filter": request.user_filter,
+        }),
+    );
 
     Ok(Json(ListAuditLogsResponse {
         logs: filtered_and_paginated_audit_logs,
