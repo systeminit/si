@@ -54,12 +54,19 @@ async fn treat_single_function(
     // If func is unlocked or intrinsic, we always use it,
     // otherwise we return funcs that are bound to default variants
     // OR not bound to anything, OR editing variants
+    // OR bound to variants with components on the canvas
     if func.is_locked && !func.is_intrinsic() && !bindings.is_empty() {
         let mut should_hide = true;
         for binding in &bindings {
             let Some(schema_variant_id) = binding.get_schema_variant() else {
                 continue;
             };
+
+            let maybe_existing_components =
+                SchemaVariant::list_component_ids(ctx, schema_variant_id).await?;
+            if !maybe_existing_components.is_empty() {
+                should_hide = false;
+            }
 
             let schema =
                 SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
