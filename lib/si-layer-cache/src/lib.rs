@@ -2,14 +2,14 @@
 //!
 //! It should have 3 layers of caching:
 //!
-//! * Moka, an in-memory LRU style cache.
-//! * Cacache, an on-disk to keep more data locally than can be held in memory
+//! * Foyer, an in-memory LRU style cache.
+//! * Foyer, which also include an on-disk to keep more data locally than can be held in memory.
 //! * Postgres, our final persistant storage layer.
 //!
 //! When a write is requested, the following happens:
 //!
-//! * The data is written first to a Moka cache
-//! * Then written to cacache for persistent storage
+//! * The data is written first to Foyer in-memory
+//! * Foyer handles shuffling to the disk when appropriate
 //! * The data is then published to a nats topic layer-cache.workspaceId
 //! * Any remote si-layer-cache instances listen to this topic, and populate their local caches
 //! * Postgres gets written to eventually by a 'persister' process that writes to PG from the write
@@ -17,9 +17,9 @@
 //!
 //! When a read is requested, the following happen:
 //!
-//! * The data is read from the moka cache
-//! * On a miss, the data is read from cacache, inserted into Moka, and returned to the user
-//! * On a miss, the data is read from Postgres, inserted into sled, inserted into moka, and
+//! * The data is read from foyer
+//! * On a miss in-memory, Foyer gets it from disk, promotes it to in-memory, and returns it to the user
+//! * On a miss, the data is read from Postgres, and then inserted in Foyer
 //! returned to the user
 //!
 #![allow(clippy::doc_lazy_continuation)]
@@ -27,11 +27,10 @@
 pub mod activities;
 mod activity_client;
 pub mod db;
-pub mod disk_cache;
 pub mod error;
 pub mod event;
+pub mod hybrid_cache;
 pub mod layer_cache;
-pub mod memory_cache;
 mod nats;
 pub mod persister;
 pub mod pg;

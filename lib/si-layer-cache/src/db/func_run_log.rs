@@ -17,13 +17,13 @@ pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
 pub struct FuncRunLogDb {
-    pub cache: LayerCache<Arc<FuncRunLog>>,
+    pub cache: Arc<LayerCache<Arc<FuncRunLog>>>,
     persister_client: PersisterClient,
     get_for_func_run_id_query: String,
 }
 
 impl FuncRunLogDb {
-    pub fn new(cache: LayerCache<Arc<FuncRunLog>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache<Arc<FuncRunLog>>>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
@@ -43,8 +43,7 @@ impl FuncRunLogDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone())
-            .await;
+            .insert_or_update(cache_key.clone(), value.clone());
 
         // We must insert directly before we persist, so that we get it in order.
         self.insert_to_pg(value.clone()).await?;

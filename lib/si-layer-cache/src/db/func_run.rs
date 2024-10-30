@@ -25,7 +25,7 @@ pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
 pub struct FuncRunDb {
-    pub cache: LayerCache<Arc<FuncRun>>,
+    pub cache: Arc<LayerCache<Arc<FuncRun>>>,
     persister_client: PersisterClient,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
@@ -34,7 +34,7 @@ pub struct FuncRunDb {
 }
 
 impl FuncRunDb {
-    pub fn new(cache: LayerCache<Arc<FuncRun>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache<Arc<FuncRun>>>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
@@ -156,8 +156,7 @@ impl FuncRunDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone())
-            .await;
+            .insert_or_update(cache_key.clone(), value.clone());
 
         let event = LayeredEvent::new(
             LayeredEventKind::FuncRunWrite,
