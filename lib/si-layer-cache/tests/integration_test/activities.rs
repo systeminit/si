@@ -6,13 +6,11 @@ use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
     activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
-    memory_cache::MemoryCacheConfig, LayerDb,
+    hybrid_cache::CacheConfig, LayerDb,
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
-};
+use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 
@@ -20,20 +18,16 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 async fn activities() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-
     let db = setup_pg_db("activities").await;
 
     let compute_executor = setup_compute_executor();
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -42,11 +36,10 @@ async fn activities() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -85,19 +78,16 @@ async fn activities() {
 async fn activities_subscribe_partial() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
     let db = setup_pg_db("activities_subscribe_partial").await;
 
     let compute_executor = setup_compute_executor();
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -106,11 +96,10 @@ async fn activities_subscribe_partial() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await

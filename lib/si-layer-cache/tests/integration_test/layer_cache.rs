@@ -1,20 +1,23 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use si_layer_cache::disk_cache::DiskCacheConfig;
-use si_layer_cache::memory_cache::MemoryCacheConfig;
-use std::sync::Arc;
-
 use si_layer_cache::db::serialize;
+use si_layer_cache::hybrid_cache::CacheConfig;
+use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
+
 use si_layer_cache::layer_cache::LayerCache;
 
-async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
+async fn make_layer_cache(db_name: &str) -> Arc<LayerCache<String>> {
     let layer_cache = LayerCache::new(
         "cas",
         super::setup_pg_db(db_name).await,
-        MemoryCacheConfig::default(),
-        DiskCacheConfig::default(),
+        CacheConfig::default(),
         super::setup_compute_executor(),
+        TaskTracker::new(),
+        CancellationToken::new(),
     )
+    .await
     .expect("cannot create layer cache");
     layer_cache.pg().migrate().await.expect("migrate");
 
@@ -25,15 +28,13 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
 async fn empty_insert_and_get() {
     let layer_cache = make_layer_cache("empty_insert_and_get").await;
 
-    layer_cache
-        .insert("skid row".into(), "slave to the grind".into())
-        .await;
+    layer_cache.insert("skid row".into(), "slave to the grind".into());
 
     let skid_row: Arc<str> = "skid row".into();
 
     // Confirm the insert went into the memory cache
     let memory_result = layer_cache
-        .memory_cache()
+        .cache()
         .get(&skid_row)
         .await
         .expect("cannot find value in memory cache");
@@ -50,31 +51,6 @@ async fn empty_insert_and_get() {
 }
 
 #[tokio::test]
-async fn not_in_memory_but_on_disk_insert() {
-    let layer_cache = make_layer_cache("not_in_memory_but_on_disk_insert").await;
-
-    let skid_row = "skid row";
-
-    // Insert the object directly to disk cache
-    layer_cache
-        .disk_cache()
-        .insert("skid row".into(), "slave to the grind".as_bytes().to_vec())
-        .await
-        .expect("failed to insert to disk cache");
-
-    // There should not be anything for the key in memory cache
-    assert!(!layer_cache.memory_cache().contains(skid_row));
-
-    // Insert through the layer cache
-    layer_cache
-        .insert("skid row".into(), "slave to the grind".into())
-        .await;
-
-    // There should be an entry in memory now
-    assert!(layer_cache.memory_cache().contains(skid_row));
-}
-
-#[tokio::test]
 async fn get_inserts_to_memory() {
     let layer_cache = make_layer_cache("get_inserts_to_memory").await;
 
@@ -83,12 +59,8 @@ async fn get_inserts_to_memory() {
     let postcard_serialized = serialize::to_vec("slave to the grind").expect("should serialize");
 
     layer_cache
-        .disk_cache()
-        .insert("skid row".into(), postcard_serialized)
-        .await
-        .expect("failed to insert to disk cache");
-
-    assert!(!layer_cache.memory_cache().contains(&skid_row));
+        .cache()
+        .insert_raw_bytes("skid row".into(), postcard_serialized);
 
     layer_cache
         .get(skid_row.clone())
@@ -96,11 +68,11 @@ async fn get_inserts_to_memory() {
         .expect("error getting object from cache")
         .expect("object not in cachche");
 
-    assert!(layer_cache.memory_cache().contains(&skid_row));
+    assert!(layer_cache.cache().contains(&skid_row));
 }
 
 #[tokio::test]
-async fn get_bulk_inserts_to_memory() {
+async fn get_bulk_inserts() {
     let layer_cache = make_layer_cache("get_bulk_inserts_to_memory").await;
 
     let values: Vec<String> = vec![
@@ -110,9 +82,7 @@ async fn get_bulk_inserts_to_memory() {
     ];
 
     for value in &values {
-        layer_cache
-            .insert(value.clone().into(), value.to_string())
-            .await
+        layer_cache.insert(value.clone().into(), value.to_string());
     }
 
     let get_values = layer_cache
