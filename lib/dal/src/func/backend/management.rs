@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
@@ -12,6 +14,7 @@ use super::ExtractPayload;
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct FuncBackendManagementArgs {
     this_component: ComponentViewWithGeometry,
+    components: HashMap<String, ComponentViewWithGeometry>,
 }
 
 #[derive(Debug)]
@@ -37,6 +40,7 @@ impl FuncDispatch for FuncBackendManagement {
             handler: handler.into(),
             code_base64: code_base64.into(),
             this_component: args.this_component,
+            components: args.components,
             before,
         };
 

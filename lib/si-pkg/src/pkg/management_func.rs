@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
-use ulid::Ulid;
 
 use super::{PkgResult, SiPkgError, Source};
 
@@ -13,7 +12,7 @@ pub struct SiPkgManagementFunc<'a> {
     func_unique_id: String,
     name: String,
     description: Option<String>,
-    managed_schemas: Option<HashSet<Ulid>>,
+    managed_schemas: Option<HashSet<String>>,
 
     hash: Hash,
     source: Source<'a>,
@@ -58,7 +57,7 @@ impl<'a> SiPkgManagementFunc<'a> {
         self.description.as_deref()
     }
 
-    pub fn managed_schemas(&self) -> Option<&HashSet<Ulid>> {
+    pub fn managed_schemas(&self) -> Option<&HashSet<String>> {
         self.managed_schemas.as_ref()
     }
 

@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use ulid::Ulid;
 
 use super::SpecError;
 
@@ -21,7 +20,7 @@ pub struct ManagementFuncSpec {
 
     #[builder(setter(into), default)]
     #[serde(default)]
-    pub managed_schemas: Option<HashSet<Ulid>>,
+    pub managed_schemas: Option<HashSet<String>>,
 }
 
 impl ManagementFuncSpec {

@@ -13,7 +13,6 @@ use si_pkg::{
     SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError,
 };
 use telemetry::prelude::*;
-use ulid::Ulid;
 
 use crate::action::prototype::ActionPrototype;
 use crate::attribute::prototype::argument::{
@@ -519,7 +518,7 @@ impl PkgExporter {
             ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
 
         for management_proto in management_prototypes {
-            let key = ManagementPrototype::func_id(ctx, management_proto.id).await?;
+            let key = ManagementPrototype::func_id(ctx, management_proto.id()).await?;
 
             let func_spec = self
                 .func_map
@@ -527,19 +526,19 @@ impl PkgExporter {
                 .ok_or(PkgError::MissingExportedFunc(key))?;
 
             let mut builder = ManagementFuncSpec::builder();
-            if let Some(description) = management_proto.description {
-                builder.description(description);
+            if let Some(description) = management_proto.description() {
+                builder.description(description.to_string());
             }
-            if let Some(managed_schemas) = management_proto.managed_schemas {
-                let managed_schemas: HashSet<Ulid> =
-                    managed_schemas.into_iter().map(Into::into).collect();
+            if let Some(managed_schemas) = management_proto.managed_schemas() {
+                let managed_schemas: HashSet<_> =
+                    managed_schemas.iter().map(|id| id.to_string()).collect();
                 builder.managed_schemas(managed_schemas);
             }
 
             specs.push(
                 builder
                     .func_unique_id(&func_spec.unique_id)
-                    .name(management_proto.name)
+                    .name(management_proto.name())
                     .build()?,
             )
         }

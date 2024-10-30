@@ -1133,7 +1133,6 @@ impl Prop {
         Self::find_prop_id_by_path(ctx, schema_variant_id, &prop_path).await
     }
 
-    #[instrument(level = "debug", skip_all)]
     #[async_recursion]
     pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
         let self_path = self.path(ctx).await?;

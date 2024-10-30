@@ -11,9 +11,11 @@ use crate::{
         Action, ActionError,
     },
     attribute::value::AttributeValueError,
+    change_status::ChangeStatus::Added,
+    diagram::geometry::RawGeometry,
     prop::{PropError, PropPath},
     AttributeValue, Component, ComponentError, ComponentId, DalContext, Func, FuncError, Prop,
-    PropKind, WsEvent, WsEventError,
+    PropKind, Schema, SchemaError, SchemaId, WsEvent, WsEventError,
 };
 
 pub mod prototype;
@@ -26,6 +28,8 @@ pub enum ManagementError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("cannot create component with 'self' as a placeholder")]
+    CannotCreateComponentWithSelfPlaceholder,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("cannot add an action of kind {0} because component {1} does not have an action of that kind")]
@@ -34,20 +38,102 @@ pub enum ManagementError {
         "cannot add a manual action named {0} because component {1} does not have a manual action with that name"
     )]
     ComponentDoesNotHaveManualAction(String, ComponentId),
+    #[error("Component with management placeholder {0} could not be found")]
+    ComponentWithPlaceholderNotFound(String),
+    #[error("Duplicate component placeholder {0}")]
+    DuplicateComponentPlaceholder(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("Cannot create component for Schema {0}, this schema does not exist or is not managed by this component")]
+    SchemaDoesNotExist(String),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
 
 pub type ManagementResult<T> = Result<T, ManagementError>;
 
+#[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq)]
+pub struct NumericGeometry {
+    pub x: f64,
+    pub y: f64,
+    pub width: Option<f64>,
+    pub height: Option<f64>,
+}
+
+impl NumericGeometry {
+    pub fn offset_by(&self, mut x_off: f64, mut y_off: f64) -> Self {
+        if !x_off.is_normal() {
+            x_off = 0.0;
+        }
+        if !y_off.is_normal() {
+            y_off = 0.0;
+        }
+
+        let x = if self.x.is_normal() {
+            self.x + x_off
+        } else {
+            x_off
+        };
+
+        let y = if self.y.is_normal() {
+            self.y + y_off
+        } else {
+            y_off
+        };
+
+        Self {
+            x,
+            y,
+            width: self.width,
+            height: self.height,
+        }
+    }
+}
+
+#[inline(always)]
+fn avoid_nan_string(n: f64, fallback: f64) -> String {
+    if n.is_normal() { n.round() } else { fallback }.to_string()
+}
+
+impl From<NumericGeometry> for RawGeometry {
+    fn from(value: NumericGeometry) -> Self {
+        Self {
+            x: avoid_nan_string(value.x, 0.0),
+            y: avoid_nan_string(value.y, 0.0),
+            width: value.width.map(|w| avoid_nan_string(w, 500.0)),
+            height: value.height.map(|h| avoid_nan_string(h, 500.0)),
+        }
+    }
+}
+
+impl From<RawGeometry> for NumericGeometry {
+    fn from(value: RawGeometry) -> Self {
+        Self {
+            x: value.x.parse().ok().unwrap_or(0.0),
+            y: value.y.parse().ok().unwrap_or(0.0),
+            width: value.width.and_then(|w| w.parse().ok()),
+            height: value.height.and_then(|h| h.parse().ok()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
+    geometry: Option<RawGeometry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementCreateOperation {
+    kind: Option<String>,
+    properties: Option<serde_json::Value>,
+    geometry: Option<NumericGeometry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,14 +148,15 @@ pub struct ManagementActionOperation {
     remove: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementOperations {
+    create: Option<HashMap<String, ManagementCreateOperation>>,
     update: Option<HashMap<String, ManagementUpdateOperation>>,
     actions: Option<HashMap<String, ManagementActionOperation>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementFuncReturn {
     pub status: ManagementFuncStatus,
@@ -96,51 +183,191 @@ impl TryFrom<ManagementResultSuccess> for ManagementFuncReturn {
 
 const SELF_ID: &str = "self";
 
-pub async fn operate(
-    ctx: &DalContext,
+pub struct ManagementOperator<'a> {
+    ctx: &'a DalContext,
     manager_component_id: ComponentId,
+    last_component_geometry: NumericGeometry,
     operations: ManagementOperations,
-) -> ManagementResult<()> {
-    // creation should be first
-
-    if let Some(updates) = operations.update {
-        for (operation_component_id, operation) in updates {
-            // We only support operations on self right now
-            if operation_component_id != SELF_ID {
-                continue;
-            }
-
-            let real_component_id = manager_component_id;
-
-            if let Some(properties) = operation.properties {
-                update_component(ctx, real_component_id, properties).await?;
-            }
-        }
-    }
-
-    if let Some(actions) = operations.actions {
-        for (operation_component_id, operations) in actions {
-            // We only support operations on self right now
-            if operation_component_id != SELF_ID {
-                continue;
-            }
-
-            let real_component_id = manager_component_id;
-
-            operate_actions(ctx, real_component_id, operations).await?;
-        }
-
-        WsEvent::action_list_updated(ctx)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-    }
-
-    Ok(())
+    manager_schema_id: SchemaId,
+    schema_map: HashMap<String, SchemaId>,
+    component_id_placeholders: HashMap<String, ComponentId>,
 }
 
-fn identify_action(action_string: String) -> ActionIdentifier {
-    match action_string.as_str() {
+impl<'a> ManagementOperator<'a> {
+    pub async fn new(
+        ctx: &'a DalContext,
+        manager_component_id: ComponentId,
+        manager_component_geometry: RawGeometry,
+        operations: ManagementOperations,
+        schema_map: HashMap<String, SchemaId>,
+        mut component_id_placeholders: HashMap<String, ComponentId>,
+    ) -> ManagementResult<Self> {
+        component_id_placeholders.insert(SELF_ID.to_string(), manager_component_id);
+
+        let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
+            .await?
+            .id();
+
+        Ok(Self {
+            ctx,
+            manager_component_id,
+            last_component_geometry: manager_component_geometry.into(),
+            operations,
+            manager_schema_id,
+            schema_map,
+            component_id_placeholders,
+        })
+    }
+
+    async fn create_component(
+        &self,
+        placeholder: &str,
+        operation: &ManagementCreateOperation,
+    ) -> ManagementResult<(ComponentId, NumericGeometry)> {
+        let schema_id = match &operation.kind {
+            Some(kind) => self
+                .schema_map
+                .get(kind)
+                .copied()
+                .ok_or(ManagementError::SchemaDoesNotExist(kind.clone()))?,
+            None => self.manager_schema_id,
+        };
+
+        let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
+
+        let mut component = Component::new(self.ctx, placeholder, variant_id).await?;
+        let geometry = if let Some(numeric_geometry) = &operation.geometry {
+            component
+                .set_raw_geometry(self.ctx, (*numeric_geometry).into())
+                .await?;
+
+            *numeric_geometry
+        } else {
+            // We don't want to just stack components on top of each other if no
+            // geometry is provided, so we're gonna do a bit of you-just-won
+            // solitaire staggering
+            let auto_geometry = self.last_component_geometry.offset_by(50.0, 50.0);
+            component
+                .set_raw_geometry(self.ctx, auto_geometry.into())
+                .await?;
+
+            auto_geometry
+        };
+
+        WsEvent::component_created(
+            self.ctx,
+            component
+                .into_frontend_type(self.ctx, Added, &mut HashMap::new())
+                .await?,
+        )
+        .await?
+        .publish_on_commit(self.ctx)
+        .await?;
+
+        Ok((component.id(), geometry))
+    }
+
+    async fn creates(&mut self) -> ManagementResult<()> {
+        if let Some(creates) = &self.operations.create {
+            for (placeholder, operation) in creates {
+                if placeholder == SELF_ID {
+                    return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder);
+                }
+
+                if self.component_id_placeholders.contains_key(placeholder) {
+                    return Err(ManagementError::DuplicateComponentPlaceholder(
+                        placeholder.to_owned(),
+                    ));
+                }
+
+                let (component_id, geometry) =
+                    self.create_component(placeholder, operation).await?;
+
+                self.last_component_geometry = geometry;
+
+                self.component_id_placeholders
+                    .insert(placeholder.to_owned(), component_id);
+
+                if let Some(properties) = &operation.properties {
+                    update_component(
+                        self.ctx,
+                        component_id,
+                        properties,
+                        &[&["root", "si", "name"]],
+                    )
+                    .await?;
+                }
+
+                Component::add_manages_edge_to_component(
+                    self.ctx,
+                    self.manager_component_id,
+                    component_id,
+                    crate::EdgeWeightKind::Manages,
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn get_real_component_id(&self, placeholder: &String) -> ManagementResult<ComponentId> {
+        self.component_id_placeholders
+            .get(placeholder)
+            .copied()
+            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
+                placeholder.to_owned(),
+            ))
+    }
+
+    async fn updates(&mut self) -> ManagementResult<()> {
+        if let Some(updates) = &self.operations.update {
+            for (placeholder, operation) in updates {
+                let component_id = self.get_real_component_id(placeholder).await?;
+
+                if let Some(properties) = &operation.properties {
+                    update_component(self.ctx, component_id, properties, &[]).await?;
+                }
+                if let Some(raw_geometry) = &operation.geometry {
+                    let mut component = Component::get_by_id(self.ctx, component_id).await?;
+                    component
+                        .set_raw_geometry(self.ctx, raw_geometry.to_owned())
+                        .await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn actions(&self) -> ManagementResult<()> {
+        if let Some(actions) = &self.operations.actions {
+            for (placeholder, operations) in actions {
+                let component_id = self.get_real_component_id(placeholder).await?;
+
+                operate_actions(self.ctx, component_id, operations).await?;
+            }
+
+            WsEvent::action_list_updated(self.ctx)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn operate(&mut self) -> ManagementResult<()> {
+        self.creates().await?;
+        self.updates().await?;
+        self.actions().await?;
+
+        Ok(())
+    }
+}
+
+fn identify_action(action_str: &str) -> ActionIdentifier {
+    match action_str {
         "create" => ActionIdentifier {
             kind: ActionKind::Create,
             manual_func_name: None,
@@ -159,7 +386,7 @@ fn identify_action(action_string: String) -> ActionIdentifier {
         },
         _ => ActionIdentifier {
             kind: ActionKind::Manual,
-            manual_func_name: Some(action_string),
+            manual_func_name: Some(action_str.to_string()),
         },
     }
 }
@@ -167,17 +394,23 @@ fn identify_action(action_string: String) -> ActionIdentifier {
 async fn operate_actions(
     ctx: &DalContext,
     component_id: ComponentId,
-    operation: ManagementActionOperation,
+    operation: &ManagementActionOperation,
 ) -> ManagementResult<()> {
-    if let Some(remove_actions) = operation.remove {
-        for to_remove in remove_actions.into_iter().map(identify_action) {
+    if let Some(remove_actions) = &operation.remove {
+        for to_remove in remove_actions
+            .iter()
+            .map(|action| identify_action(action.as_str()))
+        {
             remove_action(ctx, component_id, to_remove).await?;
         }
     }
-    if let Some(add_actions) = operation.add {
+    if let Some(add_actions) = &operation.add {
         let sv_id = Component::schema_variant_id(ctx, component_id).await?;
         let available_actions = ActionPrototype::for_variant(ctx, sv_id).await?;
-        for action in add_actions.into_iter().map(identify_action) {
+        for action in add_actions
+            .iter()
+            .map(|action| identify_action(action.as_str()))
+        {
             add_action(ctx, component_id, action, &available_actions).await?;
         }
     }
@@ -292,7 +525,8 @@ const IGNORE_PATHS: [&[&str]; 6] = [
 async fn update_component(
     ctx: &DalContext,
     component_id: ComponentId,
-    properties: serde_json::Value,
+    properties: &serde_json::Value,
+    extra_ignore_paths: &[&[&str]],
 ) -> ManagementResult<()> {
     let variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
@@ -302,7 +536,9 @@ async fn update_component(
 
     while let Some((path, current_val)) = work_queue.pop_front() {
         let path_as_refs: Vec<_> = path.iter().map(|part| part.as_str()).collect();
-        if IGNORE_PATHS.contains(&path_as_refs.as_slice()) {
+        if IGNORE_PATHS.contains(&path_as_refs.as_slice())
+            || extra_ignore_paths.contains(&path_as_refs.as_slice())
+        {
             continue;
         }
 
@@ -320,7 +556,8 @@ async fn update_component(
             continue;
         }
         if let serde_json::Value::Null = current_val {
-            AttributeValue::update(ctx, path_attribute_value_id, Some(current_val)).await?;
+            AttributeValue::update(ctx, path_attribute_value_id, Some(current_val.to_owned()))
+                .await?;
             continue;
         }
 
@@ -333,8 +570,13 @@ async fn update_component(
                     .await?
                     .view(ctx)
                     .await?;
-                if Some(&current_val) != view.as_ref() {
-                    AttributeValue::update(ctx, path_attribute_value_id, Some(current_val)).await?;
+                if Some(current_val) != view.as_ref() {
+                    AttributeValue::update(
+                        ctx,
+                        path_attribute_value_id,
+                        Some(current_val.to_owned()),
+                    )
+                    .await?;
                 }
             }
             PropKind::Object => {
@@ -344,7 +586,7 @@ async fn update_component(
 
                 for (key, value) in obj {
                     let mut new_path = path.clone();
-                    new_path.push(key);
+                    new_path.push(key.to_owned());
                     work_queue.push_back((new_path, value));
                 }
             }
@@ -370,7 +612,7 @@ async fn update_component(
                 // We do not descend below a map. Instead we update the *entire*
                 // child tree of each map key
                 for (key, value) in map {
-                    match map_children.get(&key) {
+                    match map_children.get(key) {
                         Some(child_id) => {
                             if AttributeValue::is_set_by_dependent_function(ctx, *child_id).await? {
                                 continue;
@@ -379,16 +621,17 @@ async fn update_component(
                                 .await?
                                 .view(ctx)
                                 .await?;
-                            if Some(&value) != view.as_ref() {
-                                AttributeValue::update(ctx, *child_id, Some(value)).await?;
+                            if Some(value) != view.as_ref() {
+                                AttributeValue::update(ctx, *child_id, Some(value.to_owned()))
+                                    .await?;
                             }
                         }
                         None => {
                             AttributeValue::insert(
                                 ctx,
                                 path_attribute_value_id,
-                                Some(value),
-                                Some(key),
+                                Some(value.to_owned()),
+                                Some(key.to_owned()),
                             )
                             .await?;
                         }
@@ -402,10 +645,14 @@ async fn update_component(
                         .view(ctx)
                         .await?;
 
-                    if Some(&current_val) != view.as_ref() {
+                    if Some(current_val) != view.as_ref() {
                         // Just update the entire array whole cloth
-                        AttributeValue::update(ctx, path_attribute_value_id, Some(current_val))
-                            .await?;
+                        AttributeValue::update(
+                            ctx,
+                            path_attribute_value_id,
+                            Some(current_val.to_owned()),
+                        )
+                        .await?;
                     }
                 }
             }

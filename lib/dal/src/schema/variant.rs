@@ -29,7 +29,9 @@ use crate::layer_db_types::{
     ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
     SchemaVariantContentV3,
 };
-use crate::management::prototype::{ManagementPrototype, ManagementPrototypeId};
+use crate::management::prototype::{
+    ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId,
+};
 use crate::module::Module;
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
@@ -120,8 +122,8 @@ pub enum SchemaVariantError {
     LeafFunctionMustBeJsAttribute(FuncId),
     #[error("Leaf map prop not found for item prop {0}")]
     LeafMapPropNotFound(PropId),
-    #[error("schema variant missing management func id; schema_variant_id={0}")]
-    ManagementPrototype(String),
+    #[error("management prototype error: {0}")]
+    ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error("schema variant missing asset func id; schema_variant_id={0}")]
     MissingAssetFuncId(SchemaVariantId),
     #[error("module error: {0}")]
@@ -1950,7 +1952,7 @@ impl SchemaVariant {
                 let func_id =
                     ManagementPrototype::func_id(ctx, mgmt_prototype_node_weight.id().into())
                         .await
-                        .map_err(|err| SchemaVariantError::ManagementPrototype(err.to_string()))?;
+                        .map_err(Box::new)?;
 
                 all_func_ids.insert(func_id);
             }
@@ -2243,7 +2245,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::Proxy
                 | EdgeWeightKindDiscriminants::Root
                 | EdgeWeightKindDiscriminants::SocketValue
-                | EdgeWeightKindDiscriminants::ValidationOutput => {}
+                | EdgeWeightKindDiscriminants::ValidationOutput
+                | EdgeWeightKindDiscriminants::Manages => {}
             }
         }
 
@@ -2348,5 +2351,24 @@ impl SchemaVariant {
         }
 
         Ok(schema_variants.into_values().collect())
+    }
+
+    /// Gathers all the schemas managed by the management prototypes for a given [`SchemaVariant`](SchemaVariant).
+    pub async fn all_managed_schemas(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<HashSet<SchemaId>> {
+        let mut result = HashSet::new();
+
+        for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
+            .await
+            .map_err(Box::new)?
+        {
+            if let Some(managed_schemas) = prototype.managed_schemas() {
+                result.extend(managed_schemas);
+            }
+        }
+
+        Ok(result)
     }
 }

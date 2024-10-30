@@ -189,6 +189,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ValidationOutput => EdgeWeightKind::ValidationOutput,
             EdgeWeightKindDiscriminants::ManagementPrototype => EdgeWeightKind::ManagementPrototype,
             EdgeWeightKindDiscriminants::Represents => EdgeWeightKind::Represents,
+            EdgeWeightKindDiscriminants::Manages => EdgeWeightKind::Manages,
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);

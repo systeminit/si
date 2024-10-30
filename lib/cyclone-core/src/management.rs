@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
@@ -11,6 +13,7 @@ pub struct ManagementRequest {
     pub handler: String,
     pub code_base64: String,
     pub this_component: ComponentViewWithGeometry,
+    pub components: HashMap<String, ComponentViewWithGeometry>,
     pub before: Vec<BeforeFunction>,
 }
 

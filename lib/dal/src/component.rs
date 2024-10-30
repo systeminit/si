@@ -48,7 +48,7 @@ use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_we
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
-use crate::{AttributePrototypeId, EdgeWeight, SocketArity};
+use crate::{AttributePrototypeId, EdgeWeight, SchemaId, SocketArity};
 use frame::{Frame, FrameError};
 use resource::ResourceData;
 use si_frontend_types::{
@@ -114,6 +114,8 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("component {0} has no attribute value for the {1} prop")]
     ComponentMissingValue(ComponentId, PropId),
+    #[error("component {0} is based on a schema {1} that is not managed by {2}")]
+    ComponentNotManagedSchema(ComponentId, SchemaId, ComponentId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
@@ -391,6 +393,13 @@ impl Component {
         destination_id: ComponentId,
         add_fn: add_category_edge,
         discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ComponentResult,
+    );
+    implement_add_edge_to!(
+        source_id: ComponentId,
+        destination_id: ComponentId,
+        add_fn: add_manages_edge_to_component,
+        discriminant: EdgeWeightKindDiscriminants::Manages,
         result: ComponentResult,
     );
 
@@ -1482,18 +1491,25 @@ impl Component {
         width: Option<impl Into<String>>,
         height: Option<impl Into<String>>,
     ) -> ComponentResult<()> {
-        let mut geometry_pre = self.geometry(ctx).await?;
-
-        let geometry_post = RawGeometry {
+        let new_geometry = RawGeometry {
             x: x.into(),
             y: y.into(),
             width: width.map(|w| w.into()),
             height: height.map(|h| h.into()),
         };
 
-        if geometry_pre.clone().raw() != geometry_post {
+        self.set_raw_geometry(ctx, new_geometry).await
+    }
+
+    pub async fn set_raw_geometry(
+        &mut self,
+        ctx: &DalContext,
+        raw_geometry: RawGeometry,
+    ) -> ComponentResult<()> {
+        let mut geometry_pre = self.geometry(ctx).await?;
+        if geometry_pre.clone().into_raw() != raw_geometry {
             geometry_pre
-                .update(ctx, geometry_post)
+                .update(ctx, raw_geometry)
                 .await
                 .map_err(|e| ComponentError::Diagram(e.to_string()))?;
         }
@@ -3351,6 +3367,84 @@ impl Component {
         } else {
             false
         })
+    }
+
+    /// Add a [`Manages`](`crate::edge_weight::EdgeWeightKind::Manages`) edge
+    /// from a manager component to a managed component, if the managed
+    /// component is based on a managed schema
+    pub async fn manage_component(
+        ctx: &DalContext,
+        manager_component_id: ComponentId,
+        managed_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
+            .await?
+            .id();
+        let manager_variant =
+            Self::schema_variant_for_component_id(ctx, manager_component_id).await?;
+        let managed_component_schema_id = Self::schema_for_component_id(ctx, managed_component_id)
+            .await?
+            .id();
+
+        let managed_schemas = SchemaVariant::all_managed_schemas(ctx, manager_variant.id()).await?;
+
+        if !managed_schemas.contains(&managed_component_schema_id)
+            && manager_schema_id != managed_component_schema_id
+        {
+            return Err(ComponentError::ComponentNotManagedSchema(
+                managed_component_id,
+                managed_component_schema_id,
+                manager_component_id,
+            ));
+        }
+
+        Component::add_manages_edge_to_component(
+            ctx,
+            manager_component_id,
+            managed_component_id,
+            EdgeWeightKind::Manages,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// Return the ids of all the components that manage this component
+    pub async fn get_managers(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        let mut result = vec![];
+
+        let snapshot = ctx.workspace_snapshot()?;
+
+        for source_idx in snapshot
+            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Manages)
+            .await?
+        {
+            let node_weight = snapshot.get_node_weight(source_idx).await?;
+            if let NodeWeight::Component(_) = &node_weight {
+                result.push(node_weight.id().into());
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Return the ids of all the components managed by this component
+    pub async fn get_managed(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        let mut result = vec![];
+
+        let snapshot = ctx.workspace_snapshot()?;
+
+        for target_idx in snapshot
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Manages)
+            .await?
+        {
+            let node_weight = snapshot.get_node_weight(target_idx).await?;
+            if let NodeWeight::Component(_) = &node_weight {
+                result.push(node_weight.id().into());
+            }
+        }
+
+        Ok(result)
     }
 
     pub async fn into_frontend_type(

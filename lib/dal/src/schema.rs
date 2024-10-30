@@ -9,8 +9,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
+use crate::cached_module::{CachedModule, CachedModuleError};
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
+use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -33,6 +35,8 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaError {
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("func error: {0}")]
@@ -41,14 +45,20 @@ pub enum SchemaError {
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("No default schema variant exists for {0}")]
+    NoDefaultSchemaVariant(SchemaId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("pkg error: {0}")]
+    Pkg(#[from] Box<PkgError>),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
+    #[error("uninstalled schema {0} not found")]
+    UninstalledSchemaNotFound(SchemaId),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -519,5 +529,42 @@ impl Schema {
 
     pub async fn is_name_taken(ctx: &DalContext, name: &String) -> SchemaResult<bool> {
         Ok(Self::list(ctx).await?.iter().any(|s| s.name.eq(name)))
+    }
+
+    /// Returns the default [`SchemaVariantId`] for the provided [`SchemaId`]
+    /// *if* this schema is installed. If this schema is not installed, it looks
+    /// for it in the local module cache, and if it exists there, it installs it, then
+    /// returns the newly installed default [`SchemaVariantId`].
+    pub async fn get_or_install_default_variant(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<SchemaVariantId> {
+        Ok(match Schema::get_by_id(ctx, schema_id).await? {
+            Some(schema) => schema
+                .get_default_schema_variant_id(ctx)
+                .await?
+                .ok_or(SchemaError::NoDefaultSchemaVariant(schema_id))?,
+            None => {
+                let mut uninstalled_module = CachedModule::latest_by_schema_id(ctx, schema_id)
+                    .await?
+                    .ok_or(SchemaError::UninstalledSchemaNotFound(schema_id))?;
+
+                let si_pkg = uninstalled_module.si_pkg(ctx).await?;
+                import_pkg_from_pkg(
+                    ctx,
+                    &si_pkg,
+                    Some(ImportOptions {
+                        schema_id: Some(schema_id.into()),
+                        ..Default::default()
+                    }),
+                )
+                .await
+                .map_err(Box::new)?;
+
+                Schema::get_default_schema_variant_by_id(ctx, schema_id)
+                    .await?
+                    .ok_or(SchemaError::NoDefaultSchemaVariant(schema_id))?
+            }
+        })
     }
 }

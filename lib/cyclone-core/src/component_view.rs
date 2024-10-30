@@ -34,6 +34,8 @@ impl Default for ComponentView {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentViewWithGeometry {
+    // This is not component kind. Instead it's a schema name
+    pub kind: Option<String>,
     pub properties: Value,
     pub geometry: Value,
 }
@@ -41,6 +43,7 @@ pub struct ComponentViewWithGeometry {
 impl Default for ComponentViewWithGeometry {
     fn default() -> Self {
         Self {
+            kind: None,
             properties: serde_json::json!({}),
             geometry: serde_json::json!({}),
         }

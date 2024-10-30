@@ -11,9 +11,8 @@ use axum::{
 };
 use dal::{
     management::{
-        operate,
         prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
-        ManagementError, ManagementFuncReturn,
+        ManagementError, ManagementFuncReturn, ManagementOperator,
     },
     ChangeSet, ChangeSetError, ChangeSetId, ComponentId, TransactionsError, WorkspacePk,
 };
@@ -81,7 +80,8 @@ pub async fn run_prototype(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // TODO check that this is a valid prototypeId
-    let (result, _) = ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id).await?;
+    let execution_result =
+        ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id).await?;
 
     track(
         &posthog_client,
@@ -96,11 +96,21 @@ pub async fn run_prototype(
         }),
     );
 
-    if let Some(result) = result {
+    if let Some(result) = execution_result.result {
         let result: ManagementFuncReturn = result.try_into()?;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
-                operate(&ctx, component_id, operations).await?;
+                ManagementOperator::new(
+                    &ctx,
+                    component_id,
+                    execution_result.manager_component_geometry,
+                    operations,
+                    execution_result.managed_schema_map,
+                    execution_result.placeholders,
+                )
+                .await?
+                .operate()
+                .await?;
             }
         }
 
