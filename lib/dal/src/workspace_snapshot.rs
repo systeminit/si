@@ -510,15 +510,12 @@ impl WorkspaceSnapshot {
                 let mut working_copy = self_clone.working_copy_mut().await;
                 working_copy.cleanup_and_merkle_tree_hash()?;
 
-                let (new_address, _) = layer_db
-                    .workspace_snapshot()
-                    .write(
-                        Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),
-                        None,
-                        events_tenancy,
-                        events_actor,
-                    )
-                    .await?;
+                let (new_address, _) = layer_db.workspace_snapshot().write(
+                    Arc::new(WorkspaceSnapshotGraph::V4(working_copy.clone())),
+                    None,
+                    events_tenancy,
+                    events_actor,
+                )?;
 
                 Ok::<WorkspaceSnapshotAddress, WorkspaceSnapshotError>(new_address)
             })?
@@ -547,16 +544,12 @@ impl WorkspaceSnapshot {
         let events_tenancy = ctx.events_tenancy();
         let events_actor = ctx.events_actor();
 
-        let (address, _) = ctx
-            .layer_db()
-            .workspace_snapshot()
-            .write(
-                self.read_only_graph.clone(),
-                None,
-                events_tenancy,
-                events_actor,
-            )
-            .await?;
+        let (address, _) = ctx.layer_db().workspace_snapshot().write(
+            self.read_only_graph.clone(),
+            None,
+            events_tenancy,
+            events_actor,
+        )?;
 
         Ok(address)
     }

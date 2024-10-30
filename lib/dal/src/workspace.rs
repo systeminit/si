@@ -663,8 +663,7 @@ impl Workspace {
         for (_, (content, _serialization_format)) in cas_values {
             layer_db
                 .cas()
-                .write(content, None, ctx.events_tenancy(), ctx.events_actor())
-                .await?;
+                .write(content, None, ctx.events_tenancy(), ctx.events_actor())?;
         }
 
         Ok(())

@@ -131,16 +131,13 @@ impl SnapshotGraphMigrator {
                 }
             };
 
-            let (new_snapshot_address, _) = ctx_after_migration
-                .layer_db()
-                .workspace_snapshot()
-                .write(
+            let (new_snapshot_address, _) =
+                ctx_after_migration.layer_db().workspace_snapshot().write(
                     Arc::new(new_snapshot),
                     None,
                     ctx.events_tenancy(),
                     ctx.events_actor(),
-                )
-                .await?;
+                )?;
 
             let migrated_snapshot =
                 WorkspaceSnapshot::find(&ctx_after_migration, new_snapshot_address).await?;

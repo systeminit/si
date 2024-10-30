@@ -236,16 +236,12 @@ impl Secret {
             description,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(SecretContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(SecretContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let node_weight = NodeWeight::new_secret(id, lineage_id, key, hash);
         let secret_node_weight = node_weight.get_secret_node_weight()?;
@@ -700,16 +696,12 @@ impl Secret {
         let updated = SecretContentV1::from(secret.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(SecretContent::V1(updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(SecretContent::V1(updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             ctx.workspace_snapshot()?
                 .update_content(secret.id.into(), hash)
                 .await?;
@@ -775,16 +767,13 @@ impl EncryptedSecret {
             algorithm,
         };
 
-        ctx.layer_db()
-            .encrypted_secret()
-            .write(
-                key,
-                Arc::new(value),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        ctx.layer_db().encrypted_secret().write(
+            key,
+            Arc::new(value),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         Ok(())
     }

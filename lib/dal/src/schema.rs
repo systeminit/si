@@ -150,16 +150,12 @@ impl Schema {
             is_builtin: false,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(SchemaContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(SchemaContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -379,16 +375,12 @@ impl Schema {
         let updated = SchemaContentV1::from(schema.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(SchemaContent::V1(updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(SchemaContent::V1(updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
 
             ctx.workspace_snapshot()?
                 .update_content(schema.id.into(), hash)

@@ -226,14 +226,11 @@ pub(crate) async fn evict_unused_snapshots(
     workspace_snapshot_address: &WorkspaceSnapshotAddress,
 ) -> RebaseResult<()> {
     if !ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await? {
-        ctx.layer_db()
-            .workspace_snapshot()
-            .evict(
-                workspace_snapshot_address,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        ctx.layer_db().workspace_snapshot().evict(
+            workspace_snapshot_address,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
     }
     Ok(())
 }

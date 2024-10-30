@@ -419,16 +419,12 @@ impl Component {
             timestamp: Timestamp::now(),
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(ComponentContent::V2(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(ComponentContent::V2(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let component =
             Self::new_with_content_address_and_no_geometry(ctx, name, schema_variant_id, hash)
@@ -2480,16 +2476,12 @@ impl Component {
 
         let updated = ComponentContentV2::from(component.clone());
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(ComponentContent::V2(updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(ComponentContent::V2(updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             ctx.workspace_snapshot()?
                 .update_content(component.id.into(), hash)
                 .await?;

@@ -277,8 +277,7 @@ impl FuncAuthoringClient {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
@@ -293,8 +292,7 @@ impl FuncAuthoringClient {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,

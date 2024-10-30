@@ -161,14 +161,12 @@ impl ComponentNodeWeight {
             height: content.height,
         });
 
-        let (content_address, _) = cas
-            .write(
-                Arc::new(geometry_content.clone().into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (content_address, _) = cas.write(
+            Arc::new(geometry_content.clone().into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let geometry_id = v4_graph
             .generate_ulid()
@@ -209,14 +207,12 @@ impl ComponentNodeWeight {
             timestamp: content.timestamp,
         });
 
-        let (updated_content_address, _) = cas
-            .write(
-                Arc::new(updated_content.into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (updated_content_address, _) = cas.write(
+            Arc::new(updated_content.into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let upgraded_node_weight = NodeWeight::new_component(
             component_node_weight.id,

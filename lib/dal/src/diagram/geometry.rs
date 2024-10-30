@@ -111,16 +111,12 @@ impl Geometry {
             height: Some(DEFAULT_COMPONENT_HEIGHT.to_string()),
         });
 
-        let (content_address, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(content.clone().into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (content_address, _) = ctx.layer_db().cas().write(
+            Arc::new(content.clone().into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let node_weight = NodeWeight::new_geometry(id, lineage_id, content_address);
         snap.add_or_replace_node(node_weight.clone()).await?;
@@ -271,25 +267,21 @@ impl Geometry {
         ctx: &DalContext,
         new_geometry: RawGeometry,
     ) -> DiagramResult<()> {
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(
-                    GeometryContent::V1(GeometryContentV1 {
-                        timestamp: Timestamp::now(),
-                        x: new_geometry.x,
-                        y: new_geometry.y,
-                        width: new_geometry.width,
-                        height: new_geometry.height,
-                    })
-                    .into(),
-                ),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(
+                GeometryContent::V1(GeometryContentV1 {
+                    timestamp: Timestamp::now(),
+                    x: new_geometry.x,
+                    y: new_geometry.y,
+                    width: new_geometry.width,
+                    height: new_geometry.height,
+                })
+                .into(),
+            ),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         ctx.workspace_snapshot()?
             .update_content(self.id.into(), hash)

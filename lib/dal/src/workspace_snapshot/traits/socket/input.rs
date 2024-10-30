@@ -112,16 +112,12 @@ impl InputSocketExt for WorkspaceSnapshot {
             ui_hidden: false,
             connection_annotations,
         };
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(InputSocketContent::V2(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(InputSocketContent::V2(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let input_socket_id: InputSocketId = self.generate_ulid().await?.into();
         let lineage_id: LineageId = self.generate_ulid().await?;

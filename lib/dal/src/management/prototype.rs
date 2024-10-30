@@ -188,16 +188,12 @@ impl ManagementPrototype {
             description: description.clone(),
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(ManagementPrototypeContent::V1(content).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(ManagementPrototypeContent::V1(content).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
@@ -359,8 +355,7 @@ impl ManagementPrototype {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
