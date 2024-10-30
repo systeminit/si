@@ -419,7 +419,7 @@ fn default_auth_api_url() -> String {
 }
 
 fn default_layer_db_config() -> LayerDbConfig {
-    LayerDbConfig::default_for_service("sdf")
+    LayerDbConfig::default()
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

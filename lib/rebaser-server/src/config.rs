@@ -204,7 +204,7 @@ fn default_concurrency_limit() -> Option<usize> {
 }
 
 fn default_layer_db_config() -> LayerDbConfig {
-    LayerDbConfig::default_for_service("rebaser")
+    LayerDbConfig::default()
 }
 
 fn default_quiescent_period() -> Duration {

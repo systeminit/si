@@ -50,6 +50,7 @@ async fn async_main() -> Result<()> {
                 "si_data_pg",
                 "si_layer_cache",
                 "si_service",
+                "foyer_storage",
             ])
             .build()?;
 

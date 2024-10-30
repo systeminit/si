@@ -12,6 +12,10 @@ services:
       - "SI_TEST_NATS_URL=nats"
       - "SI_TEST_SPICEDB_URL=http://spicedb:50051"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    ulimits:
+      nofile:
+        soft: 1024000
+        hard: 1024000
     depends_on:
       - postgres-test
       - nats
