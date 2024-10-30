@@ -54,7 +54,7 @@ pub async fn refresh_workspace_members(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Json(request): Json<RefreshWorkspaceMembersRequest>,
 ) -> SessionResult<Json<RefreshWorkspaceMembersResponse>> {
     let client = reqwest::Client::new();
@@ -91,7 +91,7 @@ pub async fn refresh_workspace_members(
             .collect();
         sync_workspace_approvers(
             &ctx,
-            client.clone(),
+            client,
             request.workspace_id.clone(),
             approvers,
             &original_uri,
@@ -118,7 +118,7 @@ pub async fn refresh_workspace_members(
 
 async fn sync_workspace_approvers(
     ctx: &DalContext,
-    client: SpiceDbClient,
+    client: &mut SpiceDbClient,
     workspace_id: String,
     new_approver_ids: Vec<String>,
     original_uri: &Uri,
@@ -128,7 +128,7 @@ async fn sync_workspace_approvers(
     let existing_approvers = RelationBuilder::new()
         .object(ObjectType::Workspace, workspace_id.clone())
         .relation(Relation::Approver)
-        .read(client.clone())
+        .read(client)
         .await?;
 
     let existing_approver_ids: Vec<_> = existing_approvers
@@ -147,12 +147,12 @@ async fn sync_workspace_approvers(
         .filter(|r| !new_approver_ids.contains(r))
         .collect();
 
-    for user in to_add {
+    for user_pk_str in to_add {
         RelationBuilder::new()
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
-            .subject(ObjectType::User, user.clone())
-            .create(client.clone())
+            .subject(ObjectType::User, user_pk_str.clone())
+            .create(client)
             .await?;
 
         track(
@@ -163,17 +163,17 @@ async fn sync_workspace_approvers(
             "add_approver",
             serde_json::json!({
                 "how": "/session/refresh_workspace_member",
-                "user_pk": user,
+                "user_pk": user_pk_str,
             }),
         );
     }
 
-    for user in to_remove {
+    for user_pk_str in to_remove {
         RelationBuilder::new()
             .object(ObjectType::Workspace, workspace_id.clone())
             .relation(Relation::Approver)
-            .subject(ObjectType::User, user.clone())
-            .delete(client.clone())
+            .subject(ObjectType::User, user_pk_str.clone())
+            .delete(client)
             .await?;
 
         track(
@@ -184,7 +184,7 @@ async fn sync_workspace_approvers(
             "remove_approver",
             serde_json::json!({
                 "how": "/session/refresh_workspace_member",
-                "user_pk": user,
+                "user_pk": user_pk_str,
             }),
         );
     }

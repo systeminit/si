@@ -22,6 +22,7 @@ mod app_state;
 mod config;
 mod extract;
 mod init;
+pub mod middleware;
 mod migrations;
 mod nats_multiplexer;
 mod routes;

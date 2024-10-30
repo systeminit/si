@@ -106,8 +106,12 @@ impl AppState {
         &self.shutdown_token
     }
 
-    pub fn spicedb_client(&self) -> Option<&SpiceDbClient> {
-        self.spicedb_client.as_ref()
+    pub fn spicedb_client(&mut self) -> Option<&mut SpiceDbClient> {
+        self.spicedb_client.as_mut()
+    }
+
+    pub fn spicedb_client_clone(&self) -> Option<SpiceDbClient> {
+        self.spicedb_client.clone()
     }
 }
 

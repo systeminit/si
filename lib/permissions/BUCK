@@ -4,6 +4,7 @@ rust_library(
     name = "permissions",
     deps = [
         "//lib/si-data-spicedb:si-data-spicedb",
+        "//lib/si-events-rs:si-events",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:strum",

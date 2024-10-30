@@ -4,6 +4,7 @@ use crate::AppState;
 
 pub mod admin;
 pub mod audit_log;
+pub mod change_set;
 pub mod func;
 pub mod management;
 pub mod module;
@@ -16,6 +17,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .nest("/admin", admin::v2_routes(state))
         .nest(&format!("{PREFIX}/audit-logs"), audit_log::v2_routes())
+        .nest(&format!("{PREFIX}/change-sets"), change_set::v2_routes())
         .nest(&format!("{PREFIX}/funcs"), func::v2_routes())
         .nest(&format!("{PREFIX}/modules"), module::v2_routes())
         .nest(&format!("{PREFIX}/schema-variants"), variant::v2_routes())
