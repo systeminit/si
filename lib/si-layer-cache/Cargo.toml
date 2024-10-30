@@ -12,12 +12,11 @@ publish.workspace = true
 async-trait = { workspace = true }
 blake3 = { workspace = true }
 bytes = { workspace = true }
-cacache = { workspace = true }
 chrono = { workspace = true }
+foyer = { workspace = true }
 futures = { workspace = true }
 lazy_static = { workspace = true }
 miniz_oxide = { workspace = true }
-moka = { workspace = true }
 postcard = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
@@ -28,6 +27,7 @@ si-events = { path = "../../lib/si-events-rs" }
 si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 strum = { workspace = true }
+sysinfo = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 tempfile = { workspace = true }
@@ -41,7 +41,6 @@ serde_json = { workspace = true }
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 criterion = { workspace = true }
-moka = { workspace = true }
 postcard = { workspace = true }
 rand = { workspace = true }
 tempfile = { workspace = true }
