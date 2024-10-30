@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use dal::action::prototype::ActionKind;
 use dal::pkg::{import_pkg_from_pkg, ImportOptions};
 use dal::{BuiltinsResult, DalContext};
@@ -11,6 +13,7 @@ use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
     build_action_func, build_asset_func, build_management_func,
     build_resource_payload_to_value_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
@@ -59,7 +62,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let import_management_func_code =
         "async function main({ thisComponent }: Input): Promise<Output> {
         const thisProperties = thisComponent.properties;
-        return { 
+        return {
             status: 'ok',
             ops: {
                 update: {
@@ -80,6 +83,71 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let import_management_func_name = "test:importManagementSmallLego";
     let import_management_func =
         build_management_func(import_management_func_code, import_management_func_name)?;
+
+    let simple_create_mgmt_func_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+        let create = {
+            [`${thisName}_clone`]: {
+                properties: {
+                    ...thisComponent.properties,
+                },
+                geometry: {
+                    x: 10,
+                    y: 20,
+                }
+            }
+        };
+
+        for (let [id, component] of Object.entries(components)) {
+            const name = component.properties?.si?.name ?? "unknown";
+            let clone_name = `${name}_clone`;
+            if (clone_name in create) {
+                clone_name = `${clone_name}-${id}`;
+            }
+            create[clone_name] = {
+                ...component,
+            };
+        }
+
+        return {
+            status: "ok",
+            ops: { create };
+        }
+    }
+    "#;
+
+    let clone_me_mgmt_func_name = "test:cloneMeSmallLego";
+    let clone_me_mgmt_func =
+        build_management_func(simple_create_mgmt_func_code, clone_me_mgmt_func_name)?;
+
+    let update_managed_func_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        const update: { [key: string]: unknown } = {};
+
+        for (let [id, component] of Object.entries(components)) {
+            let name = component.properties?.si?.name ?? "unknown";
+            update[id] = {
+                properties: {
+                    ...component.properties,
+                    si: {
+                        ...component.properties?.si,
+                        name: `${name} managed by ${thisName}`,
+                    }
+                },
+            };
+        }
+
+        return {
+            status: "ok",
+            ops: { update };
+        }
+    }
+    "#;
+    let update_mgmt_func_name = "test:updateManagedComponent";
+    let update_mgmt_func = build_management_func(update_managed_func_code, update_mgmt_func_name)?;
 
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
@@ -149,6 +217,24 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&import_management_func.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Clone")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&clone_me_mgmt_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Update")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&update_mgmt_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -162,6 +248,8 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(small_lego_authoring_schema_func)
         .func(resource_payload_to_value_func)
         .func(import_management_func)
+        .func(clone_me_mgmt_func)
+        .func(update_mgmt_func)
         .schema(small_lego_schema)
         .build()?;
 

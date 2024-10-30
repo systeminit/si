@@ -3,7 +3,7 @@ use telemetry::prelude::*;
 
 use crate::{
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
-    DalContext, Func, FuncId, SchemaVariant, SchemaVariantId,
+    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};
@@ -42,6 +42,96 @@ impl ManagementBinding {
         .await?;
 
         FuncBinding::for_func_id(ctx, func_id).await
+    }
+
+    pub async fn compile_management_types(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncBindingResult<String> {
+        let default_this_component = "object".to_string();
+        let default_component_types = "object".to_string();
+        let default_types = (default_this_component, default_component_types.to_owned());
+
+        let (this_component_iface, component_types) =
+            match ManagementPrototype::prototype_id_for_func_id(ctx, func_id).await? {
+                Some(prototype_id) => {
+                    match ManagementPrototype::get_by_id(ctx, prototype_id).await? {
+                        Some(prototype) => {
+                            let variant_id =
+                                ManagementPrototype::get_schema_variant_id(ctx, prototype_id)
+                                    .await?;
+                            let root_prop = Prop::get_by_id(
+                                ctx,
+                                SchemaVariant::get_root_prop_id(ctx, variant_id).await?,
+                            )
+                            .await?;
+
+                            let (_, reverse_map) = prototype.managed_schemas_map(ctx).await?;
+
+                            let mut component_types = vec![];
+                            for (schema_id, name) in reverse_map {
+                                let variant_id =
+                                    Schema::get_or_install_default_variant(ctx, schema_id).await?;
+
+                                let root_prop = Prop::get_by_id(
+                                    ctx,
+                                    SchemaVariant::get_root_prop_id(ctx, variant_id).await?,
+                                )
+                                .await?;
+
+                                let sv_type = root_prop.ts_type(ctx).await?;
+
+                                let component_type = format!(
+                                    r#"
+                                {{
+                                    kind: {name},
+                                    properties: {sv_type},
+                                    geometry: Geometry,
+                                }}
+                                "#
+                                );
+                                component_types.push(component_type);
+                            }
+
+                            let component_types = component_types.join("|\n");
+
+                            (root_prop.ts_type(ctx).await?, component_types)
+                        }
+                        None => default_types,
+                    }
+                }
+                None => default_types,
+            };
+
+        Ok(format!(
+            r#"
+type Geometry = {{
+    x: number,
+    y: number,
+    width?: number,
+    height?: number,
+}};
+type Output = {{
+  status: 'ok' | 'error';
+  ops?: {{
+    create?: {{ [key: string]: {component_types} }},
+    update?: {{ [key: string]: {{ properties?: {{ [key: string]: unknown }}, geometry: Geometry, }} }};
+    actions?: {{ [key: string]: {{
+      add?: ("create" | "update" | "refresh" | "delete" | string)[];
+      remove?: ("create" | "update" | "refresh" | "delete" | string)[];
+    }} }}
+
+  }};
+  message?: string | null;
+}};
+type Input = {{
+    thisComponent: {{
+        properties: {this_component_iface},
+        geometry: Geometry,
+    }},
+    components: {{ [key: string]: {component_types} }}
+}};"#
+        ))
     }
 
     pub(crate) async fn assemble_management_bindings(

@@ -1,25 +1,35 @@
 //! A [`ManagementPrototype`] points to a Management [`Func`] for a schema variant
 
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 use si_events::FuncRunId;
 use thiserror::Error;
-use veritech_client::{ComponentKind, ManagementResultSuccess};
+use veritech_client::ManagementResultSuccess;
 
 use crate::{
+    cached_module::{CachedModule, CachedModuleError},
+    diagram::geometry::RawGeometry,
     func::runner::{FuncRunner, FuncRunnerError},
     id, implement_add_edge_to,
     layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
     workspace_snapshot::node_weight::{traits::SiVersionedNodeWeight, NodeWeight},
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
-    EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError,
+    EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, Schema, SchemaError,
+    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
+    WorkspaceSnapshotError,
 };
+
+use super::NumericGeometry;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagementPrototypeError {
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("func runner error: {0}")]
@@ -32,6 +42,10 @@ pub enum ManagementPrototypeError {
     LayerDbError(#[from] si_layer_cache::LayerDbError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
+    #[error("management prototype {0} not found")]
+    NotFound(ManagementPrototypeId),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
@@ -59,13 +73,105 @@ impl From<ManagementPrototypeId> for si_events::ManagementPrototypeId {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementPrototype {
-    pub id: ManagementPrototypeId,
-    pub managed_schemas: Option<HashSet<SchemaId>>,
-    pub name: String,
-    pub description: Option<String>,
+    id: ManagementPrototypeId,
+    managed_schemas: Option<HashSet<SchemaId>>,
+    name: String,
+    description: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ManagementPrototypeExecution {
+    pub func_run_id: FuncRunId,
+    pub result: Option<ManagementResultSuccess>,
+    pub manager_component_geometry: RawGeometry,
+    pub managed_schema_map: HashMap<String, SchemaId>,
+    pub placeholders: HashMap<String, ComponentId>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedComponent {
+    kind: String,
+    properties: Option<serde_json::Value>,
+    geometry: NumericGeometry,
 }
 
 impl ManagementPrototype {
+    pub fn id(&self) -> ManagementPrototypeId {
+        self.id
+    }
+
+    pub fn managed_schemas(&self) -> Option<&HashSet<SchemaId>> {
+        self.managed_schemas.as_ref()
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    pub async fn schema_id(&self, ctx: &DalContext) -> ManagementPrototypeResult<Option<SchemaId>> {
+        let snapshot = ctx.workspace_snapshot()?;
+
+        let Some(sv_source_idx) = snapshot
+            .incoming_sources_for_edge_weight_kind(
+                self.id,
+                EdgeWeightKindDiscriminants::ManagementPrototype,
+            )
+            .await?
+            .first()
+            .copied()
+        else {
+            return Ok(None);
+        };
+
+        let sv_id = snapshot.get_node_weight(sv_source_idx).await?.id();
+
+        Ok(Some(
+            SchemaVariant::schema_id_for_schema_variant_id(ctx, sv_id.into()).await?,
+        ))
+    }
+
+    /// Generates a map between the schema name and its schema id (even for
+    /// uninstalled schemas), and a reverse mapping. These names will be
+    /// provided to the management executor and operator so that management
+    /// functions can create components of specific schema kinds.
+    pub async fn managed_schemas_map(
+        &self,
+        ctx: &DalContext,
+    ) -> ManagementPrototypeResult<(HashMap<String, SchemaId>, HashMap<SchemaId, String>)> {
+        let mut managed_schemas_map = HashMap::new();
+        let mut reverse_map = HashMap::new();
+
+        let mut managed_schemas = self.managed_schemas().cloned().unwrap_or_default();
+        if let Some(schema_id) = self.schema_id(ctx).await? {
+            managed_schemas.insert(schema_id);
+        }
+
+        for schema_id in managed_schemas {
+            let schema_name = match Schema::get_by_id(ctx, schema_id).await? {
+                Some(schema) => schema.name().to_owned(),
+                None => {
+                    let Some(cached_module) =
+                        CachedModule::latest_by_schema_id(ctx, schema_id).await?
+                    else {
+                        continue;
+                    };
+
+                    cached_module.schema_name
+                }
+            };
+
+            managed_schemas_map.insert(schema_name.clone(), schema_id);
+            reverse_map.insert(schema_id, schema_name);
+        }
+
+        Ok((managed_schemas_map, reverse_map))
+    }
+
     pub async fn new(
         ctx: &DalContext,
         name: String,
@@ -176,7 +282,7 @@ impl ManagementPrototype {
         &self,
         ctx: &DalContext,
         manager_component_id: ComponentId,
-    ) -> ManagementPrototypeResult<(Option<ManagementResultSuccess>, FuncRunId)> {
+    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
         Self::execute_by_id(ctx, self.id, manager_component_id).await
     }
 
@@ -184,18 +290,53 @@ impl ManagementPrototype {
         ctx: &DalContext,
         id: ManagementPrototypeId,
         manager_component_id: ComponentId,
-    ) -> ManagementPrototypeResult<(Option<ManagementResultSuccess>, FuncRunId)> {
+    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
+        let prototype = Self::get_by_id(ctx, id)
+            .await?
+            .ok_or(ManagementPrototypeError::NotFound(id))?;
+
+        let (managed_schema_map, reverse_map) = prototype.managed_schemas_map(ctx).await?;
+
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
         let manager_component_view = manager_component.view(ctx).await?;
-        let geometry = manager_component.geometry(ctx).await?;
+        let geometry = manager_component.geometry(ctx).await?.into_raw();
+
+        let managed_schema_names: Vec<String> = managed_schema_map.keys().cloned().collect();
+
+        let mut managed_components = HashMap::new();
+        for component_id in manager_component.get_managed(ctx).await? {
+            let component = Component::get_by_id(ctx, component_id).await?;
+            let component_view = component.view(ctx).await?;
+            let component_geometry: NumericGeometry =
+                component.geometry(ctx).await?.into_raw().into();
+            let schema_id = component.schema(ctx).await?.id();
+
+            if let Some(managed_schema_name) = reverse_map.get(&schema_id) {
+                managed_components.insert(
+                    component_id,
+                    ManagedComponent {
+                        kind: managed_schema_name.clone(),
+                        properties: component_view,
+                        geometry: component_geometry,
+                    },
+                );
+            }
+        }
+
+        let placeholders: HashMap<_, _> = managed_components
+            .keys()
+            .copied()
+            .map(|id| (id.to_string(), id))
+            .collect();
 
         let args = serde_json::json!({
             "this_component": {
-                "kind": ComponentKind::Standard,
                 "properties": manager_component_view,
-                "geometry": geometry,
-            }
+                "geometry": geometry.to_owned(),
+            },
+            "managed_schemas": managed_schema_names,
+            "components": managed_components,
         });
 
         let result_channel =
@@ -241,7 +382,13 @@ impl ManagementPrototype {
             None => None,
         };
 
-        Ok((maybe_run_result, func_run_id))
+        Ok(ManagementPrototypeExecution {
+            func_run_id,
+            result: maybe_run_result,
+            manager_component_geometry: geometry,
+            managed_schema_map,
+            placeholders,
+        })
     }
 
     pub async fn get_schema_variant_id(
@@ -331,6 +478,30 @@ impl ManagementPrototype {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn prototype_id_for_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> ManagementPrototypeResult<Option<ManagementPrototypeId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let use_sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
+
+        for use_source in use_sources {
+            let node_weight = workspace_snapshot.get_node_weight(use_source).await?;
+            let node_weight_id = node_weight.id();
+            if NodeWeightDiscriminants::ManagementPrototype == node_weight.into() {
+                if let Some(management_prototype) =
+                    Self::get_by_id(ctx, node_weight_id.into()).await?
+                {
+                    return Ok(Some(management_prototype.id));
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     implement_add_edge_to!(

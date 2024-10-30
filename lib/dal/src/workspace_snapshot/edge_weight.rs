@@ -65,6 +65,8 @@ pub enum EdgeWeightKind {
     ManagementPrototype,
     /// From a Geometry node to the node it represents on a view.
     Represents,
+    /// From a manager [`Component`][`crate::Component`] to a managed `Component
+    Manages,
 }
 
 impl EdgeWeightKind {

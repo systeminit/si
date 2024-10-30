@@ -103,8 +103,6 @@ pub enum DiagramError {
     Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
-    #[error("No schema installed after successful package import for {0}")]
-    SchemaNotInstalledAfterImport(SchemaId),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]

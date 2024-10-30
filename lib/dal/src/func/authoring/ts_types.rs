@@ -61,23 +61,9 @@ pub(crate) fn compile_return_types(
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::Void => "type Output = void;",
-        FuncBackendResponseType::Management => {
-            r#"
-type Output = {
-  status: 'ok' | 'error';
-  ops?: {
-    update?: { [key: string]: { properties?: { [key: string]: unknown } } };
-    actions?: { [key: string]: {
-      add?: ("create" | "update" | "refresh" | "delete" | string)[];
-      remove?: ("create" | "update" | "refresh" | "delete" | string)[];
-    } }
-
-  };
-  message?: string | null;
-};
-type Input = { thisComponent: { properties: { [key: string]: unknown } } };
-            "#
-        }
+        // All of the types for a management function are determined at "run"
+        // time when compiling binding types
+        FuncBackendResponseType::Management => "",
         _ => "",
         // we no longer serve this from the backend, its static on the front end
         //FuncBackendResponseType::SchemaVariantDefinition => SCHEMA_VARIANT_DEFINITION_TYPES

@@ -31,8 +31,8 @@ use crate::{
     FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
 };
 use crate::{
-    ComponentId, InputSocketId, OutputSocketId, SchemaId, SchemaVariant, WorkspaceSnapshotError,
-    WsEventError,
+    ComponentId, InputSocketId, OutputSocketId, SchemaError, SchemaId, SchemaVariant,
+    WorkspaceSnapshotError, WsEventError,
 };
 
 pub use attribute_argument::AttributeArgumentBinding;
@@ -96,6 +96,8 @@ pub enum FuncBindingError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde error: {0}")]
@@ -580,7 +582,9 @@ impl FuncBinding {
                 LeafBinding::compile_leaf_func_types(ctx, func_id).await?
             }
             FuncKind::Attribute => AttributeBinding::compile_attribute_types(ctx, func_id).await?,
-            FuncKind::Management => String::new(),
+            FuncKind::Management => {
+                ManagementBinding::compile_management_types(ctx, func_id).await?
+            }
             FuncKind::Authentication
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition

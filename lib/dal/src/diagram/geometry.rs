@@ -61,7 +61,7 @@ impl Geometry {
         result: DiagramResult,
     );
 
-    pub fn raw(self) -> RawGeometry {
+    pub fn into_raw(self) -> RawGeometry {
         self.into()
     }
 

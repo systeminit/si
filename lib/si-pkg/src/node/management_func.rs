@@ -7,7 +7,6 @@ use object_tree::{
     read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
-use ulid::Ulid;
 
 use crate::ManagementFuncSpec;
 
@@ -23,7 +22,7 @@ pub struct ManagementFuncNode {
     pub func_unique_id: String,
     pub name: String,
     pub description: Option<String>,
-    pub managed_schemas: Option<HashSet<Ulid>>,
+    pub managed_schemas: Option<HashSet<String>>,
 }
 
 impl WriteBytes for ManagementFuncNode {

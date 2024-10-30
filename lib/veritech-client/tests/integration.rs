@@ -1,4 +1,4 @@
-use std::env;
+use std::{collections::HashMap, env};
 
 use base64::{engine::general_purpose, Engine};
 use cyclone_core::{
@@ -106,13 +106,15 @@ async fn executes_simple_management_function() {
         execution_id: "1234".to_string(),
         handler: "numberOfInputs".to_string(),
         this_component: ComponentViewWithGeometry {
+            kind: None,
             properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
             geometry: serde_json::json!({"x": "1", "y": "1"}),
         },
+        components: HashMap::new(),
         code_base64: base64_encode(
             "function numberOfInputs({ thisComponent }) { 
                 const number = Object.keys(thisComponent.properties)?.length; 
-                return { status: 'ok' message: `${number}` }
+                return { status: 'ok', message: `${number}` }
              }",
         ),
         before: vec![],

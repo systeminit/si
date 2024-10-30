@@ -7,13 +7,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    cached_module::CachedModule,
-    change_status::ChangeStatus,
-    component::frame::Frame,
-    generate_name,
-    pkg::{import_pkg_from_pkg, ImportOptions},
-    ChangeSet, Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    Visibility, WsEvent,
+    change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, Component,
+    ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, Visibility, WsEvent,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
@@ -84,37 +79,14 @@ pub async fn create_component(
                 "schemaId missing on uninstalled schema create component request".into(),
             ))?;
 
-            let variant_id = match Schema::get_by_id(&ctx, schema_id).await? {
-                // We want to be sure that we don't have stale frontend data,
-                // since this module might have just been installed, or
-                // installed by another user
-                Some(schema) => schema
-                    .get_default_schema_variant_id(&ctx)
-                    .await?
-                    .ok_or(DiagramError::NoDefaultSchemaVariant(schema_id))?,
-                None => {
-                    let mut uninstalled_module = CachedModule::latest_by_schema_id(&ctx, schema_id)
-                        .await?
-                        .ok_or(DiagramError::UninstalledSchemaNotFound(schema_id))?;
-
-                    let si_pkg = uninstalled_module.si_pkg(&ctx).await?;
-                    import_pkg_from_pkg(
-                        &ctx,
-                        &si_pkg,
-                        Some(ImportOptions {
-                            schema_id: Some(schema_id.into()),
-                            ..Default::default()
-                        }),
-                    )
-                    .await?;
-
-                    Schema::get_default_schema_variant_by_id(&ctx, schema_id)
-                        .await?
-                        .ok_or(DiagramError::SchemaNotInstalledAfterImport(schema_id))?
-                }
-            };
-
+            let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
             let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
+            let managed_schema_ids = SchemaVariant::all_managed_schemas(&ctx, variant_id).await?;
+
+            // Also install any schemas managed by the variant
+            for schema_id in managed_schema_ids {
+                Schema::get_or_install_default_variant(&ctx, schema_id).await?;
+            }
 
             (
                 variant_id,

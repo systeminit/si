@@ -386,7 +386,7 @@ impl ExpectComponent {
             .geometry(ctx)
             .await
             .expect("get geometry for component")
-            .raw()
+            .into_raw()
     }
 
     pub async fn view(self, ctx: &DalContext) -> Option<serde_json::Value> {

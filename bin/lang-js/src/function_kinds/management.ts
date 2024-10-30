@@ -7,13 +7,16 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import { ComponentWithGeometry } from "../component";
+import { ComponentWithGeometry, Geometry } from "../component";
 import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:management");
 
 export interface ManagementFunc extends Func {
-  thisComponent: ComponentWithGeometry
+  thisComponent: ComponentWithGeometry;
+  components: {
+    [key: string]: ComponentWithGeometry;
+  }
 }
 
 export type ManagementFuncResult =
@@ -21,15 +24,21 @@ export type ManagementFuncResult =
     | ManagementFuncResultFailure;
 
 export interface ManagementOperations {
+  create?: { [key: string]: {
+    kind: string;
+    properties?: object;
+    geometry?: Geometry;
+  } };
   update?: { [key: string]: {
     properties?: object;
-  } }
+    geometry?: Geometry;
+  } };
   actions?: {
     [key: string]: {
       add?: string[],
       remove?: string[],
     }
-  }
+  };
 }
 
 export interface ManagementFuncResultSuccess extends ResultSuccess {
@@ -42,14 +51,14 @@ export interface ManagementFuncResultFailure extends ResultFailure { }
 async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
-  { thisComponent }: ManagementFunc,
+  { thisComponent, components }: ManagementFunc,
   code: string,
 ): Promise<ManagementFuncResult> {
   let managementResult: Record<string, unknown> | undefined | null;
   try {
     const runner = vm.run(code);
     managementResult = await new Promise((resolve) => {
-      runner({ thisComponent }, (resolution: Record<string, unknown>) => resolve(resolution));
+      runner({ thisComponent, components }, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
     return failureExecution(err as Error, executionId);

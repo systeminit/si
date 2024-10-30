@@ -443,7 +443,7 @@ impl Default for ClientConfig {
 #[allow(clippy::panic, clippy::assertions_on_constants)]
 #[cfg(test)]
 mod tests {
-    use std::{env, path::Path};
+    use std::{collections::HashMap, env, path::Path};
 
     use base64::{engine::general_purpose, Engine};
     use buck2_resources::Buck2Resources;
@@ -1326,9 +1326,11 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
             this_component: ComponentViewWithGeometry {
+                kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
+            components: HashMap::new(),
             code_base64: base64_encode(
                 r#"function manage(input) {
                     console.log('first');
@@ -1408,9 +1410,11 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
             this_component: ComponentViewWithGeometry {
+                kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
             },
+            components: HashMap::new(),
             code_base64: base64_encode(
                 r#"function manage({ thisComponent }) {
                     console.log('first');
