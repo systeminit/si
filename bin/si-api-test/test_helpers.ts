@@ -50,7 +50,7 @@ export async function runWithTemporaryChangeset(
 ) {
   // CREATE CHANGESET
   const startTime = new Date();
-  const changeSetName = `API_TEST - ${startTime.toISOString()}`;
+  const changeSetName = `API_TEST - ${fn.name} - ${startTime.toISOString()}`;
 
   const data = await sdf.call({
     route: "create_change_set",
