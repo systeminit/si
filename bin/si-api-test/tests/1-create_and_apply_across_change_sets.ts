@@ -103,7 +103,7 @@ async function cleanupHead(sdf: SdfApiClient): Promise<void> {
 
 async function createChangeSet(sdf: SdfApiClient): Promise<string> {
   const startTime = new Date();
-  const changeSetName = `API_TEST - ${startTime.toISOString()}`;
+  const changeSetName = `API_TEST - 1-create_and_apply_across_change_sets.ts - ${startTime.toISOString()}`;
   const data = await sdf.call({
     route: "create_change_set",
     body: {
