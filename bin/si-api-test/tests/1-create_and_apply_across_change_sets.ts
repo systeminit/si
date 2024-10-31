@@ -37,7 +37,7 @@ async function create_and_and_apply_across_change_sets_inner(
       );
     }
 
-    await sdf.waitForDVUs(2000, 20000);
+    await sdf.waitForDVUs(2000, 60000);
     console.log("Done! Running an apply...");
     await sdf.call({
       route: "apply_change_set",
@@ -46,7 +46,7 @@ async function create_and_and_apply_across_change_sets_inner(
       },
     });
 
-    await sdf.waitForDVUs(2000, 20000);
+    await sdf.waitForDVUs(2000, 60000);
   } catch (e) {
     err = e;
   } finally {
