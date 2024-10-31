@@ -8,9 +8,10 @@ use strum::{AsRefStr, Display, EnumString};
 pub enum ChangeSetStatus {
     Abandoned,
     Applied,
-    Closed,
+    Approved,
     Failed,
     NeedsAbandonApproval,
     NeedsApproval,
     Open,
+    Rejected,
 }

@@ -21,7 +21,10 @@ use crate::{
     TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
     WorkspaceSnapshotError, WsEvent, WsEventError,
 };
-use crate::{billing_publish, WorkspaceError};
+use crate::{
+    billing_publish, Func, FuncError, Schema, SchemaError, SchemaVariant, SchemaVariantError,
+    WorkspaceError,
+};
 
 pub mod event;
 pub mod status;
@@ -34,14 +37,20 @@ const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancesto
 pub enum ChangeSetError {
     #[error("billing publish error: {0}")]
     BillingPublish(#[from] Box<BillingPublishError>),
+    #[error("change set not approved for apply. Current state: {0}")]
+    ChangeSetNotApprovedForApply(ChangeSetStatus),
     #[error("change set with id {0} not found")]
     ChangeSetNotFound(ChangeSetId),
     #[error("could not find default change set: {0}")]
     DefaultChangeSetNotFound(ChangeSetId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetId),
+    #[error("dvu roots are not empty for change set: {0}")]
+    DvuRootsNotEmpty(ChangeSetId),
     #[error("enum parse error: {0}")]
     EnumParse(#[from] strum::ParseError),
+    #[error("func error: {0}")]
+    Func(#[from] Box<FuncError>),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
@@ -68,6 +77,10 @@ pub enum ChangeSetError {
     Pg(#[from] PgError),
     #[error("rebaser client error: {0}")]
     RebaserClient(#[from] rebaser_client::ClientError),
+    #[error("schema error: {0}")]
+    Schema(#[from] Box<SchemaError>),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
@@ -161,6 +174,9 @@ pub struct ChangeSet {
     pub workspace_snapshot_address: WorkspaceSnapshotAddress,
     pub workspace_id: Option<WorkspacePk>,
     pub merge_requested_by_user_id: Option<UserPk>,
+    pub merge_requested_at: Option<DateTime<Utc>>,
+    pub reviewed_by_user_id: Option<UserPk>,
+    pub reviewed_at: Option<DateTime<Utc>>,
 }
 
 impl TryFrom<PgRow> for ChangeSet {
@@ -179,6 +195,9 @@ impl TryFrom<PgRow> for ChangeSet {
             workspace_snapshot_address: value.try_get("workspace_snapshot_address")?,
             workspace_id: value.try_get("workspace_id")?,
             merge_requested_by_user_id: value.try_get("merge_requested_by_user_id")?,
+            merge_requested_at: value.try_get("merge_requested_at")?,
+            reviewed_by_user_id: value.try_get("reviewed_by_user_id")?,
+            reviewed_at: value.try_get("reviewed_at")?,
         })
     }
 }
@@ -252,14 +271,45 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    // pub fn generate_ulid(&self) -> ChangeSetResult<Ulid> {
-    //     self.generator
-    //         .lock()
-    //         .map_err(|e| ChangeSetError::Mutex(e.to_string()))?
-    //         .generate()
-    //         .map(Into::into)
-    //         .map_err(Into::into)
-    // }
+    pub async fn into_frontend_type(
+        &self,
+        ctx: &DalContext,
+    ) -> ChangeSetResult<si_frontend_types::ChangeSet> {
+        let merge_requested_by_email =
+            if let Some(merge_requested_by) = self.merge_requested_by_user_id {
+                User::get_by_pk(ctx, merge_requested_by)
+                    .await?
+                    .map(|user| user.email().clone())
+            } else {
+                None
+            };
+
+        let reviewed_by_email = if let Some(reviewed_by) = self.reviewed_by_user_id {
+            User::get_by_pk(ctx, reviewed_by)
+                .await?
+                .map(|user| user.email().clone())
+        } else {
+            None
+        };
+
+        let change_set = si_frontend_types::ChangeSet {
+            created_at: self.created_at,
+            id: self.id.into(),
+            updated_at: self.updated_at,
+            name: self.name.clone(),
+            status: self.status.into(),
+            base_change_set_id: self.base_change_set_id.map(|id| id.into()),
+            workspace_id: self.workspace_id.map_or("".to_owned(), |id| id.to_string()),
+            merge_requested_by_user_id: self.merge_requested_by_user_id.map(|s| s.to_string()),
+            merge_requested_by_user_email: merge_requested_by_email,
+            merge_requested_at: self.merge_requested_at,
+            reviewed_by_user_id: self.reviewed_by_user_id.map(|id| id.into()),
+            reviewed_by_user_email: reviewed_by_email,
+            reviewed_at: self.reviewed_at,
+        };
+
+        Ok(change_set)
+    }
 
     pub async fn update_workspace_id(
         &mut self,
@@ -320,16 +370,169 @@ impl ChangeSet {
         ctx: &DalContext,
         status: ChangeSetStatus,
     ) -> ChangeSetResult<()> {
-        billing_publish::for_change_set_status_update(ctx, self)
-            .await
-            .map_err(Box::new)?;
-
         ctx.txns()
             .await?
             .pg()
             .query_none(
                 "UPDATE change_set_pointers SET status = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &status.to_string()],
+            )
+            .await?;
+
+        self.status = status;
+        billing_publish::for_change_set_status_update(ctx, self)
+            .await
+            .map_err(Box::new)?;
+        Ok(())
+    }
+
+    pub async fn request_change_set_approval(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        let user_pk = Self::extract_userid_from_context_or_error(ctx).await?;
+        let status = ChangeSetStatus::NeedsApproval;
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2, merge_requested_at = CLOCK_TIMESTAMP(), status = $3, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
+                &[&self.id, &user_pk, &status.to_string()],
+            )
+            .await?;
+
+        self.status = status;
+
+        Ok(())
+    }
+
+    /// Set the status to Open, and clear any reviewed/merge requested info
+    pub async fn reopen_change_set(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        let status = ChangeSetStatus::Open;
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers
+                SET reviewed_by_user_id = NULL,
+                reviewed_at = NULL,
+                merge_requested_by_user_id = NULL,
+                merge_requested_at = NULL,
+                status = $2,
+                updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
+                &[&self.id, &status.to_string()],
+            )
+            .await?;
+
+        self.status = status;
+
+        Ok(())
+    }
+
+    /// First, transitions the status of the [`ChangeSet`] to [`ChangeSetStatus::NeedsApproval`]
+    /// then [`ChangeSetStatus::Approved`]. Next, checks if DVU Roots still exist. Finally,
+    /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
+    pub async fn prepare_for_force_apply(ctx: &DalContext) -> ChangeSetResult<()> {
+        // first change the status to approved and who did it
+        let mut change_set = ChangeSet::find(ctx, ctx.change_set_id())
+            .await?
+            .ok_or(TransactionsError::ChangeSetNotFound(ctx.change_set_id()))?;
+
+        change_set.request_change_set_approval(ctx).await?;
+        // then approve it
+        change_set.approve_change_set_for_apply(ctx).await?;
+        // then do the rest
+        Self::prepare_for_apply(ctx).await
+    }
+
+    /// First, checks if DVU Roots still exist. Next, ensures the [`ChangeSet`] has an
+    /// [`ChangeSetStatus::Approved`]. Finally,
+    /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
+    pub async fn prepare_for_apply(ctx: &DalContext) -> ChangeSetResult<()> {
+        let change_set = ChangeSet::find(ctx, ctx.change_set_id())
+            .await?
+            .ok_or(TransactionsError::ChangeSetNotFound(ctx.change_set_id()))?;
+
+        // Ensure that DVU roots are empty before continuing.
+        if !ctx
+            .workspace_snapshot()
+            .map_err(Box::new)?
+            .get_dependent_value_roots()
+            .await
+            .map_err(Box::new)?
+            .is_empty()
+        {
+            // TODO(nick): we should consider requiring this check in integration tests too. Why did I
+            // not do this at the time of writing? Tests have multiple ways to call "apply", whether
+            // its via helpers or through the change set methods directly. In addition, they test
+            // for success and failure, not solely for success. We should still do this, but not within
+            // the PR corresponding to when this message was written.
+            return Err(ChangeSetError::DvuRootsNotEmpty(ctx.change_set_id()));
+        }
+
+        // if the change set status isn't approved, we shouldn't go
+        // locking stuff
+        if change_set.status != ChangeSetStatus::Approved {
+            return Err(ChangeSetError::ChangeSetNotApprovedForApply(
+                change_set.status,
+            ));
+        }
+
+        // Lock all unlocked variants
+        for schema_id in Schema::list_ids(ctx).await.map_err(Box::new)? {
+            let schema = Schema::get_by_id_or_error(ctx, schema_id)
+                .await
+                .map_err(Box::new)?;
+            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
+                .await
+                .map_err(Box::new)?
+            else {
+                continue;
+            };
+
+            let variant_id = variant.id();
+
+            variant.lock(ctx).await.map_err(Box::new)?;
+            schema
+                .set_default_schema_variant(ctx, variant_id)
+                .await
+                .map_err(Box::new)?;
+        }
+        // Lock all unlocked functions too
+        for func in Func::list_for_default_and_editing(ctx)
+            .await
+            .map_err(Box::new)?
+        {
+            if !func.is_locked {
+                func.lock(ctx).await.map_err(Box::new)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn approve_change_set_for_apply(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        let user_pk = Self::extract_userid_from_context_or_error(ctx).await?;
+        let status = ChangeSetStatus::Approved;
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET reviewed_by_user_id = $2, reviewed_at = CLOCK_TIMESTAMP(), status = $3, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
+                &[&self.id, &user_pk, &status.to_string()],
+            )
+            .await?;
+
+        self.status = status;
+
+        Ok(())
+    }
+
+    pub async fn reject_change_set_for_apply(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        let user_pk = Self::extract_userid_from_context_or_error(ctx).await?;
+        let status = ChangeSetStatus::Rejected;
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET reviewed_by_user_id = $2, reviewed_at = CLOCK_TIMESTAMP(), status = $3, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
+                &[&self.id, &user_pk, &status.to_string()],
             )
             .await?;
 
@@ -395,19 +598,21 @@ impl ChangeSet {
         }
     }
 
-    pub async fn list_open(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
+    pub async fn list_active(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let mut result = vec![];
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4)",
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4, $5, $6)",
                 &[
                     &ctx.tenancy().workspace_pk_opt(),
                     &ChangeSetStatus::Open.to_string(),
                     &ChangeSetStatus::NeedsApproval.to_string(),
                     &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                    &ChangeSetStatus::Approved.to_string(),
+                    &ChangeSetStatus::Rejected.to_string(),
                 ],
             )
             .await?;
@@ -689,6 +894,19 @@ impl ChangeSet {
             HistoryActor::SystemInit => None,
         };
         user_id
+    }
+    pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
+        let user_id = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => {
+                let maybe_user = User::get_by_pk_or_error(ctx, *user_pk).await;
+                match maybe_user {
+                    Ok(user) => user.pk(),
+                    Err(err) => return Err(ChangeSetError::User(err)),
+                }
+            }
+            HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
+        };
+        Ok(user_id)
     }
 
     #[instrument(

@@ -1,11 +1,14 @@
 mod audit_log;
+mod change_set;
 mod component;
 mod conflict;
 mod func;
 mod module;
 mod schema_variant;
+mod workspace;
 
 pub use crate::audit_log::AuditLog;
+pub use crate::change_set::ChangeSet;
 pub use crate::component::{
     ChangeStatus, ConnectionAnnotation, DiagramSocket, DiagramSocketDirection,
     DiagramSocketNodeSide, GridPoint, Size2D, SummaryDiagramComponent,
@@ -21,3 +24,4 @@ pub use crate::module::{
 pub use crate::schema_variant::{
     ComponentType, InputSocket, OutputSocket, Prop, PropKind, SchemaVariant, UninstalledVariant,
 };
+pub use crate::workspace::WorkspaceMetadata;

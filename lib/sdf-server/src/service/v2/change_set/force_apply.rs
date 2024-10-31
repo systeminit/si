@@ -1,13 +1,13 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 
-use super::Result;
+use super::{Error, Result};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
 
-pub async fn apply(
+pub async fn force_apply(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
@@ -19,7 +19,7 @@ pub async fn apply(
         .build(request_ctx.build(change_set_id.into()))
         .await?;
 
-    ChangeSet::prepare_for_apply(&ctx).await?;
+    ChangeSet::prepare_for_force_apply(&ctx).await?;
 
     // We need to run a commit before apply so changes get saved
     ctx.commit().await?;
@@ -37,7 +37,12 @@ pub async fn apply(
         }),
     );
 
-    // WS Event fires from the dal
+    let _change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+        .await?
+        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+
+    // Ws Event fires from the dal
+
     ctx.commit().await?;
 
     Ok(())

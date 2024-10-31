@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ChangeSetId, DalContext, UserPk, WsEvent, WsEventResult, WsPayload};
+use crate::{ChangeSetId, ChangeSetStatus, DalContext, UserPk, WsEvent, WsEventResult, WsPayload};
 
 impl WsEvent {
     pub async fn change_set_written(
@@ -15,6 +15,25 @@ impl WsEvent {
         change_set_id: ChangeSetId,
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_id)).await
+    }
+
+    pub async fn change_set_status_changed(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+        user_pk: Option<UserPk>,
+        from_status: ChangeSetStatus,
+        to_status: ChangeSetStatus,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetStatusChanged(ChangeSetStateChangePayload {
+                change_set_id,
+                from_status,
+                to_status,
+                user_pk,
+            }),
+        )
+        .await
     }
 
     pub async fn change_set_abandoned(
@@ -155,6 +174,14 @@ impl WsEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetActorPayload {
     change_set_id: ChangeSetId,
+    user_pk: Option<UserPk>,
+}
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetStateChangePayload {
+    change_set_id: ChangeSetId,
+    from_status: ChangeSetStatus,
+    to_status: ChangeSetStatus,
     user_pk: Option<UserPk>,
 }
 

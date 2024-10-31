@@ -13,16 +13,19 @@ pub enum ChangeSetStatus {
     Abandoned,
     /// Applied this changeset to its parent
     Applied,
-    /// TODO appears to be unused
-    Closed,
-    /// TODO appears to be unused
+    /// Approved by relevant parties and ready to be applied
+    Approved,
+    /// Migration of Workspace Snapshot for this change set failed
     Failed,
     /// Planned to be abandoned but needs approval first
+    /// todo(brit): Remove once rebac is done
     NeedsAbandonApproval,
     /// Planned to be applied but needs approval first
     NeedsApproval,
-    /// Normal state: potentially usable
+    /// Available for user's to modify
     Open,
+    /// Request to apply was rejected
+    Rejected,
 }
 
 impl From<si_events::ChangeSetStatus> for ChangeSetStatus {
@@ -30,13 +33,14 @@ impl From<si_events::ChangeSetStatus> for ChangeSetStatus {
         match value {
             si_events::ChangeSetStatus::Abandoned => Self::Abandoned,
             si_events::ChangeSetStatus::Applied => Self::Applied,
-            si_events::ChangeSetStatus::Closed => Self::Closed,
             si_events::ChangeSetStatus::Failed => Self::Failed,
             si_events::ChangeSetStatus::NeedsAbandonApproval => {
                 ChangeSetStatus::NeedsAbandonApproval
             }
             si_events::ChangeSetStatus::NeedsApproval => Self::NeedsApproval,
             si_events::ChangeSetStatus::Open => Self::Open,
+            si_events::ChangeSetStatus::Approved => Self::Approved,
+            si_events::ChangeSetStatus::Rejected => Self::Rejected,
         }
     }
 }
@@ -46,11 +50,12 @@ impl From<ChangeSetStatus> for si_events::ChangeSetStatus {
         match value {
             ChangeSetStatus::Abandoned => Self::Abandoned,
             ChangeSetStatus::Applied => Self::Applied,
-            ChangeSetStatus::Closed => Self::Closed,
             ChangeSetStatus::Failed => Self::Failed,
             ChangeSetStatus::NeedsAbandonApproval => Self::NeedsAbandonApproval,
             ChangeSetStatus::NeedsApproval => Self::NeedsApproval,
             ChangeSetStatus::Open => Self::Open,
+            ChangeSetStatus::Approved => Self::Approved,
+            ChangeSetStatus::Rejected => Self::Rejected,
         }
     }
 }

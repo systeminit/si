@@ -58,7 +58,6 @@ impl ActionBinding {
         let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
         let func = Func::get_by_id_or_error(ctx, func_id).await?; // delete and recreate the prototype
 
-        //brit todo: there might be existing actions enqueued, we should find them and reassociate the prototype?
         ActionPrototype::remove(ctx, action_prototype_id).await?;
         ActionPrototype::new(
             ctx,

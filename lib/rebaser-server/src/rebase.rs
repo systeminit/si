@@ -146,7 +146,10 @@ pub async fn perform_rebase(
     }
 
     if updating_head && *workspace.pk() != WorkspacePk::NONE {
-        let all_open_change_sets = ChangeSet::list_open(ctx).await?;
+        //todo(brit): what do we want to do about change sets that haven't
+        // been applied yet, but are approved? (like gh merge-queue)
+        // should we 'unapprove' them?
+        let all_open_change_sets = ChangeSet::list_active(ctx).await?;
         for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
             cs.id != workspace.default_change_set_id()
                 && cs.id != to_rebase_change_set.id

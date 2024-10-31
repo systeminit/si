@@ -9,6 +9,7 @@ use ulid::Ulid;
 
 use crate::change_set::event::{
     ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
+    ChangeSetStateChangePayload,
 };
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
@@ -80,6 +81,7 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetId),
     ChangeSetCreated(ChangeSetId),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
+    ChangeSetStatusChanged(ChangeSetStateChangePayload),
     ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
     ComponentCreated(ComponentCreatedPayload),

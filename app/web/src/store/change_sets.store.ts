@@ -1,13 +1,14 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { ApiRequest, addStoreHooks, URLPattern } from "@si/vue-lib/pinia";
 import { useToast } from "vue-toastification";
 import {
   ChangeSet,
   ChangeSetId,
   ChangeSetStatus,
 } from "@/api/sdf/dal/change_set";
+import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
@@ -35,6 +36,12 @@ export interface OpenChangeSetsView {
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
+  const BASE_API = [
+    "v2",
+    "workspaces",
+    { workspacePk },
+    "change-sets",
+  ] as URLPattern;
 
   return addStoreHooks(
     workspacePk,
@@ -223,6 +230,92 @@ export function useChangeSetsStore() {
             },
             onFail: () => {
               // todo: show something!
+            },
+          });
+        },
+        async FORCE_APPLY_CHANGE_SET(username: string) {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest<{ changeSet: ChangeSet }>({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "force_apply"]),
+            // todo(brit): decide what needs to happen here
+            optimistic: () => {
+              toast({
+                component: IncomingChangesMerging,
+                props: {
+                  username,
+                },
+              });
+            },
+            _delay: 2000,
+            onSuccess: (response) => {
+              // this.changeSetsById[response.changeSet.id] = response.changeSet;
+            },
+            onFail: () => {
+              // todo: show something!
+            },
+          });
+        },
+        async REQUEST_CHANGE_SET_APPROVAL() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "request_approval"]),
+          });
+        },
+        async APPROVE_CHANGE_SET_FOR_APPLY() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "approve"]),
+          });
+        },
+        async REJECT_CHANGE_SET_APPLY() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "reject"]),
+          });
+        },
+        async CANCEL_APPROVAL_REQUEST() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([
+              { selectedChangeSetId },
+              "cancel_approval_request",
+            ]),
+          });
+        },
+        async REOPEN_CHANGE_SET() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "reopen"]),
+          });
+        },
+        async APPLY_CHANGE_SET_V2() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
+          });
+        },
+        async FETCH_CHANGE_SETS_V2() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest<WorkspaceMetadata>({
+            method: "get",
+            url: BASE_API.concat(["list"]),
+            onSuccess: (response) => {
+              this.headChangeSetId = response.default_change_set_id;
+              this.changeSetsById = _.keyBy(response.change_sets, "id");
             },
           });
         },
