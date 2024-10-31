@@ -1,0 +1,22 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "asset-sprayer",
+    deps = [
+        "//lib/dal:dal",
+        "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:async-openai",
+        "//third-party/rust:remain",
+        "//third-party/rust:reqwest",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_yaml",
+        "//third-party/rust:strum",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+        "prompts/**/*.yaml",
+    ]),
+)

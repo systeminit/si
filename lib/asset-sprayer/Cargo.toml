@@ -1,0 +1,23 @@
+[package]
+name = "asset-sprayer"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+async-openai = { workspace = true }
+dal = { path = "../../lib/dal" }
+include_dir = { workspace = true }
+remain = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+si-std = { path = "../../lib/si-std" }
+strum = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }

@@ -10,6 +10,7 @@ use dal::{
     context::{self, DalContextBuilder},
     User, UserClaim,
 };
+use derive_more::Deref;
 use hyper::StatusCode;
 
 use crate::app_state::AppState;
@@ -144,6 +145,24 @@ impl FromRequestParts<AppState> for HandlerContext {
             .into_inner()
             .into_builder(state.for_tests());
         Ok(Self(builder))
+    }
+}
+
+#[derive(Deref)]
+pub struct AssetSprayer(pub asset_sprayer::AssetSprayer);
+
+#[async_trait]
+impl FromRequestParts<AppState> for AssetSprayer {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let asset_sprayer = state
+            .asset_sprayer()
+            .ok_or(not_found_error("openai not configured"))?;
+        Ok(Self(asset_sprayer.clone()))
     }
 }
 
