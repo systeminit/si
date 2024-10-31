@@ -496,7 +496,7 @@ impl Workspace {
         let mut content_hashes = vec![];
         let mut change_sets: HashMap<Ulid, Vec<WorkspaceExportChangeSetV0>> = HashMap::new();
         let mut default_change_set_base = Ulid::nil();
-        for change_set in ChangeSet::list_open(ctx).await? {
+        for change_set in ChangeSet::list_active(ctx).await? {
             let snap = WorkspaceSnapshot::find_for_change_set(ctx, change_set.id).await?;
 
             // From root, get every value from every node, store with hash
@@ -592,7 +592,7 @@ impl Workspace {
         } = workspace_data.into_latest();
 
         // ABANDON PREVIOUS CHANGESETS
-        for mut change_set in ChangeSet::list_open(ctx).await? {
+        for mut change_set in ChangeSet::list_active(ctx).await? {
             change_set.abandon(ctx).await?;
         }
 

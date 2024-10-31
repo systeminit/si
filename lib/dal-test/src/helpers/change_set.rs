@@ -56,34 +56,28 @@ impl ChangeSetTestHelpers {
         ))
     }
 
-    /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
-    /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
-    /// snapshot is "HEAD" without an editing [`ChangeSet`].
-    /// Also locks existing editing funcs and schema variants to mimic SDF
-    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<()> {
-        // Lock all unlocked variants
-        for schema_id in Schema::list_ids(ctx).await? {
-            let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
-            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
-            else {
-                continue;
-            };
-
-            let variant_id = variant.id();
-
-            variant.lock(ctx).await?;
-            schema.set_default_schema_variant(ctx, variant_id).await?;
-        }
-        // Lock all unlocked functions too
-        for func in Func::list_for_default_and_editing(ctx).await? {
-            if !func.is_locked {
-                func.lock(ctx).await?;
-            }
-        }
+    /// Apply Changeset To base Approvals
+    pub async fn apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
+        ChangeSet::prepare_for_apply(ctx).await?;
 
         Self::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-        let mut open_change_sets = ChangeSet::list_open(ctx)
+        Self::apply_change_set_to_base_inner(ctx).await?;
+        Ok(())
+    }
+
+    /// Force Apply Changeset To base Approvals
+    pub async fn force_apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
+        ChangeSet::prepare_for_force_apply(ctx).await?;
+
+        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        Self::apply_change_set_to_base_inner(ctx).await?;
+        Ok(())
+    }
+
+    async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<()> {
+        let mut open_change_sets = ChangeSet::list_active(ctx)
             .await?
             .iter()
             .map(|change_set| (change_set.id, change_set.updated_at))
@@ -134,6 +128,36 @@ impl ChangeSetTestHelpers {
                 }
             }
         }
+        Ok(())
+    }
+
+    /// Applies the current [`ChangeSet`] to its base [`ChangeSet`]. Then, it updates the snapshot
+    /// to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
+    /// snapshot is "HEAD" without an editing [`ChangeSet`].
+    /// Also locks existing editing funcs and schema variants to mimic SDF
+    pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<()> {
+        // Lock all unlocked variants
+        for schema_id in Schema::list_ids(ctx).await? {
+            let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
+            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
+            else {
+                continue;
+            };
+
+            let variant_id = variant.id();
+
+            variant.lock(ctx).await?;
+            schema.set_default_schema_variant(ctx, variant_id).await?;
+        }
+        // Lock all unlocked functions too
+        for func in Func::list_for_default_and_editing(ctx).await? {
+            if !func.is_locked {
+                func.lock(ctx).await?;
+            }
+        }
+
+        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
+        Self::apply_change_set_to_base_inner(ctx).await?;
         Ok(())
     }
 
