@@ -157,6 +157,7 @@
           <VButton
             :requestStatus="inviteUserReqStatus"
             class="flex-none"
+            :disabled="!isWorkspaceOwner"
             tone="action"
             variant="solid"
             @click="inviteButtonHandler"
