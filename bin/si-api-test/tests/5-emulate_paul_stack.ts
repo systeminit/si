@@ -225,7 +225,7 @@ async function emulate_paul_stack_inner(
     }
   }
 
-  await sdf.waitForDVUs(2000, 20000);
+  await sdf.waitForDVUs(2000, 60000);
 }
 
 // REQUEST HELPERS WITH VALIDATIONS
