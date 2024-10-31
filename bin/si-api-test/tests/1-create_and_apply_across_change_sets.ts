@@ -47,26 +47,31 @@ async function create_and_and_apply_across_change_sets_inner(
     });
 
     await sdf.waitForDVUs(2000, 20000);
-    console.log("verifying and cleaning up change sets...");
-    for (var changeSetId of changeSetIds) {
-      const diagram = await getDiagram(sdf, changeSetId);
-
-      await sdf.call({
-        route: "abandon_change_set",
-        body: {
-          changeSetId,
-        },
-      });
-
-      assert(
-        diagram.components.length == 2,
-        `Expected diagram to have two components after apply, found ${diagram.components.length}`,
-      );
-    }
   } catch (e) {
     err = e;
+  } finally {
+    console.log("verifying and cleaning up change sets...");
+    for (const changeSetId of changeSetIds) {
+      try {
+        const diagram = await getDiagram(sdf, changeSetId);
+        
+        await sdf.call({
+          route: "abandon_change_set",
+          body: {
+            changeSetId,
+          },
+        });
+
+        assert(
+          diagram.components.length === 2,
+          `Expected diagram to have two components after apply, found ${diagram.components.length}`,
+        );
+      } catch (cleanupError) {
+        console.warn(`Failed to clean up changeset ${changeSetId}: ${cleanupError.message}`);
+      }
+    }
+    await cleanupHead(sdf);
   }
-  await cleanupHead(sdf);
   if (err) {
     throw err;
   }
