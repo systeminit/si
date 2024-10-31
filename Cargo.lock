@@ -187,6 +187,7 @@ dependencies = [
  "remain",
  "reqwest",
  "serde",
+ "serde_with",
  "serde_yaml",
  "si-std",
  "strum 0.26.3",

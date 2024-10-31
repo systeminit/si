@@ -1,20 +1,27 @@
 use async_openai::config::OpenAIConfig;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, NoneAsEmptyString};
 use si_std::SensitiveString;
-use std::path::PathBuf;
 
 /// OpenAI configuration. Mirrors OpenAI configuration, but with Deserialize support.
+#[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SIOpenAIConfig {
+    #[serde_as(as = "NoneAsEmptyString")]
     api_key: Option<SensitiveString>,
+    #[serde_as(as = "NoneAsEmptyString")]
     api_base: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
     org_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
     project_id: Option<String>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct AssetSprayerConfig {
-    pub prompts_dir: Option<PathBuf>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub prompts_dir: Option<String>,
 }
 
 impl SIOpenAIConfig {

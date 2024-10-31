@@ -70,7 +70,7 @@ impl AssetSprayer {
     ) -> Self {
         Self {
             openai_client,
-            prompts: Prompts::new(config.prompts_dir),
+            prompts: Prompts::new(config.prompts_dir.map(Into::into)),
         }
     }
 
