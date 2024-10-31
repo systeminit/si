@@ -24,6 +24,7 @@ where
     cache: Cache<V>,
     name: String,
     pg: PgLayer,
+    #[allow(dead_code)]
     compute_executor: DedicatedExecutor,
 }
 
@@ -35,7 +36,7 @@ where
         name: &str,
         pg_pool: PgPool,
         cache_config: CacheConfig,
-        compute_executor: DedicatedExecutor,
+        #[allow(dead_code)] compute_executor: DedicatedExecutor,
         tracker: TaskTracker,
         token: CancellationToken,
     ) -> LayerDbResult<Arc<Self>> {
@@ -58,7 +59,7 @@ where
     async fn shutdown_handler(self: Arc<Self>, token: CancellationToken) -> LayerDbResult<()> {
         token.cancelled().await;
         debug!("shutting down layer cache {}", self.name);
-        self.compute_executor.shutdown();
+        // foyer will wait on all outstanding flush and reclaim threads here
         self.cache().close().await?;
         Ok(())
     }

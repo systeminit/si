@@ -37,8 +37,6 @@ pub mod rebase_batch;
 pub mod serialize;
 pub mod workspace_snapshot;
 
-const GIGABYTES: usize = 1024 * 1024 * 1024;
-
 #[derive(Debug, Clone)]
 pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
 where
@@ -108,7 +106,7 @@ where
             cache_config
                 .clone()
                 .with_memory_percentage(0.30)
-                .with_disk_capacity(16 * GIGABYTES)
+                .with_disk_percentage(0.30)
                 .with_path_join(cas::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -122,7 +120,7 @@ where
             cache_config
                 .clone()
                 .with_memory_percentage(0.05)
-                .with_disk_capacity(8 * GIGABYTES)
+                .with_disk_percentage(0.05)
                 .with_path_join(encrypted_secret::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -136,7 +134,7 @@ where
             cache_config
                 .clone()
                 .with_memory_percentage(0.05)
-                .with_disk_capacity(8 * GIGABYTES)
+                .with_disk_percentage(0.05)
                 .with_path_join(func_run::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -150,7 +148,7 @@ where
             cache_config
                 .clone()
                 .with_memory_percentage(0.05)
-                .with_disk_capacity(8 * GIGABYTES)
+                .with_disk_percentage(0.05)
                 .with_path_join(func_run_log::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -164,7 +162,7 @@ where
             cache_config
                 .clone()
                 .with_memory_percentage(0.05)
-                .with_disk_capacity(8 * GIGABYTES)
+                .with_disk_percentage(0.05)
                 .with_path_join(rebase_batch::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -177,8 +175,8 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.50)
-                .with_disk_capacity(32 * GIGABYTES)
+                .with_memory_percentage(0.45)
+                .with_disk_percentage(0.45)
                 .with_path_join(workspace_snapshot::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),

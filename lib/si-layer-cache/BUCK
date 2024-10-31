@@ -22,6 +22,7 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:lazy_static",
         "//third-party/rust:miniz_oxide",
+        "//third-party/rust:nix",
         "//third-party/rust:postcard",
         "//third-party/rust:refinery",
         "//third-party/rust:remain",

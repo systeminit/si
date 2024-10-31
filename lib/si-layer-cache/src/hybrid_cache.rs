@@ -2,9 +2,10 @@ use foyer::{
     DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
     RateLimitPicker, RecoverMode,
 };
+use std::cmp::max;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use telemetry::tracing::error;
+use telemetry::tracing::{error, info};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -12,10 +13,13 @@ use crate::db::serialize;
 use crate::error::LayerDbResult;
 use crate::LayerDbError;
 
+const FOYER_DISK_CACHE_MINUMUM: usize = 1024 * 1024 * 1024; // 1gb
+const FOYER_MEMORY_CACHE_MINUMUM: usize = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_DISK_CACHE_RATE_LIMIT: usize = 1024 * 1024 * 1024;
 const DEFAULT_DISK_BUFFER_SIZE: usize = 1024 * 1024 * 128; // 128mb
 const DEFAULT_DISK_BUFFER_FLUSHERS: usize = 2;
-const DEFAULT_DISK_CAPACITY: usize = 1024 * 1024 * 1024 * 16; // 16gb
+const DEFAULT_DISK_INDEXER_SHARDS: usize = 64;
+const DEFAULT_DISK_RECLAIMERS: usize = 2;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 enum MaybeDeserialized<V>
@@ -39,21 +43,35 @@ where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub async fn new(config: CacheConfig) -> LayerDbResult<Self> {
+        let mem_cap = max(
+            (config.memory as f32 * config.memory_percentage) as usize,
+            FOYER_MEMORY_CACHE_MINUMUM,
+        );
+        let disk_cap = max(
+            (config.disk_capacity as f32 * config.disk_percentage) as usize,
+            FOYER_DISK_CACHE_MINUMUM,
+        ) as usize;
+        info!(
+            "Creating cache {} with memory capcity of {} and disk capacity of {}",
+            config.name, mem_cap, disk_cap
+        );
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
-            .memory((config.memory as f32 * config.memory_percentage) as usize)
+            .memory(mem_cap)
             .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized<V>| size_of_val(value))
             .storage(Engine::Large)
             .with_admission_picker(Arc::new(RateLimitPicker::new(
                 config.disk_admission_rate_limit,
             )))
             .with_device_options(
-                DirectFsDeviceOptions::new(config.disk_path).with_capacity(config.disk_capacity),
+                DirectFsDeviceOptions::new(config.disk_path).with_capacity(disk_cap),
             )
             .with_large_object_disk_cache_options(
                 LargeEngineOptions::new()
-                    .with_flushers(config.disk_buffer_flushers)
                     .with_buffer_pool_size(config.disk_buffer_size)
-                    .with_eviction_pickers(vec![Box::<FifoPicker>::default()]),
+                    .with_eviction_pickers(vec![Box::<FifoPicker>::default()])
+                    .with_flushers(config.disk_buffer_flushers)
+                    .with_indexer_shards(config.disk_indexer_shards)
+                    .with_reclaimers(config.disk_reclaimers),
             )
             .with_recover_mode(RecoverMode::Quiet)
             .build()
@@ -66,7 +84,6 @@ where
     pub async fn get(&self, key: &str) -> Option<V> {
         match self.cache.obtain(key.into()).await {
             Ok(Some(entry)) => match entry.value() {
-                // todo: bad clone here
                 MaybeDeserialized::DeserializedValue(v) => Some(v.clone()),
                 MaybeDeserialized::RawBytes(bytes) => {
                     // If we fail to deserialize the raw bytes for some reason, pretend that we never
@@ -122,20 +139,23 @@ where
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CacheConfig {
-    disk_capacity: usize,
-    disk_path: PathBuf,
     disk_admission_rate_limit: usize,
     disk_buffer_size: usize,
     disk_buffer_flushers: usize,
-    memory: u64,
+    disk_capacity: usize,
+    disk_indexer_shards: usize,
+    disk_path: PathBuf,
+    disk_percentage: f32,
+    disk_reclaimers: usize,
+    memory: usize,
     memory_percentage: f32,
     name: String,
 }
 
 impl CacheConfig {
-    // set the total size of the disk cache for this instance of the cache
-    pub fn with_disk_capacity(mut self, capacity: usize) -> Self {
-        self.disk_capacity = capacity;
+    // set the percentage of the total disk space in the disk_path
+    pub fn with_disk_percentage(mut self, disk_percentage: f32) -> Self {
+        self.disk_percentage = disk_percentage;
         self
     }
 
@@ -160,13 +180,23 @@ impl Default for CacheConfig {
             .path()
             .to_path_buf();
 
+        let stats = nix::sys::statvfs::statvfs(
+            path.parent()
+                .expect("parent must exist if we just created a directory in it"),
+        )
+        .expect("unable to get the size of the temp directory");
+        let total_size = stats.fragment_size() as usize * stats.blocks() as usize;
+
         Self {
-            disk_capacity: DEFAULT_DISK_CAPACITY,
-            disk_path: path,
             disk_admission_rate_limit: DEFAULT_DISK_CACHE_RATE_LIMIT,
             disk_buffer_size: DEFAULT_DISK_BUFFER_SIZE,
             disk_buffer_flushers: DEFAULT_DISK_BUFFER_FLUSHERS,
-            memory: sys.total_memory(),
+            disk_capacity: total_size,
+            disk_indexer_shards: DEFAULT_DISK_INDEXER_SHARDS,
+            disk_reclaimers: DEFAULT_DISK_RECLAIMERS,
+            disk_percentage: 0.10,
+            disk_path: path,
+            memory: sys.total_memory() as usize,
             memory_percentage: 1.0,
             name: "default".to_string(),
         }
