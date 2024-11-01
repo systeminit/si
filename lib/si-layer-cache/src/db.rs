@@ -105,8 +105,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.30)
-                .with_disk_percentage(0.30)
+                .with_name(cas::CACHE_NAME)
+                .with_memory_percentage(30)
+                .with_disk_percentage(30)
                 .with_path_join(cas::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -119,8 +120,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.05)
-                .with_disk_percentage(0.05)
+                .with_name(encrypted_secret::CACHE_NAME)
+                .with_memory_percentage(5)
+                .with_disk_percentage(5)
                 .with_path_join(encrypted_secret::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -133,8 +135,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.05)
-                .with_disk_percentage(0.05)
+                .with_name(func_run::CACHE_NAME)
+                .with_memory_percentage(5)
+                .with_disk_percentage(5)
                 .with_path_join(func_run::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -147,8 +150,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.05)
-                .with_disk_percentage(0.05)
+                .with_name(func_run_log::CACHE_NAME)
+                .with_memory_percentage(5)
+                .with_disk_percentage(5)
                 .with_path_join(func_run_log::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -161,8 +165,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.05)
-                .with_disk_percentage(0.05)
+                .with_name(rebase_batch::CACHE_NAME)
+                .with_memory_percentage(5)
+                .with_disk_percentage(5)
                 .with_path_join(rebase_batch::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
@@ -175,8 +180,9 @@ where
             pg_pool.clone(),
             cache_config
                 .clone()
-                .with_memory_percentage(0.45)
-                .with_disk_percentage(0.45)
+                .with_name(workspace_snapshot::CACHE_NAME)
+                .with_memory_percentage(45)
+                .with_disk_percentage(45)
                 .with_path_join(workspace_snapshot::CACHE_NAME),
             compute_executor.clone(),
             tracker.clone(),
