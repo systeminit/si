@@ -107,6 +107,26 @@ To find an acceptable limit, run the health check command.
 buck2 run dev:healthcheck
 ```
 
+## Tuning the `inotify` kernel setting (Linux Only)
+
+The local development environment sets up a high number of file watches. On Linux, this uses the `inotify` kernel subsystem. This setting
+may need to be increased in order to allow all of the `inotify` watches to be configured.
+
+> [!WARNING]
+> To tune this value, it will require sudo access.
+
+```bash
+sudo sysctl fs.inotify.max_user_watches=<new-max-user-watches-value>
+```
+
+To find an acceptable value, run the health check command.
+
+```bash
+buck2 run dev:healthcheck
+```
+
+To make this setting persistent, consult your distributions documentation.
+
 ## Dependencies
 
 For all supported platforms, there are two dependencies that must be installed, `nix` (preferably via the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer)) and `docker`.
@@ -511,7 +531,7 @@ buck2 targets //lib/...
 > [!TIP]
 > *Ellipsis also work for other directories.*
 > *This works for the root as well, but the list at root will contain a lot of noise.*
-> 
+>
 > ```bash
 > buck2 targets ...
 > ```
@@ -697,7 +717,7 @@ aforementioned action(s) without spending too much time thinking about them.
     1. You will likely have to add the `-f/--force` flag since we are overwriting history (technically?) on the remote.
     2. Be careful when using the force flag! Try to push without using the force flag first if you are unsure.
 7. You are done! Congratulations!
-  
+
 # Core Services
 
 This section contains the paths and brief definitions of the services that run in the System Initiative software stack.

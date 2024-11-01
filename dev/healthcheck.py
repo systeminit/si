@@ -8,6 +8,7 @@ import shutil
 import sys
 
 MIN_OPENFILES_VALUE = 1024
+MIN_IONOTIFY_WATCHES = 65536 * 2
 
 
 def main() -> int:
@@ -25,6 +26,8 @@ def main() -> int:
         remediations += detect_docker_compose()
     remediations += detect_nix_bash()
     remediations += detect_openfiles_soft_limit()
+    if sys.platform.lower().startswith("linux"):
+        remediations += detect_ionotify_user_watches()
 
     blank()
     if remediations > 0:
@@ -120,6 +123,29 @@ def detect_openfiles_soft_limit() -> int:
         return 0
 
 
+def detect_ionotify_user_watches() -> int:
+    value = current_ionotify_user_watches_limit()
+
+    if value < MIN_IONOTIFY_WATCHES:
+        warn("Low value for `fs.inotify.max_user_watches` kernel setting "
+             f"current value is (current={value})")
+        blank()
+        indent("To increase this value, run: ")
+        blank()
+        warn("This command requires root permissions (sudo)")
+        blank()
+        indent(
+            f"sudo sysctl fs.inotify.max_user_watches={MIN_IONOTIFY_WATCHES}")
+        blank()
+        indent("To make this **permanent**, concult your Linux distro's "
+               "documentation")
+        return 1
+    else:
+        info("Reasonable value for `fs.inotify.max_user_watches` "
+             f"(current={value})")
+        return 0
+
+
 def detect_command(cmd: str) -> int:
     result = shutil.which(cmd)
     if result:
@@ -137,6 +163,17 @@ def current_openfiles_soft_limit() -> int:
     )
     result.check_returncode()
     return int(result.stdout.strip().decode("ascii"))
+
+
+def current_ionotify_user_watches_limit() -> int:
+    result = subprocess.run(
+        ["sysctl", "fs.inotify.max_user_watches"],
+        capture_output=True,
+    )
+    result.check_returncode()
+    lines = result.stdout.strip().splitlines()
+    _, value = lines[0].split(b"=")
+    return int(value)
 
 
 def section(msg: str):

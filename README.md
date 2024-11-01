@@ -98,6 +98,9 @@ On macOS and in WSL2 in particular, we recommend significantly increasing the fi
 
 _Please note: the new file descriptor limit may not persist to future sessions._
 
+On Linux, it may be necessary to increase the `fs.inotify.max_user_watches` kernel setting. If this setting is to low, you will see
+errors that look similar to this: `Error: ENOSPC: System limit for number of file watchers reached`.
+
 Once ready, we can build relevant services and run the entire stack locally.
 
 _Please note: if you have used SI before, the following command will delete all contents of the database.
@@ -172,4 +175,3 @@ The System Initiative software is Open Source under the [Apache License 2.0](LIC
 3. Make sure your commits Author metadata matches the name and handle you added to the file.
 
 This ensures that users, distributors, and other contributors can rely on all the software related to System Initiative being contributed under the terms of the [License](LICENSE). No contributions will be accepted without following this process.
-
