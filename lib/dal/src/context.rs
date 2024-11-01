@@ -1006,8 +1006,12 @@ impl DalContext {
 
     /// Convenience wrapper around [`audit_logging::write`].
     #[instrument(name = "dal_context.write_audit_log", level = "debug", skip_all)]
-    pub async fn write_audit_log(&self, kind: AuditLogKind) -> TransactionsResult<()> {
-        Ok(audit_logging::write(self, kind).await?)
+    pub async fn write_audit_log(
+        &self,
+        kind: AuditLogKind,
+        entity_name: String,
+    ) -> TransactionsResult<()> {
+        Ok(audit_logging::write(self, kind, entity_name).await?)
     }
 
     /// Convenience wrapper around [`audit_logging::write_final_message`].

@@ -3,17 +3,22 @@ use si_events::{
     audit_log::AuditLogKind, AttributeValueId, ChangeSetId, ComponentId, PropId, SchemaVariantId,
     SecretId, UserPk,
 };
+use strum::EnumDiscriminants;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditLog {
+    pub display_name: String,
     pub user_id: Option<UserPk>,
     pub user_email: Option<String>,
     pub user_name: Option<String>,
     // NOTE(nick): enum discriminants are not deserializable, so this is a string.
     pub kind: String,
+    pub entity_type: String,
+    pub entity_name: Option<String>,
     pub timestamp: String,
     pub change_set_id: Option<ChangeSetId>,
+    pub change_set_name: Option<String>,
     /// Serialized version of [`AuditLogDeserializedMetadata`].
     pub metadata: serde_json::Value,
 }
@@ -25,7 +30,7 @@ pub struct AuditLog {
 /// _Notes:_
 ///   1) this does not use [`remain::sorted`] in order to match the aforementioned type
 ///   2) multiple uses of renaming to camel case are related to this: https://github.com/serde-rs/serde/issues/1560
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, EnumDiscriminants)]
 #[serde(untagged, rename_all = "camelCase")]
 pub enum AuditLogDeserializedMetadata {
     #[serde(rename_all = "camelCase")]
@@ -68,6 +73,22 @@ pub enum AuditLogDeserializedMetadata {
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
     },
+}
+
+impl AuditLogDeserializedMetadata {
+    pub fn display_name_and_entity_type(&self) -> (&'static str, &'static str) {
+        type Discrim = AuditLogDeserializedMetadataDiscriminants;
+
+        let discrim: Discrim = self.into();
+        match discrim {
+            Discrim::CreateComponent => ("Created", "Component"),
+            Discrim::DeleteComponent => ("Deleted", "Component"),
+            Discrim::UpdatePropertyEditorValue => ("Updated property in Component", "Property"),
+            Discrim::UpdatePropertyEditorValueForSecret => {
+                ("Updated secret in Component", "Property for Secret")
+            }
+        }
+    }
 }
 
 impl From<AuditLogKind> for AuditLogDeserializedMetadata {

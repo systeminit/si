@@ -12,34 +12,31 @@ export type LogFilters = {
   sortTimestampAscending: boolean;
   excludeSystemUser: boolean;
   kindFilter: string[];
-  serviceFilter: string[];
   changeSetFilter: ChangeSetId[];
   userFilter: UserId[];
 };
 
-export type AuditLog = {
-  userName?: string;
-
+interface AuditLogCommon {
+  displayName: string;
   userId?: UserId;
   userEmail?: string;
   kind: string;
+  entityType: string;
   timestamp: string;
   changeSetId?: ChangeSetId;
   changeSetName?: string;
   metadata: Record<string, unknown>;
-};
+}
 
-export type AuditLogDisplay = {
+export interface AuditLog extends AuditLogCommon {
+  userName?: string;
+  entityName?: string;
+}
+
+export interface AuditLogDisplay extends AuditLogCommon {
   userName: string;
-
-  userId?: string;
-  userEmail?: string;
-  kind: string;
-  timestamp: string;
-  changeSetId?: string;
-  changeSetName?: string;
-  metadata: Record<string, unknown>;
-};
+  entityName: string;
+}
 
 export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
   // this needs some work... but we'll probably want a way to force using HEAD
@@ -92,10 +89,13 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.logs = response.logs.map(
                   (log: AuditLog) =>
                     ({
+                      displayName: log.displayName,
                       userName: log.userName ?? "System",
                       userId: log.userId,
                       userEmail: log.userEmail,
                       kind: log.kind,
+                      entityType: log.entityType,
+                      entityName: log.entityName ?? "-",
                       metadata: log.metadata,
                       timestamp: log.timestamp,
                       changeSetId: log.changeSetId,

@@ -28,12 +28,15 @@ async fn round_trip(ctx: &mut DalContext) {
     let component = Component::new(ctx, component_name, schema_variant_id)
         .await
         .expect("could not create component");
-    ctx.write_audit_log(AuditLogKind::CreateComponent {
-        name: component_name.to_string(),
-        component_id: component.id().into(),
-        schema_variant_id: schema_variant_id.into(),
-        schema_variant_name: schema_variant.display_name().to_string(),
-    })
+    ctx.write_audit_log(
+        AuditLogKind::CreateComponent {
+            name: component_name.to_string(),
+            component_id: component.id().into(),
+            schema_variant_id: schema_variant_id.into(),
+            schema_variant_name: schema_variant.display_name().to_string(),
+        },
+        component_name.to_string(),
+    )
     .await
     .expect("could not write audit log");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -113,17 +116,20 @@ async fn round_trip(ctx: &mut DalContext) {
     AttributeValue::update(ctx, attribute_value_id, after_value.to_owned())
         .await
         .expect("could not update attribute value");
-    ctx.write_audit_log(AuditLogKind::UpdatePropertyEditorValue {
-        component_id: component.id().into(),
-        component_name: component_name.to_string(),
-        schema_variant_id: schema_variant_id.into(),
-        schema_variant_display_name: schema_variant.display_name().to_string(),
-        prop_id: prop.id.into(),
-        prop_name: prop.name.to_owned(),
-        attribute_value_id: attribute_value_id.into(),
-        before_value,
-        after_value,
-    })
+    ctx.write_audit_log(
+        AuditLogKind::UpdatePropertyEditorValue {
+            component_id: component.id().into(),
+            component_name: component_name.to_string(),
+            schema_variant_id: schema_variant_id.into(),
+            schema_variant_display_name: schema_variant.display_name().to_string(),
+            prop_id: prop.id.into(),
+            prop_name: prop.name.to_owned(),
+            attribute_value_id: attribute_value_id.into(),
+            before_value,
+            after_value,
+        },
+        component_name.to_string(),
+    )
     .await
     .expect("could not write audit log");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -162,12 +168,15 @@ async fn round_trip(ctx: &mut DalContext) {
     assert_eq!(2, first_run_audit_logs.len());
 
     // Delete a component and commit. Mimic sdf by audit logging here.
-    ctx.write_audit_log(AuditLogKind::DeleteComponent {
-        name: component_name.to_string(),
-        component_id: component.id().into(),
-        schema_variant_id: schema_variant_id.into(),
-        schema_variant_name: schema_variant.display_name().to_string(),
-    })
+    ctx.write_audit_log(
+        AuditLogKind::DeleteComponent {
+            name: component_name.to_string(),
+            component_id: component.id().into(),
+            schema_variant_id: schema_variant_id.into(),
+            schema_variant_name: schema_variant.display_name().to_string(),
+        },
+        component_name.to_string(),
+    )
     .await
     .expect("could not write audit log");
     assert!(component

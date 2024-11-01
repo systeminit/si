@@ -36,11 +36,14 @@ const props = defineProps({
     type: Object as PropType<
       Cell<
         {
+          displayName: string;
           userName: string;
           userId?: string;
           userEmail?: string;
           kind: string;
           timestamp: string;
+          entityType: string;
+          entityName: string;
           changeSetId?: string;
           changeSetName?: string;
           metadata: Record<string, unknown>;
