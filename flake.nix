@@ -313,6 +313,7 @@
               reindeer
               shellcheck
               shfmt
+              spicedb-zed
               tilt
               typos
               yapf
