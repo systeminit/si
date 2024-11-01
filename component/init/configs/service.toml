@@ -39,6 +39,11 @@ pool_max_size = $SI_PG_POOL_SIZE
 [service]
 port = 5156
 
+[spicedb]
+enabled = $SI_SPICEDB_ENABLED
+endpoint = "$SI_SPICEDB_ENDPOINT"
+preshared_key = "$SI_SPICEDB_PRESHARED_KEY"
+
 [symmetric_crypto_service]
 active_key_base64 = "$SI_ACTIVE_KEY_BASE64"
 
