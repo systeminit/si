@@ -96,10 +96,13 @@ const props = defineProps({
     type: Object as PropType<
       Header<
         {
+          displayName: string;
           userName: string;
           userId?: string;
           userEmail?: string;
           kind: string;
+          entityType: string;
+          entityName: string;
           timestamp: string;
           changeSetId?: string;
           changeSetName?: string;

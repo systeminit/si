@@ -157,12 +157,15 @@ async fn delete_single_component(
         component.delete(ctx).await?.is_some()
     };
 
-    ctx.write_audit_log(AuditLogKind::DeleteComponent {
-        component_id: id.into(),
-        name: component_name,
-        schema_variant_id: component_schema_variant.id().into(),
-        schema_variant_name: component_schema_variant.display_name().to_string(),
-    })
+    ctx.write_audit_log(
+        AuditLogKind::DeleteComponent {
+            component_id: id.into(),
+            name: component_name.to_owned(),
+            schema_variant_id: component_schema_variant.id().into(),
+            schema_variant_name: component_schema_variant.display_name().to_string(),
+        },
+        component_name,
+    )
     .await?;
 
     track(

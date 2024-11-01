@@ -11,9 +11,7 @@ pub struct AuditLogV2 {
     pub change_set_id: Option<ChangeSetId>,
 }
 
-/// The kind contained within the audit log.
-///
-/// _Note:_ this does not use [`remain::sorted`] in order to match the aforementioned type.
+// NOTE(nick): this intentionally does not use "remain::sorted".
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Display)]
 pub enum AuditLogKindV2 {
     CreateComponent {

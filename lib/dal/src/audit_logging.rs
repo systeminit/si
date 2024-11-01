@@ -19,6 +19,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
 
+use crate::ChangeSet;
+use crate::ChangeSetError;
+use crate::ChangeSetId;
+use crate::ChangeSetStatus;
 use crate::DalContext;
 use crate::TenancyError;
 use crate::TransactionsError;
@@ -35,6 +39,10 @@ pub enum AuditLoggingError {
     AsyncNatsConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
     #[error("audit logs error: {0}")]
     AuditLogs(#[from] AuditLogsError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] Box<ChangeSetError>),
+    #[error("change set not found by id: {0}")]
+    ChangeSetNotFound(ChangeSetId),
     #[error("pending events error: {0}")]
     PendingEventsError(#[from] PendingEventsError),
     #[error("serde json error: {0}")]
@@ -126,7 +134,7 @@ pub(crate) async fn publish_pending(
 }
 
 #[instrument(name = "audit_logging.write", level = "debug", skip_all, fields(kind))]
-pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind) -> Result<()> {
+pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind, entity_name: String) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
@@ -140,7 +148,13 @@ pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind) -> Result<()> {
             workspace_id.into(),
             ctx.change_set_id().into(),
             ctx.event_session_id(),
-            &AuditLog::new(ctx.events_actor(), kind, ctx.change_set_id().into()),
+            &AuditLog::new(
+                ctx.events_actor(),
+                kind,
+                // NOTE(nick): for now, let's make this mandatory, but I think we'll learn that it shouldn't be.
+                Some(entity_name),
+                ctx.change_set_id().into(),
+            ),
         )
         .await?;
     Ok(())
@@ -184,48 +198,91 @@ pub async fn list(ctx: &DalContext) -> Result<Vec<FrontendAuditLog>> {
         })
         .await?;
 
-    // TODO(nick): remove hard-coded max messages value.
-    let mut messages = consumer.fetch().max_messages(200).messages().await?;
+    // TODO(nick): replace hard-coded max messages value with proper pagination.
+    let mut messages = consumer.fetch().max_messages(1000).messages().await?;
     let mut frontend_audit_logs = Vec::new();
 
     while let Some(Ok(message)) = messages.next().await {
         let audit_log: AuditLog = serde_json::from_slice(&message.payload)?;
-        match audit_log {
-            AuditLog::V2(inner) => {
-                // TODO(nick): cache users.
-                let (user_id, user_email, user_name) = match inner.actor {
-                    Actor::System => (None, None, None),
-                    Actor::User(user_id) => {
-                        let user = User::get_by_pk(ctx, user_id.into())
-                            .await
-                            .map_err(Box::new)?
-                            .ok_or(AuditLoggingError::UserNotFound(user_id.into()))?;
-                        (
-                            Some(user_id),
-                            Some(user.email().to_owned()),
-                            Some(user.name().to_owned()),
-                        )
-                    }
-                };
-                frontend_audit_logs.push(FrontendAuditLog {
-                    user_id,
-                    user_email,
-                    user_name,
-                    kind: inner.kind.to_string(),
-                    timestamp: inner.timestamp,
-                    change_set_id: inner.change_set_id,
-                    metadata: serde_json::to_value(FrontendAuditLogDeserializedMetadata::from(
-                        inner.kind,
-                    ))?,
-                });
-            }
-            AuditLog::V1(_) => {
-                debug!("skipping older audit logs in beta...");
-            }
+        if let Some(frontend_audit_log) = assemble_for_list(ctx, audit_log).await? {
+            frontend_audit_logs.push(frontend_audit_log);
         }
     }
 
     Ok(frontend_audit_logs)
+}
+
+async fn assemble_for_list(
+    ctx: &DalContext,
+    audit_log: AuditLog,
+) -> Result<Option<FrontendAuditLog>> {
+    match audit_log {
+        AuditLog::V3(inner) => {
+            // TODO(nick): cache change sets.
+            let (change_set_id, change_set_name) = match inner.change_set_id {
+                Some(change_set_id) => {
+                    let change_set = ChangeSet::find(ctx, change_set_id.into())
+                        .await
+                        .map_err(Box::new)?
+                        .ok_or(AuditLoggingError::ChangeSetNotFound(change_set_id.into()))?;
+                    match change_set.status {
+                        ChangeSetStatus::Abandoned
+                        | ChangeSetStatus::Failed
+                        | ChangeSetStatus::Rejected => {
+                            trace!(?change_set.status, ?change_set.id, "skipping change set for audit log assembly due to status");
+                            return Ok(None);
+                        }
+                        ChangeSetStatus::Applied
+                        | ChangeSetStatus::Approved
+                        | ChangeSetStatus::NeedsAbandonApproval
+                        | ChangeSetStatus::NeedsApproval
+                        | ChangeSetStatus::Open => {
+                            (Some(change_set_id), Some(change_set.name.to_owned()))
+                        }
+                    }
+                }
+                None => (None, None),
+            };
+
+            // TODO(nick): cache users.
+            let (user_id, user_email, user_name) = match inner.actor {
+                Actor::System => (None, None, None),
+                Actor::User(user_id) => {
+                    let user = User::get_by_pk(ctx, user_id.into())
+                        .await
+                        .map_err(Box::new)?
+                        .ok_or(AuditLoggingError::UserNotFound(user_id.into()))?;
+                    (
+                        Some(user_id),
+                        Some(user.email().to_owned()),
+                        Some(user.name().to_owned()),
+                    )
+                }
+            };
+
+            let kind = inner.kind.to_string();
+            let deserialized_metadata = FrontendAuditLogDeserializedMetadata::from(inner.kind);
+            let (display_name, entity_type) = deserialized_metadata.display_name_and_entity_type();
+
+            Ok(Some(FrontendAuditLog {
+                display_name: display_name.to_owned(),
+                user_id,
+                user_email,
+                user_name,
+                kind,
+                entity_name: inner.entity_name,
+                entity_type: entity_type.to_owned(),
+                timestamp: inner.timestamp,
+                change_set_id,
+                change_set_name,
+                metadata: serde_json::to_value(deserialized_metadata)?,
+            }))
+        }
+        AuditLog::V2(_) | AuditLog::V1(_) => {
+            debug!("skipping older audit logs in beta...");
+            Ok(None)
+        }
+    }
 }
 
 pub mod temporary {

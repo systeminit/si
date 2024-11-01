@@ -22,9 +22,7 @@
               class="flex items-center gap-2xs pr-xs whitespace-nowrap flex-none"
             >
               <div>Page</div>
-              <div class="font-bold">
-                {{ currentFilters.page }} of {{ totalPages }}
-              </div>
+              <div class="font-bold">{{ currentPage }} of {{ totalPages }}</div>
             </div>
             <IconButton
               v-tooltip="
@@ -106,11 +104,13 @@
             <tr
               :class="
                 clsx(
-                  'h-md text-sm',
-                  themeClasses(
-                    'odd:bg-neutral-200 even:bg-neutral-100',
-                    'odd:bg-neutral-700 even:bg-neutral-800',
-                  ),
+                  'h-lg text-sm',
+                  rowCollapseState[Number(row.id)]
+                    ? 'bg-action-300'
+                    : themeClasses(
+                        'odd:bg-neutral-200 even:bg-neutral-100 hover:bg-action-200',
+                        'odd:bg-neutral-700 even:bg-neutral-800 hover:bg-action-200',
+                      ),
                 )
               "
             >
@@ -157,7 +157,7 @@ import {
   createColumnHelper,
 } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { h, computed, ref, withDirectives, resolveDirective } from "vue";
+import { h, computed, ref } from "vue";
 import { trackEvent } from "@/utils/tracking";
 import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
 import { AdminUser } from "@/store/admin.store";
@@ -213,8 +213,40 @@ const columns = [
     header: "",
     cell: "",
   },
+  columnHelper.accessor("displayName", {
+    header: "Event",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("entityType", {
+    header: "Entity Type",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("entityName", {
+    header: "Entity Name",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("changeSetName", {
+    header: "Change Set",
+    cell: (info) => info.getValue(),
+  }),
+  // TODO(nick): restore change set filtering.
+  // columnHelper.accessor("changeSetName", {
+  //   header: "Change Set",
+  //   cell: (info) =>
+  //     withDirectives(
+  //       h("div", {
+  //         innerText: info.getValue(),
+  //         class: "hover:underline cursor-pointer",
+  //       }),
+  //       [[resolveDirective("tooltip"), info.row.getValue("changeSetName")]],
+  //     ),
+  // }),
+  columnHelper.accessor("userName", {
+    header: "User",
+    cell: (info) => info.getValue(),
+  }),
   columnHelper.accessor("timestamp", {
-    header: "Timestamp",
+    header: "Time",
     cell: (info) =>
       h(Timestamp, {
         date: info.getValue(),
@@ -222,27 +254,8 @@ const columns = [
         enableDetailTooltip: true,
       }),
   }),
-  columnHelper.accessor("changeSetName", {
-    header: "Change Set",
-    cell: (info) =>
-      withDirectives(
-        h("div", {
-          innerText: info.getValue(),
-          class: "hover:underline cursor-pointer",
-        }),
-        [[resolveDirective("tooltip"), info.row.getValue("changeSetId")]],
-      ),
-  }),
   columnHelper.accessor("changeSetId", {
     header: "Change Set Id",
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.accessor("kind", {
-    header: "Kind",
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.accessor("userName", {
-    header: "User",
     cell: (info) => info.getValue(),
   }),
 ];
@@ -295,8 +308,6 @@ const toggleFilter = (id: string, filterId: string) => {
 const clearFilters = (id: string) => {
   if (id === "kind") {
     currentFilters.value.kindFilter = [];
-  } else if (id === "service") {
-    currentFilters.value.serviceFilter = [];
   } else if (id === "changeSetName") {
     currentFilters.value.changeSetFilter = [];
   } else if (id === "userName") {
@@ -327,4 +338,8 @@ const previousPage = () => {
   currentFilters.value.page--;
   loadLogs();
 };
+
+const currentPage = computed(() =>
+  totalPages.value === 0 ? 0 : currentFilters.value.page,
+);
 </script>
