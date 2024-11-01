@@ -231,16 +231,12 @@ impl FuncArgument {
             timestamp,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(FuncArgumentContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(FuncArgumentContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
@@ -452,16 +448,12 @@ impl FuncArgument {
         let updated = FuncArgumentContentV1::from(func_argument.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(FuncArgumentContent::V1(updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(FuncArgumentContent::V1(updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             workspace_snapshot
                 .update_content(func_argument.id.into(), hash)
                 .await?;

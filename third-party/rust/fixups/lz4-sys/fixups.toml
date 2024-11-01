@@ -1,0 +1,18 @@
+[[buildscript]]
+[buildscript.cxx_library]
+name = "lz4-sys"
+srcs = [
+    "liblz4/lib/*.c",
+]
+include_paths = [
+    "lib",
+]
+compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wundef",
+    "-Wshadow",
+    "-Wcast-align",
+    "-Werror",
+    "-pedantic"
+]

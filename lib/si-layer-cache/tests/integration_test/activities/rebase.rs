@@ -7,14 +7,12 @@ use si_events::{
     rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
 };
 use si_layer_cache::{
-    activities::ActivityId, event::LayeredEventMetadata, memory_cache::MemoryCacheConfig, LayerDb,
+    activities::ActivityId, event::LayeredEventMetadata, hybrid_cache::CacheConfig, LayerDb,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
-use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
-};
+use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 
@@ -22,19 +20,15 @@ type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 async fn subscribe_rebaser_requests_work_queue() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-    let tempdir_duff = disk_cache_path("duff");
     let db = setup_pg_db("subscribe_rebaser_requests_work_queue").await;
     let compute_executor = setup_compute_executor();
 
     // we need a layerdb for slash, which will be a consumer of our work queue
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -43,11 +37,10 @@ async fn subscribe_rebaser_requests_work_queue() {
 
     // we need a layerdb for axl, who will also be a consumer for our work queue
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db.clone(),
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -56,11 +49,10 @@ async fn subscribe_rebaser_requests_work_queue() {
 
     // we need a layerdb for duff, who will also be a consumer for our work queue
     let (ldb_duff, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_duff,
         db,
         setup_nats_client(Some("subscribe_rebaser_requests_work_queue".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -154,20 +146,16 @@ async fn subscribe_rebaser_requests_work_queue() {
 async fn rebase_and_wait() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-
     let db = setup_pg_db("rebase_and_wait").await;
 
     let compute_executor = setup_compute_executor();
 
     // we need a layerdb for slash, who will send the rebase request
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -176,11 +164,10 @@ async fn rebase_and_wait() {
 
     // we need a layerdb for axl, who will send the reply
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -246,19 +233,15 @@ async fn rebase_and_wait() {
 async fn rebase_requests_work_queue_stress() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-    let tempdir_duff = disk_cache_path("duff");
     let db = setup_pg_db("rebase_requests_work_queue_stress").await;
     let compute_executor = setup_compute_executor();
 
     // we need a layerdb for slash, which will be a consumer of our work queue
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -267,11 +250,10 @@ async fn rebase_requests_work_queue_stress() {
 
     // we need a layerdb for axl, who will also be a consumer for our work queue
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -280,11 +262,10 @@ async fn rebase_requests_work_queue_stress() {
 
     // we need a layerdb for duff, who will also be a producer for our work queue
     let (ldb_duff, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_duff,
         db,
         setup_nats_client(Some("rebase_requests_work_queue_stress".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -411,20 +392,16 @@ async fn rebase_and_wait_stress() {
     let token = CancellationToken::new();
     let tracker = TaskTracker::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-
     let db = setup_pg_db("rebase_and_wait_stress").await;
 
     let compute_executor = setup_compute_executor();
 
     // we need a layerdb for slash, who will send the rebase request
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -433,11 +410,10 @@ async fn rebase_and_wait_stress() {
 
     // we need a layerdb for axl, who will send the reply
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db.clone(),
         setup_nats_client(Some("rebase_and_wait_stress".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await

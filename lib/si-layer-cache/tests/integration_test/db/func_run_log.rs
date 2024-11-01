@@ -1,17 +1,14 @@
-use si_layer_cache::memory_cache::MemoryCacheConfig;
 use std::{sync::Arc, time::Duration};
 
 use si_events::{
     Actor, ChangeSetId, FuncRunId, FuncRunLog, OutputLine, Tenancy, UserPk, WorkspacePk,
 };
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDb;
+use si_layer_cache::{db::serialize, hybrid_cache::CacheConfig};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
-};
+use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<String, String, String, String>;
 
@@ -19,13 +16,11 @@ type TestLayerDb = LayerDb<String, String, String, String>;
 async fn write_to_db() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("esp");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("func_run_log_write_to_db").await,
         setup_nats_client(Some("func_run_log_write_to_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -46,23 +41,11 @@ async fn write_to_db() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
+    let in_memory = ldb.func_run_log().cache.cache().get(&key_str).await;
     assert_eq!(
         value.id(),
         in_memory.expect("func run log not in memory").id()
     );
-
-    // Are we on disk?
-    let on_disk_postcard = ldb
-        .func_run_log()
-        .cache
-        .disk_cache()
-        .get(key_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: FuncRunLog =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(value.id(), on_disk.id());
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -82,27 +65,23 @@ async fn write_to_db() {
 async fn update() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("sevenmarythree");
     let db = setup_pg_db("func_run_log_update_to_db").await;
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         db.clone(),
         setup_nats_client(Some("func_run_log_update_to_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
     .expect("cannot create layerdb");
     ldb.pg_migrate().await.expect("migrate layer db");
 
-    let dbfile = disk_cache_path("tea & coffee");
     let (ldb_remote, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         db,
         setup_nats_client(Some("func_run_log_update_to_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -122,23 +101,11 @@ async fn update() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
+    let in_memory = ldb.func_run_log().cache.cache().get(&key_str).await;
     assert_eq!(
         value.id(),
         in_memory.expect("func run log not in memory").id()
     );
-
-    // Are we on disk?
-    let on_disk_postcard = ldb
-        .func_run_log()
-        .cache
-        .disk_cache()
-        .get(key_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: FuncRunLog =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(value.id(), on_disk.id());
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -173,24 +140,12 @@ async fn update() {
         .expect("failed to write to layerdb");
 
     // Are we in memory?
-    let in_memory = ldb.func_run_log().cache.memory_cache().get(&key_str).await;
+    let in_memory = ldb.func_run_log().cache.cache().get(&key_str).await;
     assert_eq!(
         update_func_run_log.logs(),
         in_memory.expect("func run log not in memory").logs(),
         "updated in memory logs"
     );
-
-    // Are we on disk?
-    let on_disk_postcard = ldb
-        .func_run_log()
-        .cache
-        .disk_cache()
-        .get(key_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: FuncRunLog =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(update_func_run_log.logs(), on_disk.logs());
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -208,12 +163,7 @@ async fn update() {
     let max_check_count = 10;
     let mut memory_check_count = 0;
     while memory_check_count <= max_check_count {
-        let in_memory = ldb_remote
-            .func_run_log()
-            .cache
-            .memory_cache()
-            .get(&key_str)
-            .await;
+        let in_memory = ldb_remote.func_run_log().cache.cache().get(&key_str).await;
         match in_memory {
             Some(value) => {
                 assert_eq!(update_func_run_log.logs(), value.logs());
@@ -229,49 +179,20 @@ async fn update() {
         max_check_count, memory_check_count,
         "value did not arrive in the remote memory cache within 10ms"
     );
-
-    let mut disk_check_count = 0;
-    while disk_check_count <= max_check_count {
-        match ldb_remote
-            .func_run_log()
-            .cache
-            .disk_cache()
-            .get(key_str.clone())
-            .await
-        {
-            Ok(on_disk_postcard) => {
-                let on_disk: FuncRunLog =
-                    serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-                assert_eq!(update_func_run_log.logs(), on_disk.logs());
-                break;
-            }
-            Err(_e) => {
-                disk_check_count += 1;
-                tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
-            }
-        }
-    }
-    assert_ne!(
-        max_check_count, disk_check_count,
-        "value did not arrive in the remote disk cache within 10ms"
-    );
 }
 
 #[tokio::test]
 async fn write_and_get_for_func_run_id() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("cumbersome");
-
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("func_run_log_write_and_read_many_for_func_run_id").await,
         setup_nats_client(Some(
             "func_run_log_write_and_read_many_for_func_run_id".to_string(),
         ))
         .await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await

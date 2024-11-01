@@ -328,8 +328,7 @@ impl ActionPrototype {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
@@ -344,8 +343,7 @@ impl ActionPrototype {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,

@@ -184,7 +184,7 @@ fn default_concurrency_limit() -> usize {
 }
 
 fn default_layer_db_config() -> LayerDbConfig {
-    LayerDbConfig::default_for_service("pinga")
+    LayerDbConfig::default()
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

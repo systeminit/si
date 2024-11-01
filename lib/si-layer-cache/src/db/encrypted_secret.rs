@@ -27,7 +27,7 @@ pub struct EncryptedSecretDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub cache: LayerCache<Arc<V>>,
+    pub cache: Arc<LayerCache<Arc<V>>>,
     persister_client: PersisterClient,
 }
 
@@ -35,14 +35,14 @@ impl<V> EncryptedSecretDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(cache: LayerCache<Arc<V>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache<Arc<V>>>, persister_client: PersisterClient) -> Self {
         EncryptedSecretDb {
             cache,
             persister_client,
         }
     }
 
-    pub async fn write(
+    pub fn write(
         &self,
         key: EncryptedSecretKey,
         value: Arc<V>,
@@ -54,7 +54,7 @@ where
 
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value.clone()).await;
+        self.cache.insert(cache_key.clone(), value.clone());
 
         let event = LayeredEvent::new(
             LayeredEventKind::EncryptedSecretInsertion,

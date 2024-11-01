@@ -50,7 +50,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::{disk_cache::DiskCacheConfig, memory_cache::MemoryCacheConfig};
+use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
@@ -373,11 +373,10 @@ impl TestContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
-            DiskCacheConfig::default(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
-            MemoryCacheConfig::default(),
+            CacheConfig::default(),
             token,
         )
         .await

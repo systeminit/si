@@ -532,16 +532,12 @@ impl Prop {
             validation_format,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(PropContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(PropContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id = workspace_snapshot.generate_ulid().await?;
@@ -1078,16 +1074,12 @@ impl Prop {
         let updated = PropContentV1::from(prop.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(PropContent::V1(updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(PropContent::V1(updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
 
             ctx.workspace_snapshot()?
                 .update_content(prop.id.into(), hash)

@@ -1,15 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
-use si_layer_cache::{
-    db::serialize, memory_cache::MemoryCacheConfig, persister::PersistStatus, LayerDb,
-};
+use si_layer_cache::{db::serialize, hybrid_cache::CacheConfig, persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{
-    disk_cache_path, setup_compute_executor, setup_nats_client, setup_pg_db,
-};
+use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
 type TestLayerDb = LayerDb<CasValue, String, String, String>;
 
@@ -17,13 +13,11 @@ type TestLayerDb = LayerDb<CasValue, String, String, String>;
 async fn write_to_db() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("slash");
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("cas_write_to_db").await,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -39,7 +33,6 @@ async fn write_to_db() {
             Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
-        .await
         .expect("failed to write to layerdb");
 
     match status.get_status().await.expect("failed to get status") {
@@ -50,20 +43,8 @@ async fn write_to_db() {
     let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
     // Are we in memory?
-    let in_memory = ldb.cas().cache.memory_cache().get(&cas_pk_str).await;
+    let in_memory = ldb.cas().cache.cache().get(&cas_pk_str).await;
     assert_eq!(Some(cas_value.clone()), in_memory);
-
-    // Are we on disk?
-    let on_disk_postcard = ldb
-        .cas()
-        .cache
-        .disk_cache()
-        .get(cas_pk_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: CasValue =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(cas_value.as_ref(), &on_disk);
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -83,14 +64,11 @@ async fn write_to_db() {
 async fn write_and_read_many() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("slash");
-
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("cas_write_and_read_many").await,
         setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -114,7 +92,6 @@ async fn write_and_read_many() {
                 Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
                 Actor::User(UserPk::new()),
             )
-            .await
             .expect("failed to write to layerdb");
         keys.push(cas_pk);
         match status.get_status().await.expect("failed to get status") {
@@ -138,14 +115,11 @@ async fn write_and_read_many() {
 async fn cold_read_from_db() {
     let token = CancellationToken::new();
 
-    let dbfile = disk_cache_path("slash");
-
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
-        dbfile,
         setup_pg_db("cas_cold_read_from_db").await,
         setup_nats_client(Some("cas_cold_read_from_db".to_string())).await,
         setup_compute_executor(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -161,7 +135,6 @@ async fn cold_read_from_db() {
             Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
-        .await
         .expect("failed to write to layerdb");
     match status.get_status().await.expect("failed to get status") {
         PersistStatus::Finished => {}
@@ -170,19 +143,10 @@ async fn cold_read_from_db() {
 
     let cas_pk_str: Arc<str> = cas_pk.to_string().into();
 
-    // Delete from memory and disk
-    ldb.cas().cache.memory_cache().remove(&cas_pk_str).await;
-    let not_in_memory = ldb.cas().cache.memory_cache().get(&cas_pk_str).await;
-    assert_eq!(not_in_memory, None);
-
-    ldb.cas()
-        .cache
-        .disk_cache()
-        .remove(cas_pk_str.clone())
-        .await
-        .expect("cannot remove from disk");
-    let not_on_disk = ldb.cas().cache.disk_cache().get(cas_pk_str.clone()).await;
-    assert!(not_on_disk.is_err());
+    // Delete from cache
+    ldb.cas().cache.cache().remove(&cas_pk_str);
+    let not_in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
+    assert_eq!(not_in_cache, None);
 
     // Read the data from the cache
     let data = ldb
@@ -194,21 +158,9 @@ async fn cold_read_from_db() {
 
     assert_eq!(&cas_value, &data);
 
-    // Are we in memory?
-    let in_memory = ldb.cas().cache.memory_cache().get(&cas_pk_str).await;
-    assert_eq!(Some(cas_value.clone()), in_memory);
-
-    // Are we on disk?
-    let on_disk_postcard = ldb
-        .cas()
-        .cache
-        .disk_cache()
-        .get(cas_pk_str.clone())
-        .await
-        .expect("cannot get from disk cache");
-    let on_disk: CasValue =
-        serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-    assert_eq!(cas_value.as_ref(), &on_disk);
+    // Are we in cache after the read?
+    let in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
+    assert_eq!(Some(cas_value.clone()), in_cache);
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -228,20 +180,16 @@ async fn cold_read_from_db() {
 async fn writes_are_gossiped() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-
     let db = setup_pg_db("cas_writes_are_gossiped").await;
 
     let compute_executor = setup_compute_executor();
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("cas_writes_are_gossiped".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -250,11 +198,10 @@ async fn writes_are_gossiped() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db,
         setup_nats_client(Some("cas_write_to_db".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token,
     )
     .await
@@ -271,7 +218,6 @@ async fn writes_are_gossiped() {
             Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
             Actor::User(UserPk::new()),
         )
-        .await
         .expect("failed to write to layerdb");
     assert!(
         matches!(
@@ -287,7 +233,7 @@ async fn writes_are_gossiped() {
 
     let mut memory_check_count = 0;
     while memory_check_count <= max_check_count {
-        let in_memory = ldb_axl.cas().cache.memory_cache().get(&cas_pk_str).await;
+        let in_memory = ldb_axl.cas().cache.cache().get(&cas_pk_str).await;
         match in_memory {
             Some(value) => {
                 assert_eq!(cas_value.clone(), value);
@@ -302,33 +248,6 @@ async fn writes_are_gossiped() {
     assert_ne!(
         max_check_count, memory_check_count,
         "value did not arrive in the remote memory cache within 10ms"
-    );
-
-    // Are we on disk?
-    let mut disk_check_count = 0;
-    while disk_check_count <= max_check_count {
-        match ldb_axl
-            .cas()
-            .cache
-            .disk_cache()
-            .get(cas_pk_str.clone())
-            .await
-        {
-            Ok(on_disk_postcard) => {
-                let on_disk: CasValue =
-                    serialize::from_bytes(&on_disk_postcard[..]).expect("cannot deserialize data");
-                assert_eq!(cas_value.as_ref(), &on_disk);
-                break;
-            }
-            Err(_e) => {
-                disk_check_count += 1;
-                tokio::time::sleep_until(Instant::now() + Duration::from_millis(1)).await;
-            }
-        }
-    }
-    assert_ne!(
-        max_check_count, memory_check_count,
-        "value did not arrive in the remote disk cache within 10ms"
     );
 
     // Are we in pg?
@@ -349,20 +268,16 @@ async fn writes_are_gossiped() {
 async fn stress_test() {
     let token = CancellationToken::new();
 
-    let tempdir_slash = disk_cache_path("slash");
-    let tempdir_axl = disk_cache_path("axl");
-
     let db = setup_pg_db("stress_test").await;
 
     let compute_executor = setup_compute_executor();
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_slash,
         db.clone(),
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor.clone(),
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -373,11 +288,10 @@ async fn stress_test() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
-        tempdir_axl,
         db,
         setup_nats_client(Some("stress_test".to_string())).await,
         compute_executor,
-        MemoryCacheConfig::default(),
+        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -410,7 +324,6 @@ async fn stress_test() {
                     Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
                     Actor::User(UserPk::new()),
                 )
-                .await
                 .expect("failed to write to layerdb");
         });
 
@@ -420,12 +333,7 @@ async fn stress_test() {
             let max_check_count = 10_000;
             let mut memory_check_count = 0;
             while memory_check_count < max_check_count {
-                let in_memory = ldb_axl_task
-                    .cas()
-                    .cache
-                    .memory_cache()
-                    .get(&cas_pk_string)
-                    .await;
+                let in_memory = ldb_axl_task.cas().cache.cache().get(&cas_pk_string).await;
                 match in_memory {
                     Some(value) => {
                         let cas_value: Arc<CasValue> =

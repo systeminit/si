@@ -181,16 +181,12 @@ impl OutputSocket {
             ui_hidden: false,
             connection_annotations,
         };
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(OutputSocketContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(OutputSocketContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 

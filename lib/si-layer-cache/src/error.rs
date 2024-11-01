@@ -32,8 +32,6 @@ pub enum LayerDbError {
     ActivityWaitLagged(ActivityId),
     #[error("Timed out waiting for activity id {0} after {1}")]
     ActivityWaitTimeout(ActivityId, Elapsed),
-    #[error("cacache error: {0}")]
-    CaCache(#[from] cacache::Error),
     #[error("cache update message with bad headers: {0}")]
     CacheUpdateBadHeaders(String),
     #[error("cache update message had no headers")]
@@ -46,6 +44,8 @@ pub enum LayerDbError {
     CouldNotConvertToKeyFromString(String),
     #[error("decompression error: {0}")]
     Decompress(String),
+    #[error("Foyer error: {0}")]
+    Foyer(#[source] Box<dyn error::Error + Sync + Send + 'static>),
     #[error("failed to parse content hash from str: {0}")]
     HashParse(#[from] ContentHashParseError),
     #[error("incomplete key: {0}")]

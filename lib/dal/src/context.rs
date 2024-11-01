@@ -527,10 +527,12 @@ impl DalContext {
         let events_actor = self.events_actor();
 
         let rebase_batch_address = slow_rt::spawn(async move {
-            let (rebase_batch_address, _) = layer_db
-                .rebase_batch()
-                .write(Arc::new(rebase_batch), None, events_tenancy, events_actor)
-                .await?;
+            let (rebase_batch_address, _) = layer_db.rebase_batch().write(
+                Arc::new(rebase_batch),
+                None,
+                events_tenancy,
+                events_actor,
+            )?;
 
             Ok::<RebaseBatchAddress, TransactionsError>(rebase_batch_address)
         })?

@@ -135,16 +135,12 @@ impl SchemaVariantNodeWeightV1 {
             }
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(SchemaVariantContent::V3(v3_content).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(SchemaVariantContent::V3(v3_content).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let new_node_weight_inner = Self::new(
             content_node_weight.id(),

@@ -39,7 +39,6 @@ base64 = "0.22.0"
 blake3 = "1.5.1"
 bollard = "0.16.1"
 bytes = "1.6.0"
-cacache = { git = "https://github.com/zkat/cacache-rs", rev = "146a593c8e3abea8bc4c1888ae6781a3f2e1422e", default-features = false, features = [ "tokio-runtime", "mmap" ] }
 chrono = { version = "0.4.37", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.5.4", features = ["derive", "color", "env", "wrap_help"] }
@@ -61,9 +60,11 @@ devicemapper = { version = "=0.34.1" }
 diff = "0.1.13"
 directories = "5.0.1"
 dyn-clone = "1.0.17"
+fastrace = "0.7.3"
 flate2 = "1.0.28"
 futures = "0.3.30"
 futures-lite = "2.3.0"
+foyer = { version = "0.12.2", features = ["tracing"] }
 glob = "0.3.1"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
@@ -82,9 +83,8 @@ lazy_static = "1.4.0"
 manyhow = { version = "0.11.4", features = ["darling"] }
 mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.7.2", features = ["simd"] }
-moka = { version = "0.12.5", features = ["future"] }
 names = { version = "0.14.0", default-features = false }
-nix = { version = "0.27.1", features = ["mount", "process", "signal", "user"] }
+nix = { version = "0.27.1", features = ["fs", "mount", "process", "signal", "user"] }
 nkeys = "0.4.0"
 num_cpus = "1.16.0"
 once_cell = "1.19.0"
@@ -93,6 +93,7 @@ opentelemetry = { version = "0.22.0", features = ["trace"] }
 opentelemetry-otlp = { version = "0.15.0", features = ["metrics", "trace"] }
 opentelemetry-semantic-conventions = "0.14.0"
 opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
+ordered-float = { version = "4.4.0", features = ["serde"] }
 ouroboros = "0.18.3"
 parking_lot = "0.12.3"
 paste = "1.0.14"
@@ -132,6 +133,7 @@ spicedb-grpc = "0.1.1"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }
 syn = { version = "2.0.55", features = ["full", "extra-traits"] }
+sysinfo = "0.32.0"
 tar = "0.4.40"
 tempfile = "3.10.1"
 test-log = { version = "0.2.15", default-features = false, features = ["trace"] }

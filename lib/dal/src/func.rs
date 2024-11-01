@@ -219,16 +219,12 @@ impl Func {
         let code_blake3 = if let Some(code) = code_base64.as_ref() {
             let code_json_value: serde_json::Value = code.clone().into();
             let code_cas_value: CasValue = code_json_value.into();
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(code_cas_value.into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(code_cas_value.into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             hash
         } else {
             // Why are we doing this? Because the struct gods demand it. I have feelings.
@@ -250,16 +246,12 @@ impl Func {
             is_locked: false,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(FuncContent::V2(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(FuncContent::V2(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let func_kind = FuncKind::new(backend_kind, backend_response_type)?;
 
@@ -485,16 +477,12 @@ impl Func {
         let updated = FuncContent::from(func.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(updated.into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(updated.into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             ctx.workspace_snapshot()?
                 .update_content(func.id.into(), hash)
                 .await?;
@@ -529,16 +517,12 @@ impl Func {
         let updated = FuncContent::from(func.clone());
 
         if updated != before {
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new((updated.clone()).into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new((updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
             workspace_snapshot
                 .update_content(func.id.into(), hash)
                 .await?;

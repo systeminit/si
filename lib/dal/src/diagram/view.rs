@@ -82,16 +82,12 @@ impl View {
             name: name.as_ref().to_owned(),
         });
 
-        let (content_address, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(content.clone().into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (content_address, _) = ctx.layer_db().cas().write(
+            Arc::new(content.clone().into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
         snap.add_or_replace_node(node_weight.clone()).await?;
@@ -253,25 +249,21 @@ impl View {
     }
 
     pub async fn set_name(&mut self, ctx: &DalContext, name: impl AsRef<str>) -> DiagramResult<()> {
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(
-                    ViewContent::V1(ViewContentV1 {
-                        timestamp: Timestamp {
-                            created_at: self.timestamp.created_at,
-                            updated_at: Utc::now(),
-                        },
-                        name: name.as_ref().to_owned(),
-                    })
-                    .into(),
-                ),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(
+                ViewContent::V1(ViewContentV1 {
+                    timestamp: Timestamp {
+                        created_at: self.timestamp.created_at,
+                        updated_at: Utc::now(),
+                    },
+                    name: name.as_ref().to_owned(),
+                })
+                .into(),
+            ),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         ctx.workspace_snapshot()?
             .update_content(self.id.into(), hash)

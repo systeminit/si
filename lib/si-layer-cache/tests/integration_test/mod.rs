@@ -1,7 +1,6 @@
 use buck2_resources::Buck2Resources;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::disk_cache::DiskCacheConfig;
 use std::env;
 use std::path::Path;
 
@@ -9,7 +8,6 @@ use crate::TEST_PG_DBNAME;
 
 mod activities;
 mod db;
-mod disk_cache;
 mod layer_cache;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
@@ -138,8 +136,4 @@ pub async fn setup_nats_client(subject_prefix: Option<String>) -> NatsClient {
 
 pub fn setup_compute_executor() -> si_runtime::DedicatedExecutor {
     si_runtime::compute_executor("test").expect("failed to create executor")
-}
-
-pub fn disk_cache_path(table_name: &str) -> DiskCacheConfig {
-    DiskCacheConfig::default_for_service(table_name)
 }

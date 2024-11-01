@@ -13,10 +13,9 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
+use crate::db::func_run::FuncRunDb;
 use crate::event::LayeredEventKind;
-use crate::{db::func_run::FuncRunDb, disk_cache::DiskCacheConfig};
 use crate::{
-    disk_cache::DiskCache,
     error::{LayerDbError, LayerDbResult},
     event::{LayeredEvent, LayeredEventClient},
     nats::layerdb_events_stream,
@@ -104,7 +103,6 @@ impl PersisterClient {
 #[derive(Debug)]
 pub struct PersisterTask {
     messages: mpsc::UnboundedReceiver<PersistMessage>,
-    disk_cache_config: DiskCacheConfig,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
     tracker: TaskTracker,
@@ -116,7 +114,6 @@ impl PersisterTask {
 
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
-        disk_cache_config: DiskCacheConfig,
         pg_pool: PgPool,
         nats_client: &NatsClient,
         instance_id: Ulid,
@@ -140,7 +137,6 @@ impl PersisterTask {
 
         Ok(Self {
             messages,
-            disk_cache_config,
             pg_pool,
             layered_event_client,
             tracker,
@@ -179,7 +175,6 @@ impl PersisterTask {
             match msg {
                 PersistMessage::Write((event, status_tx)) => {
                     let task = PersistEventTask::new(
-                        self.disk_cache_config.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -187,7 +182,6 @@ impl PersisterTask {
                 }
                 PersistMessage::Evict((event, status_tx)) => {
                     let task = PersistEventTask::new(
-                        self.disk_cache_config.clone(),
                         self.pg_pool.clone(),
                         self.layered_event_client.clone(),
                     );
@@ -207,26 +201,19 @@ pub enum PersisterTaskErrorKind {
 #[derive(Debug, Clone)]
 pub struct PersisterTaskError {
     pub kind: PersisterTaskErrorKind,
-    pub disk_error: Option<String>,
     pub pg_error: Option<String>,
     pub nats_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PersistEventTask {
-    disk_cache_config: DiskCacheConfig,
     pg_pool: PgPool,
     layered_event_client: LayeredEventClient,
 }
 
 impl PersistEventTask {
-    pub fn new(
-        disk_cache_config: DiskCacheConfig,
-        pg_pool: PgPool,
-        layered_event_client: LayeredEventClient,
-    ) -> Self {
+    pub fn new(pg_pool: PgPool, layered_event_client: LayeredEventClient) -> Self {
         PersistEventTask {
-            disk_cache_config,
             pg_pool,
             layered_event_client,
         }
@@ -250,71 +237,29 @@ impl PersistEventTask {
         // Write the eviction to nats
         let nats_join = self.layered_event_client.publish(event.clone()).await?;
 
-        // Remove from disk cache
-        let disk_cache = DiskCache::new(self.disk_cache_config.clone())?;
-        let disk_event = event.clone();
-        let disk_join =
-            tokio::task::spawn(async move { disk_cache.remove_from_disk(disk_event).await });
-
         // Evict from to pg
         let pg_self = self.clone();
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.evict_from_pg(pg_event).await });
 
-        match join![disk_join, pg_join, nats_join] {
-            (Ok(Ok(_)), Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
-            (Ok(disk_res), Ok(pg_res), Ok(nats_res)) => {
+        match join![pg_join, nats_join] {
+            (Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
+            (pg_res, nats_res) => {
+                let kind = PersisterTaskErrorKind::Evict;
+                let pg_error = match pg_res {
+                    Ok(Err(e)) => Some(e.to_string()),
+                    Err(e) => Some(e.to_string()),
+                    _ => None,
+                };
+                let nats_error = match nats_res {
+                    Ok(Err(e)) => Some(e.to_string()),
+                    Err(e) => Some(e.to_string()),
+                    _ => None,
+                };
                 Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Evict,
-                    disk_error: disk_res.err().map(|e| e.to_string()),
-                    pg_error: pg_res.err().map(|e| e.to_string()),
-                    nats_error: nats_res.err().map(|e| e.to_string()),
-                }))
-            }
-            (Err(disk_res), Ok(_), Ok(_)) => {
-                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Evict,
-                    disk_error: Some(disk_res.to_string()),
-                    pg_error: None,
-                    nats_error: None,
-                }))
-            }
-            (Ok(_), Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Evict,
-                disk_error: None,
-                pg_error: None,
-                nats_error: Some(e.to_string()),
-            })),
-            (Ok(_), Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Evict,
-                disk_error: None,
-                pg_error: Some(e.to_string()),
-                nats_error: None,
-            })),
-            (Ok(_), Err(p), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Evict,
-                disk_error: None,
-                pg_error: Some(p.to_string()),
-                nats_error: Some(n.to_string()),
-            })),
-            (Err(d), Ok(_), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Evict,
-                disk_error: Some(d.to_string()),
-                pg_error: None,
-                nats_error: Some(n.to_string()),
-            })),
-            (Err(d), Err(p), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Evict,
-                disk_error: Some(d.to_string()),
-                pg_error: Some(p.to_string()),
-                nats_error: None,
-            })),
-            (Err(d), Err(p), Err(n)) => {
-                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Evict,
-                    disk_error: Some(d.to_string()),
-                    pg_error: Some(p.to_string()),
-                    nats_error: Some(n.to_string()),
+                    kind,
+                    pg_error,
+                    nats_error,
                 }))
             }
         }
@@ -350,64 +295,24 @@ impl PersistEventTask {
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
-        // Write to disk cache
-        let disk_cache = DiskCache::new(self.disk_cache_config.clone())?;
-        let disk_join = tokio::task::spawn(async move { disk_cache.write_to_disk(event).await });
-
-        match join![disk_join, pg_join, nats_join] {
-            (Ok(Ok(_)), Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
-            (Ok(disk_res), Ok(pg_res), Ok(nats_res)) => {
+        match join![pg_join, nats_join] {
+            (Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
+            (pg_res, nats_res) => {
+                let kind = PersisterTaskErrorKind::Write;
+                let pg_error = match pg_res {
+                    Ok(Err(e)) => Some(e.to_string()),
+                    Err(e) => Some(e.to_string()),
+                    _ => None,
+                };
+                let nats_error = match nats_res {
+                    Ok(Err(e)) => Some(e.to_string()),
+                    Err(e) => Some(e.to_string()),
+                    _ => None,
+                };
                 Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Write,
-                    disk_error: disk_res.err().map(|e| e.to_string()),
-                    pg_error: pg_res.err().map(|e| e.to_string()),
-                    nats_error: nats_res.err().map(|e| e.to_string()),
-                }))
-            }
-            (Err(disk_res), Ok(_), Ok(_)) => {
-                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Write,
-                    disk_error: Some(disk_res.to_string()),
-                    pg_error: None,
-                    nats_error: None,
-                }))
-            }
-            (Ok(_), Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Write,
-                disk_error: None,
-                pg_error: None,
-                nats_error: Some(e.to_string()),
-            })),
-            (Ok(_), Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Write,
-                disk_error: None,
-                pg_error: Some(e.to_string()),
-                nats_error: None,
-            })),
-            (Ok(_), Err(p), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Write,
-                disk_error: None,
-                pg_error: Some(p.to_string()),
-                nats_error: Some(n.to_string()),
-            })),
-            (Err(d), Ok(_), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Write,
-                disk_error: Some(d.to_string()),
-                pg_error: None,
-                nats_error: Some(n.to_string()),
-            })),
-            (Err(d), Err(p), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind: PersisterTaskErrorKind::Write,
-                disk_error: Some(d.to_string()),
-                pg_error: Some(p.to_string()),
-                nats_error: None,
-            })),
-            (Err(d), Err(p), Err(n)) => {
-                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind: PersisterTaskErrorKind::Write,
-                    disk_error: Some(d.to_string()),
-                    pg_error: Some(p.to_string()),
-                    nats_error: Some(n.to_string()),
+                    kind,
+                    pg_error,
+                    nats_error,
                 }))
             }
         }

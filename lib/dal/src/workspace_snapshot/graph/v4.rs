@@ -80,16 +80,12 @@ impl WorkspaceSnapshotGraphV4 {
                 name: "DEFAULT".to_owned(),
             });
 
-            let (content_address, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(content.clone().into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (content_address, _) = ctx.layer_db().cas().write(
+                Arc::new(content.clone().into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
 
             let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
             let default_view_node_idx = result.add_or_replace_node(node_weight.clone())?;

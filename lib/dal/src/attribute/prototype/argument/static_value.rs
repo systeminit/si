@@ -45,16 +45,12 @@ impl StaticArgumentValue {
             value: value.into(),
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(StaticArgumentValueContent::V1(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(StaticArgumentValueContent::V1(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;

@@ -601,8 +601,7 @@ impl AttributeValue {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
@@ -617,8 +616,7 @@ impl AttributeValue {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
@@ -1989,8 +1987,7 @@ impl AttributeValue {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,
@@ -2005,8 +2002,7 @@ impl AttributeValue {
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
-                    )
-                    .await?
+                    )?
                     .0,
             ),
             None => None,

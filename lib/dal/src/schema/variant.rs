@@ -520,16 +520,12 @@ impl SchemaVariant {
             is_builtin,
         };
 
-        let (hash, _) = ctx
-            .layer_db()
-            .cas()
-            .write(
-                Arc::new(SchemaVariantContent::V3(content.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?;
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(SchemaVariantContent::V3(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
 
         let id = workspace_snapshot.generate_ulid().await?;
         let lineage_id = workspace_snapshot.generate_ulid().await?;
@@ -557,16 +553,12 @@ impl SchemaVariant {
         lambda(&mut schema_variant)?;
         if schema_variant != before_modification_variant {
             let new_content = SchemaVariantContent::from(schema_variant.clone());
-            let (hash, _) = ctx
-                .layer_db()
-                .cas()
-                .write(
-                    Arc::new(new_content.into()),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new(new_content.into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
 
             ctx.workspace_snapshot()?
                 .update_content(before_modification_variant.id.into(), hash)
