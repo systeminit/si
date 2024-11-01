@@ -133,7 +133,7 @@ pub struct Config {
     layer_db_config: LayerDbConfig,
 
     #[builder(default)]
-    spicedb_config: SpiceDbConfig,
+    spicedb: SpiceDbConfig,
 
     pkgs_path: CanonicalFile,
 
@@ -251,8 +251,8 @@ impl Config {
 
     /// Gets a referece to the config's spicedb config
     #[must_use]
-    pub fn spicedb_config(&self) -> &SpiceDbConfig {
-        &self.spicedb_config
+    pub fn spicedb(&self) -> &SpiceDbConfig {
+        &self.spicedb
     }
 }
 
@@ -303,7 +303,7 @@ pub struct ConfigFile {
     #[serde(default)]
     create_workspace_allowlist: Vec<WorkspacePermissions>,
     #[serde(default)]
-    spicedb_config: SpiceDbConfig,
+    spicedb: SpiceDbConfig,
 }
 
 impl Default for ConfigFile {
@@ -326,7 +326,7 @@ impl Default for ConfigFile {
             boot_feature_flags: Default::default(),
             create_workspace_permissions: Default::default(),
             create_workspace_allowlist: Default::default(),
-            spicedb_config: Default::default(),
+            spicedb: Default::default(),
         }
     }
 }
@@ -360,7 +360,7 @@ impl TryFrom<ConfigFile> for Config {
             boot_feature_flags: value.boot_feature_flags.into_iter().collect::<HashSet<_>>(),
             create_workspace_permissions: value.create_workspace_permissions,
             create_workspace_allowlist: value.create_workspace_allowlist,
-            spicedb_config: value.spicedb_config,
+            spicedb: value.spicedb,
         })
     }
 }
@@ -496,7 +496,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         Some(postgres_cert.clone().try_into()?);
     config.pkgs_path = pkgs_path;
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
-    config.spicedb_config.enabled = true;
+    config.spicedb.enabled = true;
 
     Ok(())
 }
@@ -556,7 +556,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         Some(postgres_cert.clone().try_into()?);
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
     config.pkgs_path = pkgs_path;
-    config.spicedb_config.enabled = true;
+    config.spicedb.enabled = true;
 
     Ok(())
 }
