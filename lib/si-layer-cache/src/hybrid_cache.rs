@@ -44,18 +44,21 @@ where
 {
     pub async fn new(config: CacheConfig) -> LayerDbResult<Self> {
         let mem_cap = max(
-            (config.memory as f32 * config.memory_percentage) as usize,
+            (config.memory_capacity * config.memory_percentage) / 100,
             FOYER_MEMORY_CACHE_MINUMUM,
         );
         let disk_cap = max(
-            (config.disk_capacity as f32 * config.disk_percentage) as usize,
+            (config.disk_capacity * config.disk_percentage) / 100,
             FOYER_DISK_CACHE_MINUMUM,
-        ) as usize;
+        );
+
         info!(
             "Creating cache {} with memory capcity of {} and disk capacity of {}",
             config.name, mem_cap, disk_cap
         );
+
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
+            .with_name(&config.name)
             .memory(mem_cap)
             .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized<V>| size_of_val(value))
             .storage(Engine::Large)
@@ -145,22 +148,28 @@ pub struct CacheConfig {
     disk_capacity: usize,
     disk_indexer_shards: usize,
     disk_path: PathBuf,
-    disk_percentage: f32,
+    disk_percentage: usize,
     disk_reclaimers: usize,
-    memory: usize,
-    memory_percentage: f32,
+    memory_capacity: usize,
+    memory_percentage: usize,
     name: String,
 }
 
 impl CacheConfig {
+    // give the cache a name, only used in logs for now
+    pub fn with_name(mut self, name: impl ToString) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
     // set the percentage of the total disk space in the disk_path
-    pub fn with_disk_percentage(mut self, disk_percentage: f32) -> Self {
+    pub fn with_disk_percentage(mut self, disk_percentage: usize) -> Self {
         self.disk_percentage = disk_percentage;
         self
     }
 
     // set the percentage of total memory
-    pub fn with_memory_percentage(mut self, memory_percentage: f32) -> Self {
+    pub fn with_memory_percentage(mut self, memory_percentage: usize) -> Self {
         self.memory_percentage = memory_percentage;
         self
     }
@@ -173,6 +182,7 @@ impl CacheConfig {
 }
 
 impl Default for CacheConfig {
+    #[allow(clippy::unnecessary_cast)]
     fn default() -> Self {
         let sys = sysinfo::System::new_all();
         let path = tempfile::TempDir::with_prefix_in("default-cache-", "/tmp")
@@ -185,19 +195,28 @@ impl Default for CacheConfig {
                 .expect("parent must exist if we just created a directory in it"),
         )
         .expect("unable to get the size of the temp directory");
-        let total_size = stats.fragment_size() as usize * stats.blocks() as usize;
+
+        // as u64 required becaue .blocks() returns u32 on ARM for some reason
+        let total_disk_size: usize = (stats.fragment_size() * stats.blocks() as u64)
+            .try_into()
+            .expect("calculated disk size will not fit into usize!");
+
+        let total_memory_size = sys
+            .total_memory()
+            .try_into()
+            .expect("could not convert total memory capacity to usize!");
 
         Self {
             disk_admission_rate_limit: DEFAULT_DISK_CACHE_RATE_LIMIT,
             disk_buffer_size: DEFAULT_DISK_BUFFER_SIZE,
             disk_buffer_flushers: DEFAULT_DISK_BUFFER_FLUSHERS,
-            disk_capacity: total_size,
+            disk_capacity: total_disk_size,
             disk_indexer_shards: DEFAULT_DISK_INDEXER_SHARDS,
             disk_reclaimers: DEFAULT_DISK_RECLAIMERS,
-            disk_percentage: 0.10,
+            disk_percentage: 10,
             disk_path: path,
-            memory: sys.total_memory() as usize,
-            memory_percentage: 1.0,
+            memory_capacity: total_memory_size,
+            memory_percentage: 100,
             name: "default".to_string(),
         }
     }
