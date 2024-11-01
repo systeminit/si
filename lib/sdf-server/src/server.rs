@@ -110,8 +110,8 @@ impl Server {
         let application_runtime_mode = Arc::new(RwLock::new(ApplicationRuntimeMode::Running));
 
         let mut spicedb_client = None;
-        if config.spicedb_config().enabled {
-            spicedb_client = Some(SpiceDbClient::new(config.spicedb_config()).await?);
+        if config.spicedb().enabled {
+            spicedb_client = Some(SpiceDbClient::new(config.spicedb()).await?);
         }
 
         prepare_maintenance_mode_watcher(application_runtime_mode.clone(), token.clone())?;
