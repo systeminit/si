@@ -34,3 +34,4 @@ We contributors to System Initiative:
 * Meg Watson (@MegaWatt01)
 * John Keiser (@jkeiser)
 * Ikko Eltociear Ashimine (@eltociear)
+* Nick Downs (@nickryand)
