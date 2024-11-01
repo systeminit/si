@@ -36,15 +36,14 @@ const props = defineProps({
     type: Object as PropType<
       Cell<
         {
-          actorId: string;
-          actorName: string;
-          actorEmail?: string | undefined;
-          service: string;
+          userName: string;
+          userId?: string;
+          userEmail?: string;
           kind: string;
           timestamp: string;
-          ip: string;
-          changeSetId: string;
-          changeSetName: string;
+          changeSetId?: string;
+          changeSetName?: string;
+          metadata: Record<string, unknown>;
         },
         unknown
       >

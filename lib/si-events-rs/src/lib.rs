@@ -18,6 +18,7 @@ mod func_run_log;
 mod resource_metadata;
 mod schema;
 mod schema_variant;
+mod secret;
 mod socket;
 mod tenancy;
 mod timestamp;
@@ -44,6 +45,7 @@ pub use crate::{
     resource_metadata::{ResourceMetadata, ResourceStatus},
     schema::SchemaId,
     schema_variant::{PropId, SchemaVariantId},
+    secret::SecretId,
     socket::{InputSocketId, OutputSocketId},
     tenancy::ChangeSetId,
     tenancy::Tenancy,

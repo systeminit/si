@@ -125,6 +125,8 @@ pub enum SecretError {
     LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("secret not found for key: [redacted]")]
+    NotFoundForKey,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
@@ -149,6 +151,18 @@ pub enum SecretError {
 pub type SecretResult<T> = Result<T, SecretError>;
 
 id!(SecretId);
+
+impl From<si_events::SecretId> for SecretId {
+    fn from(value: si_events::SecretId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
+impl From<SecretId> for si_events::SecretId {
+    fn from(value: SecretId) -> Self {
+        Self::from_raw_id(value.0)
+    }
+}
 
 /// A reference to an [`EncryptedSecret`] with metadata.
 ///
@@ -522,6 +536,38 @@ impl Secret {
         }
 
         Ok(id_by_key)
+    }
+
+    /// Get the [`SecretId`] corresponding to a given [`key`](EncryptedSecretKey).
+    #[instrument(level = "debug", skip(ctx))]
+    pub async fn get_id_by_key_or_error(
+        ctx: &DalContext,
+        key: EncryptedSecretKey,
+    ) -> SecretResult<SecretId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let secret_category_node_id = workspace_snapshot
+            .get_category_node_or_err(None, CategoryNodeKind::Secret)
+            .await?;
+
+        let indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                secret_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
+
+        for index in indices {
+            let secret_node_weight = workspace_snapshot
+                .get_node_weight(index)
+                .await?
+                .get_secret_node_weight()?;
+            if secret_node_weight.encrypted_secret_key() == key {
+                return Ok(secret_node_weight.id().into());
+            }
+        }
+
+        Err(SecretError::NotFoundForKey)
     }
 
     /// Lists all [`Secrets`](Secret) in the current [`snapshot`](crate::WorkspaceSnapshot).

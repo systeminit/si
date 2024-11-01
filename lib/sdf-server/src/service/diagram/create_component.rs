@@ -96,8 +96,14 @@ pub async fn create_component(
     };
 
     let variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-    ctx.write_audit_log(AuditLogKind::CreateComponent).await?;
     let mut component = Component::new(&ctx, &name, variant.id()).await?;
+    ctx.write_audit_log(AuditLogKind::CreateComponent {
+        name: name.to_string(),
+        component_id: component.id().into(),
+        schema_variant_id: schema_variant_id.into(),
+        schema_variant_name: variant.display_name().to_owned(),
+    })
+    .await?;
     let initial_geometry = component.geometry(&ctx).await?;
 
     component

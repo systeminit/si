@@ -25,8 +25,11 @@ use crate::{service::component::conflicts_for_component::conflicts_for_component
 
 use super::ApiError;
 
+pub mod conflicts_for_component;
+pub mod debug;
 pub mod delete_property_editor_value;
 pub mod get_actions;
+pub mod get_code;
 pub mod get_diff;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_values;
@@ -34,16 +37,12 @@ pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod json;
 pub mod list_qualifications;
-pub mod update_property_editor_value;
-// pub mod list_resources;
-pub mod conflicts_for_component;
-pub mod debug;
-pub mod get_code;
 pub mod refresh;
 pub mod restore_default_function;
 pub mod set_name;
 pub mod set_resource_id;
 pub mod set_type;
+pub mod update_property_editor_value;
 mod upgrade;
 
 #[remain::sorted]
@@ -91,6 +90,8 @@ pub enum ComponentError {
     SchemaVariantUpgradeSkipped,
     #[error("dal secret error: {0}")]
     Secret(#[from] DalSecretError),
+    #[error("secret id deserialization error: {0}")]
+    SecretIdDeserialization(#[source] serde_json::Error),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

@@ -1,27 +1,10 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
-import { useWorkspacesStore, WorkspacePk } from "@/store/workspaces.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useChangeSetsStore } from "./change_sets.store";
 import { UserId } from "./auth.store";
-
-export enum AuditLogService {
-  AuthApi = "AuthApi",
-  Pinga = "Pinga",
-  Rebaser = "Rebaser",
-  Sdf = "Sdf",
-}
-
-export enum AuditLogKind {
-  CreateComponent = "CreateComponent",
-  DeleteComponent = "DeleteComponent",
-  PerformedRebase = "PerformedRebase",
-  RanAction = "RanAction",
-  RanDependentValuesUpdate = "RanDependentValuesUpdate",
-  UpdatePropertyEditorValue = "UpdatePropertyEditorValue",
-}
 
 export type LogFilters = {
   page: number;
@@ -35,29 +18,27 @@ export type LogFilters = {
 };
 
 export type AuditLog = {
-  actor: ActorView;
-  actorName: string;
-  actorEmail: string;
-  service: AuditLogService;
-  kind: AuditLogKind;
+  userName?: string;
+
+  userId?: UserId;
+  userEmail?: string;
+  kind: string;
   timestamp: string;
-  originIpAddress: string;
-  workspaceId: WorkspacePk;
-  workspaceName: string;
-  changeSetId: ChangeSetId;
-  changeSetName: string;
+  changeSetId?: ChangeSetId;
+  changeSetName?: string;
+  metadata: Record<string, unknown>;
 };
 
 export type AuditLogDisplay = {
-  actorId: string;
-  actorName: string;
-  actorEmail?: string;
-  service: string;
+  userName: string;
+
+  userId?: string;
+  userEmail?: string;
   kind: string;
   timestamp: string;
-  ip: string;
-  changeSetId: string;
-  changeSetName: string;
+  changeSetId?: string;
+  changeSetName?: string;
+  metadata: Record<string, unknown>;
 };
 
 export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -111,13 +92,12 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.logs = response.logs.map(
                   (log: AuditLog) =>
                     ({
-                      actorId: log.actor.kind ?? "System",
-                      actorName: log.actorName ?? "System",
-                      actorEmail: log.actorEmail,
-                      service: log.service,
+                      userName: log.userName ?? "System",
+                      userId: log.userId,
+                      userEmail: log.userEmail,
                       kind: log.kind,
+                      metadata: log.metadata,
                       timestamp: log.timestamp,
-                      ip: log.originIpAddress ?? "System",
                       changeSetId: log.changeSetId,
                       changeSetName: log.changeSetName,
                     } as AuditLogDisplay),
