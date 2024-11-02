@@ -8,7 +8,26 @@
             : changeSetStore.selectedChangeSet?.name
         "
         :icon="changeSetStore.headSelected ? 'git-branch' : 'git-branch'"
-      />
+      >
+        <div
+          v-if="
+            featureFlagsStore.REBAC &&
+            userIsApprover &&
+            pendingApprovalCount > 0
+          "
+          :class="
+            clsx(
+              'text-sm font-bold hover:underline cursor-pointer',
+              themeClasses('text-action-500', 'text-action-400'),
+            )
+          "
+          @click="openPendingApprovalsModal"
+        >
+          {{ pendingApprovalCount }} Pending Approval{{
+            pendingApprovalCount > 1 ? "s" : ""
+          }}
+        </div>
+      </SidebarSubpanelTitle>
 
       <div
         v-if="!changeSetStore.headSelected"
@@ -40,6 +59,10 @@
         </TabGroupItem>
       </TabGroup>
     </div>
+    <ApprovalPendingModal
+      v-if="pendingApprovalCount > 0"
+      ref="pendingApprovalModalRef"
+    />
   </ScrollArea>
 </template>
 
@@ -52,13 +75,29 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { computed, ref } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 import ChangesPanelProposed from "./ChangesPanelProposed.vue";
 import ChangesPanelHistory from "./ChangesPanelHistory.vue";
+import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 
 const changeSetStore = useChangeSetsStore();
+const featureFlagsStore = useFeatureFlagsStore();
+
+const pendingApprovalModalRef = ref<InstanceType<
+  typeof ApprovalPendingModal
+> | null>(null);
+
+// TODO(WENDY) - Mock data we need to replace with real data!
+const userIsApprover = computed(() => true);
+const pendingApprovalCount = computed(() => 3);
+// END MOCK DATA
+
+const openPendingApprovalsModal = () => {
+  pendingApprovalModalRef.value?.open();
+};
 </script>
-./ChangesPanelHistory.vue

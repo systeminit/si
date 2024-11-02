@@ -18,7 +18,7 @@ pub async fn list_actionable(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     State(mut state): State<AppState>,
-    Path(workspace_pk): Path<WorkspacePk>,
+    Path((workspace_pk, _change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> Result<Json<si_frontend_types::WorkspaceMetadata>> {
     let ctx = builder.build_head(request_ctx).await?;
 
@@ -31,7 +31,7 @@ pub async fn list_actionable(
     let client = state.spicedb_client().ok_or(Error::SpiceDBNotFound)?;
     let existing_approvers = RelationBuilder::new()
         .object(ObjectType::Workspace, workspace_pk)
-        .relation(Relation::Approver)
+        .relation(Relation::Owner) // TODO(WENDY) - this should be Relation::Approver but it isn't working yet
         .read(client)
         .await?;
 

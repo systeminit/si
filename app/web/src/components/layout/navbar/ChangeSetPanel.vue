@@ -42,7 +42,10 @@
         :disabled="
           !selectedChangeSetName ||
           changeSetsStore.headSelected ||
-          changeSetsStore.creatingChangeSet
+          changeSetsStore.creatingChangeSet ||
+          (featureFlagsStore.REBAC &&
+            changeSetsStore.selectedChangeSet?.status ===
+              ChangeSetStatus.NeedsApproval)
         "
         @click="openApprovalFlowModal"
       />
@@ -108,9 +111,11 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowModal from "@/components/ApprovalFlowModal.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
+const featureFlagsStore = useFeatureFlagsStore();
 const dropdownRef = ref();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
