@@ -20,6 +20,7 @@
             ),
           tone === 'destructive' &&
             'bg-destructive-300 text-destructive-900 dark:bg-destructive-900 dark:text-destructive-200',
+          tone === 'success' && 'bg-success-200 text-success-900',
         ],
       )
     "

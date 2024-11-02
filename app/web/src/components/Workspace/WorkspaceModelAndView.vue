@@ -11,7 +11,6 @@
     <template #subpanel1>
       <DiagramOutline
         :actionsAreRunning="actionsAreRunning"
-        class=""
         @right-click-item="onOutlineRightClick"
       />
     </template>
@@ -20,7 +19,23 @@
     </template>
   </component>
 
+  <div
+    v-if="
+      featureFlagsStore.REBAC &&
+      changeSetsStore.selectedChangeSet?.status ===
+        ChangeSetStatus.NeedsApproval
+    "
+    :class="
+      clsx(
+        'grow flex flew-row items-center justify-center',
+        themeClasses('bg-shade-0', 'bg-neutral-800'),
+      )
+    "
+  >
+    <InsetApprovalModal />
+  </div>
   <ModelingDiagram
+    v-else
     ref="diagramRef"
     @mouseout="presenceStore.clearCursor"
     @right-click-element="onRightClickElement"
@@ -67,7 +82,8 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ResizablePanel } from "@si/vue-lib/design-system";
+import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
@@ -77,6 +93,8 @@ import { usePresenceStore } from "@/store/presence.store";
 import { useSecretsStore } from "@/store/secrets.store";
 import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.vue";
 import { useStatusStore } from "@/store/status.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -92,6 +110,7 @@ import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
 import DeleteSelectionModal from "../ModelingView/DeleteSelectionModal.vue";
 import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
 import CommandModal from "./CommandModal.vue";
+import InsetApprovalModal from "../InsetApprovalModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
@@ -99,6 +118,7 @@ const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const actionsAreRunning = computed(
   () =>

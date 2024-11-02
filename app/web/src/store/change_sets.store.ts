@@ -309,13 +309,14 @@ export function useChangeSetsStore() {
           });
         },
         async FETCH_CHANGE_SETS_V2() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest<WorkspaceMetadata>({
             method: "get",
-            url: BASE_API.concat(["list"]),
+            url: BASE_API.concat([{ selectedChangeSetId }, "list"]),
             onSuccess: (response) => {
-              this.headChangeSetId = response.default_change_set_id;
-              this.changeSetsById = _.keyBy(response.change_sets, "id");
+              // TODO(WENDY) - commented these out for now
+              // this.headChangeSetId = response.default_change_set_id;
+              // this.changeSetsById = _.keyBy(response.change_sets, "id");
             },
           });
         },

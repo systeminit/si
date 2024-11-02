@@ -1,9 +1,5 @@
 <template>
-  <TreeNode
-    :enableGroupToggle="displayActions.length > 0"
-    clickLabelToToggle
-    styleAsGutter
-  >
+  <TreeNode :enableGroupToggle="displayActions.length > 0" styleAsGutter>
     <template #label>
       <div
         :class="

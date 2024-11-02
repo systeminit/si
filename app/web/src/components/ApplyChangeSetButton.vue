@@ -57,6 +57,7 @@
       votingKind="merge"
       @completeVoting="applyChangeSet"
     />
+    <ApprovalFlowModal2 ref="approvalFlowModal2Ref" votingKind="merge" />
   </VButton>
 </template>
 
@@ -79,7 +80,9 @@ import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import RetryApply from "@/components/toasts/RetryApply.vue";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
+import ApprovalFlowModal2 from "./ApprovalFlowModal2.vue";
 
+const featureFlagsStore = useFeatureFlagsStore();
 const actionsStore = useActionsStore();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
@@ -96,9 +99,16 @@ const applyChangeSetReqStatus =
 const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
   null,
 );
+const approvalFlowModal2Ref = ref<InstanceType<
+  typeof ApprovalFlowModal2
+> | null>(null);
 
 const openApprovalFlowModal = () => {
-  approvalFlowModalRef.value?.open();
+  if (featureFlagsStore.REBAC) {
+    approvalFlowModal2Ref.value?.open();
+  } else {
+    approvalFlowModalRef.value?.open();
+  }
 };
 
 // Applies the current change set3
