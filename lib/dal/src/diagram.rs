@@ -136,6 +136,20 @@ pub struct SummaryDiagramEdge {
 }
 
 impl SummaryDiagramEdge {
+    pub fn assemble_just_added(incoming_connection: IncomingConnection) -> ComponentResult<Self> {
+        Ok(SummaryDiagramEdge {
+            from_component_id: incoming_connection.from_component_id,
+            from_socket_id: incoming_connection.from_output_socket_id,
+            to_component_id: incoming_connection.to_component_id,
+            to_socket_id: incoming_connection.to_input_socket_id,
+            change_status: ChangeStatus::Added,
+            created_info: serde_json::to_value(incoming_connection.created_info)?,
+            deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+            to_delete: false,
+            from_base_change_set: false,
+        })
+    }
+
     pub fn assemble(
         incoming_connection: IncomingConnection,
         from_component: &Component,

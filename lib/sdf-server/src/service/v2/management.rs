@@ -80,7 +80,7 @@ pub async fn run_prototype(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // TODO check that this is a valid prototypeId
-    let execution_result =
+    let mut execution_result =
         ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id).await?;
 
     track(
@@ -96,21 +96,14 @@ pub async fn run_prototype(
         }),
     );
 
-    if let Some(result) = execution_result.result {
+    if let Some(result) = execution_result.result.take() {
         let result: ManagementFuncReturn = result.try_into()?;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
-                ManagementOperator::new(
-                    &ctx,
-                    component_id,
-                    execution_result.manager_component_geometry,
-                    operations,
-                    execution_result.managed_schema_map,
-                    execution_result.placeholders,
-                )
-                .await?
-                .operate()
-                .await?;
+                ManagementOperator::new(&ctx, component_id, operations, execution_result)
+                    .await?
+                    .operate()
+                    .await?;
             }
         }
 

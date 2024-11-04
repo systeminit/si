@@ -1,5 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{hash_map, HashMap, VecDeque};
 
+use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -10,12 +11,19 @@ use crate::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
         Action, ActionError,
     },
-    attribute::value::AttributeValueError,
+    attribute::{
+        prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+        value::AttributeValueError,
+    },
     change_status::ChangeStatus::Added,
-    diagram::geometry::RawGeometry,
+    component::IncomingConnection,
+    diagram::{geometry::RawGeometry, SummaryDiagramEdge},
+    history_event::HistoryEventMetadata,
     prop::{PropError, PropPath},
-    AttributeValue, Component, ComponentError, ComponentId, DalContext, Func, FuncError, Prop,
-    PropKind, Schema, SchemaError, SchemaId, WsEvent, WsEventError,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    ActorView, AttributeValue, Component, ComponentError, ComponentId, DalContext, Func, FuncError,
+    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind, Schema, SchemaError,
+    SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
 };
 
 pub mod prototype;
@@ -26,6 +34,8 @@ pub enum ManagementError {
     Action(#[from] ActionError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("cannot create component with 'self' as a placeholder")]
@@ -44,12 +54,22 @@ pub enum ManagementError {
     DuplicateComponentPlaceholder(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
+    #[error("Cannot connect component {0} to component {1} because component {1} does not have an input socket with name {2}")]
+    InputSocketDoesNotExist(ComponentId, ComponentId, String),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
+    #[error("Cannot connect component {0} to component {1} because component {0} does not have an output socket with name {2}")]
+    OutputSocketDoesNotExist(ComponentId, ComponentId, String),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("Cannot create component for Schema {0}, this schema does not exist or is not managed by this component")]
     SchemaDoesNotExist(String),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -121,11 +141,33 @@ impl From<RawGeometry> for NumericGeometry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionIdentifier {
+    pub component: String,
+    pub socket: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementConnection {
+    from: String,
+    to: ConnectionIdentifier,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementUpdateConnections {
+    add: Option<Vec<ManagementConnection>>,
+    remove: Option<Vec<ManagementConnection>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
     geometry: Option<RawGeometry>,
+    connect: Option<ManagementUpdateConnections>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -134,6 +176,7 @@ pub struct ManagementCreateOperation {
     kind: Option<String>,
     properties: Option<serde_json::Value>,
     geometry: Option<NumericGeometry>,
+    connect: Option<Vec<ManagementConnection>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -183,40 +226,175 @@ impl TryFrom<ManagementResultSuccess> for ManagementFuncReturn {
 
 const SELF_ID: &str = "self";
 
+struct ComponentSchemaMap {
+    variants: HashMap<ComponentId, SchemaVariantId>,
+    schemas: HashMap<ComponentId, SchemaId>,
+}
+
+impl ComponentSchemaMap {
+    pub fn new() -> Self {
+        Self {
+            variants: HashMap::new(),
+            schemas: HashMap::new(),
+        }
+    }
+
+    pub async fn schema_for_component_id(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ManagementResult<SchemaId> {
+        Ok(match self.schemas.entry(component_id) {
+            hash_map::Entry::Occupied(occupied_entry) => *occupied_entry.get(),
+            hash_map::Entry::Vacant(vacant_entry) => {
+                let schema_id = Component::schema_for_component_id(ctx, component_id)
+                    .await?
+                    .id();
+                *vacant_entry.insert(schema_id)
+            }
+        })
+    }
+
+    pub async fn variant_for_component_id(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ManagementResult<SchemaVariantId> {
+        Ok(match self.variants.entry(component_id) {
+            hash_map::Entry::Occupied(occupied_entry) => *occupied_entry.get(),
+            hash_map::Entry::Vacant(vacant_entry) => {
+                let variant_id = Component::schema_variant_id(ctx, component_id).await?;
+                *vacant_entry.insert(variant_id)
+            }
+        })
+    }
+}
+
+struct VariantSocketMap {
+    input_sockets: HashMap<SchemaVariantId, HashMap<String, InputSocketId>>,
+    output_sockets: HashMap<SchemaVariantId, HashMap<String, OutputSocketId>>,
+}
+
+impl VariantSocketMap {
+    pub fn new() -> Self {
+        Self {
+            input_sockets: HashMap::new(),
+            output_sockets: HashMap::new(),
+        }
+    }
+
+    fn add_input_socket_for_id(
+        &mut self,
+        variant_id: SchemaVariantId,
+        name: &str,
+        socket_id: InputSocketId,
+    ) {
+        self.input_sockets
+            .entry(variant_id)
+            .or_default()
+            .insert(name.to_owned(), socket_id);
+    }
+
+    fn add_output_socket_for_id(
+        &mut self,
+        variant_id: SchemaVariantId,
+        name: &str,
+        socket_id: OutputSocketId,
+    ) {
+        self.output_sockets
+            .entry(variant_id)
+            .or_default()
+            .insert(name.to_owned(), socket_id);
+    }
+
+    pub async fn add_sockets_for_variant(
+        &mut self,
+        ctx: &DalContext,
+        variant_id: SchemaVariantId,
+    ) -> ManagementResult<()> {
+        if self.input_sockets.contains_key(&variant_id) {
+            return Ok(());
+        }
+
+        for socket in InputSocket::list(ctx, variant_id).await? {
+            self.add_input_socket_for_id(variant_id, socket.name(), socket.id());
+        }
+
+        for socket in OutputSocket::list(ctx, variant_id).await? {
+            self.add_output_socket_for_id(variant_id, socket.name(), socket.id());
+        }
+
+        Ok(())
+    }
+
+    pub fn output_socket_id(
+        &self,
+        variant_id: SchemaVariantId,
+        name: &str,
+    ) -> Option<OutputSocketId> {
+        self.output_sockets
+            .get(&variant_id)
+            .and_then(|sockets| sockets.get(name))
+            .copied()
+    }
+
+    pub fn input_socket_id(
+        &self,
+        variant_id: SchemaVariantId,
+        name: &str,
+    ) -> Option<InputSocketId> {
+        self.input_sockets
+            .get(&variant_id)
+            .and_then(|sockets| sockets.get(name))
+            .copied()
+    }
+}
+
 pub struct ManagementOperator<'a> {
     ctx: &'a DalContext,
     manager_component_id: ComponentId,
+    manager_schema_id: SchemaId,
     last_component_geometry: NumericGeometry,
     operations: ManagementOperations,
-    manager_schema_id: SchemaId,
     schema_map: HashMap<String, SchemaId>,
     component_id_placeholders: HashMap<String, ComponentId>,
+    component_schema_map: ComponentSchemaMap,
+    socket_map: VariantSocketMap,
 }
 
 impl<'a> ManagementOperator<'a> {
     pub async fn new(
         ctx: &'a DalContext,
         manager_component_id: ComponentId,
-        manager_component_geometry: RawGeometry,
         operations: ManagementOperations,
-        schema_map: HashMap<String, SchemaId>,
-        mut component_id_placeholders: HashMap<String, ComponentId>,
+        management_execution: ManagementPrototypeExecution,
     ) -> ManagementResult<Self> {
+        let mut component_id_placeholders = management_execution.placeholders;
         component_id_placeholders.insert(SELF_ID.to_string(), manager_component_id);
 
-        let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
-            .await?
-            .id();
+        let mut component_schema_map = ComponentSchemaMap::new();
+        let manager_schema_id = component_schema_map
+            .schema_for_component_id(ctx, manager_component_id)
+            .await?;
+        component_schema_map
+            .variant_for_component_id(ctx, manager_component_id)
+            .await?;
 
         Ok(Self {
             ctx,
             manager_component_id,
-            last_component_geometry: manager_component_geometry.into(),
-            operations,
             manager_schema_id,
-            schema_map,
+            last_component_geometry: management_execution.manager_component_geometry.into(),
+            operations,
+            schema_map: management_execution.managed_schema_map,
             component_id_placeholders,
+            component_schema_map,
+            socket_map: VariantSocketMap::new(),
         })
+    }
+
+    fn manager_schema_id(&self) -> SchemaId {
+        self.manager_schema_id
     }
 
     async fn create_component(
@@ -230,7 +408,7 @@ impl<'a> ManagementOperator<'a> {
                 .get(kind)
                 .copied()
                 .ok_or(ManagementError::SchemaDoesNotExist(kind.clone()))?,
-            None => self.manager_schema_id,
+            None => self.manager_schema_id(),
         };
 
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
@@ -267,8 +445,156 @@ impl<'a> ManagementOperator<'a> {
         Ok((component.id(), geometry))
     }
 
+    async fn prepare_for_connection(
+        &mut self,
+        source_component_id: ComponentId,
+        connection: &ManagementConnection,
+    ) -> ManagementResult<(ComponentId, OutputSocketId, ComponentId, InputSocketId)> {
+        let from_variant_id = self
+            .component_schema_map
+            .variant_for_component_id(self.ctx, source_component_id)
+            .await?;
+
+        // if the map was already constructed this does nothing
+        self.socket_map
+            .add_sockets_for_variant(self.ctx, from_variant_id)
+            .await?;
+
+        let destination_component_id = self
+            .component_id_placeholders
+            .get(&connection.to.component)
+            .copied()
+            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
+                connection.to.component.clone(),
+            ))?;
+
+        let to_variant_id = self
+            .component_schema_map
+            .variant_for_component_id(self.ctx, destination_component_id)
+            .await?;
+
+        self.socket_map
+            .add_sockets_for_variant(self.ctx, to_variant_id)
+            .await?;
+
+        let source_output_socket_id = self
+            .socket_map
+            .output_socket_id(from_variant_id, &connection.from)
+            .ok_or(ManagementError::OutputSocketDoesNotExist(
+                source_component_id,
+                destination_component_id,
+                connection.from.to_owned(),
+            ))?;
+
+        let destination_input_socket_id = self
+            .socket_map
+            .input_socket_id(to_variant_id, &connection.to.socket)
+            .ok_or(ManagementError::OutputSocketDoesNotExist(
+                source_component_id,
+                destination_component_id,
+                connection.to.socket.to_owned(),
+            ))?;
+
+        Ok((
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        ))
+    }
+
+    async fn create_connection(
+        &mut self,
+        source_component_id: ComponentId,
+        connection: &ManagementConnection,
+    ) -> ManagementResult<()> {
+        let (
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        ) = self
+            .prepare_for_connection(source_component_id, connection)
+            .await?;
+
+        if let Some(connection_apa_id) = Component::connect(
+            self.ctx,
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        )
+        .await?
+        {
+            let apa = AttributePrototypeArgument::get_by_id(self.ctx, connection_apa_id).await?;
+            let created_info = {
+                let history_actor = self.ctx.history_actor();
+                let actor = ActorView::from_history_actor(self.ctx, *history_actor).await?;
+                HistoryEventMetadata {
+                    actor,
+                    timestamp: apa.timestamp().created_at,
+                }
+            };
+            let incoming_connection = IncomingConnection {
+                attribute_prototype_argument_id: connection_apa_id,
+                to_component_id: destination_component_id,
+                to_input_socket_id: destination_input_socket_id,
+                from_component_id: source_component_id,
+                from_output_socket_id: source_output_socket_id,
+                created_info,
+                deleted_info: None,
+            };
+            let edge = SummaryDiagramEdge::assemble_just_added(incoming_connection)?;
+
+            WsEvent::connection_upserted(self.ctx, edge)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn remove_connection(
+        &mut self,
+        source_component_id: ComponentId,
+        connection: &ManagementConnection,
+    ) -> ManagementResult<()> {
+        let (
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        ) = self
+            .prepare_for_connection(source_component_id, connection)
+            .await?;
+
+        Component::remove_connection(
+            self.ctx,
+            source_component_id,
+            source_output_socket_id,
+            destination_component_id,
+            destination_input_socket_id,
+        )
+        .await?;
+
+        WsEvent::connection_deleted(
+            self.ctx,
+            source_component_id,
+            destination_component_id,
+            source_output_socket_id,
+            destination_input_socket_id,
+        )
+        .await?;
+
+        Ok(())
+    }
+
     async fn creates(&mut self) -> ManagementResult<()> {
-        if let Some(creates) = &self.operations.create {
+        // We take here to avoid holding on to an immutable ref to self throughout the loop
+        let creates = self.operations.create.take();
+
+        if let Some(creates) = &creates {
             for (placeholder, operation) in creates {
                 if placeholder == SELF_ID {
                     return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder);
@@ -298,6 +624,12 @@ impl<'a> ManagementOperator<'a> {
                     .await?;
                 }
 
+                if let Some(connections) = &operation.connect {
+                    for create in connections {
+                        self.create_connection(component_id, create).await?;
+                    }
+                }
+
                 Component::add_manages_edge_to_component(
                     self.ctx,
                     self.manager_component_id,
@@ -321,19 +653,37 @@ impl<'a> ManagementOperator<'a> {
     }
 
     async fn updates(&mut self) -> ManagementResult<()> {
-        if let Some(updates) = &self.operations.update {
-            for (placeholder, operation) in updates {
-                let component_id = self.get_real_component_id(placeholder).await?;
+        let updates = self.operations.update.take();
+        let Some(updates) = &updates else {
+            return Ok(());
+        };
 
-                if let Some(properties) = &operation.properties {
-                    update_component(self.ctx, component_id, properties, &[]).await?;
+        for (placeholder, operation) in updates {
+            let component_id = self.get_real_component_id(placeholder).await?;
+
+            if let Some(properties) = &operation.properties {
+                update_component(self.ctx, component_id, properties, &[]).await?;
+            }
+
+            if let Some(update_conns) = &operation.connect {
+                if let Some(remove_conns) = &update_conns.remove {
+                    for to_remove in remove_conns {
+                        self.remove_connection(component_id, to_remove).await?;
+                    }
                 }
-                if let Some(raw_geometry) = &operation.geometry {
-                    let mut component = Component::get_by_id(self.ctx, component_id).await?;
-                    component
-                        .set_raw_geometry(self.ctx, raw_geometry.to_owned())
-                        .await?;
+
+                if let Some(add_conns) = &update_conns.add {
+                    for to_add in add_conns {
+                        self.create_connection(component_id, to_add).await?;
+                    }
                 }
+            }
+
+            if let Some(raw_geometry) = &operation.geometry {
+                let mut component = Component::get_by_id(self.ctx, component_id).await?;
+                component
+                    .set_raw_geometry(self.ctx, raw_geometry.to_owned())
+                    .await?;
             }
         }
 
