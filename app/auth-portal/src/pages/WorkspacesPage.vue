@@ -233,6 +233,10 @@ const createNewWorkspace = async () => {
 };
 
 const getSubscriptionTier = computed(() => {
+  if (activeSubscriptionDetails.value?.planCode === "si_internal") {
+    return "SI INTERNAL";
+  }
+
   if (activeSubscriptionDetails.value?.isTrial) {
     return "30-DAY FREE TRIAL";
   } else if (activeSubscriptionDetails.value?.exceededFreeTier) {
