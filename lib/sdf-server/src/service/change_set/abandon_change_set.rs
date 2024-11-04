@@ -42,8 +42,6 @@ pub async fn abandon_change_set(
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 
-    let name = change_set.clone().name;
-
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await?;
     change_set.abandon(&ctx).await?;
@@ -59,7 +57,7 @@ pub async fn abandon_change_set(
         }),
     );
 
-    ctx.write_audit_log(AuditLogKind::AbandonChangeset {}, name)
+    ctx.write_audit_log(AuditLogKind::AbandonChangeSet, change_set.name)
         .await?;
 
     ctx.commit_no_rebase().await?;

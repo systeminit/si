@@ -72,15 +72,13 @@ async fn round_trip(ctx: &mut DalContext) {
             .state
             .messages
     );
-    assert_eq!(
-        1,
-        destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages
-    );
+    let first_destination_stream_message_count = destination_stream
+        .get_info()
+        .await
+        .expect("could not get destination stream info")
+        .state
+        .messages;
+    assert!(first_destination_stream_message_count > 0);
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
@@ -91,7 +89,10 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(1, first_run_audit_logs.len());
+    assert_eq!(
+        first_destination_stream_message_count as usize, // expected
+        first_run_audit_logs.len()                       // actual
+    );
 
     // Update a property editor value and commit. Mimic sdf by audit logging here.
     let prop_path_raw = ["root", "domain", "name"];
@@ -146,15 +147,13 @@ async fn round_trip(ctx: &mut DalContext) {
             .state
             .messages
     );
-    assert_eq!(
-        2,
-        destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages
-    );
+    let second_destination_stream_message_count = destination_stream
+        .get_info()
+        .await
+        .expect("could not get destination stream info")
+        .state
+        .messages;
+    assert!(second_destination_stream_message_count > first_destination_stream_message_count);
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
@@ -165,7 +164,10 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(2, first_run_audit_logs.len());
+    assert_eq!(
+        second_destination_stream_message_count as usize, // expected
+        first_run_audit_logs.len()                        // actual
+    );
 
     // Delete a component and commit. Mimic sdf by audit logging here.
     ctx.write_audit_log(
@@ -198,15 +200,13 @@ async fn round_trip(ctx: &mut DalContext) {
             .state
             .messages
     );
-    assert_eq!(
-        3,
-        destination_stream
-            .get_info()
-            .await
-            .expect("could not get destination stream info")
-            .state
-            .messages
-    );
+    let third_destination_stream_message_count = destination_stream
+        .get_info()
+        .await
+        .expect("could not get destination stream info")
+        .state
+        .messages;
+    assert!(third_destination_stream_message_count > second_destination_stream_message_count);
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
@@ -217,5 +217,8 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(3, first_run_audit_logs.len());
+    assert_eq!(
+        third_destination_stream_message_count as usize, // expected
+        first_run_audit_logs.len()                       // actual
+    );
 }

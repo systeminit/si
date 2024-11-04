@@ -1,35 +1,134 @@
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{Display, EnumDiscriminants};
 
-use crate::Actor;
+use crate::{
+    ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId,
+    InputSocketId, OutputSocketId, PropId, SchemaVariantId, SecretId,
+};
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AuditLogV1 {
     pub actor: Actor,
     pub kind: AuditLogKindV1,
+    pub entity_name: String,
     pub timestamp: String,
+    pub change_set_id: Option<ChangeSetId>,
 }
 
 #[remain::sorted]
-#[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Serialize,
-    Eq,
-    PartialEq,
-    Hash,
-    AsRefStr,
-    Display,
-    EnumIter,
-    EnumString,
-)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Display, EnumDiscriminants)]
 pub enum AuditLogKindV1 {
-    CreateComponent,
-    DeleteComponent,
-    PerformRebase,
-    RunAction,
-    RunComputeValidations,
-    RunDependentValuesUpdate,
-    UpdatePropertyEditorValue,
+    AbandonChangeSet,
+    AddAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    ApplyChangeSet,
+    CancelAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    CreateChangeSet,
+    CreateComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
+    DeleteComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
+    PutActionOnHold {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    RunAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        run_status: bool,
+    },
+    UpdateDependentInputSocket {
+        input_socket_id: InputSocketId,
+        input_socket_name: String,
+        attribute_value_id: AttributeValueId,
+        input_attribute_value_ids: Vec<AttributeValueId>,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        component_id: ComponentId,
+        component_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+        before_value: Option<serde_json::Value>,
+        after_value: Option<serde_json::Value>,
+    },
+    UpdateDependentOutputSocket {
+        output_socket_id: OutputSocketId,
+        output_socket_name: String,
+        attribute_value_id: AttributeValueId,
+        input_attribute_value_ids: Vec<AttributeValueId>,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        component_id: ComponentId,
+        component_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+        before_value: Option<serde_json::Value>,
+        after_value: Option<serde_json::Value>,
+    },
+    UpdateDependentProperty {
+        prop_id: PropId,
+        prop_name: String,
+        attribute_value_id: AttributeValueId,
+        input_attribute_value_ids: Vec<AttributeValueId>,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        component_id: ComponentId,
+        component_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+        before_value: Option<serde_json::Value>,
+        after_value: Option<serde_json::Value>,
+    },
+    UpdatePropertyEditorValue {
+        component_id: ComponentId,
+        component_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+        prop_id: PropId,
+        prop_name: String,
+        attribute_value_id: AttributeValueId,
+        before_value: Option<serde_json::Value>,
+        after_value: Option<serde_json::Value>,
+    },
+    UpdatePropertyEditorValueForSecret {
+        component_id: ComponentId,
+        component_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+        prop_id: PropId,
+        prop_name: String,
+        attribute_value_id: AttributeValueId,
+        before_secret_name: Option<String>,
+        before_secret_id: Option<SecretId>,
+        after_secret_name: Option<String>,
+        after_secret_id: Option<SecretId>,
+    },
 }

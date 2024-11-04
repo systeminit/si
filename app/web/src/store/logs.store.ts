@@ -17,7 +17,7 @@ export type LogFilters = {
 };
 
 interface AuditLogCommon {
-  displayName: string;
+  title: string;
   userId?: UserId;
   userEmail?: string;
   kind: string;
@@ -89,7 +89,7 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.logs = response.logs.map(
                   (log: AuditLog) =>
                     ({
-                      displayName: log.displayName,
+                      title: log.title,
                       userName: log.userName ?? "System",
                       userId: log.userId,
                       userEmail: log.userEmail,

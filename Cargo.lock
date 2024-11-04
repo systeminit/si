@@ -206,6 +206,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "asset-sprayer-prompts"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "async-openai",
+ "clap",
+ "color-eyre",
+ "serde_yaml",
+ "tokio",
+]
+
+[[package]]
 name = "async-channel"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -18,7 +18,7 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) -> Res
 
     // Ensure that the arguments look as we expect.
     let name_av_id = name_prop.attribute_value(ctx).await.id();
-    let (_, arguments) =
+    let (_, arguments, _) =
         AttributeValue::prepare_arguments_for_prototype_function_execution(ctx, name_av_id).await?;
     assert_eq!(
         json![{

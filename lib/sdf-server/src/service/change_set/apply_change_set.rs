@@ -86,7 +86,7 @@ pub async fn apply_change_set(
         }),
     );
 
-    ctx.write_audit_log(AuditLogKind::ApplyChangeset {}, "-".to_string())
+    ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name.to_owned())
         .await?;
 
     // // If anything fails with uploading the workspace backup module, just log it. We shouldn't

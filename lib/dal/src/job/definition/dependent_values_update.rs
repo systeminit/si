@@ -1,3 +1,4 @@
+use audit_log::DependentValueUpdateAuditLogError;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     convert::TryFrom,
@@ -39,6 +40,8 @@ pub enum DependentValueUpdateError {
     AttributeValue(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("dependent values update audit log error: {0}")]
+    DependentValuesUpdateAuditLog(#[from] DependentValueUpdateAuditLogError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("status update error: {0}")]
@@ -317,11 +320,17 @@ impl DependentValuesUpdate {
                             attribute_value_id,
                         );
 
+                        let before_value = AttributeValue::get_by_id(ctx, attribute_value_id)
+                            .await?
+                            .value(ctx)
+                            .await?;
+
                         update_join_set.spawn(values_from_prototype_function_execution(
                             id,
                             parent_span,
                             ctx.clone(),
                             attribute_value_id,
+                            before_value,
                             self.set_value_lock.clone(),
                             status_update,
                         ));
@@ -333,13 +342,14 @@ impl DependentValuesUpdate {
 
             // Wait for a task to finish
             if let Some(join_result) = update_join_set.join_next().await {
-                let (task_id, execution_result) = join_result?;
-                metric!(counter.dvu.values_to_run = -1);
+                let (task_id, execution_result, before_value) = join_result?;
 
+                metric!(counter.dvu.values_to_run = -1);
                 metric!(counter.dvu.function_execution = -1);
+
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
-                        Ok((execution_values, func)) => {
+                        Ok((execution_values, func, input_attribute_value_ids)) => {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
@@ -365,7 +375,7 @@ impl DependentValuesUpdate {
                                     ctx,
                                     finished_value_id,
                                     execution_values,
-                                    func,
+                                    func.clone(),
                                 )
                                 .await
                                 {
@@ -374,6 +384,16 @@ impl DependentValuesUpdate {
                                         // become independent values (once all other dependencies are removed)
                                         dependency_graph.remove_value(finished_value_id);
                                         drop(write_guard);
+
+                                        // Publish the audit log for the updated dependent value.
+                                        audit_log::write(
+                                            ctx,
+                                            finished_value_id,
+                                            input_attribute_value_ids,
+                                            func,
+                                            before_value,
+                                        )
+                                        .await?;
                                     }
                                     Err(err) => {
                                         execution_error(ctx, err.to_string(), finished_value_id)
@@ -485,6 +505,12 @@ async fn execution_error_detail(
     ))
 }
 
+type PrototypeFunctionExecutionResult = (
+    Ulid,
+    DependentValueUpdateResult<(FuncRunValue, Func, Vec<AttributeValueId>)>,
+    Option<serde_json::Value>,
+);
+
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
 #[instrument(
@@ -501,14 +527,15 @@ async fn values_from_prototype_function_execution(
     parent_span: Span,
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
+    before_value: Option<serde_json::Value>,
     set_value_lock: Arc<RwLock<()>>,
     status_update: Option<StatusUpdate>,
-) -> (Ulid, DependentValueUpdateResult<(FuncRunValue, Func)>) {
+) -> PrototypeFunctionExecutionResult {
     metric!(counter.dvu.function_execution = 1);
 
     if let Some(status_update) = status_update {
         if let Err(err) = send_status_update(&ctx, status_update).await {
-            return (task_id, Err(err));
+            return (task_id, Err(err), before_value.clone());
         }
     }
 
@@ -517,7 +544,7 @@ async fn values_from_prototype_function_execution(
             .await
             .map_err(Into::into);
 
-    (task_id, result)
+    (task_id, result, before_value)
 }
 
 async fn send_status_update(
@@ -542,5 +569,152 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             job: Some(job),
             set_value_lock: Arc::new(RwLock::new(())),
         })
+    }
+}
+
+pub mod audit_log {
+    use si_events::audit_log::AuditLogKind;
+    use telemetry::prelude::*;
+    use thiserror::Error;
+
+    use crate::{
+        attribute::value::{AttributeValueError, ValueIsFor},
+        prop::PropError,
+        socket::{input::InputSocketError, output::OutputSocketError},
+        AttributeValue, AttributeValueId, Component, ComponentError, DalContext, Func, InputSocket,
+        OutputSocket, Prop, TransactionsError,
+    };
+
+    #[remain::sorted]
+    #[derive(Debug, Error)]
+    pub enum DependentValueUpdateAuditLogError {
+        #[error("attribute value error: {0}")]
+        AttributeValue(#[from] AttributeValueError),
+        #[error("component error: {0}")]
+        Component(#[from] ComponentError),
+        #[error("input socket error: {0}")]
+        InputSocket(#[from] InputSocketError),
+        #[error("output socket error: {0}")]
+        OutputSocket(#[from] OutputSocketError),
+        #[error("prop error: {0}")]
+        Prop(#[from] PropError),
+        #[error("write audit log error: {0}")]
+        WriteAuditLog(#[source] TransactionsError),
+    }
+
+    #[instrument(
+        name = "dependent_values_update.audit_log.write",
+        level = "trace",
+        skip_all
+    )]
+    pub async fn write(
+        ctx: &DalContext,
+        finished_value_id: AttributeValueId,
+        input_attribute_value_ids: Vec<AttributeValueId>,
+        func: Func,
+        before_value: Option<serde_json::Value>,
+    ) -> Result<(), DependentValueUpdateAuditLogError> {
+        // Metadata for who "owns" the attribute value.
+        let component_id = AttributeValue::component_id(ctx, finished_value_id).await?;
+        let component = Component::get_by_id(ctx, component_id).await?;
+        let component_name = component.name(ctx).await?;
+        let component_schema_variant = component.schema_variant(ctx).await?;
+
+        // Metadata for the attribute value.
+        let after_value = AttributeValue::get_by_id(ctx, finished_value_id)
+            .await?
+            .value(ctx)
+            .await?;
+        let is_for = AttributeValue::is_for(ctx, finished_value_id).await?;
+
+        // Write an audit log based on what the attribute value is for.
+        match is_for {
+            ValueIsFor::InputSocket(input_socket_id) => {
+                let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::UpdateDependentInputSocket {
+                        input_socket_id: input_socket_id.into(),
+                        input_socket_name: input_socket.name().to_owned(),
+                        attribute_value_id: finished_value_id.into(),
+                        input_attribute_value_ids: input_attribute_value_ids
+                            .into_iter()
+                            .map(|id| id.into())
+                            .collect(),
+                        func_id: func.id.into(),
+                        func_display_name: func.display_name,
+                        func_name: func.name,
+                        component_id: component_id.into(),
+                        component_name,
+                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_display_name: component_schema_variant
+                            .display_name()
+                            .to_string(),
+                        before_value,
+                        after_value,
+                    },
+                    input_socket.name().to_owned(),
+                )
+                .await
+                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+            }
+            ValueIsFor::OutputSocket(output_socket_id) => {
+                let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::UpdateDependentOutputSocket {
+                        output_socket_id: output_socket_id.into(),
+                        output_socket_name: output_socket.name().to_owned(),
+                        attribute_value_id: finished_value_id.into(),
+                        input_attribute_value_ids: input_attribute_value_ids
+                            .into_iter()
+                            .map(|id| id.into())
+                            .collect(),
+                        func_id: func.id.into(),
+                        func_display_name: func.display_name,
+                        func_name: func.name,
+                        component_id: component_id.into(),
+                        component_name,
+                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_display_name: component_schema_variant
+                            .display_name()
+                            .to_string(),
+                        before_value,
+                        after_value,
+                    },
+                    output_socket.name().to_owned(),
+                )
+                .await
+                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+            }
+            ValueIsFor::Prop(prop_id) => {
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::UpdateDependentProperty {
+                        prop_id: prop_id.into(),
+                        prop_name: prop.name.to_owned(),
+                        attribute_value_id: finished_value_id.into(),
+                        input_attribute_value_ids: input_attribute_value_ids
+                            .into_iter()
+                            .map(|id| id.into())
+                            .collect(),
+                        func_id: func.id.into(),
+                        func_display_name: func.display_name,
+                        func_name: func.name,
+                        component_id: component_id.into(),
+                        component_name,
+                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_display_name: component_schema_variant
+                            .display_name()
+                            .to_string(),
+                        before_value,
+                        after_value,
+                    },
+                    prop.name,
+                )
+                .await
+                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+            }
+        }
+
+        Ok(())
     }
 }

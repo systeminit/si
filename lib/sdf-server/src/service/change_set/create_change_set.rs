@@ -50,11 +50,8 @@ pub async fn create_change_set(
         }),
     );
 
-    ctx.write_audit_log(
-        AuditLogKind::CreateChangeset {},
-        change_set_name.to_string(),
-    )
-    .await?;
+    ctx.write_audit_log(AuditLogKind::CreateChangeSet, change_set_name.to_string())
+        .await?;
 
     WsEvent::change_set_created(&ctx, change_set.id)
         .await?
