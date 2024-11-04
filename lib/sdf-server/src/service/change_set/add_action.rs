@@ -4,9 +4,10 @@ use dal::{
         prototype::{ActionKind, ActionPrototype},
         Action,
     },
-    ActionPrototypeId, ChangeSet, Component, ComponentId, Visibility,
+    ActionPrototypeId, ChangeSet, Component, ComponentId, Func, Visibility,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;
 use crate::{
@@ -53,6 +54,8 @@ pub async fn add_action(
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
     let action = Action::new(&ctx, request.prototype_id, Some(request.component_id)).await?;
+    let func_id = ActionPrototype::func_id(&ctx, prototype.id).await?;
+    let func = Func::get_by_id_or_error(&ctx, func_id).await?;
     track(
         &posthog_client,
         &ctx,
@@ -68,6 +71,17 @@ pub async fn add_action(
         }),
     );
     // todo add ws event here
+    ctx.write_audit_log(
+        AuditLogKind::AddAction {
+            prototype_id: prototype.id().into(),
+            action_kind: prototype.kind.into(),
+            func_id: func_id.into(),
+            func_display_name: func.display_name,
+            func_name: func.name.clone(),
+        },
+        func.name,
+    )
+    .await?;
 
     ctx.commit().await?;
 

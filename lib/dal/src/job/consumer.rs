@@ -15,6 +15,7 @@ use crate::billing_publish::BillingPublishError;
 use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
+use crate::FuncError;
 use crate::{
     action::prototype::ActionPrototypeError, action::ActionError,
     attribute::value::AttributeValueError,
@@ -49,6 +50,8 @@ pub enum JobConsumerError {
     DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error("std io error: {0}")]

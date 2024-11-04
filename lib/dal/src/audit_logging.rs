@@ -226,13 +226,12 @@ async fn assemble_for_list(
                         .map_err(Box::new)?
                         .ok_or(AuditLoggingError::ChangeSetNotFound(change_set_id.into()))?;
                     match change_set.status {
-                        ChangeSetStatus::Abandoned
-                        | ChangeSetStatus::Failed
-                        | ChangeSetStatus::Rejected => {
+                        ChangeSetStatus::Failed | ChangeSetStatus::Rejected => {
                             trace!(?change_set.status, ?change_set.id, "skipping change set for audit log assembly due to status");
                             return Ok(None);
                         }
-                        ChangeSetStatus::Applied
+                        ChangeSetStatus::Abandoned
+                        | ChangeSetStatus::Applied
                         | ChangeSetStatus::Approved
                         | ChangeSetStatus::NeedsAbandonApproval
                         | ChangeSetStatus::NeedsApproval

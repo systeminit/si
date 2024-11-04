@@ -10,7 +10,7 @@
           header.id !== 'json' &&
           'cursor-pointer hover:underline',
         header.id === 'json' && 'w-8 px-2xs',
-        themeClasses('bg-shade-0', 'bg-shade-100'),
+        themeClasses('bg-neutral-400 text-black', 'bg-shade-100'),
       )
     "
     @mousedown="startActive"
