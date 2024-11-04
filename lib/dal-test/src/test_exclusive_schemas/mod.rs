@@ -47,27 +47,48 @@ mod swifty;
 const PKG_VERSION: &str = "2019-06-03";
 const PKG_CREATED_BY: &str = "System Initiative";
 
-const SCHEMA_ID_STARFIELD: &str = "01JARFRNN5VV1NMM0H5M63K3PY";
-const SCHEMA_ID_PRIVATE_LANGUAGE: &str = "01JARFRNN5VV1NMM0H5M63K3PZ";
-const SCHEMA_ID_ETOILES: &str = "01JARFRNN5VV1NMM0H5M63K3Q0";
-const SCHEMA_ID_MORNINGSTAR: &str = "01JARFRNN5VV1NMM0H5M63K3Q1";
-const SCHEMA_ID_FALLOUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q2";
-const SCHEMA_ID_DUMMY_SECRET: &str = "01JARFRNN5VV1NMM0H5M63K3Q3";
-const SCHEMA_ID_SWIFTY: &str = "01JARFRNN5VV1NMM0H5M63K3Q4";
-const SCHEMA_ID_KATY_PERRY: &str = "01JARFRNN5VV1NMM0H5M63K3Q5";
-const SCHEMA_ID_PIRATE: &str = "01JARFRNN5VV1NMM0H5M63K3Q6";
-const SCHEMA_ID_PET_SHOP: &str = "01JARFRNN5VV1NMM0H5M63K3Q7";
-const SCHEMA_ID_VALIDATED_INPUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q8";
-const SCHEMA_ID_VALIDATED_OUTPUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q9";
-const SCHEMA_ID_BAD_VALIDATIONS: &str = "01JARFRNN5VV1NMM0H5M63K3QA";
-const SCHEMA_ID_LARGE_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QB";
-const SCHEMA_ID_LARGE_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QC";
-const SCHEMA_ID_MEDIUM_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QD";
-const SCHEMA_ID_MEDIUM_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QE";
-const SCHEMA_ID_SMALL_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QF";
-const SCHEMA_ID_SMALL_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QG";
-const SCHEMA_ID_FAKE_DOCKER_IMAGE: &str = "01JARFRNN5VV1NMM0H5M63K3QH";
-const SCHEMA_ID_FAKE_BUTANE: &str = "01JARH2BTA5DK4J9Q4Q0XH46SR";
+/// Schema id for the `starfield` schema variant
+pub const SCHEMA_ID_STARFIELD: &str = "01JARFRNN5VV1NMM0H5M63K3PY";
+/// Schema id for the `private language` schema varitn
+pub const SCHEMA_ID_PRIVATE_LANGUAGE: &str = "01JARFRNN5VV1NMM0H5M63K3PZ";
+/// Schema id for the `etoiles` schema variant
+pub const SCHEMA_ID_ETOILES: &str = "01JARFRNN5VV1NMM0H5M63K3Q0";
+/// Schema id for the `morningstar` schema variant
+pub const SCHEMA_ID_MORNINGSTAR: &str = "01JARFRNN5VV1NMM0H5M63K3Q1";
+/// Schema id for the `fallout` schema variant
+pub const SCHEMA_ID_FALLOUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q2";
+/// Schema id for the `dummy secret` schema variant
+pub const SCHEMA_ID_DUMMY_SECRET: &str = "01JARFRNN5VV1NMM0H5M63K3Q3";
+/// Schema id for the `swifty` schema variant
+pub const SCHEMA_ID_SWIFTY: &str = "01JARFRNN5VV1NMM0H5M63K3Q4";
+/// Schema id for the `katy perry` schema variant
+pub const SCHEMA_ID_KATY_PERRY: &str = "01JARFRNN5VV1NMM0H5M63K3Q5";
+/// Schema id for the `pirate` schema variant
+pub const SCHEMA_ID_PIRATE: &str = "01JARFRNN5VV1NMM0H5M63K3Q6";
+/// Schema id for the `pet shop` schema variant
+pub const SCHEMA_ID_PET_SHOP: &str = "01JARFRNN5VV1NMM0H5M63K3Q7";
+/// Schema id for the `validated input` schema variant
+pub const SCHEMA_ID_VALIDATED_INPUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q8";
+/// Schema id for the `validated output` schema variant
+pub const SCHEMA_ID_VALIDATED_OUTPUT: &str = "01JARFRNN5VV1NMM0H5M63K3Q9";
+/// Schema id for the `bad validations` schema variant
+pub const SCHEMA_ID_BAD_VALIDATIONS: &str = "01JARFRNN5VV1NMM0H5M63K3QA";
+/// Schema id for the `large odd lego` schema variant
+pub const SCHEMA_ID_LARGE_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QB";
+/// Schema id for the `large even lego` schema variant
+pub const SCHEMA_ID_LARGE_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QC";
+/// Schema id for the `medium odd lego` schema variant
+pub const SCHEMA_ID_MEDIUM_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QD";
+/// Schema id for the `medium even lego` schema variant
+pub const SCHEMA_ID_MEDIUM_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QE";
+/// Schema id for the `small odd lego` schema variant
+pub const SCHEMA_ID_SMALL_ODD_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QF";
+/// Schema id for the `small even lego` schema variant
+pub const SCHEMA_ID_SMALL_EVEN_LEGO: &str = "01JARFRNN5VV1NMM0H5M63K3QG";
+/// Schema id for the `fake docker image` schema variant
+pub const SCHEMA_ID_FAKE_DOCKER_IMAGE: &str = "01JARFRNN5VV1NMM0H5M63K3QH";
+/// Schema id for the `fake butane` schema variant
+pub const SCHEMA_ID_FAKE_BUTANE: &str = "01JARH2BTA5DK4J9Q4Q0XH46SR";
 
 // allow expect here for the Ulid conversion. These will never panic.
 #[allow(clippy::expect_used)]

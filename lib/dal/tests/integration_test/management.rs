@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-
 use dal::{
     management::{
         prototype::ManagementPrototype, ManagementFuncReturn, ManagementOperator, NumericGeometry,
     },
-    AttributeValue, Component, DalContext,
+    AttributeValue, Component, DalContext, SchemaId,
 };
-use dal_test::{helpers::create_component_for_default_schema_name, test};
+use dal_test::{
+    helpers::create_component_for_default_schema_name, test, SCHEMA_ID_SMALL_EVEN_LEGO,
+};
 use veritech_client::ManagementFuncStatus;
 
 #[test]
@@ -36,13 +36,14 @@ async fn update_managed_components(ctx: &DalContext) {
         .find(|proto| proto.name() == "Update")
         .expect("could not find prototype");
 
-    let execution_result = management_prototype
+    let mut execution_result = management_prototype
         .execute(ctx, small_odd_lego.id())
         .await
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
         .result
+        .take()
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
@@ -51,19 +52,12 @@ async fn update_managed_components(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        execution_result.manager_component_geometry,
-        operations,
-        execution_result.managed_schema_map,
-        execution_result.placeholders,
-    )
-    .await
-    .expect("should create operator")
-    .operate()
-    .await
-    .expect("should operate");
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 
     let mut new_component = None;
     let components = Component::list(ctx).await.expect("list components");
@@ -121,13 +115,14 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
         .find(|proto| proto.name() == "Clone")
         .expect("could not find prototype");
 
-    let execution_result = management_prototype
+    let mut execution_result = management_prototype
         .execute(ctx, small_odd_lego.id())
         .await
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
         .result
+        .take()
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
@@ -136,19 +131,12 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        execution_result.manager_component_geometry,
-        operations,
-        execution_result.managed_schema_map,
-        execution_result.placeholders,
-    )
-    .await
-    .expect("should create operator")
-    .operate()
-    .await
-    .expect("should operate");
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 
     let mut new_component = None;
     let components = Component::list(ctx).await.expect("list components");
@@ -180,6 +168,160 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
 }
 
 #[test]
+async fn create_and_connect_to_self(ctx: &DalContext) {
+    let small_odd_lego =
+        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
+            .await
+            .expect("could not create component");
+
+    let av_id = Component::attribute_value_for_prop_by_id(
+        ctx,
+        small_odd_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await
+    .expect("av should exist");
+
+    let new_component_count = 3;
+    let string_count = format!("{new_component_count}");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count)))
+        .await
+        .expect("able to update value");
+
+    let manager_variant = small_odd_lego
+        .schema_variant(ctx)
+        .await
+        .expect("get variant");
+
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
+        .await
+        .expect("get prototypes")
+        .into_iter()
+        .find(|proto| proto.name() == "Create and Connect To Self")
+        .expect("could not find prototype");
+
+    let mut execution_result = management_prototype
+        .execute(ctx, small_odd_lego.id())
+        .await
+        .expect("should execute management prototype func");
+
+    let result: ManagementFuncReturn = execution_result
+        .result
+        .take()
+        .expect("should have a result success")
+        .try_into()
+        .expect("should be a valid management func return");
+
+    assert_eq!(result.status, ManagementFuncStatus::Ok);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    let components = Component::list(ctx).await.expect("get components");
+    assert_eq!(4, components.len());
+
+    let connections = small_odd_lego
+        .incoming_connections(ctx)
+        .await
+        .expect("get incoming conns");
+    assert_eq!(3, connections.len());
+    let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
+        .expect("make ulid")
+        .into();
+    for connection in connections {
+        let c = Component::get_by_id(ctx, connection.from_component_id)
+            .await
+            .expect("get component");
+        let schema_id = c.schema(ctx).await.expect("get schema").id();
+        assert_eq!(small_even_lego_schema_id, schema_id);
+    }
+}
+
+#[test]
+async fn create_and_connect_from_self(ctx: &DalContext) {
+    let small_odd_lego =
+        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
+            .await
+            .expect("could not create component");
+
+    let av_id = Component::attribute_value_for_prop_by_id(
+        ctx,
+        small_odd_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await
+    .expect("av should exist");
+
+    let new_component_count = 3;
+    let string_count = format!("{new_component_count}");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count)))
+        .await
+        .expect("able to update value");
+
+    let manager_variant = small_odd_lego
+        .schema_variant(ctx)
+        .await
+        .expect("get variant");
+
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
+        .await
+        .expect("get prototypes")
+        .into_iter()
+        .find(|proto| proto.name() == "Create and Connect From Self")
+        .expect("could not find prototype");
+
+    let mut execution_result = management_prototype
+        .execute(ctx, small_odd_lego.id())
+        .await
+        .expect("should execute management prototype func");
+
+    let result: ManagementFuncReturn = execution_result
+        .result
+        .take()
+        .expect("should have a result success")
+        .try_into()
+        .expect("should be a valid management func return");
+
+    assert_eq!(result.status, ManagementFuncStatus::Ok);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, small_odd_lego.id(), dbg!(operations), execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    let components = Component::list(ctx).await.expect("get components");
+    assert_eq!(4, components.len());
+
+    let connections = small_odd_lego
+        .outgoing_connections(ctx)
+        .await
+        .expect("get outgoing conns");
+    assert_eq!(3, connections.len());
+    let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
+        .expect("make ulid")
+        .into();
+    for connection in connections {
+        let c = Component::get_by_id(ctx, connection.to_component_id)
+            .await
+            .expect("get component");
+        let schema_id = c.schema(ctx).await.expect("get schema").id();
+        assert_eq!(small_even_lego_schema_id, schema_id);
+    }
+}
+
+#[test]
 async fn create_component_of_same_schema(ctx: &DalContext) {
     let small_odd_lego =
         create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
@@ -197,13 +339,14 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         .find(|proto| proto.name() == "Clone")
         .expect("could not find prototype");
 
-    let execution_result = management_prototype
+    let mut execution_result = management_prototype
         .execute(ctx, small_odd_lego.id())
         .await
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
         .result
+        .take()
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
@@ -212,19 +355,12 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        execution_result.manager_component_geometry,
-        operations,
-        execution_result.managed_schema_map,
-        execution_result.placeholders,
-    )
-    .await
-    .expect("should create operator")
-    .operate()
-    .await
-    .expect("should operate");
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 
     let mut new_component = None;
     let components = Component::list(ctx).await.expect("list components");
@@ -256,13 +392,14 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         "should have the same manager"
     );
 
-    let execution_result = management_prototype
+    let mut execution_result = management_prototype
         .execute(ctx, small_odd_lego.id())
         .await
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
         .result
+        .take()
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
@@ -271,19 +408,12 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        execution_result.manager_component_geometry,
-        operations,
-        execution_result.managed_schema_map,
-        HashMap::new(),
-    )
-    .await
-    .expect("should create operator")
-    .operate()
-    .await
-    .expect("should operate");
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 
     let mut new_component_2 = None;
 
@@ -329,13 +459,14 @@ async fn execute_management_func(ctx: &DalContext) {
         .find(|proto| proto.name() == "Import small odd lego")
         .expect("could not find prototype");
 
-    let execution_result = management_prototype
+    let mut execution_result = management_prototype
         .execute(ctx, small_odd_lego.id())
         .await
         .expect("should execute management prototype func");
 
     let result: ManagementFuncReturn = execution_result
         .result
+        .take()
         .expect("should have a result success")
         .try_into()
         .expect("should be a valid management func return");
@@ -344,19 +475,12 @@ async fn execute_management_func(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        execution_result.manager_component_geometry,
-        operations,
-        execution_result.managed_schema_map,
-        execution_result.placeholders,
-    )
-    .await
-    .expect("should create operator")
-    .operate()
-    .await
-    .expect("should operate");
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,

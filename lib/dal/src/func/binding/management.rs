@@ -85,8 +85,15 @@ impl ManagementBinding {
                                     r#"
                                 {{
                                     kind: {name},
-                                    properties: {sv_type},
-                                    geometry: Geometry,
+                                    properties?: {sv_type},
+                                    geometry?: Geometry,
+                                    connect?: {{
+                                        from: string,
+                                        to: {{
+                                            component: string;
+                                            socket: string;
+                                        }}
+                                    }}[],
                                 }}
                                 "#
                                 );
@@ -115,7 +122,13 @@ type Output = {{
   status: 'ok' | 'error';
   ops?: {{
     create?: {{ [key: string]: {component_types} }},
-    update?: {{ [key: string]: {{ properties?: {{ [key: string]: unknown }}, geometry: Geometry, }} }};
+    update?: {{ [key: string]: {{ 
+        properties?: {{ [key: string]: unknown }}, geometry?: Geometry, }},
+        connect?: {{
+            add?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
+            remove?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
+        }},
+    }},
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];
       remove?: ("create" | "update" | "refresh" | "delete" | string)[];

@@ -149,6 +149,87 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let update_mgmt_func_name = "test:updateManagedComponent";
     let update_mgmt_func = build_management_func(update_managed_func_code, update_mgmt_func_name)?;
 
+    let create_and_connect_from_self_func_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        let count = parseInt(thisComponent.properties?.si?.resourceId);
+        if (isNaN(count) || count < 1) {
+            count = 1;
+        }
+
+        const create: { [key: string]: unknown } = {};
+        const names = [];
+        for (let i = 0; i < count; i++) {
+            let name = `clone_${i}`;
+            names.push(name);
+            create[name] = {
+                kind: "small even lego",
+                properties: { si: { name } },
+            };
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                create,
+                update: {
+                    self: {
+                        connect: {
+                            add: names.map(name => ({ from: "two", to: { component: name, socket: "two" }}))
+                        } 
+                    }
+                }
+            },
+            message: `created ${names.join(", ")}`,
+        }
+    }
+    "#;
+    let create_and_connect_from_self_name = "test:createAndConnectFromSelf";
+    let create_and_connect_from_self_func = build_management_func(
+        create_and_connect_from_self_func_code,
+        create_and_connect_from_self_name,
+    )?;
+
+    let create_and_connect_to_self_func_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        let count = parseInt(thisComponent.properties?.si?.resourceId);
+        if (isNaN(count) || count < 1) {
+            count = 1;
+        }
+
+        let create: { [key: string]: unknown } = {};
+        for (let i = 0; i < count; i++) {
+            let name = `clone_${i}`;
+            create[name] = {
+                kind: "small even lego",
+                properties: { si: { name } },
+                connect: [{
+                    from: "one",
+                    to: {
+                        component: "self",
+                        socket: "one",
+                    }
+                }]
+            };
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                create,
+            };
+        }
+    }
+    "#;
+    let create_and_connect_to_self_name = "test:createAndConnectToSelf";
+    let create_and_connect_to_self_func = build_management_func(
+        create_and_connect_to_self_func_code,
+        create_and_connect_to_self_name,
+    )?;
+
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
@@ -185,7 +266,9 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 .domain_prop(bricks.domain_name_prop)
                 .domain_prop(bricks.domain_one_prop)
                 .domain_prop(bricks.domain_two_prop)
+                // Input socket "one"
                 .socket(bricks.socket_one)
+                // Output socket "two"
                 .socket(bricks.socket_two)
                 .action_func(
                     ActionFuncSpec::builder()
@@ -235,6 +318,24 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                         .func_unique_id(&update_mgmt_func.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Create and Connect From Self")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&create_and_connect_from_self_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Create and Connect To Self")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&create_and_connect_to_self_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -250,6 +351,8 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(import_management_func)
         .func(clone_me_mgmt_func)
         .func(update_mgmt_func)
+        .func(create_and_connect_from_self_func)
+        .func(create_and_connect_to_self_func)
         .schema(small_lego_schema)
         .build()?;
 
