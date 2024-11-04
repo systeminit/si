@@ -184,6 +184,33 @@ export async function getCustomerActiveSubscription(userPk: string) {
     // We default to an NOT_FOUND plan so we are fine here for now
   }
 
+  try {
+    const si_internal_resp = await client.subscriptions.findSubscription(
+      `${userPk}_si_internal`,
+    );
+    if (si_internal_resp.ok) {
+      const charges = _.get(
+        si_internal_resp.data.subscription,
+        "plan.charges",
+        [],
+      ) as ChargeObject[];
+      const paidCharge = _.find(
+        charges,
+        (charge: ChargeObject) => charge.billable_metric_code === "resource-hours" && parseFloat(_.get(charge, "properties.amount", "0")) > 0,
+      );
+      return {
+        planCode: si_internal_resp.data.subscription.plan_code,
+        subscriptionAt: si_internal_resp.data.subscription.subscription_at,
+        endingAt: si_internal_resp.data.subscription.ending_at,
+        isTrial: false,
+        exceededFreeTier: !!paidCharge,
+      };
+    }
+  } catch (err) {
+    /* empty */
+    // We default to an NOT_FOUND plan so we are fine here for now
+  }
+
   return {
     planCode: "NOT_FOUND",
     isTrial: false,
