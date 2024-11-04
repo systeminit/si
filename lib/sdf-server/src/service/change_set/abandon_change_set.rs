@@ -4,6 +4,7 @@ use axum::{
 };
 use dal::{change_set::ChangeSet, ChangeSetId};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;
 use crate::{
@@ -41,6 +42,8 @@ pub async fn abandon_change_set(
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 
+    let name = change_set.clone().name;
+
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await?;
     change_set.abandon(&ctx).await?;
@@ -55,6 +58,9 @@ pub async fn abandon_change_set(
             "abandoned_change_set": request.change_set_id,
         }),
     );
+
+    ctx.write_audit_log(AuditLogKind::AbandonChangeset {}, name)
+        .await?;
 
     ctx.commit_no_rebase().await?;
 

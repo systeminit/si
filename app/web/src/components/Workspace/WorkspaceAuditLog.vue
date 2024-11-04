@@ -106,10 +106,10 @@
                 clsx(
                   'h-lg text-sm',
                   rowCollapseState[Number(row.id)]
-                    ? 'bg-action-300'
+                    ? themeClasses('bg-action-200', 'bg-action-900')
                     : themeClasses(
-                        'odd:bg-neutral-200 even:bg-neutral-100 hover:bg-action-200',
-                        'odd:bg-neutral-700 even:bg-neutral-800 hover:bg-action-200',
+                        'odd:bg-neutral-200 even:bg-neutral-100 hover:border hover:border-action-500',
+                        'odd:bg-neutral-700 even:bg-neutral-800 hover:border hover:border-action-300',
                       ),
                 )
               "
@@ -190,7 +190,9 @@ const DEFAULT_FILTERS = {
   excludeSystemUser: false,
   kindFilter: [],
   serviceFilter: [],
-  changeSetFilter: [changeSetsStore.selectedChangeSetId],
+  changeSetFilter: changeSetsStore.headSelected
+    ? []
+    : [changeSetsStore.selectedChangeSetId],
   userFilter: [],
 } as LogFilters;
 const currentFilters = ref<LogFilters>({ ...DEFAULT_FILTERS });

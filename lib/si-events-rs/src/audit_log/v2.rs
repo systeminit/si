@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-use crate::{Actor, AttributeValueId, ChangeSetId, ComponentId, PropId, SchemaVariantId, SecretId};
+use crate::{
+    ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId,
+    PropId, SchemaVariantId, SecretId,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AuditLogV2 {
@@ -49,5 +52,37 @@ pub enum AuditLogKindV2 {
         before_secret_id: Option<SecretId>,
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
+    },
+    ApplyChangeset,
+    AddAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    PutActionOnHold {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    CancelAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    CreateChangeset,
+    AbandonChangeset,
+    ActionRun {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        run_status: bool,
     },
 }

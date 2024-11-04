@@ -1,7 +1,10 @@
 use axum::Json;
+use dal::action::prototype::ActionPrototype;
 use dal::action::Action;
+use dal::Func;
 use dal::{action::ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::ActionResult;
 use crate::extract::{AccessBuilder, HandlerContext};
@@ -21,6 +24,22 @@ pub async fn cancel(
 ) -> ActionResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     for action_id in request.ids {
+        let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+        let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+        let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
+        let func = Func::get_by_id_or_error(&ctx, func_id).await?;
+        ctx.write_audit_log(
+            AuditLogKind::CancelAction {
+                prototype_id: prototype_id.into(),
+                action_kind: prototype.kind.into(),
+                func_id: func_id.into(),
+                func_display_name: func.display_name,
+                func_name: func.name.clone(),
+            },
+            func.name,
+        )
+        .await?;
+
         Action::remove_by_id(&ctx, action_id).await?;
     }
     WsEvent::action_list_updated(&ctx)

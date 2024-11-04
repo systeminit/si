@@ -4,6 +4,7 @@ use axum::{
 };
 use dal::{change_set::ChangeSet, Func, Schema, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -84,6 +85,9 @@ pub async fn apply_change_set(
             "merged_change_set": request.visibility.change_set_id,
         }),
     );
+
+    ctx.write_audit_log(AuditLogKind::ApplyChangeset {}, "-".to_string())
+        .await?;
 
     // // If anything fails with uploading the workspace backup module, just log it. We shouldn't
     // // have the change set apply itself fail because of this.

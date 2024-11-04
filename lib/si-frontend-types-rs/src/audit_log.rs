@@ -1,7 +1,7 @@
 use serde::Serialize;
 use si_events::{
-    audit_log::AuditLogKind, AttributeValueId, ChangeSetId, ComponentId, PropId, SchemaVariantId,
-    SecretId, UserPk,
+    audit_log::AuditLogKind, ActionKind, ActionPrototypeId, AttributeValueId, ChangeSetId,
+    ComponentId, FuncId, PropId, SchemaVariantId, SecretId, UserPk,
 };
 use strum::EnumDiscriminants;
 
@@ -73,6 +73,45 @@ pub enum AuditLogDeserializedMetadata {
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
     },
+    #[serde(rename_all = "camelCase")]
+    ApplyChangeSet {},
+    #[serde(rename_all = "camelCase")]
+    AbandonChangeSet {},
+    #[serde(rename_all = "camelCase")]
+    CreateChangeSet {},
+    #[serde(rename_all = "camelCase")]
+    AddAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    PutActionOnHold {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    CancelAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    ActionRun {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        run_status: bool,
+    },
 }
 
 impl AuditLogDeserializedMetadata {
@@ -83,9 +122,16 @@ impl AuditLogDeserializedMetadata {
         match discrim {
             Discrim::CreateComponent => ("Created", "Component"),
             Discrim::DeleteComponent => ("Deleted", "Component"),
-            Discrim::UpdatePropertyEditorValue => ("Updated property in Component", "Property"),
+            Discrim::UpdatePropertyEditorValue => ("Updated Component", "Property"),
+            Discrim::ApplyChangeSet => ("Applied", "Change Set"),
+            Discrim::CreateChangeSet => ("Created", "Change Set"),
+            Discrim::AbandonChangeSet => ("Abandoned", "Change Set"),
+            Discrim::PutActionOnHold => ("Paused", "Action"),
+            Discrim::CancelAction => ("Removed", "Action"),
+            Discrim::AddAction => ("Enqueued", "Action"),
+            Discrim::ActionRun => ("Ran", "Action"),
             Discrim::UpdatePropertyEditorValueForSecret => {
-                ("Updated secret in Component", "Property for Secret")
+                ("Updated Component", "Property for Secret")
             }
         }
     }
@@ -161,6 +207,63 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 before_secret_id,
                 after_secret_name,
                 after_secret_id,
+            },
+            AuditLogKind::ApplyChangeset {} => Self::ApplyChangeSet {},
+            AuditLogKind::CreateChangeset {} => Self::CreateChangeSet {},
+            AuditLogKind::AbandonChangeset {} => Self::AbandonChangeSet {},
+            AuditLogKind::AddAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            } => Self::AddAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            },
+            AuditLogKind::PutActionOnHold {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            } => Self::PutActionOnHold {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            },
+            AuditLogKind::CancelAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            } => Self::CancelAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            },
+            AuditLogKind::ActionRun {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+                run_status,
+            } => Self::ActionRun {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+                run_status,
             },
         }
     }

@@ -5,7 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_events::{ActionResultState, FuncRunId};
+use si_events::{audit_log::AuditLogKind, ActionResultState, FuncRunId};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
@@ -24,7 +24,8 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Visibility, WsEvent,
+    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Func, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -212,11 +213,14 @@ async fn process_execution(
 ) -> JobConsumerResult<()> {
     let prototype_id = Action::prototype_id(ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+    let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
+    let func = Func::get_by_id_or_error(ctx, func_id).await?;
 
     let component_id = Action::component_id(ctx, action_id)
         .await?
         .ok_or(ActionError::ComponentNotFoundForAction(action_id))?;
     let component = Component::get_by_id(ctx, component_id).await?;
+    let mut success = false;
     if let Some(run_result) = action_run_result {
         // Set the resource if we have a payload, regardless of status *and* assemble a
         // summary
@@ -235,6 +239,8 @@ async fn process_execution(
         }
 
         if run_result.status == ResourceStatus::Ok {
+            success = true;
+
             // Remove `ActionId` from graph as the execution succeeded
             Action::remove_by_id(ctx, action_id).await?;
 
@@ -293,6 +299,19 @@ async fn process_execution(
         .await?
         .publish_on_commit(ctx)
         .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::ActionRun {
+            prototype_id: prototype_id.into(),
+            action_kind: prototype.kind.into(),
+            func_id: func.id.into(),
+            func_name: func.name.clone(),
+            func_display_name: func.display_name,
+            run_status: success,
+        },
+        func.name,
+    )
+    .await?;
 
     // Send the rebase request with the resource updated (if applicable)
     ctx.commit().await?;

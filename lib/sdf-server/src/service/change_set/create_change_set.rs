@@ -3,6 +3,7 @@ use axum::Json;
 use dal::change_set::ChangeSet;
 use dal::WsEvent;
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;
 use crate::{
@@ -45,9 +46,15 @@ pub async fn create_change_set(
         &host_name,
         "create_change_set",
         serde_json::json!({
-                    "change_set_name": change_set_name,
+                    "change_set_name": change_set_name.clone(),
         }),
     );
+
+    ctx.write_audit_log(
+        AuditLogKind::CreateChangeset {},
+        change_set_name.to_string(),
+    )
+    .await?;
 
     WsEvent::change_set_created(&ctx, change_set.id)
         .await?

@@ -582,6 +582,11 @@ impl DalContext {
     }
 
     pub async fn commit_no_rebase(&self) -> TransactionsResult<()> {
+        // Since we are not rebasing, we need to write the final message and flush all
+        // pending audit logs.
+        self.write_audit_log_final_message().await?;
+        self.publish_pending_audit_logs(None, None).await?;
+
         if self.blocking {
             self.blocking_commit_internal(DelayedRebaseWithReply::NoUpdates)
                 .await?;
