@@ -11,6 +11,16 @@ All notable changes to System Initiative will be documented in this file.
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 2024-11-04
+
+- View Opportunity Updates
+- Component Generation with AI
+- Audit Trail UI
+- Audit Trail Backend
+- ReBAC: AuthZed Backend
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/_1mN5V9sMjE?si=bnnNXFny8zTA9_6M" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## 2024-10-28
 
 - Azure Assets
