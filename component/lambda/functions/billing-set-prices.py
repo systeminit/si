@@ -1,140 +1,134 @@
 from datetime import datetime, timedelta
-from typing import Iterator, Literal, NotRequired, Optional, TypedDict, cast
-import boto3
+import logging
+from typing import Iterator, cast
 
-from si_logger import logger
-from si_redshift import Redshift
+from si_lambda import SiLambda
 from si_lago_api import (
-    LagoApi,
     ExternalSubscriptionId,
     LagoHTTPError,
-    LagoInvoicesResponse,
     LagoSubscription,
 )
 from si_types import OwnerPk
 
-
-session = boto3.Session()
-redshift = Redshift.from_env(session)
-lago = LagoApi.from_env(session)
-
-paul = OwnerPk("01GW0KXH4YJBWC7BTBAZ6ZR7EA")
-plan_code = "launch_pay_as_you_go"
+pay_as_you_go_plan_code = "launch_pay_as_you_go"
 billable_metric_code = "resource-hours"
 cost_per_resource_hour = 0.007
 
 
-def get_invoice_month():
-    """
-    Get the start of the month for the next invoice we will send out.
+class BillingSetPrices(SiLambda):
+    def get_invoice_month(self):
+        """
+        Get the start of the month for the next invoice we will send out.
 
-    Prices will be set based on the user's usage during this month.
-    """
-    now = datetime.now()
-    day_in_invoice_month = now
-    if now.day > 5:
-        day_in_invoice_month = day_in_invoice_month - timedelta(days=6)
-    return day_in_invoice_month.replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
-
-
-def get_subscription(
-    external_subscription_id: ExternalSubscriptionId,
-) -> LagoSubscription:
-    try:
-        return cast(
-            LagoSubscription,
-            lago.get(f"/api/v1/subscriptions/{external_subscription_id}").json()[
-                "subscription"
-            ],
+        Prices will be set based on the user's usage during the month that will be billed next.
+        In most cases that is the current month, but for the first few days of the months we
+        need to keep the price based on the previous month until the invoice goes out because
+        the invoice will automatically update to include the price. When the invoice is
+        finalized (after a grace period of a few days), we once again set the price based on
+        the current month's usage.
+        """
+        now = datetime.now()
+        day_in_invoice_month = now
+        if now.day > 5:
+            day_in_invoice_month = day_in_invoice_month - timedelta(days=6)
+        return day_in_invoice_month.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
         )
-    except LagoHTTPError as e:
-        if e.json.get("status") == 404:
-            logger.debug(
-                f"Subscription {external_subscription_id} is not active. Getting pending version ..."
-            )
+
+    def get_subscription(
+        self,
+        external_subscription_id: ExternalSubscriptionId,
+    ) -> LagoSubscription:
+        try:
             return cast(
                 LagoSubscription,
-                lago.get(
-                    f"/api/v1/subscriptions/{external_subscription_id}?status=pending"
-                ).json()["subscription"],
+                self.lago.get(f"/api/v1/subscriptions/{external_subscription_id}").json()[
+                    "subscription"
+                ],
             )
-        raise
+        except LagoHTTPError as e:
+            if e.json.get("status") == 404:
+                logging.debug(
+                    f"Subscription {external_subscription_id} is not active. Getting pending version ..."
+                )
+                return cast(
+                    LagoSubscription,
+                    self.lago.get(
+                        f"/api/v1/subscriptions/{external_subscription_id}?status=pending"
+                    ).json()["subscription"],
+                )
+            raise
 
+    def run(self):
 
-def lambda_handler(_event=None, _context=None):
-    #
-    # Upload prices
-    #
-    for [owner_pk, external_subscription_id, month, is_free] in cast(
-        Iterator[tuple[OwnerPk, ExternalSubscriptionId, str, bool]],
-        redshift.query_raw(
-            """
-            SELECT
-                owner_pk,
-                external_subscription_id,
-                month,
-                is_free
-            FROM workspace_operations.owner_billing_months
-            LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions USING(owner_pk)
-            WHERE month = :month
-            ORDER BY owner_pk
-            """,
-            month=str(get_invoice_month()),
-        ),
-    ):
-        if external_subscription_id is None:
-            logger.warning(f"Owner {owner_pk} has no subscriptions. Skipping ...")
-            continue
+        #
+        # Upload prices
+        #
+        for [owner_pk, _month, pay_as_you_go_subscription_id, is_free] in cast(
+            Iterator[tuple[OwnerPk, str, ExternalSubscriptionId, bool]],
+            self.redshift.query_raw(
+                """
+                SELECT owner_pk, month, external_id, is_free
+                FROM workspace_operations.owner_billing_months
+                LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions USING (owner_pk)
+                WHERE month = :month AND plan_code = 'launch_pay_as_you_go'
+                ORDER BY owner_pk
+                """,
+                month=str(self.get_invoice_month()),
+            ),
+        ):
+            if pay_as_you_go_subscription_id is None:
+                logging.warning(f"Owner {owner_pk} has no pay-as-you-go subscriptions. Skipping ...")
+                continue
 
-        # Decide the price for this user.
-        amount = 0 if is_free else cost_per_resource_hour
+            # Decide the price for this user.
+            amount = 0 if is_free else cost_per_resource_hour
 
-        # Get the current version of the subscription.
-        subscription = get_subscription(external_subscription_id)
-        if subscription["plan_code"] != plan_code:
-            logger.warning(
-                f"Subscription {external_subscription_id} is not on the {plan_code} plan. Assuming it has been set up custom, so not updating price ..."
+            # Get the current version of the subscription.
+            subscription = self.get_subscription(pay_as_you_go_subscription_id)
+            assert subscription["plan_code"] == pay_as_you_go_plan_code
+
+            # If the user's price is already correct, don't set it again.
+            charge = next(
+                charge
+                for charge in subscription["plan"]["charges"]
+                if charge["billable_metric_code"] == "resource-hours"
             )
-            continue
-        assert subscription["plan_code"] == plan_code
+            current_amount = charge["properties"].get("amount")
+            assert current_amount is not None
+            if float(current_amount) == amount:
+                logging.debug(
+                    f"Subscription {pay_as_you_go_subscription_id}'s price is already set to {amount}. Not updating ..."
+                )
+                continue
 
-        # If the user's price is already correct, don't set it again.
-        charge = next(
-            charge
-            for charge in subscription["plan"]["charges"]
-            if charge["billable_metric_code"] == "resource-hours"
-        )
-        current_amount = charge["properties"].get("amount")
-        assert current_amount is not None
-        if float(current_amount) == amount:
-            logger.debug(
-                f"Subscription {external_subscription_id}'s price is already set to {amount}. Not updating ..."
+            # TODO what if the plan has been terminated or replaced, but the last invoice is pending?
+            # We still want to modify the subscription. ... can we even do that?
+
+            # Set the subscription's price.
+            path = f"/api/v1/subscriptions/{pay_as_you_go_subscription_id}"
+            payload = {
+                    "status": subscription["status"],
+                    "subscription": {
+                        "plan_overrides": {
+                            "charges": [
+                                {
+                                    "billable_metric_id": charge["lago_billable_metric_id"],
+                                    "charge_model": "standard",
+                                    "properties": {"amount": str(amount)},
+                                }
+                            ]
+                        }
+                    },
+                }
+            logging.info(
+                f"Setting subscription {pay_as_you_go_subscription_id}'s price from {current_amount} to {amount} ..."
             )
-            continue
+            if self.dry_run:
+                logging.info("Would PUT {path} with payload: {payload}")
+            else:
+                self.lago.put(path, payload)
 
-        # TODO what if the plan has been terminated or replaced, but the last invoice is pending?
-        # We still want to modify the subscription. ... can we even do that?
 
-        # Set the subscription's price.
-        logger.info(
-            f"Setting subscription {external_subscription_id}'s price from {current_amount} to {amount} ..."
-        )
-        lago.put(
-            f"/api/v1/subscriptions/{external_subscription_id}",
-            {
-                "status": subscription["status"],
-                "subscription": {
-                    "plan_overrides": {
-                        "charges": [
-                            {
-                                "billable_metric_id": charge["lago_billable_metric_id"],
-                                "charge_model": "standard",
-                                "properties": {"amount": str(amount)},
-                            }
-                        ]
-                    }
-                },
-            },
-        )
+def lambda_handler(event={}, _context=None):
+    BillingSetPrices(event).run()

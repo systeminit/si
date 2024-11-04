@@ -1,8 +1,5 @@
 from collections.abc import Iterable
 from itertools import islice
-import os
-import boto3
-import json
 from typing import (
     Literal,
     NewType,
@@ -10,12 +7,13 @@ from typing import (
     Optional,
     TypeVar,
     TypedDict,
-    Union,
     cast,
 )
 from pip._vendor import requests
+from pip._vendor.requests.exceptions import HTTPError
+
 import urllib.parse
-from si_logger import logger
+import logging
 
 ExternalSubscriptionId = NewType("ExternalSubscriptionId", str)
 
@@ -52,27 +50,14 @@ class LagoHTTPError(Exception):
         super().__init__(*args, **kwargs)
         self.json = json
 
-
 class LagoApi:
-    @classmethod
-    def from_env(cls, session: boto3.Session):
-        lago_api_url = os.environ["LAGO_API_URL"]
-        lago_api_token = os.environ.get("LAGO_API_TOKEN")
-        if lago_api_token is None:
-            lago_api_token_arn = os.environ["LAGO_API_TOKEN_ARN"]
-
-            secretsmanager = session.client(service_name="secretsmanager")
-            secret = secretsmanager.get_secret_value(SecretId=lago_api_token_arn)
-            lago_api_token = json.loads(secret["SecretString"])["LAGO_API_TOKEN"]
-
-        return LagoApi(lago_api_url, lago_api_token)
-
     def __init__(self, lago_api_url: str, lago_api_token: str):
         self.lago_api_url = lago_api_url
         self.lago_api_token = lago_api_token
 
     def request(self, method: str, path: str, **kwargs):
-        response = requests.request(
+        logging.debug(f"Lago API request: {method} {path}")
+        response = requests.api.request(
             method,
             urllib.parse.urljoin(self.lago_api_url, path),
             headers={"Authorization": f"Bearer {self.lago_api_token}"},
@@ -80,7 +65,7 @@ class LagoApi:
         )
         try:
             response.raise_for_status()
-        except requests.HTTPError as e:
+        except HTTPError as e:
             raise LagoHTTPError(
                 f"{e.response.status_code} for {method} {path}: {e.response.text}",
                 json=e.response.json(),
@@ -100,7 +85,7 @@ class LagoApi:
     def post(self, path: str, json):
         return self.request("POST", path, json=json)
 
-    def upload_events(self, events: Iterable[LagoEvent]):
+    def upload_events(self, events: Iterable[LagoEvent], *, dry_run = False):
         """
         Uploads events to Lago, batching them in groups of 100 (Lago's maximum).
 
@@ -119,8 +104,14 @@ class LagoApi:
             total_events += len(event_batch)
 
             try:
-                self.post("/api/v1/events/batch", {"events": event_batch})
+                path = "/api/v1/events/batch"
+                payload = {"events": event_batch}
+                if dry_run:
+                    logging.info(f"Would POST {path} with payload: {payload}")
+                else:
+                    self.post(path, payload)
                 new_events += len(event_batch)
+                logging.debug(f"Uploaded {len(event_batch)} events.")
 
             except LagoHTTPError as e:
 
@@ -136,8 +127,8 @@ class LagoApi:
                         raise
 
                 # Retry the events that did not fail
-                logger.debug(
-                    f"Events already existed: {[event_batch[int(i)]['transaction_id'] for i in e.json["error_details"].keys()]}"
+                logging.debug(
+                    f"Events already existed: {[event_batch[int(i)]['transaction_id'] for i in e.json['error_details'].keys()]}"
                 )
                 retry_event_batch = [
                     event
@@ -146,11 +137,12 @@ class LagoApi:
                 ]
 
                 if len(retry_event_batch) > 0:
-                    logger.warning(
-                        f"{len(e.json["error_details"])} / {len(event_batch)} events already existed. Reuploading remaining {len(retry_event_batch)} events."
+                    logging.warning(
+                        f"{len(e.json['error_details'])} / {len(event_batch)} events already existed. Reuploading remaining {len(retry_event_batch)} events."
                     )
 
                     # Retry the events that didn't fail. Any failure here is a real error
+                    assert not dry_run
                     self.post("/api/v1/events/batch", {"events": retry_event_batch})
                     new_events += len(retry_event_batch)
 
