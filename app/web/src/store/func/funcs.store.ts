@@ -290,11 +290,16 @@ export const useFuncStore = () => {
             ]),
           });
         },
-        async FETCH_FUNC_LIST() {
-          return new ApiRequest<FuncSummary[], Visibility>({
+        async FETCH_FUNC_LIST(page = 1, pageSize = 100) {
+          interface FuncListByPage {
+            total: number;
+            funcs: FuncSummary[];
+          }
+          return new ApiRequest<FuncListByPage>({
             url: API_PREFIX,
+            params: { page, pageSize },
             onSuccess: (response) => {
-              response.forEach((func) => {
+              response.funcs.forEach((func) => {
                 const bindings = processBindings(func);
                 this.actionBindings[func.funcId] = bindings.actionBindings;
                 this.attributeBindings[func.funcId] =
@@ -308,7 +313,14 @@ export const useFuncStore = () => {
                   bindings.managementBindings;
               });
 
-              this.funcsById = _.keyBy(response, (f) => f.funcId);
+              this.funcsById = _.keyBy(response.funcs, (f) => f.funcId);
+
+              if (
+                response.funcs.length > 0 &&
+                page < Math.ceil(response.total / pageSize)
+              ) {
+                this.FETCH_FUNC_LIST(page + 1, pageSize);
+              }
             },
           });
         },

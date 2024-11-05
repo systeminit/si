@@ -1,15 +1,29 @@
 use axum::{
-    extract::{OriginalUri, Path},
+    extract::{OriginalUri, Path, Query},
     Json,
 };
 use dal::func::binding::FuncBinding;
 use dal::{ChangeSetId, DalContext, Func, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk};
-use si_frontend_types as frontend_types;
+use serde::{Deserialize, Serialize};
+use si_frontend_types::{self as frontend_types, FuncSummary};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
 use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListFuncRequest {
+    page: Option<usize>,
+    page_size: Option<usize>,
+}
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListFuncResponse {
+    total: usize,
+    funcs: Vec<frontend_types::FuncSummary>,
+}
 
 pub async fn list_funcs(
     HandlerContext(builder): HandlerContext,
@@ -17,7 +31,8 @@ pub async fn list_funcs(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> FuncAPIResult<Json<Vec<frontend_types::FuncSummary>>> {
+    Query(request): Query<ListFuncRequest>,
+) -> FuncAPIResult<Json<ListFuncResponse>> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -37,7 +52,34 @@ pub async fn list_funcs(
             }
         }
     }
-    Ok(Json(funcs))
+
+    // sort by func id
+    funcs.sort_by_key(|func| func.func_id);
+    // now paginate
+    let total = funcs.len();
+    let chunked_funcs = paginate(funcs, request.page, request.page_size);
+    Ok(Json(ListFuncResponse {
+        total,
+        funcs: chunked_funcs,
+    }))
+}
+
+fn paginate(
+    funcs: Vec<FuncSummary>,
+    page: Option<usize>,
+    page_size: Option<usize>,
+) -> Vec<FuncSummary> {
+    let page_size = page_size.unwrap_or(100);
+    let target_page = page.unwrap_or(1);
+
+    let mut current_page = 1;
+    for chunk in funcs.chunks(page_size) {
+        if current_page == target_page {
+            return chunk.to_vec();
+        }
+        current_page += 1;
+    }
+    Vec::new()
 }
 
 async fn treat_single_function(
