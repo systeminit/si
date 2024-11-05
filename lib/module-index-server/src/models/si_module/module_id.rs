@@ -74,6 +74,6 @@ impl sea_query::ValueType for ModuleId {
     }
 
     fn column_type() -> sea_query::ColumnType {
-        sea_query::ColumnType::String(None)
+        sea_query::ColumnType::String(StringLen::None)
     }
 }
