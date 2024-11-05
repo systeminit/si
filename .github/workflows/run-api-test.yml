@@ -92,9 +92,9 @@ jobs:
 
           echo "Using workspace ID: $workspace_id"
 
-          # Retry loop with 3 attempts
+          # Retry loop with 5 attempts
           n=0
-          max_retries=3
+          max_retries=5
           
           until [ $n -ge $max_retries ]
           do
@@ -115,6 +115,7 @@ jobs:
 
             n=$((n+1))
             echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
+            sleep 5
           done
 
           if [ $n -ge $max_retries ]; then
