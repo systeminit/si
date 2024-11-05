@@ -176,7 +176,7 @@
       </div>
       <div v-if="!createMode" class="flex justify-between items-center pt-md">
         <VButton
-          v-if="featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner"
+          v-if="isWorkspaceOwner"
           :disabled="!isWorkspaceOwner"
           :requestStatus="deleteWorkspaceReqStatus"
           iconRight="chevron--right"
@@ -214,7 +214,6 @@ import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
@@ -222,7 +221,6 @@ import MemberListItem from "@/components/MemberListItem.vue";
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },

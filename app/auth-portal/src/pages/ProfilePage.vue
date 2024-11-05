@@ -103,7 +103,6 @@
               placeholder="ex: eggscellent OR eggscellent#1234"
               :regex="DISCORD_TAG_REGEX"
               regexMessage="Invalid discord tag"
-              :required="!featureFlagsStore.OSS_RELEASE"
               class="pb-xs"
             >
               <template #instructions>
@@ -122,7 +121,6 @@
               placeholder="ex: devopsdude42"
               :regex="GITHUB_USERNAME_REGEX"
               regexMessage="Invalid github username"
-              :required="!featureFlagsStore.OSS_RELEASE"
             />
 
             <VButton
@@ -163,11 +161,8 @@ import {
 import { useHead } from "@vueuse/head";
 import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { API_HTTP_URL } from "@/store/api";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
@@ -241,9 +236,7 @@ const saveHandler = async () => {
         lastName: draftUser.value?.lastName,
       });
 
-      if (featureFlagsStore.SAAS_RELEASE) {
-        await authStore.BILLING_INTEGRATION();
-      }
+      await authStore.BILLING_INTEGRATION();
     }
 
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});
