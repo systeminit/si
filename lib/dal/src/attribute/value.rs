@@ -531,7 +531,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
-    ) -> AttributeValueResult<(FuncRunValue, Func)> {
+    ) -> AttributeValueResult<(FuncRunValue, Func, Vec<AttributeValueId>)> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
         // that is in the process of being mutated on another thread, since it
@@ -545,7 +545,7 @@ impl AttributeValue {
 
         // Prepare arguments for prototype function execution.
         let value_is_for = Self::is_for(ctx, attribute_value_id).await?;
-        let (prototype_func_id, prepared_args) =
+        let (prototype_func_id, prepared_args, input_attribute_value_ids) =
             Self::prepare_arguments_for_prototype_function_execution(ctx, attribute_value_id)
                 .await?;
 
@@ -636,18 +636,21 @@ impl AttributeValue {
                 .await?;
         }
 
-        Ok((func_values, func))
+        Ok((func_values, func, input_attribute_value_ids))
     }
 
     #[instrument(level = "debug" skip(ctx))]
     pub async fn prepare_arguments_for_prototype_function_execution(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<(FuncId, Value)> {
+    ) -> AttributeValueResult<(FuncId, Value, Vec<AttributeValueId>)> {
         // Cache the values we need for preparing arguments for execution.
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         let destination_component_id = Self::component_id(ctx, attribute_value_id).await?;
+
+        // Collect metadata for which attribute values are used to execute the prototype function for this one.
+        let mut input_attribute_value_ids = Vec::new();
 
         // Gather the raw func bindings args into a map.
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
@@ -712,6 +715,7 @@ impl AttributeValue {
                                 )
                                 .await?
                             {
+                                input_attribute_value_ids.push(av_id);
                                 let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
                                 // XXX: We need to properly handle the difference between "there is
                                 // XXX: no value" vs "the value is null", but right now we collapse
@@ -772,7 +776,11 @@ impl AttributeValue {
         // Serialize the raw args and we're good to go.
         let prepared_func_binding_args = serde_json::to_value(args_map)?;
 
-        Ok((prototype_func_id, prepared_func_binding_args))
+        Ok((
+            prototype_func_id,
+            prepared_func_binding_args,
+            input_attribute_value_ids,
+        ))
     }
 
     #[instrument(level = "info", skip(ctx))]
@@ -920,7 +928,7 @@ impl AttributeValue {
         // this lock is never locked for writing so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
         // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
-        let (execution_result, func) =
+        let (execution_result, func, _) =
             AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
         AttributeValue::set_values_from_func_run_value(

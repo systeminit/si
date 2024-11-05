@@ -10,7 +10,7 @@
           header.id !== 'json' &&
           'cursor-pointer hover:underline',
         header.id === 'json' && 'w-8 px-2xs',
-        themeClasses('bg-neutral-400 text-black', 'bg-shade-100'),
+        themeClasses('bg-neutral-400', 'bg-shade-100'),
       )
     "
     @mousedown="startActive"
@@ -96,7 +96,7 @@ const props = defineProps({
     type: Object as PropType<
       Header<
         {
-          displayName: string;
+          title: string;
           userName: string;
           userId?: string;
           userEmail?: string;

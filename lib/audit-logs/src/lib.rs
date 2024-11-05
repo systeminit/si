@@ -44,13 +44,9 @@ use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
-// TODO(nick): switch out of beta.
-// const STREAM_NAME: &str = "AUDIT_LOGS";
-// const STREAM_DESCRIPTION: &str = "Audit logs"
-// const SUBJECT_PREFIX: &str = "audit.log";
-const STREAM_NAME: &str = "AUDIT_LOGS_BETA";
-const STREAM_DESCRIPTION: &str = "Audit logs (beta)";
-const SUBJECT_PREFIX: &str = "beta.audit.log";
+const STREAM_NAME: &str = "AUDIT_LOGS";
+const STREAM_DESCRIPTION: &str = "Audit logs";
+const SUBJECT_PREFIX: &str = "audit.log";
 const THIRTY_DAYS_IN_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 #[allow(missing_docs)]

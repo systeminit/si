@@ -79,7 +79,7 @@ pub async fn get_prototype_arguments(
         }
     };
 
-    let (_, prepared_arguments) =
+    let (_, prepared_arguments, _) =
         AttributeValue::prepare_arguments_for_prototype_function_execution(
             &ctx,
             attribute_value_id,

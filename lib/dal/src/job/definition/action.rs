@@ -301,7 +301,7 @@ async fn process_execution(
         .await?;
 
     ctx.write_audit_log(
-        AuditLogKind::ActionRun {
+        AuditLogKind::RunAction {
             prototype_id: prototype_id.into(),
             action_kind: prototype.kind.into(),
             func_id: func.id.into(),

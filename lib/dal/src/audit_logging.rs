@@ -151,8 +151,7 @@ pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind, entity_name: Str
             &AuditLog::new(
                 ctx.events_actor(),
                 kind,
-                // NOTE(nick): for now, let's make this mandatory, but I think we'll learn that it shouldn't be.
-                Some(entity_name),
+                entity_name,
                 ctx.change_set_id().into(),
             ),
         )
@@ -217,7 +216,7 @@ async fn assemble_for_list(
     audit_log: AuditLog,
 ) -> Result<Option<FrontendAuditLog>> {
     match audit_log {
-        AuditLog::V3(inner) => {
+        AuditLog::V1(inner) => {
             // TODO(nick): cache change sets.
             let (change_set_id, change_set_name) = match inner.change_set_id {
                 Some(change_set_id) => {
@@ -261,10 +260,10 @@ async fn assemble_for_list(
 
             let kind = inner.kind.to_string();
             let deserialized_metadata = FrontendAuditLogDeserializedMetadata::from(inner.kind);
-            let (display_name, entity_type) = deserialized_metadata.display_name_and_entity_type();
+            let (title, entity_type) = deserialized_metadata.title_and_entity_type();
 
             Ok(Some(FrontendAuditLog {
-                display_name: display_name.to_owned(),
+                title: title.to_owned(),
                 user_id,
                 user_email,
                 user_name,
@@ -276,10 +275,6 @@ async fn assemble_for_list(
                 change_set_name,
                 metadata: serde_json::to_value(deserialized_metadata)?,
             }))
-        }
-        AuditLog::V2(_) | AuditLog::V1(_) => {
-            debug!("skipping older audit logs in beta...");
-            Ok(None)
         }
     }
 }

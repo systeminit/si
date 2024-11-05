@@ -104,12 +104,16 @@
             <tr
               :class="
                 clsx(
-                  'h-lg text-sm',
+                  'h-lg text-sm hover:border',
+                  themeClasses(
+                    'hover:border-action-500',
+                    'hover:border-action-300',
+                  ),
                   rowCollapseState[Number(row.id)]
                     ? themeClasses('bg-action-200', 'bg-action-900')
                     : themeClasses(
-                        'odd:bg-neutral-200 even:bg-neutral-100 hover:border hover:border-action-500',
-                        'odd:bg-neutral-700 even:bg-neutral-800 hover:border hover:border-action-300',
+                        'odd:bg-neutral-200 even:bg-neutral-100',
+                        'odd:bg-neutral-700 even:bg-neutral-800',
                       ),
                 )
               "
@@ -215,7 +219,7 @@ const columns = [
     header: "",
     cell: "",
   },
-  columnHelper.accessor("displayName", {
+  columnHelper.accessor("title", {
     header: "Event",
     cell: (info) => info.getValue(),
   }),

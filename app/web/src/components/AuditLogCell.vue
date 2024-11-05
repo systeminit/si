@@ -36,7 +36,7 @@ const props = defineProps({
     type: Object as PropType<
       Cell<
         {
-          displayName: string;
+          title: string;
           userName: string;
           userId?: string;
           userEmail?: string;
