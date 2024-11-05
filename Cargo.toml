@@ -4,6 +4,7 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
+    "bin/asset-sprayer-prompts",
     "bin/cyclone",
     "bin/forklift",
     "bin/module-index",

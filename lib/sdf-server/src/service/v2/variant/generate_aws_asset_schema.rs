@@ -1,3 +1,4 @@
+use asset_sprayer::prompt::Prompt;
 use axum::extract::{Host, OriginalUri, Path, Query};
 use dal::{
     schema::variant::authoring::VariantAuthoringClient, ChangeSet, ChangeSetId, SchemaVariant,
@@ -41,9 +42,11 @@ pub async fn generate_aws_asset_schema(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // Generate the code
-    let code = asset_sprayer
-        .aws_asset_schema(&aws_command.command, &aws_command.subcommand)
-        .await?;
+    let prompt = Prompt::AwsAssetSchema {
+        command: aws_command.command.clone(),
+        subcommand: aws_command.subcommand.clone(),
+    };
+    let code = asset_sprayer.run(&prompt).await?;
 
     // Update the function
     let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;

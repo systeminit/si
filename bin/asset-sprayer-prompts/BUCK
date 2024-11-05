@@ -1,0 +1,18 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "asset-sprayer-prompts",
+    deps = [
+        "//lib/asset-sprayer:asset-sprayer",
+        "//third-party/rust:async-openai",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:serde_yaml",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "asset-sprayer-prompts"},
+)
