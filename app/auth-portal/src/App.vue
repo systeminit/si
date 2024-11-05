@@ -442,9 +442,7 @@ const verifyEmail = async () => {
         lastName: storeUser.value?.lastName,
       });
 
-      if (featureFlagsStore.SAAS_RELEASE) {
-        await authStore.BILLING_INTEGRATION();
-      }
+      await authStore.BILLING_INTEGRATION();
     }
   }
 };

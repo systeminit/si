@@ -134,11 +134,9 @@ import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { useAuthStore } from "@/store/auth.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { LEGAL_DOCS_CONTENT } from "./load-docs";
 
 const authStore = useAuthStore();
-const featureFlagStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -147,9 +145,7 @@ const viewOnlyMode = route.name === "legal";
 
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
-const currentVersion = computed(() =>
-  featureFlagStore.SAAS_RELEASE ? TosVersion.v20240925 : TosVersion.v20230330,
-);
+const currentVersion = computed(() => TosVersion.v20240925);
 
 const currentDocs = computed(() => LEGAL_DOCS_CONTENT[currentVersion.value]);
 
