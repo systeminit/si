@@ -7,6 +7,7 @@ use dal::{
     ChangeSet, Component, ComponentId, SchemaVariant, Visibility,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -66,6 +67,21 @@ pub async fn upgrade(
     current_component
         .upgrade_to_new_variant(&ctx, upgrade_target_variant.id())
         .await?;
+
+    let comp_name = current_component.name(&ctx).await?;
+    ctx.write_audit_log(
+        AuditLogKind::UpgradeComponent {
+            name: comp_name.clone(),
+            component_id: current_component.id().into(),
+            schema_id: schema.id().into(),
+            old_schema_variant_id: current_schema_variant.id().into(),
+            old_schema_variant_name: current_schema_variant.display_name().to_owned(),
+            new_schema_variant_id: upgrade_target_variant.id().into(),
+            new_schema_variant_name: upgrade_target_variant.display_name().to_owned(),
+        },
+        comp_name,
+    )
+    .await?;
 
     track(
         &posthog_client,

@@ -6,6 +6,7 @@ use axum::{
 use chrono::Utc;
 use dal::{DalContext, HistoryActor, User, Visibility, Workspace, WorkspaceError, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use telemetry::prelude::*;
 use ulid::Ulid;
 
@@ -106,6 +107,17 @@ pub async fn export_workspace_inner(
     index_client
         .upload_workspace(workspace.name().as_str(), &version, workspace_payload)
         .await?;
+
+    let workspace_id = *workspace.pk();
+    ctx.write_audit_log(
+        AuditLogKind::ExportWorkspace {
+            id: workspace_id.into(),
+            name: workspace.name().clone(),
+            version: version.clone(),
+        },
+        workspace.name().to_string(),
+    )
+    .await?;
 
     // Track
     {

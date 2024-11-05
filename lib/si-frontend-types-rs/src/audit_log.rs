@@ -1,7 +1,8 @@
 use serde::Serialize;
 use si_events::{
     audit_log::AuditLogKind, ActionKind, ActionPrototypeId, AttributeValueId, ChangeSetId,
-    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaVariantId, SecretId, UserPk,
+    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
+    SecretId, UserPk, WorkspacePk,
 };
 use strum::EnumDiscriminants;
 
@@ -73,6 +74,8 @@ pub enum AuditLogDeserializedMetadata {
         schema_variant_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    CreateSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
     DeleteComponent {
         name: String,
         component_id: ComponentId,
@@ -80,7 +83,29 @@ pub enum AuditLogDeserializedMetadata {
         schema_variant_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    DeleteSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
+    ExportWorkspace {
+        id: WorkspacePk,
+        name: String,
+        version: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    InstallWorkspace {
+        id: WorkspacePk,
+        name: String,
+        version: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PutActionOnHold {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RetryAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
@@ -170,6 +195,18 @@ pub enum AuditLogDeserializedMetadata {
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
     },
+    #[serde(rename_all = "camelCase")]
+    UpdateSecret { name: String, secret_id: SecretId },
+    #[serde(rename_all = "camelCase")]
+    UpgradeComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_id: SchemaId,
+        new_schema_variant_id: SchemaVariantId,
+        new_schema_variant_name: String,
+        old_schema_variant_id: SchemaVariantId,
+        old_schema_variant_name: String,
+    },
 }
 
 impl AuditLogDeserializedMetadata {
@@ -183,8 +220,13 @@ impl AuditLogDeserializedMetadata {
             Kind::CancelAction => ("Removed", "Action"),
             Kind::CreateChangeSet => ("Created", "Change Set"),
             Kind::CreateComponent => ("Created", "Component"),
+            Kind::CreateSecret => ("Created", "Secret"),
             Kind::DeleteComponent => ("Deleted", "Component"),
+            Kind::DeleteSecret => ("Deleted", "Secret"),
+            Kind::ExportWorkspace => ("Exported", "Workspace"),
+            Kind::InstallWorkspace => ("Installed", "Workspace"),
             Kind::PutActionOnHold => ("Paused", "Action"),
+            Kind::RetryAction => ("Retried", "Action"),
             Kind::RunAction => ("Ran", "Action"),
             Kind::UpdateDependentInputSocket => ("Set Dependent", "Input Socket"),
             Kind::UpdateDependentOutputSocket => ("Set Dependent", "Output Socket"),
@@ -193,6 +235,8 @@ impl AuditLogDeserializedMetadata {
             Kind::UpdatePropertyEditorValueForSecret => {
                 ("Updated Component", "Property for Secret")
             }
+            Kind::UpdateSecret => ("Updated", "Secret"),
+            Kind::UpgradeComponent => ("Upgraded", "Component"),
         }
     }
 }
@@ -241,6 +285,9 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 schema_variant_id,
                 schema_variant_name,
             },
+            AuditLogKind::CreateSecret { name, secret_id } => {
+                Self::CreateSecret { name, secret_id }
+            }
             AuditLogKind::DeleteComponent {
                 name,
                 component_id,
@@ -252,6 +299,15 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 schema_variant_id,
                 schema_variant_name,
             },
+            AuditLogKind::DeleteSecret { name, secret_id } => {
+                Self::DeleteSecret { name, secret_id }
+            }
+            AuditLogKind::ExportWorkspace { id, name, version } => {
+                Self::ExportWorkspace { id, name, version }
+            }
+            AuditLogKind::InstallWorkspace { id, name, version } => {
+                Self::InstallWorkspace { id, name, version }
+            }
             AuditLogKind::PutActionOnHold {
                 prototype_id,
                 action_kind,
@@ -259,6 +315,19 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 func_display_name,
                 func_name,
             } => Self::PutActionOnHold {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            },
+            AuditLogKind::RetryAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+            } => Self::RetryAction {
                 prototype_id,
                 action_kind,
                 func_id,
@@ -412,6 +481,26 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 before_secret_id,
                 after_secret_name,
                 after_secret_id,
+            },
+            AuditLogKind::UpdateSecret { name, secret_id } => {
+                Self::UpdateSecret { name, secret_id }
+            }
+            AuditLogKind::UpgradeComponent {
+                name,
+                component_id,
+                schema_id,
+                new_schema_variant_id,
+                new_schema_variant_name,
+                old_schema_variant_id,
+                old_schema_variant_name,
+            } => Self::UpgradeComponent {
+                name,
+                component_id,
+                schema_id,
+                new_schema_variant_id,
+                new_schema_variant_name,
+                old_schema_variant_id,
+                old_schema_variant_name,
             },
         }
     }

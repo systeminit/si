@@ -3,7 +3,7 @@ use strum::{Display, EnumDiscriminants};
 
 use crate::{
     ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId,
-    InputSocketId, OutputSocketId, PropId, SchemaVariantId, SecretId,
+    InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, SecretId, WorkspacePk,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
@@ -41,13 +41,38 @@ pub enum AuditLogKindV1 {
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    CreateSecret {
+        name: String,
+        secret_id: SecretId,
+    },
     DeleteComponent {
         name: String,
         component_id: ComponentId,
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    DeleteSecret {
+        name: String,
+        secret_id: SecretId,
+    },
+    ExportWorkspace {
+        id: WorkspacePk,
+        name: String,
+        version: String,
+    },
+    InstallWorkspace {
+        id: WorkspacePk,
+        name: String,
+        version: String,
+    },
     PutActionOnHold {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    RetryAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
@@ -130,5 +155,18 @@ pub enum AuditLogKindV1 {
         before_secret_id: Option<SecretId>,
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
+    },
+    UpdateSecret {
+        name: String,
+        secret_id: SecretId,
+    },
+    UpgradeComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_id: SchemaId,
+        new_schema_variant_id: SchemaVariantId,
+        new_schema_variant_name: String,
+        old_schema_variant_id: SchemaVariantId,
+        old_schema_variant_name: String,
     },
 }

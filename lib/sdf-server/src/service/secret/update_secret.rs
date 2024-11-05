@@ -4,6 +4,7 @@ use dal::{
     Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::SecretResult;
 use crate::extract::{AccessBuilder, HandlerContext};
@@ -58,6 +59,15 @@ pub async fn update_secret(
             )
             .await?;
     }
+
+    ctx.write_audit_log(
+        AuditLogKind::UpdateSecret {
+            name: secret.name().to_string(),
+            secret_id: secret.id().into(),
+        },
+        secret.name().to_string(),
+    )
+    .await?;
 
     WsEvent::secret_updated(&ctx, secret.id())
         .await?
