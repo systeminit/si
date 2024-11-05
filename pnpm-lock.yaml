@@ -7965,15 +7965,10 @@ packages:
     resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
     dev: true
 
-  /cookie@0.3.1:
-    resolution: {integrity: sha512-+IJOX0OqlHCszo2mBUq+SrEbCj6w7Kpffqx60zYbPTFaO4+yYgRjHwcZNpWvaTylDHaV7PPmBHzSecZiMhtPgw==}
+  /cookie@0.7.0:
+    resolution: {integrity: sha512-qCf+V4dtlNhSRXGAZatc1TasyFO6GjohcOul807YOb5ik3+kQSnb4d7iajeCL8QHaJ4uZEjCgiCJerKXwdRVlQ==}
     engines: {node: '>= 0.6'}
     dev: false
-
-  /cookie@0.5.0:
-    resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
-    engines: {node: '>= 0.6'}
-    dev: true
 
   /cookiejar@2.1.4:
     resolution: {integrity: sha512-LDx6oHrK+PhzLKJU9j5S7/Y3jM/mUHvD/DeI1WQmJn652iPC5Y4TBzC9l+5OMOXlyTTA+SmVUPm0HQUwpD5Jqw==}
@@ -10076,7 +10071,7 @@ packages:
       body-parser: 1.20.3
       content-disposition: 0.5.4
       content-type: 1.0.5
-      cookie: 0.5.0
+      cookie: 0.7.0
       cookie-signature: 1.0.6
       debug: 2.6.9
       depd: 2.0.0
@@ -13784,7 +13779,7 @@ packages:
   /light-my-request@5.9.1:
     resolution: {integrity: sha512-UT7pUk8jNCR1wR7w3iWfIjx32DiB2f3hFdQSOwy3/EPQ3n3VocyipUxcyRZR0ahoev+fky69uA+GejPa9KuHKg==}
     dependencies:
-      cookie: 0.5.0
+      cookie: 0.7.0
       process-warning: 2.2.0
       set-cookie-parser: 2.6.0
     dev: true
@@ -13930,7 +13925,7 @@ packages:
   /local-storage-fallback@4.1.2:
     resolution: {integrity: sha512-oMTj4q8vnZ5FUB/tclzrTgMppSJgGs3ng4fm7qXEK/NjdzNKkVVncMRlsML+l6FwV0WBoOk8rVD5GqNQIhcz8Q==}
     dependencies:
-      cookie: 0.3.1
+      cookie: 0.7.0
     dev: false
 
   /locate-path@2.0.0:
@@ -14892,7 +14887,7 @@ packages:
       concordance: 5.0.4
       configstore: 5.0.1
       content-type: 1.0.5
-      cookie: 0.5.0
+      cookie: 0.7.0
       copy-template-dir: 1.4.0
       cron-parser: 4.8.1
       debug: 4.3.4
