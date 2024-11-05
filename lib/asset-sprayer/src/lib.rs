@@ -25,14 +25,16 @@
     while_true
 )]
 
-use async_openai::config::OpenAIConfig;
+use std::path::PathBuf;
+
+use async_openai::{config::OpenAIConfig, types::CreateChatCompletionRequest};
 use config::AssetSprayerConfig;
-use prompts::{Prompt, Prompts};
+use prompt::{Prompt, PromptKind};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 pub mod config;
-pub mod prompts;
+pub mod prompt;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -42,7 +44,7 @@ pub enum AssetSprayerError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Missing end {{/FETCH}} after {{FETCH}}: {0}")]
-    MissingEndFetch(Prompt),
+    MissingEndFetch(PromptKind),
     #[error("No choices were returned from the AI.")]
     NoChoices,
     #[error("OpenAI error: {0}")]
@@ -55,12 +57,12 @@ pub enum AssetSprayerError {
     Unreachable,
 }
 
-pub type AssetSprayerResult<T> = Result<T, AssetSprayerError>;
+pub type Result<T> = std::result::Result<T, AssetSprayerError>;
 
 #[derive(Debug, Clone)]
 pub struct AssetSprayer {
-    openai_client: async_openai::Client<OpenAIConfig>,
-    prompts: Prompts,
+    pub openai_client: async_openai::Client<OpenAIConfig>,
+    pub prompts_dir: Option<PathBuf>,
 }
 
 impl AssetSprayer {
@@ -70,32 +72,18 @@ impl AssetSprayer {
     ) -> Self {
         Self {
             openai_client,
-            prompts: Prompts::new(config.prompts_dir.map(Into::into)),
+            prompts_dir: config.prompts_dir.map(Into::into),
         }
     }
 
-    pub async fn aws_asset_schema(
-        &self,
-        aws_command: &str,
-        aws_subcommand: &str,
-    ) -> AssetSprayerResult<String> {
-        debug!(
-            "Generating asset schema for 'aws {} {}'",
-            aws_command, aws_subcommand
-        );
-        self.run(
-            Prompt::AssetSchema,
-            &[
-                ("{AWS_COMMAND}", aws_command),
-                ("{AWS_SUBCOMMAND}", aws_subcommand),
-            ],
-        )
-        .await
+    pub async fn prompt(&self, prompt: &Prompt) -> Result<CreateChatCompletionRequest> {
+        prompt.prompt(&self.prompts_dir).await
     }
 
-    async fn run(&self, prompt: Prompt, replace: &[(&str, &str)]) -> AssetSprayerResult<String> {
-        let request = self.prompts.create_request(prompt, replace).await?;
-        let response = self.openai_client.chat().create(request).await?;
+    pub async fn run(&self, prompt: &Prompt) -> Result<String> {
+        debug!("Generating {}", prompt);
+        let prompt = self.prompt(prompt).await?;
+        let response = self.openai_client.chat().create(prompt).await?;
         let choice = response
             .choices
             .into_iter()
@@ -111,13 +99,16 @@ impl AssetSprayer {
 
 #[ignore = "You must have OPENAI_API_KEY set to run this test"]
 #[tokio::test]
-async fn test_do_ai() -> AssetSprayerResult<()> {
+async fn test_do_ai() -> Result<()> {
     let asset_sprayer =
         AssetSprayer::new(async_openai::Client::new(), AssetSprayerConfig::default());
     println!(
         "Done: {}",
         asset_sprayer
-            .aws_asset_schema("sqs", "create-queue")
+            .run(&Prompt::AwsAssetSchema {
+                command: "sqs".into(),
+                subcommand: "create-queue".into()
+            })
             .await?
     );
     Ok(())

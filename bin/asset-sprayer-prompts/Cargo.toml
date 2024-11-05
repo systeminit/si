@@ -1,0 +1,21 @@
+[package]
+name = "asset-sprayer-prompts"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "asset-sprayer-prompts"
+path = "src/main.rs"
+
+[dependencies]
+asset-sprayer = { path = "../../lib/asset-sprayer" }
+async-openai = { workspace = true }
+clap = { workspace = true }
+color-eyre = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }
