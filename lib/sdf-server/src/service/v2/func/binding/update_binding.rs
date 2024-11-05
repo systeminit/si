@@ -3,14 +3,17 @@ use axum::{
     Json,
 };
 use dal::{
-    func::binding::{
-        action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
-        AttributeArgumentBinding,
+    func::{
+        binding::{
+            action::ActionBinding, attribute::AttributeBinding, leaf::LeafBinding,
+            management::ManagementBinding, AttributeArgumentBinding,
+        },
+        FuncKind,
     },
     schema::variant::leaves::LeafInputLocation,
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, DalContext, Func, FuncId, WorkspacePk, WsEvent,
 };
-use si_frontend_types as frontend_types;
+use si_frontend_types::{self as frontend_types, FuncBinding};
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -20,6 +23,142 @@ use crate::{
     },
     track,
 };
+
+async fn update_attribute_func_bindings(
+    ctx: &DalContext,
+    bindings: Vec<FuncBinding>,
+) -> FuncAPIResult<()> {
+    for binding in bindings {
+        let frontend_types::FuncBinding::Attribute {
+            argument_bindings,
+            attribute_prototype_id,
+            ..
+        } = binding
+        else {
+            continue;
+        };
+
+        let attribute_prototype_id =
+            attribute_prototype_id.ok_or(FuncAPIError::MissingPrototypeId)?;
+        let mut arguments: Vec<AttributeArgumentBinding> = vec![];
+        for arg_binding in argument_bindings {
+            let input_location = AttributeBinding::assemble_attribute_input_location(
+                arg_binding.prop_id,
+                arg_binding.input_socket_id,
+                arg_binding.static_value,
+            )?;
+            arguments.push(AttributeArgumentBinding {
+                func_argument_id: arg_binding.func_argument_id.into_raw_id().into(),
+                attribute_func_input_location: input_location,
+                attribute_prototype_argument_id: None, // when creating a new prototype,
+                                                       // we don't have the attribute prototype arguments yet
+            });
+        }
+
+        AttributeBinding::update_attribute_binding_arguments(
+            ctx,
+            attribute_prototype_id.into_raw_id().into(),
+            arguments,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn update_action_func_bindings(
+    ctx: &DalContext,
+    bindings: Vec<FuncBinding>,
+) -> FuncAPIResult<()> {
+    for binding in bindings {
+        let frontend_types::FuncBinding::Action {
+            action_prototype_id,
+            kind,
+            ..
+        } = binding
+        else {
+            continue;
+        };
+
+        let (action_prototype_id, kind) = action_prototype_id
+            .zip(kind)
+            .ok_or(FuncAPIError::MissingActionKindForActionFunc)?;
+
+        ActionBinding::update_action_binding(
+            ctx,
+            action_prototype_id.into_raw_id().into(),
+            kind.into(),
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn update_leaf_func_bindings(
+    ctx: &DalContext,
+    bindings: Vec<FuncBinding>,
+) -> FuncAPIResult<()> {
+    for binding in bindings {
+        let (attribute_prototype_id, inputs) = binding
+            .leaf_inputs()
+            .ok_or(FuncAPIError::MissingPrototypeId)?;
+        let inputs: Vec<LeafInputLocation> = inputs.into_iter().map(|input| input.into()).collect();
+
+        match binding {
+            FuncBinding::CodeGeneration { .. } => {
+                LeafBinding::update_leaf_func_binding(
+                    ctx,
+                    attribute_prototype_id.into_raw_id().into(),
+                    &inputs,
+                )
+                .await?;
+            }
+            FuncBinding::Qualification { .. } => {
+                LeafBinding::update_leaf_func_binding(
+                    ctx,
+                    attribute_prototype_id.into_raw_id().into(),
+                    &inputs,
+                )
+                .await?;
+            }
+
+            _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
+        }
+    }
+
+    Ok(())
+}
+
+async fn update_mangement_func_bindings(
+    ctx: &DalContext,
+    bindings: Vec<FuncBinding>,
+) -> FuncAPIResult<()> {
+    for binding in bindings {
+        let frontend_types::FuncBinding::Management {
+            managed_schemas,
+            management_prototype_id,
+            ..
+        } = binding
+        else {
+            return Err(FuncAPIError::WrongFunctionKindForBinding);
+        };
+
+        let management_prototype_id = management_prototype_id
+            .ok_or(FuncAPIError::MissingPrototypeId)?
+            .into_raw_id()
+            .into();
+
+        ManagementBinding::update_management_binding(
+            ctx,
+            management_prototype_id,
+            managed_schemas.map(|schemas| schemas.into_iter().map(Into::into).collect()),
+        )
+        .await?;
+    }
+
+    Ok(())
+}
 
 pub async fn update_binding(
     HandlerContext(builder): HandlerContext,
@@ -37,126 +176,25 @@ pub async fn update_binding(
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
     // add cycle check so we don't end up with a cycle as a result of updating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
-    match func.kind {
-        dal::func::FuncKind::Attribute | dal::func::FuncKind::Intrinsic => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::Attribute {
-                    argument_bindings,
-                    attribute_prototype_id,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let mut arguments: Vec<AttributeArgumentBinding> = vec![];
-                            for arg_binding in argument_bindings {
-                                let input_location =
-                                    AttributeBinding::assemble_attribute_input_location(
-                                        arg_binding.prop_id,
-                                        arg_binding.input_socket_id,
-                                        arg_binding.static_value,
-                                    )?;
-                                arguments.push(AttributeArgumentBinding {
-                                    func_argument_id: arg_binding
-                                        .func_argument_id
-                                        .into_raw_id()
-                                        .into(),
-                                    attribute_func_input_location: input_location,
-                                    attribute_prototype_argument_id: None, // when creating a new prototype,
-                                                                           // we don't have the attribute prototype arguments yet
-                                });
-                            }
 
-                            AttributeBinding::update_attribute_binding_arguments(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                                arguments,
-                            )
-                            .await?;
-                        }
-                        None => return Err(FuncAPIError::MissingPrototypeId),
-                    }
-                }
-            }
+    match func.kind {
+        FuncKind::Attribute | FuncKind::Intrinsic => {
+            update_attribute_func_bindings(&ctx, request.bindings).await?;
         }
-        dal::func::FuncKind::Action => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::Action {
-                    action_prototype_id,
-                    kind,
-                    ..
-                } = binding
-                {
-                    match (action_prototype_id, kind) {
-                        (Some(action_prototype_id), Some(kind)) => {
-                            ActionBinding::update_action_binding(
-                                &ctx,
-                                action_prototype_id.into_raw_id().into(),
-                                kind.into(),
-                            )
-                            .await?;
-                        }
-                        _ => {
-                            return Err(FuncAPIError::MissingActionKindForActionFunc);
-                        }
-                    }
-                } else {
-                    return Err(FuncAPIError::MissingActionKindForActionFunc);
-                }
-            }
+        FuncKind::Action => {
+            update_action_func_bindings(&ctx, request.bindings).await?;
         }
-        dal::func::FuncKind::CodeGeneration | dal::func::FuncKind::Qualification => {
-            for binding in request.bindings {
-                if let frontend_types::FuncBinding::CodeGeneration {
-                    attribute_prototype_id,
-                    inputs,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let inputs: Vec<LeafInputLocation> =
-                                inputs.into_iter().map(|input| input.into()).collect();
-                            LeafBinding::update_leaf_func_binding(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                                &inputs,
-                            )
-                            .await?;
-                        }
-                        None => {
-                            return Err(FuncAPIError::MissingPrototypeId);
-                        }
-                    }
-                } else if let frontend_types::FuncBinding::Qualification {
-                    attribute_prototype_id,
-                    inputs,
-                    ..
-                } = binding
-                {
-                    match attribute_prototype_id {
-                        Some(attribute_prototype_id) => {
-                            let inputs: Vec<LeafInputLocation> =
-                                inputs.into_iter().map(|input| input.into()).collect();
-                            LeafBinding::update_leaf_func_binding(
-                                &ctx,
-                                attribute_prototype_id.into_raw_id().into(),
-                                &inputs,
-                            )
-                            .await?;
-                        }
-                        None => {
-                            return Err(FuncAPIError::MissingPrototypeId);
-                        }
-                    }
-                } else {
-                    return Err(FuncAPIError::WrongFunctionKindForBinding);
-                }
-            }
+        FuncKind::CodeGeneration | FuncKind::Qualification => {
+            update_leaf_func_bindings(&ctx, request.bindings).await?;
+        }
+        FuncKind::Management => {
+            update_mangement_func_bindings(&ctx, request.bindings).await?;
         }
         _ => return Err(FuncAPIError::WrongFunctionKindForBinding),
     }
+
     drop(cycle_check_guard);
+
     track(
         &posthog_client,
         &ctx,

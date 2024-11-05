@@ -191,6 +191,7 @@ export interface Management {
   // needed on create
   schemaVariantId: SchemaVariantId | null;
   componentId: ComponentId | null;
+  managedSchemas?: string[];
 }
 
 export interface Authentication {

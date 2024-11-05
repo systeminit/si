@@ -150,6 +150,7 @@
             <ManagementDetails
               v-if="editingFunc.kind === FuncKind.Management"
               ref="detachRef"
+              :disabled="editingFunc.isLocked"
               :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
