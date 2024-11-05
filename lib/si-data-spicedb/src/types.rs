@@ -55,12 +55,12 @@ impl From<v1::ReadSchemaResponse> for ReadSchemaResponse {
 }
 
 #[derive(Clone, Debug)]
-pub struct PermissionsObject {
+pub struct SpiceDBObject {
     r#type: String,
     id: String,
 }
 
-impl PermissionsObject {
+impl SpiceDBObject {
     pub fn new(r#type: impl ToString, id: impl ToString) -> Self {
         Self {
             id: id.to_string(),
@@ -88,17 +88,17 @@ pub type Relationships = Vec<Relationship>;
 
 #[derive(Clone, Debug)]
 pub struct Relationship {
-    object: PermissionsObject,
+    object: SpiceDBObject,
     relation: String,
-    subject: PermissionsObject,
+    subject: SpiceDBObject,
     zed_token: Option<ZedToken>,
 }
 
 impl Relationship {
     pub fn new(
-        object: PermissionsObject,
+        object: SpiceDBObject,
         relation: impl ToString,
-        subject: PermissionsObject,
+        subject: SpiceDBObject,
         zed_token: Option<ZedToken>,
     ) -> Self {
         Self {
@@ -148,7 +148,7 @@ impl Relationship {
         }
     }
 
-    pub fn object(&self) -> &PermissionsObject {
+    pub fn object(&self) -> &SpiceDBObject {
         &self.object
     }
 
@@ -156,7 +156,7 @@ impl Relationship {
         &self.relation
     }
 
-    pub fn subject(&self) -> &PermissionsObject {
+    pub fn subject(&self) -> &SpiceDBObject {
         &self.subject
     }
 
@@ -187,9 +187,9 @@ impl From<v1::Relationship> for Relationship {
             None => (String::new(), String::new()),
         };
         Relationship::new(
-            PermissionsObject::new(obj_type, obj_id),
+            SpiceDBObject::new(obj_type, obj_id),
             value.relation,
-            PermissionsObject::new(sub_type, sub_id),
+            SpiceDBObject::new(sub_type, sub_id),
             None,
         )
     }
@@ -197,17 +197,17 @@ impl From<v1::Relationship> for Relationship {
 
 #[derive(Clone, Debug)]
 pub struct Permission {
-    resource: PermissionsObject,
+    resource: SpiceDBObject,
     permission: String,
-    subject: PermissionsObject,
+    subject: SpiceDBObject,
     zed_token: Option<ZedToken>,
 }
 
 impl Permission {
     pub fn new(
-        resource: PermissionsObject,
+        resource: SpiceDBObject,
         permission: impl ToString,
-        subject: PermissionsObject,
+        subject: SpiceDBObject,
         zed_token: Option<ZedToken>,
     ) -> Self {
         Self {

@@ -92,10 +92,10 @@ const pendingApprovalModalRef = ref<InstanceType<
   typeof ApprovalPendingModal
 > | null>(null);
 
-// TODO(WENDY) - Mock data we need to replace with real data!
-const userIsApprover = computed(() => true);
-const pendingApprovalCount = computed(() => 3);
-// END MOCK DATA
+const userIsApprover = computed(() => changeSetStore.currentUserIsApprover);
+const pendingApprovalCount = computed(
+  () => changeSetStore.changeSetsNeedingApproval.length,
+);
 
 const openPendingApprovalsModal = () => {
   pendingApprovalModalRef.value?.open();

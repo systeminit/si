@@ -22,8 +22,7 @@
   <div
     v-if="
       featureFlagsStore.REBAC &&
-      changeSetsStore.selectedChangeSet?.status ===
-        ChangeSetStatus.NeedsApproval
+      changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open
     "
     :class="
       clsx(

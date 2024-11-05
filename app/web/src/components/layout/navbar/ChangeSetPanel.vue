@@ -93,6 +93,7 @@
       votingKind="abandon"
       @completeVoting="changeSetsStore.ABANDON_CHANGE_SET"
     />
+    <AbandonChangeSetModal ref="abandonModalRef" />
   </div>
 </template>
 
@@ -111,6 +112,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowModal from "@/components/ApprovalFlowModal.vue";
+import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
@@ -139,8 +141,16 @@ const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
   null,
 );
 
+const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
+  null,
+);
+
 const openApprovalFlowModal = () => {
-  approvalFlowModalRef.value?.open();
+  if (!featureFlagsStore.REBAC) {
+    approvalFlowModalRef.value?.open();
+  } else {
+    abandonModalRef.value?.open();
+  }
 };
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
@@ -182,7 +192,8 @@ function onSelectChangeSet(newVal: string) {
     if (
       changeSetsStore.changeSetsById[newVal]?.status !== ChangeSetStatus.Open &&
       changeSetsStore.changeSetsById[newVal]?.mergeRequestedByUserId !==
-        authStore.user?.pk
+        authStore.user?.pk &&
+      !featureFlagsStore.REBAC
     ) {
       return;
     }

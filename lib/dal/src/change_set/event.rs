@@ -19,18 +19,14 @@ impl WsEvent {
 
     pub async fn change_set_status_changed(
         ctx: &DalContext,
-        change_set_id: ChangeSetId,
-        user_pk: Option<UserPk>,
         from_status: ChangeSetStatus,
-        to_status: ChangeSetStatus,
+        change_set: si_frontend_types::ChangeSet,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ChangeSetStatusChanged(ChangeSetStateChangePayload {
-                change_set_id,
                 from_status,
-                to_status,
-                user_pk,
+                change_set,
             }),
         )
         .await
@@ -179,10 +175,8 @@ pub struct ChangeSetActorPayload {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetStateChangePayload {
-    change_set_id: ChangeSetId,
     from_status: ChangeSetStatus,
-    to_status: ChangeSetStatus,
-    user_pk: Option<UserPk>,
+    change_set: si_frontend_types::ChangeSet,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

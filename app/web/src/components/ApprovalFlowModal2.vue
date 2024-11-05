@@ -41,13 +41,18 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { VButton, Modal } from "@si/vue-lib/design-system";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useToast } from "vue-toastification";
+
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
+import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
 import ActionsList from "./Actions/ActionsList.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
+const toast = useToast();
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 const changeSet = computed(() => changeSetsStore.selectedChangeSet);
@@ -57,13 +62,7 @@ const userIsApprover = ref(false);
 async function openModalHandler() {
   if (changeSet?.value?.name === "HEAD") return;
 
-  const data = await changeSetsStore.FETCH_CHANGE_SETS_V2();
-  const approvers = data.rawResponseData?.approvers;
-  const userPk = authStore.user?.pk;
-  if (approvers && userPk && approvers.includes(userPk)) {
-    userIsApprover.value = true;
-  }
-
+  userIsApprover.value = changeSetsStore.currentUserIsApprover;
   modalRef.value?.open();
 }
 
@@ -73,17 +72,34 @@ function closeModalHandler() {
 
 function applyButtonHandler() {
   if (userIsApprover.value) {
-    // TODO(Wendy) - not sure if this is right, need to figure out integration!
     if (authStore.user) {
       changeSetsStore.FORCE_APPLY_CHANGE_SET(authStore.user.name);
       closeModalHandler();
     }
   } else {
-    // TODO(Wendy) - not sure if this is right, need to figure out integration!
     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
     closeModalHandler();
   }
 }
-
+watch(
+  () => changeSetsStore.selectedChangeSet?.status,
+  (newVal, oldVal) => {
+    if (
+      newVal === ChangeSetStatus.Open &&
+      (oldVal === ChangeSetStatus.NeedsApproval ||
+        oldVal === ChangeSetStatus.Approved ||
+        oldVal === ChangeSetStatus.Rejected)
+    ) {
+      if (!changeSetsStore.headSelected) {
+        toast({
+          component: ApprovalFlowCancelled,
+          props: {
+            action: "applying",
+          },
+        });
+      }
+    }
+  },
+);
 defineExpose({ open: openModalHandler });
 </script>

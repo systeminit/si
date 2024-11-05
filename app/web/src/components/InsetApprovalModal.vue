@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'max-w-md flex flex-col gap-sm p-sm',
+        'max-w-md flex flex-col gap-sm p-sm shadow-2xl',
         themeClasses('bg-neutral-100 border', 'bg-neutral-900'),
       )
     "
@@ -41,12 +41,9 @@
         {{ requesterIsYou ? "Your" : "The" }} request to
         <span class="font-bold">Apply</span> change set
         <span class="font-bold">{{ changeSetName }}</span> was {{ mode }} by
-        <span class="font-bold">{{ approverName + " " }}</span>
-        {{
-          modalData.date.toDateString() === new Date().toDateString()
-            ? ""
-            : "on"
-        }}
+        <span class="font-bold">{{ approverEmail + " " }}</span>
+
+        <!-- {{ modalData.date.getTime() === new Date().getTime() ? "" : "on" }} -->
         <span class="font-bold">
           <Timestamp :date="modalData.date" showTimeIfToday size="extended" />
         </span>
@@ -54,7 +51,7 @@
           v-if="!requesterIsYou && !userIsApprover && mode === 'approved'"
           class="pt-xs"
         >
-          <span class="font-bold">{{ requesterName }}</span> requested this
+          <span class="font-bold">{{ requesterEmail }}</span> requested this
           <span class="font-bold">Apply</span> and can merge this change set.
           You can switch to a different change set using the dropdown at the top
           of the screen.
@@ -64,13 +61,28 @@
         ERROR - this message should not ever show. Something has gone wrong!
       </template>
     </ErrorMessage>
+    <div class="text-sm mb-sm">
+      These actions will be applied to the real world:
+    </div>
+    <div
+      class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
+    >
+      <ActionsList slim kind="proposed" noInteraction />
+    </div>
     <div
       v-if="requesterIsYou || mode === 'rejected' || userIsApprover"
       class="flex flex-row gap-sm"
     >
       <VButton
-        v-if="userIsApprover && mode === 'requested'"
+        v-if="userIsApprover && (mode === 'requested' || mode === 'approved')"
         label="Reject Request"
+        tone="destructive"
+        variant="ghost"
+        @click="rejectHandler"
+      />
+      <VButton
+        v-if="!userIsApprover && mode === 'approved'"
+        label="Withdraw Request"
         tone="destructive"
         variant="ghost"
         @click="rejectHandler"
@@ -79,6 +91,8 @@
         :label="modalData.buttonText"
         :tone="modalData.buttonTone"
         class="grow"
+        :loading="mode === 'approved' ? applyingChangeSet : false"
+        loadingText="Applying..."
         @click="confirmHandler"
       />
     </div>
@@ -94,30 +108,61 @@ import {
   IconNames,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useAuthStore } from "@/store/auth.store";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import ActionsList from "./Actions/ActionsList.vue";
 
 export type InsetApprovalModalMode = "requested" | "approved" | "rejected";
 
 const changeSetsStore = useChangeSetsStore();
 const changeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
+const authStore = useAuthStore();
+const applyingChangeSet = ref(false);
 
 // TODO(Wendy) - Mock data we need to replace with real data!
-const mode = computed(() => "requested" as InsetApprovalModalMode);
-const requesterName = computed(() => "Paul");
-const requestDate = computed(() => new Date());
-const requesterIsYou = computed(() => false);
-const approverName = computed(() => "Wendy");
-const approveDate = computed(() => new Date());
-const userIsApprover = computed(() => true);
-// END MOCK DATA
+const mode = computed(() => {
+  if (
+    changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.NeedsApproval
+  ) {
+    return "requested";
+  } else if (
+    changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.Approved
+  ) {
+    return "approved";
+  } else if (
+    changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.Rejected
+  ) {
+    return "rejected";
+  } else return "";
+});
+
+const requesterEmail = computed(
+  () => changeSetsStore.selectedChangeSet?.mergeRequestedByUser,
+);
+const requestDate = computed(
+  () => changeSetsStore.selectedChangeSet?.mergeRequestedAt as IsoDateString,
+);
+const requesterIsYou = computed(
+  () =>
+    changeSetsStore.selectedChangeSet?.mergeRequestedByUserId ===
+    authStore.user?.pk,
+);
+const approverEmail = computed(
+  () => changeSetsStore.selectedChangeSet?.reviewedByUser,
+);
+const approveDate = computed(
+  () => changeSetsStore.selectedChangeSet?.reviewedAt as IsoDateString,
+);
+const userIsApprover = computed(() => changeSetsStore.currentUserIsApprover);
 
 const modalData = computed(() => {
   if (mode.value === "requested") {
     return {
-      title: `Approval Requested by ${
-        requesterIsYou.value ? "You" : requesterName.value
+      title: `${changeSetName.value} Approval Requested by ${
+        requesterIsYou.value ? "You" : requesterEmail.value
       }`,
       date: requestDate.value,
       buttonText: userIsApprover.value
@@ -129,7 +174,7 @@ const modalData = computed(() => {
     };
   } else if (mode.value === "approved") {
     return {
-      title: `Approval Granted by ${approverName.value}`,
+      title: `Approval Granted by ${approverEmail.value}`,
       date: approveDate.value,
       buttonText: "Apply Change Set",
       buttonTone: "success" as Tones,
@@ -138,11 +183,12 @@ const modalData = computed(() => {
     };
   } else if (mode.value === "rejected") {
     return {
-      title: `Approval Rejected by ${approverName.value}`,
+      title: `Approval Rejected by ${approverEmail.value}`,
       date: approveDate.value,
       buttonText: "Make Edits",
       buttonTone: "action" as Tones,
       messageTone: "destructive" as Tones,
+      messageIcon: "exclamation-circle" as IconNames,
     };
   }
 
@@ -156,25 +202,29 @@ const modalData = computed(() => {
 });
 
 const confirmHandler = () => {
-  // eslint-disable-next-line no-console
-  console.log(
-    "TODO - write logic to handle all possible primary button press actions here!",
-  );
   if (mode.value === "requested") {
     if (userIsApprover.value) {
-      // TODO - this is where the logic for approving a request goes!
+      changeSetsStore.APPROVE_CHANGE_SET_FOR_APPLY();
     } else if (requesterIsYou.value) {
-      /// TODO - this is where the logic for withdrawing a request goes!
+      changeSetsStore.CANCEL_APPROVAL_REQUEST();
     }
   } else if (mode.value === "approved") {
-    // TODO - this is where the logic for applying an approved change set goes!
+    if (authStore.user) {
+      applyingChangeSet.value = true;
+      changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
+    }
   } else if (mode.value === "rejected") {
-    // TODO - this is where the logic for returning the change set to open goes!
+    changeSetsStore.REOPEN_CHANGE_SET();
   }
 };
 
 const rejectHandler = () => {
-  // eslint-disable-next-line no-console
-  console.log("TODO - write logic to handle rejecting a request here!");
+  if (mode.value === "requested") {
+    changeSetsStore.REJECT_CHANGE_SET_APPLY();
+  } else if (mode.value === "approved" && userIsApprover.value) {
+    changeSetsStore.REJECT_CHANGE_SET_APPLY();
+  } else if (mode.value === "approved" && requesterIsYou.value) {
+    changeSetsStore.CANCEL_APPROVAL_REQUEST();
+  }
 };
 </script>

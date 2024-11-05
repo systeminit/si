@@ -53,11 +53,13 @@
     </template>
 
     <ApprovalFlowModal
+      v-if="!featureFlagsStore.REBAC"
       ref="approvalFlowModalRef"
       votingKind="merge"
       @completeVoting="applyChangeSet"
     />
-    <ApprovalFlowModal2 ref="approvalFlowModal2Ref" votingKind="merge" />
+
+    <ApprovalFlowModal2 v-else ref="approvalFlowModal2Ref" votingKind="merge" />
   </VButton>
 </template>
 
@@ -114,6 +116,7 @@ const openApprovalFlowModal = () => {
 // Applies the current change set3
 const applyChangeSet = async () => {
   if (!route.name) return;
+  // if (featureFlagsStore.REBAC) return;
   const resp = await changeSetsStore.APPLY_CHANGE_SET(
     authStore.user?.email ?? "",
   );

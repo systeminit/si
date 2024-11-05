@@ -12,8 +12,13 @@ use std::{io, net::ToSocketAddrs, result, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_std::SensitiveString;
-use spicedb_client::{builder::WriteRelationshipsRequestBuilder, SpicedbClient};
-use spicedb_grpc::authzed::api::v1::{relationship_update::Operation, WriteRelationshipsRequest};
+use spicedb_client::{
+    builder::WriteRelationshipsRequestBuilder, types::ConsistencyRequirement, SpicedbClient,
+};
+use spicedb_grpc::authzed::api::v1::{
+    relationship_update::Operation, Consistency, LookupSubjectsRequest, ObjectReference,
+    WriteRelationshipsRequest,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use url::Url;
@@ -21,7 +26,7 @@ use url::Url;
 mod types;
 
 pub use types::{
-    Permission, PermissionsObject, ReadSchemaResponse, Relationship, Relationships, ZedToken,
+    Permission, ReadSchemaResponse, Relationship, Relationships, SpiceDBObject, ZedToken,
 };
 
 #[remain::sorted]
@@ -373,6 +378,63 @@ impl Client {
 
         span.record_ok();
         Ok(Permission::has_permission(resp))
+    }
+
+    #[instrument(
+        name = "spicedb_client.lookup_subjects",
+        level = "debug",
+        skip_all,
+        fields(
+            db.connection_string = %self.metadata.db_connection_string(),
+            db.system = %self.metadata.db_system(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
+        ),
+    )]
+    pub async fn lookup_subjects(
+        &mut self,
+        resource_type: String,
+        resource_id: String,
+        permission: String,
+        object_type: String,
+    ) -> Result<Vec<String>> {
+        let mut subjects = vec![];
+        let span = current_span_for_instrument_at!("debug");
+        let consistency = ConsistencyRequirement::MinimizeLatency(true);
+        let resource_ref = ObjectReference {
+            object_type: resource_type,
+            object_id: resource_id,
+        };
+        let lookup_request = LookupSubjectsRequest {
+            resource: Some(resource_ref),
+            permission,
+            consistency: Some(Consistency {
+                requirement: Some(consistency),
+            }),
+            subject_object_type: object_type,
+            ..Default::default()
+        };
+        let results: result::Result<Vec<_>, _> = self
+            .inner
+            .lookup_subjects(lookup_request)
+            .await?
+            .try_collect()
+            .await;
+
+        for r in results.map_err(|e| span.record_err(Error::GRPC(e.into())))? {
+            if let Some(subject) = r.subject {
+                subjects.push(subject.subject_object_id);
+            }
+        }
+
+        span.record_ok();
+        Ok(subjects)
     }
 }
 

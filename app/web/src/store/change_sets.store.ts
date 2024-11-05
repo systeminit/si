@@ -10,10 +10,12 @@ import {
 } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import router from "@/router";
-import { UserId } from "@/store/auth.store";
+import { UserId, useAuthStore } from "@/store/auth.store";
 import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.vue";
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import RebaseOnBase from "@/components/toasts/RebaseOnBase.vue";
+import ChangeSetStatusChanged from "@/components/toasts/ChangeSetStatusChanged.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -36,6 +38,8 @@ export interface OpenChangeSetsView {
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
+  const featureFlagsStore = useFeatureFlagsStore();
+  const authStore = useAuthStore();
   const BASE_API = [
     "v2",
     "workspaces",
@@ -56,15 +60,28 @@ export function useChangeSetsStore() {
         postAbandonActor: null as string | null,
         changeSetApprovals: {} as Record<UserId, string>,
         statusWithBase: {} as Record<ChangeSetId, StatusWithBase>,
+        approvers: [] as UserId[],
       }),
       getters: {
+        currentUserIsApprover(): boolean {
+          const userPk = authStore.user?.pk;
+          if (!userPk) return false;
+          return this.approvers.includes(userPk);
+        },
         allChangeSets: (state) => _.values(state.changeSetsById),
+        changeSetsNeedingApproval(): ChangeSet[] {
+          return _.filter(this.allChangeSets, (cs) =>
+            [ChangeSetStatus.NeedsApproval].includes(cs.status),
+          );
+        },
         openChangeSets(): ChangeSet[] {
           return _.filter(this.allChangeSets, (cs) =>
             [
               ChangeSetStatus.Open,
               ChangeSetStatus.NeedsApproval,
               ChangeSetStatus.NeedsAbandonApproval,
+              ChangeSetStatus.Rejected,
+              ChangeSetStatus.Approved,
             ].includes(cs.status),
           );
         },
@@ -122,13 +139,25 @@ export function useChangeSetsStore() {
         },
 
         async FETCH_CHANGE_SETS() {
-          return new ApiRequest<OpenChangeSetsView>({
-            url: "change_set/list_open_change_sets",
-            onSuccess: (response) => {
-              this.headChangeSetId = response.headChangeSetId;
-              this.changeSetsById = _.keyBy(response.changeSets, "id");
-            },
-          });
+          if (featureFlagsStore.REBAC) {
+            return new ApiRequest<WorkspaceMetadata>({
+              method: "get",
+              url: BASE_API,
+              onSuccess: (response) => {
+                this.headChangeSetId = response.defaultChangeSetId;
+                this.changeSetsById = _.keyBy(response.changeSets, "id");
+                this.approvers = response.approvers;
+              },
+            });
+          } else {
+            return new ApiRequest<OpenChangeSetsView>({
+              url: "change_set/list_open_change_sets",
+              onSuccess: (response) => {
+                this.headChangeSetId = response.headChangeSetId;
+                this.changeSetsById = _.keyBy(response.changeSets, "id");
+              },
+            });
+          }
         },
         async CREATE_CHANGE_SET(name: string) {
           return new ApiRequest<{ changeSet: ChangeSet }>({
@@ -249,12 +278,6 @@ export function useChangeSetsStore() {
               });
             },
             _delay: 2000,
-            onSuccess: (response) => {
-              // this.changeSetsById[response.changeSet.id] = response.changeSet;
-            },
-            onFail: () => {
-              // todo: show something!
-            },
           });
         },
         async REQUEST_CHANGE_SET_APPROVAL() {
@@ -265,20 +288,23 @@ export function useChangeSetsStore() {
             url: BASE_API.concat([{ selectedChangeSetId }, "request_approval"]),
           });
         },
-        async APPROVE_CHANGE_SET_FOR_APPLY() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          const selectedChangeSetId = this.selectedChangeSetId;
+        async APPROVE_CHANGE_SET_FOR_APPLY(id?: ChangeSetId) {
+          const changeSetId = id || this.selectedChangeSetId;
+
+          if (!changeSetId) throw new Error("Select a change set");
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "approve"]),
+            url: BASE_API.concat([{ changeSetId }, "approve"]),
           });
         },
-        async REJECT_CHANGE_SET_APPLY() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          const selectedChangeSetId = this.selectedChangeSetId;
+        async REJECT_CHANGE_SET_APPLY(id?: ChangeSetId) {
+          const changeSetId = id || this.selectedChangeSetId;
+
+          if (!changeSetId) throw new Error("Select a change set");
+
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "reject"]),
+            url: BASE_API.concat([{ changeSetId }, "reject"]),
           });
         },
         async CANCEL_APPROVAL_REQUEST() {
@@ -306,18 +332,6 @@ export function useChangeSetsStore() {
           return new ApiRequest({
             method: "post",
             url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
-          });
-        },
-        async FETCH_CHANGE_SETS_V2() {
-          const selectedChangeSetId = this.selectedChangeSetId;
-          return new ApiRequest<WorkspaceMetadata>({
-            method: "get",
-            url: BASE_API.concat([{ selectedChangeSetId }, "list"]),
-            onSuccess: (response) => {
-              // TODO(WENDY) - commented these out for now
-              // this.headChangeSetId = response.default_change_set_id;
-              // this.changeSetsById = _.keyBy(response.change_sets, "id");
-            },
           });
         },
         async APPLY_CHANGE_SET_VOTE(vote: string) {
@@ -436,6 +450,50 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCreated",
             callback: this.FETCH_CHANGE_SETS,
+          },
+          {
+            eventType: "ChangeSetStatusChanged",
+            callback: async (data) => {
+              // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
+              if (
+                data.changeSet.mergeRequestedByUserId === authStore.user?.pk
+              ) {
+                if (data.changeSet.status === ChangeSetStatus.Rejected) {
+                  toast({
+                    component: ChangeSetStatusChanged,
+                    props: {
+                      user: data.changeSet.reviewedByUser,
+                      command: "rejected the request to apply",
+                      changeSetName: data.changeSet.name,
+                    },
+                  });
+                } else if (data.changeSet.status === ChangeSetStatus.Approved) {
+                  toast({
+                    component: ChangeSetStatusChanged,
+                    props: {
+                      user: data.changeSet.reviewedByUser,
+                      command: "approved the request to apply",
+                      changeSetName: data.changeSet.name,
+                    },
+                  });
+                }
+              }
+              // if I'm an approver, and a change set now needs approval - toast
+              else if (
+                this.currentUserIsApprover &&
+                data.changeSet.status === ChangeSetStatus.NeedsApproval
+              ) {
+                toast({
+                  component: ChangeSetStatusChanged,
+                  props: {
+                    user: data.changeSet.mergeRequestedByUser,
+                    command: "requested to apply",
+                    changeSetName: data.changeSet.name,
+                  },
+                });
+              }
+              await this.FETCH_CHANGE_SETS();
+            },
           },
           {
             eventType: "ChangeSetAbandoned",

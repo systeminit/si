@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use dal::{ChangeSetId, ChangeSetStatus, WsEventError};
+use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
 use crate::{middleware::WorkspacePermissionLayer, service::ApiError, AppState};
@@ -41,6 +42,8 @@ pub enum Error {
     Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("spice db error: {0}")]
+    SpiceDB(#[from] SpiceDbError),
     #[error("spicedb not found")]
     SpiceDBNotFound,
     #[error("transactions error: {0}")]
@@ -74,37 +77,41 @@ type Result<T> = result::Result<T, Error>;
 
 pub fn v2_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/apply", post(apply::apply))
-        .route(
-            "/request_approval",
-            post(request_approval::request_approval),
+        .nest(
+            "/:change_set_id",
+            Router::new()
+                .route("/apply", post(apply::apply))
+                .route(
+                    "/request_approval",
+                    post(request_approval::request_approval),
+                )
+                .route(
+                    "/approve",
+                    post(approve::approve).layer(WorkspacePermissionLayer::new(
+                        state.clone(),
+                        permissions::Permission::Approve,
+                    )),
+                )
+                .route(
+                    "/reject",
+                    post(reject::reject).layer(WorkspacePermissionLayer::new(
+                        state.clone(),
+                        permissions::Permission::Approve,
+                    )),
+                )
+                .route(
+                    "/cancel_approval_request",
+                    post(cancel_approval_request::cancel_approval_request),
+                )
+                // Consider how we make it editable again after it's been rejected
+                .route("/reopen", post(reopen::reopen))
+                .route(
+                    "/force_apply",
+                    post(force_apply::force_apply).layer(WorkspacePermissionLayer::new(
+                        state.clone(),
+                        permissions::Permission::Approve,
+                    )),
+                ),
         )
-        .route(
-            "/approve",
-            post(approve::approve).layer(WorkspacePermissionLayer::new(
-                state.clone(),
-                permissions::Permission::Approve,
-            )),
-        )
-        .route(
-            "/reject",
-            post(reject::reject).layer(WorkspacePermissionLayer::new(
-                state.clone(),
-                permissions::Permission::Approve,
-            )),
-        )
-        .route(
-            "/cancel_approval_request",
-            post(cancel_approval_request::cancel_approval_request),
-        )
-        // Consider how we make it editable again after it's been rejected
-        .route("/reopen", post(reopen::reopen))
-        .route("/list", get(list::list_actionable))
-        .route(
-            "/force_apply",
-            post(force_apply::force_apply).layer(WorkspacePermissionLayer::new(
-                state.clone(),
-                permissions::Permission::Approve,
-            )),
-        )
+        .route("/", get(list::list_actionable))
 }

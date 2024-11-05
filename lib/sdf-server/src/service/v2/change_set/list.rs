@@ -3,7 +3,6 @@ use axum::{
     Json,
 };
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
-use permissions::{ObjectType, Relation, RelationBuilder};
 
 use super::{AppState, Error, Result};
 use crate::{
@@ -18,7 +17,7 @@ pub async fn list_actionable(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     State(mut state): State<AppState>,
-    Path((workspace_pk, _change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Path(workspace_pk): Path<WorkspacePk>,
 ) -> Result<Json<si_frontend_types::WorkspaceMetadata>> {
     let ctx = builder.build_head(request_ctx).await?;
 
@@ -29,16 +28,15 @@ pub async fn list_actionable(
         views.push(change_set.into_frontend_type(&ctx).await?);
     }
     let client = state.spicedb_client().ok_or(Error::SpiceDBNotFound)?;
-    let existing_approvers = RelationBuilder::new()
-        .object(ObjectType::Workspace, workspace_pk)
-        .relation(Relation::Owner) // TODO(WENDY) - this should be Relation::Approver but it isn't working yet
-        .read(client)
+    //todo(brit): wire this through the spicedb internals
+    let approvers = client
+        .lookup_subjects(
+            "workspace".to_owned(),
+            workspace_pk.to_string(),
+            "approve".to_owned(),
+            "user".to_owned(),
+        )
         .await?;
-
-    let existing_approver_ids: Vec<String> = existing_approvers
-        .into_iter()
-        .map(|w| w.subject().id().to_string())
-        .collect();
 
     // Ensure that we find exactly one change set view that matches the open change sets found.
     let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
@@ -65,7 +63,7 @@ pub async fn list_actionable(
         id: workspace.pk().to_string(),
         default_change_set_id: head_change_set_id.into(),
         change_sets: views,
-        approvers: existing_approver_ids,
+        approvers,
     };
     track(
         &posthog_client,

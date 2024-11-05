@@ -344,6 +344,7 @@ import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 // If we end up adding another VotingKind, make sure to change ALL of the logic across this component that checks the votingKind prop!
 export type VotingKind = "merge" | "abandon";
@@ -354,6 +355,7 @@ const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 const statusStore = useStatusStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const route = useRoute();
 
 const votingModalRef = ref<InstanceType<typeof Modal> | null>(null);
@@ -506,6 +508,7 @@ async function vote(vote: string) {
 
 function openVotingModalHandler() {
   if (changeSet?.value?.name === "HEAD") return;
+  if (featureFlagsStore.REBAC) return;
   votingModalRef.value?.open();
   resetState();
   checkForUserWhoStartedVotingAndCancelIfTheyAreGone();

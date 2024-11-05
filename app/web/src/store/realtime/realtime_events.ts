@@ -3,7 +3,11 @@
 
 import { IRect } from "konva/lib/types";
 import { FuncBinding, FuncId, FuncSummary } from "@/api/sdf/dal/func";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import {
+  ChangeSetId,
+  ChangeSetStatus,
+  ChangeSet,
+} from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
 import {
   ComponentType,
@@ -123,6 +127,10 @@ export type WsEventPayloadMap = {
   ChangeSetAbandoned: {
     changeSetId: ChangeSetId;
     userPk: UserId;
+  };
+  ChangeSetStatusChanged: {
+    fromStatus: ChangeSetStatus;
+    changeSet: ChangeSet;
   };
   CheckedQualifications: {
     prototypeId: string;

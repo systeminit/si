@@ -3,7 +3,7 @@ use std::env;
 use indoc::indoc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use si_data_spicedb::{Client, Permission, PermissionsObject, Relationship, SpiceDbConfig};
+use si_data_spicedb::{Client, Permission, Relationship, SpiceDBObject, SpiceDbConfig};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
 
@@ -82,8 +82,8 @@ async fn write_and_read_relationship() {
         .await
         .expect("failed to write schema");
 
-    let workspace_object = PermissionsObject::new("workspace", "456".to_string());
-    let user_object = PermissionsObject::new("user", "scott".to_string());
+    let workspace_object = SpiceDBObject::new("workspace", "456".to_string());
+    let user_object = SpiceDBObject::new("user", "scott".to_string());
     let mut scott_aprover_workspace =
         Relationship::new(workspace_object, "approver", user_object, None);
 
@@ -141,9 +141,9 @@ async fn check_permissions() {
         .await
         .expect("failed to write schema");
 
-    let workspace_object = PermissionsObject::new("workspace", "789".to_string());
-    let user_object = PermissionsObject::new("user", "scott".to_string());
-    let user_object2 = PermissionsObject::new("user", "fletcher".to_string());
+    let workspace_object = SpiceDBObject::new("workspace", "789".to_string());
+    let user_object = SpiceDBObject::new("user", "scott".to_string());
+    let user_object2 = SpiceDBObject::new("user", "fletcher".to_string());
     let scott_aprover_workspace = Relationship::new(
         workspace_object.clone(),
         "approver",
@@ -173,4 +173,15 @@ async fn check_permissions() {
         .check_permissions(bad_perms)
         .await
         .expect("failed to check permissions"));
+    let users = client
+        .lookup_subjects(
+            "workspace".to_string(),
+            "789".to_string(),
+            "approve".to_string(),
+            "user".to_string(),
+        )
+        .await
+        .expect("could not list subjects");
+    assert!(users.contains(&"scott".to_string()));
+    assert!(!users.contains(&"fletcher".to_string()));
 }
