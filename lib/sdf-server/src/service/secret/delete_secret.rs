@@ -1,6 +1,7 @@
 use axum::Json;
 use dal::{ChangeSet, Secret, SecretId, SecretView, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::{SecretError, SecretResult};
 use crate::extract::{AccessBuilder, HandlerContext};
@@ -31,6 +32,15 @@ pub async fn delete_secret(
     if !connected_components.is_empty() {
         return Err(SecretError::CantDeleteSecret(request.id));
     }
+
+    ctx.write_audit_log(
+        AuditLogKind::DeleteSecret {
+            name: secret.name().to_string(),
+            secret_id: secret.id().into(),
+        },
+        secret.name().to_string(),
+    )
+    .await?;
 
     secret.delete(&ctx).await?;
 

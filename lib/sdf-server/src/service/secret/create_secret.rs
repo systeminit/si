@@ -4,6 +4,7 @@ use dal::{
     WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use super::SecretResult;
 use crate::extract::{AccessBuilder, HandlerContext};
@@ -43,6 +44,15 @@ pub async fn create_secret(
         request.key_pair_pk,
         request.version,
         request.algorithm,
+    )
+    .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::CreateSecret {
+            name: secret.name().to_string(),
+            secret_id: secret.id().into(),
+        },
+        secret.name().to_string(),
     )
     .await?;
 
