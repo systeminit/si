@@ -159,6 +159,46 @@ pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind, entity_name: Str
     Ok(())
 }
 
+#[instrument(
+    name = "audit_logging.write_to_head",
+    level = "debug",
+    skip_all,
+    fields(kind)
+)]
+pub(crate) async fn write_to_head(
+    ctx: &DalContext,
+    kind: AuditLogKind,
+    entity_name: String,
+) -> Result<()> {
+    // TODO(nick): nuke this from intergalactic orbit. Then do it again.
+    let workspace_id = match ctx.workspace_pk() {
+        Ok(workspace_id) => workspace_id,
+        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
+        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
+    };
+
+    let default_changeset_id = ctx
+        .get_workspace_default_change_set_id()
+        .await
+        .map_err(Box::new)?;
+
+    let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
+    pending_events_stream
+        .publish_audit_log(
+            workspace_id.into(),
+            ctx.change_set_id().into(),
+            ctx.event_session_id(),
+            &AuditLog::new(
+                ctx.events_actor(),
+                kind,
+                entity_name,
+                default_changeset_id.into(),
+            ),
+        )
+        .await?;
+    Ok(())
+}
+
 #[instrument(name = "audit_logging.write_final_message", level = "debug", skip_all)]
 pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.

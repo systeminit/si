@@ -97,6 +97,8 @@ pub enum AuditLogDeserializedMetadata {
         version: String,
     },
     #[serde(rename_all = "camelCase")]
+    Login,
+    #[serde(rename_all = "camelCase")]
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -225,6 +227,7 @@ impl AuditLogDeserializedMetadata {
             Kind::DeleteSecret => ("Deleted", "Secret"),
             Kind::ExportWorkspace => ("Exported", "Workspace"),
             Kind::InstallWorkspace => ("Installed", "Workspace"),
+            Kind::Login => ("Authenticated", " "),
             Kind::PutActionOnHold => ("Paused", "Action"),
             Kind::RetryAction => ("Retried", "Action"),
             Kind::RunAction => ("Ran", "Action"),
@@ -308,6 +311,7 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
             AuditLogKind::InstallWorkspace { id, name, version } => {
                 Self::InstallWorkspace { id, name, version }
             }
+            AuditLogKind::Login => Self::Login,
             AuditLogKind::PutActionOnHold {
                 prototype_id,
                 action_kind,
