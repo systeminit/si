@@ -413,7 +413,23 @@ impl Diagram {
             let mut map = HashMap::new();
 
             for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
-                let component_id = Geometry::component_id(ctx, geometry.id()).await?;
+                let component_id = match Geometry::component_id(ctx, geometry.id()).await {
+                    Ok(id) => id,
+                    Err(DiagramError::ComponentNotFoundForGeometry(geo_id)) => {
+                        let changeset_id = ctx.change_set_id();
+                        // NOTE(victor): The first version of views didn't delete geometries with components,
+                        // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                        // but we just skip orphan geometries here to make assemble work.
+                        warn!(
+                            si.change_set.id = %changeset_id,
+                            si.geometry.id = %geo_id,
+                            "Could not find component for geometry - skipping"
+                        );
+
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                };
 
                 let component = Component::get_by_id(ctx, component_id).await?;
 

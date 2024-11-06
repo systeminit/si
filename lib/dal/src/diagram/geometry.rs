@@ -129,6 +129,8 @@ impl Geometry {
         ))
     }
 
+    // Some changesets have orphan geometries because of an old bug, so when calling this function.
+    // be careful when dealing with the ComponentNotFoundForGeometry error
     pub async fn component_id(
         ctx: &DalContext,
         geometry_id: GeometryId,
