@@ -65,6 +65,7 @@ pub enum AuditLogKindV1 {
         name: String,
         version: String,
     },
+    Login,
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,

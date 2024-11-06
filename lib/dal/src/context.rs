@@ -1019,6 +1019,20 @@ impl DalContext {
         Ok(audit_logging::write(self, kind, entity_name).await?)
     }
 
+    /// Convenience wrapper around [`audit_logging::write_to_head`].
+    #[instrument(
+        name = "dal_context.write_audit_log_on_head",
+        level = "debug",
+        skip_all
+    )]
+    pub async fn write_audit_log_on_head(
+        &self,
+        kind: AuditLogKind,
+        entity_name: String,
+    ) -> TransactionsResult<()> {
+        Ok(audit_logging::write_to_head(self, kind, entity_name).await?)
+    }
+
     /// Convenience wrapper around [`audit_logging::write_final_message`].
     #[instrument(
         name = "dal_context.audit_log_write_final_message",

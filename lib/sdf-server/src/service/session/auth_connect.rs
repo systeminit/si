@@ -11,6 +11,7 @@ use permissions::{ObjectType, Relation, RelationBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data_spicedb::SpiceDbClient;
+use si_events::audit_log::AuditLogKind;
 use telemetry::tracing::warn;
 
 use super::{SessionError, SessionResult};
@@ -204,6 +205,9 @@ async fn find_or_create_user_and_workspace(
 
     // ensure workspace is associated to user
     user.associate_workspace(&ctx, *workspace.pk()).await?;
+
+    ctx.write_audit_log_on_head(AuditLogKind::Login {}, "Person".to_string())
+        .await?;
 
     ctx.commit_no_rebase().await?;
 
