@@ -88,6 +88,13 @@ pub(crate) async fn publish_pending(
         None => (TaskTracker::new(), true),
     };
 
+    // TODO(nick): somewhere in this function (or alongside it), we need to deserialize the events and send them up to
+    // the frontend. The frontend can make its own decision to include it into its paginated and filtered view, but we
+    // will make one event that sends an array of published audit logs. For chunking, we can do a naive array list
+    // length check or something else (e.g. size check) and send multiple messages, if need be. The first move might be
+    // to add a broadcast channel were shuttle sends the message paylods in bytestream format. Then, after shuttle
+    // exits, the dal can deserialize those messages.
+
     // Get a handle on the source and destination streams.
     let source_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
     let destination_stream = AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
@@ -238,7 +245,7 @@ pub async fn list(ctx: &DalContext) -> Result<Vec<FrontendAuditLog>> {
         .await?;
 
     // TODO(nick): replace hard-coded max messages value with proper pagination.
-    let mut messages = consumer.fetch().max_messages(1000).messages().await?;
+    let mut messages = consumer.fetch().max_messages(10000).messages().await?;
     let mut frontend_audit_logs = Vec::new();
 
     while let Some(Ok(message)) = messages.next().await {
@@ -333,18 +340,20 @@ pub mod temporary {
         audit_logs: Vec<FrontendAuditLog>,
         page: Option<usize>,
         page_size: Option<usize>,
-        sort_timestamp_ascending: Option<bool>,
-        exclude_system_user: Option<bool>,
-        kind_filter: HashSet<String>,
+        sort_timestamp_ascending: bool,
         change_set_filter: HashSet<ChangeSetId>,
-        user_filter: HashSet<UserPk>,
+        entity_type_filter: HashSet<String>,
+        kind_filter: HashSet<String>,
+        user_filter: HashSet<Option<UserPk>>,
     ) -> Result<(Vec<FrontendAuditLog>, usize)> {
         // First, filter the logs based on our chosen filters. This logic works by processing each
         // audit log and assuming each log is within our desired scope by default. The instant that a
         // log does not meet our scope, we continue!
         let mut filtered_audit_logs = Vec::new();
         for audit_log in audit_logs {
-            if !kind_filter.is_empty() && !kind_filter.contains(&audit_log.kind) {
+            if !entity_type_filter.is_empty()
+                && !entity_type_filter.contains(&audit_log.entity_type)
+            {
                 continue;
             }
 
@@ -356,24 +365,19 @@ pub mod temporary {
                 continue;
             }
 
-            match &audit_log.user_id {
-                Some(user_id) => {
-                    if !user_filter.is_empty() && !user_filter.contains(user_id) {
-                        continue;
-                    }
-                }
-                None => {
-                    if let Some(true) = exclude_system_user {
-                        continue;
-                    }
-                }
+            if !kind_filter.is_empty() && !kind_filter.contains(&audit_log.kind) {
+                continue;
+            }
+
+            if !user_filter.is_empty() && !user_filter.contains(&audit_log.user_id) {
+                continue;
             }
 
             filtered_audit_logs.push(audit_log);
         }
 
         // After filtering, perform the sort.
-        if let Some(true) = sort_timestamp_ascending {
+        if sort_timestamp_ascending {
             filtered_audit_logs.reverse();
         }
 

@@ -13,7 +13,7 @@
     <IconButton
       v-if="cell.column.id === 'json'"
       :icon="rowExpanded ? 'collapse-row' : 'expand-row'"
-      iconTone="neutral"
+      iconIdleTone="neutral"
       size="xs"
       @click="emit('toggleExpand')"
     />

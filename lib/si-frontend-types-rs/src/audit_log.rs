@@ -215,6 +215,8 @@ impl AuditLogDeserializedMetadata {
     pub fn title_and_entity_type(&self) -> (&'static str, &'static str) {
         type Kind = AuditLogDeserializedMetadataDiscriminants;
 
+        // Reflect updates to the entity type in "app/web/src/api/sdf/dal/audit_log.ts" and please keep this in
+        // alphabetical order!
         match self.into() {
             Kind::AbandonChangeSet => ("Abandoned", "Change Set"),
             Kind::AddAction => ("Enqueued", "Action"),
@@ -246,7 +248,8 @@ impl AuditLogDeserializedMetadata {
 
 impl From<AuditLogKind> for AuditLogDeserializedMetadata {
     fn from(value: AuditLogKind) -> Self {
-        // Please keep this in alphabetical order!
+        // Reflect updates to the audit log kind in "app/web/src/api/sdf/dal/audit_log.ts" and please keep this in
+        // alphabetical order!
         match value {
             AuditLogKind::AbandonChangeSet => Self::AbandonChangeSet,
             AuditLogKind::AddAction {

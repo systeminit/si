@@ -34,12 +34,6 @@ export const useAdminStore = () => {
     null,
     null,
     defineStore(`wsNONE/admin`, {
-      state: () => ({
-        users: [] as AdminUser[],
-      }),
-      getters: {
-        usersById: (state) => _.keyBy(state.users, (u) => u.id),
-      },
       actions: {
         async SEARCH_WORKSPACES(query?: string) {
           return new ApiRequest<
@@ -66,9 +60,6 @@ export const useAdminStore = () => {
           return new ApiRequest<{ users: AdminUser[] }>({
             method: "get",
             url: `${API_PREFIX}/workspaces/${workspaceId}/users`,
-            onSuccess: (response) => {
-              this.users = response.users;
-            },
           });
         },
         async GET_SNAPSHOT(workspaceId: string, changeSetId: string) {

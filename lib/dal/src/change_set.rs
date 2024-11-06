@@ -648,6 +648,38 @@ impl ChangeSet {
         Ok(result)
     }
 
+    /// List all change sets for a given workspace's audit trail.
+    pub async fn list_all_for_workspace_audit_trail(
+        ctx: &DalContext,
+        workspace_pk: WorkspacePk,
+    ) -> ChangeSetResult<Vec<Self>> {
+        let mut result = Vec::new();
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4, $5, $6, $7)",
+                &[
+                    &workspace_pk,
+                    &ChangeSetStatus::Abandoned.to_string(),
+                    &ChangeSetStatus::Applied.to_string(),
+                    &ChangeSetStatus::Approved.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::Open.to_string(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     /// Take care when working on these change sets to set the workspace id on the dal context!!!
     pub async fn list_open_for_all_workspaces(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let mut result = vec![];

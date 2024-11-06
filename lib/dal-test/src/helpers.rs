@@ -1,5 +1,7 @@
 //! This module contains helpers for use when authoring dal integration tests.
 
+use std::time::Duration;
+
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
@@ -11,6 +13,8 @@ use dal::{
 };
 use itertools::Itertools;
 use names::{Generator, Name};
+use si_data_nats::async_nats::jetstream::stream::Stream;
+use tokio::time::Instant;
 
 mod change_set;
 mod property_editor_test_view;
@@ -379,4 +383,29 @@ pub fn extract_value_and_validation(
         "value": value,
         "validation": validation,
     }))
+}
+
+/// Retries until no more messages are seen on the NATS JetStream stream.
+pub async fn confirm_jetstream_stream_has_no_messages(
+    stream: &Stream,
+    timeout_seconds: u64,
+    interval_milliseconds: u64,
+) -> Result<()> {
+    let timeout = Duration::from_secs(timeout_seconds);
+    let interval = Duration::from_millis(interval_milliseconds);
+
+    let start = Instant::now();
+    let mut message_count = 0;
+
+    while start.elapsed() < timeout {
+        message_count = stream.get_info().await?.state.messages;
+        if message_count == 0 {
+            return Ok(());
+        }
+        tokio::time::sleep(interval).await;
+    }
+
+    Err(eyre!(
+        "hit timeout and stream still has at least one message: {message_count}"
+    ))
 }
