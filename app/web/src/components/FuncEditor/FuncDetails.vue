@@ -147,31 +147,64 @@
               </Stack>
             </TreeNode>
 
-            <ManagementDetails
+            <TreeNode
               v-if="editingFunc.kind === FuncKind.Management"
-              ref="detachRef"
-              :disabled="editingFunc.isLocked"
-              :funcId="editingFunc.funcId"
-              :schemaVariantId="$props.schemaVariantId"
-            />
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              defaultOpen
+              enableGroupToggle
+              indentationSize="none"
+              label="Managed Assets"
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              leftBorderSize="none"
+            >
+              <ManagementDetails
+                ref="detachRef"
+                :disabled="editingFunc.isLocked"
+                :funcId="editingFunc.funcId"
+                :schemaVariantId="$props.schemaVariantId"
+              />
+            </TreeNode>
             <ActionDetails
               v-if="editingFunc.kind === FuncKind.Action"
               ref="detachRef"
               :funcId="editingFunc.funcId"
               :schemaVariantId="$props.schemaVariantId"
             />
-            <AuthenticationDetails
+            <TreeNode
               v-if="editingFunc.kind === FuncKind.Authentication"
-              ref="detachRef"
-              :funcId="editingFunc.funcId"
-              :schemaVariantId="$props.schemaVariantId"
-            />
-            <CodeGenerationDetails
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              defaultOpen
+              enableGroupToggle
+              indentationSize="none"
+              label="Function Inputs"
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              leftBorderSize="none"
+            >
+              <AuthenticationDetails
+                ref="detachRef"
+                :funcId="editingFunc.funcId"
+                :schemaVariantId="$props.schemaVariantId"
+              />
+            </TreeNode>
+            <TreeNode
               v-if="editingFunc.kind === FuncKind.CodeGeneration"
-              ref="detachRef"
-              :funcId="editingFunc.funcId"
-              :schemaVariantId="$props.schemaVariantId"
-            />
+              alwaysShowArrow
+              childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
+              defaultOpen
+              enableGroupToggle
+              indentationSize="none"
+              label="Function Inputs"
+              labelClasses="border-b border-neutral-200 dark:border-neutral-600"
+              leftBorderSize="none"
+            >
+              <CodeGenerationDetails
+                ref="detachRef"
+                :funcId="editingFunc.funcId"
+                :schemaVariantId="$props.schemaVariantId"
+              />
+            </TreeNode>
             <QualificationDetails
               v-if="editingFunc.kind === FuncKind.Qualification"
               ref="detachRef"

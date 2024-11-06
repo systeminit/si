@@ -1,8 +1,5 @@
 <template>
   <div>
-    <h2 class="text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Function inputs
-    </h2>
     <div class="flex flex-col gap-2xs py-xs">
       <VormInput
         v-if="kind === FuncBindingKind.Qualification"

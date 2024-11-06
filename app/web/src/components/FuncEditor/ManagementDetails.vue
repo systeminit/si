@@ -1,24 +1,23 @@
 <template>
   <div class="p-xs flex flex-col gap-xs w-full">
-    <h2 class="text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Managed assets
-    </h2>
-
     <div class="flex flex-row gap-2xs">
-      <SelectMenu
-        v-model="selectedManagedSchemaId"
-        label="Pick an asset to manage"
+      <VormInput
+        :modelValue="selectedManagedSchemaId"
+        placeholder="Pick an asset to manage"
+        size="sm"
+        noLabel
+        placeholderSelectable
         type="dropdown"
         :disabled="props.disabled"
         :options="schemaOptions"
-        class="grow"
+        @update:model-value="(newVal: string) => (selectedManagedSchemaId = newVal)"
       />
 
-      <VButton
+      <IconButton
         icon="plus"
+        class="mt-2xs"
         size="sm"
-        tone="success"
-        :requestStatus="updateBindingReqStatus"
+        iconTone="action"
         :disabled="props.disabled"
         @click="addSchema"
       />
@@ -33,19 +32,15 @@
         <p class="grow text-neutral-700 type-bold-sm dark:text-neutral-50 ml-2">
           {{ schemaNameMap[schemaId] ?? schemaId }}
         </p>
-        <VButton
+        <IconButton
           icon="trash"
           size="sm"
           :disabled="props.disabled"
-          tone="destructive"
+          iconTone="destructive"
           @click="removeSchema(schemaId)"
         />
       </li>
     </ul>
-
-    <div class="text-neutral-700 type-bold-sm dark:text-neutral-50 mt-5">
-      <p class="text-sm">You can detach this function above.</p>
-    </div>
   </div>
 </template>
 
@@ -53,21 +48,18 @@
 import * as _ from "lodash-es";
 import { ref, watch, computed, toRaw } from "vue";
 import { storeToRefs } from "pinia";
-import { VButton } from "@si/vue-lib/design-system";
-import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import { IconButton, VormInput } from "@si/vue-lib/design-system";
+import { Option } from "@/components/SelectMenu.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/api/sdf/dal/func";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { nonNullable } from "@/utils/typescriptLinter";
-import { nilId } from "@/utils/nilId";
 
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 const { schemaVariantOptions } = storeToRefs(assetStore);
-
-const updateBindingReqStatus = funcStore.getRequestStatus("UPDATE_BINDING");
 
 const props = defineProps<{
   funcId: FuncId;
@@ -75,11 +67,7 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const noneOutput = {
-  label: "select asset to manage",
-  value: nilId(),
-};
-const selectedManagedSchemaId = ref<Option>(noneOutput);
+const selectedManagedSchemaId = ref("");
 
 const schemaNameMap = ref<{ [key: string]: string }>({});
 
@@ -138,9 +126,7 @@ const addSchema = async () => {
     if (!updated_binding.managedSchemas) {
       updated_binding.managedSchemas = [];
     }
-    updated_binding.managedSchemas.push(
-      selectedManagedSchemaId.value.value.toString(),
-    );
+    updated_binding.managedSchemas.push(selectedManagedSchemaId.value);
     await funcStore.UPDATE_BINDING(props.funcId, [updated_binding]);
   }
 };
