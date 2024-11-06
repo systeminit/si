@@ -78,6 +78,7 @@ mod workspace_updates {
     use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
     use serde::{Deserialize, Serialize};
     use si_data_nats::{NatsClient, Subject};
+    use si_events::ViewId;
     use std::error::Error;
     use std::sync::Arc;
     use telemetry::prelude::*;
@@ -98,6 +99,7 @@ mod workspace_updates {
             user_pk: UserPk,
             user_name: String,
             change_set_id: Option<ChangeSetId>,
+            view_id: Option<ViewId>,
             container: Option<String>,
             container_key: Option<String>,
             x: Option<String>,
@@ -109,6 +111,7 @@ mod workspace_updates {
             name: String,
             picture_url: Option<String>,
             change_set_id: Option<ChangeSetId>,
+            view_id: Option<ViewId>,
             idle: bool,
         },
     }
@@ -222,7 +225,7 @@ mod workspace_updates {
                                     }
                                 };
                                 match event {
-                                    WebsocketEventRequest::Cursor { user_pk, user_name, change_set_id, container, container_key, x, y } => {
+                                    WebsocketEventRequest::Cursor { user_pk, user_name, change_set_id, view_id, container, container_key, x, y } => {
                                         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
                                         let event = WsEvent::cursor(self.workspace_pk,change_set_id, CursorPayload {
                                             user_pk,
@@ -230,17 +233,20 @@ mod workspace_updates {
                                             x,
                                             y,
                                             container,
-                                            container_key
+                                            container_key,
+                                            change_set_id,
+                                            view_id,
                                         }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;
                                     }
-                                    WebsocketEventRequest::Online { user_pk, name, picture_url, change_set_id, idle } => {
+                                    WebsocketEventRequest::Online { user_pk, name, picture_url, change_set_id, view_id, idle } => {
                                         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
                                         let event = WsEvent::online(self.workspace_pk, OnlinePayload {
                                             user_pk,
                                             name,
                                             picture_url,
                                             change_set_id,
+                                            view_id,
                                             idle,
                                         }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;

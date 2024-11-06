@@ -7,6 +7,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { UserId, useAuthStore } from "@/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import { useViewsStore } from "@/store/views.store";
 import handleStoreError from "./errors";
 
 const MOUSE_REFRESH_RATE = 5;
@@ -23,6 +24,8 @@ export interface RawDiagramCursor {
   x: number | null;
   y: number | null;
   timestamp: Date;
+  changeSetId: string | null;
+  viewId: string | null;
 }
 
 export type DiagramCursorDef = RawDiagramCursor & {
@@ -36,6 +39,7 @@ export interface OnlineUser {
   name: string;
   pictureUrl: string | null;
   changeSetId?: string;
+  viewId?: string;
   color?: string | null;
   idle: boolean;
 }
@@ -48,6 +52,8 @@ export const usePresenceStore = () => {
   const realtimeStore = useRealtimeStore();
 
   const changeSetsStore = useChangeSetsStore();
+
+  let viewStore = useViewsStore(changeSetsStore.selectedChangeSetId);
 
   return addStoreHooks(
     workspaceId,
@@ -74,8 +80,8 @@ export const usePresenceStore = () => {
             (u) => u.changeSetId === changeSetsStore.selectedChangeSetId,
           );
         },
-        diagramCursors: (state): DiagramCursorDef[] =>
-          _.filter(
+        diagramCursors: (state): DiagramCursorDef[] => {
+          return _.filter(
             _.values(
               _.mapValues(state.diagramCursorsByUserId, (cursor, userId) => ({
                 ...cursor,
@@ -84,12 +90,18 @@ export const usePresenceStore = () => {
                 color: state.usersById[userId]?.color || undefined,
               })),
             ),
-            (cursor) =>
-              cursor.x !== null &&
-              cursor.y !== null &&
-              state.usersById[cursor.userId]?.changeSetId ===
-                changeSetsStore.selectedChangeSetId,
-          ),
+            (cursor) => {
+              return (
+                cursor.x !== null &&
+                cursor.y !== null &&
+                state.usersById[cursor.userId]?.changeSetId ===
+                  changeSetsStore.selectedChangeSetId &&
+                state.usersById[cursor.userId]?.viewId ===
+                  viewStore.selectedViewId
+              );
+            },
+          );
+        },
         isIdle: (state) =>
           state.now.getTime() - state.lastSeenAt.getTime() > IDLE_EXPIRATION,
       },
@@ -120,6 +132,7 @@ export const usePresenceStore = () => {
               pictureUrl: authStore.user.picture_url ?? null,
               idle: this.isIdle,
               changeSetId: changeSetsStore.selectedChangeSetId ?? null,
+              viewId: viewStore.selectedViewId ?? null,
             },
           });
         },
@@ -132,6 +145,7 @@ export const usePresenceStore = () => {
                 userName: authStore.user.name,
                 userPk: authStore.user.pk,
                 changeSetId: changeSetsStore.selectedChangeSetId ?? null,
+                viewId: viewStore.selectedViewId ?? null,
                 container: null,
                 containerKey: null,
                 x: x !== null ? x.toString() : null,
@@ -164,6 +178,14 @@ export const usePresenceStore = () => {
 
         watch(
           [() => changeSetsStore.selectedChangeSetId, () => this.isIdle],
+          () => {
+            viewStore = useViewsStore(changeSetsStore.selectedChangeSetId);
+            this.sendOnline();
+          },
+        );
+
+        watch(
+          [() => viewStore.selectedViewId, () => this.isIdle],
           this.sendOnline,
         );
 
@@ -188,6 +210,8 @@ export const usePresenceStore = () => {
                     /* eslint-disable no-empty */
                     try {
                       this.diagramCursorsByUserId[payload.userPk] = {
+                        changeSetId: payload.changeSetId,
+                        viewId: payload.viewId,
                         x: payload.x !== null ? parseInt(payload.x) : null,
                         y: payload.y !== null ? parseInt(payload.y) : null,
                         timestamp: new Date(),
@@ -219,6 +243,7 @@ export const usePresenceStore = () => {
                 _.assign(this.usersById[payload.userPk], {
                   pk: payload.userPk,
                   ..._.pick(payload, "name", "idle", "pictureUrl"),
+                  viewId: payload.viewId,
                   changeSetId: payload.changeSetId,
                   lastOnlineAt: new Date(),
                   ...(!payload.idle && { lastActiveAt: new Date() }),
