@@ -9,8 +9,8 @@ use dal::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use super::impl_default_error_into_response;
 use crate::AppState;
+use axum_util::impl_default_error_into_response;
 
 pub mod create_secret;
 pub mod delete_secret;

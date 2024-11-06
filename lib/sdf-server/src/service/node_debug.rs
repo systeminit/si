@@ -8,11 +8,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use super::impl_default_error_into_response;
 use crate::{
     extract::{AccessBuilder, HandlerContext},
     AppState,
 };
+use axum_util::impl_default_error_into_response;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

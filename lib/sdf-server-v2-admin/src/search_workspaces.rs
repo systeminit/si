@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use super::{AdminAPIResult, AdminWorkspace};
-use crate::extract::{AccessBuilder, HandlerContext};
+use axum_util::extract::{AccessBuilder, HandlerContext};
 
 const SEARCH_LIMIT: usize = 50;
 

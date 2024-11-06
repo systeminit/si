@@ -206,6 +206,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "asset-sprayer-prompts"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "async-openai",
+ "clap",
+ "color-eyre",
+ "serde_yaml",
+ "tokio",
+]
+
+[[package]]
 name = "async-channel"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -853,6 +865,37 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.85",
+]
+
+[[package]]
+name = "axum-util"
+version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "axum",
+ "dal",
+ "derive_more",
+ "futures",
+ "futures-lite",
+ "hyper 0.14.31",
+ "nats-multiplexer-client",
+ "remain",
+ "serde",
+ "serde_json",
+ "serde_qs",
+ "serde_with",
+ "si-data-nats",
+ "si-data-pg",
+ "si-data-spicedb",
+ "si-posthog",
+ "strum 0.26.3",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing-tunnel",
+ "y-sync",
 ]
 
 [[package]]
@@ -6019,6 +6062,7 @@ dependencies = [
  "async-openai",
  "async-trait",
  "axum",
+ "axum-util",
  "base64 0.22.1",
  "buck2-resources",
  "chrono",
@@ -6045,6 +6089,8 @@ dependencies = [
  "rebaser-client",
  "remain",
  "reqwest",
+ "sdf-server-v2",
+ "sdf-server-v2-admin",
  "serde",
  "serde_json",
  "serde_qs",
@@ -6079,6 +6125,64 @@ dependencies = [
  "y-sync",
  "yrs",
 ]
+
+[[package]]
+name = "sdf-server-v2"
+version = "0.1.0"
+dependencies = [
+ "sdf-server-v2-admin",
+ "sdf-server-v2-audit-log",
+ "sdf-server-v2-func",
+ "sdf-server-v2-management",
+ "sdf-server-v2-module",
+ "sdf-server-v2-variant",
+ "sdf-server-v2-view",
+]
+
+[[package]]
+name = "sdf-server-v2-admin"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "base64 0.22.1",
+ "chrono",
+ "dal",
+ "derive_more",
+ "hyper 0.14.31",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-layer-cache",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "sdf-server-v2-audit-log"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-server-v2-func"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-server-v2-management"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-server-v2-module"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-server-v2-variant"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-server-v2-view"
+version = "0.1.0"
 
 [[package]]
 name = "sea-bae"

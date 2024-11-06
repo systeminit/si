@@ -3,7 +3,7 @@ use dal::func::runner::FuncRunner;
 use si_events::FuncRunId;
 
 use super::AdminAPIResult;
-use crate::extract::{AccessBuilder, HandlerContext};
+use axum_util::extract::{AccessBuilder, HandlerContext};
 
 pub async fn kill_execution(
     HandlerContext(builder): HandlerContext,

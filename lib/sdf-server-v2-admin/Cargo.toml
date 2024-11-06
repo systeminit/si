@@ -1,0 +1,27 @@
+[package]
+name = "sdf-server-v2-admin"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+axum-util = { path = "../../lib/axum-util" }
+dal = { path = "../../lib/dal" }
+telemetry = { path = "../../lib/telemetry-rs" }
+si-events = { path = "../../lib/si-events-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+
+axum = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+hyper = { workspace = true }
+tokio = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

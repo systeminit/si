@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use super::{AdminAPIError, AdminAPIResult};
-use crate::{
+use axum_util::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track_no_ctx,
 };

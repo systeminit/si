@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 asset-sprayer = { path = "../../lib/asset-sprayer" }
+axum-util = { path = "../../lib/axum-util" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
 module-index-client = { path = "../../lib/module-index-client" }
@@ -18,6 +19,8 @@ nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 permissions = { path = "../../lib/permissions" }
 rebaser-client = { path = "../../lib/rebaser-client" }
+sdf-server-v2 = { path = "../../lib/sdf-server-v2" }
+sdf-server-v2-admin = { path = "../../lib/sdf-server-v2-admin" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }

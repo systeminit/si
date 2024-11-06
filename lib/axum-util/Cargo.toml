@@ -1,0 +1,37 @@
+[package]
+name = "axum-util"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+asset-sprayer = { path = "../../lib/asset-sprayer" }
+dal = { path = "../../lib/dal" }
+nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-data-spicedb = { path = "../../lib/si-data-spicedb" }
+si-posthog = { path = "../../lib/si-posthog-rs" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+axum = { workspace = true }
+futures = { workspace = true }
+futures-lite = { workspace = true }
+derive_more = { workspace = true }
+hyper = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_qs = { workspace = true }
+serde_with = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tokio-stream = { workspace = true }
+tracing-tunnel = { workspace = true }
+strum = { workspace = true }
+y-sync = { workspace = true }

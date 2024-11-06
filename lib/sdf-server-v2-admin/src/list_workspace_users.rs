@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use super::{AdminAPIResult, AdminUser};
-use crate::extract::{AccessBuilder, HandlerContext};
+use axum_util::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

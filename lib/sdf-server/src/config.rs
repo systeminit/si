@@ -25,41 +25,12 @@ use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+pub use axum_util::config::*;
 pub use dal::MigrationMode;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
 const DEFAULT_AUTH_API_URL: &str = "https://auth-api.systeminit.com";
-
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    SerializeDisplay,
-    Display,
-    DeserializeFromStr,
-    EnumString,
-    VariantNames,
-    PartialEq,
-    Eq,
-)]
-#[strum(serialize_all = "camelCase")]
-pub enum WorkspacePermissionsMode {
-    #[default]
-    Closed,
-    Allowlist,
-    Open,
-}
-
-impl WorkspacePermissionsMode {
-    #[must_use]
-    pub const fn variants() -> &'static [&'static str] {
-        <WorkspacePermissionsMode as strum::VariantNames>::VARIANTS
-    }
-}
-
-pub type WorkspacePermissions = String;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

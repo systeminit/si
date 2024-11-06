@@ -10,11 +10,11 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
-use super::WsError;
 use crate::{
     extract::{Nats, WsAuthorization},
     nats_multiplexer::NatsMultiplexerClients,
 };
+use axum_util::service::ws::WsError;
 
 #[allow(clippy::unused_async)]
 pub async fn workspace_updates(

@@ -5,8 +5,8 @@ use dal::socket::output::OutputSocketError;
 use dal::{AttributeValueId, OutputSocketId, PropId, TransactionsError};
 use thiserror::Error;
 
-use super::impl_default_error_into_response;
 use crate::AppState;
+use axum_util::impl_default_error_into_response;
 
 pub mod get_prototype_arguments;
 

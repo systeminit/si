@@ -4,8 +4,8 @@ use axum::{routing::get, Router};
 use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
-use super::impl_default_error_into_response;
 use crate::AppState;
+use axum_util::impl_default_error_into_response;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
