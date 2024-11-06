@@ -51,7 +51,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, toRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { VButton } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
@@ -134,7 +134,7 @@ const schemaOptions = computed(() => {
 
 const addSchema = async () => {
   if (binding.value) {
-    const updated_binding = _.clone(binding.value);
+    const updated_binding = structuredClone(toRaw(binding.value));
     if (!updated_binding.managedSchemas) {
       updated_binding.managedSchemas = [];
     }

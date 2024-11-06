@@ -85,7 +85,7 @@ impl ManagementBinding {
                                 let component_type = format!(
                                     r#"
                                 {{
-                                    kind: {name},
+                                    kind: "{name}",
                                     properties?: {sv_type},
                                     geometry?: Geometry,
                                     connect?: {{
@@ -124,18 +124,18 @@ type Output = {{
   ops?: {{
     create?: {{ [key: string]: {component_types} }},
     update?: {{ [key: string]: {{ 
-        properties?: {{ [key: string]: unknown }}, geometry?: Geometry, }},
+        properties?: {{ [key: string]: unknown }}, 
+        geometry?: Geometry, 
         connect?: {{
             add?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
             remove?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
         }},
-    }},
+    }} }},
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];
       remove?: ("create" | "update" | "refresh" | "delete" | string)[];
     }} }}
-
-  }};
+  }},
   message?: string | null;
 }};
 type Input = {{
