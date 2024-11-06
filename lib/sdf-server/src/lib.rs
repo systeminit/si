@@ -45,10 +45,7 @@ pub use self::{
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
     server::{Server, ServerMetadata, ServerSocket},
 };
-pub(crate) use self::{
-    app_state::AppState,
-    tracking::track,
-};
+pub(crate) use self::{app_state::AppState, tracking::track};
 pub use dal::{
     feature_flags::{FeatureFlag, FeatureFlagService},
     JobQueueProcessor, NatsProcessor, ServicesContext,
