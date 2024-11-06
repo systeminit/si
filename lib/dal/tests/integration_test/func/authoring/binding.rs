@@ -1052,6 +1052,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                     schema_variant_id,
                     management_prototype_id,
                     func_id,
+                    ..
                 } => {
                     assert!(schema_variant_id.is_some());
                     assert!(func_id.is_some());

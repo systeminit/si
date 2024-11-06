@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_events::{
     ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
     FuncArgumentId, FuncBackendKind, FuncId, FuncKind, InputSocketId, ManagementPrototypeId,
-    OutputSocketId, PropId, SchemaVariantId, Timestamp,
+    OutputSocketId, PropId, SchemaId, SchemaVariantId, Timestamp,
 };
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -123,6 +123,7 @@ pub enum FuncBinding {
         schema_variant_id: Option<SchemaVariantId>,
         management_prototype_id: Option<ManagementPrototypeId>,
         func_id: Option<FuncId>,
+        managed_schemas: Option<Vec<SchemaId>>,
     },
     #[serde(rename_all = "camelCase")]
     Qualification {
@@ -135,6 +136,24 @@ pub enum FuncBinding {
         // thing that can be updated
         inputs: Vec<LeafInputLocation>,
     },
+}
+
+impl FuncBinding {
+    pub fn leaf_inputs(&self) -> Option<(AttributePrototypeId, Vec<LeafInputLocation>)> {
+        match self {
+            FuncBinding::CodeGeneration {
+                attribute_prototype_id,
+                inputs,
+                ..
+            } => attribute_prototype_id.map(|id| (id, inputs.clone())),
+            FuncBinding::Qualification {
+                attribute_prototype_id,
+                inputs,
+                ..
+            } => attribute_prototype_id.map(|id| (id, inputs.clone())),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Hash)]

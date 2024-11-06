@@ -1158,7 +1158,7 @@ impl Prop {
                     let name_serialized = serde_json::to_string(&name_value)?;
                     object_type.push_str(
                         format!(
-                            "{}: {} | null | undefined;\n",
+                            "{}?: {} | null;\n",
                             &name_serialized,
                             child.ts_type(ctx).await?
                         )

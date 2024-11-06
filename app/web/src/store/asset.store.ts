@@ -120,7 +120,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
       state: () => ({
         variantList: [] as SchemaVariant[],
         uninstalledVariantList: [] as UninstalledVariant[],
-        variantsById: {} as Record<SchemaVariantId, SchemaVariant>,
 
         executeSchemaVariantTaskId: undefined as string | undefined,
         executeSchemaVariantTaskRunning: false as boolean,

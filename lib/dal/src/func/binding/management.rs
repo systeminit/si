@@ -3,17 +3,18 @@ use telemetry::prelude::*;
 
 use crate::{
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
-    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId,
+    DalContext, Func, FuncId, Prop, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
 pub struct ManagementBinding {
-    // unique ids
     pub schema_variant_id: SchemaVariantId,
     pub management_prototype_id: ManagementPrototypeId,
     pub func_id: FuncId,
+    pub managed_schemas: Option<Vec<SchemaId>>,
 }
 
 impl ManagementBinding {
@@ -84,7 +85,7 @@ impl ManagementBinding {
                                 let component_type = format!(
                                     r#"
                                 {{
-                                    kind: {name},
+                                    kind: "{name}",
                                     properties?: {sv_type},
                                     geometry?: Geometry,
                                     connect?: {{
@@ -123,18 +124,18 @@ type Output = {{
   ops?: {{
     create?: {{ [key: string]: {component_types} }},
     update?: {{ [key: string]: {{ 
-        properties?: {{ [key: string]: unknown }}, geometry?: Geometry, }},
+        properties?: {{ [key: string]: unknown }}, 
+        geometry?: Geometry, 
         connect?: {{
             add?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
             remove?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
         }},
-    }},
+    }} }},
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];
       remove?: ("create" | "update" | "refresh" | "delete" | string)[];
     }} }}
-
-  }};
+  }},
   message?: string | null;
 }};
 type Input = {{
@@ -155,6 +156,16 @@ type Input = {{
         for management_prototype_id in
             ManagementPrototype::list_ids_for_func_id(ctx, func_id).await?
         {
+            let Some(prototype) =
+                ManagementPrototype::get_by_id(ctx, management_prototype_id).await?
+            else {
+                error!("Could not get bindings for func_id {func_id}");
+                continue;
+            };
+
+            let managed_schemas = prototype
+                .managed_schemas()
+                .map(|schemas| schemas.iter().map(ToOwned::to_owned).collect());
             let schema_variant_id =
                 ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await;
             match schema_variant_id {
@@ -163,6 +174,7 @@ type Input = {{
                         schema_variant_id,
                         func_id,
                         management_prototype_id,
+                        managed_schemas,
                     }));
                 }
                 Err(err) => {
@@ -205,5 +217,39 @@ type Input = {{
         ManagementPrototype::remove(ctx, management_prototype_id).await?;
 
         Ok(EventualParent::SchemaVariant(schema_variant_id))
+    }
+
+    pub async fn update_management_binding(
+        ctx: &DalContext,
+        management_prototype_id: ManagementPrototypeId,
+        managed_schemas: Option<Vec<SchemaId>>,
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        let func_id = ManagementPrototype::func_id(ctx, management_prototype_id).await?;
+        let Some(management_prototype) =
+            ManagementPrototype::get_by_id(ctx, management_prototype_id).await?
+        else {
+            return FuncBinding::for_func_id(ctx, func_id).await;
+        };
+
+        let schema_variant_id =
+            ManagementPrototype::get_schema_variant_id(ctx, management_prototype_id).await?;
+        let eventual_parent = EventualParent::SchemaVariant(schema_variant_id);
+        eventual_parent.error_if_locked(ctx).await?;
+        let manager_schema_id =
+            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+
+        management_prototype
+            .modify(ctx, |proto| {
+                proto.managed_schemas = managed_schemas.map(|schemas| {
+                    schemas
+                        .into_iter()
+                        .filter(|schema_id| schema_id != &manager_schema_id)
+                        .collect()
+                });
+                Ok(())
+            })
+            .await?;
+
+        FuncBinding::for_func_id(ctx, func_id).await
     }
 }

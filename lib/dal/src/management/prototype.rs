@@ -73,10 +73,20 @@ impl From<ManagementPrototypeId> for si_events::ManagementPrototypeId {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementPrototype {
-    id: ManagementPrototypeId,
-    managed_schemas: Option<HashSet<SchemaId>>,
-    name: String,
-    description: Option<String>,
+    pub id: ManagementPrototypeId,
+    pub managed_schemas: Option<HashSet<SchemaId>>,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+impl From<ManagementPrototype> for ManagementPrototypeContent {
+    fn from(value: ManagementPrototype) -> Self {
+        Self::V1(ManagementPrototypeContentV1 {
+            name: value.name,
+            managed_schemas: value.managed_schemas,
+            description: value.description,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +107,14 @@ pub struct ManagedComponent {
 }
 
 impl ManagementPrototype {
+    implement_add_edge_to!(
+        source_id: ManagementPrototypeId,
+        destination_id: FuncId,
+        add_fn: add_edge_to_func,
+        discriminant: EdgeWeightKindDiscriminants::Use,
+        result: ManagementPrototypeResult,
+    );
+
     pub fn id(&self) -> ManagementPrototypeId {
         self.id
     }
@@ -216,6 +234,41 @@ impl ManagementPrototype {
             name,
             managed_schemas,
             description,
+        })
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ManagementPrototypeResult<Self>
+    where
+        L: FnOnce(&mut Self) -> ManagementPrototypeResult<()>,
+    {
+        let mut proto = self;
+        let before: ManagementPrototypeContent = proto.clone().into();
+        let proto_id = proto.id;
+        lambda(&mut proto)?;
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let updated: ManagementPrototypeContent = proto.into();
+
+        if updated != before {
+            let (hash, _) = ctx.layer_db().cas().write(
+                Arc::new((updated.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
+            workspace_snapshot
+                .update_content(proto_id.into(), hash)
+                .await?;
+        }
+
+        let ManagementPrototypeContent::V1(inner) = updated;
+
+        Ok(Self {
+            id: proto_id,
+            managed_schemas: inner.managed_schemas,
+            name: inner.name,
+            description: inner.description,
         })
     }
 
@@ -498,12 +551,4 @@ impl ManagementPrototype {
 
         Ok(None)
     }
-
-    implement_add_edge_to!(
-        source_id: ManagementPrototypeId,
-        destination_id: FuncId,
-        add_fn: add_edge_to_func,
-        discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ManagementPrototypeResult,
-    );
 }
