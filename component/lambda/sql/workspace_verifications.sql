@@ -23,6 +23,8 @@ CREATE OR REPLACE VIEW workspace_verifications.subscription_issues AS
             WHEN plan_code <> 'launch_trial' AND prev_subscription_end_time IS NULL THEN 'free_trial_not_first'
             WHEN prev_subscription_end_time < start_time THEN 'gap_in_subscriptions'
             WHEN prev_subscription_end_time > start_time THEN 'overlapping_subscriptions'
+            WHEN end_time < next_subscription_start_time THEN 'gap_in_subscriptions'
+            WHEN end_time > next_subscription_start_time THEN 'overlapping_subscriptions'
             WHEN prev_subscription_end_time IS NULL AND start_time IS NULL AND next_subscription_id IS NOT NULL THEN 'multiple_unbounded_subscriptions'
             ELSE NULL
         END AS issue

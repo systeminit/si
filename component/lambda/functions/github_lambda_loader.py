@@ -8,7 +8,7 @@ SI_IMPORT_LAMBDA_HANDLER = os.environ.get('SI_IMPORT_LAMBDA_HANDLER', f"{os.envi
 # Where to download the Python files from (e.g. https://raw.githubusercontent.com/systeminit/si/refs/heads/main/component/lambda/functions/)
 SI_LAMBDA_FUNCTIONS_URL = os.environ['SI_LAMBDA_FUNCTIONS_URL']
 # The modules to import (defaults to all of them if not specified)
-SI_IMPORT_PYTHON        = os.environ.get('SI_IMPORT_MODULES', "si_lambda.py si_types.py si_redshift.py si_lago_api.py")
+SI_IMPORT_PYTHON        = os.environ.get('SI_IMPORT_MODULES', "si_lambda.py si_types.py si_redshift.py si_lago_api.py si_auth_api.py")
 
 # Create temporary directory to download modules
 with tempfile.TemporaryDirectory('github_lambda_loader') as DOWNLOADED_MODULE_DIR:

@@ -1,21 +1,17 @@
 from collections.abc import Callable
 from typing import (
-    Any,
-    Generator,
-    Literal,
     TypeVar,
     Unpack,
     NotRequired,
     TypedDict,
-    overload,
 )
 import boto3
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from mypy_boto3_redshift_data import RedshiftDataAPIServiceClient
+    from mypy_boto3_redshift_data.type_defs import ExecuteStatementOutputTypeDef, FieldTypeDef
 import botocore
-import botocore.session as bc
 from botocore.client import Config
 import time
 import logging
@@ -29,7 +25,7 @@ class DatabaseConnectParams(TypedDict):
     WorkgroupName: NotRequired[str]
 
 
-FieldValue = int | str | float | bool | None
+FieldValue = bytes | int | str | float | bool | None
 
 T = TypeVar("T")
 
@@ -50,10 +46,10 @@ class Redshift:
         self._client = self._connect()
 
     def query(self, Sql: str, **Parameters: object):
-        return self._query(Sql, with_headers=True, **Parameters)
+        return self.QueryWithHeaders(self, self._execute_statement(Sql, **Parameters))
 
     def query_raw(self, Sql: str, **Parameters: object):
-        return self._query(Sql, with_headers=False, **Parameters)
+        return self.Query(self, self._execute_statement(Sql, **Parameters))
 
     def execute(self, Sql: str, **Parameters: object):
         """
@@ -66,96 +62,30 @@ class Redshift:
         Raises:
             Exception if the query failed or was aborted.
         """
-        query_args = {}
+
+        return self.start_executing(Sql, **Parameters).wait_for_complete()
+
+    def start_executing(self, Sql: str, **Parameters: object):
+        return self.Statement(self, self._execute_statement(Sql, **Parameters))
+
+    def _execute_statement(self, Sql: str, **Parameters: object):
         if len(Parameters) > 0:
+            logging.info(f"Executing SQL: {Sql} with parameters {Parameters}")
             query_args = {
                 "Parameters": [
                     {"name": name, "value": value}
                     for [name, value] in Parameters.items()
                 ]
             }
+        else:
+            logging.info(f"Executing query: {Sql}")
+            query_args = {}
 
-        statement = self.with_client(
+        return self.with_client(
             lambda client: client.execute_statement(
                 Sql=Sql, **self._database_params, **query_args  # type: ignore
             )
         )
-
-        last_report = time.time()
-
-        while True:
-            response = self.with_client(
-                lambda client: client.describe_statement(Id=statement["Id"])
-            )
-            status = response["Status"]
-
-            match status:
-                case "FINISHED":
-                    return response
-                case "FAILED":
-                    raise Exception(
-                        f"Query failed: {response['Error']} (Id={statement['Id']})"
-                    )
-                case "ABORTED":
-                    raise Exception(f"Query aborted (Id={statement['Id']})")
-
-            if time.time() - last_report >= self._report_interval_seconds:
-                last_report = time.time()
-                logging.log(logging.INFO,
-                    f"Query status: {status}. Waiting {self._wait_interval_seconds}s for completion... (Id={statement['Id']})"
-                )
-
-            time.sleep(self._wait_interval_seconds)
-
-    @overload
-    def _query(
-        self, Sql: str, with_headers: Literal[False], **Parameters: object
-    ) -> Generator[list[FieldValue], Any, None]: ...
-
-    @overload
-    def _query(
-        self, Sql: str, with_headers: Literal[True], **Parameters: object
-    ) -> Generator[dict[str, FieldValue], Any, None]: ...
-
-    def _query(self, Sql: str, with_headers: bool, **Parameters: object):
-        def to_python_value(value) -> FieldValue:
-            assert len(value) == 1
-            return None if value.get("isNull") == True else list(value.values())[0]
-
-        if len(Parameters) > 0:
-            logging.info(f"Executing query: {Sql} with parameters {Parameters}")
-            statement = self.execute(Sql, **Parameters)
-        else:
-            logging.info(f"Executing query: {Sql}")
-            statement = self.execute(Sql)
-
-        # Get the first page of results
-        result = self.with_client(
-            lambda client: client.get_statement_result(
-                Id=statement["Id"],
-            )
-        )
-
-        # Page through the results, yielding each one
-        column_names = [col["name"] for col in result["ColumnMetadata"]]  # type: ignore
-        while True:
-            logging.debug(f"Page with {len(result['Records'])} records")
-            for record in result["Records"]:
-                values = [to_python_value(value) for value in record]
-                yield dict(zip(column_names, values)) if with_headers else values
-
-            # If this was the last page, exit.
-            if "NextToken" not in result:
-                break
-
-            next_token = result["NextToken"]
-
-            logging.info(f"Page complete. Getting next page with token {next_token} ...")
-            result = self.with_client(
-                lambda client: client.get_statement_result(
-                    Id=statement["Id"], NextToken=next_token
-                )
-            )
 
     def with_client(self, callback: Callable[["RedshiftDataAPIServiceClient"], T]) -> T:
         """
@@ -178,3 +108,86 @@ class Redshift:
         return self._session.client(
             "redshift-data", config=Config(connect_timeout=5, read_timeout=5)
         )
+
+    class Statement:
+        def __init__(self, redshift: 'Redshift', statement: 'ExecuteStatementOutputTypeDef'):
+            self.redshift = redshift
+            self.statement = statement
+
+        def wait_for_complete(self):
+            last_report = time.time()
+
+            while True:
+                response = self._describe_statement()
+                status = response["Status"]
+
+                match status:
+                    case "FINISHED":
+                        return response
+                    case "FAILED":
+                        raise Exception(
+                            f"Query failed: {response['Error']} (Id={self.statement['Id']})"
+                        )
+                    case "ABORTED":
+                        raise Exception(f"Query aborted (Id={self.statement['Id']})")
+
+                if time.time() - last_report >= self.redshift._report_interval_seconds:
+                    last_report = time.time()
+                    logging.log(logging.INFO,
+                        f"Query status: {status}. Waiting {self.redshift._wait_interval_seconds}s for completion... (Id={self.statement['Id']})"
+                    )
+
+                time.sleep(self.redshift._wait_interval_seconds)
+
+        def _describe_statement(self):
+            return self.redshift.with_client(
+                lambda client: client.describe_statement(Id=self.statement["Id"])
+            )
+
+    class Query(Statement):
+        def __iter__(self):
+            for page in self._each_page():
+                for record in page["Records"]:
+                    yield [self._to_python_value(value) for value in record]
+
+        def _each_page(self):
+            self.wait_for_complete()
+
+            # Get the first page of results
+            result = self._get_statement_result()
+            yield result
+
+            # Get other pages of results
+            while 'NextToken' in result:
+                next_token = result['NextToken']
+
+                logging.info(f"Page complete. Getting next page with token {next_token} ...")
+                result = self._get_statement_result(NextToken=next_token)
+
+                yield result
+
+        def _get_statement_result(self, **Parameters):
+            return self.redshift.with_client(
+                lambda client: client.get_statement_result(
+                    Id=self.statement["Id"],
+                    **Parameters
+                )
+            )
+
+        def _to_python_value(self, value: 'FieldTypeDef') -> FieldValue:
+            assert(len(value) == 1)
+            if 'blobValue' in value: return value['blobValue']
+            if 'booleanValue' in value: return value['booleanValue']
+            if 'doubleValue' in value: return value['doubleValue']
+            if 'isNull' in value: return None
+            if 'longValue' in value: return value['longValue']
+            assert 'stringValue' in value
+            return value['stringValue']
+
+
+    class QueryWithHeaders(Query):
+        def __iter__(self):
+            for page in self._each_page():
+                column_names = [col["name"] for col in page["ColumnMetadata"]]  # type: ignore
+                for record in page["Records"]:
+                    yield { column_names[i]: self._to_python_value(value) for i, value in enumerate(record) }
