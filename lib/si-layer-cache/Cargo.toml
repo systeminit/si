@@ -14,14 +14,15 @@ blake3 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
 foyer = { workspace = true }
+fs4 = { workspace = true }
 futures = { workspace = true }
 lazy_static = { workspace = true }
 miniz_oxide = { workspace = true }
-nix = { workspace = true }
 postcard = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
@@ -37,7 +38,6 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 ulid = { workspace = true }
-serde_json = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }

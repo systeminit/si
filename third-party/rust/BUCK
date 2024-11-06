@@ -2851,18 +2851,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "cc-1.1.35.crate",
-    sha256 = "0f57c4b4da2a9d619dd035f27316d7a426305b75be93d09e92f2b9229c34feaf",
-    strip_prefix = "cc-1.1.35",
-    urls = ["https://static.crates.io/crates/cc/1.1.35/download"],
+    name = "cc-1.1.36.crate",
+    sha256 = "baee610e9452a8f6f0a1b6194ec09ff9e2d85dea54432acdae41aa0761c95d70",
+    strip_prefix = "cc-1.1.36",
+    urls = ["https://static.crates.io/crates/cc/1.1.36/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "cc-1.1.35",
-    srcs = [":cc-1.1.35.crate"],
+    name = "cc-1.1.36",
+    srcs = [":cc-1.1.36.crate"],
     crate = "cc",
-    crate_root = "cc-1.1.35.crate/src/lib.rs",
+    crate_root = "cc-1.1.36.crate/src/lib.rs",
     edition = "2018",
     features = ["parallel"],
     platform = {
@@ -6426,6 +6426,53 @@ cargo.rust_library(
         ":twox-hash-1.6.3",
         ":zstd-0.13.2",
     ],
+)
+
+alias(
+    name = "fs4",
+    actual = ":fs4-0.11.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "fs4-0.11.0.crate",
+    sha256 = "adc91b3da7f1a7968b00f9f65a4971252f6a927d3cb9eec05d91cbeaff678f9a",
+    strip_prefix = "fs4-0.11.0",
+    urls = ["https://static.crates.io/crates/fs4/0.11.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "fs4-0.11.0",
+    srcs = [":fs4-0.11.0.crate"],
+    crate = "fs4",
+    crate_root = "fs4-0.11.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "default",
+        "sync",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":rustix-0.38.39"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":rustix-0.38.39"],
+        ),
+        "macos-arm64": dict(
+            deps = [":rustix-0.38.39"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":rustix-0.38.39"],
+        ),
+        "windows-gnu": dict(
+            deps = [":windows-sys-0.52.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows-sys-0.52.0"],
+        ),
+    },
+    visibility = [],
 )
 
 http_archive(
@@ -18238,6 +18285,7 @@ cargo.rust_binary(
         ":fastrace-0.7.4",
         ":flate2-1.0.34",
         ":foyer-0.12.2",
+        ":fs4-0.11.0",
         ":futures-0.3.31",
         ":futures-lite-2.4.0",
         ":glob-0.3.1",

@@ -1,4 +1,4 @@
-use std::error;
+use std::{error, num::TryFromIntError};
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
@@ -50,6 +50,8 @@ pub enum LayerDbError {
     HashParse(#[from] ContentHashParseError),
     #[error("incomplete key: {0}")]
     IncompleteKey(String),
+    #[error("failed to convert integer: {0}")]
+    IntConvert(#[from] TryFromIntError),
     #[error("invalid cache name: {0}")]
     InvalidCacheName(String),
     #[error("io error: {0}")]

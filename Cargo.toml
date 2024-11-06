@@ -121,6 +121,7 @@ flate2 = "1.0.28"
 futures = "0.3.30"
 futures-lite = "2.3.0"
 foyer = { version = "0.12.2", features = ["tracing"] }
+fs4 = "0.11.0"
 glob = "0.3.1"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
