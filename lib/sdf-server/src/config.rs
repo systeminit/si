@@ -1,6 +1,5 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
 use dal::jwt_key::JwtConfig;
-use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
 use si_data_spicedb::SpiceDbConfig;
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
@@ -10,7 +9,6 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
-use strum::{Display, EnumString, VariantNames};
 use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;

@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::IntoResponse, response::Response, routing::get, Router};
+use axum::{routing::get, Router};
 
 use axum_util::app_state::AppState;
 

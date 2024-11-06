@@ -47,7 +47,7 @@ pub use self::{
 };
 pub(crate) use self::{
     app_state::AppState,
-    tracking::{track, track_no_ctx},
+    tracking::track,
 };
 pub use dal::{
     feature_flags::{FeatureFlag, FeatureFlagService},
