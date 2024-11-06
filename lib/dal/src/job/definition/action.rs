@@ -263,7 +263,12 @@ async fn process_execution(
                 } else {
                     let mut diagram_sockets = HashMap::new();
                     let summary = component
-                        .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                        .into_frontend_type(
+                            ctx,
+                            None,
+                            ChangeStatus::Unmodified,
+                            &mut diagram_sockets,
+                        )
                         .await?;
                     WsEvent::resource_refreshed(ctx, summary)
                         .await?
@@ -273,7 +278,7 @@ async fn process_execution(
             } else {
                 let mut diagram_sockets = HashMap::new();
                 let summary = component
-                    .into_frontend_type(ctx, ChangeStatus::Unmodified, &mut diagram_sockets)
+                    .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
                     .await?;
                 WsEvent::resource_refreshed(ctx, summary)
                     .await?

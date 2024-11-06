@@ -1,10 +1,12 @@
 use dal::property_editor::schema::PropertyEditorSchema;
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal::{AttributeValue, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name,
+    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
     PropEditorTestView,
+};
+use dal_test::helpers::{
+    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
 };
 use dal_test::test;
 use serde_json::json;
@@ -24,8 +26,7 @@ async fn assemble(ctx: &DalContext) {
     let schema_variant_id = schema_variant.id();
 
     // Create a component and set geometry.
-    let name = "steam deck";
-    let component = Component::new(ctx, name, schema_variant_id)
+    let component = create_component_for_schema_variant_on_default_view(ctx, schema_variant_id)
         .await
         .expect("could not create component");
 
@@ -40,9 +41,10 @@ async fn assemble(ctx: &DalContext) {
 
 #[test]
 async fn array_map_manipulation(ctx: &DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "pirate", "ss poopcanoe")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "pirate", "ss poopcanoe")
+            .await
+            .expect("could not create component");
 
     let parrot_names_value_id = component
         .attribute_values_for_prop(ctx, &["root", "domain", "parrot_names"])
@@ -295,10 +297,13 @@ async fn array_map_manipulation(ctx: &DalContext) {
 #[test]
 async fn override_value_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component =
-        create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
-            .await
-            .expect("could not create component");
+    let pirate_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "pirate",
+        original_pirate_name,
+    )
+    .await
+    .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -395,10 +400,13 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
 #[test]
 async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
-    let pirate_component =
-        create_component_for_default_schema_name(ctx, "pirate", original_pirate_name)
-            .await
-            .expect("could not create component");
+    let pirate_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "pirate",
+        original_pirate_name,
+    )
+    .await
+    .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -493,9 +501,10 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
 #[test]
 async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
     let pirate_name = "Blackbeard";
-    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", pirate_name)
-        .await
-        .expect("could not create component");
+    let pirate_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "pirate", pirate_name)
+            .await
+            .expect("could not create component");
 
     let parrots_path = &["root", "domain", "parrot_names"];
 
@@ -531,9 +540,10 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
             .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_default_schema_name(ctx, "pet_shop", "Petopia")
-        .await
-        .expect("could not create component");
+    let pet_shop_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
+            .await
+            .expect("could not create component");
 
     connect_components_with_socket_names(
         ctx,
@@ -574,9 +584,10 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
 async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
     let pirate_name = "Long John Silver";
     let parrot_name = "Captain Flint";
-    let pirate_component = create_component_for_default_schema_name(ctx, "pirate", pirate_name)
-        .await
-        .expect("could not create component");
+    let pirate_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "pirate", pirate_name)
+            .await
+            .expect("could not create component");
 
     let parrots_path = &["root", "domain", "parrot_names"];
     let parrot_entry_path = &["root", "domain", "parrot_names", "parrot_name"];
@@ -612,9 +623,10 @@ async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
             .expect("could not get value")
     );
 
-    let pet_shop_component = create_component_for_default_schema_name(ctx, "pet_shop", "Petopia")
-        .await
-        .expect("could not create component");
+    let pet_shop_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
+            .await
+            .expect("could not create component");
 
     // set value on source component
     {

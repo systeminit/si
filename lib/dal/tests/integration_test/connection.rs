@@ -3,22 +3,31 @@ use dal::diagram::Diagram;
 use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
-use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view,
+    create_named_component_for_schema_variant_on_default_view,
+};
 use dal_test::test;
 use serde::Deserialize;
 
 #[test]
 async fn make_multiple_trees(ctx: &mut DalContext) {
     // create 2 even legos
-    let even_lego_1 =
-        create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
-            .await
-            .expect("could not create component");
-    let even_lego_2 =
-        create_component_for_default_schema_name(ctx, "large even lego", "even lego 2")
-            .await
-            .expect("could not create component");
+    let even_lego_1 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large even lego",
+        "even lego 1",
+    )
+    .await
+    .expect("could not create component");
+    let even_lego_2 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large even lego",
+        "even lego 2",
+    )
+    .await
+    .expect("could not create component");
 
     let even_sv_id = even_lego_1
         .schema_variant(ctx)
@@ -34,12 +43,20 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
     //create 2 odd legos
-    let odd_lego_1 = create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 1")
-        .await
-        .expect("could not create component");
-    let odd_lego_2 = create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 2")
-        .await
-        .expect("could not create component");
+    let odd_lego_1 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large odd lego",
+        "odd lego 1",
+    )
+    .await
+    .expect("could not create component");
+    let odd_lego_2 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large odd lego",
+        "odd lego 2",
+    )
+    .await
+    .expect("could not create component");
     let odd_sv = odd_lego_1
         .schema_variant(ctx)
         .await
@@ -81,7 +98,9 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         2,                   // expected
         diagram.edges.len()  // actual
@@ -94,22 +113,33 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
 #[test]
 async fn make_chain_remove_middle(ctx: &mut DalContext) {
     // make chain of odd lego 1 -> even lego 1 -> odd lego 2
-    let odd_component_1 =
-        create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 1")
-            .await
-            .expect("could not create component");
-    let even_component_1 =
-        create_component_for_default_schema_name(ctx, "large even lego", "even lego 1")
-            .await
-            .expect("could not create component");
-    let odd_component_2 =
-        create_component_for_default_schema_name(ctx, "large odd lego", "odd lego 2")
-            .await
-            .expect("could not create component");
+    let odd_component_1 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large odd lego",
+        "odd lego 1",
+    )
+    .await
+    .expect("could not create component");
+    let even_component_1 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large even lego",
+        "even lego 1",
+    )
+    .await
+    .expect("could not create component");
+    let odd_component_2 = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "large odd lego",
+        "odd lego 2",
+    )
+    .await
+    .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         0,                   // expected
         diagram.edges.len()  // actual
@@ -156,7 +186,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         1,                   // expected
         diagram.edges.len()  // actual
@@ -201,7 +233,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         2,                   // expected
         diagram.edges.len()  // actual
@@ -225,7 +259,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     //make sure everything is cleaned up
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         0,                   // expected
         diagram.edges.len()  // actual
@@ -277,28 +313,38 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -361,7 +407,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
@@ -442,20 +488,21 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
 async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_variant_on_diagram(
     ctx: &mut DalContext,
 ) {
-    let source = create_component_for_default_schema_name(ctx, "fallout", "source")
+    let source = create_component_for_default_schema_name_in_default_view(ctx, "fallout", "source")
         .await
         .expect("could not create component");
     let source_sv_id = Component::schema_variant_id(ctx, source.id())
         .await
         .expect("find variant id for component");
 
-    let destination = create_component_for_default_schema_name(ctx, "starfield", "destination")
-        .await
-        .expect("could not create component");
+    let destination =
+        create_component_for_default_schema_name_in_default_view(ctx, "starfield", "destination")
+            .await
+            .expect("could not create component");
     let destination_sv_id = Component::schema_variant_id(ctx, destination.id())
         .await
         .expect("find variant id for component");
-    create_component_for_default_schema_name(ctx, "starfield", "not destination")
+    create_component_for_default_schema_name_in_default_view(ctx, "starfield", "not destination")
         .await
         .expect("could not create component");
 
@@ -487,7 +534,7 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
 
@@ -540,28 +587,38 @@ async fn remove_connection(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -621,7 +678,7 @@ async fn remove_connection(ctx: &mut DalContext) {
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
@@ -658,7 +715,7 @@ async fn remove_connection(ctx: &mut DalContext) {
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(1, diagram.edges.len());

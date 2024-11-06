@@ -13,6 +13,7 @@ id!(ActionPrototypeId);
 id!(AttributePrototypeId);
 id!(AttributePrototypeArgumentId);
 id!(ManagementPrototypeId);
+id!(ViewId);
 
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum FuncRunState {

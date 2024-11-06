@@ -3,7 +3,9 @@ use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
 use dal_test::expected::{self, ExpectComponent};
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal_test::helpers::{
+    create_named_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use serde_json::json;
 use veritech_client::ResourceStatus;
@@ -50,10 +52,13 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
     oysters_component
         .set_resource(
             ctx,
@@ -78,18 +83,25 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -234,28 +246,38 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component =
-        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let oysters_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "oysters in my pocket",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
     // Create a second component for a second source
-    let lunch_component =
-        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
-            .await
-            .expect("could not create component");
+    let lunch_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
-        .await
-        .expect("could not create component");
+    let royel_component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        "royel otis",
+        butane_schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

@@ -3,21 +3,24 @@ use dal::property_editor::values::PropertyEditorValues;
 use dal::{resource_metadata, Workspace};
 use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{create_component_for_default_schema_name, encrypt_message};
+use dal_test::helpers::{
+    create_component_for_default_schema_name_in_default_view, encrypt_message,
+};
 use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
 use si_events::{ResourceMetadata, ResourceStatus};
 
 #[test]
 async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
-    let source_component = create_component_for_default_schema_name(ctx, "dummy-secret", "source")
-        .await
-        .expect("could not create component");
+    let source_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "source")
+            .await
+            .expect("could not create component");
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
     let destination_component =
-        create_component_for_default_schema_name(ctx, "fallout", "destination")
+        create_component_for_default_schema_name_in_default_view(ctx, "fallout", "destination")
             .await
             .expect("could not create component");
     let destination_schema_variant_id =

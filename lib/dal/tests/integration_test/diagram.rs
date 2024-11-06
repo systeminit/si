@@ -1,17 +1,20 @@
 use dal::{diagram::Diagram, Component, DalContext};
 use dal_test::{
-    helpers::{create_component_for_default_schema_name, ChangeSetTestHelpers},
+    helpers::{create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers},
     test,
 };
 
 #[test]
 async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut DalContext) {
-    let component_to_remove =
-        create_component_for_default_schema_name(ctx, "starfield", "Removed in sub-change set")
-            .await
-            .expect("Unable to create component.");
+    let component_to_remove = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "starfield",
+        "Removed in sub-change set",
+    )
+    .await
+    .expect("Unable to create component.");
     let _component_still_in_change_set =
-        create_component_for_default_schema_name(ctx, "starfield", "Still here")
+        create_component_for_default_schema_name_in_default_view(ctx, "starfield", "Still here")
             .await
             .expect("Unable to create component.");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -40,7 +43,7 @@ async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut
         .await
         .is_err());
 
-    let summary_diagram = Diagram::assemble(ctx)
+    let summary_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("Unable to assemble summary diagram");
 

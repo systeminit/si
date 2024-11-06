@@ -3,8 +3,8 @@
     ref="groupRef"
     :config="{
       id: group.uniqueKey,
-      x: position.x,
-      y: position.y,
+      x: irect.x,
+      y: irect.y,
       ...(isDeleted && { opacity: 0.5 }),
     }"
     @mouseover="onMouseOver"
@@ -17,7 +17,7 @@
         width: nodeWidth + 8,
         height: nodeHeight + 8,
         x: -halfWidth - 4,
-        y: -4 - nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
+        y: -4 - NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
         strokeWidth: 1,
@@ -77,122 +77,114 @@
     />
 
     <!-- resize handles -->
-    <template v-if="!collapsed">
-      <!--  left side handle  -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-            -nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- right side handle   -->
-      <v-line
-        :config="{
-          points: [
-            nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-            nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('right', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Handle -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            nodeBodyHeight,
-            nodeWidth / 2,
-            nodeBodyHeight,
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('bottom', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Left Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: -nodeWidth / 2,
-          y: nodeBodyHeight,
-        }"
-        @mouseover="onResizeHover('bottom-left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Bottom Right Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: nodeWidth / 2,
-          y: nodeBodyHeight,
-        }"
-        @mouseover="onResizeHover('bottom-right', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Handle -->
-      <v-line
-        :config="{
-          points: [
-            -nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-            nodeWidth / 2,
-            -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-          ],
-          hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
-        }"
-        @mouseover="onResizeHover('top', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Left Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: -nodeWidth / 2,
-          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-        }"
-        @mouseover="onResizeHover('top-left', $event)"
-        @mouseout="onMouseOut"
-      />
-      <!-- Top Right Handle -->
-      <v-circle
-        :config="{
-          width: GROUP_RESIZE_HANDLE_SIZE,
-          height: GROUP_RESIZE_HANDLE_SIZE,
-          x: nodeWidth / 2,
-          y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
-        }"
-        @mouseover="onResizeHover('top-right', $event)"
-        @mouseout="onMouseOut"
-      />
-    </template>
+    <!--  left side handle  -->
+    <v-line
+      :config="{
+        points: [
+          -nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          -nodeWidth / 2,
+          nodeBodyHeight,
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- right side handle   -->
+    <v-line
+      :config="{
+        points: [
+          nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          nodeBodyHeight,
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Handle -->
+    <v-line
+      :config="{
+        points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('bottom', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Left Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: nodeBodyHeight,
+      }"
+      @mouseover="onResizeHover('bottom-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Right Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: nodeBodyHeight,
+      }"
+      @mouseover="onResizeHover('bottom-right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Handle -->
+    <v-line
+      :config="{
+        points: [
+          -nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('top', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Left Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Right Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: -(NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-right', $event)"
+      @mouseout="onMouseOut"
+    />
 
     <!-- sockets -->
     <v-group
-      v-if="!collapsed"
       :config="{
-        x: -halfWidth - 1,
-        y: nodeHeaderHeight + SOCKET_MARGIN_TOP,
+        x: leftSockets.x,
+        y: leftSockets.y,
       }"
     >
       <DiagramNodeSocket
-        v-for="(socket, i) in leftSockets"
+        v-for="socket in leftSockets.sockets"
         :key="socket.uniqueKey"
         :socket="socket"
-        :y="i * SOCKET_GAP"
+        :position="socket.position"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
@@ -201,20 +193,16 @@
     </v-group>
 
     <v-group
-      v-if="!collapsed"
       :config="{
-        x: halfWidth + 1,
-        y:
-          nodeHeaderHeight +
-          SOCKET_MARGIN_TOP +
-          SOCKET_GAP * leftSockets.length,
+        x: rightSockets.x,
+        y: rightSockets.y,
       }"
     >
       <DiagramNodeSocket
-        v-for="(socket, i) in rightSockets"
+        v-for="socket in rightSockets.sockets"
         :key="socket.uniqueKey"
         :socket="socket"
-        :y="i * SOCKET_GAP"
+        :position="socket.position"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
@@ -226,7 +214,7 @@
     <v-group
       :config="{
         x: -halfWidth,
-        y: -nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
+        y: -NODE_HEADER_HEIGHT - GROUP_HEADER_BOTTOM_MARGIN,
       }"
     >
       <!-- header background -->
@@ -238,26 +226,15 @@
           x: 0,
           y: 0,
           width: headerWidth,
-          height: headerTextHeight,
+          height: NODE_HEADER_HEIGHT,
         }"
-      />
-
-      <DiagramIcon
-        icon="chevron"
-        origin="top-left"
-        :rotation="collapsed ? 90 : 180"
-        :size="40"
-        :x="38"
-        :y="collapsed ? 2 : 42"
-        :color="colors.headerText"
-        @click="toggleChevron"
       />
 
       <DiagramIcon
         :icon="COMPONENT_TYPE_ICONS[group.def.componentType]"
         origin="top-left"
         :size="32"
-        :x="32"
+        :x="2"
         :y="5"
         :color="colors.headerText"
       />
@@ -266,7 +243,6 @@
 
       <!-- rename hitbox -->
       <v-rect
-        v-if="!collapsed"
         :config="{
           ...renameHitbox,
           ...(debug && { fill: 'red' }),
@@ -285,7 +261,7 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
+          x: GROUP_HEADER_ICON_SIZE - 2,
           y: 2,
           verticalAlign: 'top',
           align: 'left',
@@ -306,7 +282,7 @@
       <v-text
         ref="subtitleTextRef"
         :config="{
-          x: 30 + GROUP_HEADER_ICON_SIZE - 2,
+          x: GROUP_HEADER_ICON_SIZE - 2,
           y: 20,
           verticalAlign: 'top',
           align: 'left',
@@ -336,69 +312,9 @@
       @mouseout="onMouseOut"
     />
 
-    <!-- status icons for collapsed children-->
-    <v-group
-      v-if="collapsed"
-      :config="{
-        x: halfWidth - 2,
-        y: 0,
-      }"
-    >
-      <v-text
-        :config="{
-          x: -58,
-          y: nodeBodyHeight - 25,
-          verticalAlign: 'top',
-          align: 'right',
-          width: 32,
-          text: `${group.def.numChildrenResources}`,
-          fill: colors.labelText,
-          fontSize: 16,
-          fontStyle: 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: false,
-        }"
-      ></v-text>
-      <DiagramIcon
-        icon="check-hex"
-        :color="getToneColorHex('success')"
-        :size="24"
-        :x="0"
-        :y="nodeBodyHeight - 5"
-        origin="bottom-right"
-      />
-      <v-text
-        :config="{
-          x: -112,
-          y: nodeBodyHeight - 25,
-          verticalAlign: 'top',
-          align: 'right',
-          width: 32,
-          text: `${group.def.numChildren}`,
-          fill: colors.labelText,
-          fontSize: 16,
-          fontStyle: 'bold',
-          fontFamily: DIAGRAM_FONT_FAMILY,
-          listening: false,
-          wrap: 'none',
-          ellipsis: false,
-        }"
-      />
-      <DiagramIcon
-        icon="check-hex-outline"
-        :color="getToneColorHex('success')"
-        :size="24"
-        :x="-55"
-        :y="nodeBodyHeight - 5"
-        origin="bottom-right"
-      />
-    </v-group>
-
     <!-- status icons -->
     <v-group
-      v-if="statusIcons?.length && !collapsed"
+      v-if="statusIcons?.length"
       :config="{
         x: halfWidth - 2,
         y: 0,
@@ -452,10 +368,10 @@
       :size="24 + (diffIconHover ? 4 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE - 36 / 2"
       :y="
-        -nodeHeaderHeight +
+        -NODE_HEADER_HEIGHT +
         GROUP_HEADER_ICON_SIZE / 2 -
         GROUP_HEADER_BOTTOM_MARGIN +
-        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
       "
       icon="bolt"
       origin="center"
@@ -470,10 +386,10 @@
       :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
       :y="
-        -nodeHeaderHeight +
+        -NODE_HEADER_HEIGHT +
         GROUP_HEADER_ICON_SIZE / 2 -
         GROUP_HEADER_BOTTOM_MARGIN +
-        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+        (NODE_HEADER_HEIGHT - GROUP_HEADER_ICON_SIZE) / 2
       "
       origin="center"
       @click="onClick('diff')"
@@ -484,7 +400,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onUpdated, PropType, ref, watch } from "vue";
+import { computed, onUpdated, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
@@ -501,19 +417,17 @@ import {
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
   GROUP_HEADER_BOTTOM_MARGIN,
+  NODE_HEADER_HEIGHT,
   GROUP_HEADER_ICON_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_TITLE_FONT_SIZE,
-  MIN_NODE_DIMENSION,
   SELECTION_COLOR,
-  SOCKET_GAP,
-  SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
-import { trackEvent } from "@/utils/tracking";
 import {
   QualificationStatus,
   statusIconsForComponent,
 } from "@/store/qualifications.store";
+import { useViewsStore } from "@/store/views.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -545,7 +459,6 @@ const props = defineProps({
     type: String as PropType<QualificationStatus>,
     required: false,
   },
-  collapsed: Boolean,
   debug: Boolean,
 });
 
@@ -567,7 +480,6 @@ const statusIconHovers = ref(
 );
 
 const emit = defineEmits<{
-  (e: "resize"): void;
   (e: "rename", v: () => void): void;
 }>();
 
@@ -578,12 +490,13 @@ const subtitleTextRef = ref();
 const groupRef = ref();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
-const size = computed(
-  () =>
-    componentsStore.combinedElementSizes[props.group.uniqueKey] ||
-    props.group.def.size || { width: 500, height: 500 },
-);
+const irect = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const r = viewStore.groups[props.group.def.id]!;
+  return r;
+});
 
 const isDeleted = computed(
   () =>
@@ -618,11 +531,7 @@ const childCount = computed(() => {
   return undeletedChildren.length;
 });
 
-const nodeWidth = computed(() =>
-  props.collapsed
-    ? size.value.width
-    : Math.max(size.value.width, MIN_NODE_DIMENSION),
-);
+const nodeWidth = computed(() => irect.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
   !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
@@ -630,20 +539,13 @@ const headerWidth = computed(() =>
     : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
 );
 
-const actualSockets = computed(() =>
-  _.filter(props.group.sockets, (s) => {
-    const should_skip = s.def.label === "Frame";
-
-    return !should_skip;
-  }),
-);
-
 const leftSockets = computed(() =>
-  _.filter(actualSockets.value, (s) => s.def.nodeSide === "left"),
+  props.group.layoutLeftSockets(nodeWidth.value),
 );
 const rightSockets = computed(() =>
-  _.filter(actualSockets.value, (s) => s.def.nodeSide === "right"),
+  props.group.layoutRightSockets(nodeWidth.value),
 );
+
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
@@ -655,44 +557,10 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const headerTextHeight = ref(20);
-watch(
-  [nodeWidth, () => props.group.def.title, () => props.group.def.subtitle],
-  () => {
-    // we have to let the new header be drawn on the canvas before we can check the height
-    nextTick(recalcHeaderHeight);
-  },
-  { immediate: true },
-);
-
-function recalcHeaderHeight() {
-  headerTextHeight.value =
-    titleTextRef.value?.getNode()?.getSelfRect().height || 20;
-  headerTextHeight.value *= 1.7;
-}
-
-const nodeHeaderHeight = computed(() => headerTextHeight.value);
-const nodeBodyHeight = computed(() =>
-  !props.collapsed
-    ? Math.max(size.value.height, MIN_NODE_DIMENSION)
-    : size.value.height,
-);
+const nodeBodyHeight = computed(() => irect.value.height);
 const nodeHeight = computed(
-  () =>
-    nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
+  () => NODE_HEADER_HEIGHT + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 );
-
-const position = computed(
-  () =>
-    componentsStore.combinedElementPositions[props.group.uniqueKey] ||
-    props.group.def.position,
-);
-
-watch([nodeWidth, nodeHeight, position, actualSockets], () => {
-  // we call on nextTick to let the component actually update itself on the stage first
-  // because parent responds to this event by finding shapes on the stage and looking at location/dimensions
-  nextTick(() => emit("resize"));
-});
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
@@ -780,36 +648,6 @@ const highlightAsNewParent = computed(() => {
   );
 });
 
-const component = computed(
-  () => componentsStore.rawComponentsById[props.group.def.id],
-);
-
-const toggleChevron = () => {
-  if (componentsStore.collapsedComponents.has(props.group.uniqueKey)) {
-    componentsStore.expandComponents(props.group.uniqueKey);
-    trackEvent("expand-components", {
-      source: "diagram-group",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
-  } else {
-    const { position, size } =
-      componentsStore.initMinimzedElementPositionAndSize(props.group.uniqueKey);
-    componentsStore.updateMinimzedElementPositionAndSize({
-      uniqueKey: props.group.uniqueKey,
-      position,
-      size,
-    });
-    trackEvent("collapse-components", {
-      source: "diagram-group",
-      schemaVariantName: component.value?.schemaVariantName,
-      schemaName: component.value?.schemaName,
-      hasParent: !!component.value?.parentId,
-    });
-  }
-};
-
 // RENAME ON DIAGRAM STUFF
 const renameHitboxSelfRect = ref();
 
@@ -832,7 +670,7 @@ const renameHitbox = computed(() => {
         ...raw,
         width,
         height: GROUP_TITLE_FONT_SIZE + 6,
-        x: 32 + GROUP_HEADER_ICON_SIZE,
+        x: GROUP_HEADER_ICON_SIZE - 2,
         y: 4,
       };
       return box;

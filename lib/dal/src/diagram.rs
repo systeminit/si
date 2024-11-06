@@ -18,8 +18,8 @@ use crate::component::inferred_connection_graph::InferredConnectionGraphError;
 use crate::component::{
     ComponentError, ComponentResult, IncomingConnection, InferredConnection, OutgoingConnection,
 };
-use crate::diagram::geometry::GeometryId;
-use crate::diagram::view::ViewId;
+use crate::diagram::geometry::{Geometry, GeometryId};
+use crate::diagram::view::{View, ViewId};
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
@@ -31,7 +31,7 @@ use crate::{
     HistoryEventError, InputSocketId, OutputSocketId, SchemaVariantId, StandardModelError,
     TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
 };
-use si_frontend_types::{DiagramSocket, SummaryDiagramComponent};
+use si_frontend_types::{DiagramComponentView, DiagramSocket};
 use si_layer_cache::LayerDbError;
 
 #[remain::sorted]
@@ -51,6 +51,8 @@ pub enum DiagramError {
     Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("component not found for geometry: {0}")]
+    ComponentNotFoundForGeometry(GeometryId),
     #[error("component status not found for component: {0}")]
     ComponentStatusNotFound(ComponentId),
     #[error("default view not found")]
@@ -214,7 +216,7 @@ impl SummaryDiagramInferredEdge {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagram {
-    pub components: Vec<SummaryDiagramComponent>,
+    pub components: Vec<DiagramComponentView>,
     pub edges: Vec<SummaryDiagramEdge>,
     pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
 }
@@ -223,25 +225,23 @@ impl Diagram {
     async fn assemble_component_views(
         ctx: &DalContext,
         base_snapshot: &Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, Component>,
+        components: &HashMap<ComponentId, (Component, Geometry)>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> DiagramResult<(Vec<SummaryDiagramComponent>, Vec<SummaryDiagramEdge>)> {
+    ) -> DiagramResult<(Vec<DiagramComponentView>, Vec<SummaryDiagramEdge>)> {
         let mut component_views = Vec::with_capacity(components.len());
         let mut diagram_edges = Vec::with_capacity(components.len());
 
-        for component in components.values() {
+        for (component, geometry) in components.values() {
             let change_status = component.change_status(ctx).await?;
             component_views.push(
                 component
-                    .into_frontend_type(ctx, change_status, diagram_sockets)
+                    .into_frontend_type(ctx, Some(geometry), change_status, diagram_sockets)
                     .await?,
             );
-        }
 
-        for component in components.values() {
-            let incoming_connections = component.incoming_connections(ctx).await?;
-            for incoming_connection in incoming_connections {
-                if let Some(from_component) = components.get(&incoming_connection.from_component_id)
+            for incoming_connection in component.incoming_connections(ctx).await? {
+                if let Some((from_component, _)) =
+                    components.get(&incoming_connection.from_component_id)
                 {
                     let edge_status = if base_snapshot
                         .get_node_index_by_id_opt(
@@ -270,7 +270,7 @@ impl Diagram {
 
     async fn assemble_inferred_connection_views(
         ctx: &DalContext,
-        components: &HashMap<ComponentId, Component>,
+        components: &HashMap<ComponentId, (Component, Geometry)>,
     ) -> DiagramResult<Vec<SummaryDiagramInferredEdge>> {
         let mut diagram_inferred_edges = vec![];
 
@@ -281,7 +281,7 @@ impl Diagram {
             .inferred_connections_for_all_components(ctx)
             .await?
         {
-            let to_delete = if let (Some(source_component), Some(destination_component)) = (
+            let to_delete = if let (Some((source_component, _)), Some((destination_component, _))) = (
                 components.get(&incoming_connection.source_component_id),
                 components.get(&incoming_connection.destination_component_id),
             ) {
@@ -330,9 +330,10 @@ impl Diagram {
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, Component>,
+        components: &HashMap<ComponentId, (Component, Geometry)>,
+        view_id: ViewId,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> DiagramResult<Vec<SummaryDiagramComponent>> {
+    ) -> DiagramResult<Vec<DiagramComponentView>> {
         let mut removed_component_summaries = vec![];
 
         let base_change_set_ctx = ctx.clone_with_base().await?;
@@ -353,9 +354,20 @@ impl Diagram {
                     let deleted_component =
                         Component::get_by_id(base_change_set_ctx, component_id).await?;
 
+                    let Some(geometry) = Geometry::try_get_by_component_and_view(
+                        base_change_set_ctx,
+                        component_id,
+                        view_id,
+                    )
+                    .await?
+                    else {
+                        continue;
+                    };
+
                     let mut summary_diagram_component = deleted_component
                         .into_frontend_type(
                             base_change_set_ctx,
+                            Some(&geometry),
                             ChangeStatus::Deleted,
                             diagram_sockets,
                         )
@@ -394,33 +406,43 @@ impl Diagram {
     }
 
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
-    /// [`Connections`](crate::Connection).
+    /// [`Connections`](crate::Connection) for a [View](view::View).
     #[instrument(level = "info", skip(ctx))]
-    pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
+    pub async fn assemble(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Self> {
+        let component_and_geometry_by_component_id = {
+            let mut map = HashMap::new();
+
+            for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
+                let component_id = Geometry::component_id(ctx, geometry.id()).await?;
+
+                let component = Component::get_by_id(ctx, component_id).await?;
+
+                map.insert(component_id, (component, geometry));
+            }
+
+            map
+        };
+
         let (base_snapshot, not_on_head) = Self::get_base_snapshot(ctx).await?;
-
-        let components = Component::list(ctx).await?;
-        let virtual_and_real_components_by_id: HashMap<ComponentId, Component> =
-            components.iter().cloned().map(|c| (c.id(), c)).collect();
-
         let mut diagram_sockets = HashMap::new();
         let (mut component_views, mut diagram_edges) = Self::assemble_component_views(
             ctx,
             &base_snapshot,
-            &virtual_and_real_components_by_id,
+            &component_and_geometry_by_component_id,
             &mut diagram_sockets,
         )
         .await?;
 
         let diagram_inferred_edges =
-            Self::assemble_inferred_connection_views(ctx, &virtual_and_real_components_by_id)
+            Self::assemble_inferred_connection_views(ctx, &component_and_geometry_by_component_id)
                 .await?;
 
         if not_on_head {
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
                 base_snapshot,
-                &virtual_and_real_components_by_id,
+                &component_and_geometry_by_component_id,
+                view_id,
                 &mut diagram_sockets,
             )
             .await?;
@@ -435,5 +457,12 @@ impl Diagram {
             components: component_views,
             inferred_edges: diagram_inferred_edges,
         })
+    }
+
+    /// Calls [Self::assemble](Self::assemble) for the default view.
+    pub async fn assemble_for_default_view(ctx: &DalContext) -> DiagramResult<Self> {
+        let default_view_id = View::get_id_for_default(ctx).await?;
+
+        Self::assemble(ctx, default_view_id).await
     }
 }

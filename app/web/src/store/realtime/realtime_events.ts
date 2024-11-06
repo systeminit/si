@@ -1,6 +1,7 @@
 // This is a map of valid websocket events to the shape of their payload
 // used in the subscribe fn to limit valid event names and set callback payload type
 
+import { IRect } from "konva/lib/types";
 import { FuncBinding, FuncId, FuncSummary } from "@/api/sdf/dal/func";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
@@ -11,7 +12,6 @@ import {
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
 import { ActionId } from "@/api/sdf/dal/action";
-import { ComponentGeometry } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
@@ -53,8 +53,9 @@ export interface ComponentPositionRequest {
   kind: "ComponentSetPosition";
   data: {
     clientUlid?: string;
+    viewId: string;
     changeSetId: string | null;
-    positions: ComponentGeometry[];
+    positions: ({ componentId: ComponentId } & IRect)[];
   };
 }
 
@@ -79,19 +80,8 @@ export type WsEventPayloadMap = {
   SetComponentPosition: {
     changeSetId: ChangeSetId;
     clientUlid: string;
-    positions: [
-      {
-        componentId: ComponentId;
-        position: {
-          x: number;
-          y: number;
-        };
-        size?: {
-          width: number | undefined;
-          height: number | undefined;
-        };
-      },
-    ];
+    viewId: string;
+    positions: ({ componentId: ComponentId } & IRect)[];
   };
 
   ChangeSetApplied: {

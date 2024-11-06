@@ -1,15 +1,16 @@
 use dal::code_view::CodeLanguage;
 use dal::{Component, DalContext};
-use dal_test::helpers::create_component_for_default_schema_name;
+use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn get_code_json_lang(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -36,10 +37,13 @@ async fn get_code_json_lang(ctx: &mut DalContext) {
 
 #[test]
 async fn get_code_yaml_and_string(ctx: &mut DalContext) {
-    let component =
-        create_component_for_default_schema_name(ctx, "katy perry", "all codegen and no actions")
-            .await
-            .expect("could not create component");
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "katy perry",
+        "all codegen and no actions",
+    )
+    .await
+    .expect("could not create component");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
@@ -76,10 +80,13 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
 
 #[test]
 async fn get_code_no_codegen_funcs(ctx: &mut DalContext) {
-    let starfield_component =
-        create_component_for_default_schema_name(ctx, "starfield", "no codegen funcs here")
-            .await
-            .expect("could not create component");
+    let starfield_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "starfield",
+        "no codegen funcs here",
+    )
+    .await
+    .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

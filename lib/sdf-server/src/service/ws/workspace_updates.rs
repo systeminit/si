@@ -217,7 +217,7 @@ mod workspace_updates {
                                 let event: WebsocketEventRequest = match serde_json::from_str(&msg) {
                                     Ok(event) => event,
                                     Err(err) => {
-                                        error!("Unable to deserialize websocket message: {err}");
+                                        error!("Unable to deserialize websocket message: {err} {msg}");
                                         continue;
                                     }
                                 };

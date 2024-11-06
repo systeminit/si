@@ -4,8 +4,8 @@ use dal::{
     action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action,
     action::ActionState, AttributeValue, Component, DalContext,
 };
-use dal_test::helpers::create_component_for_default_schema_name;
-use dal_test::helpers::create_component_for_schema_name_with_type;
+use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
+use dal_test::helpers::create_component_for_schema_name_with_type_on_default_view;
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     connect_components_with_socket_names, disconnect_components_with_socket_names,
@@ -15,9 +15,10 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn prototype_id(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -52,9 +53,10 @@ async fn prototype_id(ctx: &mut DalContext) {
 
 #[test]
 async fn component(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -87,9 +89,10 @@ async fn component(ctx: &mut DalContext) {
 
 #[test]
 async fn get_by_id(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -123,9 +126,10 @@ async fn get_by_id(ctx: &mut DalContext) {
 
 #[test]
 async fn set_state(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -155,9 +159,10 @@ async fn set_state(ctx: &mut DalContext) {
 
 #[test]
 async fn run(ctx: &mut DalContext) {
-    let component = create_component_for_default_schema_name(ctx, "swifty", "shake it off")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
+            .await
+            .expect("could not create component");
     let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
         .expect("find variant id for component");
@@ -182,9 +187,10 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
-    let component = create_component_for_default_schema_name(ctx, "swifty", "jack antonoff")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "jack antonoff")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -233,9 +239,10 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
-    let component = create_component_for_default_schema_name(ctx, "swifty", "jack antonoff")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "jack antonoff")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("commit and update snapshot to visibility");
@@ -337,7 +344,7 @@ async fn auto_queue_update_and_destroy(ctx: &mut DalContext) {
 #[test]
 async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
     // create two components and connect them via edge
-    let first_component = create_component_for_schema_name_with_type(
+    let first_component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "small odd lego",
         "first component",
@@ -345,7 +352,7 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
-    let second_component = create_component_for_schema_name_with_type(
+    let second_component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "small even lego",
         "second component",
@@ -384,10 +391,6 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         .await
         .expect("could not get graph");
 
-    dbg!(action_graph.get_all_dependencies(first_component_action));
-    dbg!(action_graph.get_all_dependencies(second_component_actions));
-    dbg!(action_graph.direct_dependencies_of(first_component_action));
-    dbg!(action_graph.direct_dependencies_of(second_component_actions));
     assert_eq!(
         action_graph.get_all_dependencies(first_component_action),
         vec![second_component_actions]
@@ -468,7 +471,7 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
     );
 
     // now let's add another component and draw an edge.
-    let third_component = create_component_for_schema_name_with_type(
+    let third_component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "small even lego",
         "third component",

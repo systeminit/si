@@ -1,61 +1,28 @@
 use std::collections::HashMap;
 
-use super::{DiagramError, DiagramResult};
+use super::{set_component_geometry::StringGeometry, ViewError, ViewResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
+use axum::extract::Path;
 use axum::{
     extract::{Host, OriginalUri},
-    http::uri::Uri,
     Json,
 };
-use dal::diagram::view::{View, ViewId};
+use dal::diagram::view::ViewId;
 use dal::{
     change_status::ChangeStatus, component::frame::Frame, diagram::SummaryDiagramEdge, ChangeSet,
-    Component, ComponentId, DalContext, Visibility, WsEvent,
+    ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_frontend_types::RawGeometry;
-
-#[allow(clippy::too_many_arguments)]
-async fn paste_single_component(
-    ctx: &DalContext,
-    component_id: ComponentId,
-    component_geometry: RawGeometry,
-    original_uri: &Uri,
-    host_name: &String,
-    PosthogClient(posthog_client): &PosthogClient,
-    view_id: ViewId,
-) -> DiagramResult<Component> {
-    let original_comp = Component::get_by_id(ctx, component_id).await?;
-    let pasted_comp = original_comp
-        .create_copy(ctx, view_id, component_geometry)
-        .await?;
-
-    let schema = pasted_comp.schema(ctx).await?;
-    track(
-        posthog_client,
-        ctx,
-        original_uri,
-        host_name,
-        "paste_component",
-        serde_json::json!({
-            "how": "/diagram/paste_component",
-            "component_id": pasted_comp.id(),
-            "component_schema_name": schema.name(),
-        }),
-    );
-
-    Ok(pasted_comp)
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PasteSingleComponentPayload {
     id: ComponentId,
-    component_geometry: RawGeometry,
+    component_geometry: StringGeometry,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -63,40 +30,50 @@ pub struct PasteSingleComponentPayload {
 pub struct PasteComponentsRequest {
     pub components: Vec<PasteSingleComponentPayload>,
     pub new_parent_node_id: Option<ComponentId>,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 /// Paste a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
-pub async fn paste_components(
+pub async fn paste_component(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
+    Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<PasteComponentsRequest>,
-) -> DiagramResult<ForceChangeSetResponse<()>> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> ViewResult<ForceChangeSetResponse<()>> {
+    let mut ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
-    let view_id = View::get_id_for_default(&ctx).await?;
 
     let mut pasted_components_by_original = HashMap::new();
     for component_payload in &request.components {
         let component_id = component_payload.id;
 
-        let posthog_client = PosthogClient(posthog_client.clone());
-        let pasted_comp = paste_single_component(
+        let original_comp = Component::get_by_id(&ctx, component_id).await?;
+        let pasted_comp = original_comp
+            .create_copy(
+                &ctx,
+                view_id,
+                component_payload.component_geometry.clone().try_into()?,
+            )
+            .await?;
+
+        let schema = pasted_comp.schema(&ctx).await?;
+        track(
+            &posthog_client,
             &ctx,
-            component_id,
-            component_payload.component_geometry.clone(),
             &original_uri,
             &host_name,
-            &posthog_client,
-            view_id,
-        )
-        .await?;
+            "paste_component",
+            serde_json::json!({
+                "how": "/diagram/paste_component",
+                "component_id": pasted_comp.id(),
+                "component_schema_name": schema.name(),
+            }),
+        );
 
         pasted_components_by_original.insert(component_id, pasted_comp);
     }
@@ -108,7 +85,7 @@ pub async fn paste_components(
             if let Some(component) = pasted_components_by_original.get(&component_id) {
                 component
             } else {
-                return Err(DiagramError::Paste);
+                return Err(ViewError::Paste);
             };
         let component = Component::get_by_id(&ctx, component_id).await?;
 

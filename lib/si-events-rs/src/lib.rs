@@ -39,7 +39,7 @@ pub use crate::{
         ActionId, ActionKind, ActionPrototypeId, ActionResultState, AttributePrototypeArgumentId,
         AttributePrototypeId, AttributeValueId, ComponentId, FuncBackendKind,
         FuncBackendResponseType, FuncKind, FuncRun, FuncRunBuilder, FuncRunBuilderError, FuncRunId,
-        FuncRunState, FuncRunValue, ManagementPrototypeId,
+        FuncRunState, FuncRunValue, ManagementPrototypeId, ViewId,
     },
     func_run_log::{FuncRunLog, FuncRunLogId, OutputLine},
     resource_metadata::{ResourceMetadata, ResourceStatus},

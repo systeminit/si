@@ -37,6 +37,7 @@
   <ModelingDiagram
     v-else
     ref="diagramRef"
+    :viewId="route.params.viewId  as (string | undefined)"
     @mouseout="presenceStore.clearCursor"
     @right-click-element="onRightClickElement"
   />
@@ -53,19 +54,19 @@
     <div class="h-full overflow-hidden relative">
       <EdgeDetailsPanel
         v-if="selectedEdge"
-        :menuSelected="contextMenuRef?.isOpen"
+        :menuSelected="contextMenuRef?.isOpen ?? false"
         @openMenu="onThreeDotMenuClick"
       />
       <ComponentDetails
         v-else-if="selectedComponent"
         :key="selectedComponent.def.id"
         :component="selectedComponent"
-        :menuSelected="contextMenuRef?.isOpen as boolean"
+        :menuSelected="contextMenuRef?.isOpen as boolean ?? false"
         @openMenu="onThreeDotMenuClick"
       />
       <MultiSelectDetailsPanel
         v-else-if="selectedComponentIds.length > 1"
-        :menuSelected="contextMenuRef?.isOpen"
+        :menuSelected="contextMenuRef?.isOpen ?? false"
         @openMenu="onThreeDotMenuClick"
       />
       <NoSelectionDetailsPanel v-else />
@@ -81,9 +82,11 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
+import { useRoute } from "vue-router";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { IRect } from "konva/lib/types";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
@@ -95,9 +98,11 @@ import EraseSelectionModal from "@/components/ModelingView/EraseSelectionModal.v
 import { useStatusStore } from "@/store/status.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { useViewsStore } from "@/store/views.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
+  DiagramElementData,
   DiagramGroupData,
   DiagramNodeData,
   RightClickElementEvent,
@@ -114,11 +119,14 @@ import InsetApprovalModal from "../InsetApprovalModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 const statusStore = useStatusStore();
 const featureFlagsStore = useFeatureFlagsStore();
+
+const route = useRoute();
 
 const actionsAreRunning = computed(
   () =>
@@ -170,25 +178,41 @@ const selectedComponentIds = computed(
 const selectedEdge = computed(() => componentsStore.selectedEdge);
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
-// Nodes that are not resizable have dynamic height based on its rendering objects, we cannot infer that here and honestly it's not a big deal
-// So let's hardcode something reasonable that doesn't make the user too much confused when they paste a copy
-const NODE_HEIGHT = 200;
-
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
-  let position;
-  if ("position" in rightClickEventInfo.element.def) {
-    position = _.cloneDeep(rightClickEventInfo.element.def.position);
-    position.y +=
-      (rightClickEventInfo.element.def.size?.height ?? NODE_HEIGHT) / 2;
+  const id = rightClickEventInfo.element.def.id;
+  let component: DiagramGroupData | DiagramNodeData | undefined;
+  let position: IRect | undefined;
+
+  if ("componentType" in rightClickEventInfo.element.def)
+    component = rightClickEventInfo.element as
+      | DiagramGroupData
+      | DiagramNodeData;
+
+  if (component) {
+    position = structuredClone(
+      component.def.isGroup ? viewStore.components[id] : viewStore.groups[id],
+    );
   }
+  if (position) position.y += position.height / 2;
   contextMenuRef.value?.open(rightClickEventInfo.e, true, position);
 }
 
 function onOutlineRightClick(ev: {
   mouse: MouseEvent;
-  component: DiagramGroupData | DiagramNodeData;
+  component: DiagramElementData;
 }) {
-  contextMenuRef.value?.open(ev.mouse, true, ev.component.def.position);
+  const id = ev.component.def.id;
+  let component: DiagramGroupData | DiagramNodeData | undefined;
+  if ("componentType" in ev.component.def)
+    component = ev.component as DiagramGroupData | DiagramNodeData;
+
+  let position: IRect | undefined;
+  if (component) {
+    position = component.def.isGroup
+      ? viewStore.components[id]
+      : viewStore.groups[id];
+  }
+  contextMenuRef.value?.open(ev.mouse, true, position);
 }
 
 function onThreeDotMenuClick(mouse: MouseEvent) {

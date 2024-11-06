@@ -10,9 +10,10 @@ use si_events::FuncRunId;
 use thiserror::Error;
 use veritech_client::ManagementResultSuccess;
 
+use crate::diagram::view::View;
+use crate::diagram::DiagramError;
 use crate::{
     cached_module::{CachedModule, CachedModuleError},
-    diagram::geometry::RawGeometry,
     func::runner::{FuncRunner, FuncRunnerError},
     id, implement_add_edge_to,
     layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
@@ -22,6 +23,7 @@ use crate::{
     SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
     WorkspaceSnapshotError,
 };
+use si_frontend_types::RawGeometry;
 
 use super::NumericGeometry;
 
@@ -32,6 +34,8 @@ pub enum ManagementPrototypeError {
     CachedModule(#[from] CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("func runner recv error")]
@@ -349,7 +353,11 @@ impl ManagementPrototype {
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
         let manager_component_view = manager_component.view(ctx).await?;
-        let geometry = manager_component.geometry(ctx).await?.into_raw();
+        let default_view_id = View::get_id_for_default(ctx).await?;
+        let geometry = manager_component
+            .geometry(ctx, default_view_id)
+            .await?
+            .into_raw();
 
         let managed_schema_names: Vec<String> = managed_schema_map.keys().cloned().collect();
 
@@ -357,8 +365,11 @@ impl ManagementPrototype {
         for component_id in manager_component.get_managed(ctx).await? {
             let component = Component::get_by_id(ctx, component_id).await?;
             let component_view = component.view(ctx).await?;
-            let component_geometry: NumericGeometry =
-                component.geometry(ctx).await?.into_raw().into();
+            let component_geometry: NumericGeometry = component
+                .geometry(ctx, default_view_id)
+                .await?
+                .into_raw()
+                .into();
             let schema_id = component.schema(ctx).await?.id();
 
             if let Some(managed_schema_name) = reverse_map.get(&schema_id) {

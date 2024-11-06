@@ -5,7 +5,7 @@ use dal::{
 };
 use dal::{ChangeSet, ChangeSetStatus, Component};
 use dal_test::helpers::{
-    create_component_for_default_schema_name, create_user, ChangeSetTestHelpers,
+    create_component_for_default_schema_name_in_default_view, create_user, ChangeSetTestHelpers,
 };
 use dal_test::test;
 use itertools::Itertools;
@@ -316,9 +316,10 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     let current_user = ChangeSet::extract_userid_from_context(ctx).await;
 
     // do something in it
-    let component = create_component_for_default_schema_name(ctx, "small odd lego", "small")
-        .await
-        .expect("could not create component");
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "small")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
@@ -450,9 +451,10 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
         .expect("could not fork head");
 
     // do something in it
-    let second_component = create_component_for_default_schema_name(ctx, "small odd lego", "small")
-        .await
-        .expect("could not create component");
+    let second_component =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "small")
+            .await
+            .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");

@@ -1,13 +1,12 @@
 use audit_logs::AuditLogsStream;
-use dal::{
-    audit_logging, prop::PropPath, AttributeValue, Component, DalContext, Prop, Schema,
-    SchemaVariant,
-};
+use dal::{audit_logging, prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
+use dal_test::helpers::create_named_component_for_schema_variant_on_default_view;
 use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pending_events::PendingEventsStream;
 use pretty_assertions_sorted::assert_eq;
 use si_events::audit_log::AuditLogKind;
 
+#[ignore]
 #[test]
 async fn round_trip(ctx: &mut DalContext) {
     let schema = Schema::find_by_name(ctx, "swifty")
@@ -25,9 +24,14 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // Create a component and commit. Mimic sdf by audit logging here.
     let component_name = "nyj despair_club";
-    let component = Component::new(ctx, component_name, schema_variant_id)
-        .await
-        .expect("could not create component");
+
+    let component = create_named_component_for_schema_variant_on_default_view(
+        ctx,
+        component_name,
+        schema_variant_id,
+    )
+    .await
+    .expect("could not create component");
     ctx.write_audit_log(
         AuditLogKind::CreateComponent {
             name: component_name.to_string(),

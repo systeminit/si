@@ -12,14 +12,10 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
-import {
-  GROUP_BOTTOM_INTERNAL_PADDING,
-  GROUP_INTERNAL_PADDING,
-} from "@/components/ModelingDiagram/diagram_constants";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { APIComponentGeometry, useComponentsStore } from "./components.store";
+import { useComponentsStore } from "./components.store";
 
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: string;
@@ -310,86 +306,89 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
+            // NOTE Since views came in overriding geometries on this operation
+            // became way more complex. Also frames start at the size of the
+            // original component so this is not going to be a problem for now.
+
             // Make sure the component will not be bigger that its parent
-            let overriddenGeometry: APIComponentGeometry | undefined;
-            const componentStore = useComponentsStore();
-            const component =
-              componentStore.allComponentsById[payload.componentId];
-
-            if (!component)
-              throw new Error("Could not find component in store");
-
-            if (
-              component.def.parentId &&
-              payload.componentType !== ComponentType.Component
-            ) {
-              const parent =
-                componentStore.allComponentsById[component.def.parentId];
-              if (!parent) throw new Error("Could not find parent in store");
-
-              const componentGeometry =
-                componentStore.renderedGeometriesByComponentId[
-                  component.def.id
-                ];
-
-              if (!componentGeometry)
-                throw new Error("Could not rendered geometry for component");
-
-              const parentGeometry =
-                componentStore.renderedGeometriesByComponentId[parent.def.id];
-
-              if (!parentGeometry)
-                throw new Error("Could not rendered geometry for parent");
-
-              // Assuming that the component already fits in the parent
-              // we need to shrink the group until it fits the parent
-              // For the x-axis
-              const originalLeft =
-                componentGeometry.x - componentGeometry.width / 2;
-              const containerLeft =
-                parentGeometry.x -
-                parentGeometry.width / 2 +
-                GROUP_INTERNAL_PADDING;
-
-              const newLeft = Math.max(originalLeft, containerLeft);
-
-              const originalRight =
-                componentGeometry.x + componentGeometry.width / 2;
-              const containerRight =
-                parentGeometry.x +
-                parentGeometry.width / 2 -
-                GROUP_INTERNAL_PADDING;
-
-              const newRight = Math.min(originalRight, containerRight);
-
-              const newWidth = newRight - newLeft;
-              const newX = newLeft + newWidth / 2;
-
-              // For the y-axis
-              const originalTop = componentGeometry.y;
-              const containerTop = parentGeometry.y + GROUP_INTERNAL_PADDING;
-
-              const newTop = Math.max(originalTop, containerTop);
-
-              const originalBottom =
-                componentGeometry.y + componentGeometry.height;
-              const containerBottom =
-                parentGeometry.y +
-                parentGeometry.height -
-                GROUP_BOTTOM_INTERNAL_PADDING;
-
-              const newBottom = Math.min(originalBottom, containerBottom);
-
-              const newHeight = newBottom - newTop;
-              const newY = newTop;
-
-              overriddenGeometry = {
-                x: Math.round(newX).toString(),
-                y: Math.round(newY).toString(),
-                width: Math.round(newWidth).toString(),
-                height: Math.round(newHeight).toString(),
-              };
-            }
+            // let overriddenGeometry: APIComponentGeometry | undefined;
+            // const componentStore = useComponentsStore();
+            // const component =
+            //   componentStore.allComponentsById[payload.componentId];
+            //
+            // if (!component)
+            //   throw new Error("Could not find component in store");
+            //
+            // if (
+            //   component.def.parentId &&
+            //   payload.componentType !== ComponentType.Component
+            // ) {
+            //   const parent =
+            //     componentStore.allComponentsById[component.def.parentId];
+            //   if (!parent) throw new Error("Could not find parent in store");
+            //
+            //   const viewStore = useViewsStore();
+            //   const componentGeometry = component.def.isGroup
+            //     ? viewStore.groups[component.def.id]
+            //     : viewStore.components[component.def.id];
+            //
+            //   if (!componentGeometry)
+            //     throw new Error("Could not rendered geometry for component");
+            //
+            //   const parentGeometry = viewStore.groups[parent.def.id];
+            //
+            //   if (!parentGeometry)
+            //     throw new Error("Could not rendered geometry for parent");
+            //
+            //   // Assuming that the component already fits in the parent
+            //   // we need to shrink the group until it fits the parent
+            //   // For the x-axis
+            //   const originalLeft =
+            //     componentGeometry.x - componentGeometry.width / 2;
+            //   const containerLeft =
+            //     parentGeometry.x -
+            //     parentGeometry.width / 2 +
+            //     GROUP_INTERNAL_PADDING;
+            //
+            //   const newLeft = Math.max(originalLeft, containerLeft);
+            //
+            //   const originalRight =
+            //     componentGeometry.x + componentGeometry.width / 2;
+            //   const containerRight =
+            //     parentGeometry.x +
+            //     parentGeometry.width / 2 -
+            //     GROUP_INTERNAL_PADDING;
+            //
+            //   const newRight = Math.min(originalRight, containerRight);
+            //
+            //   const newWidth = newRight - newLeft;
+            //   const newX = newLeft + newWidth / 2;
+            //
+            //   // For the y-axis
+            //   const originalTop = componentGeometry.y;
+            //   const containerTop = parentGeometry.y + GROUP_INTERNAL_PADDING;
+            //
+            //   const newTop = Math.max(originalTop, containerTop);
+            //
+            //   const originalBottom =
+            //     componentGeometry.y + componentGeometry.height;
+            //   const containerBottom =
+            //     parentGeometry.y +
+            //     parentGeometry.height -
+            //     GROUP_BOTTOM_INTERNAL_PADDING;
+            //
+            //   const newBottom = Math.min(originalBottom, containerBottom);
+            //
+            //   const newHeight = newBottom - newTop;
+            //   const newY = newTop;
+            //
+            //   overriddenGeometry = {
+            //     x: Math.round(newX).toString(),
+            //     y: Math.round(newY).toString(),
+            //     width: Math.round(newWidth).toString(),
+            //     height: Math.round(newHeight).toString(),
+            //   };
+            // }
 
             return new ApiRequest<{ success: true }>({
               method: "post",
@@ -397,9 +396,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               params: {
                 ...payload,
                 ...visibilityParams,
-                overriddenGeometry,
               },
-              // onSuccess() {},
             });
           },
           async RESET_PROPERTY_VALUE(

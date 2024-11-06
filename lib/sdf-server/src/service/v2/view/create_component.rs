@@ -1,26 +1,32 @@
 use std::collections::HashMap;
 
+use axum::extract::Path;
 use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
+use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
 
-use dal::diagram::view::View;
+use dal::diagram::view::ViewId;
 use dal::{
-    change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, Component,
-    ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, Visibility, WsEvent,
+    cached_module::CachedModule,
+    change_status::ChangeStatus,
+    component::frame::Frame,
+    generate_name,
+    pkg::{import_pkg_from_pkg, ImportOptions},
+    ChangeSet, ChangeSetId, Component, ComponentId, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, WorkspacePk, WsEvent,
 };
-use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::{diagram::DiagramResult, force_change_set_response::ForceChangeSetResponse},
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
-use super::DiagramError;
+use super::{ViewError, ViewResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -40,8 +46,6 @@ pub struct CreateComponentRequest {
     pub y: String,
     pub height: Option<String>,
     pub width: Option<String>,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -53,13 +57,16 @@ pub struct CreateComponentResponse {
 
 pub async fn create_component(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
+    Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<CreateComponentRequest>,
-) -> DiagramResult<ForceChangeSetResponse<CreateComponentResponse>> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> ViewResult<ForceChangeSetResponse<CreateComponentResponse>> {
+    let mut ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
@@ -67,27 +74,45 @@ pub async fn create_component(
 
     let (schema_variant_id, installed_variant) = match request.schema_type {
         CreateComponentSchemaType::Installed => (
-            request
-                .schema_variant_id
-                .ok_or(DiagramError::InvalidRequest(
-                    "schemaVariantId missing on installed schema create component request".into(),
-                ))?,
+            request.schema_variant_id.ok_or(ViewError::InvalidRequest(
+                "schemaVariantId missing on installed schema create component request".into(),
+            ))?,
             None,
         ),
         // Install assets on demand when creating a component
         CreateComponentSchemaType::Uninstalled => {
-            let schema_id = request.schema_id.ok_or(DiagramError::InvalidRequest(
+            let schema_id = request.schema_id.ok_or(ViewError::InvalidRequest(
                 "schemaId missing on uninstalled schema create component request".into(),
             ))?;
 
-            let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-            let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
-            let managed_schema_ids = SchemaVariant::all_managed_schemas(&ctx, variant_id).await?;
+            let variant_id = match Schema::get_by_id(&ctx, schema_id).await? {
+                // We want to be sure that we don't have stale frontend data,
+                // since this module might have just been installed, or
+                // installed by another user
+                Some(schema) => schema.get_default_schema_variant_id_or_error(&ctx).await?,
+                None => {
+                    let mut uninstalled_module = CachedModule::latest_by_schema_id(&ctx, schema_id)
+                        .await?
+                        .ok_or(ViewError::UninstalledSchemaNotFound(schema_id))?;
 
-            // Also install any schemas managed by the variant
-            for schema_id in managed_schema_ids {
-                Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-            }
+                    let si_pkg = uninstalled_module.si_pkg(&ctx).await?;
+                    import_pkg_from_pkg(
+                        &ctx,
+                        &si_pkg,
+                        Some(ImportOptions {
+                            schema_id: Some(schema_id.into()),
+                            ..Default::default()
+                        }),
+                    )
+                    .await?;
+
+                    Schema::get_default_schema_variant_by_id(&ctx, schema_id)
+                        .await?
+                        .ok_or(ViewError::SchemaNotInstalledAfterImport(schema_id))?
+                }
+            };
+
+            let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
 
             (
                 variant_id,
@@ -97,19 +122,8 @@ pub async fn create_component(
     };
 
     let variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-    let view_id = View::get_id_for_default(&ctx).await?;
     let mut component = Component::new(&ctx, &name, variant.id(), view_id).await?;
     let initial_geometry = component.geometry(&ctx, view_id).await?;
-    ctx.write_audit_log(
-        AuditLogKind::CreateComponent {
-            name: name.to_string(),
-            component_id: component.id().into(),
-            schema_variant_id: schema_variant_id.into(),
-            schema_variant_name: variant.display_name().to_owned(),
-        },
-        name.to_string(),
-    )
-    .await?;
 
     let maybe_x = request.x.clone().parse::<isize>();
     let maybe_y = request.y.clone().parse::<isize>();
@@ -122,8 +136,9 @@ pub async fn create_component(
         .map(|h| h.clone().parse::<isize>())
         .transpose();
 
+    let geometry: Geometry;
     if let (Ok(x), Ok(y), Ok(width), Ok(height)) = (maybe_x, maybe_y, maybe_width, maybe_height) {
-        component
+        geometry = component
             .set_geometry(
                 &ctx,
                 view_id,
@@ -135,7 +150,7 @@ pub async fn create_component(
             .await?;
     } else {
         ctx.rollback().await?;
-        return Err(DiagramError::InvalidRequest(
+        return Err(ViewError::InvalidRequest(
             "geometry unable to be parsed from create component request".into(),
         ));
     }
@@ -176,7 +191,12 @@ pub async fn create_component(
 
     let mut diagram_sockets = HashMap::new();
     let payload = component
-        .into_frontend_type_for_default_view(&ctx, ChangeStatus::Added, &mut diagram_sockets)
+        .into_frontend_type(
+            &ctx,
+            Some(&geometry),
+            ChangeStatus::Added,
+            &mut diagram_sockets,
+        )
         .await?;
     WsEvent::component_created(&ctx, payload)
         .await?

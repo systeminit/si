@@ -54,3 +54,9 @@ export const MAX_ZOOM = 10; // 1000%
 
 // TODO (Wendy) - this constant should be derived from the frame header and internal padding
 export const GROUP_INNER_Y_BOUNDARY_OFFSET = 59;
+
+export const NODE_HEADER_TEXT_HEIGHT = 12;
+export const NODE_SUBTITLE_TEXT_HEIGHT = 11;
+
+export const NODE_HEADER_HEIGHT = 44;
+export const SOCKET_TOP_MARGIN = 11;

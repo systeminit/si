@@ -1,7 +1,9 @@
 use dal::component::frame::Frame;
 use dal::ComponentType;
 use dal::{AttributeValue, DalContext};
-use dal_test::helpers::{create_component_for_schema_name_with_type, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_schema_name_with_type_on_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -29,7 +31,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     let level_six_component_name = format!("LEVEL 6 ({level_six_schema_name})");
 
     // Create all components, set all types and commit.
-    let level_one = create_component_for_schema_name_with_type(
+    let level_one = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_one_schema_name,
         level_one_component_name.as_str(),
@@ -38,7 +40,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_two = create_component_for_schema_name_with_type(
+    let level_two = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_two_schema_name,
         level_two_component_name.as_str(),
@@ -47,7 +49,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_three = create_component_for_schema_name_with_type(
+    let level_three = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_three_schema_name,
         level_three_component_name.as_str(),
@@ -56,7 +58,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_three_no_children = create_component_for_schema_name_with_type(
+    let level_three_no_children = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_three_no_children_schema_name,
         level_three_no_children_component_name.as_str(),
@@ -65,7 +67,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_four = create_component_for_schema_name_with_type(
+    let level_four = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_four_schema_name,
         level_four_component_name.as_str(),
@@ -74,7 +76,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_five = create_component_for_schema_name_with_type(
+    let level_five = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_five_schema_name,
         level_five_component_name.as_str(),
@@ -83,7 +85,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_five_no_children = create_component_for_schema_name_with_type(
+    let level_five_no_children = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_five_no_children_schema_name,
         level_five_no_children_component_name.as_str(),
@@ -92,7 +94,7 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let level_six = create_component_for_schema_name_with_type(
+    let level_six = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         level_six_schema_name,
         level_six_component_name.as_str(),

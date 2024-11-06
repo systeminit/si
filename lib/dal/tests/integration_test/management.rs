@@ -4,21 +4,29 @@ use dal::{
     },
     AttributeValue, Component, DalContext, SchemaId,
 };
+use dal_test::expected::ExpectView;
 use dal_test::{
-    helpers::create_component_for_default_schema_name, test, SCHEMA_ID_SMALL_EVEN_LEGO,
+    helpers::create_component_for_default_schema_name_in_default_view, test,
+    SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 use veritech_client::ManagementFuncStatus;
 
 #[test]
 async fn update_managed_components(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
-    let small_even_lego =
-        create_component_for_default_schema_name(ctx, "small even lego", "small even lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+    let small_even_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "small even lego",
+    )
+    .await
+    .expect("could not create component");
 
     Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id())
         .await
@@ -74,14 +82,20 @@ async fn update_managed_components(ctx: &DalContext) {
 
 #[test]
 async fn create_component_of_other_schema(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
-    let small_even_lego =
-        create_component_for_default_schema_name(ctx, "small even lego", "small even lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+    let small_even_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "small even lego",
+    )
+    .await
+    .expect("could not create component");
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
@@ -169,10 +183,13 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
 
 #[test]
 async fn create_and_connect_to_self(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
@@ -246,10 +263,13 @@ async fn create_and_connect_to_self(ctx: &DalContext) {
 
 #[test]
 async fn create_and_connect_from_self(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
 
     let av_id = Component::attribute_value_for_prop_by_id(
         ctx,
@@ -294,7 +314,7 @@ async fn create_and_connect_from_self(ctx: &DalContext) {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), dbg!(operations), execution_result)
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result)
         .await
         .expect("should create operator")
         .operate()
@@ -323,10 +343,13 @@ async fn create_and_connect_from_self(ctx: &DalContext) {
 
 #[test]
 async fn create_component_of_same_schema(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
     let variant = small_odd_lego
         .schema_variant(ctx)
         .await
@@ -372,9 +395,11 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         }
     }
 
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+
     let new_component = new_component.expect("should have found the cloned component");
     let new_geometry: NumericGeometry = new_component
-        .geometry(ctx)
+        .geometry(ctx, default_view_id)
         .await
         .expect("get geometry")
         .into_raw()
@@ -431,10 +456,13 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
 
 #[test]
 async fn execute_management_func(ctx: &DalContext) {
-    let small_odd_lego =
-        create_component_for_default_schema_name(ctx, "small odd lego", "small odd lego")
-            .await
-            .expect("could not create component");
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
     let variant = small_odd_lego
         .schema_variant(ctx)
         .await

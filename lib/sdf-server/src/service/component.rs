@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -74,6 +76,8 @@ pub enum ComponentError {
     KeyAlreadyExists(String),
     #[error("component not found for id: {0}")]
     NotFound(ComponentId),
+    #[error(transparent)]
+    ParseInt(#[from] ParseIntError),
     #[error(transparent)]
     Prop(#[from] PropError),
     #[error("property editor error: {0}")]

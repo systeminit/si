@@ -12,20 +12,13 @@ use crate::{DalContext, EdgeWeightKind};
 use jwt_simple::prelude::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
+pub use si_frontend_types::RawGeometry;
 use std::sync::Arc;
 
 const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
 const DEFAULT_COMPONENT_WIDTH: &str = "500";
 const DEFAULT_COMPONENT_HEIGHT: &str = "500";
-
-#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
-pub struct RawGeometry {
-    pub x: String,
-    pub y: String,
-    pub width: Option<String>,
-    pub height: Option<String>,
-}
 
 impl From<Geometry> for RawGeometry {
     fn from(value: Geometry) -> Self {
@@ -46,10 +39,10 @@ pub struct Geometry {
     id: GeometryId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    x: String,
-    y: String,
-    width: Option<String>,
-    height: Option<String>,
+    x: isize,
+    y: isize,
+    width: Option<isize>,
+    height: Option<isize>,
 }
 
 impl Geometry {
@@ -65,20 +58,24 @@ impl Geometry {
         self.into()
     }
 
-    pub fn x(&self) -> &str {
+    pub fn id(&self) -> GeometryId {
+        self.id
+    }
+
+    pub fn x(&self) -> &isize {
         &self.x
     }
 
-    pub fn y(&self) -> &str {
+    pub fn y(&self) -> &isize {
         &self.y
     }
 
-    pub fn width(&self) -> Option<&str> {
-        self.width.as_deref()
+    pub fn width(&self) -> Option<&isize> {
+        self.width.as_ref()
     }
 
-    pub fn height(&self) -> Option<&str> {
-        self.height.as_deref()
+    pub fn height(&self) -> Option<&isize> {
+        self.height.as_ref()
     }
 
     fn assemble(node_weight: GeometryNodeWeight, content: GeometryContent) -> Self {
@@ -87,10 +84,10 @@ impl Geometry {
         Self {
             id: node_weight.id().into(),
             timestamp: content.timestamp,
-            x: content.x,
-            y: content.y,
-            width: content.width,
-            height: content.height,
+            x: content.x.parse().unwrap_or(0),
+            y: content.y.parse().unwrap_or(0),
+            width: content.width.map(|w| w.parse().unwrap_or(500)),
+            height: content.height.map(|h| h.parse().unwrap_or(500)),
         }
     }
 
@@ -132,6 +129,29 @@ impl Geometry {
         ))
     }
 
+    pub async fn component_id(
+        ctx: &DalContext,
+        geometry_id: GeometryId,
+    ) -> DiagramResult<ComponentId> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let component_id = snap
+            .outgoing_targets_for_edge_weight_kind(
+                geometry_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?
+            .pop()
+            .ok_or(DiagramError::ComponentNotFoundForGeometry(geometry_id))?;
+
+        Ok(snap
+            .get_node_weight(component_id)
+            .await?
+            .get_component_node_weight()?
+            .id
+            .into())
+    }
+
     pub async fn get_by_id(ctx: &DalContext, component_id: GeometryId) -> DiagramResult<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
         Ok(Self::assemble(node_weight, content))
@@ -162,11 +182,39 @@ impl Geometry {
         Ok(geometries)
     }
 
-    pub async fn get_by_component_and_view(
+    pub async fn list_by_view_id(
+        ctx: &DalContext,
+        view_id: ViewId,
+    ) -> DiagramResult<Vec<Geometry>> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let mut geometries = vec![];
+        for geometry_idx in snap
+            .outgoing_targets_for_edge_weight_kind(view_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = snap
+                .get_node_weight(geometry_idx)
+                .await?
+                .get_geometry_node_weight()?;
+
+            let content = Self::try_get_content(ctx, &node_weight.content_hash())
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?;
+
+            geometries.push(Self::assemble(node_weight, content))
+        }
+
+        Ok(geometries)
+    }
+
+    pub async fn try_get_by_component_and_view(
         ctx: &DalContext,
         component_id: ComponentId,
         view_id: ViewId,
-    ) -> DiagramResult<Self> {
+    ) -> DiagramResult<Option<Self>> {
         let snap = ctx.workspace_snapshot()?;
 
         let mut maybe_weight = None;
@@ -190,10 +238,7 @@ impl Geometry {
         }
 
         let Some(node_weight) = maybe_weight else {
-            return Err(DiagramError::GeometryNotFoundForComponentAndView(
-                component_id,
-                view_id,
-            ));
+            return Ok(None);
         };
 
         let content = Self::try_get_content(ctx, &node_weight.content_hash())
@@ -202,7 +247,17 @@ impl Geometry {
                 node_weight.id(),
             ))?;
 
-        Ok(Self::assemble(node_weight, content))
+        Ok(Some(Self::assemble(node_weight, content)))
+    }
+
+    pub async fn get_by_component_and_view(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        view_id: ViewId,
+    ) -> DiagramResult<Self> {
+        Self::try_get_by_component_and_view(ctx, component_id, view_id)
+            .await?
+            .ok_or_else(|| DiagramError::GeometryNotFoundForComponentAndView(component_id, view_id))
     }
 
     pub async fn get_view_id_by_id(ctx: &DalContext, id: GeometryId) -> DiagramResult<ViewId> {
@@ -267,14 +322,17 @@ impl Geometry {
         ctx: &DalContext,
         new_geometry: RawGeometry,
     ) -> DiagramResult<()> {
+        let timestamp = Timestamp::now();
+        let geometry = new_geometry.clone();
+
         let (hash, _) = ctx.layer_db().cas().write(
             Arc::new(
                 GeometryContent::V1(GeometryContentV1 {
-                    timestamp: Timestamp::now(),
-                    x: new_geometry.x,
-                    y: new_geometry.y,
-                    width: new_geometry.width,
-                    height: new_geometry.height,
+                    timestamp,
+                    x: new_geometry.x.to_string(),
+                    y: new_geometry.y.to_string(),
+                    width: new_geometry.width.map(|w| w.to_string()),
+                    height: new_geometry.height.map(|h| h.to_string()),
                 })
                 .into(),
             ),
@@ -286,6 +344,34 @@ impl Geometry {
         ctx.workspace_snapshot()?
             .update_content(self.id.into(), hash)
             .await?;
+
+        self.x = geometry.x;
+        self.y = geometry.y;
+        self.width = geometry.width;
+        self.height = geometry.height;
+        self.timestamp = timestamp;
+
+        Ok(())
+    }
+
+    pub async fn remove_all_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> DiagramResult<()> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let geometries = snap
+            .incoming_sources_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?;
+
+        for geometry_idx in geometries {
+            let geometry_id = snap.get_node_weight(geometry_idx).await?.id();
+
+            snap.remove_node_by_id(geometry_id).await?;
+        }
 
         Ok(())
     }

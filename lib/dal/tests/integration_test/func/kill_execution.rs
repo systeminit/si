@@ -5,8 +5,10 @@ use dal::action::Action;
 use dal::func::authoring::FuncAuthoringClient;
 use dal::func::runner::FuncRunner;
 use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{Component, DalContext};
-use dal_test::helpers::ChangeSetTestHelpers;
+use dal::DalContext;
+use dal_test::helpers::{
+    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use si_events::FuncRunState;
@@ -50,7 +52,7 @@ async fn kill_execution_works(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Create a new component for the new asset and commit.
-    let _component = Component::new(ctx, "component", variant.id())
+    create_component_for_schema_variant_on_default_view(ctx, variant.id())
         .await
         .expect("could not create component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)

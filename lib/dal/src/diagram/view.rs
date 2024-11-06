@@ -18,6 +18,18 @@ use std::sync::Arc;
 
 id!(ViewId);
 
+impl From<ViewId> for si_events::ViewId {
+    fn from(value: ViewId) -> Self {
+        value.into_inner().into()
+    }
+}
+
+impl From<si_events::ViewId> for ViewId {
+    fn from(value: si_events::ViewId) -> Self {
+        Self(value.into_raw_id())
+    }
+}
+
 /// Represents spatial data for something to be shown on a view
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct View {

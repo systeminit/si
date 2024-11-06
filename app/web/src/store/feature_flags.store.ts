@@ -15,6 +15,7 @@ const FLAG_MAPPING = {
   AUDIT_PAGE: "audit-page",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
+  OUTLINER_VIEWS: "diagram-outline-show-views",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

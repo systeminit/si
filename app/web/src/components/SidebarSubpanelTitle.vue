@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs',
+        'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs cursor-pointer',
         !selectable && 'select-none',
         variant === 'title'
           ? 'dark:border-neutral-500'

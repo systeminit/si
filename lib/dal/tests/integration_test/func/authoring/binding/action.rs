@@ -6,7 +6,9 @@ use dal::func::binding::action::ActionBinding;
 use dal::func::binding::FuncBinding;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, Schema, SchemaVariant};
-use dal_test::helpers::{create_component_for_unlocked_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{
+    create_component_for_unlocked_schema_name_on_default_view, ChangeSetTestHelpers,
+};
 use dal_test::test;
 
 #[test]
@@ -150,9 +152,10 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
             .id();
 
     // create a component
-    let new_component = create_component_for_unlocked_schema_name(ctx, "starfield", "component")
-        .await
-        .expect("unable to create new component");
+    let new_component =
+        create_component_for_unlocked_schema_name_on_default_view(ctx, "starfield", "component")
+            .await
+            .expect("unable to create new component");
 
     // check that the action func has been enqueued
     let enqueued_actions = Action::list_topologically(ctx)
