@@ -1,5 +1,5 @@
 [package]
-name = "sdf-server-v2-func"
+name = "sdf-server-v2-change-set"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -11,18 +11,12 @@ publish.workspace = true
 [dependencies]
 axum-util = { path = "../../lib/axum-util" }
 dal = { path = "../../lib/dal" }
-# si-events = { path = "../../lib/si-events-rs" }
-si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-# permissions = { path = "../../lib/permissions" }
-veritech-client = { path = "../../lib/veritech-client" }
-telemetry = { path = "../../lib/telemetry-rs" }
 si-events = { path = "../../lib/si-events-rs" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+permissions = { path = "../../lib/permissions" }
 
 axum = { workspace = true }
-chrono = { workspace = true }
 thiserror = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-ulid = { workspace = true }

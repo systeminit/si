@@ -879,6 +879,7 @@ dependencies = [
  "futures-lite",
  "hyper 0.14.31",
  "nats-multiplexer-client",
+ "permissions",
  "remain",
  "serde",
  "serde_json",
@@ -894,6 +895,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
+ "tower",
  "tracing-tunnel",
  "y-sync",
 ]
@@ -6091,6 +6093,13 @@ dependencies = [
  "reqwest",
  "sdf-server-v2",
  "sdf-server-v2-admin",
+ "sdf-server-v2-audit-log",
+ "sdf-server-v2-change-set",
+ "sdf-server-v2-func",
+ "sdf-server-v2-management",
+ "sdf-server-v2-module",
+ "sdf-server-v2-variant",
+ "sdf-server-v2-view",
  "serde",
  "serde_json",
  "serde_qs",
@@ -6163,18 +6172,83 @@ dependencies = [
 [[package]]
 name = "sdf-server-v2-audit-log"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "dal",
+ "remain",
+ "serde",
+ "si-events",
+ "si-frontend-types",
+ "thiserror",
+]
+
+[[package]]
+name = "sdf-server-v2-change-set"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "dal",
+ "permissions",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-types",
+ "thiserror",
+]
 
 [[package]]
 name = "sdf-server-v2-func"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "chrono",
+ "dal",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-types",
+ "si-layer-cache",
+ "telemetry",
+ "thiserror",
+ "ulid",
+ "veritech-client",
+]
 
 [[package]]
 name = "sdf-server-v2-management"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "dal",
+ "remain",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror",
+ "veritech-client",
+]
 
 [[package]]
 name = "sdf-server-v2-module"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "dal",
+ "module-index-client",
+ "remain",
+ "serde_json",
+ "si-frontend-types",
+ "telemetry",
+ "thiserror",
+ "url",
+]
 
 [[package]]
 name = "sdf-server-v2-variant"

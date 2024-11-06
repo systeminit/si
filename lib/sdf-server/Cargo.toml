@@ -21,6 +21,13 @@ permissions = { path = "../../lib/permissions" }
 rebaser-client = { path = "../../lib/rebaser-client" }
 sdf-server-v2 = { path = "../../lib/sdf-server-v2" }
 sdf-server-v2-admin = { path = "../../lib/sdf-server-v2-admin" }
+sdf-server-v2-audit-log = { path = "../../lib/sdf-server-v2-audit-log" }
+sdf-server-v2-change-set = { path = "../../lib/sdf-server-v2-change-set" }
+sdf-server-v2-func = { path = "../../lib/sdf-server-v2-func" }
+sdf-server-v2-management = { path = "../../lib/sdf-server-v2-management" }
+sdf-server-v2-module = { path = "../../lib/sdf-server-v2-module" }
+sdf-server-v2-variant = { path = "../../lib/sdf-server-v2-variant" }
+sdf-server-v2-view = { path = "../../lib/sdf-server-v2-view" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }

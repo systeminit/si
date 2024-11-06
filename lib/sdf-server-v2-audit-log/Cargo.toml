@@ -7,3 +7,14 @@ repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+
+[dependencies]
+axum-util = { path = "../../lib/axum-util" }
+dal = { path = "../../lib/dal" }
+si-events = { path = "../../lib/si-events-rs" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+
+axum = { workspace = true }
+thiserror = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }

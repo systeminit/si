@@ -7,3 +7,15 @@ repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+
+[dependencies]
+axum-util = { path = "../../lib/axum-util" }
+dal = { path = "../../lib/dal" }
+telemetry = { path = "../../lib/telemetry-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
+axum = { workspace = true }
+remain = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
