@@ -7,9 +7,9 @@ use frontend_types::{SchemaVariant as FrontendVariant, UninstalledVariant};
 use serde::{Deserialize, Serialize};
 use si_frontend_types as frontend_types;
 
-use crate::{
+use crate::SchemaVariantsAPIError;
+use axum_util::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
-    service::v2::variant::SchemaVariantsAPIError,
     track,
 };
 

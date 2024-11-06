@@ -888,6 +888,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-data-spicedb",
+ "si-pkg",
  "si-posthog",
  "strum 0.26.3",
  "telemetry",
@@ -6139,8 +6140,11 @@ dependencies = [
 name = "sdf-server-v2"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "axum-util",
  "sdf-server-v2-admin",
  "sdf-server-v2-audit-log",
+ "sdf-server-v2-change-set",
  "sdf-server-v2-func",
  "sdf-server-v2-management",
  "sdf-server-v2-module",
@@ -6253,10 +6257,31 @@ dependencies = [
 [[package]]
 name = "sdf-server-v2-variant"
 version = "0.1.0"
+dependencies = [
+ "asset-sprayer",
+ "axum",
+ "axum-util",
+ "dal",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-frontend-types",
+ "telemetry",
+ "thiserror",
+]
 
 [[package]]
 name = "sdf-server-v2-view"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-util",
+ "dal",
+ "remain",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "sea-bae"

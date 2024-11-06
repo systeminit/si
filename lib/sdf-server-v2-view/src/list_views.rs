@@ -1,8 +1,7 @@
-use crate::extract::{AccessBuilder, HandlerContext};
-use crate::service::v2::view::{ViewResult, ViewView};
+use crate::{ViewResult, ViewView};
 use axum::extract::{Json, Path};
-use dal::diagram::view::View;
-use dal::{ChangeSetId, Visibility, WorkspacePk};
+use axum_util::extract::{AccessBuilder, HandlerContext};
+use dal::{diagram::view::View, ChangeSetId, Visibility, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]

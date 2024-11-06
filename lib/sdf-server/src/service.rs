@@ -11,7 +11,6 @@ pub mod node_debug;
 pub mod qualification;
 pub mod secret;
 pub mod session;
-pub mod v2;
 pub mod variant;
 pub mod ws;
 

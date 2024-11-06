@@ -7,3 +7,16 @@ repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+
+[dependencies]
+axum-util = { path = "../../lib/axum-util" }
+asset-sprayer = { path = "../../lib/asset-sprayer" }
+dal = { path = "../../lib/dal" }
+telemetry = { path = "../../lib/telemetry-rs" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+
+axum = { workspace = true }
+thiserror = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

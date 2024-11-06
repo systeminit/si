@@ -15,6 +15,7 @@ nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
+si-pkg = { path = "../../lib/si-pkg" }
 si-posthog = { path = "../../lib/si-posthog-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 permissions = { path = "../../lib/permissions" }
