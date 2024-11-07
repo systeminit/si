@@ -5,14 +5,15 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "./change_sets.store";
 import { UserId } from "./auth.store";
+import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type LogFilters = {
   page: number;
   pageSize: number;
   sortTimestampAscending: boolean;
-  excludeSystemUser: boolean;
-  kindFilter: string[];
   changeSetFilter: ChangeSetId[];
+  entityTypeFilter: string[];
+  kindFilter: string[];
   userFilter: UserId[];
 };
 
@@ -21,6 +22,7 @@ interface AuditLogCommon {
   userId?: UserId;
   userEmail?: string;
   kind: string;
+  entityName: string;
   entityType: string;
   timestamp: string;
   changeSetId?: ChangeSetId;
@@ -30,12 +32,10 @@ interface AuditLogCommon {
 
 export interface AuditLog extends AuditLogCommon {
   userName?: string;
-  entityName?: string;
 }
 
 export interface AuditLogDisplay extends AuditLogCommon {
   userName: string;
-  entityName: string;
 }
 
 export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -78,16 +78,19 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
         state: () => ({
           logs: [] as AuditLogDisplay[],
           total: 0 as number,
+          changeSets: [] as { id: ChangeSetId; name: string }[],
+          users: [] as { id: UserId; name: string }[],
         }),
-        getters: {},
         actions: {
           async LOAD_PAGE(filters: LogFilters) {
             return new ApiRequest<{ logs: AuditLog[]; total: number }>({
               url: API_PREFIX,
               params: { ...visibility, ...filters },
+              method: "get",
               onSuccess: (response) => {
+                this.total = response.total;
                 this.logs = response.logs.map(
-                  (log: AuditLog) =>
+                  (log) =>
                     ({
                       title: log.title,
                       userName: log.userName ?? "System",
@@ -95,19 +98,72 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                       userEmail: log.userEmail,
                       kind: log.kind,
                       entityType: log.entityType,
-                      entityName: log.entityName ?? "-",
+                      entityName: log.entityName,
                       metadata: log.metadata,
                       timestamp: log.timestamp,
                       changeSetId: log.changeSetId,
                       changeSetName: log.changeSetName,
                     } as AuditLogDisplay),
                 );
-                this.total = response.total;
+              },
+            });
+          },
+          async GET_FILTER_OPTIONS() {
+            return new ApiRequest<{
+              changeSets: { id: ChangeSetId; name: string }[];
+              users: { id: UserId; name: string }[];
+            }>({
+              url: API_PREFIX.concat(["filters"]),
+              params: { ...visibility },
+              method: "get",
+              onSuccess: (response) => {
+                // Why do we manage our own change sets and users? The admin store was the only store that had routes
+                // containing this information at the time of writing, but we do not want to leak the admin store
+                // outside of the admin dashbaord for security and architecture concerns. As a result, this store is,
+                // at the time of writing, the only non-admin store concerned with this information.
+                this.changeSets = response.changeSets;
+                this.users = response.users;
+
+                this.changeSets.sort((a, b) => a.name.localeCompare(b.name));
+                this.users.sort((a, b) => a.name.localeCompare(b.name));
               },
             });
           },
         },
-        onActivated() {},
+        onActivated() {
+          this.GET_FILTER_OPTIONS();
+
+          // TODO(nick): handle user invitations. Inviting workspace members happens in the auth portal, so need a way
+          // to tell this store that it needs to add a user.
+          if (workspaceId) {
+            const realtimeStore = useRealtimeStore();
+            realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
+              {
+                eventType: "ChangeSetCreated",
+                callback: (payload, metadata) => {
+                  const newChangeSet = {
+                    id: metadata.change_set_id,
+                    name: payload,
+                  };
+                  if (
+                    !this.changeSets.some(
+                      (changeSet) => changeSet.id === newChangeSet.id,
+                    )
+                  ) {
+                    this.changeSets.push(newChangeSet);
+                    this.changeSets.sort((a, b) =>
+                      a.name.localeCompare(b.name),
+                    );
+                  }
+                },
+              },
+            ]);
+
+            return () => {
+              realtimeStore.unsubscribe(this.$id);
+            };
+          }
+        },
       },
     ),
   )();

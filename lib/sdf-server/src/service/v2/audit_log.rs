@@ -7,15 +7,20 @@ use thiserror::Error;
 
 use crate::{service::ApiError, AppState};
 
-pub mod list_audit_logs;
+mod get_filter_options;
+mod list_audit_logs;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AuditLogError {
     #[error("dal audit logging error: {0}")]
     DalAuditLogging(#[from] dal::audit_logging::AuditLoggingError),
+    #[error("dal change set error: {0}")]
+    DalChangeSet(#[from] dal::ChangeSetError),
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
+    #[error("dal user error: {0}")]
+    DalUser(#[from] dal::UserError),
 }
 
 pub type AuditLogResult<T> = Result<T, AuditLogError>;
@@ -34,5 +39,7 @@ impl IntoResponse for AuditLogError {
 }
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route("/", get(list_audit_logs::list_audit_logs))
+    Router::new()
+        .route("/", get(list_audit_logs::list_audit_logs))
+        .route("/filters", get(get_filter_options::get_filter_options))
 }

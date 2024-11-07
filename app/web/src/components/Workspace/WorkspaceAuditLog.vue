@@ -91,6 +91,7 @@
               :key="header.id"
               :header="header"
               :filters="currentFilters"
+              :changeSets="changeSets"
               :users="users"
               :anyRowsOpen="anyRowsOpen"
               @select="onHeaderClick(header.id)"
@@ -161,10 +162,9 @@ import {
   createColumnHelper,
 } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { h, computed, ref } from "vue";
+import { h, computed, ref, withDirectives, resolveDirective } from "vue";
 import { trackEvent } from "@/utils/tracking";
 import { AuditLogDisplay, LogFilters, useLogsStore } from "@/store/logs.store";
-import { AdminUser } from "@/store/admin.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import AuditLogHeader from "../AuditLogHeader.vue";
 import AuditLogCell from "../AuditLogCell.vue";
@@ -173,34 +173,33 @@ import AuditLogDrawer from "../AuditLogDrawer.vue";
 const PAGE_SIZE = 50; // Currently this is fixed, might make it variable later
 
 const changeSetsStore = useChangeSetsStore();
+const logsStore = useLogsStore();
 
-// FIXME(nick): we should not be using admin user or admin store stuff outside of the admin dashboard.
-const users = ref([] as AdminUser[]);
+const changeSets = computed(() => logsStore.changeSets);
+const users = computed(() => logsStore.users);
 
 const rowCollapseState = ref(new Array(PAGE_SIZE).fill(false));
 const anyRowsOpen = computed(() => rowCollapseState.value.some(Boolean));
-
 const toggleRowExpand = (id: number) => {
   rowCollapseState.value[id] = !rowCollapseState.value[id];
 };
-
 const collapseAllRows = () => {
   rowCollapseState.value = new Array(PAGE_SIZE).fill(false);
 };
+
 const DEFAULT_FILTERS = {
   page: 1,
   pageSize: PAGE_SIZE,
   sortTimestampAscending: false,
-  excludeSystemUser: false,
-  kindFilter: [],
-  serviceFilter: [],
   changeSetFilter: changeSetsStore.headSelected
     ? []
     : [changeSetsStore.selectedChangeSetId],
+  entityTypeFilter: [],
+  kindFilter: [],
   userFilter: [],
 } as LogFilters;
 const currentFilters = ref<LogFilters>({ ...DEFAULT_FILTERS });
-const logsStore = useLogsStore();
+
 const loadLogs = async () => {
   collapseAllRows();
   logsStore.LOAD_PAGE(currentFilters.value);
@@ -219,9 +218,16 @@ const columns = [
     header: "",
     cell: "",
   },
-  columnHelper.accessor("title", {
+  columnHelper.accessor("kind", {
     header: "Event",
-    cell: (info) => info.getValue(),
+    cell: (info) =>
+      withDirectives(
+        h("div", {
+          innerText: info.row.getValue("title"),
+          class: "hover:underline cursor-pointer",
+        }),
+        [[resolveDirective("tooltip"), info.getValue()]],
+      ),
   }),
   columnHelper.accessor("entityType", {
     header: "Entity Type",
@@ -233,20 +239,15 @@ const columns = [
   }),
   columnHelper.accessor("changeSetName", {
     header: "Change Set",
-    cell: (info) => info.getValue(),
+    cell: (info) =>
+      withDirectives(
+        h("div", {
+          innerText: info.getValue(),
+          class: "hover:underline cursor-pointer",
+        }),
+        [[resolveDirective("tooltip"), info.row.getValue("changeSetId")]],
+      ),
   }),
-  // TODO(nick): restore change set filtering.
-  // columnHelper.accessor("changeSetName", {
-  //   header: "Change Set",
-  //   cell: (info) =>
-  //     withDirectives(
-  //       h("div", {
-  //         innerText: info.getValue(),
-  //         class: "hover:underline cursor-pointer",
-  //       }),
-  //       [[resolveDirective("tooltip"), info.row.getValue("changeSetName")]],
-  //     ),
-  // }),
   columnHelper.accessor("userName", {
     header: "User",
     cell: (info) => info.getValue(),
@@ -258,10 +259,15 @@ const columns = [
         date: info.getValue(),
         relative: true,
         enableDetailTooltip: true,
+        refresh: true,
       }),
   }),
   columnHelper.accessor("changeSetId", {
     header: "Change Set Id",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("title", {
+    header: "Title",
     cell: (info) => info.getValue(),
   }),
 ];
@@ -273,6 +279,7 @@ const table = useVueTable({
   initialState: {
     columnVisibility: {
       changeSetId: false,
+      title: false,
     },
   },
   columns,
@@ -292,16 +299,21 @@ const onHeaderClick = (id: string) => {
 };
 
 const toggleFilter = (id: string, filterId: string) => {
-  if (id === "kind") {
-    if (currentFilters.value.kindFilter.includes(filterId)) {
-      const i = currentFilters.value.kindFilter.indexOf(filterId);
-      currentFilters.value.kindFilter.splice(i, 1);
-    } else currentFilters.value.kindFilter.push(filterId);
-  } else if (id === "changeSetName") {
+  if (id === "changeSetName") {
     if (currentFilters.value.changeSetFilter.includes(filterId)) {
       const i = currentFilters.value.changeSetFilter.indexOf(filterId);
       currentFilters.value.changeSetFilter.splice(i, 1);
     } else currentFilters.value.changeSetFilter.push(filterId);
+  } else if (id === "entityType") {
+    if (currentFilters.value.entityTypeFilter.includes(filterId)) {
+      const i = currentFilters.value.entityTypeFilter.indexOf(filterId);
+      currentFilters.value.entityTypeFilter.splice(i, 1);
+    } else currentFilters.value.entityTypeFilter.push(filterId);
+  } else if (id === "kind") {
+    if (currentFilters.value.kindFilter.includes(filterId)) {
+      const i = currentFilters.value.kindFilter.indexOf(filterId);
+      currentFilters.value.kindFilter.splice(i, 1);
+    } else currentFilters.value.kindFilter.push(filterId);
   } else if (id === "userName") {
     if (currentFilters.value.userFilter.includes(filterId)) {
       const i = currentFilters.value.userFilter.indexOf(filterId);
@@ -312,10 +324,12 @@ const toggleFilter = (id: string, filterId: string) => {
 };
 
 const clearFilters = (id: string) => {
-  if (id === "kind") {
-    currentFilters.value.kindFilter = [];
-  } else if (id === "changeSetName") {
+  if (id === "changeSetName") {
     currentFilters.value.changeSetFilter = [];
+  } else if (id === "entityType") {
+    currentFilters.value.entityTypeFilter = [];
+  } else if (id === "kind") {
+    currentFilters.value.kindFilter = [];
   } else if (id === "userName") {
     currentFilters.value.userFilter = [];
   }

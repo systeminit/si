@@ -1,12 +1,19 @@
+use std::collections::HashSet;
+
 use audit_logs::AuditLogsStream;
 use dal::{audit_logging, prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
-use dal_test::helpers::create_named_component_for_schema_variant_on_default_view;
+use dal_test::helpers::{
+    confirm_jetstream_stream_has_no_messages,
+    create_named_component_for_schema_variant_on_default_view,
+};
 use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pending_events::PendingEventsStream;
 use pretty_assertions_sorted::assert_eq;
 use si_events::audit_log::AuditLogKind;
 
-#[ignore]
+const TIMEOUT_SECONDS: u64 = 5;
+const INTERVAL_MILLISECONDS: u64 = 100;
+
 #[test]
 async fn round_trip(ctx: &mut DalContext) {
     let schema = Schema::find_by_name(ctx, "swifty")
@@ -24,7 +31,6 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // Create a component and commit. Mimic sdf by audit logging here.
     let component_name = "nyj despair_club";
-
     let component = create_named_component_for_schema_variant_on_default_view(
         ctx,
         component_name,
@@ -67,15 +73,13 @@ async fn round_trip(ctx: &mut DalContext) {
     };
 
     // Check that the streams look as we expect.
-    assert_eq!(
-        0,
-        source_stream
-            .get_info()
-            .await
-            .expect("could not get source stream info")
-            .state
-            .messages
-    );
+    confirm_jetstream_stream_has_no_messages(
+        &source_stream,
+        TIMEOUT_SECONDS,
+        INTERVAL_MILLISECONDS,
+    )
+    .await
+    .expect("stream message count is greater than zero");
     let first_destination_stream_message_count = destination_stream
         .get_info()
         .await
@@ -86,12 +90,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         first_destination_stream_message_count as usize, // expected
@@ -142,15 +164,13 @@ async fn round_trip(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check that the streams look as we expect.
-    assert_eq!(
-        0,
-        source_stream
-            .get_info()
-            .await
-            .expect("could not get source stream info")
-            .state
-            .messages
-    );
+    confirm_jetstream_stream_has_no_messages(
+        &source_stream,
+        TIMEOUT_SECONDS,
+        INTERVAL_MILLISECONDS,
+    )
+    .await
+    .expect("stream message count is greater than zero");
     let second_destination_stream_message_count = destination_stream
         .get_info()
         .await
@@ -161,12 +181,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         second_destination_stream_message_count as usize, // expected
@@ -195,15 +233,13 @@ async fn round_trip(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Check that the streams look as we expect.
-    assert_eq!(
-        0,
-        source_stream
-            .get_info()
-            .await
-            .expect("could not get source stream info")
-            .state
-            .messages
-    );
+    confirm_jetstream_stream_has_no_messages(
+        &source_stream,
+        TIMEOUT_SECONDS,
+        INTERVAL_MILLISECONDS,
+    )
+    .await
+    .expect("stream message count is greater than zero");
     let third_destination_stream_message_count = destination_stream
         .get_info()
         .await
@@ -214,12 +250,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         third_destination_stream_message_count as usize, // expected

@@ -12,16 +12,24 @@ use si_frontend_types as frontend_types;
 use super::AuditLogResult;
 use crate::extract::{AccessBuilder, HandlerContext, PosthogClient, QueryWithVecParams};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[remain::sorted]
+#[derive(Deserialize, Debug)]
+pub enum UserFilter {
+    System,
+    #[serde(untagged)]
+    User(UserPk),
+}
+
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListAuditLogsRequest {
     page: Option<usize>,
     page_size: Option<usize>,
     sort_timestamp_ascending: Option<bool>,
-    exclude_system_user: Option<bool>,
-    kind_filter: Option<Vec<String>>,
     change_set_filter: Option<Vec<si_events::ChangeSetId>>,
-    user_filter: Option<Vec<UserPk>>,
+    entity_type_filter: Option<Vec<String>>,
+    kind_filter: Option<Vec<String>>,
+    user_filter: Option<Vec<UserFilter>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,32 +51,35 @@ pub async fn list_audit_logs(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    // TODO(nick): filter and paginate in the same request.
-    let audit_logs = audit_logging::list(&ctx).await?;
-
-    // TODO(nick): repalce this with the above.
-    let (filtered_and_paginated_audit_logs, total) = audit_logging::temporary::filter_and_paginate(
-        audit_logs,
-        request.page,
-        request.page_size,
-        request.sort_timestamp_ascending,
-        request.exclude_system_user,
-        match request.kind_filter {
-            Some(provided) => HashSet::from_iter(provided.into_iter()),
-            None => HashSet::new(),
-        },
+    let (paginated_and_filtered_audit_logs, filtered_audit_logs_total) = audit_logging::list(
+        &ctx,
+        request.page.unwrap_or(0),
+        request.page_size.unwrap_or(0),
+        request.sort_timestamp_ascending.unwrap_or(false),
         match request.change_set_filter {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
-        match request.user_filter {
+        match request.entity_type_filter {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
             None => HashSet::new(),
         },
-    )?;
+        match request.kind_filter {
+            Some(provided) => HashSet::from_iter(provided.into_iter()),
+            None => HashSet::new(),
+        },
+        match request.user_filter {
+            Some(provided) => HashSet::from_iter(provided.iter().map(|u| match u {
+                UserFilter::System => None,
+                UserFilter::User(user_id) => Some(*user_id),
+            })),
+            None => HashSet::new(),
+        },
+    )
+    .await?;
 
     Ok(Json(ListAuditLogsResponse {
-        logs: filtered_and_paginated_audit_logs,
-        total,
+        logs: paginated_and_filtered_audit_logs,
+        total: filtered_audit_logs_total,
     }))
 }

@@ -6,7 +6,7 @@
     :class="
       clsx(
         'h-8 sticky top-0',
-        header.id !== 'ip' &&
+        header.id !== 'entityName' &&
           header.id !== 'json' &&
           'cursor-pointer hover:underline',
         header.id === 'json' && 'w-8 px-2xs',
@@ -60,7 +60,11 @@
           />
         </template>
         <DropdownMenu
-          v-if="header.id !== 'timestamp' && header.id !== 'json'"
+          v-if="
+            header.id !== 'timestamp' &&
+            header.id !== 'entityName' &&
+            header.id !== 'json'
+          "
           ref="dropdownMenuRef"
           :items="dropdownMenuItems"
           :anchorTo="{ $el: thRef }"
@@ -80,49 +84,41 @@ import {
 } from "@si/vue-lib/design-system";
 import { FlexRender, Header } from "@tanstack/vue-table";
 import clsx from "clsx";
-import { computed, onMounted, onUnmounted, PropType, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { LogFilters } from "@/store/logs.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import { AdminUser } from "@/store/admin.store";
-
-const changeSetsStore = useChangeSetsStore();
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { UserId } from "@/store/auth.store";
+import {
+  AUDIT_LOG_KINDS,
+  AUDIT_LOG_ENTITY_TYPES,
+} from "@/api/sdf/dal/audit_log";
 
 const thRef = ref();
 const iconButtonRef = ref<InstanceType<typeof IconButton>>();
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-const props = defineProps({
-  header: {
-    type: Object as PropType<
-      Header<
-        {
-          title: string;
-          userName: string;
-          userId?: string;
-          userEmail?: string;
-          kind: string;
-          entityType: string;
-          entityName: string;
-          timestamp: string;
-          changeSetId?: string;
-          changeSetName?: string;
-          metadata: Record<string, unknown>;
-        },
-        unknown
-      >
-    >,
-    required: true,
-  },
-  filters: {
-    type: Object as PropType<LogFilters>,
-    required: true,
-  },
-  users: {
-    type: Array as PropType<AdminUser[]>,
-    default: [] as AdminUser[],
-  },
-  anyRowsOpen: { type: Boolean },
-});
+const props = defineProps<{
+  anyRowsOpen: boolean;
+  header: Header<
+    {
+      title: string;
+      userName: string;
+      userId?: string;
+      userEmail?: string;
+      kind: string;
+      entityType: string;
+      entityName: string;
+      timestamp: string;
+      changeSetId?: string;
+      changeSetName?: string;
+      metadata: Record<string, unknown>;
+    },
+    unknown
+  >;
+  filters: LogFilters;
+  changeSets: { id: ChangeSetId; name: string }[];
+  users: { id: UserId; name: string }[];
+}>();
 
 const label = computed(() => props.header.column.columnDef.header as string);
 
@@ -138,37 +134,39 @@ const icon = computed(() => {
 });
 
 const filterOptions = computed(() => {
-  // TODO(nick): restore this header.
-  // if (props.header.id === "kind") {
-  //  return Object.values().map((k) => {
-  //    return { label: k, value: k };
-  //  });
-  // } else if (props.header.id === "changeSetName") {
   if (props.header.id === "changeSetName") {
-    return changeSetsStore.allChangeSets.map((changeSet) => {
-      return { label: changeSet.name, value: changeSet.id };
+    return props.changeSets.map((c) => {
+      return { label: c.name, value: c.id };
+    });
+  } else if (props.header.id === "entityType") {
+    return AUDIT_LOG_ENTITY_TYPES.map((e) => {
+      return { label: e, value: e };
+    });
+  } else if (props.header.id === "kind") {
+    return AUDIT_LOG_KINDS.map((k) => {
+      return { label: k, value: k };
     });
   } else if (props.header.id === "userName") {
-    const users = props.users.map((user) => {
-      return { label: user.name, value: user.id };
+    const users = props.users.map((u) => {
+      return { label: u.name, value: u.id };
     });
     users.unshift({ label: "System", value: "System" });
-
     return users;
   }
   return [];
 });
 
 const selectedFilters = computed(() => {
-  if (props.header.id === "kind") return props.filters.kindFilter;
-  else if (props.header.id === "changeSetName")
-    return props.filters.changeSetFilter;
+  if (props.header.id === "changeSetName") return props.filters.changeSetFilter;
+  else if (props.header.id === "entityType")
+    return props.filters.entityTypeFilter;
+  else if (props.header.id === "kind") return props.filters.kindFilter;
   else if (props.header.id === "userName") return props.filters.userFilter;
   else return [];
 });
 
 const headerText = computed(() => {
-  if (label.value === "Timestamp") {
+  if (label.value === "Time") {
     return `Sorting By Timestamp ${
       props.filters.sortTimestampAscending ? "(Oldest)" : "(Newest)"
     }`;
@@ -177,11 +175,15 @@ const headerText = computed(() => {
     return `Filtering by ${selectedFilters.value.length} selection${
       selectedFilters.value.length > 1 ? "s" : ""
     }`;
-  } else return `Filter by ${label.value}`;
+  }
+  if (label.value === "Event") {
+    return "Filter by Raw Event Kind";
+  }
+  return `Filter by ${label.value}`;
 });
 
 const tooltip = computed(() => {
-  if (props.header.id === "ip") return null;
+  if (props.header.id === "entityName") return null;
   else if (props.header.id === "json") {
     if (props.anyRowsOpen) {
       return {
@@ -232,7 +234,7 @@ const dropdownMenuItems = computed(() => {
 });
 
 const onClick = () => {
-  if (props.header.id !== "ip") {
+  if (props.header.id !== "entityName") {
     dropdownMenuRef.value?.open();
   }
   emit("select");
