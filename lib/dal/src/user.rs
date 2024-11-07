@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_events::ViewId;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -250,6 +251,8 @@ pub struct CursorPayload {
     pub container_key: Option<String>,
     pub user_pk: UserPk,
     pub user_name: String,
+    pub change_set_id: Option<ChangeSetId>,
+    pub view_id: Option<ViewId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
@@ -259,6 +262,7 @@ pub struct OnlinePayload {
     pub name: String,
     pub picture_url: Option<String>,
     pub change_set_id: Option<ChangeSetId>,
+    pub view_id: Option<ViewId>,
     pub idle: bool,
 }
 

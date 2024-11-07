@@ -31,6 +31,7 @@ export interface CursorRequest {
     userName: string;
     userPk: UserId;
     changeSetId: string | null;
+    viewId: string | null;
     container: CursorContainerKind;
     containerKey: string | null;
     x: string | null;
@@ -46,6 +47,7 @@ export interface OnlineRequest {
     pictureUrl: string | null;
     idle: boolean;
     changeSetId: string | null;
+    viewId: string | null;
   };
 }
 
@@ -71,6 +73,8 @@ export type WsEventPayloadMap = {
     containerKey: string | null;
     userPk: string;
     userName: string;
+    changeSetId: string | null;
+    viewId: string | null;
   };
   ChangeSetCreated: string;
   ChangeSetWritten: string;
@@ -134,6 +138,7 @@ export type WsEventPayloadMap = {
     name: string;
     pictureUrl: string | null;
     changeSetId: string | null;
+    viewId: string | null;
     idle: boolean;
   };
 

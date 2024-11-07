@@ -341,6 +341,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+              this.selectedViewId = response.view.id;
               componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram);
               const components: RawComponent[] = [];
               const groups: RawComponent[] = [];
