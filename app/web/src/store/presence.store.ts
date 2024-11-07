@@ -69,6 +69,8 @@ export const usePresenceStore = () => {
         >,
         now: new Date(),
         lastSeenAt: new Date(),
+        leftDrawerOpen: false,
+        leftResizePanelWidth: 0,
       }),
       getters: {
         users(): OnlineUser[] {

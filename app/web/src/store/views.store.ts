@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
+import { useToast } from "vue-toastification";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   ViewId,
@@ -28,13 +29,18 @@ import { vectorAdd } from "@/components/ModelingDiagram/utils/math";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentType, SchemaVariant } from "@/api/sdf/dal/schema";
 import { nonNullable } from "@/utils/typescriptLinter";
+import router from "@/router";
 import handleStoreError from "./errors";
 
-import { useChangeSetsStore } from "./change_sets.store";
+import {
+  useChangeSetsStore,
+  diagramUlid as clientUlid,
+} from "./change_sets.store";
 import { useComponentsStore, processRawComponent } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useAssetStore } from "./asset.store";
+import { useRouterStore } from "./router.store";
 
 const MAX_RETRIES = 5;
 
@@ -122,6 +128,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const componentsStore = useComponentsStore(forceChangeSetId);
+  const toast = useToast();
 
   let changeSetId: ChangeSetId | undefined;
   if (forceChangeSetId) {
@@ -149,8 +156,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
     changeSetId,
     defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/views`, {
       state: () => ({
-        diagramUlid: "",
         selectedViewId: null as ViewId | null,
+        outlinerViewId: null as ViewId | null,
         recentViews: new UniqueStack() as UniqueStack<ViewId>,
 
         // every views data goes here
@@ -172,6 +179,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         // prevents run away retries, unknown what circumstances could lead to this, but protecting ourselves
         inflightRetryCounter: new DefaultMap<string, number>(() => 0),
         pendingInsertedComponents: {} as Record<string, PendingComponent>,
+
+        // componentId we drag from outliner into the selectedView
+        addComponentId: null as ComponentId | null,
       }),
       getters: {
         diagramIsEmpty(state): boolean {
@@ -195,6 +205,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             return componentIds.includes(to) && componentIds.includes(from);
           }),
         selectedView: (state) => state.viewsById[state.selectedViewId || ""],
+        outlinerView: (state) => state.viewsById[state.outlinerViewId || ""],
         // NOTE: this is computed for now, but we could easily make this state
         // and re-compute it for only which elements get moved (if it becomes a bottleneck)
         contentBoundingBoxesByGroupId(state): Record<ComponentId, IRect> {
@@ -257,6 +268,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         async selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
+            const route = router.currentRoute;
+            router.push({
+              name: "workspace-compose-view",
+              params: {
+                ...route.value.params,
+                viewId: id,
+              },
+            });
             // move the currently selected view to the top of the
             if (this.selectedViewId) {
               this.pushRecentView(this.selectedViewId);
@@ -267,6 +286,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 throw new Error(`${id} does not exist`);
             } */
             this.selectedViewId = id;
+            this.outlinerViewId = id;
             /* *
              * i think i want to set these as in-memory references
              * that way i don't have to do two writes for incoming WsEvents
@@ -281,6 +301,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             // derive the socket position from the component position
             // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
+          } else {
+            throw new Error(`${id} does not exist`);
           }
         },
         closeRecentView(id: ViewId) {
@@ -293,16 +315,87 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           return new ApiRequest<ViewDescription[]>({
             method: "get",
             url: API_PREFIX,
-            onSuccess: (views) => {
+            onSuccess: async (views) => {
               this.viewList = views;
+              this.SORT_LIST_VIEWS();
+              for (const { id } of views) {
+                // assuming we're coming from "on load", we have the FETCH that gets the selectedViewId
+                if (id !== this.selectedViewId)
+                  await this.FETCH_VIEW_GEOMETRY(id);
+              }
             },
           });
+        },
+        SORT_LIST_VIEWS() {
+          this.viewList = this.viewList.sort((a, b) => {
+            if (a.isDefault) return -1;
+            if (b.isDefault) return 1;
+            return a.name.localeCompare(b.name);
+          });
+        },
+        async FETCH_VIEW_GEOMETRY(viewId: ViewId) {
+          return new ApiRequest<{
+            viewId: ViewId;
+            name: string;
+            components: Record<ComponentId, Vector2d & Partial<Size2D>>;
+          }>({
+            method: "get",
+            url: API_PREFIX.concat([{ viewId }, "get_geometry"]),
+            onSuccess: (response) => {
+              let view = this.viewsById[viewId];
+              if (!view) {
+                view = {
+                  id: response.viewId,
+                  name: response.name,
+                  components: {},
+                  groups: {},
+                  sockets: {},
+                };
+                this.viewsById[response.viewId] = view;
+              }
+
+              Object.entries(response.components).forEach(
+                ([componentId, geo]) => {
+                  const node = componentsStore.allComponentsById[componentId];
+                  if (!node) return;
+                  if (!view) return; // no idea why linting is complaining that i need this
+                  let geometry: IRect;
+                  if ("width" in node) {
+                    geo.width = node.width;
+                    geo.height = node.height;
+                    geometry = { ...(geo as IRect) };
+                    view.components[componentId] = geometry;
+                  } else {
+                    geometry = { ...(geo as IRect) };
+                    if (!geometry.width) geometry.width = 500;
+                    if (!geometry.height) geometry.height = 500;
+                    view.groups[componentId] = {
+                      // this one is actually an IRect
+                      ...geometry,
+                    };
+                  }
+                  for (const [key, loc] of Object.entries(
+                    setSockets(node, geometry),
+                  )) {
+                    view.sockets[key] = loc;
+                  }
+                },
+              );
+            },
+          });
+        },
+        setAddComponentId(id: ComponentId) {
+          this.addComponentId = id;
+          componentsStore.setSelectedComponentId(null);
+        },
+        cancelAdd() {
+          this.addComponentId = null;
         },
         async CREATE_VIEW(name: string) {
           return new ApiRequest<ViewDescription>({
             method: "post",
             url: API_PREFIX,
-            params: { name },
+            params: { name, clientUlid },
             onSuccess: (view) => {
               const idx = this.viewList.findIndex((v) => v.name === name);
               // confirming we dont already have the data
@@ -314,7 +407,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           return new ApiRequest<null>({
             method: "put",
             url: API_PREFIX.concat([view_id]),
-            params: { name },
+            params: { name, clientUlid },
             optimistic: () => {
               const v = this.viewList.find((v) => v.id === view_id);
               if (v) v.name = name;
@@ -340,8 +433,22 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             params: {
               ...visibilityParams,
             },
+            onFail: () => {
+              // getting the view id from URL can fail if you've moved changesets
+              const route = useRouterStore().currentRoute;
+              if (
+                !this.selectedViewId &&
+                route?.name === "workspace-compose-view"
+              ) {
+                const params = { ...route.params };
+                delete params.viewId;
+                router.push({
+                  name: "workspace-compose",
+                  params,
+                });
+              }
+            },
             onSuccess: (response) => {
-              this.selectedViewId = response.view.id;
               componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram);
               const components: RawComponent[] = [];
               const groups: RawComponent[] = [];
@@ -358,9 +465,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               });
               this.selectView(response.view.id);
 
-              // fire this and don't wait for it
               componentsStore.FETCH_ALL_COMPONENTS();
-              // load all other view geometry
             },
           });
         },
@@ -425,12 +530,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
          */
         // REDO the 409 conflicts and retry logic
         async MOVE_COMPONENTS(
-          clientUlid: string,
           components: (DiagramGroupData | DiagramNodeData)[],
           positionDelta: Vector2d,
           opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
-          this.diagramUlid = clientUlid;
           if (positionDelta.x !== 0 || positionDelta.y !== 0) {
             components.forEach((c) => {
               const orig = c.def.isGroup
@@ -555,7 +658,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     )
                     .filter(nonNullable);
                   this.MOVE_COMPONENTS(
-                    clientUlid,
                     components,
                     { x: 0, y: 0 },
                     { writeToChangeSet: true },
@@ -569,13 +671,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           }
         },
         async RESIZE_COMPONENT(
-          clientUlid: string,
           component: DiagramGroupData,
           geometry: IRect,
           opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
         ) {
-          this.diagramUlid = clientUlid;
-
           geometry.x = Math.round(geometry.x);
           geometry.y = Math.round(geometry.y);
           geometry.width = Math.round(geometry.width);
@@ -628,11 +727,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async SET_PARENT(
-          clientUlid: string,
           componentIds: ComponentId[],
           newParentId: ComponentId | null,
         ) {
-          this.diagramUlid = clientUlid;
           const parentIdByComponentId: Record<ComponentId, ComponentId | null> =
             {};
           componentIds.forEach((componentId) => {
@@ -834,10 +931,67 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+
+        async REMOVE_FROM(viewId: ViewId, componentIds: ComponentId[]) {
+          return new ApiRequest({
+            method: "delete",
+            url: API_PREFIX.concat([{ viewId }, "erase_components"]),
+            params: {
+              clientUlid,
+              componentIds,
+              ...visibilityParams,
+            },
+            onFail: (err) => {
+              if (err.response.status === 403) {
+                toast(
+                  "Error: Could not remove component(s) from this View. They do not exist in any other view, and would be orphaned.",
+                );
+              }
+            },
+          });
+        },
+
+        async ADD_TO(
+          sourceViewId: ViewId,
+          components: Record<ComponentId, IRect>,
+          destinationViewId: ViewId,
+          removeFromOriginalView = false,
+        ) {
+          const stringGeometries: Record<ComponentId, StringGeometry> = {};
+          Object.entries(components).forEach(([componentId, geo]) => {
+            stringGeometries[componentId] = {
+              x: Math.round(geo.x).toString(),
+              y: Math.round(geo.y).toString(),
+              width: Math.round(geo.width).toString(),
+              height: Math.round(geo.height).toString(),
+            };
+          });
+          return new ApiRequest({
+            method: "post",
+            url: "diagram/add_components_to_view",
+            params: {
+              clientUlid,
+              sourceViewId,
+              destinationViewId,
+              geometriesByComponentId: stringGeometries,
+              removeFromOriginalView,
+              ...visibilityParams,
+            },
+            onFail: (err) => {
+              if (err.response.status === 403) {
+                toast("Error: This component already exists in this view");
+              }
+            },
+          });
+        },
       },
-      onActivated() {
+      async onActivated() {
         if (!changeSetId) return;
-        this.FETCH_VIEW();
+        const route = useRouterStore().currentRoute;
+        let viewId;
+        if (route?.params.viewId) viewId = route.params.viewId as string;
+        await this.FETCH_VIEW(viewId);
+        if (viewId) this.selectView(viewId); // not auto-selected
         this.LIST_VIEWS();
 
         const realtimeStore = useRealtimeStore();
@@ -964,9 +1118,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
             {
               eventType: "SetComponentPosition",
-              callback: ({ changeSetId, clientUlid, viewId, positions }) => {
+              callback: ({
+                changeSetId,
+                clientUlid: _clientUlid,
+                viewId,
+                positions,
+              }) => {
                 if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-                if (clientUlid === this.diagramUlid) return;
+                if (clientUlid === _clientUlid) return;
                 const _view = this.viewsById[viewId];
                 if (!_view) return;
                 // TODO: make sure to update the correct view based on ID
@@ -997,6 +1156,69 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     }
                   }
                 }
+              },
+            },
+
+            {
+              eventType: "ViewDeleted",
+              callback: ({ view }, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                const idx = this.viewList.findIndex((v) => v.id === view.id);
+                if (idx !== -1) this.viewList.splice(idx, 1);
+                delete this.viewsById[view.id];
+                this.SORT_LIST_VIEWS();
+              },
+            },
+
+            {
+              eventType: "ViewUpdated",
+              callback: ({ view }, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                const idx = this.viewList.findIndex((v) => v.id === view.id);
+                if (idx !== -1) this.viewList.splice(idx, 1, view);
+                else {
+                  this.viewList.push(view);
+                  this.FETCH_VIEW(view.id);
+                }
+                this.SORT_LIST_VIEWS();
+              },
+            },
+
+            {
+              eventType: "ViewCreated",
+              callback: ({ view }, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                const idx = this.viewList.findIndex((v) => v.id === view.id);
+                if (idx !== -1) this.viewList.splice(idx, 1, view);
+                else {
+                  this.viewList.push(view);
+                }
+                this.FETCH_VIEW(view.id);
+                this.SORT_LIST_VIEWS();
+              },
+            },
+
+            {
+              eventType: "ViewComponentsUpdate",
+              callback: (payload, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+
+                Object.entries(payload.updatesByView).forEach(
+                  ([viewId, { added, removed }]) => {
+                    const view = this.viewsById[viewId];
+                    if (!view) return;
+                    Object.entries(added).forEach(([componentId, geo]) => {
+                      const c = componentsStore.allComponentsById[componentId];
+                      if (!c) return;
+                      if (c.def.isGroup) view.groups[componentId] = geo;
+                      else view.components[componentId] = geo;
+                    });
+                    removed.forEach((r) => {
+                      delete view.components[r];
+                      delete view.groups[r];
+                    });
+                  },
+                );
               },
             },
           ],

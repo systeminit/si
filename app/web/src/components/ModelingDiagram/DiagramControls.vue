@@ -1,5 +1,8 @@
 <template>
-  <div :class="clsx('absolute flex left-4 bottom-4 z-10 h-8')">
+  <div
+    :class="clsx('absolute flex bottom-4 z-10 h-8')"
+    :style="{ left: leftPx + 'px', transition: 'left 0.2s ease-out' }"
+  >
     <div
       v-tooltip="'Zoom Out'"
       :class="getButtonClasses(zoomLevel <= MIN_ZOOM)"
@@ -74,12 +77,14 @@ import {
   Icon,
   themeClasses,
 } from "@si/vue-lib/design-system";
+import { usePresenceStore } from "@/store/presence.store";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
 import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
 const diagramContext = useDiagramContext();
+const presenceStore = usePresenceStore();
 const { zoomLevel, setZoomLevel } = diagramContext;
 
 const emit = defineEmits<{
@@ -95,6 +100,14 @@ function adjustZoom(direction: "up" | "down") {
 }
 
 const roundedZoomPercent = computed(() => Math.round(zoomLevel.value * 100));
+
+const leftPx = computed(() => {
+  const minPanelWidth = 230;
+  let base = 16;
+  base += presenceStore.leftResizePanelWidth - minPanelWidth;
+  if (presenceStore.leftDrawerOpen) base += 230;
+  return base;
+});
 
 function getButtonClasses(isDisabled: boolean) {
   return clsx(

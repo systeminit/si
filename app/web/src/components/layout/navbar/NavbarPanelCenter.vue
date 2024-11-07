@@ -5,7 +5,9 @@
     <NavbarButton
       tooltipText="Model"
       icon="diagram"
-      :selected="route.name === 'workspace-compose'"
+      :selected="
+        ['workspace-compose', 'workspace-compose-view'].includes(route.name as string)
+      "
       :linkTo="{
         name: 'workspace-compose',
         params: { changeSetId: 'auto' },

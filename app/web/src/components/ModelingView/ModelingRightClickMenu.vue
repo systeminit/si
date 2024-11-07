@@ -17,6 +17,7 @@ import { computed, ref } from "vue";
 // import plur from "plur";
 import { RouteLocationRaw } from "vue-router";
 import { useToast } from "vue-toastification";
+import { IRect } from "konva/lib/types";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -27,6 +28,9 @@ import {
 } from "@/store/func/funcs.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { useViewsStore } from "@/store/views.store";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { ViewId } from "@/api/sdf/dal/views";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
@@ -36,7 +40,8 @@ const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const actionsStore = useActionsStore();
-const featureFlagsStore = useFeatureFlagsStore();
+const viewStore = useViewsStore();
+const ffStore = useFeatureFlagsStore();
 
 const {
   selectedComponentId,
@@ -92,6 +97,40 @@ const getActionToggleState = (id: string) => {
   return !!a;
 };
 
+const removeFromView = () => {
+  if (viewStore.selectedViewId)
+    viewStore.REMOVE_FROM(viewStore.selectedViewId, [
+      ...componentsStore.selectedComponentIds,
+    ]);
+};
+
+const viewsSubitems = (add: (viewId: ViewId) => void) => {
+  // dont show the view you're in b/c you cannot copy or move things to it
+  return viewStore.viewList
+    .filter((v) => v.id !== viewStore.selectedViewId)
+    .map((v) => {
+      return {
+        label: v.name,
+        onSelect: () => add(v.id),
+      };
+    });
+};
+
+const viewAdd = (remove: boolean) => {
+  return (viewId: ViewId) => {
+    const components: Record<ComponentId, IRect> = {};
+    selectedComponents.value.forEach((c) => {
+      const geo = c.def.isGroup
+        ? viewStore.groups[c.def.id]
+        : viewStore.components[c.def.id];
+      if (geo) components[c.def.id] = geo;
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    viewStore.ADD_TO(viewStore.selectedViewId!, components, viewId, remove);
+  };
+};
+
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled = false;
@@ -121,6 +160,29 @@ const rightClickMenuItems = computed(() => {
     }
   } else if (selectedComponentId.value && selectedComponent.value) {
     // single selected component
+    if (ffStore.OUTLINER_VIEWS) {
+      items.push({
+        label: "VIEWS",
+        header: true,
+      });
+
+      items.push({
+        label: "Move to",
+        icon: "arrows-out",
+        submenuItems: viewsSubitems(viewAdd(true)),
+      });
+      items.push({
+        label: "Copy to",
+        icon: "clipboard-copy",
+        submenuItems: viewsSubitems(viewAdd(false)),
+      });
+      items.push({
+        label: "Remove",
+        icon: "x-circle",
+        onSelect: removeFromView,
+      });
+    }
+
     items.push({
       label: typeDisplayName(),
       header: true,
@@ -188,7 +250,7 @@ const rightClickMenuItems = computed(() => {
     // management funcs
     if (
       funcStore.managementFunctionsForSelectedComponent.length > 0 &&
-      featureFlagsStore.MANAGEMENT_FUNCTIONS
+      ffStore.MANAGEMENT_FUNCTIONS
     ) {
       const submenuItems: DropdownMenuItemObjectDef[] = [];
       funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
@@ -233,6 +295,29 @@ const rightClickMenuItems = computed(() => {
     }
   } else if (selectedComponentIds.value.length) {
     // multiple selected components
+    if (ffStore.OUTLINER_VIEWS) {
+      items.push({
+        label: "VIEWS",
+        header: true,
+      });
+
+      items.push({
+        label: "Move to",
+        icon: "arrows-out",
+        submenuItems: viewsSubitems(viewAdd(true)),
+      });
+      items.push({
+        label: "Copy to",
+        icon: "clipboard-copy",
+        submenuItems: viewsSubitems(viewAdd(false)),
+      });
+      items.push({
+        label: "Remove",
+        icon: "x-circle",
+        onSelect: removeFromView,
+      });
+    }
+
     items.push({
       label: `${selectedComponentIds.value.length} ${typeDisplayName()}`,
       header: true,

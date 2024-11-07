@@ -1,16 +1,15 @@
 <template>
   <div ref="outlineRef" class="flex flex-col diagram-outline">
-    <LeftPanelDrawer
-      v-if="ffStore.OUTLINER_VIEWS"
-      :open="drawerIsOpen"
-      @closed="toggleDrawer"
-    />
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle icon="bullet-list-indented" @click="toggleDrawer">
+        <SidebarSubpanelTitle
+          icon="bullet-list-indented"
+          :iconPressed="leftDrawerOpen"
+          @click="toggleDrawer"
+        >
           <template #label>
             <div class="flex flex-row gap-xs items-center">
-              <div>Diagram Outline</div>
+              <div>{{ viewStore.outlinerView?.name ?? "Diagram" }} Outline</div>
               <PillCounter
                 :count="componentCount"
                 hideIfZero
@@ -127,21 +126,25 @@ import {
   SiSearch,
   Filter,
 } from "@si/vue-lib/design-system";
+import { windowListenerManager } from "@si/vue-lib";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ComponentId } from "@/api/sdf/dal/component";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
-import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 import {
   DiagramGroupData,
   DiagramNodeData,
 } from "../ModelingDiagram/diagram_types";
 
-defineProps<{ actionsAreRunning: boolean }>();
+defineProps<{
+  actionsAreRunning: boolean;
+  toggleDrawer: () => void;
+  leftDrawerOpen: boolean;
+}>();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const outlineRef = ref<HTMLElement>();
@@ -156,24 +159,30 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const drawerIsOpen = ref<boolean>(false);
-
-const toggleDrawer = () => {
-  if (!ffStore.OUTLINER_VIEWS) return;
-  drawerIsOpen.value = !drawerIsOpen.value;
-};
-
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
-const ffStore = useFeatureFlagsStore();
 
 const fetchComponentsReq = viewStore.getRequestStatus("FETCH_VIEW");
 
+const viewId = computed(
+  () => viewStore.outlinerViewId || viewStore.selectedViewId,
+);
+
+const viewComponentIds = computed<ComponentId[] | null>(() => {
+  if (viewId.value) {
+    return Object.keys(
+      viewStore.viewsById[viewId.value]?.components || [],
+    ).concat(Object.keys(viewStore.viewsById[viewId.value]?.groups || []));
+  } else return null;
+});
+
 const rootComponents = computed(() => {
-  return Object.values(componentsStore.allComponentsById).filter(
-    (c) => !c.def.parentId,
-  );
+  return Object.values(componentsStore.allComponentsById).filter((c) => {
+    if (viewComponentIds.value !== null) {
+      return viewComponentIds.value.includes(c.def.id) && !c.def.parentId;
+    } else return !c.def.parentId;
+  });
 });
 
 type Component = DiagramNodeData | DiagramGroupData;
@@ -181,11 +190,18 @@ type Component = DiagramNodeData | DiagramGroupData;
 const componentsTreeFlattened = computed(() => {
   const flat: Array<Component> = [];
   const addAllChildren = (component: Component) => {
-    flat.push(component);
+    if (viewComponentIds.value === null) flat.push(component);
+    else if (viewComponentIds.value.includes(component.def.id))
+      flat.push(component);
+
     const children = componentsStore.componentsByParentId[component.def.id];
     if (children) {
       children.forEach((child) => {
-        addAllChildren(child);
+        if (
+          viewComponentIds.value === null ||
+          viewComponentIds.value.includes(child.def.id)
+        )
+          addAllChildren(child);
       });
     }
   };
@@ -239,7 +255,9 @@ const filterComponentArrayBySearchStringAndFilters = (
 const filteredComponents = computed(() => {
   if (!filterModeActive.value) return [];
   return filterComponentArrayBySearchStringAndFilters(
-    Object.values(componentsStore.allComponentsById),
+    Object.values(componentsStore.allComponentsById).filter((c) =>
+      viewComponentIds.value?.includes(c.def.id),
+    ),
   );
 });
 
@@ -404,17 +422,12 @@ function itemClickHandler(
     e.preventDefault();
     componentsStore.setSelectedComponentId(component.def.id, { toggle: true });
   } else if (e.type === "dblclick") {
-    componentsStore.eventBus.emit("panToComponent", {
-      component,
-      center: true,
-    });
+    componentsStore.panTargetComponentId = component.def.id;
   } else {
     componentsStore.setSelectedComponentId(component.def.id, {
       detailsTab: tabSlug,
     });
-    componentsStore.eventBus.emit("panToComponent", {
-      component,
-    });
+    componentsStore.panTargetComponentId = component.def.id;
   }
 }
 
@@ -464,4 +477,22 @@ const onKeyDown = (e: KeyboardEvent) => {
     }
   }
 };
+
+const onAddKeyDown = (e: KeyboardEvent) => {
+  if (
+    (e.key === "Escape" || e.key === "Backspace") &&
+    viewStore.addComponentId
+  ) {
+    viewStore.cancelAdd();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => {
+  windowListenerManager.addEventListener("keydown", onAddKeyDown, 5);
+});
+
+onBeforeUnmount(() => {
+  windowListenerManager.removeEventListener("keydown", onAddKeyDown);
+});
 </script>

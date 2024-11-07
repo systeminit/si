@@ -1,23 +1,35 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <!-- left panel - outline + asset palette -->
-  <component
-    :is="ResizablePanel"
-    ref="leftResizablePanelRef"
-    :minSize="250"
-    rememberSizeKey="change-set-and-asset"
-    side="left"
+  <section
+    class="absolute flex flex-row h-full"
+    :style="{ left: drawerLeftPos + 'px', transition: 'left 0.15s ease-out' }"
   >
-    <template #subpanel1>
-      <DiagramOutline
-        :actionsAreRunning="actionsAreRunning"
-        @right-click-item="onOutlineRightClick"
-      />
-    </template>
-    <template #subpanel2>
-      <AssetPalette class="border-t dark:border-neutral-600" />
-    </template>
-  </component>
+    <LeftPanelDrawer
+      v-if="featureFlagsStore.OUTLINER_VIEWS"
+      @closed="toggleDrawer"
+    />
+    <!-- left panel - outline + asset palette -->
+    <component
+      :is="ResizablePanel"
+      ref="leftResizablePanelRef"
+      :minSize="250"
+      rememberSizeKey="change-set-and-asset"
+      side="left"
+      @sizeSet="leftPanelSize"
+    >
+      <template #subpanel1>
+        <DiagramOutline
+          :actionsAreRunning="actionsAreRunning"
+          :toggleDrawer="toggleDrawer"
+          :leftDrawerOpen="presenceStore.leftDrawerOpen"
+          @right-click-item="onOutlineRightClick"
+        />
+      </template>
+      <template #subpanel2>
+        <AssetPalette class="border-t dark:border-neutral-600" />
+      </template>
+    </component>
+  </section>
 
   <div
     v-if="
@@ -98,6 +110,7 @@ import { useStatusStore } from "@/store/status.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
+import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -136,7 +149,26 @@ const actionsAreRunning = computed(
 const leftResizablePanelRef = ref();
 const rightResizablePanelRef = ref();
 
+const leftPanelSize = (size: number) => {
+  presenceStore.leftResizePanelWidth = size;
+};
+
+const drawerLeftPos = computed(() => {
+  if (!featureFlagsStore.OUTLINER_VIEWS) return 0;
+  if (presenceStore.leftDrawerOpen) return 0;
+  else return -230;
+});
+
+const toggleDrawer = () => {
+  if (!featureFlagsStore.OUTLINER_VIEWS) return;
+  presenceStore.leftDrawerOpen = !presenceStore.leftDrawerOpen;
+};
+
 const onKeyDown = async (e: KeyboardEvent) => {
+  if (presenceStore.leftDrawerOpen && e.key === "Escape") {
+    toggleDrawer();
+  }
+
   if (
     e.altKey &&
     e.shiftKey &&

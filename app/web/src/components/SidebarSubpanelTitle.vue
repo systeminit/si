@@ -12,7 +12,7 @@
   >
     <div class="flex-none empty:hidden">
       <slot name="icon">
-        <Icon v-if="icon" :name="icon" />
+        <Icon v-if="icon" :name="icon" :pressed="iconPressed" />
       </slot>
     </div>
 
@@ -48,6 +48,7 @@ export type SidebarSubpanelTitleVariant = "title" | "subtitle";
 const props = defineProps({
   label: { type: String },
   icon: { type: String as PropType<IconNames> },
+  iconPressed: { type: Boolean, default: false },
   variant: {
     type: String as PropType<SidebarSubpanelTitleVariant>,
     default: "title",

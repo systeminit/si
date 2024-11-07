@@ -591,8 +591,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          FETCH_ALL_COMPONENTS() {
-            // TODO
+          async FETCH_ALL_COMPONENTS() {
+            return new ApiRequest<{
+              components: RawComponent[];
+              edges: RawEdge[];
+              inferredEdges: RawEdge[];
+            }>({
+              method: "get",
+              url: "diagram/get_all_components_and_edges",
+              params: {
+                ...visibilityParams,
+              },
+              onSuccess: (payload) => {
+                this.SET_COMPONENTS_FROM_VIEW(payload);
+              },
+            });
           },
 
           SET_COMPONENTS_FROM_VIEW(response: {

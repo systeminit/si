@@ -16,6 +16,7 @@ import {
   SchemaVariantId,
 } from "@/api/sdf/dal/schema";
 import { ActionId } from "@/api/sdf/dal/action";
+import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
 import { WorkspacePk } from "../workspaces.store";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
@@ -341,5 +342,18 @@ export type WsEventPayloadMap = {
     funcRunId: FuncRunId;
     funcRunLogId: FuncRunLogId;
     actionId?: ActionId;
+  };
+  ViewUpdated: { view: ViewDescription };
+  ViewDeleted: { view: ViewDescription };
+  ViewCreated: { view: ViewDescription };
+  ViewComponentsUpdate: {
+    clientUlid: string;
+    updatesByView: Record<
+      ViewId,
+      {
+        added: Record<ComponentId, IRect>;
+        removed: ComponentId[];
+      }
+    >;
   };
 };

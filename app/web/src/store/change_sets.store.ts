@@ -3,6 +3,7 @@ import * as _ from "lodash-es";
 import { watch } from "vue";
 import { ApiRequest, addStoreHooks, URLPattern } from "@si/vue-lib/pinia";
 import { useToast } from "vue-toastification";
+import { ulid } from "ulid";
 import {
   ChangeSet,
   ChangeSetId,
@@ -23,6 +24,8 @@ import handleStoreError from "./errors";
 import { useStatusStore } from "./status.store";
 
 const toast = useToast();
+
+export const diagramUlid = ulid();
 
 export interface StatusWithBase {
   baseHasUpdates: boolean;
@@ -126,10 +129,17 @@ export function useChangeSetsStore() {
           }
 
           const route = router.currentRoute.value;
+          const params = { ...route.params };
+          let name = route.name;
+          // if abandoning changeset and you were looking at view, it may not exist in HEAD
+          if (name === "workspace-compose-view") {
+            name = "workspace-compose";
+            delete params.viewId;
+          }
           await router.push({
-            name: route.name ?? undefined,
+            name: name ?? undefined,
             params: {
-              ...route.params,
+              ...params,
               changeSetId,
             },
           });

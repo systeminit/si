@@ -8,14 +8,14 @@ use axum::{
 use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
 
-use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
-use dal::{ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent};
-
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
+use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
+use dal::diagram::DiagramError;
+use dal::{ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent};
 
 use super::ViewResult;
 
@@ -43,16 +43,34 @@ pub async fn erase_components(
     let view = View::get_by_id(&ctx, view_id).await?;
 
     let mut updated_components: HashMap<_, ViewComponentsUpdateSingle> = HashMap::new();
+    // If at least one of the components can be erased, don't blow up if errors happen
+    let mut successful_erase = false;
+    let mut latest_error = None;
     for component_id in component_ids {
         let geometry = Geometry::get_by_component_and_view(&ctx, component_id, view_id).await?;
 
-        Geometry::remove(&ctx, geometry.id()).await?;
+        match Geometry::remove(&ctx, geometry.id()).await {
+            Ok(_) => {}
+            Err(err @ DiagramError::DeletingLastGeometryForComponent(_, _)) => {
+                latest_error = Some(err);
+                continue;
+            }
+            Err(err) => return Err(err)?,
+        };
+
+        successful_erase = true;
 
         updated_components
             .entry(view_id)
             .or_default()
             .removed
             .insert(component_id.into());
+    }
+
+    if let Some(err) = latest_error {
+        if !successful_erase {
+            return Err(err)?;
+        }
     }
 
     track(

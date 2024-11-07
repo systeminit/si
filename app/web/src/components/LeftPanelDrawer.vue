@@ -1,91 +1,87 @@
 <template>
-  <Transition
-    enterActiveClass="duration-200 ease-out"
-    enterFromClass="translate-x-[-230px]"
-    leaveActiveClass="duration-200 ease-in"
-    leaveToClass="translate-x-[-230px]"
+  <div
+    :class="
+      clsx(
+        'relative', // needed for <ScrollArea> absolute inset-0
+        'w-[230px] bg-white dark:bg-neutral-800 z-[25] border-r-[3px]',
+        'border-neutral-300 border-color: dark:border-neutral-600',
+      )
+    "
   >
-    <div
-      v-if="open"
-      class="absolute w-[230px] h-full left-[0px] bg-white dark:bg-neutral-800 z-100 border-r-[3px] shadow-[4px_0_6px_3px_rgba(0,0,0,0.33)] border-neutral-300 border-color: dark:border-neutral-600"
-    >
-      <div
-        class="flex flex-row justify-between items-center gap-xs pl-xs font-bold border-b dark:border-neutral-500 py-2xs"
-      >
-        <Icon
-          class="cursor-pointer"
-          name="x-circle"
-          size="sm"
-          @click="() => emit('closed')"
-        />
-        <div>
-          <span
-            class="uppercase text-md leading-6 text-neutral-500 dark:text-neutral-400"
-          >
-            Views
-          </span>
-          <PillCounter
-            :count="viewCount"
-            hideIfZero
-            :paddingX="viewCount < 10 ? 'xs' : '2xs'"
-          />
-        </div>
-        <IconButton
-          icon="plus"
-          size="sm"
-          tooltip="Create a new View"
-          @click="newView"
-        />
+    <ScrollArea>
+      <template #top>
+        <SidebarSubpanelTitle icon="create">
+          <template #label>
+            <div class="flex flex-row gap-xs items-center">
+              <div>Views</div>
+              <PillCounter
+                :count="viewCount"
+                hideIfZero
+                :paddingX="viewCount < 10 ? 'xs' : '2xs'"
+              />
+              <IconButton
+                icon="plus"
+                size="sm"
+                tooltip="Create a new View"
+                class="ml-auto"
+                @click="newView"
+              />
+            </div>
+          </template>
+        </SidebarSubpanelTitle>
 
-        <Modal
-          ref="modalRef"
-          type="save"
-          size="sm"
-          saveLabel="Create"
-          title="Create View"
-          @save="create"
-        >
-          <VormInput
-            ref="labelRef"
-            v-model="viewName"
-            required
-            label="View Name"
-            @enterPressed="create"
-          />
-        </Modal>
-      </div>
-
-      <SiSearch
-        ref="searchRef"
-        placeholder="search views"
-        @search="onSearchUpdated"
-      />
+        <SiSearch
+          ref="searchRef"
+          placeholder="search views"
+          @search="onSearchUpdated"
+        />
+      </template>
 
       <div>
-        <ViewCard v-for="view in filteredViews" :key="view.id" :view="view" />
+        <ViewCard
+          v-for="view in filteredViews"
+          :key="view.id"
+          :view="view"
+          :selected="view.id === viewStore.selectedViewId"
+        />
       </div>
-    </div>
-  </Transition>
+    </ScrollArea>
+
+    <Modal
+      ref="modalRef"
+      type="save"
+      size="sm"
+      saveLabel="Create"
+      title="Create View"
+      @save="create"
+    >
+      <VormInput
+        ref="labelRef"
+        v-model="viewName"
+        required
+        label="View Name"
+        @enterPressed="create"
+      />
+    </Modal>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
+import clsx from "clsx";
 import {
-  Icon,
   PillCounter,
   SiSearch,
   IconButton,
   Modal,
   VormInput,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useViewsStore } from "@/store/views.store";
 import ViewCard from "./ViewCard.vue";
 
 const viewStore = useViewsStore();
-
-defineProps({
-  open: { type: Boolean },
-});
 
 const emit = defineEmits<{
   (e: "closed"): void;
@@ -119,9 +115,12 @@ const create = async () => {
   if (!viewName.value) {
     labelRef.value?.setError("Name is required");
   } else {
-    await viewStore.CREATE_VIEW(viewName.value);
+    const resp = await viewStore.CREATE_VIEW(viewName.value);
     modalRef.value?.close();
     viewName.value = "";
+    if (resp.result.success) {
+      viewStore.selectView(resp.result.data.id);
+    }
   }
 };
 </script>

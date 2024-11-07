@@ -177,6 +177,7 @@ const setSize = (newSize: number) => {
     if (finalSize > limit) finalSize = limit;
   }
   currentSize.value = finalSize;
+  emit("sizeSet", finalSize);
   if (finalSize === props.defaultSize) {
     window.localStorage.removeItem(primarySizeLocalStorageKey.value);
   } else {
@@ -186,6 +187,10 @@ const setSize = (newSize: number) => {
     );
   }
 };
+
+const emit = defineEmits<{
+  (e: "sizeSet", width: number): void;
+}>();
 
 const maximize = () => {
   if (props.maxSize) {
@@ -334,8 +339,11 @@ onMounted(() => {
     const storedSize = window.localStorage.getItem(
       primarySizeLocalStorageKey.value,
     );
-    if (storedSize) setSize(parseInt(storedSize));
-    else setSize(props.defaultSize);
+    if (storedSize) {
+      setSize(parseInt(storedSize));
+    } else {
+      setSize(props.defaultSize);
+    }
   } else {
     window.localStorage.removeItem(primarySizeLocalStorageKey.value);
   }

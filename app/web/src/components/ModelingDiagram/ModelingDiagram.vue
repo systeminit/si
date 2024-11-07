@@ -2,7 +2,12 @@
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
-  <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+  <div
+    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
+    :style="{
+      marginLeft: '230px', // related to left panel drawer
+    }"
+  >
     <!-- This section contains the DiagramGridBackground and other elements which should render underneath all of the components/frames/cursors -->
     <div class="absolute inset-0 overflow-hidden">
       <v-stage
@@ -276,14 +281,13 @@ import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-ann
 import { windowListenerManager } from "@si/vue-lib";
 import { useRoute } from "vue-router";
 import { useToast } from "vue-toastification";
-import { ulid } from "ulid";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useChangeSetsStore, diagramUlid } from "@/store/change_sets.store";
 import { ComponentId, EdgeId } from "@/api/sdf/dal/component";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -380,7 +384,6 @@ const customFontsLoaded = useCustomFontsLoaded();
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
-const diagramUlid = ulid();
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -464,10 +467,12 @@ function sendUpdatedPointerPos(pos?: Vector2d) {
   presenceStore.updateCursor(pos ?? null);
 }
 
+const MIN_LEFT_BAR_WIDTH = 430;
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;
+  const modifier = presenceStore.leftDrawerOpen ? MIN_LEFT_BAR_WIDTH : 0;
   const { x, y } = gridPointerPos.value;
-  if (x < gridMinX.value || x > gridMaxX.value) return false;
+  if (x < gridMinX.value + modifier || x > gridMaxX.value) return false;
   if (y < gridMinY.value || y > gridMaxY.value) return false;
   return true;
 });
@@ -889,6 +894,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // in order to ignore clicks with a tiny bit of movement
   if (dragToPanArmed.value || e.button === 1) beginDragToPan();
   else if (insertElementActive.value) triggerInsertElement();
+  else if (outlinerAddActive.value) triggerAddToView();
   else if (pasteElementsActive.value) triggerPasteElements();
   else handleMouseDownSelection();
 }
@@ -907,6 +913,8 @@ function onMouseUp(e: MouseEvent) {
   // TODO: probably change this - its a bit hacky...
   else if (insertElementActive.value && pointerIsWithinGrid.value)
     triggerInsertElement();
+  else if (outlinerAddActive.value && pointerIsWithinGrid.value)
+    triggerAddToView();
   else if (pasteElementsActive.value && pointerIsWithinGrid.value)
     triggerPasteElements();
   else if (target.nodeName === "CANVAS")
@@ -1040,6 +1048,7 @@ const cursor = computed(() => {
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
+  if (outlinerAddActive.value) return "copy";
   if (pasteElementsActive.value) return "copy";
   if (
     resizeElementActive.value ||
@@ -1571,7 +1580,6 @@ function onDragElementsMove() {
     (s) => s.def.id,
   );
   viewStore.MOVE_COMPONENTS(
-    diagramUlid,
     [
       ...currentSelectionMovableElements.value.concat(
         draggedChildren.value.filter((c) => !selectionIds.includes(c.def.id)),
@@ -1637,11 +1645,10 @@ function endDragElements() {
   });
 
   if (setParents.length > 0) {
-    viewStore.SET_PARENT(diagramUlid, setParents, newParent?.def.id ?? null);
+    viewStore.SET_PARENT(setParents, newParent?.def.id ?? null);
   }
 
   viewStore.MOVE_COMPONENTS(
-    diagramUlid,
     movedComponents,
     { x: 0, y: 0 },
     { writeToChangeSet: true },
@@ -1748,7 +1755,6 @@ function alignSelection(direction: Direction) {
   else if (direction === "right") alignedX = _.max(xPositions);
 
   viewStore.MOVE_COMPONENTS(
-    diagramUlid,
     currentSelectionMovableElements.value,
     { x: alignedX ?? 0, y: alignedY ?? 0 },
     { writeToChangeSet: true },
@@ -1768,7 +1774,6 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   }[direction];
 
   viewStore.MOVE_COMPONENTS(
-    diagramUlid,
     currentSelectionMovableElements.value,
     nudgeVector,
     { broadcastToClients: true },
@@ -1776,7 +1781,6 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   if (!debouncedNudgeFn) {
     debouncedNudgeFn = _.debounce(() => {
       viewStore.MOVE_COMPONENTS(
-        diagramUlid,
         currentSelectionMovableElements.value,
         { x: 0, y: 0 },
         { writeToChangeSet: true },
@@ -1844,7 +1848,7 @@ function endResizeElement() {
   if (!geometry) {
     return;
   }
-  viewStore.RESIZE_COMPONENT(diagramUlid, el, geometry, {
+  viewStore.RESIZE_COMPONENT(el, geometry, {
     writeToChangeSet: true,
   });
 
@@ -2134,7 +2138,6 @@ function onResizeMove() {
   }
 
   viewStore.RESIZE_COMPONENT(
-    diagramUlid,
     resizeElement.value,
     { ...newNodePosition, ...newNodeSize },
     { broadcastToClients: true },
@@ -2481,6 +2484,8 @@ const insertElementActive = computed(
   () => !!componentsStore.selectedInsertCategoryVariantId,
 );
 
+const outlinerAddActive = computed(() => !!viewStore.addComponentId);
+
 const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
 function fitChildInsideParentFrame(
   position: Vector2d,
@@ -2508,6 +2513,34 @@ function fitChildInsideParentFrame(
   createAtSize.height = Math.max(createAtSize.height, MIN_NODE_DIMENSION);
 
   return [createAtPosition, createAtSize];
+}
+
+async function triggerAddToView() {
+  if (!outlinerAddActive.value)
+    throw new Error("insert element mode must be active");
+  if (!gridPointerPos.value)
+    throw new Error("Cursor must be in grid to insert element");
+
+  const originView = viewStore.viewsById[viewStore.outlinerViewId || ""];
+  if (!originView) throw new Error("Origin view does not exist");
+  const component =
+    componentsStore.allComponentsById[viewStore.addComponentId || ""];
+  viewStore.addComponentId = null;
+  if (!component) throw new Error("Adding component does not exist");
+  const createAtSize: IRect = component.def.isGroup
+    ? originView.groups[component.def.id]!
+    : originView.components[component.def.id]!;
+  const createAtPosition = gridPointerPos.value;
+
+  const components: Record<ComponentId, IRect> = {};
+  components[component.def.id] = { ...createAtSize, ...createAtPosition };
+
+  viewStore.ADD_TO(
+    viewStore.outlinerViewId!,
+    components,
+    viewStore.selectedViewId!,
+    false,
+  );
 }
 
 async function triggerInsertElement() {
@@ -2728,7 +2761,7 @@ function getCenterPointOfElement(el: DiagramElementData) {
   } else if ("componentId" in el.def) {
     const comp =
       viewStore.components[el.def.id] || viewStore.groups[el.def.id]!;
-    const position = structuredClone(comp);
+    const position = { ...comp };
     position.y += position.height / 2;
     return position;
   }
