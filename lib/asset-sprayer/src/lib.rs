@@ -29,7 +29,7 @@ use std::path::PathBuf;
 
 use async_openai::{config::OpenAIConfig, types::CreateChatCompletionRequest};
 use config::AssetSprayerConfig;
-use prompt::{Prompt, PromptKind};
+use prompt::Prompt;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -44,7 +44,7 @@ pub enum AssetSprayerError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Missing end {{/FETCH}} after {{FETCH}}: {0}")]
-    MissingEndFetch(PromptKind),
+    MissingEndFetch(Prompt),
     #[error("No choices were returned from the AI.")]
     NoChoices,
     #[error("OpenAI error: {0}")]
@@ -105,10 +105,10 @@ async fn test_do_ai() -> Result<()> {
     println!(
         "Done: {}",
         asset_sprayer
-            .run(&Prompt::AwsAssetSchema {
-                command: "sqs".into(),
-                subcommand: "create-queue".into()
-            })
+            .run(&Prompt::AwsCliCommandPrompt(
+                prompt::AwsCliCommandPromptKind::AssetSchema,
+                prompt::AwsCliCommand::new("sqs", "create-queue")
+            ))
             .await?
     );
     Ok(())

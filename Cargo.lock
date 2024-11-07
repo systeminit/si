@@ -214,6 +214,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "serde_yaml",
+ "strum",
  "tokio",
 ]
 

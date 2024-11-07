@@ -18,4 +18,5 @@ async-openai = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
 serde_yaml = { workspace = true }
+strum = { workspace = true }
 tokio = { workspace = true }

@@ -1,10 +1,9 @@
-use asset_sprayer::prompt::Prompt;
+use asset_sprayer::prompt::{AwsCliCommand, AwsCliCommandPromptKind, Prompt};
 use axum::extract::{Host, OriginalUri, Path, Query};
 use dal::{
     schema::variant::authoring::VariantAuthoringClient, ChangeSet, ChangeSetId, SchemaVariant,
     SchemaVariantId, WorkspacePk, WsEvent,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     extract::{AccessBuilder, AssetSprayer, HandlerContext, PosthogClient},
@@ -13,13 +12,6 @@ use crate::{
 };
 
 use super::SchemaVariantsAPIResult;
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AwsCommand {
-    pub command: String,
-    pub subcommand: String,
-}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn generate_aws_asset_schema(
@@ -34,7 +26,7 @@ pub async fn generate_aws_asset_schema(
         ChangeSetId,
         SchemaVariantId,
     )>,
-    Query(aws_command): Query<AwsCommand>,
+    Query(aws_command): Query<AwsCliCommand>,
 ) -> SchemaVariantsAPIResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -42,10 +34,7 @@ pub async fn generate_aws_asset_schema(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
     // Generate the code
-    let prompt = Prompt::AwsAssetSchema {
-        command: aws_command.command.clone(),
-        subcommand: aws_command.subcommand.clone(),
-    };
+    let prompt = Prompt::AwsCliCommandPrompt(AwsCliCommandPromptKind::AssetSchema, aws_command);
     let code = asset_sprayer.run(&prompt).await?;
 
     // Update the function
