@@ -11,7 +11,6 @@ use thiserror::Error;
 use veritech_client::ManagementResultSuccess;
 
 use crate::diagram::view::View;
-use crate::diagram::DiagramError;
 use crate::{
     cached_module::{CachedModule, CachedModuleError},
     func::runner::{FuncRunner, FuncRunnerError},
@@ -21,8 +20,9 @@ use crate::{
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
     EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, Schema, SchemaError,
     SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WorkspaceSnapshotError,
+    WorkspaceSnapshotError, WsEventError, WsEventResult,
 };
+use crate::{diagram::DiagramError, WsEvent};
 use si_frontend_types::RawGeometry;
 
 use super::NumericGeometry;
@@ -62,6 +62,8 @@ pub enum ManagementPrototypeError {
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;
@@ -400,7 +402,8 @@ impl ManagementPrototype {
         });
 
         let result_channel =
-            FuncRunner::run_management(ctx, manager_component_id, management_func_id, args).await?;
+            FuncRunner::run_management(ctx, id, manager_component_id, management_func_id, args)
+                .await?;
 
         let run_value = result_channel
             .await
@@ -425,10 +428,27 @@ impl ManagementPrototype {
             None => None,
         };
 
+        let maybe_run_result: Option<ManagementResultSuccess> = match run_value.value() {
+            Some(value) => Some(serde_json::from_value(value.clone())?),
+            None => None,
+        };
+
+        // Wart: We are hijacking the action result state to record the management result state.
+        let action_state = maybe_run_result
+            .as_ref()
+            .map(|result| match result.health {
+                veritech_client::ManagementFuncStatus::Ok => si_events::ActionResultState::Success,
+                veritech_client::ManagementFuncStatus::Error => {
+                    si_events::ActionResultState::Failure
+                }
+            })
+            .unwrap_or(si_events::ActionResultState::Unknown);
+
         ctx.layer_db()
             .func_run()
-            .set_values_and_set_state_to_success(
+            .set_management_result_success(
                 func_run_id,
+                action_state,
                 None,
                 maybe_value_address,
                 ctx.events_tenancy(),
@@ -436,10 +456,13 @@ impl ManagementPrototype {
             )
             .await?;
 
-        let maybe_run_result: Option<ManagementResultSuccess> = match run_value.value() {
-            Some(value) => Some(serde_json::from_value(value.clone())?),
-            None => None,
-        };
+        // We publish this immediately because the management "operator" could
+        // fail because of a bad function, but we stil want to know that the
+        // function executed
+        WsEvent::management_func_executed(ctx, id, manager_component_id, func_run_id)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
 
         Ok(ManagementPrototypeExecution {
             func_run_id,
@@ -561,5 +584,32 @@ impl ManagementPrototype {
         }
 
         Ok(None)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementFuncExecutedPayload {
+    prototype_id: ManagementPrototypeId,
+    manager_component_id: ComponentId,
+    func_run_id: FuncRunId,
+}
+
+impl WsEvent {
+    pub async fn management_func_executed(
+        ctx: &DalContext,
+        prototype_id: ManagementPrototypeId,
+        manager_component_id: ComponentId,
+        func_run_id: FuncRunId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            crate::WsPayload::ManagementFuncExecuted(ManagementFuncExecutedPayload {
+                prototype_id,
+                manager_component_id,
+                func_run_id,
+            }),
+        )
+        .await
     }
 }

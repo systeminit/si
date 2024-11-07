@@ -74,6 +74,12 @@ export type MgmtPrototype = {
   managementPrototypeId: ManagementPrototypeId;
   funcId: FuncId;
 };
+
+export type MgmtPrototypeResult = {
+  message?: string;
+  status: "ok" | "error";
+};
+
 export function actionBindingsForVariant(
   variant: SchemaVariant,
   summaries: Record<FuncId, FuncSummary>,
@@ -275,11 +281,11 @@ export const useFuncStore = () => {
       },
 
       actions: {
-        async RUN_PROTOTYPE(
+        async RUN_MGMT_PROTOTYPE(
           prototypeId: ManagementPrototypeId,
           componentId: ComponentId,
         ) {
-          return new ApiRequest({
+          return new ApiRequest<MgmtPrototypeResult>({
             method: "post",
             keyRequestStatusBy: [prototypeId, componentId],
             url: BASE_API.concat([
@@ -290,6 +296,7 @@ export const useFuncStore = () => {
             ]),
           });
         },
+
         async FETCH_FUNC_LIST() {
           return new ApiRequest<FuncSummary[], Visibility>({
             url: API_PREFIX,

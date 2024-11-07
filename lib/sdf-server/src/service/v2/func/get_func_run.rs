@@ -1,7 +1,7 @@
 use axum::extract::Path;
 use axum::Json;
 use chrono::{DateTime, Utc};
-use dal::{ContentHash, WorkspacePk};
+use dal::{ContentHash, DalContext, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use si_events::{
     ActionId, ActionKind, ActionPrototypeId, ActionResultState, Actor, AttributeValueId, CasValue,
@@ -152,6 +152,64 @@ pub struct GetFuncRunResponse {
     pub func_run: Option<FuncRunView>,
 }
 
+pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIResult<FuncRunView> {
+    let arguments: Option<CasValue> = ctx
+        .layer_db()
+        .cas()
+        .try_read_as(&func_run.function_args_cas_address())
+        .await?;
+    let func_args: serde_json::Value = match arguments {
+        Some(func_args_cas_value) => func_args_cas_value.into(),
+        None => serde_json::Value::Null,
+    };
+
+    let code: Option<CasValue> = ctx
+        .layer_db()
+        .cas()
+        .try_read_as(&func_run.function_code_cas_address())
+        .await?;
+    let code_base64: String = match code {
+        Some(code_base64_cas_value) => {
+            let code_base64_cas_value: serde_json::Value = code_base64_cas_value.into();
+            match code_base64_cas_value.as_str() {
+                Some(code_base64_str) => code_base64_str.to_string(),
+                None => "".to_string(),
+            }
+        }
+        None => "".to_string(),
+    };
+
+    let result_value: Option<serde_json::Value> = {
+        match func_run.result_value_cas_address() {
+            Some(result_value_cas_address) => {
+                let result_value_cas: Option<CasValue> = ctx
+                    .layer_db()
+                    .cas()
+                    .try_read_as(&result_value_cas_address)
+                    .await?;
+                result_value_cas.map(|r| r.into())
+            }
+            None => None,
+        }
+    };
+
+    let logs = ctx
+        .layer_db()
+        .func_run_log()
+        .get_for_func_run_id(func_run.id())
+        .await?
+        .map(Arc::<FuncRunLog>::unwrap_or_clone)
+        .map(|v| v.into());
+
+    Ok(FuncRunView::new(
+        func_run,
+        func_args,
+        code_base64,
+        result_value,
+        logs,
+    ))
+}
+
 pub async fn get_func_run(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -169,57 +227,7 @@ pub async fn get_func_run(
 
     match maybe_func_run {
         Some(func_run) => {
-            let arguments: Option<CasValue> = ctx
-                .layer_db()
-                .cas()
-                .try_read_as(&func_run.function_args_cas_address())
-                .await?;
-            let func_args: serde_json::Value = match arguments {
-                Some(func_args_cas_value) => func_args_cas_value.into(),
-                None => serde_json::Value::Null,
-            };
-
-            let code: Option<CasValue> = ctx
-                .layer_db()
-                .cas()
-                .try_read_as(&func_run.function_code_cas_address())
-                .await?;
-            let code_base64: String = match code {
-                Some(code_base64_cas_value) => {
-                    let code_base64_cas_value: serde_json::Value = code_base64_cas_value.into();
-                    match code_base64_cas_value.as_str() {
-                        Some(code_base64_str) => code_base64_str.to_string(),
-                        None => "".to_string(),
-                    }
-                }
-                None => "".to_string(),
-            };
-
-            let result_value: Option<serde_json::Value> = {
-                match func_run.result_value_cas_address() {
-                    Some(result_value_cas_address) => {
-                        let result_value_cas: Option<CasValue> = ctx
-                            .layer_db()
-                            .cas()
-                            .try_read_as(&result_value_cas_address)
-                            .await?;
-                        result_value_cas.map(|r| r.into())
-                    }
-                    None => None,
-                }
-            };
-
-            let logs = ctx
-                .layer_db()
-                .func_run_log()
-                .get_for_func_run_id(func_run.id())
-                .await?
-                .map(Arc::<FuncRunLog>::unwrap_or_clone)
-                .map(|v| v.into());
-
-            let func_run_view =
-                FuncRunView::new(&func_run, func_args, code_base64, result_value, logs);
-
+            let func_run_view = get_func_run_view(&ctx, &func_run).await?;
             Ok(Json(GetFuncRunResponse {
                 func_run: Some(func_run_view),
             }))

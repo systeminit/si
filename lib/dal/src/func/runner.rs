@@ -24,6 +24,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::component::socket::ComponentInputSocket;
+use crate::management::prototype::ManagementPrototypeId;
 use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::workspace::WorkspaceId;
@@ -818,6 +819,7 @@ impl FuncRunner {
     )]
     pub async fn run_management(
         ctx: &DalContext,
+        prototype_id: ManagementPrototypeId,
         manager_component_id: ComponentId,
         management_func_id: FuncId,
         args: serde_json::Value,
@@ -837,6 +839,7 @@ impl FuncRunner {
         #[inline]
         async fn prepare(
             ctx: &DalContext,
+            prototype_id: ManagementPrototypeId,
             manager_component_id: ComponentId,
             management_func_id: FuncId,
             args: serde_json::Value,
@@ -874,6 +877,8 @@ impl FuncRunner {
 
             let manager_component_id = manager_component_id.into();
 
+            let change_set = ctx.change_set()?;
+
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
                 .actor(ctx.events_actor())
@@ -882,11 +887,15 @@ impl FuncRunner {
                 .backend_response_type(func.backend_response_type.into())
                 .function_name(func.name.clone())
                 .function_kind(func.kind.into())
+                .prototype_id(Some(prototype_id.into()))
                 .function_display_name(func.display_name.clone())
                 .function_description(func.description.clone())
                 .function_link(func.link.clone())
                 .function_args_cas_address(function_args_cas_address)
                 .function_code_cas_address(code_cas_hash)
+                .action_originating_change_set_id(Some(change_set.id.into()))
+                .action_originating_change_set_name(Some(change_set.name.to_owned()))
+                .action_or_func_id(Some(func.id.into()))
                 .attribute_value_id(None)
                 .component_id(Some(manager_component_id))
                 .component_name(Some(component_name))
@@ -952,9 +961,16 @@ impl FuncRunner {
             })
         }
 
-        let runner = prepare(ctx, manager_component_id, management_func_id, args, &span)
-            .await
-            .map_err(|err| span.record_err(err))?;
+        let runner = prepare(
+            ctx,
+            prototype_id,
+            manager_component_id,
+            management_func_id,
+            args,
+            &span,
+        )
+        .await
+        .map_err(|err| span.record_err(err))?;
 
         let result_channel = runner.execute(ctx.clone(), span).await;
 
@@ -1090,8 +1106,8 @@ impl FuncRunner {
                 .function_link(func.link.clone())
                 .function_args_cas_address(function_args_cas_address)
                 .function_code_cas_address(code_cas_hash)
-                .action_id(maybe_action_id.map(|a| a.into()))
-                .action_prototype_id(Some(action_prototype_id.into()))
+                .action_or_func_id(maybe_action_id.map(|a| a.into()))
+                .prototype_id(Some(action_prototype_id.into()))
                 .action_kind(Some(action_kind))
                 .action_display_name(Some(prototype.name().clone()))
                 .action_originating_change_set_id(

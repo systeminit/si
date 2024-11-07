@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use si_events::{
-    ActionId, ActionResultState, Actor, AttributeValueId, ContentHash, FuncRun, FuncRunId, Tenancy,
-    WebEvent, WorkspacePk,
+    ActionId, ActionResultState, Actor, AttributeValueId, ChangeSetId, ComponentId, ContentHash,
+    FuncId, FuncRun, FuncRunId, Tenancy, WebEvent, WorkspacePk,
 };
 use telemetry::prelude::*;
 
@@ -31,6 +31,8 @@ pub struct FuncRunDb {
     get_last_qualification_for_attribute_value_id: String,
     list_action_history: String,
     get_last_action_by_action_id: String,
+    list_management_history: String,
+    get_last_management_by_func_and_component_id: String,
 }
 
 impl FuncRunDb {
@@ -58,6 +60,21 @@ impl FuncRunDb {
                   WHERE function_kind = 'Action' AND workspace_id = $1 AND action_id = $2
                   ORDER BY updated_at DESC
                   LIMIT 1",
+            ),
+            list_management_history: format!(
+                r#"
+                SELECT value FROM {DBNAME}
+                WHERE function_kind = 'Management' AND workspace_id = $1 AND change_set_id = $2 AND action_id IS NOT NULL
+                ORDER BY updated_at DESC
+            "#
+            ),
+            get_last_management_by_func_and_component_id: format!(
+                r#"
+                SELECT value FROM {DBNAME}
+                WHERE function_kind = 'Management' AND workspace_id = $1 AND change_set_id = $2 AND component_id = $3 AND action_id = $4
+                ORDER BY updated_at DESC
+                LIMIT 1
+            "#
             ),
         }
     }
@@ -110,6 +127,58 @@ impl FuncRunDb {
         Ok(maybe_func)
     }
 
+    pub async fn list_management_history(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> LayerDbResult<Option<Vec<FuncRun>>> {
+        let maybe_rows = self
+            .cache
+            .pg()
+            .query(
+                &self.list_management_history,
+                &[&workspace_pk, &change_set_id],
+            )
+            .await?;
+        let result = match maybe_rows {
+            Some(rows) => {
+                let mut result_rows = Vec::with_capacity(rows.len());
+                for row in rows.into_iter() {
+                    let postcard_bytes: Vec<u8> = row.get("value");
+                    let func_run: FuncRun = serialize::from_bytes(&postcard_bytes[..])?;
+                    result_rows.push(func_run);
+                }
+                Some(result_rows)
+            }
+            None => None,
+        };
+        Ok(result)
+    }
+
+    pub async fn get_last_management_run_for_func_and_component_id(
+        &self,
+        workspace_pk: WorkspacePk,
+        change_set_id: ChangeSetId,
+        component_id: ComponentId,
+        func_id: FuncId,
+    ) -> LayerDbResult<Option<FuncRun>> {
+        let maybe_row = self
+            .cache
+            .pg()
+            .query_opt(
+                &self.get_last_management_by_func_and_component_id,
+                &[&workspace_pk, &change_set_id, &component_id, &func_id],
+            )
+            .await?;
+
+        let maybe_func = if let Some(row) = maybe_row {
+            Some(serialize::from_bytes(row.get("value"))?)
+        } else {
+            None
+        };
+
+        Ok(maybe_func)
+    }
     pub async fn get_last_qualification_for_attribute_value_id(
         &self,
         workspace_id: WorkspacePk,
@@ -187,6 +256,28 @@ impl FuncRunDb {
         func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
         func_run_new.set_result_value_cas_address(value_cas);
         func_run_new.set_state_to_success();
+
+        self.write(Arc::new(func_run_new), None, tenancy, actor)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_management_result_success(
+        &self,
+        func_run_id: FuncRunId,
+        run_result: ActionResultState,
+        unprocessed_value_cas: Option<ContentHash>,
+        value_cas: Option<ContentHash>,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<()> {
+        let func_run_old = self.try_read(func_run_id).await?;
+        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
+        func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
+        func_run_new.set_result_value_cas_address(value_cas);
+        func_run_new.set_state_to_success();
+        func_run_new.set_action_result_state(Some(run_result));
 
         self.write(Arc::new(func_run_new), None, tenancy, actor)
             .await?;
