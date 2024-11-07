@@ -11,6 +11,7 @@ from typing import (
 )
 from pip._vendor import requests
 from pip._vendor.requests.exceptions import HTTPError
+from si_types import IsoTimestamp
 
 import urllib.parse
 import logging
@@ -294,9 +295,9 @@ class LagoInvoice(TypedDict):
     lago_id: str
     sequential_id: NotRequired[int]
     number: str
-    issuing_date: str
-    payment_dispute_lost_at: NotRequired[str]
-    payment_due_date: NotRequired[str]
+    issuing_date: IsoTimestamp
+    payment_dispute_lost_at: NotRequired[IsoTimestamp]
+    payment_due_date: NotRequired[IsoTimestamp]
     payment_overdue: NotRequired[bool]
     net_payment_term: NotRequired[int]
     invoice_type: Literal[
@@ -319,12 +320,6 @@ class LagoInvoice(TypedDict):
     applied_taxes: list[dict[str, object]]
     applied_usage_thresholds: NotRequired[Optional[list[dict[str, object]]]]
 
-
-class LagoInvoicesResponse(TypedDict):
-    invoices: list[LagoInvoice]
-    meta: LagoResponseMetadata
-
-
 class LagoChargeProperties(TypedDict):
     graduated_ranges: list[dict[str, object]]
     graduated_percentage_ranges: list[dict[str, object]]
@@ -346,7 +341,7 @@ class LagoCharge(TypedDict):
     lago_billable_metric_id: str
     billable_metric_code: str
     invoice_display_name: NotRequired[Optional[str]]
-    created_at: str
+    created_at: IsoTimestamp
     charge_model: Literal[
         "standard",
         "graduated",
@@ -370,7 +365,7 @@ class LagoPlan(TypedDict):
     lago_id: str
     name: str
     invoice_display_name: NotRequired[Optional[str]]
-    created_at: str
+    created_at: IsoTimestamp
     code: str
     interval: Literal["weekly", "monthly", "quarterly", "yearly"]
     description: NotRequired[Optional[str]]
@@ -389,21 +384,29 @@ class LagoPlan(TypedDict):
 
 class LagoSubscription(TypedDict):
     lago_id: str
-    external_id: str
+    external_id: ExternalSubscriptionId
     lago_customer_id: str
     external_customer_id: str
     billing_time: Literal["calendar", "anniversary"]
     name: NotRequired[Optional[str]]
     plan_code: str
     status: Literal["active", "pending", "terminated", "canceled"]
-    created_at: str
-    canceled_at: NotRequired[Optional[str]]
-    started_at: NotRequired[Optional[str]]
-    ending_at: str
-    subscription_at: str
-    terminated_at: NotRequired[Optional[str]]
+    created_at: IsoTimestamp
+    canceled_at: NotRequired[Optional[IsoTimestamp]]
+    started_at: NotRequired[Optional[IsoTimestamp]]
+    ending_at: NotRequired[Optional[IsoTimestamp]]
+    subscription_at: IsoTimestamp
+    terminated_at: NotRequired[Optional[IsoTimestamp]]
     previous_plan_code: NotRequired[Optional[str]]
     next_plan_code: NotRequired[Optional[str]]
-    downgrade_plan_date: NotRequired[Optional[str]]
-    trial_ended_at: NotRequired[Optional[str]]
+    downgrade_plan_date: NotRequired[Optional[IsoTimestamp]]
+    trial_ended_at: NotRequired[Optional[IsoTimestamp]]
     plan: LagoPlan
+
+class LagoInvoicesResponse(TypedDict):
+    invoices: list[LagoInvoice]
+    meta: LagoResponseMetadata
+
+class LagoSubscriptionsResponse(TypedDict):
+    subscriptions: list[LagoSubscription]
+    meta: LagoResponseMetadata

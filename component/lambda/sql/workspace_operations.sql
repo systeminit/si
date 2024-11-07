@@ -168,41 +168,37 @@ CREATE TABLE IF NOT EXISTS workspace_operations.workspace_owner_subscriptions (
 );
 
 -- Get the latest subscription records for each owner (the ones with MAX(record_timestamp))
+-- with extra data 
 CREATE OR REPLACE VIEW workspace_operations.latest_owner_subscriptions AS
     WITH
-      -- Find the latest time we've downloaded subscription data for each owner
-      latest_subscription_record_timestamps AS (
-        SELECT owner_pk, MAX(record_timestamp) AS latest_record_timestamp
+      -- Find the latest time we've downloaded subscription data for each owner. That timestamp identifies the batch
+      latest_owner_subscription_imports AS (
+        SELECT owner_pk, MAX(record_timestamp) AS record_timestamp
           FROM workspace_operations.workspace_owner_subscriptions
          GROUP BY owner_pk
-      ),
-      -- If the user's subscription data has changed, we only want the latest (MAX(record_timestamp))
-      latest_subscription_records AS (
-        SELECT workspace_owner_subscriptions.*,
-               -- Start dates on subscriptions need to include the whole day even though they sometimes have HH:MM:SS
-               -- in Lago
-               DATE_TRUNC('day', subscription_start_date) AS start_time,
-               -- The end date is actually set to the *start* of the last day of the subscription; we need to cover all
-               -- the hours *during* that day under the subscription, so we add a day (end_time is exclusive so it
-               -- won't include the first hour of the next day)
-               DATEADD(DAY, 1, DATE_TRUNC('day', subscription_end_date)) AS end_time
-          FROM workspace_operations.workspace_owner_subscriptions
-          JOIN latest_subscription_record_timestamps
-            USING (owner_pk)
-            WHERE latest_record_timestamp = record_timestamp
-      ),
-      -- Link subscription records in order: the next subscription the user has (as long as it hasn't happened yet) will
-      -- have a NULL start and end date, and its start date is really the end date of the previous subscription.
-      SELECT owner_pk,
-             subscription_id,
-             LAG(end_time) OVER (PARTITION BY owner_pk ORDER BY start_time) AS prev_subscription_end_time,
-             COALESCE(start_time, prev_subscription_end_time) AS start_time, -- Set start_time
-             end_time,
-             plan_code,
-             record_timestamp,
-             external_id,
-             LEAD(subscription_id) OVER (PARTITION BY owner_pk ORDER BY start_time) AS next_subscription_id
-        FROM latest_subscription_records;
+      )
+    -- Link subscription records in order: the next subscription the user has (as long as it hasn't happened yet) will
+    -- have a NULL start and end date, and its start date is really the end date of the previous subscription.
+    SELECT
+        *,
+        -- Subscription starts at the beginning of the day
+        DATE_TRUNC('day', subscription_start_date) AS subscription_start_time,
+        -- The end date is actually set to the *start* of the last day of the subscription; we need to cover all
+        -- the hours *during* that day under the subscription, so we add a day (end_time is exclusive so it
+        -- won't include the first hour of the next day)
+        DATEADD(DAY, 1, DATE_TRUNC('day', subscription_end_date)) AS subscription_end_time,
+        -- Get the previous subscription in order so we can seal up holes in the date
+        LAG(subscription_end_time) OVER (PARTITION BY owner_pk ORDER BY subscription_start_date) AS prev_subscription_end_time,
+        -- Get the next subscription in order (used by workspace_verifications)
+        LEAD(subscription_id) OVER (PARTITION BY owner_pk ORDER BY subscription_start_date) AS next_subscription_id,
+        LEAD(subscription_start_time) OVER (PARTITION BY owner_pk ORDER BY subscription_start_time) AS next_subscription_start_time,
+        -- We start when the previous subscription ends, if no start time was set.
+        COALESCE(subscription_start_time, prev_subscription_end_time) AS start_time,
+        -- We end when the next subscription starts, unless there is a gap (which will be detected elsewhere).
+        -- If there is no next subscription start, we use our end time, for whatever that's worth
+        COALESCE(next_subscription_start_time, subscription_end_time) AS end_time
+    FROM latest_owner_subscription_imports
+    JOIN workspace_operations.workspace_owner_subscriptions USING (owner_pk, record_timestamp);
 
 -- Associate each hour with its subscription for each owner.
 CREATE OR REPLACE VIEW workspace_operations.owner_si_hours_with_subscriptions AS

@@ -3,9 +3,11 @@
 import boto3
 import json
 import os
-from typing import Any, NotRequired, Optional, TypedDict, overload
+from typing import Any, NotRequired, Optional, TypedDict, cast, overload
 from si_redshift import Redshift
 from si_lago_api import LagoApi
+from si_auth_api import SiAuthApi
+from si_types import WorkspaceId
 import logging
 
 class SiLambdaEnv(TypedDict):
@@ -28,6 +30,11 @@ class SiLambdaEnv(TypedDict):
     """ARN to an AWS secret containing the Lago API token"""
     LAGO_API_TOKEN_ARN: NotRequired[str]
 
+    AUTH_API_URL: NotRequired[str]
+    BILLING_USER_EMAIL: NotRequired[str]
+    BIlLING_USER_PASSWORD_ARN: NotRequired[str]
+    BILLING_USER_WORKSPACE_ID: NotRequired[str]
+
 class SiLambda:
     def __init__(self, event: SiLambdaEnv, session = boto3.Session()):
         self.session = session
@@ -41,7 +48,7 @@ class SiLambda:
 
     @property
     def lago(self) -> LagoApi:
-        """Get the Lago API for this environment."""
+        """Get the Lago API for this lambda, configured from the lambda environment."""
         if self._lago is None:
             lago_api_url = self.getenv("LAGO_API_URL", "https://api.getlago.com/api")
             lago_api_token = self.getenv("LAGO_API_TOKEN")
@@ -55,7 +62,7 @@ class SiLambda:
 
     @property
     def redshift(self):
-        """Get the Redshift API for this environment."""
+        """Get the Redshift API client, configured from the lambda environment."""
         if self._redshift is None:
             secret = self.getenv_secret_value("LAMBDA_REDSHIFT_ACCESS")
             assert secret is not None, "LAMBDA_REDSHIFT_ACCESS must be set"
@@ -71,6 +78,26 @@ class SiLambda:
 
         return self._redshift
 
+    def auth_api(self):
+        """Get the Auth API client, configured from the lambda environment """
+        if self._auth_api is None:
+            auth_api_url = self.getenv("AUTH_API_URL")
+            if auth_api_url is None:
+                return None
+
+            billing_user_email = self.getenv("BILLING_USER_EMAIL")
+            assert billing_user_email is not None, "BILLING_USER_EMAIL must be set"
+
+            billing_user_password = self.getenv_secret_json("BILLING_USER_PASSWORD_ARN")
+            assert billing_user_password is not None, "BILLING_USER_PASSWORD_ARN must be set"
+
+            billing_user_workspace_id = cast(Optional[WorkspaceId], self.getenv("BILLING_USER_WORKSPACE_ID"))
+            assert billing_user_workspace_id is not None, "BILLING_USER_WORKSPACE_ID must be set"
+
+            self._auth_api = SiAuthApi.login(auth_api_url, billing_user_email, billing_user_password["BILLING_USER_PASSWORD"], billing_user_workspace_id)
+
+        return self._auth_api
+
     @overload
     def getenv(self, key: str, default: str) -> str: ...
     @overload
@@ -82,13 +109,19 @@ class SiLambda:
             return value
         return os.getenv(key, default)
 
+    def getenv_secret_json(self, key: str):
+        secret = self.getenv_secret_value(key)
+        if secret is None:
+            return None
+        return json.loads(secret["SecretString"])
+
     def getenv_secret_value(self, key: str):
         secret_id = self.getenv(key)
         if secret_id is None:
             return None
         return self.get_secret_value(secret_id)
-
+    
     def get_secret_value(self, secret_id: str):
-        """Get a JSON secret from an arn."""
+        """Get a secret from an arn."""
         secretsmanager = self.session.client(service_name="secretsmanager")
         return secretsmanager.get_secret_value(SecretId=secret_id)

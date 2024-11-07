@@ -1,4 +1,4 @@
-from typing import Iterator, NotRequired, cast
+from typing import Iterable, NotRequired, cast
 from datetime import date, datetime, timedelta, timezone
 import itertools
 import logging
@@ -12,11 +12,13 @@ cost_per_resource_hour = 0.007
 
 class UploadBillingHoursEnv(SiLambdaEnv):
     batch_hours: NotRequired[int]
+    end_hours_ago: NotRequired[int]
 
 class UploadBillingHours(SiLambda):
     def __init__(self, event: UploadBillingHoursEnv):
         super().__init__(event)
         self.batch_hours = int(event.get("batch_hours", 6))
+        self.end_hours_ago = int(event.get("end_hours_ago", 0))
         assert self.batch_hours > 0
 
     def get_next_uninvoiced_month(self):
@@ -50,7 +52,7 @@ class UploadBillingHours(SiLambda):
         }
 
     def run(self):
-        last_hour_end = 0
+        last_hour_end = -self.end_hours_ago
         while last_hour_end is not None:
             first_hour_start = last_hour_end - self.batch_hours
 
@@ -62,7 +64,7 @@ class UploadBillingHours(SiLambda):
             # Upload events by hour
             #
             all_events = cast(
-                Iterator[tuple[ExternalSubscriptionId, SqlTimestamp, int]],
+                Iterable[tuple[ExternalSubscriptionId, SqlTimestamp, int]],
                 self.redshift.query_raw(
                     f"""
                     SELECT external_subscription_id, hour_start, resource_count
@@ -102,5 +104,5 @@ class UploadBillingHours(SiLambda):
             )
             last_hour_end = first_hour_start if uploaded_events > 0 else None
 
-def lambda_handler(event = {}, _context = None):
+def lambda_handler(event: UploadBillingHoursEnv = {}, _context = None):
     UploadBillingHours(event).run()

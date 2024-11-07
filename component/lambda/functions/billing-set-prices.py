@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import logging
-from typing import Iterator, cast
+from typing import Iterable, cast
 
 from si_lambda import SiLambda
 from si_lago_api import (
@@ -35,10 +35,7 @@ class BillingSetPrices(SiLambda):
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
 
-    def get_subscription(
-        self,
-        external_subscription_id: ExternalSubscriptionId,
-    ) -> LagoSubscription:
+    def get_subscription(self, external_subscription_id: ExternalSubscriptionId):
         try:
             return cast(
                 LagoSubscription,
@@ -46,8 +43,11 @@ class BillingSetPrices(SiLambda):
                     "subscription"
                 ],
             )
+
         except LagoHTTPError as e:
-            if e.json.get("status") == 404:
+            if e.json.get("status") != 404:
+                raise
+            try:
                 logging.debug(
                     f"Subscription {external_subscription_id} is not active. Getting pending version ..."
                 )
@@ -57,7 +57,30 @@ class BillingSetPrices(SiLambda):
                         f"/api/v1/subscriptions/{external_subscription_id}?status=pending"
                     ).json()["subscription"],
                 )
-            raise
+
+            except LagoHTTPError as e:
+                if e.json.get("status") != 404:
+                    raise
+
+                try:
+                    logging.debug(
+                        f"Subscription {external_subscription_id} is not active or pending. Getting terminated version ..."
+                    )
+                    return cast(
+                        LagoSubscription,
+                        self.lago.get(
+                            f"/api/v1/subscriptions/{external_subscription_id}?status=terminated"
+                        ).json()["subscription"],
+                    )
+
+                except LagoHTTPError as e:
+                    if e.json.get("status") != 404:
+                        raise
+
+                    logging.warning(
+                        f"Subscription {external_subscription_id} no longer exists or is not active, pending, or terminated. Skipping ..."
+                    )
+                    return None
 
     def run(self):
 
@@ -65,7 +88,7 @@ class BillingSetPrices(SiLambda):
         # Upload prices
         #
         for [owner_pk, _month, pay_as_you_go_subscription_id, is_free] in cast(
-            Iterator[tuple[OwnerPk, str, ExternalSubscriptionId, bool]],
+            Iterable[tuple[OwnerPk, str, ExternalSubscriptionId, bool]],
             self.redshift.query_raw(
                 """
                 SELECT owner_pk, month, external_id, is_free
@@ -86,6 +109,11 @@ class BillingSetPrices(SiLambda):
 
             # Get the current version of the subscription.
             subscription = self.get_subscription(pay_as_you_go_subscription_id)
+            if subscription is None:
+                if amount != 0:
+                    logging.error("Non-free subscription {pay_as_you_go_subscription_id} is no longer in Lago!")
+                continue
+
             assert subscription["plan_code"] == pay_as_you_go_plan_code
 
             # If the user's price is already correct, don't set it again.
