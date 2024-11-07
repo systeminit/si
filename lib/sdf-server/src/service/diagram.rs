@@ -34,6 +34,7 @@ pub mod delete_connection;
 pub mod paste_component;
 pub mod remove_delete_intent;
 
+mod add_components_to_view;
 pub mod dvu_roots;
 
 #[remain::sorted]
@@ -125,15 +126,26 @@ pub type DiagramResult<T> = Result<T, DiagramError>;
 
 impl IntoResponse for DiagramError {
     fn into_response(self) -> Response {
-        let (status_code, error_message) = match self {
+        let error_message = self.to_string();
+
+        let status_code = match self {
             DiagramError::SchemaNotFound
             | DiagramError::ChangeSetNotFound
             | DiagramError::ComponentNotFound
             | DiagramError::FrameSocketNotFound(_)
             | DiagramError::EdgeNotFound
-            | DiagramError::SocketNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            | DiagramError::SocketNotFound => StatusCode::NOT_FOUND,
+            DiagramError::Component(ComponentError::ComponentAlreadyInView(_, _)) => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
+            DiagramError::Component(ComponentError::Diagram(e)) => match *e {
+                dal::diagram::DiagramError::DeletingLastGeometryForComponent(_, _) => {
+                    StatusCode::UNPROCESSABLE_ENTITY
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
 
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         ApiError::new(status_code, error_message).into_response()
@@ -143,6 +155,10 @@ impl IntoResponse for DiagramError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/paste_components", post(paste_component::paste_components))
+        .route(
+            "/add_components_to_view",
+            post(add_components_to_view::add_components_to_view),
+        )
         .route(
             "/delete_connection",
             post(delete_connection::delete_connection),

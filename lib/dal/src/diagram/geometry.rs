@@ -162,7 +162,7 @@ impl Geometry {
     pub async fn list_ids_by_component(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> DiagramResult<Vec<ViewId>> {
+    ) -> DiagramResult<Vec<GeometryId>> {
         let snap = ctx.workspace_snapshot()?;
 
         let mut geometries = vec![];
@@ -352,6 +352,27 @@ impl Geometry {
         self.width = geometry.width;
         self.height = geometry.height;
         self.timestamp = timestamp;
+
+        Ok(())
+    }
+
+    /// Removes a [Geometry] from the graph, provided it's not the last geometry for a component
+    pub async fn remove(ctx: &DalContext, geometry_id: GeometryId) -> DiagramResult<()> {
+        match Self::component_id(ctx, geometry_id).await {
+            Ok(id) => {
+                if Self::list_ids_by_component(ctx, id).await?.len() == 1 {
+                    let view_id = Self::get_view_id_by_id(ctx, geometry_id).await?;
+                    return Err(DiagramError::DeletingLastGeometryForComponent(view_id, id));
+                }
+            }
+            // There's no problem in deleting orphan geometries
+            Err(DiagramError::ComponentNotFoundForGeometry(_)) => {}
+            Err(e) => return Err(e),
+        }
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(geometry_id)
+            .await?;
 
         Ok(())
     }

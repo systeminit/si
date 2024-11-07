@@ -30,7 +30,7 @@ use crate::attribute::value::{
 use crate::change_set::ChangeSetError;
 use crate::change_status::ChangeStatus;
 use crate::code_view::CodeViewError;
-use crate::diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge};
+use crate::diagram::{DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge};
 use crate::func::argument::FuncArgumentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV2};
@@ -96,6 +96,8 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
+    #[error("component {0} already has a geometry for view {1}")]
+    ComponentAlreadyInView(ComponentId, ViewId),
     #[error("component has children, cannot change to component type")]
     ComponentHasChildren,
     #[error("component {0} has more than one value for the {1} prop")]
@@ -119,7 +121,7 @@ pub enum ComponentError {
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
-    Diagram(String),
+    Diagram(Box<DiagramError>),
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
@@ -434,7 +436,7 @@ impl Component {
         // Create geometry node
         Geometry::new(ctx, component.id, view_id)
             .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
         Ok(component)
     }
@@ -1467,7 +1469,7 @@ impl Component {
     pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
         Geometry::get_by_component_and_view(ctx, self.id, view_id)
             .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))
     }
 
     pub async fn set_geometry(
@@ -1500,7 +1502,7 @@ impl Component {
             geometry_pre
                 .update(ctx, raw_geometry)
                 .await
-                .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
         }
 
         Ok(geometry_pre)
@@ -2535,7 +2537,7 @@ impl Component {
         // Remove all geometries for the component
         Geometry::remove_all_for_component_id(ctx, id)
             .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
         // Remove all actions for this component from queue
         Action::remove_all_for_component_id(ctx, id)
@@ -2770,6 +2772,35 @@ impl Component {
         Ok(pasted_comp)
     }
 
+    pub async fn add_to_view(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        view_id: ViewId,
+        raw_geometry: RawGeometry,
+    ) -> ComponentResult<()> {
+        if Geometry::try_get_by_component_and_view(ctx, component_id, view_id)
+            .await
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?
+            .is_some()
+        {
+            return Err(ComponentError::ComponentAlreadyInView(
+                component_id,
+                view_id,
+            ));
+        }
+
+        let mut geometry = Geometry::new(ctx, component_id, view_id)
+            .await
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+
+        geometry
+            .update(ctx, raw_geometry)
+            .await
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+
+        Ok(())
+    }
+
     /// Finds all inferred incoming connections for the [`Component`]
     /// A connection is inferred if it's input socket is being driven
     /// by another component's output socket as a result of lineage
@@ -2972,7 +3003,7 @@ impl Component {
 
         let geometry_ids = Geometry::list_ids_by_component(ctx, self.id)
             .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3527,7 +3558,7 @@ impl Component {
         let geometry = if let Some(geometry) = maybe_geometry {
             let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
                 .await
-                .map_err(|e| ComponentError::Diagram(e.to_string()))?
+                .map_err(|e| ComponentError::Diagram(Box::new(e)))?
                 .into();
 
             Some(GeometryAndView {
@@ -3572,7 +3603,7 @@ impl Component {
     ) -> ComponentResult<DiagramComponentView> {
         let default_view_id = View::get_id_for_default(ctx)
             .await
-            .map_err(|e| ComponentError::Diagram(e.to_string()))?;
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
         let geometry = self.geometry(ctx, default_view_id).await?;
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)

@@ -6,14 +6,17 @@ use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    id, implement_add_edge_to, EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotError,
+    id, implement_add_edge_to, ChangeSetId, EdgeWeightKindDiscriminants, Timestamp,
+    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{DalContext, EdgeWeightKind};
 use chrono::Utc;
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
-use si_events::ContentHash;
+use si_events::{ComponentId, ContentHash};
+use si_frontend_types::RawGeometry;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 id!(ViewId);
@@ -329,5 +332,42 @@ impl View {
         .await?;
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone, Default)]
+pub struct ViewComponentsUpdateSingle {
+    pub added: HashMap<ComponentId, RawGeometry>,
+    pub removed: HashSet<ComponentId>,
+}
+
+pub type ViewComponentsUpdateList = HashMap<ViewId, ViewComponentsUpdateSingle>;
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+pub struct ViewComponentsUpdatePayload {
+    change_set_id: ChangeSetId,
+    updates_by_view: ViewComponentsUpdateList,
+    // Used so the client can ignore the messages it caused. created by the frontend, and not stored
+    client_ulid: Option<ulid::Ulid>,
+}
+
+impl WsEvent {
+    pub async fn view_components_update(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+        updates_by_view: ViewComponentsUpdateList,
+        client_ulid: Option<ulid::Ulid>,
+    ) -> WsEventResult<Self> {
+        dbg!(&updates_by_view);
+
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewComponentsUpdate(ViewComponentsUpdatePayload {
+                change_set_id,
+                updates_by_view,
+                client_ulid,
+            }),
+        )
+        .await
     }
 }
