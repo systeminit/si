@@ -19,7 +19,9 @@ use crate::component::{
 use crate::diagram::view::ViewComponentsUpdatePayload;
 use crate::diagram::SummaryDiagramEdge;
 use crate::func::runner::FuncRunLogUpdatedPayload;
-use crate::func::{FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventPayload};
+use crate::func::{
+    FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventGenerating, FuncWsEventPayload,
+};
 use crate::management::prototype::ManagementFuncExecutedPayload;
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
@@ -97,6 +99,7 @@ pub enum WsPayload {
     FuncCodeSaved(FuncWsEventCodeSaved),
     FuncCreated(FuncWsEventFuncSummary),
     FuncDeleted(FuncWsEventPayload),
+    FuncGenerating(FuncWsEventGenerating),
     FuncRunLogUpdated(FuncRunLogUpdatedPayload),
     FuncSaved(FuncWsEventPayload),
     FuncUpdated(FuncWsEventFuncSummary),

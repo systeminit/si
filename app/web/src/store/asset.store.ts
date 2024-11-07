@@ -564,23 +564,6 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-
-        async GENERATE_AWS_ASSET_SCHEMA(
-          id: SchemaVariantId,
-          command: string,
-          subcommand: string,
-        ) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
-          return new ApiRequest<SchemaVariant>({
-            url: API_PREFIX.concat([id, "generate_aws_asset_schema"]),
-            params: { command, subcommand },
-            keyRequestStatusBy: id,
-          });
-        },
       },
       async onActivated() {
         await Promise.all([

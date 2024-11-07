@@ -103,6 +103,8 @@ export function actionBindingsForVariant(
   return bindings;
 }
 
+export type AwsCliCommand = { command: string; subcommand: string };
+
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
@@ -194,6 +196,7 @@ export const useFuncStore = () => {
         // represents the last, or "focused" func clicked on/open by the editor
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
+        generatingFuncCode: {} as Record<FuncId, AwsCliCommand>,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
       }),
@@ -682,7 +685,31 @@ export const useFuncStore = () => {
           });
         },
 
+        async GENERATE_AWS_FUNCTION(
+          funcId: FuncId,
+          { command, subcommand }: AwsCliCommand,
+          schemaVariantId: SchemaVariantId,
+        ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest<{
+            command: string;
+            subcommand: string;
+            schemaVariantId: SchemaVariantId;
+          }>({
+            url: API_PREFIX.concat([funcId, "generate_aws_function"]),
+            params: { command, subcommand, schemaVariantId },
+            keyRequestStatusBy: funcId,
+          });
+        },
+
         updateFuncCode(funcId: FuncId, code: string, debounce: boolean) {
+          // if code is being generated you cannot save
+          if (this.generatingFuncCode[funcId]) return;
+
           const func = _.cloneDeep(this.funcCodeById[funcId]);
           if (!func || func.code === code) return;
           func.code = code;
@@ -816,6 +843,34 @@ export const useFuncStore = () => {
             eventType: "ModuleImported",
             callback: () => {
               if (this.selectedFuncId) this.FETCH_CODE(this.selectedFuncId);
+            },
+          },
+          {
+            eventType: "FuncGenerating",
+            callback: (data, metadata) => {
+              if (metadata.change_set_id !== selectedChangeSetId) return;
+              this.generatingFuncCode[data.funcId] = data.command;
+            },
+          },
+          {
+            eventType: "FuncCodeSaved",
+            callback: (data, metadata) => {
+              if (metadata.change_set_id !== selectedChangeSetId) return;
+
+              const funcId = data.funcCode.funcId;
+              // TODO we update every time *any* function is generated unless you are in the
+              // function editor. That's because we can't tell from here if the function is
+              // the asset function editor from here (and we can't useAssetStore() because
+              // that would cause a circular dependency). We should fix this, but asset
+              // generation doesn't happen so often it's a giant problem right now.
+              if (
+                (funcId === this.selectedFuncId || !this.selectedFuncId) &&
+                data.generated &&
+                this.generatingFuncCode[funcId]
+              ) {
+                this.FETCH_CODE(funcId);
+                delete this.generatingFuncCode[funcId];
+              }
             },
           },
           {

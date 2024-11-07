@@ -11,6 +11,7 @@ rust_binary(
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
         "//third-party/rust:serde_yaml",
+        "//third-party/rust:strum",
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),

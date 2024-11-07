@@ -54,16 +54,12 @@
         :color="selectedAsset.color"
       />
       <IconButton
-        v-if="featureFlagsStore.AI_GENERATOR"
+        v-if="!!generateAwsFunctionPanelKind"
         icon="sparkles"
         size="lg"
-        :tooltip="
-          showAwsAssetSchemaGeneratorPanel
-            ? 'Close'
-            : 'Generate AWS Asset Schema'
-        "
-        :selected="showAwsAssetSchemaGeneratorPanel"
-        @click="toggleAwsAssetSchemaGeneratorPanel"
+        :tooltip="generateAwsFunctionPanelTooltip"
+        :selected="generateAwsFunctionPanelVisible"
+        @click="toggleGenerateAwsFunctionPanel"
       />
     </div>
     <!-- openable AI generator panel extension -->
@@ -78,15 +74,19 @@
       :onBeforeLeave="captureHeight"
       :onAfterLeave="clearHeight"
     >
-      <div v-show="showAwsAssetSchemaGeneratorPanel" ref="transitionRef">
-        <GenerateAwsAssetSchemaPanel :asset="selectedAsset" />
+      <div v-show="generateAwsFunctionPanelVisible" ref="transitionRef">
+        <GenerateAwsFunctionPanel
+          :funcId="resolvedFuncId"
+          :schemaVariantId="selectedAsset.schemaVariantId"
+          :generatingCommand="generateAwsFunctionPanelGeneratingCommand"
+        />
       </div>
     </Transition>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, ref } from "vue";
+import { PropType, computed, ref, watchEffect } from "vue";
 import {
   IconButton,
   Timestamp,
@@ -96,19 +96,21 @@ import {
 import clsx from "clsx";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import EditingPill from "./EditingPill.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
-import GenerateAwsAssetSchemaPanel from "./Ai/GenerateAwsAssetSchemaPanel.vue";
+import GenerateAwsFunctionPanel from "./Ai/GenerateAwsFunctionPanel.vue";
 
 const assetStore = useAssetStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const funcStore = useFuncStore();
 
 const truncateRef1 = ref<InstanceType<typeof TruncateWithTooltip>>();
 const truncateRef2 = ref<InstanceType<typeof TruncateWithTooltip>>();
 
-defineProps({
+const props = defineProps({
   selectedAsset: { type: Object as PropType<SchemaVariant>, required: true },
   selectedFunc: { type: Object as PropType<FuncSummary> },
 });
@@ -121,11 +123,46 @@ const showTooltip = computed(() => {
   return truncateRef1.value?.tooltipActive || truncateRef2.value?.tooltipActive;
 });
 
-const showAwsAssetSchemaGeneratorPanel = ref(false);
-const toggleAwsAssetSchemaGeneratorPanel = () => {
-  showAwsAssetSchemaGeneratorPanel.value =
-    !showAwsAssetSchemaGeneratorPanel.value;
+// Generator panel button
+const generateAwsFunctionPanelKind = computed(() => {
+  if (!featureFlagsStore.AI_GENERATOR) {
+    return undefined;
+  }
+  switch (props.selectedFunc?.kind) {
+    case undefined:
+      return "schema";
+    case "Action":
+      return "action";
+    default:
+      return undefined;
+  }
+});
+const resolvedFuncId = computed(
+  () => props.selectedFunc?.funcId ?? props.selectedAsset.assetFuncId,
+);
+const generateAwsFunctionPanelGeneratingCommand = computed(
+  () => funcStore.generatingFuncCode[resolvedFuncId.value],
+);
+const generateAwsFunctionPanelTooltip = computed(() => {
+  switch (generateAwsFunctionPanelKind.value) {
+    case "schema":
+      return "Generate AWS Asset Schema";
+    case "action":
+      return "Generate AWS Action Function";
+    default:
+      return undefined;
+  }
+});
+const generateAwsFunctionPanelVisible = ref(false);
+const toggleGenerateAwsFunctionPanel = () => {
+  generateAwsFunctionPanelVisible.value =
+    !generateAwsFunctionPanelVisible.value;
 };
+// When we start or stop generating, make sure the panel is toggled on/off (but let the user toggle it back off if they want)
+watchEffect(() => {
+  generateAwsFunctionPanelVisible.value =
+    !!generateAwsFunctionPanelGeneratingCommand.value;
+});
 
 const transitionRef = ref<HTMLDivElement>();
 

@@ -23,7 +23,9 @@
     <CodeEditor
       :id="`func-${selectedFuncCode.funcId}`"
       v-model="editingFunc"
-      :disabled="selectedFuncSummary?.isLocked"
+      :disabled="
+        selectedFuncSummary?.isLocked || !!funcStore.generatingFuncCode[funcId]
+      "
       :recordId="selectedFuncSummary?.funcId || ''"
       :typescript="selectedFuncSummary?.types || ''"
       @change="updateFuncCode"
