@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use audit_logs::AuditLogsStream;
 use dal::{audit_logging, prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
@@ -88,12 +90,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         first_destination_stream_message_count as usize, // expected
@@ -161,12 +181,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         second_destination_stream_message_count as usize, // expected
@@ -212,12 +250,30 @@ async fn round_trip(ctx: &mut DalContext) {
 
     // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
     // look as we expect.
-    let first_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
-    let second_run_audit_logs = audit_logging::list(ctx)
-        .await
-        .expect("could not list audit logs");
+    let (first_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
+    let (second_run_audit_logs, _) = audit_logging::list(
+        ctx,
+        1,
+        200,
+        false,
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+        HashSet::new(),
+    )
+    .await
+    .expect("could not list audit logs");
     assert_eq!(first_run_audit_logs, second_run_audit_logs);
     assert_eq!(
         third_destination_stream_message_count as usize, // expected

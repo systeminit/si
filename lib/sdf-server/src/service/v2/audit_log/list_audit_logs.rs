@@ -51,14 +51,10 @@ pub async fn list_audit_logs(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    // TODO(nick): filter and paginate in the same request.
-    let audit_logs = audit_logging::list(&ctx).await?;
-
-    // TODO(nick): repalce this with the above.
-    let (filtered_and_paginated_audit_logs, total) = audit_logging::temporary::filter_and_paginate(
-        audit_logs,
-        request.page,
-        request.page_size,
+    let (paginated_and_filtered_audit_logs, filtered_audit_logs_total) = audit_logging::list(
+        &ctx,
+        request.page.unwrap_or(0),
+        request.page_size.unwrap_or(0),
         request.sort_timestamp_ascending.unwrap_or(false),
         match request.change_set_filter {
             Some(provided) => HashSet::from_iter(provided.into_iter()),
@@ -79,10 +75,11 @@ pub async fn list_audit_logs(
             })),
             None => HashSet::new(),
         },
-    )?;
+    )
+    .await?;
 
     Ok(Json(ListAuditLogsResponse {
-        logs: filtered_and_paginated_audit_logs,
-        total,
+        logs: paginated_and_filtered_audit_logs,
+        total: filtered_audit_logs_total,
     }))
 }
