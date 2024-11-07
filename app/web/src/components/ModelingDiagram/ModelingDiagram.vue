@@ -1355,17 +1355,19 @@ function endDragSelect(doSelection = true) {
 
   const selectedInBoxKeys: DiagramElementUniqueKey[] = [];
   _.each(viewStore.groups, (nodeRect, nodeKey) => {
+    const rect = { ...nodeRect };
+    rect.x -= rect.width / 2;
     const inSelectionBox = checkRectanglesOverlap(
       pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
-      nodeRect,
+      rect,
     );
     if (inSelectionBox)
       selectedInBoxKeys.push(DiagramGroupData.generateUniqueKey(nodeKey));
   });
-  _.each(viewStore.components, (nodeRect, nodeKey) => {
+  _.each(viewStore.components, (rect, nodeKey) => {
     const inSelectionBox = checkRectanglesOverlap(
       pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
-      nodeRect,
+      rect,
     );
     if (inSelectionBox)
       selectedInBoxKeys.push(DiagramNodeData.generateUniqueKey(nodeKey));
