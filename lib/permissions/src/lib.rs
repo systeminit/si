@@ -1,5 +1,5 @@
 use si_data_spicedb::{
-    PermissionsObject, Relationship, Relationships, SpiceDbClient, SpiceDbError, ZedToken,
+    Relationship, Relationships, SpiceDBObject, SpiceDbClient, SpiceDbError, ZedToken,
 };
 use si_events::{UserPk, WorkspacePk};
 use std::result;
@@ -57,9 +57,9 @@ pub enum Relation {
 ///     .await?;
 /// ```
 pub struct RelationBuilder {
-    object: Option<PermissionsObject>,
+    object: Option<SpiceDBObject>,
     relation: Option<Relation>,
-    subject: Option<PermissionsObject>,
+    subject: Option<SpiceDBObject>,
     zed_token: Option<ZedToken>,
 }
 
@@ -74,7 +74,7 @@ impl RelationBuilder {
     }
 
     pub fn object(mut self, object_type: ObjectType, id: impl ToString) -> Self {
-        self.object = Some(PermissionsObject::new(object_type, id));
+        self.object = Some(SpiceDBObject::new(object_type, id));
         self
     }
 
@@ -88,7 +88,7 @@ impl RelationBuilder {
     }
 
     pub fn subject(mut self, object_type: ObjectType, id: impl ToString) -> Self {
-        self.subject = Some(PermissionsObject::new(object_type, id));
+        self.subject = Some(SpiceDBObject::new(object_type, id));
         self
     }
 
@@ -130,7 +130,7 @@ impl RelationBuilder {
                 .read_relationship(Relationship::new(
                     object,
                     relation,
-                    PermissionsObject::empty(),
+                    SpiceDBObject::empty(),
                     self.zed_token.clone(),
                 ))
                 .await
@@ -181,9 +181,9 @@ impl Default for RelationBuilder {
 ///     .await?) { do_thing() }
 /// ```
 pub struct PermissionBuilder {
-    object: Option<PermissionsObject>,
+    object: Option<SpiceDBObject>,
     permission: Option<Permission>,
-    subject: Option<PermissionsObject>,
+    subject: Option<SpiceDBObject>,
     zed_token: Option<ZedToken>,
 }
 
@@ -198,7 +198,7 @@ impl PermissionBuilder {
     }
 
     pub fn object(mut self, object_type: ObjectType, id: impl ToString) -> Self {
-        self.object = Some(PermissionsObject::new(object_type, id));
+        self.object = Some(SpiceDBObject::new(object_type, id));
         self
     }
 
@@ -212,7 +212,7 @@ impl PermissionBuilder {
     }
 
     pub fn subject(mut self, object_type: ObjectType, id: impl ToString) -> Self {
-        self.subject = Some(PermissionsObject::new(object_type, id));
+        self.subject = Some(SpiceDBObject::new(object_type, id));
         self
     }
 
@@ -227,7 +227,7 @@ impl PermissionBuilder {
 
     /// Checks if the given subject has the given permission in the given object
     pub async fn has_permission(&self, client: &mut SpiceDbClient) -> Result<bool> {
-        match self.check() {
+        match self.check_has_permission() {
             Ok(perms) => Ok(client
                 .check_permissions(perms)
                 .await
@@ -236,7 +236,7 @@ impl PermissionBuilder {
         }
     }
 
-    fn check(&self) -> Result<si_data_spicedb::Permission> {
+    fn check_has_permission(&self) -> Result<si_data_spicedb::Permission> {
         match (self.object.clone(), self.permission, self.subject.clone()) {
             (Some(object), Some(permission), Some(subject)) => {
                 Ok(si_data_spicedb::Permission::new(

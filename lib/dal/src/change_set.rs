@@ -275,19 +275,27 @@ impl ChangeSet {
         &self,
         ctx: &DalContext,
     ) -> ChangeSetResult<si_frontend_types::ChangeSet> {
-        let merge_requested_by_email =
+        let merge_requested_by_user =
             if let Some(merge_requested_by) = self.merge_requested_by_user_id {
-                User::get_by_pk(ctx, merge_requested_by)
-                    .await?
-                    .map(|user| user.email().clone())
+                User::get_by_pk(ctx, merge_requested_by).await?.map(|user| {
+                    if user.name().is_empty() {
+                        return user.email().clone();
+                    } else {
+                        user.name().clone()
+                    }
+                })
             } else {
                 None
             };
 
-        let reviewed_by_email = if let Some(reviewed_by) = self.reviewed_by_user_id {
-            User::get_by_pk(ctx, reviewed_by)
-                .await?
-                .map(|user| user.email().clone())
+        let reviewed_by_user = if let Some(reviewed_by) = self.reviewed_by_user_id {
+            User::get_by_pk(ctx, reviewed_by).await?.map(|user| {
+                if user.name().is_empty() {
+                    return user.email().clone();
+                } else {
+                    user.name().clone()
+                }
+            })
         } else {
             None
         };
@@ -301,10 +309,10 @@ impl ChangeSet {
             base_change_set_id: self.base_change_set_id.map(|id| id.into()),
             workspace_id: self.workspace_id.map_or("".to_owned(), |id| id.to_string()),
             merge_requested_by_user_id: self.merge_requested_by_user_id.map(|s| s.to_string()),
-            merge_requested_by_user_email: merge_requested_by_email,
+            merge_requested_by_user,
             merge_requested_at: self.merge_requested_at,
             reviewed_by_user_id: self.reviewed_by_user_id.map(|id| id.into()),
-            reviewed_by_user_email: reviewed_by_email,
+            reviewed_by_user,
             reviewed_at: self.reviewed_at,
         };
 

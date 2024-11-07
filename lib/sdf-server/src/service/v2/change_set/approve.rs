@@ -51,17 +51,15 @@ pub async fn approve(
             "merged_change_set": change_set_id,
         }),
     );
-
-    WsEvent::change_set_status_changed(
-        &ctx,
-        change_set.id,
-        ChangeSet::extract_userid_from_context(&ctx).await,
-        old_status,
-        change_set.status,
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+    let change_set_view = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+        .await?
+        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?
+        .into_frontend_type(&ctx)
+        .await?;
+    WsEvent::change_set_status_changed(&ctx, old_status, change_set_view)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

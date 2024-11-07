@@ -13,9 +13,9 @@ pub struct ChangeSet {
     pub base_change_set_id: Option<ChangeSetId>,
     pub workspace_id: String,
     pub merge_requested_by_user_id: Option<String>,
-    pub merge_requested_by_user_email: Option<String>,
+    pub merge_requested_by_user: Option<String>,
     pub merge_requested_at: Option<DateTime<Utc>>,
     pub reviewed_by_user_id: Option<String>,
-    pub reviewed_by_user_email: Option<String>,
+    pub reviewed_by_user: Option<String>,
     pub reviewed_at: Option<DateTime<Utc>>,
 }

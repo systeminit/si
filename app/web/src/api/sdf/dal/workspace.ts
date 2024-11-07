@@ -11,7 +11,7 @@ export interface Workspace {
 export interface WorkspaceMetadata {
   name: string;
   id: string;
-  default_change_set_id: ChangeSetId;
-  change_sets: ChangeSet[];
+  defaultChangeSetId: ChangeSetId;
+  changeSets: ChangeSet[];
   approvers: string[];
 }
