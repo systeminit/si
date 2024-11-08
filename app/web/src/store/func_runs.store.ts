@@ -13,6 +13,7 @@ import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -150,6 +151,7 @@ export const useFuncRunsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const featureFlagsStore = useFeatureFlagsStore();
 
   const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}`;
 
@@ -174,6 +176,7 @@ export const useFuncRunsStore = () => {
       },
       actions: {
         async GET_MANAGEMENT_RUN_HISTORY() {
+          if (!featureFlagsStore.MANAGEMENT_FUNCTIONS) return;
           return new ApiRequest<ManagementHistoryItem[]>({
             url: `${API_PREFIX}/management/history`,
             headers: { accept: "application/json" },

@@ -1,39 +1,42 @@
 <template>
   <li
     :class="
-      clsx(
-        'cursor-pointer flex flex-row items-center gap-xs p-2xs pl-4 border text-sm',
-        themeClasses(
-          'border-neutral-200 hover:border-action-500',
-          'border-neutral-600 hover:border-action-300',
-        ),
-        selected
-          ? themeClasses(
-              'bg-action-100 border-action-500',
-              'bg-action-900 border-action-300',
-            )
-          : themeClasses('border-neutral-800', ''),
-      )
+      clsx('border-b', themeClasses('border-neutral-200', 'border-neutral-600'))
     "
-    @click="emit('clickItem', item, $event)"
   >
-    <StatusIndicatorIcon type="management" :status="status" />
+    <div
+      :class="
+        clsx(
+          'cursor-pointer flex flex-row items-center gap-xs p-2xs pl-4 border text-sm border-transparent',
+          themeClasses('hover:border-action-500', 'hover:border-action-300'),
+          selected
+            ? themeClasses(
+                'bg-action-100 border-action-500',
+                'bg-action-900 border-action-300',
+              )
+            : themeClasses('border-neutral-800', ''),
+        )
+      "
+      @click="emit('clickItem', item, $event)"
+    >
+      <StatusIndicatorIcon type="management" :status="status" />
 
-    <TruncateWithTooltip class="grow">{{ item.name }}</TruncateWithTooltip>
+      <TruncateWithTooltip class="grow">{{ item.name }}</TruncateWithTooltip>
 
-    <Timestamp
-      :date="item.updatedAt"
-      :timeClasses="themeClasses('text-neutral-500', 'text-neutral-400')"
-      class="text-xs"
-      dateClasses="font-bold"
-      showTimeIfToday
-      size="long"
-    />
+      <Timestamp
+        :date="item.updatedAt"
+        :timeClasses="themeClasses('text-neutral-500', 'text-neutral-400')"
+        class="text-xs"
+        dateClasses="font-bold"
+        showTimeIfToday
+        size="long"
+      />
 
-    <FuncRunTabDropdown
-      :funcRunId="item.funcRunId"
-      @menuClick="(id, slug) => emit('history', id, slug)"
-    />
+      <FuncRunTabDropdown
+        :funcRunId="item.funcRunId"
+        @menuClick="(id, slug) => emit('history', id, slug)"
+      />
+    </div>
   </li>
 </template>
 

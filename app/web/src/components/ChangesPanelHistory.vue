@@ -1,5 +1,9 @@
 <template>
-  <ScrollArea ref="mainDivRef" @click="deselectOnClickEmptySpace">
+  <div
+    v-if="featureFlagsStore.MANAGEMENT_FUNCTIONS"
+    class="w-full h-full flex flex-col overflow-hidden relative"
+    @click="deselectOnClickEmptySpace"
+  >
     <TreeNode
       enableDefaultHoverClasses
       enableGroupToggle
@@ -13,24 +17,26 @@
       label="Actions"
     >
       <!-- TODO(Wendy)- SEARCH BAR SHOULD GO HERE -->
-      <template v-if="actionsStore.historyActions.length > 0">
-        <ActionsList
-          v-for="[detail, actions] in actionsStore.historyActionsGrouped"
-          :key="detail.changeSetId"
-          :actions="actions"
-          :changeSet="getChangeSet(detail)"
-          :clickAction="clickActionOrMgmtRun"
-          :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
-          kind="history"
-          @history="openHistory"
+      <div ref="actionDivRef" class="py-2xs w-full h-full">
+        <template v-if="actionsStore.historyActions.length > 0">
+          <ActionsList
+            v-for="[detail, actions] in actionsStore.historyActionsGrouped"
+            :key="detail.changeSetId"
+            :actions="actions"
+            :changeSet="getChangeSet(detail)"
+            :clickAction="clickActionOrMgmtRun"
+            :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
+            kind="history"
+            @history="openHistory"
+          />
+        </template>
+        <EmptyStateCard
+          v-else
+          iconName="actions"
+          primaryText="No Actions Have Been Executed"
+          secondaryText="There is no action history to display for this change set."
         />
-      </template>
-      <EmptyStateCard
-        v-else
-        iconName="actions"
-        primaryText="No Actions Have Been Executed"
-        secondaryText="There is no action history to display for this change set."
-      />
+      </div>
     </TreeNode>
     <TreeNode
       enableDefaultHoverClasses
@@ -44,19 +50,21 @@
       primaryIconClasses=""
       label="Management Functions"
     >
-      <ManagementHistoryList
-        v-if="managementHistoryForChangeSet.length > 0"
-        :managementHistory="managementHistoryForChangeSet"
-        :clickItem="clickActionOrMgmtRun"
-        :funcRunId="selectedFuncRunId"
-        @history="openHistory"
-      />
-      <EmptyStateCard
-        v-else
-        iconName="actions"
-        primaryText="No Management Functions Have Been Executed"
-        secondaryText="There is no management function history to display for this change set."
-      />
+      <div ref="managementDivRef" class="w-full h-full">
+        <ManagementHistoryList
+          v-if="managementHistoryForChangeSet.length > 0"
+          :managementHistory="managementHistoryForChangeSet"
+          :clickItem="clickActionOrMgmtRun"
+          :funcRunId="selectedFuncRunId"
+          @history="openHistory"
+        />
+        <EmptyStateCard
+          v-else
+          iconName="actions"
+          primaryText="No Management Functions Have Been Executed"
+          secondaryText="There is no management function history to display for this change set."
+        />
+      </div>
     </TreeNode>
 
     <FuncRunTabGroup
@@ -65,11 +73,31 @@
       :open="!!selectedFuncRunId"
       :selectedTab="selectedTab"
     />
-  </ScrollArea>
+  </div>
+  <div v-else ref="actionDivRef" class="py-2xs w-full h-full">
+    <template v-if="actionsStore.historyActions.length > 0">
+      <ActionsList
+        v-for="[detail, actions] in actionsStore.historyActionsGrouped"
+        :key="detail.changeSetId"
+        :actions="actions"
+        :changeSet="getChangeSet(detail)"
+        :clickAction="clickActionOrMgmtRun"
+        :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
+        kind="history"
+        @history="openHistory"
+      />
+    </template>
+    <EmptyStateCard
+      v-else
+      iconName="actions"
+      primaryText="No Actions Have Been Executed"
+      secondaryText="There is no action history to display for this change set."
+    />
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { ScrollArea, TreeNode } from "@si/vue-lib/design-system";
+import { TreeNode } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import {
   ActionHistoryView,
@@ -83,6 +111,7 @@ import {
   ManagementHistoryItem,
   useFuncRunsStore,
 } from "@/store/func_runs.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import EmptyStateCard from "./EmptyStateCard.vue";
@@ -93,8 +122,10 @@ import ManagementHistoryList from "./Management/ManagementHistoryList.vue";
 const actionsStore = useActionsStore();
 const funcRunsStore = useFuncRunsStore();
 const changeSetsStore = useChangeSetsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
-const mainDivRef = ref();
+const actionDivRef = ref();
+const managementDivRef = ref();
 const selectedFuncRunId = ref<FuncRunId | undefined>();
 
 const funcRun = ref<FuncRun | undefined>();
@@ -147,8 +178,9 @@ const clickActionOrMgmtRun = async (
 };
 
 const deselectOnClickEmptySpace = (e: MouseEvent) => {
-  const deselectArea = mainDivRef.value.$el.querySelector(".scroll-slot");
-  if (e.target === deselectArea) {
+  const deselectArea1 = actionDivRef.value;
+  const deselectArea2 = managementDivRef.value;
+  if (e.target === deselectArea1 || e.target === deselectArea2) {
     deselectActionOrMgmtRun();
   }
 };
