@@ -2614,7 +2614,10 @@ const groups = computed(() => {
 
       // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
       // TODO change this to being position comparisons not parentage
-      if (dragElementsActive.value) {
+      if (
+        dragElementsActive.value ||
+        componentsStore.selectedComponentIds.length > 0
+      ) {
         if (
           _.intersection(
             [g.def.componentId, ...(g.def.ancestorIds || [])],
