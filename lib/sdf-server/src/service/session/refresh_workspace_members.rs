@@ -99,6 +99,18 @@ pub async fn refresh_workspace_members(
             &posthog_client,
         )
         .await?;
+    } else {
+        track(
+            &posthog_client.0,
+            &ctx,
+            &original_uri,
+            &host_name,
+            "sync_workspace_approvers",
+            serde_json::json!({
+                "how": "/session/refresh_workspace_members",
+                "spicedb_client": "empty",
+            }),
+        );
     }
 
     let members = User::list_members_for_workspace(&ctx, request.workspace_id.clone()).await?;
@@ -143,9 +155,24 @@ async fn sync_workspace_approvers(
         .collect();
 
     let to_remove: Vec<_> = existing_approver_ids
+        .clone()
         .into_iter()
         .filter(|r| !new_approver_ids.contains(r))
         .collect();
+
+    track(
+        posthog_client,
+        ctx,
+        original_uri,
+        host_name,
+        "sync_workspace_approvers",
+        serde_json::json!({
+            "how": "/session/refresh_workspace_members",
+            "to_add": to_add.clone(),
+            "to_remove": to_remove.clone(),
+            "existing_approver_ids": existing_approver_ids,
+        }),
+    );
 
     for user_pk_str in to_add {
         RelationBuilder::new()
