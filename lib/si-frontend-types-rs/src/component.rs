@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_events::{ComponentId, SchemaId, SchemaVariantId, ViewId};
+use std::num::ParseIntError;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 #[remain::sorted]
@@ -29,6 +30,34 @@ pub struct RawGeometry {
     pub y: isize,
     pub width: Option<isize>,
     pub height: Option<isize>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StringGeometry {
+    pub x: String,
+    pub y: String,
+    pub height: Option<String>,
+    pub width: Option<String>,
+}
+
+impl TryFrom<StringGeometry> for RawGeometry {
+    type Error = ParseIntError;
+
+    fn try_from(value: StringGeometry) -> Result<Self, Self::Error> {
+        let mut maybe_width: Option<isize> = None;
+        let mut maybe_height: Option<isize> = None;
+        if let (Some(width), Some(height)) = (value.width, value.height) {
+            maybe_width = Some(width.clone().parse::<isize>()?);
+            maybe_height = Some(height.clone().parse::<isize>()?);
+        }
+        Ok(Self {
+            x: value.x.clone().parse::<isize>()?,
+            y: value.y.clone().parse::<isize>()?,
+            width: maybe_width,
+            height: maybe_height,
+        })
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]

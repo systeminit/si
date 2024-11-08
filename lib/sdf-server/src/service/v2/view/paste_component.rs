@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{set_component_geometry::StringGeometry, ViewError, ViewResult};
+use super::{ViewError, ViewResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -17,6 +17,7 @@ use dal::{
     ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_frontend_types::StringGeometry;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

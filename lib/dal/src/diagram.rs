@@ -57,6 +57,8 @@ pub enum DiagramError {
     ComponentStatusNotFound(ComponentId),
     #[error("default view not found")]
     DefaultViewNotFound,
+    #[error("trying to delete only geometry (the one on view {0}) for component {1}")]
+    DeletingLastGeometryForComponent(ViewId, ComponentId),
     #[error("deletion timestamp not found")]
     DeletionTimeStamp,
     #[error("destination attribute prototype not found for inter component attribute prototype argument: {0}")]

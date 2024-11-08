@@ -8,38 +8,9 @@ use axum::Json;
 use dal::diagram::view::ViewId;
 use dal::{ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
-use si_frontend_types::RawGeometry;
+use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;
-use std::num::ParseIntError;
 use ulid::Ulid;
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct StringGeometry {
-    pub x: String,
-    pub y: String,
-    pub height: Option<String>,
-    pub width: Option<String>,
-}
-
-impl TryFrom<StringGeometry> for RawGeometry {
-    type Error = ParseIntError;
-
-    fn try_from(value: StringGeometry) -> Result<Self, Self::Error> {
-        let mut maybe_width: Option<isize> = None;
-        let mut maybe_height: Option<isize> = None;
-        if let (Some(width), Some(height)) = (value.width, value.height) {
-            maybe_width = Some(width.clone().parse::<isize>()?);
-            maybe_height = Some(height.clone().parse::<isize>()?);
-        }
-        Ok(Self {
-            x: value.x.clone().parse::<isize>()?,
-            y: value.y.clone().parse::<isize>()?,
-            width: maybe_width,
-            height: maybe_height,
-        })
-    }
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
