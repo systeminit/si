@@ -1426,44 +1426,29 @@ const currentSelectionMovableElements = computed(() => {
 });
 
 const findChildrenByBoundingBox = (
-  movingComponents: (DiagramNodeData | DiagramGroupData)[],
   el: DiagramNodeData | DiagramGroupData,
 ): (DiagramNodeData | DiagramGroupData)[] => {
-  // NOTE: typically we do a x -= width / 2 calculation
-  // but we can skip it here, since doing it on both sizes of the equation
-  // is the same as not doing it ;)
   const cRect = el.def.isGroup
     ? viewStore.groups[el.def.id]
     : viewStore.components[el.def.id];
   if (!cRect) return [];
 
-  const componentIds: Set<ComponentId> = new Set();
-  const nonMovingComponentIds = Object.keys(viewStore.groups).concat(
-    Object.keys(viewStore.components),
-  );
-  const nonMovingComponents: Record<ComponentId, IRect> = {};
-  nonMovingComponentIds.forEach((id) => {
-    const c = viewStore.components[id];
-    if (c) nonMovingComponents[id] = c;
-    const g = viewStore.groups[id];
-    if (g) nonMovingComponents[id] = g;
-  });
-  const rect = { ...cRect }; // break obj by reference to the store, because we are modifying
-  // i dont exactly understand these numbers yet, but testing shows they are correct
-  rect.x -= rect.width / 3;
-  rect.x -= GROUP_INTERNAL_PADDING;
-  rect.y -= GROUP_INTERNAL_PADDING;
-  rect.width += GROUP_INTERNAL_PADDING * 2;
-  rect.height += GROUP_INTERNAL_PADDING;
-  for (const [id, elRect] of Object.entries(nonMovingComponents)) {
-    if (rectContainsAnother(rect, elRect)) {
-      componentIds.add(id);
-    }
-  }
+  const rect = { ...cRect };
+  rect.x -= rect.width / 2;
 
-  return [...componentIds]
-    .map((id) => componentsStore.allComponentsById[id])
-    .filter(nonNullable);
+  const components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const process = ([id, elRect]: [ComponentId, IRect]) => {
+    const _r = { ...elRect };
+    _r.x -= _r.width / 2;
+    if (rectContainsAnother(rect, _r)) {
+      const component = componentsStore.allComponentsById[id];
+      if (component) components.push(component);
+    }
+  };
+
+  Object.entries(viewStore.groups).forEach(process);
+  Object.entries(viewStore.components).forEach(process);
+  return components;
 };
 
 const draggedElementsPositionsPreDrag = ref<
@@ -1480,10 +1465,7 @@ function beginDragElements() {
 
   const children: Set<DiagramNodeData | DiagramGroupData> = new Set();
   currentSelectionMovableElements.value.forEach((el) => {
-    const childs = findChildrenByBoundingBox(
-      currentSelectionMovableElements.value,
-      el,
-    );
+    const childs = findChildrenByBoundingBox(el);
     childs.forEach((c) => children.add(c));
   });
   draggedChildren.value = [...children];
