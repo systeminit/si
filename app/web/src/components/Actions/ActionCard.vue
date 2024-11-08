@@ -179,56 +179,10 @@
       </ol>
       <p v-else class="ml-xs">None</p>
     </DropdownMenu>
-    <DropdownMenu
-      v-else-if="!props.noInteraction && actionHistory"
-      ref="contextMenuRef"
-      :forceAbove="false"
-      forceAlignRight
-    >
-      <DropdownMenuItem
-        :onSelect="
-          () => {
-            actionHistory &&
-              emit('history', actionHistory.funcRunId, 'arguments');
-          }
-        "
-        label="Arguments"
-      />
-      <DropdownMenuItem
-        :onSelect="
-          () => {
-            actionHistory &&
-              emit('history', actionHistory.funcRunId, 'codeExecuted');
-          }
-        "
-        label="Code Executed"
-      />
-      <DropdownMenuItem
-        :onSelect="
-          () => {
-            actionHistory &&
-              emit('history', actionHistory.funcRunId, 'resourceResult');
-          }
-        "
-        label="Resource Result"
-      />
-      <DropdownMenuItem
-        :onSelect="
-          () => {
-            actionHistory && emit('history', actionHistory.funcRunId, 'logs');
-          }
-        "
-        label="Logs"
-      />
-    </DropdownMenu>
-    <DetailsPanelMenuIcon
-      v-if="!props.noInteraction"
-      :selected="contextMenuRef?.isOpen"
-      @click="
-        (e) => {
-          contextMenuRef?.open(e, false);
-        }
-      "
+    <FuncRunTabDropdown
+      v-if="!props.noInteraction && actionHistory"
+      :funcRunId="actionHistory.funcRunId"
+      @menuClick="(id, slug) => emit('history', id, slug)"
     />
   </div>
 </template>
@@ -254,7 +208,8 @@ import {
   ActionHistoryView,
 } from "@/store/actions.store";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
-import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+import FuncRunTabDropdown from "../FuncRunTabDropdown.vue";
+
 import {
   DiagramGroupData,
   DiagramNodeData,

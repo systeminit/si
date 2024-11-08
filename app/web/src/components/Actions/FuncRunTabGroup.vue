@@ -1,5 +1,5 @@
 <template>
-  <RightPanelDrawer :open="!!props.selectedAction">
+  <RightPanelDrawer :open="props.open">
     <TabGroup ref="tabGroupRef" @closeButtonTabClicked="props.close">
       <TabGroupCloseButton />
       <ChangesPanelHistorySubpanelTab
@@ -27,7 +27,6 @@
 import { ref, computed, watch } from "vue";
 import { TabGroup, TabGroupCloseButton } from "@si/vue-lib/design-system";
 import { FuncRun } from "@/store/func_runs.store";
-import { ActionHistoryView } from "@/store/actions.store";
 import ChangesPanelHistorySubpanelTab from "../ChangesPanelHistorySubpanelTab.vue";
 import RightPanelDrawer from "../RightPanelDrawer.vue";
 
@@ -37,8 +36,8 @@ const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
 const props = defineProps<{
   funcRun: FuncRun | undefined;
-  selectedAction: ActionHistoryView | undefined;
   close: clickFn;
+  open: boolean;
   selectedTab: string | undefined;
 }>();
 

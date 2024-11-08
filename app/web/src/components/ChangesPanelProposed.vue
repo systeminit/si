@@ -35,7 +35,7 @@
     <FuncRunTabGroup
       :close="deselectAction"
       :funcRun="funcRun"
-      :selectedAction="singleSelectedAction"
+      :open="!!singleSelectedAction"
       :selectedTab="selectedTab"
     />
   </div>

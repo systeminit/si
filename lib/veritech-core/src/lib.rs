@@ -153,7 +153,7 @@ impl GetNatsSubjectFor for ValidationRequest {
 pub enum VeritechRequest {
     ActionRun(ActionRunRequest),
     KillExecution(KillExecutionRequest),
-    Mangement(ManagementRequest),
+    Management(ManagementRequest),
     Resolver(ResolverFunctionRequest), // Resolvers are JsAttribute functions
     SchemaVariantDefinition(SchemaVariantDefinitionRequest),
     Validation(ValidationRequest),
@@ -180,7 +180,7 @@ impl VeritechRequest {
                 Self::KillExecution(serde_json::from_slice(payload)?)
             }
             NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX => {
-                Self::Mangement(serde_json::from_slice(payload)?)
+                Self::Management(serde_json::from_slice(payload)?)
             }
             NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX => {
                 Self::Resolver(serde_json::from_slice(payload)?)
@@ -205,7 +205,7 @@ impl VeritechRequest {
             VeritechRequest::KillExecution(kill_execution_request) => {
                 kill_execution_request.subject_suffix()
             }
-            VeritechRequest::Mangement(management_request) => management_request.subject_suffix(),
+            VeritechRequest::Management(management_request) => management_request.subject_suffix(),
             VeritechRequest::Resolver(resolver_function_request) => {
                 resolver_function_request.subject_suffix()
             }
@@ -222,7 +222,7 @@ impl VeritechRequest {
             VeritechRequest::KillExecution(kill_execution_request) => {
                 &kill_execution_request.execution_id
             }
-            VeritechRequest::Mangement(management_request) => &management_request.execution_id,
+            VeritechRequest::Management(management_request) => &management_request.execution_id,
             VeritechRequest::Resolver(resolver_function_request) => {
                 &resolver_function_request.execution_id
             }

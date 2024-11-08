@@ -64,6 +64,11 @@ const CONFIG = {
     unknown: { iconName: "question-circle", tone: "warning" },
     _default: { iconName: "question-circle", tone: "warning" },
   },
+  management: {
+    ok: { iconName: "check-circle", tone: "success" },
+    error: { iconName: "alert-circle", tone: "destructive" },
+    unknown: { iconName: "question-circle", tone: "warning" },
+  },
 };
 
 export type IconType = keyof typeof CONFIG;
@@ -94,7 +99,7 @@ export type Status =
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
 const props = defineProps<{
-  type: string;
+  type: keyof typeof CONFIG;
   status?: string | null;
   size?: IconSizes;
   tone?: Tones | "inherit";

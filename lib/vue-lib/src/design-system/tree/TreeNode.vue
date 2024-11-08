@@ -58,6 +58,7 @@
           clsx(
             !styleAsGutter && 'flex flex-row items-center px-xs w-full gap-1',
             labelClasses,
+            isOpen && labelClassesWhenOpen,
             enableDefaultHoverClasses &&
               'font-bold select-none hover:text-action-500 dark:hover:text-action-300',
           )
@@ -220,6 +221,7 @@ const props = defineProps({
   // direct class injection into various spots in this component - try to use sparingly!
   classes: { type: String },
   labelClasses: { type: String },
+  labelClassesWhenOpen: { type: String },
   childrenContainerClasses: { type: String },
   staticContentClasses: { type: String },
   primaryIconClasses: { type: String, default: "mr-xs" },

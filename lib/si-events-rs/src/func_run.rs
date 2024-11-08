@@ -3,7 +3,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{id, Actor, ChangeSetId, ContentHash, Tenancy, WorkspacePk};
+use crate::{id, Actor, ChangeSetId, ContentHash, FuncId, Tenancy, WorkspacePk};
 
 id!(FuncRunId);
 id!(ComponentId);
@@ -157,9 +157,9 @@ pub struct FuncRun {
     #[builder(default)]
     schema_name: Option<String>,
     #[builder(default)]
-    action_id: Option<ActionId>,
+    action_or_func_id: Option<ulid::Ulid>,
     #[builder(default)]
-    action_prototype_id: Option<ActionPrototypeId>,
+    prototype_id: Option<ulid::Ulid>,
     #[builder(default)]
     action_kind: Option<ActionKind>,
     #[builder(default)]
@@ -195,6 +195,10 @@ impl FuncRun {
         FuncRunBuilder::default()
     }
 
+    /// NOTE: We are also using this to record the success or failure state of a
+    /// management function. Extending the ActionResult state should be fine as
+    /// long as the three existing states remain (and we can't remove them or
+    /// we'll break postcard serialization).
     pub fn set_action_result_state(&mut self, value: Option<ActionResultState>) {
         self.action_result_state = value;
         self.updated_at = Utc::now();
@@ -280,7 +284,11 @@ impl FuncRun {
     }
 
     pub fn action_id(&self) -> Option<ActionId> {
-        self.action_id
+        self.action_or_func_id.map(Into::into)
+    }
+
+    pub fn func_id(&self) -> Option<FuncId> {
+        self.action_or_func_id.map(Into::into)
     }
 
     pub fn action_display_name(&self) -> Option<&str> {
@@ -299,8 +307,18 @@ impl FuncRun {
         self.action_result_state
     }
 
+    /// The action prototype id of this action run, *if* this is an action run.
+    /// If this is not an action run, this might actually be another prototype
+    /// id
     pub fn action_prototype_id(&self) -> Option<ActionPrototypeId> {
-        self.action_prototype_id
+        self.prototype_id.map(Into::into)
+    }
+
+    /// The management prototype id of this action run, *if* this is a mangement
+    /// run.  If this is not management run, this might actually be another
+    /// prototype id
+    pub fn management_prototype_id(&self) -> Option<ManagementPrototypeId> {
+        self.prototype_id.map(Into::into)
     }
 
     pub fn action_originating_change_set_id(&self) -> Option<ChangeSetId> {

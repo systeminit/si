@@ -6,7 +6,7 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
     Router,
 };
 use dal::{
@@ -17,6 +17,7 @@ use dal::{
     ChangeSet, ChangeSetError, ChangeSetId, ComponentId, TransactionsError, WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::ManagementFuncStatus;
@@ -25,6 +26,11 @@ use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track,
 };
+
+use super::func::FuncAPIError;
+
+mod history;
+mod latest;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,10 +46,16 @@ pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 pub enum ManagementApiError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("func api error: {0}")]
+    FuncAPI(#[from] FuncAPIError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("management error: {0}")]
     Management(#[from] ManagementError),
+    #[error("management history missing a field - this is a bug!: {0}")]
+    ManagementHistoryFieldMissing(String),
     #[error("management prototype error: {0}")]
     ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("management prototype execution failure: {0}")]
@@ -125,6 +137,10 @@ pub async fn run_prototype(
 
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
-        // Func Stuff
         .route("/prototype/:prototypeId/:componentId", post(run_prototype))
+        .route(
+            "/prototype/:prototypeId/:componentId/latest",
+            get(latest::latest),
+        )
+        .route("/history", get(history::history))
 }

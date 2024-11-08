@@ -200,6 +200,12 @@ export type WsEventPayloadMap = {
     fromSocketId: string;
     toSocketId: string;
   };
+  ManagementFuncExecuted: {
+    managerComponentId: string;
+    prototypeId: string;
+    funcRunId: FuncRunId;
+    changeSetId: string;
+  };
   ModuleImported: SchemaVariant[];
   WorkspaceImportBeginApprovalProcess: {
     workspacePk: WorkspacePk;

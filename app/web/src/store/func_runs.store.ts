@@ -13,6 +13,7 @@ import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -32,6 +33,7 @@ export enum FuncKind {
   Authentication = "authentication",
   CodeGeneration = "codeGeneration",
   Intrinsic = "intrinsic",
+  Management = "management",
 }
 
 export enum FuncBackendKind {
@@ -51,6 +53,7 @@ export enum FuncBackendKind {
   String,
   Unset,
   Validation,
+  Management,
 }
 
 export enum FuncBackendResponseType {
@@ -69,6 +72,7 @@ export enum FuncBackendResponseType {
   Unset,
   Validation,
   Void,
+  Management,
 }
 
 export interface OutputLine {
@@ -122,6 +126,21 @@ export interface FuncRun {
   logs?: FuncRunLog;
 }
 
+export interface ManagementHistoryItem {
+  funcRunId: FuncRunId;
+  name: string;
+  funcId: string;
+  originatingChangeSetName: string;
+  updatedAt: string;
+  resourceResult?: string;
+  codeExecuted?: string;
+  logs?: string;
+  arguments?: string;
+  componentName: string;
+  schemaName: string;
+  status: ActionResultState;
+}
+
 export interface GetFuncRunResponse {
   funcRun?: FuncRun;
 }
@@ -132,8 +151,9 @@ export const useFuncRunsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const featureFlagsStore = useFeatureFlagsStore();
 
-  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/funcs/runs`;
+  const API_PREFIX = `v2/workspaces/${workspaceId}/change-sets/${changeSetId}`;
 
   return addStoreHooks(
     workspaceId,
@@ -142,12 +162,59 @@ export const useFuncRunsStore = () => {
       state: () => ({
         funcRuns: {} as Record<FuncRunId, FuncRun>,
         lastRuns: {} as Record<ActionId, Date>,
+        managementRunByPrototypeAndComponentId: {} as {
+          [key: string]: FuncRunId;
+        },
+        managementRunHistory: {} as { [key: string]: ManagementHistoryItem[] },
       }),
+      getters: {
+        latestManagementRun:
+          (state) => (prototypeId: string, componentId: ComponentId) =>
+            state.managementRunByPrototypeAndComponentId[
+              `${changeSetId ?? "NONE"}-${prototypeId}-${componentId}`
+            ],
+      },
       actions: {
+        async GET_MANAGEMENT_RUN_HISTORY() {
+          if (!featureFlagsStore.MANAGEMENT_FUNCTIONS) return;
+          return new ApiRequest<ManagementHistoryItem[]>({
+            url: `${API_PREFIX}/management/history`,
+            headers: { accept: "application/json" },
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (response) => {
+              this.managementRunHistory[changeSetId ?? "NONE"] = response;
+            },
+          });
+        },
+
+        async GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
+          prototypeId: string,
+          componentId: ComponentId,
+        ) {
+          return new ApiRequest<FuncRun | null>({
+            url: `${API_PREFIX}/management/prototype/${prototypeId}/${componentId}/latest`,
+            headers: { accept: "application/json" },
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (funcRun) => {
+              if (funcRun) {
+                this.setLatestManagementRun(
+                  prototypeId,
+                  componentId,
+                  funcRun.id,
+                );
+                this.funcRuns[funcRun.id] = funcRun;
+              }
+            },
+          });
+        },
         async GET_FUNC_RUN(funcRunId: FuncRunId) {
           // note: this lookup is not cached, always re-fetch, even though the payload is large. things may have changed since last load!
           return new ApiRequest<GetFuncRunResponse>({
-            url: `${API_PREFIX}/${funcRunId}`,
+            url: `${API_PREFIX}/funcs/runs/${funcRunId}`,
             headers: { accept: "application/json" },
             onSuccess: (response) => {
               if (response.funcRun) {
@@ -156,16 +223,41 @@ export const useFuncRunsStore = () => {
             },
           });
         },
+
+        setLatestManagementRun(
+          prototypeId: string,
+          componentId: string,
+          funcRunId: string,
+        ) {
+          this.managementRunByPrototypeAndComponentId[
+            `${changeSetId ?? "NONE"}-${prototypeId}-${componentId}`
+          ] = funcRunId;
+        },
       },
       onActivated() {
         const actionUnsub = this.$onAction(handleStoreError);
         const realtimeStore = useRealtimeStore();
+
+        this.GET_MANAGEMENT_RUN_HISTORY();
+
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "FuncRunLogUpdated",
             callback: (payload) => {
               if (payload.actionId)
                 this.lastRuns[payload.actionId] = new Date();
+            },
+          },
+          {
+            eventType: "ManagementFuncExecuted",
+            callback: (payload) => {
+              this.setLatestManagementRun(
+                payload.prototypeId,
+                payload.managerComponentId,
+                payload.funcRunId,
+              );
+
+              this.GET_MANAGEMENT_RUN_HISTORY();
             },
           },
         ]);
