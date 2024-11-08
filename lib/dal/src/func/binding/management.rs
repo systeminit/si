@@ -95,6 +95,7 @@ impl ManagementBinding {
                                             socket: string;
                                         }}
                                     }}[],
+                                    parent?: string,
                                 }}
                                 "#
                                 );
@@ -130,6 +131,7 @@ type Output = {{
             add?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
             remove?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
         }},
+        parent?: string,
     }} }},
     actions?: {{ [key: string]: {{
       add?: ("create" | "update" | "refresh" | "delete" | string)[];

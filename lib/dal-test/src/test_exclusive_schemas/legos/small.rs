@@ -206,6 +206,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
             create[name] = {
                 kind: "small even lego",
                 properties: { si: { name } },
+                geometry: { x: 10, y: 10 },
                 connect: [{
                     from: "one",
                     to: {
@@ -220,7 +221,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
             status: "ok",
             ops: {
                 create,
-            };
+            }
         }
     }
     "#;
@@ -228,6 +229,40 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let create_and_connect_to_self_func = build_management_func(
         create_and_connect_to_self_func_code,
         create_and_connect_to_self_name,
+    )?;
+
+    let create_and_connect_to_self_as_children_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        let count = parseInt(thisComponent.properties?.si?.resourceId);
+        if (isNaN(count) || count < 1) {
+            count = 1;
+        }
+
+        let create: { [key: string]: unknown } = {};
+        for (let i = 0; i < count; i++) {
+            let name = `clone_${i}`;
+            create[name] = {
+                kind: "small even lego",
+                properties: { si: { name } },
+                parent: "self"
+            };
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                update: { self: { properties: { si: { type: "configurationFrameDown" } } } },
+                create,
+            }
+        }
+    }
+    "#;
+    let create_and_connect_to_self_as_children_name = "test:createAndConnectToSelfAsChildren";
+    let create_and_connect_to_self_as_children_func = build_management_func(
+        create_and_connect_to_self_as_children_code,
+        create_and_connect_to_self_as_children_name,
     )?;
 
     let fn_name = "test:deleteActionSmallLego";
@@ -329,11 +364,20 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
-                        .name("Create and Connect To Self")
+                        .name("Create and Connect to Self")
                         .managed_schemas(Some(HashSet::from([
                             SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
                         ])))
                         .func_unique_id(&create_and_connect_to_self_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Create and Connect to Self as Children")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&create_and_connect_to_self_as_children_func.unique_id)
                         .build()?,
                 )
                 .build()?,
@@ -353,6 +397,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(update_mgmt_func)
         .func(create_and_connect_from_self_func)
         .func(create_and_connect_to_self_func)
+        .func(create_and_connect_to_self_as_children_func)
         .schema(small_lego_schema)
         .build()?;
 

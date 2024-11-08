@@ -6,8 +6,10 @@ use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
-use crate::diagram::view::View;
+use crate::component::frame::{Frame, FrameError};
+use crate::diagram::view::{View, ViewId};
 use crate::diagram::DiagramError;
+use crate::WorkspaceSnapshotError;
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -23,9 +25,9 @@ use crate::{
     history_event::HistoryEventMetadata,
     prop::{PropError, PropPath},
     socket::{input::InputSocketError, output::OutputSocketError},
-    ActorView, AttributeValue, Component, ComponentError, ComponentId, DalContext, Func, FuncError,
-    InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind, Schema, SchemaError,
-    SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
+    ActorView, AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext,
+    Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
+    Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
 };
 
 pub mod prototype;
@@ -56,6 +58,8 @@ pub enum ManagementError {
     Diagram(#[from] DiagramError),
     #[error("Duplicate component placeholder {0}")]
     DuplicateComponentPlaceholder(String),
+    #[error("frame error: {0}")]
+    Frame(#[from] FrameError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("input socket error: {0}")]
@@ -74,6 +78,8 @@ pub enum ManagementError {
     SchemaDoesNotExist(String),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -175,6 +181,7 @@ pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
     geometry: Option<RawGeometry>,
     connect: Option<ManagementUpdateConnections>,
+    parent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -184,6 +191,7 @@ pub struct ManagementCreateOperation {
     properties: Option<serde_json::Value>,
     geometry: Option<NumericGeometry>,
     connect: Option<Vec<ManagementConnection>>,
+    parent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -360,6 +368,7 @@ impl VariantSocketMap {
 pub struct ManagementOperator<'a> {
     ctx: &'a DalContext,
     manager_component_id: ComponentId,
+    manager_component_geometry: NumericGeometry,
     manager_schema_id: SchemaId,
     last_component_geometry: NumericGeometry,
     operations: ManagementOperations,
@@ -367,6 +376,27 @@ pub struct ManagementOperator<'a> {
     component_id_placeholders: HashMap<String, ComponentId>,
     component_schema_map: ComponentSchemaMap,
     socket_map: VariantSocketMap,
+    view_id: ViewId,
+    created_components: Vec<ComponentId>,
+    updated_components: Vec<ComponentId>,
+}
+
+#[derive(Clone, Debug)]
+struct PendingConnect {
+    from_component_id: ComponentId,
+    connection: ManagementConnection,
+}
+
+#[derive(Clone, Debug)]
+struct PendingParent {
+    child_component_id: ComponentId,
+    parent: String,
+}
+
+#[derive(Clone, Debug)]
+enum PendingOperation {
+    Connect(PendingConnect),
+    Parent(PendingParent),
 }
 
 impl<'a> ManagementOperator<'a> {
@@ -375,6 +405,7 @@ impl<'a> ManagementOperator<'a> {
         manager_component_id: ComponentId,
         operations: ManagementOperations,
         management_execution: ManagementPrototypeExecution,
+        view_id: Option<ViewId>,
     ) -> ManagementResult<Self> {
         let mut component_id_placeholders = management_execution.placeholders;
         component_id_placeholders.insert(SELF_ID.to_string(), manager_component_id);
@@ -387,16 +418,25 @@ impl<'a> ManagementOperator<'a> {
             .variant_for_component_id(ctx, manager_component_id)
             .await?;
 
+        let view_id = match view_id {
+            Some(view_id) => view_id,
+            None => View::get_id_for_default(ctx).await?,
+        };
+
         Ok(Self {
             ctx,
             manager_component_id,
             manager_schema_id,
-            last_component_geometry: management_execution.manager_component_geometry.into(),
+            last_component_geometry: management_execution.manager_component_geometry,
+            manager_component_geometry: management_execution.manager_component_geometry,
             operations,
             schema_map: management_execution.managed_schema_map,
             component_id_placeholders,
             component_schema_map,
             socket_map: VariantSocketMap::new(),
+            view_id,
+            created_components: vec![],
+            updated_components: vec![],
         })
     }
 
@@ -420,11 +460,14 @@ impl<'a> ManagementOperator<'a> {
 
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
 
-        let view_id = View::get_id_for_default(self.ctx).await?;
-        let mut component = Component::new(self.ctx, placeholder, variant_id, view_id).await?;
+        let mut component = Component::new(self.ctx, placeholder, variant_id, self.view_id).await?;
         let geometry = if let Some(numeric_geometry) = &operation.geometry {
+            let real_geometry = numeric_geometry.offset_by(
+                self.manager_component_geometry.x,
+                self.manager_component_geometry.y,
+            );
             component
-                .set_raw_geometry(self.ctx, (*numeric_geometry).into(), view_id)
+                .set_raw_geometry(self.ctx, (real_geometry).into(), self.view_id)
                 .await?;
 
             *numeric_geometry
@@ -434,26 +477,11 @@ impl<'a> ManagementOperator<'a> {
             // solitaire staggering
             let auto_geometry = self.last_component_geometry.offset_by(50.0, 50.0);
             component
-                .set_raw_geometry(self.ctx, auto_geometry.into(), view_id)
+                .set_raw_geometry(self.ctx, auto_geometry.into(), self.view_id)
                 .await?;
 
             auto_geometry
         };
-
-        WsEvent::component_created(
-            self.ctx,
-            component
-                .into_frontend_type(
-                    self.ctx,
-                    Some(&component.geometry(self.ctx, view_id).await?),
-                    Added,
-                    &mut HashMap::new(),
-                )
-                .await?,
-        )
-        .await?
-        .publish_on_commit(self.ctx)
-        .await?;
 
         Ok((component.id(), geometry))
     }
@@ -603,9 +631,29 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
-    async fn creates(&mut self) -> ManagementResult<()> {
+    async fn set_parent(
+        &self,
+        child_id: ComponentId,
+        parent_placeholder: &String,
+    ) -> ManagementResult<()> {
+        let new_parent_id = self
+            .component_id_placeholders
+            .get(parent_placeholder)
+            .copied()
+            .ok_or(ManagementError::ComponentWithPlaceholderNotFound(
+                parent_placeholder.to_owned(),
+            ))?;
+
+        Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
+
+        Ok(())
+    }
+
+    async fn creates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
         // We take here to avoid holding on to an immutable ref to self throughout the loop
         let creates = self.operations.create.take();
+
+        let mut pending_operations = vec![];
 
         if let Some(creates) = &creates {
             for (placeholder, operation) in creates {
@@ -622,12 +670,22 @@ impl<'a> ManagementOperator<'a> {
                 let (component_id, geometry) =
                     self.create_component(placeholder, operation).await?;
 
-                self.last_component_geometry = geometry;
+                self.created_components.push(component_id);
 
                 self.component_id_placeholders
                     .insert(placeholder.to_owned(), component_id);
 
                 if let Some(properties) = &operation.properties {
+                    if is_setting_type_to_frame(Some(properties)) {
+                        ensure_geometry_has_width_and_height(
+                            self.ctx,
+                            component_id,
+                            self.view_id,
+                            Some(geometry),
+                        )
+                        .await?;
+                    }
+
                     update_component(
                         self.ctx,
                         component_id,
@@ -639,10 +697,23 @@ impl<'a> ManagementOperator<'a> {
 
                 if let Some(connections) = &operation.connect {
                     for create in connections {
-                        self.create_connection(component_id, create).await?;
+                        pending_operations.push(PendingOperation::Connect(PendingConnect {
+                            from_component_id: component_id,
+                            connection: create.to_owned(),
+                        }));
                     }
                 }
 
+                self.last_component_geometry = geometry;
+
+                if let Some(parent) = &operation.parent {
+                    pending_operations.push(PendingOperation::Parent(PendingParent {
+                        child_component_id: component_id,
+                        parent: parent.to_owned(),
+                    }));
+                }
+
+                let cycle_check_guard = self.ctx.workspace_snapshot()?.enable_cycle_check().await;
                 Component::add_manages_edge_to_component(
                     self.ctx,
                     self.manager_component_id,
@@ -650,10 +721,11 @@ impl<'a> ManagementOperator<'a> {
                     crate::EdgeWeightKind::Manages,
                 )
                 .await?;
+                drop(cycle_check_guard);
             }
         }
 
-        Ok(())
+        Ok(pending_operations)
     }
 
     async fn get_real_component_id(&self, placeholder: &String) -> ManagementResult<ComponentId> {
@@ -674,6 +746,30 @@ impl<'a> ManagementOperator<'a> {
         for (placeholder, operation) in updates {
             let component_id = self.get_real_component_id(placeholder).await?;
 
+            let offset_geometry = operation.geometry.as_ref().map(|geo| {
+                let numeric_geometry: NumericGeometry = geo.clone().into();
+                numeric_geometry.offset_by(
+                    self.manager_component_geometry.x,
+                    self.manager_component_geometry.y,
+                )
+            });
+
+            if is_setting_type_to_frame(operation.properties.as_ref()) {
+                ensure_geometry_has_width_and_height(
+                    self.ctx,
+                    component_id,
+                    self.view_id,
+                    offset_geometry,
+                )
+                .await?;
+            } else if let Some(offset_geo) = offset_geometry {
+                let mut component = Component::get_by_id(self.ctx, component_id).await?;
+
+                component
+                    .set_raw_geometry(self.ctx, offset_geo.into(), self.view_id)
+                    .await?;
+            }
+
             if let Some(properties) = &operation.properties {
                 update_component(self.ctx, component_id, properties, &[]).await?;
             }
@@ -692,13 +788,11 @@ impl<'a> ManagementOperator<'a> {
                 }
             }
 
-            if let Some(raw_geometry) = &operation.geometry {
-                let view_id = View::get_id_for_default(self.ctx).await?;
-                let mut component = Component::get_by_id(self.ctx, component_id).await?;
-                component
-                    .set_raw_geometry(self.ctx, raw_geometry.to_owned(), view_id)
-                    .await?;
+            if let Some(new_parent) = &operation.parent {
+                self.set_parent(component_id, new_parent).await?;
             }
+
+            self.updated_components.push(component_id);
         }
 
         Ok(())
@@ -722,8 +816,64 @@ impl<'a> ManagementOperator<'a> {
     }
 
     pub async fn operate(&mut self) -> ManagementResult<()> {
-        self.creates().await?;
+        let pending_operations = self.creates().await?;
         self.updates().await?;
+
+        // We have to execute these after the creation of the component, and
+        // after updates, so that they can reference other created components
+        // and so that we can ensure the updates have been applied
+        for pending_operation in pending_operations {
+            match pending_operation {
+                PendingOperation::Connect(pending_connect) => {
+                    self.create_connection(
+                        pending_connect.from_component_id,
+                        &pending_connect.connection,
+                    )
+                    .await?
+                }
+                PendingOperation::Parent(pending_parent) => {
+                    self.set_parent(pending_parent.child_component_id, &pending_parent.parent)
+                        .await?
+                }
+            }
+        }
+
+        for &created_id in &self.created_components {
+            let component = Component::get_by_id(self.ctx, created_id).await?;
+            WsEvent::component_created(
+                self.ctx,
+                component
+                    .into_frontend_type(
+                        self.ctx,
+                        Some(&component.geometry(self.ctx, self.view_id).await?),
+                        Added,
+                        &mut HashMap::new(),
+                    )
+                    .await?,
+            )
+            .await?
+            .publish_on_commit(self.ctx)
+            .await?;
+        }
+
+        for &updated_id in &self.updated_components {
+            let component = Component::get_by_id(self.ctx, updated_id).await?;
+            WsEvent::component_updated(
+                self.ctx,
+                component
+                    .into_frontend_type(
+                        self.ctx,
+                        Some(&component.geometry(self.ctx, self.view_id).await?),
+                        component.change_status(self.ctx).await?,
+                        &mut HashMap::new(),
+                    )
+                    .await?,
+            )
+            .await?
+            .publish_on_commit(self.ctx)
+            .await?;
+        }
+
         self.actions().await?;
 
         Ok(())
@@ -886,6 +1036,75 @@ const IGNORE_PATHS: [&[&str]; 6] = [
     &["root", "secrets"],
 ];
 
+const ROOT_SI_TYPE_PATH: &[&str] = &["root", "si", "type"];
+
+async fn ensure_geometry_has_width_and_height(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    view_id: ViewId,
+    input_geometry: Option<NumericGeometry>,
+) -> ManagementResult<NumericGeometry> {
+    let mut component = Component::get_by_id(ctx, component_id).await?;
+    let mut raw_geometry = match input_geometry {
+        Some(geometry) => geometry.into(),
+        None => component.geometry(ctx, view_id).await?.into_raw(),
+    };
+
+    raw_geometry.width.get_or_insert(500);
+    raw_geometry.height.get_or_insert(500);
+
+    component
+        .set_raw_geometry(ctx, raw_geometry.to_owned(), view_id)
+        .await?;
+
+    Ok(raw_geometry.into())
+}
+
+fn is_setting_type_to_frame(properties: Option<&serde_json::Value>) -> bool {
+    let Some(properties) = properties else {
+        return false;
+    };
+
+    let mut work_queue = VecDeque::from([("root", properties)]);
+
+    while let Some((path, current_val)) = work_queue.pop_front() {
+        let match_key = match path {
+            "root" => "si",
+            "si" => "type",
+            "type" => {
+                let Ok(new_type) = serde_json::from_value::<ComponentType>(current_val.to_owned())
+                else {
+                    break;
+                };
+
+                if matches!(
+                    new_type,
+                    ComponentType::ConfigurationFrameDown
+                        | ComponentType::ConfigurationFrameUp
+                        | ComponentType::AggregationFrame
+                ) {
+                    return true;
+                }
+
+                break;
+            }
+            _ => break,
+        };
+
+        let serde_json::Value::Object(map) = current_val else {
+            break;
+        };
+
+        let Some(next_value) = map.get(match_key) else {
+            break;
+        };
+
+        work_queue.push_back((match_key, next_value));
+    }
+
+    false
+}
+
 async fn update_component(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -919,6 +1138,19 @@ async fn update_component(
         if AttributeValue::is_set_by_dependent_function(ctx, path_attribute_value_id).await? {
             continue;
         }
+
+        // component type has to be special cased
+        if path_as_refs.as_slice() == ROOT_SI_TYPE_PATH {
+            let Ok(new_type) = serde_json::from_value::<ComponentType>(current_val.to_owned())
+            else {
+                // error here?
+                continue;
+            };
+            Component::set_type_by_id(ctx, component_id, new_type).await?;
+
+            continue;
+        }
+
         if let serde_json::Value::Null = current_val {
             AttributeValue::update(ctx, path_attribute_value_id, Some(current_val.to_owned()))
                 .await?;
@@ -1022,22 +1254,6 @@ async fn update_component(
             }
         }
     }
-
-    let component = Component::get_by_id(ctx, component_id).await?;
-    WsEvent::component_updated(
-        ctx,
-        component
-            .into_frontend_type(
-                ctx,
-                None,
-                component.change_status(ctx).await?,
-                &mut HashMap::new(),
-            )
-            .await?,
-    )
-    .await?
-    .publish_on_commit(ctx)
-    .await?;
 
     Ok(())
 }

@@ -23,15 +23,30 @@ export type ManagementFuncResult =
     | ManagementFuncResultSuccess
     | ManagementFuncResultFailure;
 
+export interface ManagmentConnect {
+  from: string,
+  to: {
+    component: string;
+    socket: string;
+  }
+}
+
 export interface ManagementOperations {
   create?: { [key: string]: {
     kind: string;
     properties?: object;
     geometry?: Geometry;
+    parent?: string;
+    connect?: ManagmentConnect[],
   } };
   update?: { [key: string]: {
     properties?: object;
     geometry?: Geometry;
+    parent?: string;
+    connect: {
+      add?: ManagmentConnect[],
+      remove?: ManagmentConnect[],
+    }
   } };
   actions?: {
     [key: string]: {

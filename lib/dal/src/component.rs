@@ -3423,6 +3423,8 @@ impl Component {
             ));
         }
 
+        let guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
+
         Component::add_manages_edge_to_component(
             ctx,
             manager_component_id,
@@ -3430,6 +3432,8 @@ impl Component {
             EdgeWeightKind::Manages,
         )
         .await?;
+
+        drop(guard);
 
         Ok(())
     }
