@@ -115,7 +115,7 @@ jobs:
 
             n=$((n+1))
             echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
-            sleep 5
+            sleep 60
           done
 
           if [ $n -ge $max_retries ]; then
