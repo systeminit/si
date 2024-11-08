@@ -1438,6 +1438,8 @@ const findChildrenByBoundingBox = (
 
   const components: (DiagramGroupData | DiagramNodeData)[] = [];
   const process = ([id, elRect]: [ComponentId, IRect]) => {
+    // i do not fit inside myself
+    if (el.def.id === id) return;
     const _r = { ...elRect };
     _r.x -= _r.width / 2;
     if (rectContainsAnother(rect, _r)) {
@@ -1603,6 +1605,8 @@ function endDragElements() {
 
   const nonChildElements = currentSelectionMovableElements.value.filter(
     (component) => {
+      if (draggedChildren.value.length === 0) return true;
+
       const idx = draggedChildren.value.findIndex(
         (child) => child.def.id === component.def.id,
       );
@@ -1626,6 +1630,9 @@ function endDragElements() {
     if (component.def.parentId && detach) setParents.push(component.def.id);
 
     if (!component.def.parentId && newParent?.def.id)
+      setParents.push(component.def.id);
+
+    if (component.def.parentId !== newParent?.def.id)
       setParents.push(component.def.id);
   });
 
@@ -2614,7 +2621,10 @@ const groups = computed(() => {
 
       // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
       // TODO change this to being position comparisons not parentage
-      if (dragElementsActive.value) {
+      if (
+        dragElementsActive.value ||
+        componentsStore.selectedComponentIds.length > 0
+      ) {
         if (
           _.intersection(
             [g.def.componentId, ...(g.def.ancestorIds || [])],
