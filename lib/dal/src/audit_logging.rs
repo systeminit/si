@@ -43,10 +43,14 @@ pub enum AuditLoggingError {
     AsyncNatsRequest(#[from] async_nats::error::Error<RequestErrorKind>),
     #[error("audit logs error: {0}")]
     AuditLogs(#[from] AuditLogsError),
+    #[error("cannot return list of unbounded size: both page ({0}) and page size ({1})")]
+    CannotReturnListOfUnboundedSize(usize, usize),
     #[error("change set error: {0}")]
     ChangeSet(#[from] Box<ChangeSetError>),
     #[error("change set not found by id: {0}")]
     ChangeSetNotFound(si_events::ChangeSetId),
+    #[error("message error: {0}")]
+    Message(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("pending events error: {0}")]
     PendingEventsError(#[from] PendingEventsError),
     #[error("serde json error: {0}")]
@@ -233,9 +237,17 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 #[instrument(
     name = "audit_logging.list",
-    level = "debug",
+    level = "info",
     skip_all,
-    fields(page, page_size, sort_timestamp_ascending)
+    fields(
+        page,
+        page_size,
+        sort_timestamp_ascending,
+        change_set_filter,
+        entity_type_filter,
+        kind_filter,
+        user_filter
+    )
 )]
 pub async fn list(
     ctx: &DalContext,
@@ -247,16 +259,13 @@ pub async fn list(
     kind_filter: HashSet<String>,
     user_filter: HashSet<Option<si_events::UserPk>>,
 ) -> Result<(Vec<FrontendAuditLog>, usize)> {
-    // TODO(nick): nuke this from intergalactic orbit. Then do it again.
-    let workspace_id = match ctx.workspace_pk() {
-        Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok((Vec::new(), 0)),
-        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
-    };
-
     if page == 0 || page_size == 0 {
-        return Ok((Vec::new(), 0));
+        return Err(AuditLoggingError::CannotReturnListOfUnboundedSize(
+            page, page_size,
+        ));
     }
+
+    let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
 
     let stream_wrapper = AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
     let stream = stream_wrapper.stream().await?;
@@ -269,10 +278,22 @@ pub async fn list(
 
     // FIXME(nick): find a way to perform true pagination with reverse timestamp sorting. This will
     // eventually become a performance problem.
-    let total_message_count = stream.get_info().await?.state.messages as usize;
+    let total_message_count = stream.get_info().await?.state.messages;
+    let total_message_count_as_usize = total_message_count as usize;
+
+    // TODO(nick): remove this once we implement proper pagination and filtering.
+    info!(
+        ?total_message_count,
+        ?total_message_count_as_usize,
+        "total message count on the audit logs stream"
+    );
+
+    // FIXME(nick): this is bad because we really only need the total count for the filtered messages by subject and
+    // not for the entire. Since this is a anti-pattern anyway, we'll avoid this problem when swapping our fake
+    // pagination method out for a real one.
     let mut messages = consumer
         .fetch()
-        .max_messages(total_message_count)
+        .max_messages(total_message_count_as_usize)
         .messages()
         .await?;
 
@@ -284,7 +305,8 @@ pub async fn list(
     );
 
     let mut filtered_audit_logs = Vec::new();
-    while let Some(Ok(message)) = messages.next().await {
+    while let Some(message) = messages.next().await {
+        let message = message.map_err(AuditLoggingError::Message)?;
         let audit_log: AuditLog = serde_json::from_slice(&message.payload)?;
         if let Some(filtered_audit_log) = parser.filter_and_assemble(ctx, audit_log).await? {
             filtered_audit_logs.push(filtered_audit_log);

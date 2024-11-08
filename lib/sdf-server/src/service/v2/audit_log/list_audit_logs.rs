@@ -1,17 +1,17 @@
 use std::collections::HashSet;
 
-use axum::{
-    extract::{OriginalUri, Path},
-    Json,
-};
+use axum::{extract::Path, Json};
 use dal::audit_logging;
 use serde::{Deserialize, Serialize};
 use si_events::UserPk;
 use si_frontend_types as frontend_types;
+use telemetry::prelude::*;
 
 use super::AuditLogResult;
-use crate::extract::{AccessBuilder, HandlerContext, PosthogClient, QueryWithVecParams};
+use crate::extract::{AccessBuilder, HandlerContext, QueryWithVecParams};
 
+// TODO(nick): add this in, even though it is likely inconsequential
+// #[serde(rename_all = "camelCase")]
 #[remain::sorted]
 #[derive(Deserialize, Debug)]
 pub enum UserFilter {
@@ -42,8 +42,6 @@ pub struct ListAuditLogsResponse {
 pub async fn list_audit_logs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
     Path((_workspace_pk, change_set_id)): Path<(dal::WorkspacePk, dal::ChangeSetId)>,
     QueryWithVecParams(request): QueryWithVecParams<ListAuditLogsRequest>,
 ) -> AuditLogResult<Json<ListAuditLogsResponse>> {
@@ -51,7 +49,7 @@ pub async fn list_audit_logs(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let (paginated_and_filtered_audit_logs, filtered_audit_logs_total) = audit_logging::list(
+    let (paginated_and_filtered_audit_logs, filtered_audit_logs_total) = match audit_logging::list(
         &ctx,
         request.page.unwrap_or(0),
         request.page_size.unwrap_or(0),
@@ -76,7 +74,26 @@ pub async fn list_audit_logs(
             None => HashSet::new(),
         },
     )
-    .await?;
+    .await
+    {
+        Ok(logs_and_total) => logs_and_total,
+        Err(dal::audit_logging::AuditLoggingError::CannotReturnListOfUnboundedSize(
+            page,
+            page_size,
+        )) => {
+            // We want to break down the error type here and not at the server response level
+            // because this is technically valid behavior. In case the query string is missing, we
+            // want the route to succeed by default. However, logging when this does happen should
+            // be helpful since it is likely undesired.
+            warn!(
+                ?page,
+                ?page_size,
+                "returning empty logs: found page, page size, or both with a value of zero"
+            );
+            (Vec::new(), 0)
+        }
+        Err(err) => return Err(err.into()),
+    };
 
     Ok(Json(ListAuditLogsResponse {
         logs: paginated_and_filtered_audit_logs,
