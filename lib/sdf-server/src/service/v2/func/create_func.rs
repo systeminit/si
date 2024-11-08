@@ -254,6 +254,10 @@ pub async fn create_func(
         | si_frontend_types::FuncBinding::Qualification {
             schema_variant_id: Some(schema_variant_id),
             ..
+        }
+        | si_frontend_types::FuncBinding::Management {
+            schema_variant_id: Some(schema_variant_id),
+            ..
         } => {
             let schema_id =
                 SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id.into())
