@@ -29,6 +29,9 @@ macro_rules! id {
         }
 
         impl $name {
+            /// Length of a string-encoded ID in bytes.
+            pub const ID_LEN: usize = ::ulid::ULID_LEN;
+
             /// Generates a new key which is virtually guaranteed to be unique.
             pub fn generate() -> Self {
                 Self(::ulid::Ulid::new())
@@ -42,6 +45,11 @@ macro_rules! id {
             /// Creates a Crockford Base32 encoded string that represents this Ulid.
             pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ::ulid::ULID_LEN]) -> &'buf mut str {
                 self.0.array_to_str(buf)
+            }
+
+            /// Returns a buffer in which to build a ID string.
+            pub fn array_to_str_buf() -> [u8; Self::ID_LEN] {
+                [0; Self::ID_LEN]
             }
         }
 

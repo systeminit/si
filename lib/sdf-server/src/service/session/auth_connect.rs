@@ -7,7 +7,7 @@ use dal::{
     WorkspaceSnapshotGraph,
 };
 use hyper::Uri;
-use permissions::{ObjectType, Relation, RelationBuilder};
+use permissions::{Relation, RelationBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data_spicedb::SpiceDbClient;
@@ -193,14 +193,12 @@ async fn find_or_create_user_and_workspace(
         // the creator is the owner. Currently, owners cannot be changed so this should always be
         // true. Once we map the auth-api roles to spicedb we can rely on that to tell us this
         // information.
-        if auth_api_workspace.creator_user_id == user.pk() {
-            set_owner_as_owner(
-                client,
-                auth_api_user.id.to_string(),
-                workspace.pk().to_string(),
-            )
-            .await?;
-        }
+        ensure_workspace_creator_is_owner_of_workspace(
+            client,
+            auth_api_workspace.creator_user_id,
+            *workspace.pk(),
+        )
+        .await?;
     }
 
     // ensure workspace is associated to user
@@ -340,20 +338,30 @@ pub async fn user_has_permission_to_create_workspace(
     }
 }
 
-async fn set_owner_as_owner(
+async fn ensure_workspace_creator_is_owner_of_workspace(
     client: &mut SpiceDbClient,
-    user_id: String,
-    workspace_id: String,
+    user_id: UserPk,
+    workspace_id: WorkspacePk,
 ) -> SessionResult<()> {
     let owner_relation = RelationBuilder::new()
-        .object(ObjectType::Workspace, workspace_id.clone())
+        .workspace_object(workspace_id.into())
         .relation(Relation::Owner);
 
-    // check if an owner exists already
-    if owner_relation.read(client).await?.is_empty() {
-        // if not, add this user as the owner
+    // Cut down on the amount of `String` allocations dealing with ids
+    let mut user_id_buf = UserPk::array_to_str_buf();
+    let user_id_str = user_id.array_to_str(&mut user_id_buf);
+
+    // check if an owner relation exists for the user already
+    let is_user_an_owner = owner_relation
+        .read(client)
+        .await?
+        .iter()
+        .any(|rel| rel.subject().id() == user_id_str);
+
+    if !is_user_an_owner {
+        // if not, create the relation
         owner_relation
-            .subject(ObjectType::User, user_id)
+            .user_subject(user_id.into())
             .create(client)
             .await?;
     };
