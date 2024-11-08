@@ -99,18 +99,6 @@ pub async fn refresh_workspace_members(
             &posthog_client,
         )
         .await?;
-    } else {
-        track(
-            &posthog_client.0,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "sync_workspace_approvers",
-            serde_json::json!({
-                "how": "/session/refresh_workspace_members",
-                "spicedb_client": "empty",
-            }),
-        );
     }
 
     let members = User::list_members_for_workspace(&ctx, request.workspace_id.clone()).await?;
