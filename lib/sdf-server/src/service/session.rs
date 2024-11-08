@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
-use crate::{middleware::WorkspacePermissionLayer, AppState};
+use crate::AppState;
 
 use super::ApiError;
 
@@ -82,7 +82,7 @@ impl IntoResponse for SessionError {
     }
 }
 
-pub fn routes(state: AppState) -> Router<AppState> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/connect", post(auth_connect::auth_connect))
         .route("/reconnect", get(auth_connect::auth_reconnect))
@@ -93,8 +93,6 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/load_workspaces", get(load_workspaces::load_workspaces))
         .route(
             "/refresh_workspace_members",
-            post(refresh_workspace_members::refresh_workspace_members).layer(
-                WorkspacePermissionLayer::new(state, permissions::Permission::Manage),
-            ),
+            post(refresh_workspace_members::refresh_workspace_members),
         )
 }
