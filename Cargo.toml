@@ -185,7 +185,7 @@ serde_url_params = "0.2.1"
 serde_with = "3.7.0"
 serde_yaml = "0.9.33" # NOTE(nick): this has been archived upstream
 sodiumoxide = "0.2.7"
-spicedb-client = "0.1.1"
+spicedb-client = { version = "0.1.1", features = ["tls"] }
 spicedb-grpc = "0.1.1"
 stream-cancel = "0.8.2"
 strum = { version = "0.26.2", features = ["derive"] }
