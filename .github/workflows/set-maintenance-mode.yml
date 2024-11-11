@@ -1,5 +1,10 @@
 name: Set maintenance mode
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
 on:
   workflow_call:
     inputs:

@@ -2,6 +2,11 @@ name: Bring Up Service
 
 run-name: Bringing ${{ inputs.service }} up
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
 on:
   workflow_call:
     inputs:

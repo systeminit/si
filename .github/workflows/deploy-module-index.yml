@@ -6,6 +6,11 @@ env:
   MODULE_INDEX_CLUSTER: shared-cluster
   MODULE_INDEX_SERVICE: module-index
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
 jobs:
   deploy:
     name: Deploy latest stable image

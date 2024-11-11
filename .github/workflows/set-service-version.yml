@@ -2,6 +2,11 @@ name: Set Service Version
 
 run-name: Setting ${{ inputs.service }} to version {{ inputs.version }} for {{ inputs.environment }}
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
 on:
   workflow_call:
     inputs:
