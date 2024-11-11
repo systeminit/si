@@ -422,7 +422,8 @@ impl Diagram {
                         // NOTE(victor): The first version of views didn't delete geometries with components,
                         // so we have dangling geometries in some workspaces. We should clean this up at some point,
                         // but we just skip orphan geometries here to make assemble work.
-                        warn!(
+
+                        debug!(
                             si.change_set.id = %changeset_id,
                             si.geometry.id = %geo_id,
                             "Could not find component for geometry - skipping"
