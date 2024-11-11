@@ -6,17 +6,22 @@ env:
   AUTH_API_CLUSTER: shared-cluster
   AUTH_API_SERVICE: auth-api
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+   
 jobs:
   deploy:
     name: Deploy latest stable image
     environment: shared
     runs-on: ubuntu-latest
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: us-east-1
       - name: Trigger ECS Deploy
         run: |

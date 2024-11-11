@@ -2,6 +2,11 @@ name: Instigate & Check CDN State
 
 run-name: Instigate & Check CDN State for ${{ inputs.environment }} 
 
+# Required for IDP JWT and actions/checkout
+permissions:
+      id-token: write
+      contents: read
+
 on:
   workflow_call:
     inputs:
