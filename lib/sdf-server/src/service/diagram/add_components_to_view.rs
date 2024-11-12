@@ -73,15 +73,10 @@ pub async fn add_components_to_view(
         }
     }
 
-    WsEvent::view_components_update(
-        &ctx,
-        visibility.change_set_id,
-        updated_components,
-        Some(client_ulid),
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+    WsEvent::view_components_update(&ctx, updated_components, Some(client_ulid))
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     track(
         &posthog_client,

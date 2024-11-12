@@ -4,24 +4,23 @@ use crate::app_state::AppState;
 use crate::service::ApiError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 use dal::cached_module::CachedModuleError;
 use dal::component::frame::FrameError;
 use dal::component::inferred_connection_graph::InferredConnectionGraphError;
-use dal::diagram::view::{View, ViewId};
 use dal::pkg::PkgError;
 use dal::slow_rt::SlowRuntimeError;
 use dal::{
-    ChangeSetError, ComponentError, DalContext, SchemaError, SchemaId, SchemaVariantError,
-    Timestamp, TransactionsError, WorkspaceSnapshotError, WsEventError,
+    ChangeSetError, ComponentError, SchemaError, SchemaId, SchemaVariantError, TransactionsError,
+    WorkspaceSnapshotError, WsEventError,
 };
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::task::JoinError;
 
 pub mod create_component;
 pub mod create_view;
+mod erase_components;
 pub mod get_diagram;
 pub mod list_views;
 mod paste_component;
@@ -90,29 +89,6 @@ impl IntoResponse for ViewError {
     }
 }
 
-/// Frontend representation for a [View](View).
-/// Yeah, it's a silly name, but all the other frontend representation structs are *View,
-/// so we either keep it or change everything.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ViewView {
-    id: ViewId,
-    name: String,
-    is_default: bool,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-}
-
-impl ViewView {
-    pub async fn from_view(ctx: &DalContext, view: View) -> ViewResult<Self> {
-        Ok(ViewView {
-            id: view.id(),
-            name: view.name().to_owned(),
-            is_default: view.is_default(ctx).await?,
-            timestamp: view.timestamp().to_owned(),
-        })
-    }
-}
-
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
         // Func Stuff
@@ -131,6 +107,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:view_id/paste_components",
             post(paste_component::paste_component),
+        )
+        .route(
+            "/:view_id/erase_components",
+            delete(erase_components::erase_components),
         )
         .route(
             "/:view_id/component/set_geometry",

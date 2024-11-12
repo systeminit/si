@@ -335,6 +335,29 @@ impl View {
     }
 }
 
+/// Frontend representation for a [View](View).
+/// Yeah, it's a silly name, but all the other frontend representation structs are *View,
+/// so we either keep it or change everything.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ViewView {
+    id: ViewId,
+    name: String,
+    is_default: bool,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+}
+
+impl ViewView {
+    pub async fn from_view(ctx: &DalContext, view: View) -> DiagramResult<Self> {
+        Ok(ViewView {
+            id: view.id(),
+            name: view.name().to_owned(),
+            is_default: view.is_default(ctx).await?,
+            timestamp: view.timestamp().to_owned(),
+        })
+    }
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone, Default)]
 pub struct ViewComponentsUpdateSingle {
     pub added: HashMap<ComponentId, RawGeometry>,
@@ -351,19 +374,81 @@ pub struct ViewComponentsUpdatePayload {
     client_ulid: Option<ulid::Ulid>,
 }
 
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+pub struct ViewWsPayload {
+    change_set_id: ChangeSetId,
+    view: ViewView,
+    // Used so the client can ignore the messages it caused. created by the frontend, and not stored
+    client_ulid: Option<ulid::Ulid>,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+pub struct ViewDeletedPayload {
+    change_set_id: ChangeSetId,
+    view_id: ViewId,
+    // Used so the client can ignore the messages it caused. created by the frontend, and not stored
+    client_ulid: Option<ulid::Ulid>,
+}
+
 impl WsEvent {
+    pub async fn view_created(
+        ctx: &DalContext,
+        view: ViewView,
+        client_ulid: Option<ulid::Ulid>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewCreated(ViewWsPayload {
+                change_set_id: ctx.change_set_id(),
+                view,
+                client_ulid,
+            }),
+        )
+        .await
+    }
+
+    pub async fn view_updated(
+        ctx: &DalContext,
+        view: ViewView,
+        client_ulid: Option<ulid::Ulid>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewUpdated(ViewWsPayload {
+                change_set_id: ctx.change_set_id(),
+                view,
+                client_ulid,
+            }),
+        )
+        .await
+    }
+
+    #[allow(unused)]
+    pub async fn view_deleted(
+        ctx: &DalContext,
+        view_id: ViewId,
+        client_ulid: Option<ulid::Ulid>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewDeleted(ViewDeletedPayload {
+                change_set_id: ctx.change_set_id(),
+                view_id,
+                client_ulid,
+            }),
+        )
+        .await
+    }
+
     pub async fn view_components_update(
         ctx: &DalContext,
-        change_set_id: ChangeSetId,
         updates_by_view: ViewComponentsUpdateList,
         client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
-        dbg!(&updates_by_view);
-
         WsEvent::new(
             ctx,
             WsPayload::ViewComponentsUpdate(ViewComponentsUpdatePayload {
-                change_set_id,
+                change_set_id: ctx.change_set_id(),
                 updates_by_view,
                 client_ulid,
             }),
