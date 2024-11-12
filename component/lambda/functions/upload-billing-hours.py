@@ -68,12 +68,12 @@ class UploadBillingHours(SiLambda):
                 self.redshift.query_raw(
                     f"""
                     SELECT external_subscription_id, hour_start, resource_count
-                    FROM workspace_operations.owner_resource_hours_with_subscriptions
-                    CROSS JOIN workspace_operations.workspace_update_events_summary
-                    WHERE external_subscription_id IS NOT NULL
-                    AND DATEADD(HOUR, {first_hour_start}, last_complete_hour_start) <= hour_start
-                    AND hour_start < DATEADD(HOUR, {last_hour_end}, last_complete_hour_start)
-                    ORDER BY hour_start DESC
+                      FROM workspace_operations.owner_resource_hours_with_subscriptions
+                     CROSS JOIN workspace_operations.workspace_update_events_summary
+                     WHERE external_subscription_id IS NOT NULL
+                       AND DATEADD(HOUR, {first_hour_start}, last_complete_hour_start) <= hour_start
+                       AND hour_start < DATEADD(HOUR, {last_hour_end}, last_complete_hour_start)
+                     ORDER BY hour_start DESC
                     """
                 ),
             )

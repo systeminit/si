@@ -30,6 +30,7 @@ class SiLambdaEnv(TypedDict):
     """ARN to an AWS secret containing the Lago API token"""
     LAGO_API_TOKEN_ARN: NotRequired[str]
 
+    """Auth API URL. Defaults to https://auth-api.systeminit.com"""
     AUTH_API_URL: NotRequired[str]
     BILLING_USER_EMAIL: NotRequired[str]
     BIlLING_USER_PASSWORD_ARN: NotRequired[str]
@@ -44,6 +45,7 @@ class SiLambda:
         self.dry_run = event.get("SI_DRY_RUN", False)
         self._lago = None
         self._redshift = None
+        self._auth_api = None
         logging.getLogger().setLevel(self.getenv("SI_LOG_LEVEL", self.getenv("LOG_LEVEL", "INFO")))
 
     @property
@@ -78,12 +80,12 @@ class SiLambda:
 
         return self._redshift
 
+    @property
     def auth_api(self):
         """Get the Auth API client, configured from the lambda environment """
         if self._auth_api is None:
-            auth_api_url = self.getenv("AUTH_API_URL")
-            if auth_api_url is None:
-                return None
+            auth_api_url = self.getenv("AUTH_API_URL", "https://auth-api.systeminit.com")
+            assert auth_api_url is not None, "AUTH_API_URL must be set"
 
             billing_user_email = self.getenv("BILLING_USER_EMAIL")
             assert billing_user_email is not None, "BILLING_USER_EMAIL must be set"
@@ -94,7 +96,8 @@ class SiLambda:
             billing_user_workspace_id = cast(Optional[WorkspaceId], self.getenv("BILLING_USER_WORKSPACE_ID"))
             assert billing_user_workspace_id is not None, "BILLING_USER_WORKSPACE_ID must be set"
 
-            self._auth_api = SiAuthApi.login(auth_api_url, billing_user_email, billing_user_password["BILLING_USER_PASSWORD"], billing_user_workspace_id)
+            print(billing_user_password)
+            self._auth_api = SiAuthApi.login(auth_api_url, billing_user_email, billing_user_password["BILLING_USER_PASWORD"], billing_user_workspace_id)
 
         return self._auth_api
 
