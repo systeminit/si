@@ -1,17 +1,18 @@
 use crate::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::view::{ViewError, ViewResult, ViewView};
+use crate::service::v2::view::{ViewError, ViewResult};
 use crate::tracking::track;
 use axum::extract::{Host, OriginalUri, Path};
 use axum::Json;
-use dal::diagram::view::View;
-use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use dal::diagram::view::{View, ViewView};
+use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
     pub name: String,
+    pub client_ulid: ulid::Ulid,
 }
 
 pub async fn create_view(
@@ -21,7 +22,7 @@ pub async fn create_view(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Json(Request { name }): Json<Request>,
+    Json(Request { name, client_ulid }): Json<Request>,
 ) -> ViewResult<ForceChangeSetResponse<ViewView>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -49,10 +50,11 @@ pub async fn create_view(
         }),
     );
 
+    let view_view = ViewView::from_view(&ctx, view).await?;
+
+    WsEvent::view_created(&ctx, view_view.clone(), Some(client_ulid)).await?;
+
     ctx.commit().await?;
 
-    Ok(ForceChangeSetResponse::new(
-        force_change_set_id,
-        ViewView::from_view(&ctx, view).await?,
-    ))
+    Ok(ForceChangeSetResponse::new(force_change_set_id, view_view))
 }

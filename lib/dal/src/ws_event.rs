@@ -1,12 +1,5 @@
 use std::num::ParseIntError;
 
-use serde::{Deserialize, Serialize};
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
-use si_frontend_types as frontend_types;
-use thiserror::Error;
-use ulid::Ulid;
-
 use crate::change_set::event::{
     ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
     ChangeSetStateChangePayload,
@@ -16,7 +9,7 @@ use crate::component::{
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionDeletedPayload,
     InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
-use crate::diagram::view::ViewComponentsUpdatePayload;
+use crate::diagram::view::{ViewComponentsUpdatePayload, ViewDeletedPayload, ViewWsPayload};
 use crate::diagram::SummaryDiagramEdge;
 use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::{FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventPayload};
@@ -37,6 +30,12 @@ use crate::{
     TransactionsError, WorkspacePk,
 };
 use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
+use serde::{Deserialize, Serialize};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
+use si_frontend_types as frontend_types;
+use thiserror::Error;
+use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -120,6 +119,9 @@ pub enum WsPayload {
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
     ViewComponentsUpdate(ViewComponentsUpdatePayload),
+    ViewCreated(ViewWsPayload),
+    ViewDeleted(ViewDeletedPayload),
+    ViewUpdated(ViewWsPayload),
     WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
     WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
 }

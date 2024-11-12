@@ -1,7 +1,7 @@
 use crate::extract::{AccessBuilder, HandlerContext};
-use crate::service::v2::view::{ViewError, ViewResult, ViewView};
+use crate::service::v2::view::{ViewError, ViewResult};
 use axum::extract::{Json, Path};
-use dal::diagram::view::{View, ViewId};
+use dal::diagram::view::{View, ViewId, ViewView};
 use dal::diagram::Diagram;
 use dal::{slow_rt, ChangeSetId, WorkspacePk};
 use serde::{Deserialize, Serialize};
