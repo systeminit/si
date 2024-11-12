@@ -2,7 +2,7 @@
   <ScrollArea>
     <template #top>
       <SidebarSubpanelTitle icon="component">
-        <template #label> Install New Assets</template>
+        <template #label>Assets Available to Install</template>
       </SidebarSubpanelTitle>
       <SiSearch
         ref="searchRef"

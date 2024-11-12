@@ -5,12 +5,16 @@
     marginTop="2xs"
     @update:selected-tab="onTabChange"
   >
-    <TabGroupItem slug="assets" label="ASSETS">
+    <TabGroupItem slug="assets">
+      <template #label>
+        Assets Installed
+        <PillCounter :count="assetList.length" />
+      </template>
       <slot name="assets" />
     </TabGroupItem>
     <TabGroupItem slug="newassets">
       <template #label>
-        NEW ASSETS
+        Assets Available
         <PillCounter :count="moduleStore.installableModules.length" />
       </template>
       <slot name="newassets" />
@@ -18,7 +22,7 @@
     <TabGroupItem
       v-if="featureFlagsStore.MODULES_TAB"
       slug="packages"
-      label="MODULES"
+      label="M"
     >
       <slot name="packages" />
     </TabGroupItem>
@@ -28,6 +32,7 @@
 <script lang="ts" setup>
 import { useRouter, useRoute, RouteLocationNamedRaw } from "vue-router";
 import { PropType, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { TabGroup, TabGroupItem, PillCounter } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -38,6 +43,8 @@ const route = useRoute();
 const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const moduleStore = useModuleStore();
+
+const { variantList: assetList } = storeToRefs(assetStore);
 
 const group = ref<InstanceType<typeof TabGroup>>();
 

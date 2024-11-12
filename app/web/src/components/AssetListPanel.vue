@@ -9,8 +9,7 @@
       <SidebarSubpanelTitle icon="component">
         <template #label>
           <div class="flex flex-row gap-xs">
-            <div>Assets</div>
-            <PillCounter :count="assetList.length" />
+            <div>Assets Installed</div>
           </div>
         </template>
         <div class="flex flex-row gap-xs items-center">
