@@ -1,5 +1,8 @@
 CREATE SCHEMA IF NOT EXISTS workspace_operations;
 
+GRANT USAGE ON SCHEMA workspace_operations TO lambda_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workspace_operations TO lambda_user;
+
 -- Imported mapping from a workspace to its owner.
 -- This table creation is untested (it was created manually and this description extracted)
 CREATE TABLE IF NOT EXISTS workspace_operations.workspace_owners (

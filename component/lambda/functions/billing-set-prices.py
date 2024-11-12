@@ -158,5 +158,4 @@ class BillingSetPrices(SiLambda):
                 self.lago.put(path, payload)
 
 
-def lambda_handler(event={}, _context=None):
-    BillingSetPrices(event).run()
+lambda_handler = BillingSetPrices.lambda_handler

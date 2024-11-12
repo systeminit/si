@@ -104,5 +104,4 @@ class UploadBillingHours(SiLambda):
             )
             last_hour_end = first_hour_start if uploaded_events > 0 else None
 
-def lambda_handler(event: UploadBillingHoursEnv = {}, _context = None):
-    UploadBillingHours(event).run()
+lambda_handler = UploadBillingHours.lambda_handler

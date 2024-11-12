@@ -1,5 +1,6 @@
 # Helpers for SI lambdas
 
+from abc import abstractmethod
 import boto3
 import json
 import os
@@ -36,13 +37,25 @@ class SiLambdaEnv(TypedDict):
     BIlLING_USER_PASSWORD_ARN: NotRequired[str]
     BILLING_USER_WORKSPACE_ID: NotRequired[str]
 
+    # Billing metric code. Defaults to resource-hours
+    SI_BILLING_METRIC_CODE: NotRequired[str]
+    # Cost per resource hour. Defaults to 0.007
+    SI_BILLING_COST_PER_RESOURCE_HOUR: NotRequired[float]
+
 class SiLambda:
+    @classmethod
+    def lambda_handler(cls, event: SiLambdaEnv = {}, _context=None):
+        lambda_instance = cls(event)
+        lambda_instance.run()
+
     def __init__(self, event: SiLambdaEnv, session = boto3.Session()):
         self.session = session
         self.event = event
 
         """Whether this is a dry-run that doesn't actually write anything anywhere"""
         self.dry_run = event.get("SI_DRY_RUN", False)
+        self.billing_metric_code = event.get("SI_BILLING_METRIC_CODE", "resource-hours")
+        self.billing_cost_per_resource_hour = event.get("SI_BILLING_COST_PER_RESOURCE_HOUR", 0.007)
         self._lago = None
         self._redshift = None
         self._auth_api = None
@@ -128,3 +141,6 @@ class SiLambda:
         """Get a secret from an arn."""
         secretsmanager = self.session.client(service_name="secretsmanager")
         return secretsmanager.get_secret_value(SecretId=secret_id)
+
+    @abstractmethod
+    def run(): ...
