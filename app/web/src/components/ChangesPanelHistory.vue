@@ -105,15 +105,14 @@ import {
   ChangeSetDetail,
   useActionsStore,
 } from "@/store/actions.store";
-import {
-  FuncRun,
-  FuncRunId,
-  ManagementHistoryItem,
-  useFuncRunsStore,
-} from "@/store/func_runs.store";
+import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import {
+  ManagementHistoryItem,
+  useManagementRunsStore,
+} from "@/store/management_runs.store";
 import EmptyStateCard from "./EmptyStateCard.vue";
 import ActionsList from "./Actions/ActionsList.vue";
 import FuncRunTabGroup from "./Actions/FuncRunTabGroup.vue";
@@ -121,6 +120,7 @@ import ManagementHistoryList from "./Management/ManagementHistoryList.vue";
 
 const actionsStore = useActionsStore();
 const funcRunsStore = useFuncRunsStore();
+const managementRunsStore = useManagementRunsStore();
 const changeSetsStore = useChangeSetsStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -134,8 +134,7 @@ const selectedTab = ref<string | undefined>();
 
 const managementHistoryForChangeSet = computed(() =>
   changeSetsStore.selectedChangeSetId
-    ? funcRunsStore.managementRunHistory[changeSetsStore.selectedChangeSetId] ??
-      []
+    ? managementRunsStore.managementRunHistory ?? []
     : [],
 );
 
