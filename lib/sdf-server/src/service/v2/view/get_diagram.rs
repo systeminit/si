@@ -27,7 +27,7 @@ pub async fn get_diagram(
     let ctx_clone = ctx.clone();
     let diagram = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
-        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, view_id).await?)
+        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, Some(view_id)).await?)
     })?
     .await??;
 
@@ -52,7 +52,7 @@ pub async fn get_default_diagram(
     let ctx_clone = ctx.clone();
     let diagram = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
-        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, view_id).await?)
+        Ok::<Diagram, ViewError>(Diagram::assemble_for_default_view(ctx).await?)
     })?
     .await??;
 

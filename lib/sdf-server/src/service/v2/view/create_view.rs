@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Request {
     pub name: String,
-    pub client_ulid: ulid::Ulid,
 }
 
 pub async fn create_view(
@@ -22,7 +21,7 @@ pub async fn create_view(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-    Json(Request { name, client_ulid }): Json<Request>,
+    Json(Request { name }): Json<Request>,
 ) -> ViewResult<ForceChangeSetResponse<ViewView>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -52,7 +51,7 @@ pub async fn create_view(
 
     let view_view = ViewView::from_view(&ctx, view).await?;
 
-    WsEvent::view_created(&ctx, view_view.clone(), Some(client_ulid)).await?;
+    WsEvent::view_created(&ctx, view_view.clone()).await?;
 
     ctx.commit().await?;
 

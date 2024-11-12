@@ -1,5 +1,7 @@
 use std::num::ParseIntError;
 
+use super::ApiError;
+use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -8,6 +10,7 @@ use axum::{
 };
 use dal::prop::PropError;
 use dal::property_editor::PropertyEditorError;
+use dal::slow_rt::SlowRuntimeError;
 use dal::validation::ValidationError;
 use dal::{
     action::prototype::ActionPrototypeError, action::ActionError,
@@ -22,10 +25,7 @@ use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebu
 use dal::{ChangeSetError, TransactionsError};
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
-
-use super::ApiError;
+use tokio::task::JoinError;
 
 pub mod conflicts_for_component;
 pub mod debug;
@@ -72,6 +72,8 @@ pub enum ComponentError {
     Http(#[from] axum::http::Error),
     #[error("invalid visibility")]
     InvalidVisibility,
+    #[error("join error: {0}")]
+    Join(#[from] JoinError),
     #[error("key {0} already exists for that map")]
     KeyAlreadyExists(String),
     #[error("component not found for id: {0}")]
@@ -98,6 +100,8 @@ pub enum ComponentError {
     SecretIdDeserialization(#[source] serde_json::Error),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
