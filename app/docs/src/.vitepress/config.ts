@@ -128,6 +128,10 @@ export default defineConfig({
             text: "AWS macOS Instances",
             link: "/how-tos/aws-macos",
           },
+          {
+            text: "AWS EKS",
+            link: "/how-tos/aws-eks",
+          },
         ],
       },
       {

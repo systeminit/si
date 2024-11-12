@@ -16,3 +16,4 @@ relying on your pre-existing knowledge.
   a static website with S3 and Cloudfront
 - [AWS macOS Instances](./aws-macos) - learn how to create macOS instances on
   AWS EC2
+- [AWS EKS](./aws-eks) - learn how to manage an AWS EKS Cluster
