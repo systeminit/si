@@ -34,10 +34,10 @@ async fn update_managed_components_in_view(ctx: &DalContext) {
 
     let view_name = "a view askew";
     let new_view_id = ExpectView::create_with_name(ctx, view_name).await.id();
-    Geometry::new(ctx, small_odd_lego.id(), new_view_id)
+    Geometry::new_for_component(ctx, small_odd_lego.id(), new_view_id)
         .await
         .expect("create geometry in view");
-    Geometry::new(ctx, small_even_lego.id(), new_view_id)
+    Geometry::new_for_component(ctx, small_even_lego.id(), new_view_id)
         .await
         .expect("create geometry in view");
 

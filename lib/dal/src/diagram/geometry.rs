@@ -1,6 +1,8 @@
+use crate::diagram::diagram_object::DiagramObject;
 use crate::diagram::view::{View, ViewId};
 use crate::diagram::{DiagramError, DiagramResult};
 use crate::layer_db_types::{GeometryContent, GeometryContentV1};
+use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
 use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
@@ -33,6 +35,11 @@ impl From<Geometry> for RawGeometry {
 
 id!(GeometryId);
 
+pub enum GeometryRepresents {
+    Component(ComponentId),
+    View(ViewId),
+}
+
 /// Represents spatial data for something to be shown on a view
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Geometry {
@@ -50,6 +57,14 @@ impl Geometry {
         source_id: GeometryId,
         destination_id: ComponentId,
         add_fn: add_edge_to_component,
+        discriminant: EdgeWeightKindDiscriminants::Represents,
+        result: DiagramResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: GeometryId,
+        destination_id: Ulid,
+        add_fn: add_edge_to_diagram_object,
         discriminant: EdgeWeightKindDiscriminants::Represents,
         result: DiagramResult,
     );
@@ -91,11 +106,55 @@ impl Geometry {
         }
     }
 
-    pub async fn new(
+    pub async fn new_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
         view_id: ViewId,
     ) -> DiagramResult<Self> {
+        let (node_weight, content) = Self::new_inner(ctx, view_id).await?;
+
+        Self::add_edge_to_component(
+            ctx,
+            node_weight.id().into(),
+            component_id,
+            EdgeWeightKind::Represents,
+        )
+        .await?;
+
+        Ok(Self::assemble(
+            node_weight.get_geometry_node_weight()?,
+            content,
+        ))
+    }
+
+    pub async fn new_for_view(
+        ctx: &DalContext,
+        object_view_id: ViewId,
+        container_view_id: ViewId,
+    ) -> DiagramResult<Self> {
+        let (node_weight, content) = Self::new_inner(ctx, container_view_id).await?;
+        let geometry_id = node_weight.id();
+
+        let d_object_id = DiagramObject::get_for_view(ctx, object_view_id).await?.id();
+
+        Self::add_edge_to_diagram_object(
+            ctx,
+            geometry_id.into(),
+            d_object_id,
+            EdgeWeightKind::Represents,
+        )
+        .await?;
+
+        Ok(Self::assemble(
+            node_weight.get_geometry_node_weight()?,
+            content,
+        ))
+    }
+
+    async fn new_inner(
+        ctx: &DalContext,
+        container_view_id: ViewId,
+    ) -> DiagramResult<(NodeWeight, GeometryContent)> {
         let snap = ctx.workspace_snapshot()?;
         let id = snap.generate_ulid().await?;
         let lineage_id = snap.generate_ulid().await?;
@@ -118,23 +177,17 @@ impl Geometry {
         let node_weight = NodeWeight::new_geometry(id, lineage_id, content_address);
         snap.add_or_replace_node(node_weight.clone()).await?;
 
-        Self::add_edge_to_component(ctx, id.into(), component_id, EdgeWeightKind::Represents)
-            .await?;
+        View::add_geometry_by_id(ctx, container_view_id, id.into()).await?;
 
-        View::add_geometry_by_id(ctx, view_id, id.into()).await?;
-
-        Ok(Self::assemble(
-            node_weight.get_geometry_node_weight()?,
-            content,
-        ))
+        Ok((node_weight, content))
     }
 
     // Some changesets have orphan geometries because of an old bug, so when calling this function.
     // be careful when dealing with the ComponentNotFoundForGeometry error
-    pub async fn component_id(
+    pub async fn represented_id(
         ctx: &DalContext,
         geometry_id: GeometryId,
-    ) -> DiagramResult<ComponentId> {
+    ) -> DiagramResult<GeometryRepresents> {
         let snap = ctx.workspace_snapshot()?;
 
         let component_id = snap
@@ -144,14 +197,41 @@ impl Geometry {
             )
             .await?
             .pop()
-            .ok_or(DiagramError::ComponentNotFoundForGeometry(geometry_id))?;
+            .ok_or(DiagramError::RepresentedNotFoundForGeometry(geometry_id))?;
 
-        Ok(snap
-            .get_node_weight(component_id)
-            .await?
-            .get_component_node_weight()?
-            .id
-            .into())
+        let node_weight = snap.get_node_weight(component_id).await?;
+
+        let geo_represents = match node_weight {
+            NodeWeight::Action(_)
+            | NodeWeight::ActionPrototype(_)
+            | NodeWeight::AttributePrototypeArgument(_)
+            | NodeWeight::AttributeValue(_)
+            | NodeWeight::Category(_)
+            | NodeWeight::Content(_)
+            | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::Func(_)
+            | NodeWeight::FuncArgument(_)
+            | NodeWeight::Ordering(_)
+            | NodeWeight::Prop(_)
+            | NodeWeight::Secret(_)
+            | NodeWeight::FinishedDependentValueRoot(_)
+            | NodeWeight::InputSocket(_)
+            | NodeWeight::SchemaVariant(_)
+            | NodeWeight::ManagementPrototype(_)
+            | NodeWeight::Geometry(_)
+            | NodeWeight::View(_) => {
+                return Err(DiagramError::GeometryCannotRepresentNodeWeight(
+                    node_weight.into(),
+                ))
+            }
+            NodeWeight::Component(w) => GeometryRepresents::Component(w.id.into()),
+            NodeWeight::DiagramObject(w) => {
+                let DiagramObjectKind::View(view_id) = w.object_kind();
+                GeometryRepresents::View(view_id)
+            }
+        };
+
+        Ok(geo_represents)
     }
 
     pub async fn get_by_id(ctx: &DalContext, component_id: GeometryId) -> DiagramResult<Self> {
@@ -262,6 +342,51 @@ impl Geometry {
             .ok_or_else(|| DiagramError::GeometryNotFoundForComponentAndView(component_id, view_id))
     }
 
+    pub async fn get_by_object_view_and_container_view(
+        ctx: &DalContext,
+        object_view: ViewId,
+        container_view: ViewId,
+    ) -> DiagramResult<Self> {
+        let diagram_object = DiagramObject::get_for_view(ctx, object_view).await?;
+
+        let snap = ctx.workspace_snapshot()?;
+
+        let mut maybe_weight = None;
+        for geometry_idx in snap
+            .incoming_sources_for_edge_weight_kind(
+                diagram_object.id(),
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?
+        {
+            let node_weight = snap
+                .get_node_weight(geometry_idx)
+                .await?
+                .get_geometry_node_weight()?;
+
+            let this_view_id = Self::get_view_id_by_id(ctx, node_weight.id().into()).await?;
+
+            if this_view_id == container_view {
+                maybe_weight = Some(node_weight);
+            }
+        }
+
+        let Some(node_weight) = maybe_weight else {
+            return Err(DiagramError::GeometryNotFoundForViewObjectAndView(
+                object_view,
+                container_view,
+            ));
+        };
+
+        let content = Self::try_get_content(ctx, &node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                node_weight.id(),
+            ))?;
+
+        Ok(Self::assemble(node_weight, content))
+    }
+
     pub async fn get_view_id_by_id(ctx: &DalContext, id: GeometryId) -> DiagramResult<ViewId> {
         let snap = ctx.workspace_snapshot()?;
         let view_idx = snap
@@ -358,15 +483,20 @@ impl Geometry {
 
     /// Removes a [Geometry] from the graph, provided it's not the last geometry for a component
     pub async fn remove(ctx: &DalContext, geometry_id: GeometryId) -> DiagramResult<()> {
-        match Self::component_id(ctx, geometry_id).await {
-            Ok(id) => {
-                if Self::list_ids_by_component(ctx, id).await?.len() == 1 {
+        match Self::represented_id(ctx, geometry_id).await {
+            Ok(GeometryRepresents::Component(component_id)) => {
+                if Self::list_ids_by_component(ctx, component_id).await?.len() == 1 {
                     let view_id = Self::get_view_id_by_id(ctx, geometry_id).await?;
-                    return Err(DiagramError::DeletingLastGeometryForComponent(view_id, id));
+                    return Err(DiagramError::DeletingLastGeometryForComponent(
+                        view_id,
+                        component_id,
+                    ));
                 }
             }
+            // There's no problem in deleting all geometries for a view
+            Ok(GeometryRepresents::View(_)) => {}
             // There's no problem in deleting orphan geometries
-            Err(DiagramError::ComponentNotFoundForGeometry(_)) => {}
+            Err(DiagramError::RepresentedNotFoundForGeometry(_)) => {}
             Err(e) => return Err(e),
         }
 

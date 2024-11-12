@@ -1,3 +1,4 @@
+mod diagram_object;
 pub mod geometry;
 pub mod view;
 
@@ -5,33 +6,37 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::collections::{HashMap, HashSet};
-use std::num::{ParseFloatError, ParseIntError};
-use std::sync::Arc;
+use std::{
+    num::{ParseFloatError, ParseIntError},
+    sync::Arc,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::attribute::value::AttributeValueError;
-use crate::change_status::ChangeStatus;
-use crate::component::inferred_connection_graph::InferredConnectionGraphError;
-use crate::component::{
-    ComponentError, ComponentResult, IncomingConnection, InferredConnection, OutgoingConnection,
-};
-use crate::diagram::geometry::{Geometry, GeometryId};
-use crate::diagram::view::{View, ViewId};
-use crate::schema::variant::SchemaVariantError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    attribute::{
+        prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
+        value::AttributeValueError,
+    },
+    change_status::ChangeStatus,
+    component::{
+        inferred_connection_graph::InferredConnectionGraphError, ComponentError, ComponentResult,
+        IncomingConnection, InferredConnection, OutgoingConnection,
+    },
+    diagram::{
+        geometry::{Geometry, GeometryId, GeometryRepresents},
+        view::{View, ViewId, ViewObjectView},
+    },
+    schema::variant::SchemaVariantError,
+    socket::{input::InputSocketError, output::OutputSocketError},
+    workspace_snapshot::{
+        node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
+        WorkspaceSnapshotError,
+    },
     AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
-    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, StandardModelError, TransactionsError, Workspace, WorkspaceError,
-    WorkspaceSnapshot,
+    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId,
+    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariantId, StandardModelError,
+    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
 };
 use si_frontend_types::{DiagramComponentView, DiagramSocket};
 use si_layer_cache::LayerDbError;
@@ -53,8 +58,6 @@ pub enum DiagramError {
     Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
-    #[error("component not found for geometry: {0}")]
-    ComponentNotFoundForGeometry(GeometryId),
     #[error("component status not found for component: {0}")]
     ComponentStatusNotFound(ComponentId),
     #[error("default view not found")]
@@ -67,12 +70,20 @@ pub enum DiagramError {
     DestinationAttributePrototypeNotFound(AttributePrototypeArgumentId),
     #[error("destination input socket not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})")]
     DestinationInputSocketNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
+    #[error("more then one diagram object found for view {0}")]
+    DiagramObjectMoreThanOneForView(ViewId),
+    #[error("diagram object not found for view {0}")]
+    DiagramObjectNotFoundForView(ViewId),
     #[error("edge not found")]
     EdgeNotFound,
+    #[error("geometry can't represent: {0}")]
+    GeometryCannotRepresentNodeWeight(NodeWeightDiscriminants),
     #[error("geometry not found: {0}")]
     GeometryNotFound(GeometryId),
     #[error("geometry not found for component {0} on view {1}")]
     GeometryNotFoundForComponentAndView(ComponentId, ViewId),
+    #[error("geometry not found for view object {0} on view {1}")]
+    GeometryNotFoundForViewObjectAndView(ViewId, ViewId),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("history event error: {0}")]
@@ -97,6 +108,8 @@ pub enum DiagramError {
     Pg(#[from] PgError),
     #[error("position not found")]
     PositionNotFound,
+    #[error("represented node not found for geometry: {0}")]
+    RepresentedNotFoundForGeometry(GeometryId),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant error: {0}")]
@@ -289,6 +302,7 @@ pub struct Diagram {
     pub edges: Vec<SummaryDiagramEdge>,
     pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
     pub management_edges: Vec<SummaryDiagramManagementEdge>,
+    pub views: Vec<ViewObjectView>,
 }
 
 pub struct DiagramComponentViews {
@@ -619,14 +633,15 @@ impl Diagram {
     /// graph.
     #[instrument(level = "info", skip(ctx))]
     pub async fn assemble(ctx: &DalContext, maybe_view_id: Option<ViewId>) -> DiagramResult<Self> {
+        let mut views = vec![];
         let component_info_cache = {
             let mut map = HashMap::new();
 
             if let Some(view_id) = maybe_view_id {
                 for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
-                    let component_id = match Geometry::component_id(ctx, geometry.id()).await {
-                        Ok(id) => id,
-                        Err(DiagramError::ComponentNotFoundForGeometry(geo_id)) => {
+                    let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await {
+                        Ok(r) => r,
+                        Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
                             let changeset_id = ctx.change_set_id();
                             // NOTE(victor): The first version of views didn't delete geometries with components,
                             // so we have dangling geometries in some workspaces. We should clean this up at some point,
@@ -635,25 +650,38 @@ impl Diagram {
                             debug!(
                                 si.change_set.id = %changeset_id,
                                 si.geometry.id = %geo_id,
-                                "Could not find component for geometry - skipping"
+                                "Could not find represented node for geometry - skipping"
                             );
 
                             continue;
                         }
                         Err(e) => return Err(e),
                     };
+                    match geo_represents {
+                        GeometryRepresents::Component(component_id) => {
+                            let component = Component::get_by_id(ctx, component_id).await?;
+                            let schema_id = component.schema(ctx).await?.id();
 
-                    let component = Component::get_by_id(ctx, component_id).await?;
-                    let schema_id = component.schema(ctx).await?.id();
-
-                    map.insert(
-                        component_id,
-                        ComponentInfo {
-                            component,
-                            geometry: Some(geometry),
-                            schema_id,
-                        },
-                    );
+                            map.insert(
+                                component_id,
+                                ComponentInfo {
+                                    component,
+                                    geometry: Some(geometry),
+                                    schema_id,
+                                },
+                            );
+                        }
+                        GeometryRepresents::View(view_id) => {
+                            let view = View::get_by_id(ctx, view_id).await?;
+                            let view_object_view = ViewObjectView::from_view_and_geometry(
+                                ctx,
+                                view,
+                                geometry.into_raw(),
+                            )
+                            .await?;
+                            views.push(view_object_view);
+                        }
+                    }
                 }
             } else {
                 for component in Component::list(ctx).await? {
@@ -716,6 +744,7 @@ impl Diagram {
             components: diagram_component_views.component_views,
             inferred_edges: diagram_inferred_edges,
             management_edges: diagram_component_views.management_edges,
+            views,
         })
     }
 

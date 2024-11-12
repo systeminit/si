@@ -50,6 +50,7 @@
           configurationFrameUp: 'Up Frame',
           configurationFrameDown: 'Down Frame',
           aggregationFrame: 'Frame',
+          view: 'View',
         }[siValues.type]
       "
       size="lg"
@@ -99,13 +100,16 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { useViewsStore } from "@/store/views.store";
+import { DiagramViewData } from "../ModelingDiagram/diagram_types";
 
+const viewStore = useViewsStore();
 const componentsStore = useComponentsStore();
-const componentId = componentsStore.selectedComponent?.def.id;
+const componentId = viewStore.selectedComponent?.def.id;
 if (!componentId) {
   throw new Error("Do not use this component without a selectedComponentId");
 }
-const component = componentsStore.selectedComponent;
+const component = viewStore.selectedComponent;
 
 const attributesStore = useComponentAttributesStore(componentId || "NONE");
 
@@ -117,7 +121,10 @@ const siProps = computed(() => attributesStore.siTreeByPropName);
 // in case in the future we may want to show more info (like where the value is coming from, its update status, etc...)
 const siValuesFromStore = computed(() => ({
   name:
-    (siProps.value?.name?.value?.value as string) || component.def.displayName,
+    (siProps.value?.name?.value?.value as string) ||
+    ("displayName" in component.def && component.def.displayName) ||
+    ("name" in component.def && component.def.name) ||
+    "",
   color: (siProps.value?.color?.value?.value as string) || component.def.color,
   type:
     (siProps.value?.type?.value?.value as ComponentType) ||
@@ -137,6 +144,7 @@ watch(
   { deep: true },
 );
 function updateSiProp(key: keyof typeof siValues) {
+  if (component instanceof DiagramViewData) return;
   if (key === "name") siValues[key] = siValues[key].trim();
 
   const newVal = siValues[key];

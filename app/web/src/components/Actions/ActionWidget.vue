@@ -51,7 +51,8 @@ import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useActionsStore } from "@/store/actions.store";
 import { Action } from "@/api/sdf/dal/func";
-import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import {
   DiagramGroupData,
@@ -68,8 +69,8 @@ const props = defineProps<{
   binding: BindingWithDisplayName;
 }>();
 
-const componentsStore = useComponentsStore();
-const { selectedComponent } = storeToRefs(componentsStore);
+const viewStore = useViewsStore();
+const { selectedComponent } = storeToRefs(viewStore);
 const actionsStore = useActionsStore();
 const router = useRouter();
 
@@ -92,7 +93,10 @@ function clickHandler() {
 }
 
 function onClickView() {
-  if (props.binding) {
+  if (
+    props.binding &&
+    selectedComponent.value?.def.componentType !== ComponentType.View
+  ) {
     router.push({
       name: "workspace-lab-assets",
       query: {

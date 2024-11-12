@@ -17,7 +17,10 @@ use crate::component::{
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionDeletedPayload,
     ConnectionUpsertedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
-use crate::diagram::view::{ViewComponentsUpdatePayload, ViewDeletedPayload, ViewWsPayload};
+use crate::diagram::view::{
+    ViewComponentsUpdatePayload, ViewDeletedPayload, ViewObjectCreatedPayload,
+    ViewObjectRemovedPayload, ViewWsPayload,
+};
 use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::{
     FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventGenerating, FuncWsEventPayload,
@@ -126,6 +129,8 @@ pub enum WsPayload {
     ViewComponentsUpdate(ViewComponentsUpdatePayload),
     ViewCreated(ViewWsPayload),
     ViewDeleted(ViewDeletedPayload),
+    ViewObjectCreated(ViewObjectCreatedPayload),
+    ViewObjectRemoved(ViewObjectRemovedPayload),
     ViewUpdated(ViewWsPayload),
     WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
     WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),

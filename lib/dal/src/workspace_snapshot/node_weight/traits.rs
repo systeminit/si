@@ -14,8 +14,11 @@ pub mod correct_exclusive_outgoing_edge;
 
 pub use correct_exclusive_outgoing_edge::CorrectExclusiveOutgoingEdge;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum CorrectTransformsError {
+    #[error("Invalid Updates: {0}")]
+    InvalidUpdates(String),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("expected a node weight of kind {0} but got another, or none")]

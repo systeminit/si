@@ -1,5 +1,12 @@
 <template>
   <DropdownMenu
+    v-if="selectedEdge"
+    ref="contextMenuRef"
+    :items="rightClickMenuItemsEdge"
+    variant="editor"
+  />
+  <DropdownMenu
+    v-else
     ref="contextMenuRef"
     :items="rightClickMenuItems"
     variant="editor"
@@ -32,6 +39,12 @@ import { useViewsStore } from "@/store/views.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ViewId } from "@/api/sdf/dal/views";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+  DiagramNodeDef,
+  DiagramViewData,
+} from "../ModelingDiagram/diagram_types";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -52,9 +65,8 @@ const {
   deletableSelectedComponents,
   restorableSelectedComponents,
   erasableSelectedComponents,
-  selectedEdgeId,
   selectedEdge,
-} = storeToRefs(componentsStore);
+} = storeToRefs(viewStore);
 
 const attributesStore = computed(() =>
   selectedComponentId.value
@@ -71,21 +83,30 @@ function typeDisplayName() {
       ComponentType.ConfigurationFrameUp
     )
       return "UP FRAME";
-    else return "DOWN FRAME";
+    else if (
+      selectedComponent.value.def.componentType ===
+      ComponentType.ConfigurationFrameDown
+    )
+      return "DOWN FRAME";
+    else if (selectedComponent.value.def.componentType === ComponentType.View)
+      return "VIEW";
+    else return "ASSET";
   } else if (selectedComponentIds.value.length) {
     for (const c of selectedComponents.value) {
       if (c.def.componentType === ComponentType.Component) return "COMPONENTS"; // if we have both frames and components, just use the word component
     }
-    return "FRAMES";
+    return "ASSETS";
   } else {
-    return "COMPONENT";
+    return "ASSET";
   }
 }
 
 const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 const canRefresh = computed(
   () =>
-    selectedComponent.value?.def.hasResource &&
+    selectedComponent.value?.def &&
+    "hasResource" in selectedComponent.value.def &&
+    selectedComponent.value.def.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId,
 );
 const getActionToggleState = (id: string) => {
@@ -98,10 +119,18 @@ const getActionToggleState = (id: string) => {
 };
 
 const removeFromView = () => {
-  if (viewStore.selectedViewId)
-    viewStore.REMOVE_FROM(viewStore.selectedViewId, [
-      ...componentsStore.selectedComponentIds,
-    ]);
+  if (viewStore.selectedViewId) {
+    const componentIds = viewStore.selectedComponents
+      .filter((c) => c.def.componentType !== ComponentType.View)
+      .map((c) => c.def.id);
+    if (componentIds.length > 0)
+      viewStore.REMOVE_FROM(viewStore.selectedViewId, componentIds);
+    const viewIds = viewStore.selectedComponents
+      .filter((c) => c.def.componentType === ComponentType.View)
+      .map((c) => c.def.id);
+    if (viewIds.length > 0)
+      viewStore.REMOVE_VIEW_FROM(viewStore.selectedViewId, viewIds);
+  }
 };
 
 const viewsSubitems = (add: (viewId: ViewId) => void) => {
@@ -119,53 +148,74 @@ const viewsSubitems = (add: (viewId: ViewId) => void) => {
 const viewAdd = (remove: boolean) => {
   return (viewId: ViewId) => {
     const components: Record<ComponentId, IRect> = {};
-    selectedComponents.value.forEach((c) => {
-      const geo = c.def.isGroup
-        ? viewStore.groups[c.def.id]
-        : viewStore.components[c.def.id];
-      if (geo) components[c.def.id] = geo;
-    });
+    selectedComponents.value
+      .filter(
+        (c): c is DiagramGroupData | DiagramNodeData =>
+          c.def.componentType !== ComponentType.View,
+      )
+      .forEach((c) => {
+        const geo = c.def.isGroup
+          ? viewStore.groups[c.def.id]
+          : viewStore.components[c.def.id];
+        if (geo) components[c.def.id] = geo;
+      });
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     viewStore.ADD_TO(viewStore.selectedViewId!, components, viewId, remove);
   };
 };
 
+const rightClickMenuItemsEdge = computed(() => {
+  const items: DropdownMenuItemObjectDef[] = [];
+  const disabled = false;
+  // single selected edge
+  items.push({
+    label: "EDGE",
+    header: true,
+  });
+
+  if (selectedEdge.value?.changeStatus === "deleted") {
+    items.push({
+      label: "Restore",
+      icon: "trash-restore",
+      onSelect: triggerRestoreSelection,
+      disabled,
+    });
+  } else {
+    items.push({
+      label: "Delete",
+      shortcut: "⌫",
+      icon: "trash",
+      onSelect: triggerDeleteSelection,
+      disabled,
+    });
+  }
+  return items;
+});
+
+const anyViews = computed(() =>
+  selectedComponents.value.some((c) => c instanceof DiagramViewData),
+);
+
+/**
+ * HERE IS THE APPROACH IN GENERAL
+ * Make sure every "action" (i.e. onSelect) operates on the whole list of selectedComponents
+ * Unless it is disallowed from doing so
+ *
+ * Don't duplicate `items.push`, only add a thing one time, and focus on the conditions by which it should be added
+ */
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled = false;
 
-  if (selectedEdgeId.value) {
-    // single selected edge
+  if (ffStore.OUTLINER_VIEWS) {
     items.push({
-      label: "EDGE",
+      label: "VIEWS",
       header: true,
     });
 
-    if (selectedEdge.value?.changeStatus === "deleted") {
-      items.push({
-        label: "Restore",
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-        disabled,
-      });
-    } else {
-      items.push({
-        label: "Delete",
-        shortcut: "⌫",
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-        disabled,
-      });
-    }
-  } else if (selectedComponentId.value && selectedComponent.value) {
-    // single selected component
-    if (ffStore.OUTLINER_VIEWS) {
-      items.push({
-        label: "VIEWS",
-        header: true,
-      });
-
+    // you can do these operations no matter how many elements selected
+    if (!anyViews.value) {
       items.push({
         label: "Move to",
         icon: "arrows-out",
@@ -176,18 +226,24 @@ const rightClickMenuItems = computed(() => {
         icon: "clipboard-copy",
         submenuItems: viewsSubitems(viewAdd(false)),
       });
-      items.push({
-        label: "Remove",
-        icon: "x-circle",
-        onSelect: removeFromView,
-      });
     }
-
     items.push({
-      label: typeDisplayName(),
-      header: true,
+      label: "Remove",
+      icon: "x-circle",
+      onSelect: removeFromView,
     });
+  }
 
+  // if you've selected a view, you can't do anything else
+  if (anyViews.value) return items;
+
+  items.push({
+    label: typeDisplayName(),
+    header: true,
+  });
+
+  // if only one element you can do these operations
+  if (selectedComponentId.value && selectedComponent.value) {
     items.push({
       label: "Rename",
       shortcut: "N",
@@ -196,159 +252,112 @@ const rightClickMenuItems = computed(() => {
     });
 
     // set component type
-    {
-      const updateComponentType = (componentType: ComponentType) => {
-        if (selectedComponentId.value && attributesStore.value) {
-          attributesStore.value.SET_COMPONENT_TYPE({
-            componentId: selectedComponentId.value,
-            componentType,
-          });
-        }
-      };
-
-      const submenuItems: DropdownMenuItemObjectDef[] = [];
-      submenuItems.push({
-        label: "Component",
-        icon: "component",
-        checkable: true,
-        checked:
-          selectedComponent.value.def.componentType === ComponentType.Component,
-        onSelect: () => {
-          updateComponentType(ComponentType.Component);
-        },
-      });
-      submenuItems.push({
-        label: "Up Frame",
-        icon: "frame-up",
-        checkable: true,
-        checked:
-          selectedComponent.value.def.componentType ===
-          ComponentType.ConfigurationFrameUp,
-        onSelect: () => {
-          updateComponentType(ComponentType.ConfigurationFrameUp);
-        },
-      });
-      submenuItems.push({
-        label: "Down Frame",
-        icon: "frame-down",
-        checkable: true,
-        checked:
-          selectedComponent.value.def.componentType ===
-          ComponentType.ConfigurationFrameDown,
-        onSelect: () => {
-          updateComponentType(ComponentType.ConfigurationFrameDown);
-        },
-      });
-
-      items.push({
-        label: "Set Type",
-        icon: "component",
-        submenuItems,
-      });
-    }
-
-    // management funcs
-    if (
-      funcStore.managementFunctionsForSelectedComponent.length > 0 &&
-      ffStore.MANAGEMENT_FUNCTIONS
-    ) {
-      const submenuItems: DropdownMenuItemObjectDef[] = [];
-      funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
-        submenuItems.push({
-          label: fn.label,
-          icon: "play",
-          onSelect: () => {
-            runManagementFunc(fn);
-          },
+    const updateComponentType = (componentType: ComponentType) => {
+      if (selectedComponentId.value && attributesStore.value) {
+        attributesStore.value.SET_COMPONENT_TYPE({
+          componentId: selectedComponentId.value,
+          componentType,
         });
-      });
-      items.push({
-        label: "Management",
-        icon: "func",
-        submenuItems,
-      });
-    }
+      }
+    };
 
-    // copy, restore, delete
-    items.push({
-      label: `Copy`,
-      shortcut: "⌘C",
-      icon: "clipboard-copy",
-      onSelect: triggerCopySelection,
-      disabled,
+    const submenuItems: DropdownMenuItemObjectDef[] = [];
+    submenuItems.push({
+      label: "Component",
+      icon: "component",
+      checkable: true,
+      checked:
+        selectedComponent.value.def.componentType === ComponentType.Component,
+      onSelect: () => {
+        updateComponentType(ComponentType.Component);
+      },
     });
-    if (selectedComponent.value.def.toDelete) {
-      items.push({
-        label: `Restore`,
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-        disabled,
-      });
-    } else {
-      items.push({
-        label: `Delete`,
-        shortcut: "⌫",
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-        disabled,
-      });
-    }
-  } else if (selectedComponentIds.value.length) {
-    // multiple selected components
-    if (ffStore.OUTLINER_VIEWS) {
-      items.push({
-        label: "VIEWS",
-        header: true,
-      });
-
-      items.push({
-        label: "Move to",
-        icon: "arrows-out",
-        submenuItems: viewsSubitems(viewAdd(true)),
-      });
-      items.push({
-        label: "Copy to",
-        icon: "clipboard-copy",
-        submenuItems: viewsSubitems(viewAdd(false)),
-      });
-      items.push({
-        label: "Remove",
-        icon: "x-circle",
-        onSelect: removeFromView,
-      });
-    }
-
-    items.push({
-      label: `${selectedComponentIds.value.length} ${typeDisplayName()}`,
-      header: true,
+    submenuItems.push({
+      label: "Up Frame",
+      icon: "frame-up",
+      checkable: true,
+      checked:
+        selectedComponent.value.def.componentType ===
+        ComponentType.ConfigurationFrameUp,
+      onSelect: () => {
+        updateComponentType(ComponentType.ConfigurationFrameUp);
+      },
+    });
+    submenuItems.push({
+      label: "Down Frame",
+      icon: "frame-down",
+      checkable: true,
+      checked:
+        selectedComponent.value.def.componentType ===
+        ComponentType.ConfigurationFrameDown,
+      onSelect: () => {
+        updateComponentType(ComponentType.ConfigurationFrameDown);
+      },
     });
 
     items.push({
-      label: `Copy`,
-      shortcut: "⌘C",
-      icon: "clipboard-copy",
-      onSelect: triggerCopySelection,
-      disabled,
+      label: "Set Type",
+      icon: "component",
+      submenuItems,
     });
-    if (deletableSelectedComponents.value.length > 0) {
-      items.push({
-        label: `Delete`,
-        shortcut: "⌫",
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-        disabled,
-      });
-    }
-    if (restorableSelectedComponents.value.length > 0) {
-      items.push({
-        label: `Restore`,
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-        disabled,
-      });
-    }
   }
 
+  // management funcs for a single selected component
+  if (
+    funcStore.managementFunctionsForSelectedComponent.length > 0 &&
+    ffStore.MANAGEMENT_FUNCTIONS
+  ) {
+    const submenuItems: DropdownMenuItemObjectDef[] = [];
+    funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
+      submenuItems.push({
+        label: fn.label,
+        icon: "play",
+        onSelect: () => {
+          runManagementFunc(fn);
+        },
+      });
+    });
+    items.push({
+      label: "Management",
+      icon: "func",
+      submenuItems,
+    });
+  }
+
+  // you copy, restore, delete,
+  items.push({
+    label: `Copy`,
+    shortcut: "⌘C",
+    icon: "clipboard-copy",
+    onSelect: triggerCopySelection,
+    disabled,
+  });
+  if (
+    restorableSelectedComponents.value.length > 0 &&
+    restorableSelectedComponents.value.length ===
+      selectedComponentsAndChildren.value.length
+  ) {
+    items.push({
+      label: `Restore`,
+      icon: "trash-restore",
+      onSelect: triggerRestoreSelection,
+      disabled,
+    });
+  } else if (
+    deletableSelectedComponents.value.length > 0 &&
+    deletableSelectedComponents.value.length ===
+      selectedComponentsAndChildren.value.length
+  ) {
+    items.push({
+      label: `Delete`,
+      shortcut: "⌫",
+      icon: "trash",
+      onSelect: triggerDeleteSelection,
+      disabled,
+    });
+  }
+
+  // can erase so long as you have not selected a view
   if (
     erasableSelectedComponents.value.length > 0 &&
     erasableSelectedComponents.value.length ===
@@ -363,6 +372,7 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
+  // can only refresh a single component
   if (bindings.value.length > 0 || canRefresh.value) {
     items.push({
       label: "RESOURCE",
@@ -385,7 +395,9 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
+    // actions limited to a single component
     if (bindings.value.length > 0 && selectedComponentId.value) {
+      const def = selectedComponent.value?.def as DiagramNodeDef;
       const submenuItems: DropdownMenuItemObjectDef[] = [];
 
       bindings.value.forEach((binding: BindingWithDisplayName) => {
@@ -414,7 +426,7 @@ const rightClickMenuItems = computed(() => {
           endLinkTo: {
             name: "workspace-lab-assets",
             query: {
-              s: `a_${selectedComponent.value?.def.schemaVariantId}|f_${binding.funcId}`,
+              s: `a_${def.schemaVariantId}|f_${binding.funcId}`,
             },
           } as RouteLocationRaw,
           endLinkLabel: "view",

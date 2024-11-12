@@ -76,9 +76,9 @@ import {
   getToneColorHex,
   useTheme,
 } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
 import { isDevMode } from "@/utils/debug";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useViewsStore } from "@/store/views.store";
 import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
@@ -160,9 +160,9 @@ const centerPoint = computed(() => {
   return pointAlongLinePct(props.fromPoint, props.toPoint, 0.5);
 });
 
-const selectedComponentId = computed(
-  () => componentsStore.selectedComponent?.def.id,
-);
+const viewStore = useViewsStore();
+
+const selectedComponentId = computed(() => viewStore.selectedComponent?.def.id);
 
 const isFromOrToSelected = computed(
   () =>
@@ -198,14 +198,12 @@ const mainLineOpacity = computed(() => {
   return 0.1;
 });
 
-const componentsStore = useComponentsStore();
-
 function onMouseOver() {
-  componentsStore.setHoveredEdgeId(props.edge.def.id);
+  viewStore.setHoveredEdgeId(props.edge.def.id);
 }
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
-  componentsStore.setHoveredEdgeId(null);
+  viewStore.setHoveredEdgeId(null);
 }
 
 function onMouseDown(_e: KonvaEventObject<MouseEvent>) {

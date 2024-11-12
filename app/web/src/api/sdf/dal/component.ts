@@ -1,10 +1,10 @@
-import { Vector2d } from "konva/lib/types";
+import { IRect, Vector2d } from "konva/lib/types";
 import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentType } from "@/api/sdf/dal/schema";
-import { ViewId } from "@/api/sdf/dal/views";
+import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
 import {
   DiagramSocketDef,
   Size2D,
@@ -35,6 +35,11 @@ export type ComponentId = string;
 export interface ViewGeometry {
   viewId: ViewId;
   geometry: Vector2d & Partial<Size2D>;
+}
+
+export interface ViewNodeGeometry {
+  view: ViewDescription;
+  geometry: IRect;
 }
 
 export interface RawComponent {

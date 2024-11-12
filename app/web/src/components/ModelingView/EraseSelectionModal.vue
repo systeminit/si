@@ -4,7 +4,7 @@
       <div>
         You are about to erase
         {{
-          componentsStore.erasableSelectedComponents.length > 1
+          viewStore.erasableSelectedComponents.length > 1
             ? "the following components"
             : "this component"
         }}:
@@ -12,7 +12,7 @@
       <div class="flex-grow overflow-y-auto">
         <Stack spacing="xs">
           <ComponentCard
-            v-for="component in componentsStore.erasableSelectedComponents"
+            v-for="component in viewStore.erasableSelectedComponents"
             :key="component.def.id"
             :titleCard="false"
             :component="component"
@@ -50,9 +50,11 @@ import { Modal, Stack, useModal, VButton } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import ComponentCard from "../ComponentCard.vue";
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
@@ -60,24 +62,20 @@ const { open: openModal, close } = useModal(modalRef);
 function open() {
   // event is triggered regardless of selection
   // in some cases we may want to ignore it
-  if (!componentsStore.erasableSelectedComponents.length) return;
+  if (!viewStore.erasableSelectedComponents.length) return;
 
   openModal();
 }
 
 async function onConfirmWipe() {
   close();
-  if (componentsStore.erasableSelectedComponents.length > 0) {
+  if (viewStore.erasableSelectedComponents.length > 0) {
     await componentsStore.DELETE_COMPONENTS(
-      [
-        ...new Set(
-          componentsStore.erasableSelectedComponents.map((c) => c.def.id),
-        ),
-      ],
+      [...new Set(viewStore.erasableSelectedComponents.map((c) => c.def.id))],
       true,
     );
   }
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
 }
 
 const modelingEventBus = componentsStore.eventBus;

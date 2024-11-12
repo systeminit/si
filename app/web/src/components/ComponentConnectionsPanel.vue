@@ -19,7 +19,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
 import { computed } from "vue";
@@ -27,6 +27,7 @@ import { PropertyEditorPropKind } from "@/api/sdf/dal/property_editor";
 import { useComponentsStore } from "@/store/components.store";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { useViewsStore } from "@/store/views.store";
+import { DiagramViewData } from "@/components/ModelingDiagram/diagram_types";
 import TreeForm from "./AttributesPanel/TreeForm.vue";
 import { TreeFormData, TreeFormProp } from "./AttributesPanel/TreeFormItem.vue";
 import AttributesPanelCustomInputs from "./AttributesPanel/AttributesPanelCustomInputs.vue";
@@ -63,7 +64,7 @@ const lineageTree = computed(
       children: [
         {
           propDef: {
-            id: componentsStore.selectedComponentId,
+            id: viewsStore.selectedComponentId,
             name: "parent",
             icon: "none",
             kind: PropertyEditorPropKind.String,
@@ -73,7 +74,7 @@ const lineageTree = computed(
           } as TreeFormProp,
           children: [],
           value: currentParentNamePropValue.value,
-          valueId: currentParentId.value,
+          valueId: currentParent.value?.id,
           parentValueId: "parent",
           validation: null,
           propId: "parent",
@@ -87,17 +88,26 @@ const lineageTree = computed(
     } as TreeFormData),
 );
 
-const currentParentId = computed(
-  () => componentsStore.selectedComponent?.def.parentId,
-);
-const currentParentName = computed(() => {
-  if (!currentParentId.value) return null;
-  return componentsStore.groupsById[currentParentId.value]?.def.displayName;
+const currentParent = computed(() => {
+  const selectedComponent = viewsStore.selectedComponent;
+
+  if (!selectedComponent || selectedComponent instanceof DiagramViewData) {
+    return;
+  }
+
+  const parentId = selectedComponent.def.parentId;
+
+  if (!parentId) {
+    return;
+  }
+
+  return componentsStore.groupsById[parentId]?.def;
 });
+
 const currentParentNamePropValue = computed(() => ({
-  id: currentParentId.value,
-  propId: currentParentId.value,
-  value: currentParentName.value,
+  id: currentParent.value?.id,
+  propId: currentParent.value?.id,
+  value: currentParent.value?.displayName,
   canBeSetBySocket: false,
   isFromExternalSource: false,
   isControlledByDynamicFunc: false,

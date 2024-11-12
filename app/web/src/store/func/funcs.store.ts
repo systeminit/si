@@ -28,15 +28,19 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
-import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  ComponentType,
+  SchemaVariant,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ViewId } from "@/api/sdf/dal/views";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
-import { useComponentsStore } from "../components.store";
 
 import { FuncRunId } from "../func_runs.store";
+import { useViewsStore } from "../views.store";
 
 type FuncExecutionState =
   | "Create"
@@ -109,7 +113,7 @@ export type AwsCliCommand = { command: string; subcommand: string };
 const INTRINSICS_DISPLAYED = [FuncBackendKind.Identity, FuncBackendKind.Unset];
 
 export const useFuncStore = () => {
-  const componentsStore = useComponentsStore();
+  const viewStore = useViewsStore();
   const changeSetsStore = useChangeSetsStore();
   const selectedChangeSetId: string | undefined =
     changeSetsStore.selectedChangeSet?.id;
@@ -215,12 +219,18 @@ export const useFuncStore = () => {
         funcList: (state) => _.values(state.funcsById),
 
         managementFunctionsForSelectedComponent(state) {
+          const mgmtFuncs: MgmtPrototype[] = [];
+          if (
+            viewStore.selectedComponent?.def.componentType ===
+            ComponentType.View
+          )
+            return mgmtFuncs;
+
           const variant =
             useAssetStore().variantFromListById[
-              componentsStore.selectedComponent?.def.schemaVariantId || ""
+              viewStore.selectedComponent?.def.schemaVariantId || ""
             ];
           if (!variant) return [];
-          const mgmtFuncs: MgmtPrototype[] = [];
           variant.funcIds.forEach((funcId) => {
             const func = state.funcsById[funcId];
             if (func?.kind === FuncKind.Management) {
@@ -240,9 +250,14 @@ export const useFuncStore = () => {
         },
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
+          if (
+            viewStore.selectedComponent?.def.componentType ===
+            ComponentType.View
+          )
+            return [];
           const variant =
             useAssetStore().variantFromListById[
-              componentsStore.selectedComponent?.def.schemaVariantId || ""
+              viewStore.selectedComponent?.def.schemaVariantId || ""
             ];
           if (!variant) return [];
           const summaries: Record<FuncId, FuncSummary> = {};

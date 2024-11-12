@@ -83,8 +83,8 @@ import {
   LoadingMessage,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { useViewsStore } from "@/store/views.store";
 import TreeFormItem from "./TreeFormItem.vue";
 import AttributesPanelCustomInputs from "./AttributesPanelCustomInputs.vue";
 
@@ -94,8 +94,8 @@ const rootRef = ref<HTMLDivElement>();
 const SHOW_DEBUG_TREE = false;
 
 // NON-REACTIVE component id. This works because the parent has a :key which rerenders if the selected component changes
-const componentsStore = useComponentsStore();
-const componentId = componentsStore.selectedComponent?.def.id;
+const viewStore = useViewsStore();
+const componentId = viewStore.selectedComponent?.def.id;
 if (!componentId) {
   throw new Error("Do not use this component without a selectedComponentId");
 }

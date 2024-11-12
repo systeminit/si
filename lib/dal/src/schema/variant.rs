@@ -2285,7 +2285,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::Root
                 | EdgeWeightKindDiscriminants::SocketValue
                 | EdgeWeightKindDiscriminants::ValidationOutput
-                | EdgeWeightKindDiscriminants::Manages => {}
+                | EdgeWeightKindDiscriminants::Manages
+                | EdgeWeightKindDiscriminants::DiagramObject => {}
             }
         }
 

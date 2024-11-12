@@ -2,9 +2,7 @@
   <div class="h-full relative">
     <TabGroup
       variant="secondary"
-      :startSelectedTabSlug="
-        componentsStore.detailsTabSlugs[1] || 'resource-actions'
-      "
+      :startSelectedTabSlug="viewStore.detailsTabSlugs[1] || 'resource-actions'"
       marginTop="2xs"
       @update:selectedTab="onTabSelected"
     >
@@ -43,10 +41,10 @@
 import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import ActionWidget from "@/components/Actions/ActionWidget.vue";
+import { useViewsStore } from "@/store/views.store";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 import {
   DiagramGroupData,
@@ -58,17 +56,17 @@ const props = defineProps<{
 }>();
 
 const funcStore = useFuncStore();
-const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
 const tabsRef = ref<InstanceType<typeof TabGroup>>();
 function onTabSelected(newTabSlug?: string) {
-  componentsStore.setComponentDetailsTab(newTabSlug || null);
+  viewStore.setComponentDetailsTab(newTabSlug || null);
 }
 
 const bindings = computed(() => funcStore.actionBindingsForSelectedComponent);
 
 watch(
-  () => componentsStore.selectedComponentDetailsTab,
+  () => viewStore.selectedComponentDetailsTab,
   (tabSlug) => {
     if (tabSlug?.startsWith("resource-")) {
       tabsRef.value?.selectTab(tabSlug);

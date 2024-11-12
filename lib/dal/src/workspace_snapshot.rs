@@ -1632,6 +1632,7 @@ impl WorkspaceSnapshot {
             | NodeWeight::Category(_)
             | NodeWeight::Component(_)
             | NodeWeight::DependentValueRoot(_)
+            | NodeWeight::DiagramObject(_)
             | NodeWeight::FinishedDependentValueRoot(_)
             | NodeWeight::Func(_)
             | NodeWeight::FuncArgument(_)

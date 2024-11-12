@@ -95,6 +95,7 @@ import { TreeNode, useTheme, IconButton } from "@si/vue-lib/design-system";
 import { DeprecatedActionRunner } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import ActionRunnerDetails from "./ActionRunnerDetails.vue";
@@ -140,10 +141,12 @@ const componentNameTooltip = computed(() => {
   return {};
 });
 
+const viewStore = useViewsStore();
+
 function onClick() {
   const component = componentsStore.allComponentsById[props.runner.componentId];
   if (component) {
-    componentsStore.setSelectedComponentId(props.runner.componentId);
+    viewStore.setSelectedComponentId(props.runner.componentId);
     componentsStore.eventBus.emit("panToComponent", {
       component,
       center: true,
@@ -153,18 +156,18 @@ function onClick() {
 }
 
 const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.runner.componentId,
+  () => viewStore.hoveredComponentId === props.runner.componentId,
 );
 
 function onHoverStart() {
   if (componentsStore.allComponentsById[props.runner.componentId]) {
-    componentsStore.setHoveredComponentId(props.runner.componentId);
+    viewStore.setHoveredComponentId(props.runner.componentId);
   }
 }
 
 function onHoverEnd() {
   if (componentsStore.allComponentsById[props.runner.componentId]) {
-    componentsStore.setHoveredComponentId(null);
+    viewStore.setHoveredComponentId(null);
   }
 }
 

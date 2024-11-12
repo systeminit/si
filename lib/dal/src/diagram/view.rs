@@ -1,23 +1,27 @@
-use crate::diagram::geometry::GeometryId;
-use crate::diagram::{DiagramError, DiagramResult};
-use crate::layer_db_types::{ViewContent, ViewContentV1};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
-use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    id, implement_add_edge_to, ChangeSetId, EdgeWeightKindDiscriminants, Timestamp,
+    diagram::{
+        diagram_object::DiagramObject,
+        geometry::{Geometry, GeometryId},
+        DiagramError, DiagramResult,
+    },
+    id, implement_add_edge_to,
+    layer_db_types::{ViewContent, ViewContentV1},
+    workspace_snapshot::node_weight::{
+        category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
+        view_node_weight::ViewNodeWeight, NodeWeight,
+    },
+    ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{DalContext, EdgeWeightKind};
 use chrono::Utc;
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
-use si_events::{ComponentId, ContentHash};
+use si_events::{ulid::Ulid, ComponentId, ContentHash};
 use si_frontend_types::RawGeometry;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 id!(ViewId);
 
@@ -113,6 +117,9 @@ impl View {
             .await?;
         Self::add_category_edge(ctx, view_category_id, id.into(), EdgeWeightKind::new_use())
             .await?;
+
+        // View (this) --DiagramObject-> DiagramObject <-Represents-- Geometry
+        DiagramObject::new_for_view(ctx, id.into()).await?;
 
         Ok(Self::assemble(node_weight.get_view_node_weight()?, content))
     }
@@ -263,6 +270,19 @@ impl View {
         .await
     }
 
+    pub async fn add_to_another_view(
+        ctx: &DalContext,
+        object_view_id: ViewId,
+        container_view_id: ViewId,
+        raw_geometry: RawGeometry,
+    ) -> DiagramResult<()> {
+        let mut geometry = Geometry::new_for_view(ctx, object_view_id, container_view_id).await?;
+
+        geometry.update(ctx, raw_geometry).await?;
+
+        Ok(())
+    }
+
     pub async fn set_name(&mut self, ctx: &DalContext, name: impl AsRef<str>) -> DiagramResult<()> {
         let (hash, _) = ctx.layer_db().cas().write(
             Arc::new(
@@ -335,6 +355,63 @@ impl View {
 
         Ok(())
     }
+
+    pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> DiagramResult<Geometry> {
+        Geometry::get_by_object_view_and_container_view(ctx, self.id, view_id).await
+    }
+
+    pub async fn set_geometry(
+        &mut self,
+        ctx: &DalContext,
+        view_id: ViewId,
+        x: impl Into<isize>,
+        y: impl Into<isize>,
+        width: Option<impl Into<isize>>,
+        height: Option<impl Into<isize>>,
+    ) -> DiagramResult<Geometry> {
+        let new_geometry = RawGeometry {
+            x: x.into(),
+            y: y.into(),
+            width: width.map(|w| w.into()),
+            height: height.map(|h| h.into()),
+        };
+
+        self.set_raw_geometry(ctx, new_geometry, view_id).await
+    }
+
+    pub async fn set_raw_geometry(
+        &mut self,
+        ctx: &DalContext,
+        raw_geometry: RawGeometry,
+        view_id: ViewId,
+    ) -> DiagramResult<Geometry> {
+        let mut geometry_pre = self.geometry(ctx, view_id).await?;
+        if geometry_pre.clone().into_raw() != raw_geometry {
+            geometry_pre.update(ctx, raw_geometry).await?;
+        }
+
+        Ok(geometry_pre)
+    }
+}
+
+/// Frontend representation for a [View](View) with a geometry.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ViewObjectView {
+    view: ViewView,
+    geometry: RawGeometry,
+}
+
+impl ViewObjectView {
+    pub async fn from_view_and_geometry(
+        ctx: &DalContext,
+        view: View,
+        geometry: RawGeometry,
+    ) -> DiagramResult<Self> {
+        Ok(Self {
+            view: ViewView::from_view(ctx, view).await?,
+            geometry,
+        })
+    }
 }
 
 /// Frontend representation for a [View](View).
@@ -390,6 +467,21 @@ pub struct ViewDeletedPayload {
     view_id: ViewId,
 }
 
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewObjectRemovedPayload {
+    view_id: ViewId,
+    view_object_id: ViewId,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewObjectCreatedPayload {
+    view_id: ViewId,
+    view_object_id: ViewId,
+    geometry: RawGeometry,
+}
+
 impl WsEvent {
     pub async fn view_created(ctx: &DalContext, view: ViewView) -> WsEventResult<Self> {
         WsEvent::new(
@@ -434,6 +526,38 @@ impl WsEvent {
             WsPayload::ViewComponentsUpdate(ViewComponentsUpdatePayload {
                 change_set_id: ctx.change_set_id(),
                 updates_by_view,
+            }),
+        )
+        .await
+    }
+
+    pub async fn view_object_erased(
+        ctx: &DalContext,
+        view_id: ViewId,
+        view_object_id: ViewId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewObjectRemoved(ViewObjectRemovedPayload {
+                view_id,
+                view_object_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn view_object_created(
+        ctx: &DalContext,
+        view_id: ViewId,
+        view_object_id: ViewId,
+        geometry: RawGeometry,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ViewObjectCreated(ViewObjectCreatedPayload {
+                view_id,
+                view_object_id,
+                geometry,
             }),
         )
         .await

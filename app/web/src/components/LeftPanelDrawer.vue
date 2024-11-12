@@ -43,6 +43,7 @@
           :key="view.id"
           :view="view"
           :selected="view.id === viewStore.selectedViewId"
+          :outlined="view.id === viewStore.outlinerViewId"
         />
       </div>
     </ScrollArea>
@@ -116,10 +117,14 @@ const create = async () => {
     labelRef.value?.setError("Name is required");
   } else {
     const resp = await viewStore.CREATE_VIEW(viewName.value);
-    modalRef.value?.close();
-    viewName.value = "";
     if (resp.result.success) {
       viewStore.selectView(resp.result.data.id);
+      modalRef.value?.close();
+      viewName.value = "";
+    } else if (resp.result.statusCode === 409) {
+      labelRef.value?.setError(
+        `${viewName.value} is already in use. Please choose another name`,
+      );
     }
   }
 };

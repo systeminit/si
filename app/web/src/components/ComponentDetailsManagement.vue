@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="componentsStore.selectedComponent"
+    v-if="viewStore.selectedComponent"
     class="flex flex-col h-full w-full"
     @click="hideFuncRun"
   >
@@ -55,6 +55,7 @@ import { VormInput } from "@si/vue-lib/design-system";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
+import { useViewsStore } from "@/store/views.store";
 import ManagementRunPrototype from "./ManagementRunPrototype.vue";
 import {
   DiagramGroupData,
@@ -65,6 +66,7 @@ import FuncRunTabGroup from "./Actions/FuncRunTabGroup.vue";
 const funcStore = useFuncStore();
 const funcRunStore = useFuncRunsStore();
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
 const resourceId = ref("");
 
@@ -116,7 +118,7 @@ watch(
 );
 
 const saveResource = () => {
-  if (componentsStore.selectedComponent && resourceId.value)
+  if (viewStore.selectedComponent && resourceId.value)
     componentsStore.SET_RESOURCE_ID(props.component.def.id, resourceId.value);
 };
 </script>

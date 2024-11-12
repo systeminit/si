@@ -183,7 +183,13 @@ const viewComponentIds = computed<ComponentId[] | null>(() => {
 const rootComponents = computed(() => {
   return Object.values(componentsStore.allComponentsById).filter((c) => {
     if (viewComponentIds.value !== null) {
-      return viewComponentIds.value.includes(c.def.id) && !c.def.parentId;
+      const ancestorsInView = c.def.ancestorIds?.some((a) =>
+        viewComponentIds.value?.includes(a),
+      );
+      return (
+        viewComponentIds.value.includes(c.def.id) &&
+        (!c.def.parentId || !ancestorsInView)
+      );
     } else return !c.def.parentId;
   });
 });
@@ -341,11 +347,11 @@ const filterArrays = [
 ];
 
 watch(
-  () => componentsStore.selectedComponentId,
+  () => viewStore.selectedComponentId,
   () => {
-    if (!componentsStore.selectedComponentId) return;
+    if (!viewStore.selectedComponentId) return;
     const el = document.getElementById(
-      `diagram-outline-node-${componentsStore.selectedComponentId}`,
+      `diagram-outline-node-${viewStore.selectedComponentId}`,
     );
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
@@ -357,17 +363,17 @@ function itemClickHandler(
   tabSlug?: string,
 ) {
   const shiftKeyBehavior = () => {
-    const selectedComponentIds = componentsStore.selectedComponentIds;
+    const selectedComponentIds = viewStore.selectedComponentIds;
 
     if (selectedComponentIds.length === 0) {
       // If nothing is selected, select the current component
-      componentsStore.setSelectedComponentId(component.def.id);
+      viewStore.setSelectedComponentId(component.def.id);
     } else if (
       selectedComponentIds.length === 1 &&
       selectedComponentIds[0] === component.def.id
     ) {
       // If there's only one component selected and you clicked it, deselect it
-      componentsStore.setSelectedComponentId(null);
+      viewStore.setSelectedComponentId(null);
     } else {
       // Otherwise, attempt to select components between
       let components = componentsTreeFlattened.value;
@@ -376,7 +382,7 @@ function itemClickHandler(
       }
 
       let indexFrom = components.findIndex((c) =>
-        componentsStore.selectedComponentIds.includes(c.def.id),
+        viewStore.selectedComponentIds.includes(c.def.id),
       );
       const indexTo = components.findIndex(
         (c) => c.def.id === component.def.id,
@@ -384,19 +390,19 @@ function itemClickHandler(
 
       if (indexFrom > indexTo) {
         indexFrom = _.findLastIndex(components, (c) =>
-          componentsStore.selectedComponentIds.includes(c.def.id),
+          viewStore.selectedComponentIds.includes(c.def.id),
         );
         const selection = components
           .slice(indexTo, indexFrom + 1)
           .map((component) => component.def.id);
-        componentsStore.setSelectedComponentId(selection);
+        viewStore.setSelectedComponentId(selection);
       } else if (indexFrom < indexTo) {
         const selection = components
           .slice(indexFrom, indexTo + 1)
           .map((component) => component.def.id);
-        componentsStore.setSelectedComponentId(selection);
+        viewStore.setSelectedComponentId(selection);
       } else {
-        componentsStore.setSelectedComponentId(component.def.id);
+        viewStore.setSelectedComponentId(component.def.id);
       }
     }
   };
@@ -406,15 +412,13 @@ function itemClickHandler(
     e.preventDefault();
     if (e.shiftKey) {
       shiftKeyBehavior();
-    } else if (
-      !componentsStore.selectedComponentIds.includes(component.def.id)
-    ) {
+    } else if (!viewStore.selectedComponentIds.includes(component.def.id)) {
       if (e.metaKey) {
-        componentsStore.setSelectedComponentId(component.def.id, {
+        viewStore.setSelectedComponentId(component.def.id, {
           toggle: true,
         });
       } else {
-        componentsStore.setSelectedComponentId(component.def.id);
+        viewStore.setSelectedComponentId(component.def.id);
       }
     }
     emit("right-click-item", { mouse: e, component });
@@ -423,11 +427,11 @@ function itemClickHandler(
     shiftKeyBehavior();
   } else if (e.metaKey) {
     e.preventDefault();
-    componentsStore.setSelectedComponentId(component.def.id, { toggle: true });
+    viewStore.setSelectedComponentId(component.def.id, { toggle: true });
   } else if (e.type === "dblclick") {
     componentsStore.panTargetComponentId = component.def.id;
   } else {
-    componentsStore.setSelectedComponentId(component.def.id, {
+    viewStore.setSelectedComponentId(component.def.id, {
       detailsTab: tabSlug,
     });
     componentsStore.panTargetComponentId = component.def.id;
@@ -455,7 +459,7 @@ const onKeyDown = (e: KeyboardEvent) => {
 
   // Tab goes forwards, Shift-Tab goes backwards
   if (e.key === "Tab") {
-    const selectedComponentId = _.last(componentsStore.selectedComponentIds);
+    const selectedComponentId = _.last(viewStore.selectedComponentIds);
     if (!selectedComponentId) return;
     e.preventDefault();
 
@@ -476,7 +480,7 @@ const onKeyDown = (e: KeyboardEvent) => {
     }
     const toSelect = componentIds[toSelectIndex];
     if (toSelect) {
-      componentsStore.setSelectedComponentId(toSelect);
+      viewStore.setSelectedComponentId(toSelect);
     }
   }
 };

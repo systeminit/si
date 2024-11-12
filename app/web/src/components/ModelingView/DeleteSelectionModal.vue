@@ -5,6 +5,30 @@
         <p>You're about to delete the following edge:</p>
         <EdgeCard :edgeId="selectedEdge.id" />
       </template>
+      <template v-else-if="allErasableViews">
+        <div class="pb-xs">
+          You are about to remove
+          {{ erasableViews.length > 1 ? "the following views" : "this view" }}
+          from {{ viewStore.selectedView?.name }}
+        </div>
+        <div
+          :class="
+            clsx(
+              'flex-grow overflow-y-auto border-neutral-300 dark:border-neutral-700 p-xs',
+              erasableViews.length > 1 && 'border',
+            )
+          "
+        >
+          <Stack spacing="xs">
+            <ComponentCard
+              v-for="component in erasableViews"
+              :key="component.def.id"
+              :titleCard="false"
+              :component="component"
+            />
+          </Stack>
+        </div>
+      </template>
       <template v-else>
         <div class="pb-xs">
           You are about to delete
@@ -40,7 +64,7 @@
             created in this change set will be deleted immediately.
           </p>
         </template>
-        <template v-else>
+        <template v-else-if="!allErasableViews">
           <VormInput v-model="removeOrDelete" noLabel type="radio">
             <VormInputOption :value="DELETE">
               <p class="text-xs mt-sm">
@@ -91,22 +115,41 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
 
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
-const selectedEdge = computed(() => componentsStore.selectedEdge);
+const selectedEdge = computed(() => viewStore.selectedEdge);
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
 
 const deletableComponentsInView = computed(() => {
-  return componentsStore.deletableSelectedComponents.filter((c) => {
+  return viewStore.deletableSelectedComponents.filter((c) => {
     if (viewStore.components[c.def.id]) return true;
     if (viewStore.groups[c.def.id]) return true;
     return false;
   });
+});
+
+const erasableViews = computed(() => {
+  const selectedViews = viewStore.selectedComponents.filter(
+    (c) => c.def.componentType === ComponentType.View,
+  );
+  const view = Object.keys(viewStore.viewNodes);
+  return selectedViews.filter((v) => view.includes(v.def.id));
+});
+
+const allErasableViews = computed(() => {
+  const allViews = viewStore.selectedComponents.every(
+    (c) => c.def.componentType === ComponentType.View,
+  );
+  return (
+    allViews &&
+    erasableViews.value.length === viewStore.selectedComponents.length
+  );
 });
 
 function open() {
@@ -114,6 +157,8 @@ function open() {
   // in some cases we may want to ignore it
   if (selectedEdge.value) {
     if (selectedEdge.value?.changeStatus === "deleted") return;
+  } else if (allErasableViews.value) {
+    // we can erase all these views
   } else {
     // TODO: more logic to decide if modal is necessary for other situations
     if (!deletableComponentsInView.value.length) return;
@@ -129,16 +174,24 @@ async function onConfirmDelete() {
   close();
   if (selectedEdge.value || removeOrDelete.value === DELETE) {
     if (
-      componentsStore.selectedEdgeId &&
-      componentsStore.selectedEdge?.toSocketId &&
-      componentsStore.selectedEdge?.fromSocketId
+      viewStore.selectedEdgeId &&
+      viewStore.selectedEdge?.toSocketId &&
+      viewStore.selectedEdge?.fromSocketId
     ) {
-      await componentsStore.DELETE_EDGE(
-        componentsStore.selectedEdgeId,
-        componentsStore.selectedEdge?.toSocketId,
-        componentsStore.selectedEdge?.fromSocketId,
-        componentsStore.selectedEdge?.toComponentId,
-        componentsStore.selectedEdge?.fromComponentId,
+      const resp = await componentsStore.DELETE_EDGE(
+        viewStore.selectedEdgeId,
+        viewStore.selectedEdge?.toSocketId,
+        viewStore.selectedEdge?.fromSocketId,
+        viewStore.selectedEdge?.toComponentId,
+        viewStore.selectedEdge?.fromComponentId,
+      );
+      if (resp.result.success) {
+        viewStore.selectedEdgeId = null;
+      }
+    } else if (viewStore.selectedViewId && erasableViews.value.length > 0) {
+      await viewStore.REMOVE_VIEW_FROM(
+        viewStore.selectedViewId,
+        erasableViews.value.map((v) => v.def.id),
       );
     } else if (deletableComponentsInView.value.length > 0) {
       await componentsStore.DELETE_COMPONENTS([
@@ -155,7 +208,7 @@ async function onConfirmDelete() {
       ]);
     }
   }
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
 }
 
 const modelingEventBus = componentsStore.eventBus;

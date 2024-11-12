@@ -54,11 +54,11 @@ import {
   MgmtPrototype,
   MgmtPrototypeResult,
 } from "@/store/func/funcs.store";
-import { useComponentsStore } from "@/store/components.store";
 import { FuncRunId } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
 import { useViewsStore } from "@/store/views.store";
 import { ViewId } from "@/api/sdf/dal/views";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -67,7 +67,7 @@ import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FuncRunTabDropdown from "./FuncRunTabDropdown.vue";
 
 const funcStore = useFuncStore();
-const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const router = useRouter();
 const toast = useToast();
 const managementRunsStore = useManagementRunsStore();
@@ -161,11 +161,12 @@ const runClick = async (e?: MouseEvent) => {
 };
 
 function onClickView() {
-  router.push({
-    name: "workspace-lab-assets",
-    query: {
-      s: `a_${componentsStore.selectedComponent?.def.schemaVariantId}|f_${props.prototype.funcId}`,
-    },
-  });
+  if (viewStore.selectedComponent?.def.componentType !== ComponentType.View)
+    router.push({
+      name: "workspace-lab-assets",
+      query: {
+        s: `a_${viewStore.selectedComponent?.def.schemaVariantId}|f_${props.prototype.funcId}`,
+      },
+    });
 }
 </script>
