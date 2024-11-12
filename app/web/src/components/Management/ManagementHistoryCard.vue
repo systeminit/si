@@ -48,7 +48,7 @@ import {
   TruncateWithTooltip,
   Timestamp,
 } from "@si/vue-lib/design-system";
-import { ManagementHistoryItem } from "@/store/func_runs.store";
+import { ManagementHistoryItem } from "@/store/management_runs.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import FuncRunTabDropdown from "../FuncRunTabDropdown.vue";
 

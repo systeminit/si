@@ -23,18 +23,6 @@
       @viewFunc="onClickView"
       @menuClick="(id, slug) => emit('showLatestRunTab', id, slug)"
     />
-
-    <!-- <div
-      :class="
-        clsx(
-          'ml-auto mr-2xs hover:underline font-bold select-none cursor-pointer',
-          themeClasses('text-action-500', 'text-action-300'),
-        )
-      "
-      @click.stop="onClickView"
-    >
-      view
-    </div> -->
   </li>
 </template>
 
@@ -54,7 +42,8 @@ import {
   MgmtPrototypeResult,
 } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
-import { FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
+import { FuncRunId } from "@/store/func_runs.store";
+import { useManagementRunsStore } from "@/store/management_runs.store";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -63,10 +52,10 @@ import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FuncRunTabDropdown from "./FuncRunTabDropdown.vue";
 
 const funcStore = useFuncStore();
-const funcRunStore = useFuncRunsStore();
 const componentsStore = useComponentsStore();
 const router = useRouter();
 const toast = useToast();
+const managementRunsStore = useManagementRunsStore();
 
 const lastExecution = ref<MgmtPrototypeResult | undefined>(undefined);
 
@@ -87,14 +76,14 @@ const request = funcStore.getRequestStatus(
 );
 
 onMounted(() => {
-  funcRunStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
+  managementRunsStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
     props.prototype.managementPrototypeId,
     props.component.def.id,
   );
 });
 
 const latestRunId = computed(() =>
-  funcRunStore.latestManagementRun(
+  managementRunsStore.latestManagementRun(
     props.prototype.managementPrototypeId,
     props.component.def.id,
   ),

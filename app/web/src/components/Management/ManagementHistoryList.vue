@@ -13,7 +13,8 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import { FuncRunId, ManagementHistoryItem } from "@/store/func_runs.store";
+import { FuncRunId } from "@/store/func_runs.store";
+import { ManagementHistoryItem } from "@/store/management_runs.store";
 import ManagementHistoryCard from "./ManagementHistoryCard.vue";
 
 const props = defineProps({
