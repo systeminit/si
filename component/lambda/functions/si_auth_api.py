@@ -1,5 +1,6 @@
+from typing import Literal, Optional, TypeVar, TypedDict, cast
 from pip._vendor import requests
-from si_types import WorkspaceId, OwnerPk
+from si_types import WorkspaceId, OwnerPk, IsoTimestamp, Ulid
 
 import urllib.parse
 import logging
@@ -51,10 +52,40 @@ class SiAuthApi:
         
     # Function to query owner workspaces
     def owner_workspaces(self, workspace_id: WorkspaceId):
-        return self.get(f"/workspaces/{workspace_id}/ownerWorkspaces").json()
+        result = self.get(f"/workspaces/{workspace_id}/ownerWorkspaces").json()
+        return cast(WorkspaceOwnerWorkspaces, result)
 
     class HTTPError(Exception):
         def __init__(self, *args, json, **kwargs):
             super().__init__(*args, **kwargs)
             self.json = json
 
+InstanceEnvType = Literal['LOCAL', 'PRIVATE', 'SI']
+Role = Literal['OWNER', 'APPROVER', 'EDITOR']
+
+class WorkspaceOwnerWorkspaces(TypedDict):
+    workspaceId: WorkspaceId
+    workspaceOwnerId: OwnerPk
+    workspaces: list['OwnedWorkspace']
+
+class Workspace(TypedDict):
+    id: WorkspaceId
+    instanceEnvType: InstanceEnvType
+    instanceUrl: str
+    displayName: str
+    description: Optional[str]
+    isDefault: bool
+    isFavourite: bool
+    creatorUserId: OwnerPk
+    creatorUser: 'WorkspaceCreatorUser'
+    token: Ulid
+    deletedAt: Optional[IsoTimestamp]
+    quarantinedAt: Optional[IsoTimestamp]
+
+class OwnedWorkspace(Workspace):
+    role: Role
+    invitedAt: Optional[IsoTimestamp]
+
+class WorkspaceCreatorUser(TypedDict):
+    firstName: str
+    lastName: str

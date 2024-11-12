@@ -124,8 +124,15 @@ class WorkspaceDelegationsPopulation(SiLambda):
 
     def insert_missing_workspaces(self, current_timestamp: SqlTimestamp):
         missing_workspace_inserts = [
-            [workspace_id, self.start_inserting_workspace(workspace_id, self.get_workspace_owner(workspace_id), current_timestamp)]
-            for [workspace_id] in cast(Iterable[tuple[WorkspaceId]], self.redshift.query("""
+            [
+                workspace_id,
+                self.start_inserting_workspace(
+                    workspace_id,
+                    self.auth_api.owner_workspaces(workspace_id)["workspaceOwnerId"],
+                    current_timestamp
+                )
+            ]
+            for [workspace_id] in cast(Iterable[tuple[WorkspaceId]], self.redshift.query_raw("""
                 SELECT DISTINCT workspace_id
                     FROM workspace_update_events.workspace_update_events
                     LEFT OUTER JOIN workspace_operations.workspace_owners USING (workspace_id)
@@ -162,16 +169,12 @@ class WorkspaceDelegationsPopulation(SiLambda):
             logging.info(f"Inserting into workspace_owner_subscriptions: {sql}")
             return self.redshift.start_executing(sql)
 
-    def get_workspace_owner(self, workspace_id: WorkspaceId):
-        owner_workspace_data = self.auth_api.owner_workspaces(workspace_id)
-        return cast(OwnerPk, owner_workspace_data.get("workspaceOwnerId"))
-
     def run(self):
         # Get the current timestamp for record insertion
         current_timestamp = cast(SqlTimestamp, time.strftime('%Y-%m-%d %H:%M:%S'))
 
-        updated_subscriptions = self.update_subscriptions(current_timestamp)
         inserted_workspaces = self.insert_missing_workspaces(current_timestamp)
+        updated_subscriptions = self.update_subscriptions(current_timestamp)
 
         return {
             'statusCode': 200,
@@ -195,6 +198,8 @@ class LatestOwnerSubscription(TypedDict):
 @overload
 def convert_iso_to_datetime(iso_str: IsoTimestamp) -> SqlTimestamp: ...
 @overload
+def convert_iso_to_datetime(iso_str: None) -> None: ...
+@overload
 def convert_iso_to_datetime(iso_str: Optional[IsoTimestamp]) -> Optional[SqlTimestamp]: ...
 def convert_iso_to_datetime(iso_str: Optional[IsoTimestamp]):
     if iso_str is None:
@@ -203,6 +208,8 @@ def convert_iso_to_datetime(iso_str: Optional[IsoTimestamp]):
 
 @overload
 def iso_to_days(iso_str: IsoTimestamp) -> str: ...
+@overload
+def iso_to_days(iso_str: None) -> None: ...
 @overload
 def iso_to_days(iso_str: Optional[IsoTimestamp]) -> Optional[str]: ...
 def iso_to_days(iso_str: Optional[IsoTimestamp]):
