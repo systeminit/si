@@ -106,12 +106,12 @@ const changeWorkspaceRoleTypeDropdownOptions = computed(() => {
     return [
       { label: "Owner", value: "OWNER" },
       { label: "Approver", value: "APPROVER" },
-      { label: "Editor", value: "EDITOR" },
+      { label: "Collaborator", value: "EDITOR" },
     ];
   } else {
     return [
       { label: "Approver", value: "APPROVER" },
-      { label: "Editor", value: "EDITOR" },
+      { label: "Collaborator", value: "EDITOR" },
     ];
   }
 });

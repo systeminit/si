@@ -52,7 +52,11 @@
       <div class="flex flex-col justify-between text-md gap-xs">
         <div>
           <span class="font-bold">Role: </span
-          >{{ workspace.role.toLowerCase() }}
+          >{{
+            workspace.role.toLowerCase() === "editor"
+              ? "collaborator"
+              : workspace.role.toLowerCase()
+          }}
         </div>
         <div v-if="workspace.role.toLowerCase() !== 'owner'">
           <span class="font-bold">Owner: </span
