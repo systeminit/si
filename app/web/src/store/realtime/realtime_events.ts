@@ -342,4 +342,8 @@ export type WsEventPayloadMap = {
     funcRunLogId: FuncRunLogId;
     actionId?: ActionId;
   };
+  AuditLogsPublished: {
+    changeSetId: ChangeSetId;
+    changeSetStatus: ChangeSetStatus;
+  };
 };

@@ -28,3 +28,7 @@
 /// The header key used to indicate to a running shuttle instance that it has consumed everything
 /// and can shut down. The header value and message body are ignored.
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
+
+/// The header key used to indicate that destination subject needs an appended suffix. The value
+/// for the header should be the suffix itself.
+pub const DESTINATION_SUBJECT_SUFFIX_HEADER_KEY: &str = "X-Destination-Subject-Suffix";

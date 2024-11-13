@@ -29,7 +29,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Error;
-use shuttle_core::FINAL_MESSAGE_HEADER_KEY;
+use shuttle_core::{DESTINATION_SUBJECT_SUFFIX_HEADER_KEY, FINAL_MESSAGE_HEADER_KEY};
 use si_data_nats::{
     async_nats::{
         self,
@@ -48,6 +48,7 @@ use thiserror::Error;
 const STREAM_NAME: &str = "PENDING_EVENTS";
 const STREAM_DESCRIPTION: &str = "Pending events";
 const SUBJECT_PREFIX: &str = "pending.event";
+
 const THIRTY_DAYS_IN_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 #[allow(missing_docs)]
@@ -106,7 +107,13 @@ impl PendingEventsStream {
         change_set_id: ChangeSetId,
         event_session_id: EventSessionId,
         audit_log: &AuditLog,
+        change_set_id_for_destination_subject_suffix: ChangeSetId,
     ) -> Result<()> {
+        let mut headers = propagation::empty_injected_headers();
+        headers.insert(
+            DESTINATION_SUBJECT_SUFFIX_HEADER_KEY,
+            change_set_id_for_destination_subject_suffix.to_string(),
+        );
         self.publish_message_inner(
             SUBJECT_PREFIX,
             &Self::assemble_audit_log_parameters(
@@ -114,7 +121,7 @@ impl PendingEventsStream {
                 &change_set_id.to_string(),
                 event_session_id,
             ),
-            None,
+            Some(headers),
             audit_log,
         )
         .await
