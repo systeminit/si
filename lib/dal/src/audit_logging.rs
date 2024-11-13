@@ -1,13 +1,14 @@
 //! This module provides audit logging functionality to the rest of the crate.
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use audit_logs::AuditLogsError;
 use audit_logs::AuditLogsStream;
 use futures::StreamExt;
 use pending_events::PendingEventsError;
 use pending_events::PendingEventsStream;
+use serde::Deserialize;
+use serde::Serialize;
 use shuttle_server::Shuttle;
 use shuttle_server::ShuttleError;
 use si_data_nats::async_nats;
@@ -31,6 +32,9 @@ use crate::TenancyError;
 use crate::TransactionsError;
 use crate::User;
 use crate::UserError;
+use crate::WsEvent;
+use crate::WsEventResult;
+use crate::WsPayload;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -96,13 +100,6 @@ pub(crate) async fn publish_pending(
         None => (TaskTracker::new(), true),
     };
 
-    // TODO(nick): somewhere in this function (or alongside it), we need to deserialize the events and send them up to
-    // the frontend. The frontend can make its own decision to include it into its paginated and filtered view, but we
-    // will make one event that sends an array of published audit logs. For chunking, we can do a naive array list
-    // length check or something else (e.g. size check) and send multiple messages, if need be. The first move might be
-    // to add a broadcast channel were shuttle sends the message paylods in bytestream format. Then, after shuttle
-    // exits, the dal can deserialize those messages.
-
     // Get a handle on the source and destination streams.
     let source_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
     let destination_stream = AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
@@ -120,17 +117,27 @@ pub(crate) async fn publish_pending(
                 None => ctx.event_session_id(),
             },
         ),
-        destination_stream.subject(workspace_id.into()),
+        destination_stream.publishing_subject_for_workspace(workspace_id.into()),
     )
     .await?;
 
     // Run the audit logs shuttle instance. If a tracker has been provided, we can spawn the
     // shuttle instance using it. If we are using a tracker purely within this function, we cannot
     // reliably use it to run the shuttle instance, so we will close and wait once shuttle exits.
+    let ctx_clone_for_ws_event = ctx.clone();
     if provided_tracker {
         tracker.spawn(async move {
             if let Err(err) = audit_logs_shuttle.try_run().await {
                 error!(?err, "audit logs shuttle error");
+            }
+
+            match WsEvent::audit_logs_published(&ctx_clone_for_ws_event).await {
+                Ok(event) => {
+                    if let Err(err) = event.publish_immediately(&ctx_clone_for_ws_event).await {
+                        error!(?err, "error when publishing ws event for audit logs");
+                    }
+                }
+                Err(err) => error!(?err, "error when creating ws event for audit logs"),
             }
         });
     } else {
@@ -140,50 +147,35 @@ pub(crate) async fn publish_pending(
             if let Err(err) = audit_logs_shuttle.try_run().await {
                 error!(?err, "audit logs shuttle error");
             }
+
             tracker.close();
             tracker.wait().await;
+
+            match WsEvent::audit_logs_published(&ctx_clone_for_ws_event).await {
+                Ok(event) => {
+                    if let Err(err) = event.publish_immediately(&ctx_clone_for_ws_event).await {
+                        error!(?err, "error when publishing ws event for audit logs");
+                    }
+                }
+                Err(err) => error!(?err, "error when creating ws event for audit logs"),
+            }
         });
     }
 
     Ok(())
 }
 
-#[instrument(name = "audit_logging.write", level = "debug", skip_all, fields(kind))]
-pub(crate) async fn write(ctx: &DalContext, kind: AuditLogKind, entity_name: String) -> Result<()> {
-    // TODO(nick): nuke this from intergalactic orbit. Then do it again.
-    let workspace_id = match ctx.workspace_pk() {
-        Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
-        Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
-    };
-
-    let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
-    pending_events_stream
-        .publish_audit_log(
-            workspace_id.into(),
-            ctx.change_set_id().into(),
-            ctx.event_session_id(),
-            &AuditLog::new(
-                ctx.events_actor(),
-                kind,
-                entity_name,
-                ctx.change_set_id().into(),
-            ),
-        )
-        .await?;
-    Ok(())
-}
-
 #[instrument(
-    name = "audit_logging.write_to_head",
+    name = "audit_logging.write",
     level = "debug",
     skip_all,
-    fields(kind)
+    fields(kind, entity_name, override_destination_change_set_id)
 )]
-pub(crate) async fn write_to_head(
+pub(crate) async fn write(
     ctx: &DalContext,
     kind: AuditLogKind,
     entity_name: String,
+    override_destination_change_set_id: Option<si_events::ChangeSetId>,
 ) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
@@ -192,10 +184,8 @@ pub(crate) async fn write_to_head(
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
-    let default_changeset_id = ctx
-        .get_workspace_default_change_set_id()
-        .await
-        .map_err(Box::new)?;
+    let destination_change_set_id =
+        override_destination_change_set_id.unwrap_or(ctx.change_set_id().into());
 
     let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
     pending_events_stream
@@ -207,8 +197,9 @@ pub(crate) async fn write_to_head(
                 ctx.events_actor(),
                 kind,
                 entity_name,
-                default_changeset_id.into(),
+                destination_change_set_id,
             ),
+            destination_change_set_id,
         )
         .await?;
     Ok(())
@@ -234,169 +225,160 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-#[instrument(
-    name = "audit_logging.list",
-    level = "info",
-    skip_all,
-    fields(
-        page,
-        page_size,
-        sort_timestamp_ascending,
-        change_set_filter,
-        entity_type_filter,
-        kind_filter,
-        user_filter
-    )
-)]
-pub async fn list(
-    ctx: &DalContext,
-    page: usize,
-    page_size: usize,
-    sort_timestamp_ascending: bool,
-    change_set_filter: HashSet<si_events::ChangeSetId>,
-    entity_type_filter: HashSet<String>,
-    kind_filter: HashSet<String>,
-    user_filter: HashSet<Option<si_events::UserPk>>,
-) -> Result<(Vec<FrontendAuditLog>, usize)> {
-    if page == 0 || page_size == 0 {
-        return Err(AuditLoggingError::CannotReturnListOfUnboundedSize(
-            page, page_size,
-        ));
-    }
-
+#[instrument(name = "audit_logging.list", level = "info", skip_all, fields(size))]
+pub async fn list(ctx: &DalContext, size: usize) -> Result<(Vec<FrontendAuditLog>, bool)> {
+    let start = tokio::time::Instant::now();
     let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
 
+    let change_set_id = ctx.change_set_id();
+    let head_change_set_id = ctx
+        .get_workspace_default_change_set_id()
+        .await
+        .map_err(Box::new)?;
+    let working_on_head = head_change_set_id == change_set_id;
+
     let stream_wrapper = AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
+    let filter_subject = if working_on_head {
+        stream_wrapper.consuming_subject_for_workspace(workspace_id.into())
+    } else {
+        stream_wrapper.subject_for_change_set(workspace_id.into(), change_set_id.into())
+    };
+
     let stream = stream_wrapper.stream().await?;
+    let last_sequence = stream.get_info().await?.state.last_sequence;
+    let start_sequence = match last_sequence.checked_sub((size as u64) + 1) {
+        Some(0) | None => 1,
+        Some(difference) => difference,
+    };
+
+    info!(%last_sequence, %start_sequence, ?filter_subject, "creating ephemeral pull consumer for listing audit logs");
+
     let consumer = stream
         .create_consumer(async_nats::jetstream::consumer::pull::Config {
-            filter_subject: stream_wrapper.subject(workspace_id.into()).to_string(),
+            filter_subject: filter_subject.to_string(),
+            deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::ByStartSequence {
+                start_sequence,
+            },
             ..Default::default()
         })
         .await?;
 
-    // FIXME(nick): find a way to perform true pagination with reverse timestamp sorting. This will
-    // eventually become a performance problem.
-    let total_message_count = stream.get_info().await?.state.messages;
-    let total_message_count_as_usize = total_message_count as usize;
+    let mut assembler = FrontendAuditLogAssembler::new(ctx).await?;
+    let mut frontend_audit_logs = Vec::new();
 
-    // TODO(nick): remove this once we implement proper pagination and filtering.
-    info!(
-        ?total_message_count,
-        ?total_message_count_as_usize,
-        "total message count on the audit logs stream"
-    );
+    let mut counter = 0;
+    let mut can_load_more_logs = false;
+    let mut messages = consumer.fetch().max_messages(size + 1).messages().await?;
 
-    // FIXME(nick): this is bad because we really only need the total count for the filtered messages by subject and
-    // not for the entire. Since this is a anti-pattern anyway, we'll avoid this problem when swapping our fake
-    // pagination method out for a real one.
-    let mut messages = consumer
-        .fetch()
-        .max_messages(total_message_count_as_usize)
-        .messages()
-        .await?;
-
-    let mut parser = Parser::new(
-        change_set_filter,
-        entity_type_filter,
-        kind_filter,
-        user_filter,
-    );
-
-    let mut filtered_audit_logs = Vec::new();
     while let Some(message) = messages.next().await {
+        counter += 1;
+
+        // These are the two conditions in which we can load more logs and exit early.
+        if size == 0 || counter == size + 1 {
+            can_load_more_logs = true;
+            break;
+        }
+
         let message = message.map_err(AuditLoggingError::Message)?;
         let audit_log: AuditLog = serde_json::from_slice(&message.payload)?;
-        if let Some(filtered_audit_log) = parser.filter_and_assemble(ctx, audit_log).await? {
-            filtered_audit_logs.push(filtered_audit_log);
+        if let Some(frontend_audit_log) = assembler.assemble(ctx, audit_log).await? {
+            frontend_audit_logs.push(frontend_audit_log);
         }
     }
 
-    // Before performing fake pagination, we need to cache the total number of filtered audit logs.
-    let filtered_audit_logs_total = filtered_audit_logs.len();
-    let paginated_audit_logs = fake_pagination(
-        filtered_audit_logs,
-        page,
-        page_size,
-        sort_timestamp_ascending,
-    );
+    // We must sort the logs on the way out because we cannot guarantee perfect ordering by the
+    // time all messages are published to the stream.
+    frontend_audit_logs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
 
-    Ok((paginated_audit_logs, filtered_audit_logs_total))
+    info!(elapsed = ?start.elapsed(), "listing audit logs complete");
+
+    Ok((frontend_audit_logs, can_load_more_logs))
 }
 
 #[derive(Debug)]
-struct Parser {
+struct FrontendAuditLogAssembler {
     change_set_cache: HashMap<si_events::ChangeSetId, ChangeSet>,
     user_cache: HashMap<si_events::UserPk, User>,
-    change_set_filter: HashSet<si_events::ChangeSetId>,
-    entity_type_filter: HashSet<String>,
-    kind_filter: HashSet<String>,
-    user_filter: HashSet<Option<si_events::UserPk>>,
+    change_set_id: si_events::ChangeSetId,
+    working_on_head: bool,
 }
 
-impl Parser {
-    pub fn new(
-        change_set_filter: HashSet<si_events::ChangeSetId>,
-        entity_type_filter: HashSet<String>,
-        kind_filter: HashSet<String>,
-        user_filter: HashSet<Option<si_events::UserPk>>,
-    ) -> Self {
-        Self {
+impl FrontendAuditLogAssembler {
+    pub async fn new(ctx: &DalContext) -> Result<Self> {
+        let head_change_set_id = ctx
+            .get_workspace_default_change_set_id()
+            .await
+            .map_err(Box::new)?;
+        let change_set_id = ctx.change_set_id();
+        Ok(Self {
             change_set_cache: HashMap::new(),
             user_cache: HashMap::new(),
-            change_set_filter,
-            entity_type_filter,
-            kind_filter,
-            user_filter,
-        }
+            change_set_id: change_set_id.into(),
+            working_on_head: head_change_set_id == change_set_id,
+        })
     }
 
-    pub async fn filter_and_assemble(
+    pub async fn assemble(
         &mut self,
         ctx: &DalContext,
         audit_log: AuditLog,
     ) -> Result<Option<FrontendAuditLog>> {
         match audit_log {
             AuditLog::V1(inner) => {
-                // Gather data that may be in our caches.
-                let (skip_due_to_change_set_status, change_set_id, change_set_name) =
-                    self.change_set_data(ctx, inner.change_set_id).await?;
-                if skip_due_to_change_set_status {
-                    return Ok(None);
-                }
-                let (user_id, user_email, user_name) = self.user_data(ctx, inner.actor).await?;
+                let change_set_metadata = self
+                    .find_change_set_metadata(ctx, inner.change_set_id)
+                    .await?;
 
-                // Gather data based on the specific audit log kind.
+                // Before we continue, we need to know if we need to filter out the audit log based
+                // on if we are working on HEAD.
+                //
+                // If we are working on HEAD, we show all audit logs without a change set, all
+                // audit logs on HEAD, and all audit logs for abandoned or applied change sets.
+                //
+                // If we are not working on HEAD, we only show audit logs for our own change set as
+                // well as certain audit logs that are relevant on HEAD, like "CreateChangeSet".
+                if self.working_on_head {
+                    if let Some((change_set_id, _, change_set_status)) = change_set_metadata {
+                        if change_set_id != self.change_set_id {
+                            match change_set_status {
+                                ChangeSetStatus::Abandoned | ChangeSetStatus::Applied => {}
+                                ChangeSetStatus::Approved
+                                | ChangeSetStatus::Failed
+                                | ChangeSetStatus::NeedsAbandonApproval
+                                | ChangeSetStatus::NeedsApproval
+                                | ChangeSetStatus::Open
+                                | ChangeSetStatus::Rejected => {
+                                    return Ok(None);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    match change_set_metadata {
+                        Some((change_set_id, _, _)) => {
+                            if change_set_id != self.change_set_id {
+                                return Ok(None);
+                            }
+                        }
+                        None => {
+                            return Ok(None);
+                        }
+                    }
+                }
+
+                let (user_id, user_email, user_name) =
+                    self.find_user_metadata(ctx, inner.actor).await?;
+
                 let kind = inner.kind.to_string();
                 let deserialized_metadata = FrontendAuditLogDeserializedMetadata::from(inner.kind);
                 let (title, entity_type) = deserialized_metadata.title_and_entity_type();
-
-                // Check the filters.
-                if let Some(change_set_id) = change_set_id {
-                    if !self.change_set_filter.is_empty()
-                        && !self.change_set_filter.contains(&change_set_id)
-                    {
-                        return Ok(None);
+                let (change_set_id, change_set_name) = match change_set_metadata {
+                    Some((change_set_id, change_set_name, _)) => {
+                        (Some(change_set_id), Some(change_set_name))
                     }
-                } else if !self.change_set_filter.is_empty() {
-                    return Ok(None);
-                }
-                if !self.entity_type_filter.is_empty()
-                    && !self.entity_type_filter.contains(entity_type)
-                {
-                    return Ok(None);
-                }
-                if !self.kind_filter.is_empty() && !self.kind_filter.contains(&kind) {
-                    return Ok(None);
-                }
-                if !self.user_filter.is_empty()
-                    && !self.user_filter.contains(&user_id.map(Into::into))
-                {
-                    return Ok(None);
-                }
+                    None => (None, None),
+                };
 
-                // If we made it here, then we are good to go.
                 Ok(Some(FrontendAuditLog {
                     title: title.to_owned(),
                     user_id,
@@ -414,11 +396,11 @@ impl Parser {
         }
     }
 
-    async fn change_set_data(
+    async fn find_change_set_metadata(
         &mut self,
         ctx: &DalContext,
         change_set_id: Option<si_events::ChangeSetId>,
-    ) -> Result<(bool, Option<si_events::ChangeSetId>, Option<String>)> {
+    ) -> Result<Option<(si_events::ChangeSetId, String, ChangeSetStatus)>> {
         match change_set_id {
             Some(change_set_id) => {
                 let (change_set_status, change_set_name) =
@@ -434,30 +416,13 @@ impl Parser {
                         found_data
                     };
 
-                match change_set_status {
-                    ChangeSetStatus::Failed | ChangeSetStatus::Rejected => {
-                        trace!(
-                            ?change_set_status,
-                            ?change_set_id,
-                            "skipping change set for audit log assembly due to status"
-                        );
-                        Ok((true, None, None))
-                    }
-                    ChangeSetStatus::Abandoned
-                    | ChangeSetStatus::Applied
-                    | ChangeSetStatus::Approved
-                    | ChangeSetStatus::NeedsAbandonApproval
-                    | ChangeSetStatus::NeedsApproval
-                    | ChangeSetStatus::Open => {
-                        Ok((false, Some(change_set_id), Some(change_set_name)))
-                    }
-                }
+                Ok(Some((change_set_id, change_set_name, change_set_status)))
             }
-            None => Ok((false, None, None)),
+            None => Ok(None),
         }
     }
 
-    async fn user_data(
+    async fn find_user_metadata(
         &mut self,
         ctx: &DalContext,
         actor: Actor,
@@ -489,29 +454,23 @@ impl Parser {
     }
 }
 
-// FIXME(nick): we need to replace this with real pagination, but it has to work with reverse timestamp sorting. That
-// will be tricky as the NATS JetStream consumer will need to consume in reverse order... or something analogous.
-fn fake_pagination(
-    logs: Vec<FrontendAuditLog>,
-    page: usize,
-    page_size: usize,
-    sort_timestamp_ascending: bool,
-) -> Vec<FrontendAuditLog> {
-    let logs = if sort_timestamp_ascending {
-        let mut logs = logs;
-        logs.reverse();
-        logs
-    } else {
-        logs
-    };
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditLogsPublishedPayload {
+    change_set_id: crate::ChangeSetId,
+    change_set_status: ChangeSetStatus,
+}
 
-    let mut current_page = 1;
-    for chunk in logs.chunks(page_size) {
-        if current_page == page {
-            return chunk.to_vec();
-        }
-        current_page += 1;
+impl WsEvent {
+    pub async fn audit_logs_published(ctx: &DalContext) -> WsEventResult<Self> {
+        let change_set = ctx.change_set()?;
+        WsEvent::new(
+            ctx,
+            WsPayload::AuditLogsPublished(AuditLogsPublishedPayload {
+                change_set_id: change_set.id,
+                change_set_status: change_set.status,
+            }),
+        )
+        .await
     }
-
-    logs
 }

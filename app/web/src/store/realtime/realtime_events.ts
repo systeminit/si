@@ -356,4 +356,8 @@ export type WsEventPayloadMap = {
       }
     >;
   };
+  AuditLogsPublished: {
+    changeSetId: ChangeSetId;
+    changeSetStatus: ChangeSetStatus;
+  };
 };

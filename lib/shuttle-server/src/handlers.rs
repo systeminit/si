@@ -3,7 +3,11 @@ use naxum::{
     response::{IntoResponse, Response},
     Message,
 };
-use si_data_nats::async_nats::{self, jetstream};
+use shuttle_core::DESTINATION_SUBJECT_SUFFIX_HEADER_KEY;
+use si_data_nats::{
+    async_nats::{self, jetstream},
+    Subject,
+};
 use telemetry::tracing::error;
 use telemetry_nats::propagation;
 use thiserror::Error;
@@ -23,17 +27,31 @@ pub(crate) async fn default(
     State(state): State<AppState>,
     msg: Message<jetstream::Message>,
 ) -> HandlerResult<()> {
-    if let Some(headers) = msg.headers() {
-        if headers.get(FINAL_MESSAGE_HEADER_KEY).is_some() {
-            state.self_shutdown_token.cancel();
-            return Ok(());
+    let destination_subject = match msg.headers() {
+        Some(headers) => {
+            if headers.get(FINAL_MESSAGE_HEADER_KEY).is_some() {
+                state.self_shutdown_token.cancel();
+                return Ok(());
+            }
+
+            if let Some(destination_subject_suffix) =
+                headers.get(DESTINATION_SUBJECT_SUFFIX_HEADER_KEY)
+            {
+                Subject::from(format!(
+                    "{}.{destination_subject_suffix}",
+                    state.destination_subject
+                ))
+            } else {
+                state.destination_subject
+            }
         }
-    }
+        None => state.destination_subject,
+    };
 
     let ack = state
         .context
         .publish_with_headers(
-            state.destination_subject,
+            destination_subject,
             propagation::empty_injected_headers(),
             msg.payload.to_owned(),
         )

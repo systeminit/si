@@ -27,7 +27,6 @@
 
 use std::time::Duration;
 
-use serde::Serialize;
 use serde_json::Error;
 use si_data_nats::{
     async_nats::{
@@ -39,9 +38,8 @@ use si_data_nats::{
     },
     jetstream, Subject,
 };
-use si_events::{audit_log::AuditLog, WorkspacePk};
+use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
-use telemetry_nats::propagation;
 use thiserror::Error;
 
 const STREAM_NAME: &str = "AUDIT_LOGS";
@@ -93,35 +91,25 @@ impl AuditLogsStream {
             .await?)
     }
 
-    /// Publishes a audit log.
-    #[instrument(name = "audit_logs_stream.publish", level = "debug", skip_all)]
-    pub async fn publish(&self, workspace_id: WorkspacePk, audit_log: &AuditLog) -> Result<()> {
-        self.publish_message_inner(SUBJECT_PREFIX, &workspace_id.to_string(), audit_log)
-            .await
-    }
-
-    /// Returns the subject for publishing and consuming [`AuditLogs`](AuditLog).
-    pub fn subject(&self, workspace_id: WorkspacePk) -> Subject {
+    /// Returns the subject for consuming [`AuditLogs`](AuditLog) for the entire workspace.
+    pub fn publishing_subject_for_workspace(&self, workspace_id: WorkspacePk) -> Subject {
         Subject::from(self.prefixed_subject(SUBJECT_PREFIX, &workspace_id.to_string()))
     }
 
-    async fn publish_message_inner(
+    /// Returns the subject for consuming [`AuditLogs`](AuditLog) for the entire workspace.
+    pub fn consuming_subject_for_workspace(&self, workspace_id: WorkspacePk) -> Subject {
+        Subject::from(self.prefixed_subject(SUBJECT_PREFIX, &format!("{workspace_id}.>")))
+    }
+
+    /// Returns the subject for publishing and consuming [`AuditLogs`](AuditLog) for a given change set.
+    pub fn subject_for_change_set(
         &self,
-        subject: &str,
-        parameters: &str,
-        message: &impl Serialize,
-    ) -> Result<()> {
-        let subject = self.prefixed_subject(subject, parameters);
-        let ack = self
-            .context
-            .publish_with_headers(
-                subject,
-                propagation::empty_injected_headers(),
-                serde_json::to_vec(message)?.into(),
-            )
-            .await?;
-        ack.await?;
-        Ok(())
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Subject {
+        Subject::from(
+            self.prefixed_subject(SUBJECT_PREFIX, &format!("{workspace_id}.{change_set_id}")),
+        )
     }
 
     fn prefixed_stream_name(&self, stream_name: &str) -> String {
