@@ -227,7 +227,7 @@ impl Diagram {
     async fn assemble_component_views(
         ctx: &DalContext,
         base_snapshot: &Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, (Component, Geometry)>,
+        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<(Vec<DiagramComponentView>, Vec<SummaryDiagramEdge>)> {
         let mut component_views = Vec::with_capacity(components.len());
@@ -237,7 +237,7 @@ impl Diagram {
             let change_status = component.change_status(ctx).await?;
             component_views.push(
                 component
-                    .into_frontend_type(ctx, Some(geometry), change_status, diagram_sockets)
+                    .into_frontend_type(ctx, geometry.as_ref(), change_status, diagram_sockets)
                     .await?,
             );
 
@@ -272,7 +272,7 @@ impl Diagram {
 
     async fn assemble_inferred_connection_views(
         ctx: &DalContext,
-        components: &HashMap<ComponentId, (Component, Geometry)>,
+        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
     ) -> DiagramResult<Vec<SummaryDiagramInferredEdge>> {
         let mut diagram_inferred_edges = vec![];
 
@@ -332,8 +332,8 @@ impl Diagram {
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, (Component, Geometry)>,
-        view_id: ViewId,
+        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
+        maybe_view_id: Option<ViewId>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<Vec<DiagramComponentView>> {
         let mut removed_component_summaries = vec![];
@@ -356,20 +356,28 @@ impl Diagram {
                     let deleted_component =
                         Component::get_by_id(base_change_set_ctx, component_id).await?;
 
-                    let Some(geometry) = Geometry::try_get_by_component_and_view(
-                        base_change_set_ctx,
-                        component_id,
-                        view_id,
-                    )
-                    .await?
-                    else {
-                        continue;
+                    // If we get a view, try to get geometry, skip whole component if we don't find it
+                    // If we don't get a view, don't skip, geometry is None
+                    let maybe_geometry = if let Some(view_id) = maybe_view_id {
+                        let Some(geometry) = Geometry::try_get_by_component_and_view(
+                            base_change_set_ctx,
+                            component_id,
+                            view_id,
+                        )
+                        .await?
+                        else {
+                            continue;
+                        };
+
+                        Some(geometry)
+                    } else {
+                        None
                     };
 
                     let mut summary_diagram_component = deleted_component
                         .into_frontend_type(
                             base_change_set_ctx,
-                            Some(&geometry),
+                            maybe_geometry.as_ref(),
                             ChangeStatus::Deleted,
                             diagram_sockets,
                         )
@@ -408,37 +416,44 @@ impl Diagram {
     }
 
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
-    /// [`Connections`](crate::Connection) for a [View](view::View).
+    /// [`Connections`](crate::Connection).
+    /// If passed a [ViewId], assemble it for that view only, otherwise, do it for the whole
+    /// graph.
     #[instrument(level = "info", skip(ctx))]
-    pub async fn assemble(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Self> {
-        let component_and_geometry_by_component_id = {
+    pub async fn assemble(ctx: &DalContext, maybe_view_id: Option<ViewId>) -> DiagramResult<Self> {
+        let component_and_maybe_geometry_by_component_id = {
             let mut map = HashMap::new();
 
-            for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
-                let component_id = match Geometry::component_id(ctx, geometry.id()).await {
-                    Ok(id) => id,
-                    Err(DiagramError::ComponentNotFoundForGeometry(geo_id)) => {
-                        let changeset_id = ctx.change_set_id();
-                        // NOTE(victor): The first version of views didn't delete geometries with components,
-                        // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                        // but we just skip orphan geometries here to make assemble work.
+            if let Some(view_id) = maybe_view_id {
+                for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
+                    let component_id = match Geometry::component_id(ctx, geometry.id()).await {
+                        Ok(id) => id,
+                        Err(DiagramError::ComponentNotFoundForGeometry(geo_id)) => {
+                            let changeset_id = ctx.change_set_id();
+                            // NOTE(victor): The first version of views didn't delete geometries with components,
+                            // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                            // but we just skip orphan geometries here to make assemble work.
 
-                        debug!(
-                            si.change_set.id = %changeset_id,
-                            si.geometry.id = %geo_id,
-                            "Could not find component for geometry - skipping"
-                        );
+                            debug!(
+                                si.change_set.id = %changeset_id,
+                                si.geometry.id = %geo_id,
+                                "Could not find component for geometry - skipping"
+                            );
 
-                        continue;
-                    }
-                    Err(e) => return Err(e),
-                };
+                            continue;
+                        }
+                        Err(e) => return Err(e),
+                    };
 
-                let component = Component::get_by_id(ctx, component_id).await?;
+                    let component = Component::get_by_id(ctx, component_id).await?;
 
-                map.insert(component_id, (component, geometry));
+                    map.insert(component_id, (component, Some(geometry)));
+                }
+            } else {
+                for component in Component::list(ctx).await? {
+                    map.insert(component.id(), (component, None));
+                }
             }
-
             map
         };
 
@@ -447,21 +462,23 @@ impl Diagram {
         let (mut component_views, mut diagram_edges) = Self::assemble_component_views(
             ctx,
             &base_snapshot,
-            &component_and_geometry_by_component_id,
+            &component_and_maybe_geometry_by_component_id,
             &mut diagram_sockets,
         )
         .await?;
 
-        let diagram_inferred_edges =
-            Self::assemble_inferred_connection_views(ctx, &component_and_geometry_by_component_id)
-                .await?;
+        let diagram_inferred_edges = Self::assemble_inferred_connection_views(
+            ctx,
+            &component_and_maybe_geometry_by_component_id,
+        )
+        .await?;
 
         if not_on_head {
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
                 base_snapshot,
-                &component_and_geometry_by_component_id,
-                view_id,
+                &component_and_maybe_geometry_by_component_id,
+                maybe_view_id,
                 &mut diagram_sockets,
             )
             .await?;
@@ -482,6 +499,6 @@ impl Diagram {
     pub async fn assemble_for_default_view(ctx: &DalContext) -> DiagramResult<Self> {
         let default_view_id = View::get_id_for_default(ctx).await?;
 
-        Self::assemble(ctx, default_view_id).await
+        Self::assemble(ctx, Some(default_view_id)).await
     }
 }

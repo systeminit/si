@@ -1,10 +1,11 @@
 use dal::diagram::Diagram;
-use dal::DalContext;
+use dal::{Component, DalContext};
 use dal_test::expected::{generate_fake_name, ExpectView};
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use si_frontend_types::RawGeometry;
 
 #[test]
 async fn create_view_and_component(ctx: &mut DalContext) {
@@ -19,15 +20,13 @@ async fn create_view_and_component(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
-
-    let default_diagram = Diagram::assemble(ctx, default_view_id)
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("assemble default diagram");
 
     assert_eq!(default_diagram.components.len(), 0);
 
-    let alternative_diagram = Diagram::assemble(ctx, alternative_view.id())
+    let alternative_diagram = Diagram::assemble(ctx, Some(alternative_view.id()))
         .await
         .expect("assemble default diagram");
 
@@ -51,9 +50,7 @@ async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
             .await
             .expect("could not create component");
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
-
-    let default_diagram = Diagram::assemble(ctx, default_view_id)
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("assemble default diagram");
 
@@ -69,17 +66,38 @@ async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
         component.id().into_inner()
     );
 
+    // Add component to another view
+    let another_view = ExpectView::create(ctx).await;
+
+    Component::add_to_view(
+        ctx,
+        component.id(),
+        another_view.id(),
+        RawGeometry {
+            x: 0,
+            y: 0,
+            width: None,
+            height: None,
+        },
+    )
+    .await
+    .expect("add component to view");
+
     let maybe_marked_component = component.delete(ctx).await.expect("component deleted");
     // Ensure the component got deleted instead
     // of marked for deletion
     assert_eq!(maybe_marked_component, None);
 
     // Ensure we get an empty diagram with no failures, which dangling geometries would cause
-    let default_diagram = Diagram::assemble(ctx, default_view_id)
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("assemble default diagram");
 
     assert_eq!(default_diagram.components.len(), 0);
 
-    // TODO When we implement moving components to new views, we should test this with multiple views
+    let another_diagram = Diagram::assemble(ctx, Some(another_view.id()))
+        .await
+        .expect("assemble another diagram");
+
+    assert_eq!(another_diagram.components.len(), 0);
 }

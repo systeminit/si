@@ -23,7 +23,6 @@ use super::ViewResult;
 #[serde(rename_all = "camelCase")]
 pub struct Request {
     pub component_ids: Vec<ComponentId>,
-    pub client_ulid: ulid::Ulid,
 }
 
 pub async fn erase_components(
@@ -33,10 +32,7 @@ pub async fn erase_components(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
-    Json(Request {
-        component_ids,
-        client_ulid,
-    }): Json<Request>,
+    Json(Request { component_ids }): Json<Request>,
 ) -> ViewResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder
         .build(access_builder.build(change_set_id.into()))
@@ -73,7 +69,7 @@ pub async fn erase_components(
         }),
     );
 
-    WsEvent::view_components_update(&ctx, updated_components, Some(client_ulid))
+    WsEvent::view_components_update(&ctx, updated_components)
         .await?
         .publish_on_commit(&ctx)
         .await?;

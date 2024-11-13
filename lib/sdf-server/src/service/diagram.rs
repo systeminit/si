@@ -36,6 +36,7 @@ pub mod remove_delete_intent;
 
 mod add_components_to_view;
 pub mod dvu_roots;
+pub mod get_all_components_and_edges;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -183,7 +184,12 @@ pub fn routes() -> Router<AppState> {
             "/set_component_position",
             post(set_component_position::set_component_position),
         )
+        // Gets diagram for default view TODO: Delete this
         .route("/get_diagram", get(get_diagram::get_diagram))
+        .route(
+            "/get_all_components_and_edges",
+            get(get_all_components_and_edges::get_all_components_and_edges),
+        )
         .route("/list_schemas", get(list_schemas::list_schemas))
         .route("/dvu_roots", get(dvu_roots::dvu_roots))
 }

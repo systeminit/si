@@ -10,7 +10,6 @@ use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;
-use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +18,6 @@ pub struct Request {
     pub destination_view_id: ViewId,
     pub geometries_by_component_id: HashMap<ComponentId, StringGeometry>,
     pub remove_from_original_view: bool,
-    pub client_ulid: Ulid,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -36,7 +34,6 @@ pub async fn add_components_to_view(
         geometries_by_component_id,
         remove_from_original_view,
         visibility,
-        client_ulid,
     }): Json<Request>,
 ) -> DiagramResult<ForceChangeSetResponse<()>> {
     let mut ctx = builder
@@ -73,7 +70,7 @@ pub async fn add_components_to_view(
         }
     }
 
-    WsEvent::view_components_update(&ctx, updated_components, Some(client_ulid))
+    WsEvent::view_components_update(&ctx, updated_components)
         .await?
         .publish_on_commit(&ctx)
         .await?;
