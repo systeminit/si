@@ -217,6 +217,5 @@ def iso_to_days(iso_str: Optional[IsoTimestamp]):
         return None
     return datetime.strptime(iso_str, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
 
-def lambda_handler(event = {}, _context = None):
-    WorkspaceDelegationsPopulation(event).run()
+lambda_handler = WorkspaceDelegationsPopulation.lambda_handler
 

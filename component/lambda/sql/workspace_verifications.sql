@@ -4,6 +4,9 @@
 
 CREATE SCHEMA IF NOT EXISTS workspace_verifications;
 
+GRANT USAGE ON SCHEMA workspace_verifications TO lambda_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA workspace_verifications TO lambda_user;
+
 -- All owner subscriptions must be in sequence:
 -- * No gaps between subscriptions
 -- * No overlaps between subscriptions
