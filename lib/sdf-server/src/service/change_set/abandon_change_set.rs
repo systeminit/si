@@ -41,7 +41,7 @@ pub async fn abandon_change_set(
     let mut change_set = ChangeSet::find(&ctx, request.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-
+    let old_status = change_set.status;
     ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await?;
     change_set.abandon(&ctx).await?;
@@ -57,8 +57,13 @@ pub async fn abandon_change_set(
         }),
     );
 
-    ctx.write_audit_log(AuditLogKind::AbandonChangeSet, change_set.name)
-        .await?;
+    ctx.write_audit_log(
+        AuditLogKind::AbandonChangeSet {
+            from_status: old_status.into(),
+        },
+        change_set.name,
+    )
+    .await?;
 
     ctx.commit_no_rebase().await?;
 

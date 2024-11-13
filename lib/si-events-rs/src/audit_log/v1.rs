@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
 
 use crate::{
-    ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId,
-    InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, SecretId, WorkspacePk,
+    ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ChangeSetStatus,
+    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
+    SecretId, WorkspacePk,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
@@ -18,7 +19,9 @@ pub struct AuditLogV1 {
 #[remain::sorted]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Display, EnumDiscriminants)]
 pub enum AuditLogKindV1 {
-    AbandonChangeSet,
+    AbandonChangeSet {
+        from_status: ChangeSetStatus,
+    },
     AddAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -27,6 +30,9 @@ pub enum AuditLogKindV1 {
         func_name: String,
     },
     ApplyChangeSet,
+    ApproveChangeSetApply {
+        from_status: ChangeSetStatus,
+    },
     CancelAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -72,6 +78,16 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    RejectChangeSetApply {
+        from_status: ChangeSetStatus,
+    },
+
+    ReopenChangeSet {
+        from_status: ChangeSetStatus,
+    },
+    RequestChangeSetApproval {
+        from_status: ChangeSetStatus,
     },
     RetryAction {
         prototype_id: ActionPrototypeId,
@@ -169,5 +185,8 @@ pub enum AuditLogKindV1 {
         new_schema_variant_name: String,
         old_schema_variant_id: SchemaVariantId,
         old_schema_variant_name: String,
+    },
+    WithdrawRequestForChangeSetApply {
+        from_status: ChangeSetStatus,
     },
 }

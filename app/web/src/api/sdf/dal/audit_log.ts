@@ -2,6 +2,7 @@ export const AUDIT_LOG_KINDS = [
   "AbandonChangeSet",
   "AddAction",
   "ApplyChangeSet",
+  "ApproveChangeSetApply",
   "CancelAction",
   "CreateChangeSet",
   "CreateComponent",
@@ -12,6 +13,9 @@ export const AUDIT_LOG_KINDS = [
   "InstallWorkspace",
   "Login",
   "PutActionOnHold",
+  "RejectChangeSetApply",
+  "ReopenChangeSet",
+  "RequestChangeSetApproval",
   "RetryAction",
   "RunAction",
   "UpdateDependentInputSocket",
@@ -21,6 +25,7 @@ export const AUDIT_LOG_KINDS = [
   "UpdatePropertyEditorValueForSecret",
   "UpdateSecret",
   "UpgradeComponent",
+  "WithdrawRequestForChangeSetApply",
 ];
 
 export const AUDIT_LOG_ENTITY_TYPES = [

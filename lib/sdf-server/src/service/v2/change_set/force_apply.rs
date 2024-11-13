@@ -1,5 +1,6 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use si_events::audit_log::AuditLogKind;
 
 use super::{Error, Result};
 use crate::{
@@ -18,9 +19,18 @@ pub async fn force_apply(
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
-
+    let change_set = ChangeSet::find(&ctx, change_set_id)
+        .await?
+        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
+    let old_status = change_set.status;
     ChangeSet::prepare_for_force_apply(&ctx).await?;
-
+    ctx.write_audit_log(
+        AuditLogKind::ApproveChangeSetApply {
+            from_status: old_status.into(),
+        },
+        change_set.name,
+    )
+    .await?;
     // We need to run a commit before apply so changes get saved
     ctx.commit().await?;
 
@@ -37,10 +47,12 @@ pub async fn force_apply(
         }),
     );
 
-    let _change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
+    let change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
 
+    ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name)
+        .await?;
     // Ws Event fires from the dal
 
     ctx.commit().await?;

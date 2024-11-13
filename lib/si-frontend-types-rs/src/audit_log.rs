@@ -1,8 +1,8 @@
 use serde::Serialize;
 use si_events::{
     audit_log::AuditLogKind, ActionKind, ActionPrototypeId, AttributeValueId, ChangeSetId,
-    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
-    SecretId, UserPk, WorkspacePk,
+    ChangeSetStatus, ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId,
+    SchemaVariantId, SecretId, UserPk, WorkspacePk,
 };
 use strum::EnumDiscriminants;
 
@@ -45,7 +45,7 @@ pub struct AuditLog {
 #[serde(untagged, rename_all = "camelCase")]
 pub enum AuditLogDeserializedMetadata {
     #[serde(rename_all = "camelCase")]
-    AbandonChangeSet,
+    AbandonChangeSet { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
     AddAction {
         prototype_id: ActionPrototypeId,
@@ -57,6 +57,8 @@ pub enum AuditLogDeserializedMetadata {
     #[serde(rename_all = "camelCase")]
     ApplyChangeSet,
     #[serde(rename_all = "camelCase")]
+    ApproveChangeSetApply { from_status: ChangeSetStatus },
+    #[serde(rename_all = "camelCase")]
     CancelAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -64,6 +66,7 @@ pub enum AuditLogDeserializedMetadata {
         func_display_name: Option<String>,
         func_name: String,
     },
+
     #[serde(rename_all = "camelCase")]
     CreateChangeSet,
     #[serde(rename_all = "camelCase")]
@@ -106,6 +109,12 @@ pub enum AuditLogDeserializedMetadata {
         func_display_name: Option<String>,
         func_name: String,
     },
+    #[serde(rename_all = "camelCase")]
+    RejectChangeSetApply { from_status: ChangeSetStatus },
+    #[serde(rename_all = "camelCase")]
+    ReopenChangeSet { from_status: ChangeSetStatus },
+    #[serde(rename_all = "camelCase")]
+    RequestChangeSetApproval { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
     RetryAction {
         prototype_id: ActionPrototypeId,
@@ -209,6 +218,8 @@ pub enum AuditLogDeserializedMetadata {
         old_schema_variant_id: SchemaVariantId,
         old_schema_variant_name: String,
     },
+    #[serde(rename_all = "camelCase")]
+    WithdrawRequestForChangeSetApply { from_status: ChangeSetStatus },
 }
 
 impl AuditLogDeserializedMetadata {
@@ -221,6 +232,7 @@ impl AuditLogDeserializedMetadata {
             Kind::AbandonChangeSet => ("Abandoned", "Change Set"),
             Kind::AddAction => ("Enqueued", "Action"),
             Kind::ApplyChangeSet => ("Applied", "Change Set"),
+            Kind::ApproveChangeSetApply => ("Approved Request to Apply", "Change Set"),
             Kind::CancelAction => ("Removed", "Action"),
             Kind::CreateChangeSet => ("Created", "Change Set"),
             Kind::CreateComponent => ("Created", "Component"),
@@ -231,6 +243,9 @@ impl AuditLogDeserializedMetadata {
             Kind::InstallWorkspace => ("Installed", "Workspace"),
             Kind::Login => ("Authenticated", " "),
             Kind::PutActionOnHold => ("Paused", "Action"),
+            Kind::RejectChangeSetApply => ("Rejected Request to Apply", "Change Set"),
+            Kind::ReopenChangeSet => ("Reopened", "Change Set"),
+            Kind::RequestChangeSetApproval => ("Requested to Apply", "Change Set"),
             Kind::RetryAction => ("Retried", "Action"),
             Kind::RunAction => ("Ran", "Action"),
             Kind::UpdateDependentInputSocket => ("Set Dependent", "Input Socket"),
@@ -242,6 +257,7 @@ impl AuditLogDeserializedMetadata {
             }
             Kind::UpdateSecret => ("Updated", "Secret"),
             Kind::UpgradeComponent => ("Upgraded", "Component"),
+            Kind::WithdrawRequestForChangeSetApply => ("Withdrew Request to Apply", "Change Set"),
         }
     }
 }
@@ -251,7 +267,9 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
         // Reflect updates to the audit log kind in "app/web/src/api/sdf/dal/audit_log.ts" and please keep this in
         // alphabetical order!
         match value {
-            AuditLogKind::AbandonChangeSet => Self::AbandonChangeSet,
+            AuditLogKind::AbandonChangeSet { from_status } => {
+                Self::AbandonChangeSet { from_status }
+            }
             AuditLogKind::AddAction {
                 prototype_id,
                 action_kind,
@@ -266,6 +284,9 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 func_name,
             },
             AuditLogKind::ApplyChangeSet => Self::ApplyChangeSet,
+            AuditLogKind::ApproveChangeSetApply { from_status } => {
+                Self::ApproveChangeSetApply { from_status }
+            }
             AuditLogKind::CancelAction {
                 prototype_id,
                 action_kind,
@@ -328,6 +349,13 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 func_display_name,
                 func_name,
             },
+            AuditLogKind::RejectChangeSetApply { from_status } => {
+                Self::RejectChangeSetApply { from_status }
+            }
+            AuditLogKind::ReopenChangeSet { from_status } => Self::ReopenChangeSet { from_status },
+            AuditLogKind::RequestChangeSetApproval { from_status } => {
+                Self::RequestChangeSetApproval { from_status }
+            }
             AuditLogKind::RetryAction {
                 prototype_id,
                 action_kind,
@@ -509,6 +537,9 @@ impl From<AuditLogKind> for AuditLogDeserializedMetadata {
                 old_schema_variant_id,
                 old_schema_variant_name,
             },
+            AuditLogKind::WithdrawRequestForChangeSetApply { from_status } => {
+                Self::WithdrawRequestForChangeSetApply { from_status }
+            }
         }
     }
 }
