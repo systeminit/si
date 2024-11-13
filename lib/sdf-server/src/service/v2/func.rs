@@ -1,3 +1,4 @@
+use asset_sprayer::AssetSprayerError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -28,6 +29,7 @@ pub mod create_func;
 pub mod create_unlocked_copy;
 pub mod delete_func;
 pub mod execute_func;
+pub mod generate_aws_function;
 pub mod get_code;
 pub mod get_func_run;
 pub mod list_all_funcs;
@@ -39,6 +41,10 @@ pub mod update_func;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncAPIError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] dal::action::prototype::ActionPrototypeError),
+    #[error("asset sprayer error: {0}")]
+    AssetSprayer(#[from] AssetSprayerError),
     #[error("cannot delete binding for func kind")]
     CannotDeleteBindingForFunc,
     #[error("cannot delete locked func: {0}")]
@@ -77,6 +83,10 @@ pub enum FuncAPIError {
     MissingPrototypeId,
     #[error("missing schema varianta and func id for leaf func")]
     MissingSchemaVariantAndFunc,
+    #[error("action function with multiple action types")]
+    MultipleActionTypes(FuncId),
+    #[error("function is not an action or asset schema function")]
+    NoActionTypes(FuncId),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema error: {0}")]
@@ -220,6 +230,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:func_id/arguments/:func_argument_id",
             delete(argument::delete_argument::delete_func_argument),
+        )
+        .route(
+            "/:func_id/generate_aws_function",
+            get(generate_aws_function::generate_aws_function),
         )
 }
 

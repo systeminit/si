@@ -38,7 +38,7 @@ pub async fn save_code(
     FuncAuthoringClient::save_code(&ctx, func_id, request.code).await?;
     let func_code = get_code_response(&ctx, func_id).await?;
     let func = Func::get_by_id_or_error(&ctx, func_id).await?;
-    WsEvent::func_code_saved(&ctx, func_code)
+    WsEvent::func_code_saved(&ctx, func_code, false)
         .await?
         .publish_on_commit(&ctx)
         .await?;

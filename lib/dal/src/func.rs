@@ -804,6 +804,19 @@ pub struct FuncWsEventFuncSummary {
 pub struct FuncWsEventCodeSaved {
     change_set_id: ChangeSetId,
     func_code: si_frontend_types::FuncCode,
+    generated: bool,
+}
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncWsEventGeneratingAwsCliCommand {
+    command: String,
+    subcommand: String,
+}
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncWsEventGenerating {
+    func_id: FuncId,
+    command: FuncWsEventGeneratingAwsCliCommand,
 }
 
 impl WsEvent {
@@ -874,12 +887,33 @@ impl WsEvent {
     pub async fn func_code_saved(
         ctx: &DalContext,
         func_code: si_frontend_types::FuncCode,
+        generated: bool,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FuncCodeSaved(FuncWsEventCodeSaved {
                 change_set_id: ctx.change_set_id(),
                 func_code,
+                generated,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_generating(
+        ctx: &DalContext,
+        func_id: FuncId,
+        command: String,
+        subcommand: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncGenerating(FuncWsEventGenerating {
+                func_id,
+                command: FuncWsEventGeneratingAwsCliCommand {
+                    command,
+                    subcommand,
+                },
             }),
         )
         .await

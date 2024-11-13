@@ -5,27 +5,47 @@ use async_openai::types::{
     ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
     ChatCompletionRequestUserMessageContent, CreateChatCompletionRequest,
 };
+use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{AssetSprayerError, Result};
 
-#[derive(Debug, Clone, strum::Display, strum::EnumDiscriminants)]
-#[strum_discriminants(name(PromptKind))]
-#[strum_discriminants(derive(strum::Display))]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumDiscriminants,
+)]
 pub enum Prompt {
-    AwsAssetSchema { command: String, subcommand: String },
+    AwsCliCommandPrompt(AwsCliCommandPromptKind, AwsCliCommand),
 }
 
-impl Prompt {
-    pub fn kind(&self) -> PromptKind {
-        self.into()
-    }
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
+    strum::VariantNames,
+)]
+pub enum AwsCliCommandPromptKind {
+    AssetSchema,
+    CreateAction,
+    DestroyAction,
+    RefreshAction,
+    UpdateAction,
+}
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct AwsCliCommand(pub String, pub String);
+
+impl Prompt {
     pub async fn prompt(
         &self,
         prompts_dir: &Option<PathBuf>,
     ) -> Result<CreateChatCompletionRequest> {
-        let raw_prompt = self.kind().raw_prompt(prompts_dir).await?;
+        let raw_prompt = self.raw_prompt(prompts_dir).await?;
         self.replace_prompt(raw_prompt).await
     }
 
@@ -61,12 +81,9 @@ impl Prompt {
 
     async fn replace_prompt_text(&self, text: &str) -> Result<String> {
         let text = match self {
-            Self::AwsAssetSchema {
-                command,
-                subcommand,
-            } => text
-                .replace("{AWS_COMMAND}", command)
-                .replace("{AWS_SUBCOMMAND}", subcommand),
+            Self::AwsCliCommandPrompt(_, command) => text
+                .replace("{AWS_COMMAND}", command.command())
+                .replace("{AWS_SUBCOMMAND}", command.subcommand()),
         };
         self.fetch_prompt_text(&text).await
     }
@@ -85,7 +102,7 @@ impl Prompt {
                 result.push_str(&Self::get(&text[..url_end]).await?);
                 text = &text[(url_end + "{/FETCH}".len())..];
             } else {
-                return Err(AssetSprayerError::MissingEndFetch(self.kind()));
+                return Err(AssetSprayerError::MissingEndFetch(self.clone()));
             }
         }
 
@@ -103,37 +120,73 @@ impl Prompt {
         let response = client.get(url).send().await?;
         response.error_for_status()?.text().await
     }
-}
 
-impl PromptKind {
     pub async fn raw_prompt(
         &self,
         prompts_dir: &Option<PathBuf>,
     ) -> Result<CreateChatCompletionRequest> {
-        Ok(serde_yaml::from_str(&self.yaml(prompts_dir).await?)?)
+        Ok(serde_yaml::from_str(
+            &self.raw_prompt_yaml(prompts_dir).await?,
+        )?)
     }
 
-    async fn yaml(&self, prompts_dir: &Option<PathBuf>) -> Result<Cow<'static, str>> {
+    async fn raw_prompt_yaml(&self, prompts_dir: &Option<PathBuf>) -> Result<Cow<'static, str>> {
         if let Some(ref prompts_dir) = prompts_dir {
             // Read from disk if prompts_dir is available (faster dev cycle)
-            let path = prompts_dir.join(self.yaml_relative_path());
+            let path = prompts_dir.join(self.raw_prompt_yaml_relative_path());
             info!("Loading prompt for {} from disk at {:?}", self, path);
             Ok(tokio::fs::read_to_string(path).await?.into())
         } else {
             info!("Loading embedded prompt for {}", self);
-            Ok(self.yaml_embedded().into())
+            Ok(self.raw_prompt_yaml_embedded().into())
         }
     }
 
-    fn yaml_relative_path(&self) -> &str {
+    fn raw_prompt_yaml_relative_path(&self) -> &str {
         match self {
-            Self::AwsAssetSchema => "aws/asset_schema.yaml",
+            Self::AwsCliCommandPrompt(kind, _) => kind.yaml_relative_path(),
+        }
+    }
+
+    fn raw_prompt_yaml_embedded(&self) -> &'static str {
+        match self {
+            Self::AwsCliCommandPrompt(kind, _) => kind.yaml_embedded(),
+        }
+    }
+}
+
+impl AwsCliCommandPromptKind {
+    const fn yaml_relative_path(&self) -> &'static str {
+        match self {
+            Self::AssetSchema => "aws/asset_schema.yaml",
+            Self::CreateAction => "aws/create_action.yaml",
+            Self::DestroyAction => "aws/destroy_action.yaml",
+            Self::RefreshAction => "aws/refresh_action.yaml",
+            Self::UpdateAction => "aws/update_action.yaml",
         }
     }
 
     fn yaml_embedded(&self) -> &'static str {
         match self {
-            Self::AwsAssetSchema => include_str!("../prompts/aws/asset_schema.yaml"),
+            Self::AssetSchema => include_str!("../prompts/aws/asset_schema.yaml"),
+            Self::CreateAction => include_str!("../prompts/aws/create_action.yaml"),
+            Self::DestroyAction => include_str!("../prompts/aws/destroy_action.yaml"),
+            Self::RefreshAction => include_str!("../prompts/aws/refresh_action.yaml"),
+            Self::UpdateAction => include_str!("../prompts/aws/update_action.yaml"),
         }
+    }
+}
+
+impl AwsCliCommand {
+    pub fn new(command: impl Into<String>, subcommand: impl Into<String>) -> Self {
+        Self(command.into(), subcommand.into())
+    }
+
+    pub fn command(&self) -> &str {
+        &self.0
+    }
+
+    pub fn subcommand(&self) -> &str {
+        &self.1
     }
 }
