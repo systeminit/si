@@ -3,7 +3,8 @@
     <ComponentCard :component="fromComponent" :titleCard="false" />
     <div class="_connection-label text-xs italic">
       <!-- currently output and input socket always have the same label/name -->
-      <span class="capsize">{{ fromSocket?.name }}</span>
+      <span v-if="edge?.isManagement" class="capsize">Manages</span>
+      <span v-else class="capsize">{{ fromSocket?.name }}</span>
       <!-- <div>to</div>
         <span class="capsize">{{ toSocket?.name }}</span> -->
     </div>

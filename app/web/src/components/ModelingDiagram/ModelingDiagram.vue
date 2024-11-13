@@ -2189,6 +2189,17 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
+    const isManagedSchema =
+      possibleToSocket.def.schemaId &&
+      fromSocket.def.managedSchemas &&
+      fromSocket.def.managedSchemas.includes(possibleToSocket.def.schemaId);
+    const isSameSchema =
+      possibleToSocket.def.schemaId === fromSocket.def.schemaId;
+
+    if (fromSocket.def.isManagement && possibleToSocket.def.isManagement) {
+      return !!(isSameSchema || isManagedSchema);
+    }
+
     const [outputCAs, inputCAs] =
       fromSocket.def.direction === "output"
         ? [
@@ -2297,17 +2308,20 @@ async function endDrawEdge() {
   const fromSocketId = adjustedFrom.def.id;
   const toComponentId = adjustedTo.parent.def.id;
   const toSocketId = adjustedTo.def.id;
+  const from = {
+    componentId: fromComponentId,
+    socketId: fromSocketId,
+  };
+  const to = {
+    componentId: toComponentId,
+    socketId: toSocketId,
+  };
 
-  await componentsStore.CREATE_COMPONENT_CONNECTION(
-    {
-      componentId: fromComponentId,
-      socketId: fromSocketId,
-    },
-    {
-      componentId: toComponentId,
-      socketId: toSocketId,
-    },
-  );
+  if (adjustedFrom.def.isManagement) {
+    await componentsStore.MANAGE_COMPONENT(from, to);
+  } else {
+    await componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
+  }
 }
 
 const pasteElementsActive = computed(() => {

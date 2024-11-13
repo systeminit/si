@@ -39,11 +39,13 @@ pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod json;
 pub mod list_qualifications;
+mod manage;
 pub mod refresh;
 pub mod restore_default_function;
 pub mod set_name;
 pub mod set_resource_id;
 pub mod set_type;
+mod unmanage;
 pub mod update_property_editor_value;
 mod upgrade;
 
@@ -195,4 +197,6 @@ pub fn routes() -> Router<AppState> {
         .route("/json", get(json::json))
         .route("/upgrade_component", post(upgrade::upgrade))
         .route("/conflicts", get(conflicts_for_component))
+        .route("/manage", post(manage::manage))
+        .route("/unmanage", post(unmanage::unmanage))
 }

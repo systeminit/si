@@ -506,6 +506,21 @@ impl ManagementPrototype {
         Ok(schema_variant_id.into())
     }
 
+    /// Is there at least one management prototype for this schema variant?
+    pub async fn variant_has_management_prototype(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ManagementPrototypeResult<bool> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        Ok(!workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::ManagementPrototype,
+            )
+            .await?
+            .is_empty())
+    }
+
     pub async fn list_for_variant_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

@@ -427,6 +427,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               components: RawComponent[];
               edges: RawEdge[];
               inferredEdges: RawEdge[];
+              managementEdges: RawEdge[];
             };
           }>({
             url,

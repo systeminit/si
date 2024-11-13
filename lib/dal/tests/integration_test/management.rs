@@ -562,7 +562,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
     assert_eq!(10.0, new_geometry.x);
     assert_eq!(20.0, new_geometry.y);
 
-    let managers = new_component.get_managers(ctx).await.expect("get managers");
+    let managers = new_component.managers(ctx).await.expect("get managers");
 
     assert_eq!(1, managers.len());
     assert_eq!(

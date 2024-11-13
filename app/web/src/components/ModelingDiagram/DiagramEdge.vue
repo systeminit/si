@@ -1,5 +1,5 @@
 <template>
-  <v-group v-if="points && centerPoint && !edge.def.isInferred">
+  <v-group v-if="points && centerPoint && showEdge">
     <v-line
       :config="{
         visible: isHovered || isSelected,
@@ -161,6 +161,23 @@ const selectedComponentId = computed(
   () => componentsStore.selectedComponent?.def.id,
 );
 
+const isFromOrToSelected = computed(
+  () =>
+    props.edge.def.fromComponentId === selectedComponentId.value ||
+    props.edge.def.toComponentId === selectedComponentId.value,
+);
+const showEdge = computed(() => {
+  if (props.edge.def.isInferred) {
+    return false;
+  }
+
+  if (props.edge.def.isManagement) {
+    return isFromOrToSelected.value || props.isSelected;
+  }
+
+  return true;
+});
+
 const mainLineOpacity = computed(() => {
   if (willDeleteIfPendingEdgeCreated.value) return 0.3;
   if (isDeleted.value) return 0.75;
@@ -170,6 +187,11 @@ const mainLineOpacity = computed(() => {
   ) {
     return 0.8;
   }
+
+  if (props.edge.def.isManagement) {
+    return 0.0;
+  }
+
   return 0.1;
 });
 

@@ -8,7 +8,7 @@ use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::component::frame::{Frame, FrameError};
 use crate::diagram::view::{View, ViewId};
-use crate::diagram::DiagramError;
+use crate::diagram::{DiagramError, SummaryDiagramManagementEdge};
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -394,11 +394,23 @@ struct PendingParent {
 }
 
 #[derive(Clone, Debug)]
+struct PendingManage {
+    managed_component_id: ComponentId,
+    managed_component_schema_id: SchemaId,
+}
+
+#[derive(Clone, Debug)]
 enum PendingOperation {
     Connect(PendingConnect),
-    Manage(ComponentId),
+    Manage(PendingManage),
     Parent(PendingParent),
     RemoveConnection(PendingConnect),
+}
+
+struct CreatedComponent {
+    component: Component,
+    geometry: NumericGeometry,
+    schema_id: SchemaId,
 }
 
 impl<'a> ManagementOperator<'a> {
@@ -442,22 +454,18 @@ impl<'a> ManagementOperator<'a> {
         })
     }
 
-    fn manager_schema_id(&self) -> SchemaId {
-        self.manager_schema_id
-    }
-
     async fn create_component(
         &self,
         placeholder: &str,
         operation: &ManagementCreateOperation,
-    ) -> ManagementResult<(ComponentId, NumericGeometry)> {
+    ) -> ManagementResult<CreatedComponent> {
         let schema_id = match &operation.kind {
             Some(kind) => self
                 .schema_map
                 .get(kind)
                 .copied()
                 .ok_or(ManagementError::SchemaDoesNotExist(kind.clone()))?,
-            None => self.manager_schema_id(),
+            None => self.manager_schema_id,
         };
 
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
@@ -485,7 +493,11 @@ impl<'a> ManagementOperator<'a> {
             auto_geometry
         };
 
-        Ok((component.id(), geometry))
+        Ok(CreatedComponent {
+            component,
+            geometry,
+            schema_id,
+        })
     }
 
     async fn prepare_for_connection(
@@ -589,7 +601,7 @@ impl<'a> ManagementOperator<'a> {
             };
             let edge = SummaryDiagramEdge::assemble_just_added(incoming_connection)?;
 
-            WsEvent::connection_upserted(self.ctx, edge)
+            WsEvent::connection_upserted(self.ctx, edge.into())
                 .await?
                 .publish_on_commit(self.ctx)
                 .await?;
@@ -651,7 +663,11 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
-    async fn manage(&self, component_id: ComponentId) -> ManagementResult<()> {
+    async fn manage(
+        &self,
+        component_id: ComponentId,
+        managed_schema_id: SchemaId,
+    ) -> ManagementResult<()> {
         let cycle_check_guard = self.ctx.workspace_snapshot()?.enable_cycle_check().await;
         Component::add_manages_edge_to_component(
             self.ctx,
@@ -661,6 +677,18 @@ impl<'a> ManagementOperator<'a> {
         )
         .await?;
         drop(cycle_check_guard);
+
+        let edge = SummaryDiagramManagementEdge::new(
+            self.manager_schema_id,
+            managed_schema_id,
+            self.manager_component_id,
+            component_id,
+        );
+
+        WsEvent::connection_upserted(self.ctx, edge.into())
+            .await?
+            .publish_on_commit(self.ctx)
+            .await?;
 
         Ok(())
     }
@@ -683,8 +711,13 @@ impl<'a> ManagementOperator<'a> {
                     ));
                 }
 
-                let (component_id, geometry) =
-                    self.create_component(placeholder, operation).await?;
+                let CreatedComponent {
+                    component,
+                    geometry,
+                    schema_id,
+                } = self.create_component(placeholder, operation).await?;
+
+                let component_id = component.id();
 
                 self.created_components.push(component_id);
 
@@ -728,7 +761,10 @@ impl<'a> ManagementOperator<'a> {
                         parent: parent.to_owned(),
                     }));
                 }
-                pending_operations.push(PendingOperation::Manage(component_id));
+                pending_operations.push(PendingOperation::Manage(PendingManage {
+                    managed_component_id: component_id,
+                    managed_component_schema_id: schema_id,
+                }));
             }
         }
 
@@ -902,8 +938,12 @@ impl<'a> ManagementOperator<'a> {
                     self.remove_connection(remove.from_component_id, &remove.connection)
                         .await?;
                 }
-                PendingOperation::Manage(managed_id) => {
-                    self.manage(managed_id).await?;
+                PendingOperation::Manage(PendingManage {
+                    managed_component_id,
+                    managed_component_schema_id,
+                }) => {
+                    self.manage(managed_component_id, managed_component_schema_id)
+                        .await?;
                 }
                 PendingOperation::Parent(_) => {}
             }

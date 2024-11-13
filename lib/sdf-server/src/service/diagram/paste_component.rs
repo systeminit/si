@@ -162,7 +162,7 @@ pub async fn paste_components(
                     to_delete: false,
                     from_base_change_set: false,
                 };
-                WsEvent::connection_upserted(&ctx, edge)
+                WsEvent::connection_upserted(&ctx, edge.into())
                     .await?
                     .publish_on_commit(&ctx)
                     .await?;

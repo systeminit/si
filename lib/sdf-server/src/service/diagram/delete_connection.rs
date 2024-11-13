@@ -86,7 +86,7 @@ pub async fn delete_connection(
     }
 
     if let Some(edge) = payload {
-        WsEvent::connection_upserted(&ctx, edge)
+        WsEvent::connection_upserted(&ctx, edge.into())
             .await?
             .publish_on_commit(&ctx)
             .await?;

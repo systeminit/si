@@ -1,9 +1,10 @@
 pub mod geometry;
 pub mod view;
 
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::num::{ParseFloatError, ParseIntError};
 use std::sync::Arc;
 use telemetry::prelude::*;
@@ -27,9 +28,10 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext, HelperError,
-    HistoryEventError, InputSocketId, OutputSocketId, SchemaVariantId, StandardModelError,
-    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
+    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
+    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId, OutputSocketId,
+    SchemaId, SchemaVariantId, StandardModelError, TransactionsError, Workspace, WorkspaceError,
+    WorkspaceSnapshot,
 };
 use si_frontend_types::{DiagramComponentView, DiagramSocket};
 use si_layer_cache::LayerDbError;
@@ -203,6 +205,71 @@ pub struct SummaryDiagramInferredEdge {
     pub to_delete: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramManagementEdge {
+    pub from_socket_id: String,
+    pub to_socket_id: String,
+    pub from_component_id: ComponentId,
+    pub to_component_id: ComponentId,
+    pub to_delete: bool,
+    pub change_status: ChangeStatus,
+    pub from_base_change_set: bool,
+}
+
+impl SummaryDiagramManagementEdge {
+    pub fn new(
+        from_schema_id: SchemaId,
+        to_schema_id: SchemaId,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+    ) -> Self {
+        SummaryDiagramManagementEdge {
+            from_socket_id: Self::output_socket_id(from_schema_id),
+            to_socket_id: Self::input_socket_id(to_schema_id),
+            from_component_id,
+            to_component_id,
+            to_delete: false,
+            change_status: ChangeStatus::Added,
+            from_base_change_set: false,
+        }
+    }
+
+    pub fn new_removed(
+        from_schema_id: SchemaId,
+        to_schema_id: SchemaId,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_base_change_set: bool,
+    ) -> Self {
+        SummaryDiagramManagementEdge {
+            from_socket_id: Self::output_socket_id(from_schema_id),
+            to_socket_id: Self::input_socket_id(to_schema_id),
+            from_component_id,
+            to_component_id,
+            to_delete: true,
+            change_status: ChangeStatus::Deleted,
+            from_base_change_set,
+        }
+    }
+
+    pub fn output_socket_id(schema_id: SchemaId) -> String {
+        format!("mgmt-output-{schema_id}")
+    }
+
+    pub fn input_socket_id(schema_id: SchemaId) -> String {
+        format!("mgmt-input-{schema_id}")
+    }
+}
+
+struct ComponentInfo {
+    component: Component,
+    geometry: Option<Geometry>,
+    schema_id: SchemaId,
+}
+
+type ComponentInfoCache = HashMap<ComponentId, ComponentInfo>;
+
 impl SummaryDiagramInferredEdge {
     pub fn assemble(inferred_incoming_connection: InferredConnection) -> DiagramResult<Self> {
         Ok(SummaryDiagramInferredEdge {
@@ -221,19 +288,35 @@ pub struct Diagram {
     pub components: Vec<DiagramComponentView>,
     pub edges: Vec<SummaryDiagramEdge>,
     pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
+    pub management_edges: Vec<SummaryDiagramManagementEdge>,
+}
+
+pub struct DiagramComponentViews {
+    component_views: Vec<DiagramComponentView>,
+    diagram_edges: Vec<SummaryDiagramEdge>,
+    management_edges: Vec<SummaryDiagramManagementEdge>,
+    management_edge_set: HashSet<(ComponentId, ComponentId)>,
 }
 
 impl Diagram {
     async fn assemble_component_views(
         ctx: &DalContext,
         base_snapshot: &Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
+        components: &ComponentInfoCache,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
-    ) -> DiagramResult<(Vec<DiagramComponentView>, Vec<SummaryDiagramEdge>)> {
+    ) -> DiagramResult<DiagramComponentViews> {
         let mut component_views = Vec::with_capacity(components.len());
         let mut diagram_edges = Vec::with_capacity(components.len());
+        let mut management_edges = Vec::with_capacity(components.len() / 2);
+        let mut management_edge_set = HashSet::new();
 
-        for (component, geometry) in components.values() {
+        for ComponentInfo {
+            component,
+            geometry,
+            schema_id,
+            ..
+        } in components.values()
+        {
             let change_status = component.change_status(ctx).await?;
             component_views.push(
                 component
@@ -241,9 +324,49 @@ impl Diagram {
                     .await?,
             );
 
+            let managers = component.managers(ctx).await?;
+            for manager_id in managers {
+                let Some(ComponentInfo {
+                    component: from_component,
+                    schema_id: from_schema_id,
+                    ..
+                }) = components.get(&manager_id)
+                else {
+                    continue;
+                };
+
+                let change_status = if base_snapshot
+                    .find_edge(
+                        manager_id,
+                        component.id(),
+                        EdgeWeightKindDiscriminants::Manages,
+                    )
+                    .await
+                    .is_none()
+                {
+                    ChangeStatus::Added
+                } else {
+                    ChangeStatus::Unmodified
+                };
+
+                let mut management_edge = SummaryDiagramManagementEdge::new(
+                    *from_schema_id,
+                    *schema_id,
+                    manager_id,
+                    component.id(),
+                );
+                management_edge.to_delete = from_component.to_delete() || component.to_delete();
+                management_edge.change_status = change_status;
+
+                management_edge_set.insert((from_component.id(), component.id()));
+                management_edges.push(management_edge);
+            }
+
             for incoming_connection in component.incoming_connections(ctx).await? {
-                if let Some((from_component, _)) =
-                    components.get(&incoming_connection.from_component_id)
+                if let Some(ComponentInfo {
+                    component: from_component,
+                    ..
+                }) = components.get(&incoming_connection.from_component_id)
                 {
                     let edge_status = if base_snapshot
                         .get_node_index_by_id_opt(
@@ -267,12 +390,17 @@ impl Diagram {
             }
         }
 
-        Ok((component_views, diagram_edges))
+        Ok(DiagramComponentViews {
+            component_views,
+            diagram_edges,
+            management_edges,
+            management_edge_set,
+        })
     }
 
     async fn assemble_inferred_connection_views(
         ctx: &DalContext,
-        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
+        components: &ComponentInfoCache,
     ) -> DiagramResult<Vec<SummaryDiagramInferredEdge>> {
         let mut diagram_inferred_edges = vec![];
 
@@ -283,14 +411,23 @@ impl Diagram {
             .inferred_connections_for_all_components(ctx)
             .await?
         {
-            let to_delete = if let (Some((source_component, _)), Some((destination_component, _))) = (
-                components.get(&incoming_connection.source_component_id),
-                components.get(&incoming_connection.destination_component_id),
-            ) {
-                source_component.to_delete() || destination_component.to_delete()
-            } else {
-                false
-            };
+            let to_delete = components
+                .get(&incoming_connection.source_component_id)
+                .zip(components.get(&incoming_connection.destination_component_id))
+                .is_some_and(
+                    |(
+                        ComponentInfo {
+                            component: source_component,
+                            ..
+                        },
+                        ComponentInfo {
+                            component: destination_component,
+                            ..
+                        },
+                    )| {
+                        source_component.to_delete() || destination_component.to_delete()
+                    },
+                );
 
             diagram_inferred_edges.push(SummaryDiagramInferredEdge {
                 from_component_id: incoming_connection.source_component_id,
@@ -332,7 +469,7 @@ impl Diagram {
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: Arc<WorkspaceSnapshot>,
-        components: &HashMap<ComponentId, (Component, Option<Geometry>)>,
+        components: &ComponentInfoCache,
         maybe_view_id: Option<ViewId>,
         diagram_sockets: &mut HashMap<SchemaVariantId, Vec<DiagramSocket>>,
     ) -> DiagramResult<Vec<DiagramComponentView>> {
@@ -415,13 +552,74 @@ impl Diagram {
         Ok(diagram_edges)
     }
 
+    /// If a manages edge is in the base snapshot, but not in the current
+    /// snapshot, that means it has been deleted. If one of the components is
+    /// not in this changeset, we can ignore the deleted edge, since we won't
+    /// render it. If the components are restored from the base, the edge will
+    /// *magically* reappear as deleted.
+    async fn assemble_removed_management_edges(
+        ctx: &DalContext,
+        base_snapshot: Arc<WorkspaceSnapshot>,
+        existing_management_edges: &HashSet<(ComponentId, ComponentId)>,
+        component_cache: &ComponentInfoCache,
+    ) -> DiagramResult<Vec<SummaryDiagramManagementEdge>> {
+        let mut removed_edges = vec![];
+
+        // list components
+        for from_id in Component::list_ids(ctx).await? {
+            let Some(from_idx) = base_snapshot.get_node_index_by_id_opt(from_id).await else {
+                continue;
+            };
+
+            for to_idx in base_snapshot
+                .edges_directed_by_index(from_idx, Direction::Outgoing)
+                .await?
+                .iter()
+                .filter(|(edge_weight, _, _)| {
+                    EdgeWeightKindDiscriminants::Manages == edge_weight.kind().into()
+                })
+                .map(|(_, _, to_idx)| *to_idx)
+            {
+                let Some(to_id) = base_snapshot
+                    .get_node_weight_opt(to_idx)
+                    .await
+                    .map(|weight| weight.id().into())
+                else {
+                    continue;
+                };
+
+                if existing_management_edges.contains(&(from_id, to_id)) {
+                    continue;
+                }
+
+                if let Some(removed_edge) = component_cache
+                    .get(&from_id)
+                    .zip(component_cache.get(&to_id))
+                    .map(|(from_comp_info, to_comp_info)| {
+                        SummaryDiagramManagementEdge::new_removed(
+                            from_comp_info.schema_id,
+                            to_comp_info.schema_id,
+                            from_id,
+                            to_id,
+                            true,
+                        )
+                    })
+                {
+                    removed_edges.push(removed_edge);
+                }
+            }
+        }
+
+        Ok(removed_edges)
+    }
+
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     /// If passed a [ViewId], assemble it for that view only, otherwise, do it for the whole
     /// graph.
     #[instrument(level = "info", skip(ctx))]
     pub async fn assemble(ctx: &DalContext, maybe_view_id: Option<ViewId>) -> DiagramResult<Self> {
-        let component_and_maybe_geometry_by_component_id = {
+        let component_info_cache = {
             let mut map = HashMap::new();
 
             if let Some(view_id) = maybe_view_id {
@@ -446,12 +644,28 @@ impl Diagram {
                     };
 
                     let component = Component::get_by_id(ctx, component_id).await?;
+                    let schema_id = component.schema(ctx).await?.id();
 
-                    map.insert(component_id, (component, Some(geometry)));
+                    map.insert(
+                        component_id,
+                        ComponentInfo {
+                            component,
+                            geometry: Some(geometry),
+                            schema_id,
+                        },
+                    );
                 }
             } else {
                 for component in Component::list(ctx).await? {
-                    map.insert(component.id(), (component, None));
+                    let schema_id = component.schema(ctx).await?.id();
+                    map.insert(
+                        component.id(),
+                        ComponentInfo {
+                            component,
+                            geometry: None,
+                            schema_id,
+                        },
+                    );
                 }
             }
             map
@@ -459,39 +673,49 @@ impl Diagram {
 
         let (base_snapshot, not_on_head) = Self::get_base_snapshot(ctx).await?;
         let mut diagram_sockets = HashMap::new();
-        let (mut component_views, mut diagram_edges) = Self::assemble_component_views(
+        let mut diagram_component_views = Self::assemble_component_views(
             ctx,
             &base_snapshot,
-            &component_and_maybe_geometry_by_component_id,
+            &component_info_cache,
             &mut diagram_sockets,
         )
         .await?;
 
-        let diagram_inferred_edges = Self::assemble_inferred_connection_views(
-            ctx,
-            &component_and_maybe_geometry_by_component_id,
-        )
-        .await?;
+        let diagram_inferred_edges =
+            Self::assemble_inferred_connection_views(ctx, &component_info_cache).await?;
 
         if not_on_head {
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
-                base_snapshot,
-                &component_and_maybe_geometry_by_component_id,
+                base_snapshot.clone(),
+                &component_info_cache,
                 maybe_view_id,
                 &mut diagram_sockets,
             )
             .await?;
-            component_views.extend(removed_component_summaries);
+            diagram_component_views
+                .component_views
+                .extend(removed_component_summaries);
 
             let removed_edges = Self::assemble_removed_edges(ctx).await?;
-            diagram_edges.extend(removed_edges);
+            diagram_component_views.diagram_edges.extend(removed_edges);
+            let removed_management_edges = Self::assemble_removed_management_edges(
+                ctx,
+                base_snapshot,
+                &diagram_component_views.management_edge_set,
+                &component_info_cache,
+            )
+            .await?;
+            diagram_component_views
+                .management_edges
+                .extend(removed_management_edges);
         }
 
         Ok(Self {
-            edges: diagram_edges,
-            components: component_views,
+            edges: diagram_component_views.diagram_edges,
+            components: diagram_component_views.component_views,
             inferred_edges: diagram_inferred_edges,
+            management_edges: diagram_component_views.management_edges,
         })
     }
 

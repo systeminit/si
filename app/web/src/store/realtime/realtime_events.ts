@@ -195,13 +195,22 @@ export type WsEventPayloadMap = {
     changeSetId: string;
     edges: RawEdge[];
   };
-  ConnectionUpserted: RawEdge;
-  ConnectionDeleted: {
-    fromComponentId: string;
-    toComponentId: string;
-    fromSocketId: string;
-    toSocketId: string;
-  };
+  ConnectionUpserted: {
+    type: "attributeValueEdge" | "managementEdge";
+  } & RawEdge;
+  ConnectionDeleted:
+    | {
+        type: "attributeValueEdge";
+        fromComponentId: string;
+        toComponentId: string;
+        fromSocketId: string;
+        toSocketId: string;
+      }
+    | {
+        type: "managementEdge";
+        fromComponentId: string;
+        toComponentId: string;
+      };
   ManagementFuncExecuted: {
     managerComponentId: string;
     prototypeId: string;

@@ -109,7 +109,7 @@ pub async fn delete_components(
                 to_delete: true,
                 from_base_change_set: false,
             };
-            WsEvent::connection_upserted(&ctx, payload)
+            WsEvent::connection_upserted(&ctx, payload.into())
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
@@ -127,7 +127,7 @@ pub async fn delete_components(
                 to_delete: true,
                 from_base_change_set: false,
             };
-            WsEvent::connection_upserted(&ctx, payload)
+            WsEvent::connection_upserted(&ctx, payload.into())
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
