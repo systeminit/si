@@ -37,6 +37,10 @@ pub enum AwsCliCommandPromptKind {
     UpdateAction,
 }
 
+const AWS_CLI_DOCS_URL: &str = "https://docs.aws.amazon.com/cli/latest/reference";
+const SI_DOCS_URL: &str =
+    "https://raw.githubusercontent.com/systeminit/si/refs/heads/main/app/docs/src";
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AwsCliCommand(pub String, pub String);
 
@@ -85,6 +89,9 @@ impl Prompt {
                 .replace("{AWS_COMMAND}", command.command())
                 .replace("{AWS_SUBCOMMAND}", command.subcommand()),
         };
+        let text = text
+            .replace("{AWS_CLI_DOCS_URL}", AWS_CLI_DOCS_URL)
+            .replace("{SI_DOCS_URL}", SI_DOCS_URL);
         self.fetch_prompt_text(&text).await
     }
 
@@ -112,13 +119,17 @@ impl Prompt {
         Ok(result)
     }
 
-    async fn get(url: &str) -> reqwest::Result<String> {
-        info!("Fetching: {}", url);
-        let client = reqwest::ClientBuilder::new()
-            .user_agent("Wget/1.21.2")
-            .build()?;
-        let response = client.get(url).send().await?;
-        response.error_for_status()?.text().await
+    async fn get(url: &str) -> Result<String> {
+        if let Some(file_path) = url.strip_prefix("file:") {
+            Ok(tokio::fs::read_to_string(file_path).await?)
+        } else {
+            info!("Fetching: {}", url);
+            let client = reqwest::ClientBuilder::new()
+                .user_agent("Wget/1.21.2")
+                .build()?;
+            let response = client.get(url).send().await?;
+            Ok(response.error_for_status()?.text().await?)
+        }
     }
 
     pub async fn raw_prompt(

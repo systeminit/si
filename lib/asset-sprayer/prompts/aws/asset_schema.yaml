@@ -43,21 +43,21 @@ messages:
       What follows is the current System Initiative schema API documentation as markdown, between three ^ characters.
 
       ^^^
-      {FETCH}https://raw.githubusercontent.com/systeminit/si/refs/heads/main/app/docs/src/reference/asset/schema.md{/FETCH}
+      {FETCH}{SI_DOCS_URL}/reference/asset/schema.md{/FETCH}
       ^^^
   - role: user
     content: >
       What follows is the current System Initiative function API documentation as markdown, between three ^ characters.
 
       ^^^
-      {FETCH}https://raw.githubusercontent.com/systeminit/si/refs/heads/main/app/docs/src/reference/asset/function.md{/FETCH}
+      {FETCH}{SI_DOCS_URL}/reference/asset/function.md{/FETCH}
       ^^^
   - role: user
     content: >
       What follows is the official documentation for an AWS CLI command as HTML, between three ^ characters.
 
       ^^^
-      {FETCH}https://docs.aws.amazon.com/cli/latest/reference/{AWS_COMMAND}/{AWS_SUBCOMMAND}.html{/FETCH}
+      {FETCH}{AWS_CLI_DOCS_URL}/{AWS_COMMAND}/{AWS_SUBCOMMAND}.html{/FETCH}
       ^^^
   - role: user
     content: >

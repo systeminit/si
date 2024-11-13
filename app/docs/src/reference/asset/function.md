@@ -112,37 +112,31 @@ actions tab of the attribute panel by the user.
 Action functions take an `Input` argument. It has a `properties` field which contains an object that has:
 
 * The `si` properties
+
+  These are the core properties set as meta-data for the function. Name, color, etc.
+
 * The `domain` properties
+
+  These are the properties specified in the schema itself.
+
 * The `resource` data
+
+  This is the output of the last action, stored as the state of the resource. It contains 3 fields:
+
+  - _status_: one of "ok", "warning", or "error"
+  - _message_: an optional message
+  - _payload_: the resource payload itself
+
 * The `resource_value` data
+
+  This is information pulled into the component properties from resource payload
+  data. These are properties added with the `addResourceProp()` method of a
+  components schema.
+
 * Any generated `code`
 
-#### The si properties
-
-These are the core properties set as meta-data for the function. Name, color, etc.
-
-#### The domain properties
-
-These are the properties specified in the schema itself.
-
-#### The resource data
-
-This is the output of the last action, stored as the state of the resource. It contains 3 fields:
-
-  * _status_: one of "ok", "warning", or "error"
-  * _message_: an optional message
-  * _payload_: the resource payload itself
-
-#### The resource_value data
-
-This is information pulled into the component properties from resource payload
-data. These are properties added with the `addResourceProp()` method of a
-components schema.
-
-#### Generated code
-
-Generated code is available as a map, whose key is the name of the code
-generation function that generated it.
+  Generated code is available as a map, whose key is the name of the code
+  generation function that generated it.
 
 ### Action function return value
 
@@ -170,91 +164,102 @@ return {
 
 Payload should be returned as a JavaScript object.
 
-
 ### Create action example
 
-A create action that uses generated code, `siExec` and a secret to create an AWS RDS cluster:
+A create action that uses generated code, `siExec` and a secret to create an AWS EKS cluster:
 
 ```typescript
-async function main(input: Input) {
-    if (input?.properties?.resource?.payload) {
+async function main(component: Input): Promise<Output> {
+    if (component.properties.resource?.payload) {
         return {
             status: "error",
             message: "Resource already exists",
-            payload: input.properties.resource.payload,
+            payload: component.properties.resource.payload,
         };
     }
 
-    const code = JSON.parse(input?.properties?.code?.["si:generateAwsRdsClusterJSON"]?.code);
-    let password = requestStorage.getItem("masterPassword");
-    code["MasterUserPassword"] = password;
+    const code = component.properties.code?.["si:genericAwsCreate"]?.code;
+    const domain = component.properties?.domain;
+
     const child = await siExec.waitUntilEnd("aws", [
-        "rds",
-        "create-db-cluster",
+        "eks",
+        "create-cluster",
         "--region",
-        input?.properties?.domain?.Region || "",
+        domain?.extra?.Region || "",
         "--cli-input-json",
-        JSON.stringify(code),
+        code || "",
     ]);
 
     if (child.exitCode !== 0) {
         console.error(child.stderr);
         return {
             status: "error",
-            message: `Unable to create RDS Cluster, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+            message: `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
         };
     }
 
+    const response = JSON.parse(child.stdout).cluster;
+
     return {
-        payload: JSON.parse(child.stdout).DBCluster,
-        status: "ok"
+        resourceId: response.name,
+        status: "ok",
     };
 }
 ```
 
 ### Refresh action example
 
-A refresh action example that uses lodash and siExec to update an AWS IAM Customer Managed Identity Policy:
+A refresh action example that uses lodash and siExec to update an AWS EKS cluster:
 
 ```typescript
 async function main(component: Input): Promise < Output > {
-    const cliArguments = {};
-    _.set(cliArguments, "PolicyArn", _.get(component, "properties.resource_value.Arn"));
+    let name = component.properties?.si?.resourceId;
+    const resource = component.properties.resource?.payload;
+    if (!name) {
+        name = resource.name;
+    }
+    if (!name) {
+        return {
+            status: component.properties.resource?.status ?? "error",
+            message: "Could not refresh, no resourceId present for EKS Cluster component",
+        };
+    }
+
+    const cliArguments = { };
+    _.set(
+        cliArguments,
+        "name",
+        name,
+    );
 
     const child = await siExec.waitUntilEnd("aws", [
-        "iam",
-        "get-policy",
+        "eks",
+        "describe-cluster",
+        "--region",
+        _.get(component, "properties.domain.extra.Region", ""),
         "--cli-input-json",
         JSON.stringify(cliArguments),
     ]);
 
     if (child.exitCode !== 0) {
-        const payload = _.get(component, "properties.resource.payload");
-        if (payload) {
+        console.error(child.stderr);
+        if (child.stderr.includes("ResourceNotFoundException")) {
+            console.log("EKS Cluster not found upstream (ResourceNotFoundException) so removing the resource")
             return {
-                status: "error",
-                payload,
-                message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-        } else {
-            return {
-                status: "error",
-                message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+                status: "ok",
+                payload: null,
             };
         }
-    }
-
-    const response = JSON.parse(child.stdout);
-    const resource = {};
-    _.merge(resource, _.get(response, "Policy"));
-    if (!resource) {
         return {
             status: "error",
-            message: `Resource not found in payload.\n\nResponse:\n\n${child.stdout}`,
+            payload: resource,
+            message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
         };
     }
+
+    const object = JSON.parse(child.stdout).cluster;
     return {
-        payload: resource,
+        payload: object,
         status: "ok",
     };
 }
@@ -313,97 +318,46 @@ Note that the payload returned here is `null` - this ensures the resource will b
 
 ### Manual action example
 
-A manual action that updates the tags on an AWS IAM policy, using lodash, siExec, and the AWS CLI:
+A manual action that updates the cluster configuration on an AWS EKS cluster, usking lodash, siExec and the AWS CLI:
 
 ```typescript
-async function main(component: Input): Promise < Output > {
-        // Does the domain tag not exist, but the resource tag does? Untag it!
-        if (_.isUndefined(domainTag)) {
-            toUnTag.push(resourceTag['Key']);
-            // Are the values different? Update the key to the domainTag value
-        } else if (domainTag['Value'] !== resourceTag['Value']) {
-            toUpdate.push(domainTag);
-            _.remove(domainTags, function(dt: Tag) {
-                return dt['Key'] === domainTag['Key'];
-            })
-        }
-    }
-    toUpdate = _.concat(toUpdate, domainTags);
-
-    if (toUnTag.length) {
-        const unTagChild = await siExec.waitUntilEnd("aws", [
-            "iam",
-            "untag-policy",
-            "--policy-arn",
-            component.properties.resource_value?.Arn,
-            "--tag-keys",
-            ...toUnTag,
-        ]);
-        if (unTagChild.exitCode !== 0) {
-            return {
-                status: "error",
-                payload: resource,
-                message: `Could not un-tag error; exit code ${unTagChild.exitCode}.\n\nSTDOUT:\n\n${unTagChild.stdout}\n\nSTDERR:\n\n${unTagChild.stderr}`,
-            }
-        }
-    }
-
-    if (toUpdate.length) {
-        const tagChild = await siExec.waitUntilEnd("aws", [
-            "iam",
-            "tag-policy",
-            "--policy-arn",
-            component.properties.resource_value?.Arn,
-            "--tags",
-            JSON.stringify(toUpdate),
-        ]);
-        if (tagChild.exitCode !== 0) {
-            return {
-                status: "error",
-                payload: resource,
-                message: `Could not update tags error; exit code ${tagChild.exitCode}.\n\nSTDOUT:\n\n${tagChild.stdout}\n\nSTDERR:\n\n${tagChild.stderr}`,
-            }
-        }
-    }
-
-    const cliArguments = {};
-    _.set(cliArguments, "PolicyArn", _.get(component, "properties.resource_value.Arn"));
-
-    const child = await siExec.waitUntilEnd("aws", [
-        "iam",
-        "get-policy",
-        "--cli-input-json",
-        JSON.stringify(cliArguments),
-    ]);
-
-    if (child.exitCode !== 0) {
-        const payload = _.get(component, "properties.resource.payload");
-        if (payload) {
-            return {
-                status: "error",
-                payload,
-                message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-        } else {
-            return {
-                status: "error",
-                message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-        }
-    }
-
-    const response = JSON.parse(child.stdout);
-    const refreshedResource = {};
-    _.merge(refreshedResource, _.get(response, "Policy"));
-    if (!refreshedResource) {
+async function main(component: Input) {
+    const resource = component.properties.resource;
+    if (!resource) {
         return {
-            status: "error",
-            message: `Resource not found in payload.\n\nResponse:\n\n${child.stdout}`,
+            status: component.properties.resource?.status ?? "ok",
+            message: component.properties.resource?.message,
         };
     }
+
+    let json = {
+        "accessConfig": {
+            "authenticationMode": component.properties.domain.accessConfig.authenticationMode,
+        },
+        "name": resource.name,
+    };
+
+    const updateResp = await siExec.waitUntilEnd("aws", [
+        "eks",
+        "update-cluster-config",
+        "--cli-input-json",
+        JSON.stringify(json),
+        "--region",
+        component.properties.domain?.extra.Region || "",
+    ]);
+
+    if (updateResp.exitCode !== 0) {
+        console.error(updateResp.stderr);
+        return {
+            status: "error",
+            payload: resource,
+            message: `Unable to update the EKS Cluster Access Config, AWS CLI 2 exited with non zero code: ${updateResp.exitCode}`,
+        };
+    }
+
     return {
-        payload: refreshedResource,
-        status: "ok",
+        payload: resource,
+        status: "ok"
     };
 }
 ```
