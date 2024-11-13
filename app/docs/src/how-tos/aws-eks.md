@@ -24,7 +24,7 @@ We will cover:
 
 ## Setup
 
-All activities in this how-to happen within a configured VPC, AWS Region and AWS
+All activities in this how-to happen within a configured VPC, AWS Region, and AWS
 Credential.
 
 Start in a change set named `EKS How-to`.
@@ -42,7 +42,7 @@ this in your diagram:
 
 ![Create Security Group](./aws-eks/create-eks-cluster.png)
 
-Add a `EKS Cluster` to your `VPC How-to` vpc frame.
+Add an `EKS Cluster` to your `VPC How-to` vpc frame.
 
 Set the component name to `demo-eks-cluster`.
 
@@ -52,7 +52,7 @@ Set the `version` to be `1.28`.
 
 Add an array item to `enabledLoggingTypes`
 
-Set the value of that array item to be `api`.
+Set the value of that array item to `api`.
 
 Set `resourcesVpcConfig.endpointPublicAccess` to be `true`.
 
@@ -69,7 +69,7 @@ Set the component name to `eks-cluster-sg`.
 
 Set the `GroupName` to `eks-cluster-sg`.
 
-Set the `Description` to be `Security Group to allow access to the EKS Cluster`
+Set the `Description` to `Security Group to allow access to the EKS Cluster`
 
 Connect the `Security Group ID` output socket of `eks-cluster-sg` component to
 the `Security Group ID` input socket of the `demo-eks-cluster` frame.
@@ -80,15 +80,15 @@ the `Security Group ID` input socket of the `demo-eks-cluster` frame.
 
 Add a `Security Group Rule (Ingress)` to your `VPC How-to` vpc frame.
 
-Set the component name to be `eks-cluster-443-ingress`.
+Set the component name to `eks-cluster-443-ingress`.
 
-Set the `Description` to be `Ingress to allow 443 from the world`.
+Set the `Description` to `Ingress to allow 443 from the world`.
 
-Set the `TrafficPort` to be `443/tcp`.
+Set the `TrafficPort` to `443/tcp`.
 
 Add an `IpRange` array item.
 
-Set the `IP Range [CIDR]` to be `0.0.0.0/0` and the `Description` to be
+Set the `IP Range [CIDR]` to `0.0.0.0/0` and the `Description` to
 `The world`.
 
 Connect the `Security Group ID` output socket of `eks-cluster-sg` component to
@@ -160,20 +160,20 @@ frame.
 
 Add a `Fargate Profile` to your `demo-eks-cluster` eks cluster frame.
 
-Set the component type to be `Up Frame`.
+Set the component type to `Up Frame`.
 
-Set the component name to be `demo-fargate-profile`.
+Set the component name to `demo-fargate-profile`.
 
-Set the `fargateProfileName` to be `demo-fargate-profile`.
+Set the `fargateProfileName` to `demo-fargate-profile`.
 
 Connect the `Subnet ID` output socket of each of the private subnet components
 to the `Subnet ID` input socket of this `demo-fargate-profile` component.
 
 Add a `POD Profile Selector` component inside the `demo-fargate-profile` frame.
 
-Set the component name to be `default namespace`.
+Set the component name to `default namespace`.
 
-Set the `namespace` to be `default`.
+Set the `namespace` to `default`.
 
 ### Create an IAM Role for Fargate Profile
 
@@ -249,11 +249,11 @@ Set the `amiType` to be `AL2_x86_64`.
 
 Add an array item to `instanceTypes` and set the value to be `t3.medium`.
 
-Set the `scalingConfig.desiredSize` to be `2`.
+Set the `scalingConfig.desiredSize` to `2`.
 
-Set the `scalingConfig.maxSize` to be `3`.
+Set the `scalingConfig.maxSize` to `3`.
 
-Set the `scalingConfig.minSize` to be `1`.
+Set the `scalingConfig.minSize` to `1`.
 
 Connect the `Subnet ID` output socket of each of the private subnet components
 to the `Subnet ID` input socket of the `demo-nodegroup` component.
@@ -339,7 +339,7 @@ Set the component name to `demo-eks-nodegroup-sg`.
 
 Set the `GroupName` to `demo-eks-nodegroup-sg`.
 
-Set the `Description` to be `Security Group for the EKS NodeGroup`
+Set the `Description` to `Security Group for the EKS NodeGroup`
 
 Connect the `Security Group ID` output socket of `demo-eks-nodegroup-sg`
 component to the `Security Group ID` input socket of the `demo-nodegroup` frame.
@@ -351,12 +351,12 @@ component to the `Security Group ID` input socket of the `demo-nodegroup` frame.
 Add a `Security Group Rule (Ingress)` to your `demo-eks-cluster` eks cluster
 frame.
 
-Set the component name to be `nodegroup-all-protocol-all-ports`.
+Set the component name to `nodegroup-all-protocol-all-ports`.
 
-Set the `Description` to be
+Set the `Description` to
 `Ingress to allow all ports and protocols on the NodeGroup`.
 
-Set the `TrafficPort` to be `-1/-1`.
+Set the `TrafficPort` to `-1/-1`.
 
 Connect the `Security Group ID` output socket of `demo-eks-nodegroup-sg`
 component to the `Security Group ID` input socket of this
@@ -434,7 +434,7 @@ Start in a change set named `EKS Cluster Access`.
 Update the `demo-eks-cluster` `accessConfig.authenticationMode` to be
 `API_AND_CONFIG_MAP`
 
-Right click on the component and select `Update Cluster Access Config`.
+Right-click on the component and select `Update Cluster Access Config`.
 
 Note: This change needs to take effect in the cluster before you can add access
 policies. So you will need to retry the failed access entry actions.
@@ -445,11 +445,11 @@ policies. So you will need to retry the failed access entry actions.
 
 Add an `Access Entry` to your `demo-eks-cluster` eks cluster frame.
 
-Set the component name to be `My User`.
+Set the component name to `My User`.
 
-Set the `type` to be `STANDARD`.
+Set the `type` to `STANDARD`.
 
-Set the `principalArn` to be `<enter your userArn>`.
+Set the `principalArn` to `<enter your userArn>`.
 
 NOTE: The `principalArn` is the ARN of the user I want to grant access to my
 cluster.
