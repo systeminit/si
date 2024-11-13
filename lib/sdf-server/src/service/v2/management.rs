@@ -112,7 +112,7 @@ pub async fn run_prototype(
         let result: ManagementFuncReturn = result.try_into()?;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
-                ManagementOperator::new(&ctx, component_id, operations, execution_result)
+                ManagementOperator::new(&ctx, component_id, operations, execution_result, None)
                     .await?
                     .operate()
                     .await?;

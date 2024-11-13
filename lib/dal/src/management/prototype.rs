@@ -23,7 +23,6 @@ use crate::{
     WorkspaceSnapshotError, WsEventError, WsEventResult,
 };
 use crate::{diagram::DiagramError, WsEvent};
-use si_frontend_types::RawGeometry;
 
 use super::NumericGeometry;
 
@@ -99,7 +98,7 @@ impl From<ManagementPrototype> for ManagementPrototypeContent {
 pub struct ManagementPrototypeExecution {
     pub func_run_id: FuncRunId,
     pub result: Option<ManagementResultSuccess>,
-    pub manager_component_geometry: RawGeometry,
+    pub manager_component_geometry: NumericGeometry,
     pub managed_schema_map: HashMap<String, SchemaId>,
     pub placeholders: HashMap<String, ComponentId>,
 }
@@ -356,10 +355,11 @@ impl ManagementPrototype {
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
         let manager_component_view = manager_component.view(ctx).await?;
         let default_view_id = View::get_id_for_default(ctx).await?;
-        let geometry = manager_component
+        let manager_geometry: NumericGeometry = manager_component
             .geometry(ctx, default_view_id)
             .await?
-            .into_raw();
+            .into_raw()
+            .into();
 
         let managed_schema_names: Vec<String> = managed_schema_map.keys().cloned().collect();
 
@@ -380,7 +380,8 @@ impl ManagementPrototype {
                     ManagedComponent {
                         kind: managed_schema_name.clone(),
                         properties: component_view,
-                        geometry: component_geometry,
+                        geometry: component_geometry
+                            .offset_by(-manager_geometry.x, -manager_geometry.y),
                     },
                 );
             }
@@ -395,7 +396,12 @@ impl ManagementPrototype {
         let args = serde_json::json!({
             "this_component": {
                 "properties": manager_component_view,
-                "geometry": geometry.to_owned(),
+                "geometry": NumericGeometry {
+                    x: 0.0,
+                    y: 0.0,
+                    width: manager_geometry.width,
+                    height: manager_geometry.height,
+                }
             },
             "managed_schemas": managed_schema_names,
             "components": managed_components,
@@ -467,7 +473,7 @@ impl ManagementPrototype {
         Ok(ManagementPrototypeExecution {
             func_run_id,
             result: maybe_run_result,
-            manager_component_geometry: geometry,
+            manager_component_geometry: manager_geometry,
             managed_schema_map,
             placeholders,
         })
