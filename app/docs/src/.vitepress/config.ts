@@ -148,6 +148,10 @@ export default defineConfig({
             link: "/reference/asset/function",
           },
           {
+            text: "Authorization Roles",
+            link: "/reference/authorization-roles",
+          },
+          {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },

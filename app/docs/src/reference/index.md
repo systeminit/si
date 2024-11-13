@@ -5,8 +5,9 @@ of System Initiative.
 
 - [Asset Schema](./asset/schema.md) - all the options for creating asset schema
 - [Asset Functions](./asset/function.md) - reference guide to asset functions
+- [Authorization Roles](./authorization-roles.md) - a guide to the roles
+  available for users in a workspace
 - [Vocabulary](./vocabulary.md) - a comprehensive guide to the terminology we
   use.
 - [TypeScript Functions API](./typescript/asset_builder/README.md) - the
   TypeScript API documentation.
-
