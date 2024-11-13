@@ -70,7 +70,7 @@ async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
     let another_view = ExpectView::create(ctx).await;
 
     Component::add_to_view(
-        &ctx,
+        ctx,
         component.id(),
         another_view.id(),
         RawGeometry {
