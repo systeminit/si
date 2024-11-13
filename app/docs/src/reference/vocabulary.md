@@ -8,8 +8,8 @@ Anything that can be used on the canvas.
 
 ## Attribute Panel
 
-The panel on the right side of the composition screen, which shows the attributes
-of the currently selected item.
+The panel on the right side of the composition screen, which shows the
+attributes of the currently selected item.
 
 ## Arity
 
@@ -47,6 +47,13 @@ HEAD, and any actions enqueued. Learn how to apply a change set in the
 Abandoning a change set essentially deletes it, and all of its proposed changes,
 from the system.
 
+## Collaborator
+
+A collaborator is a member of a workspace. A collaborator can makes changes to
+the model or assets within a change set but cannot apply those changes without
+approval. Learn more about the [different roles](/reference/authorization-roles)
+a member can have in a workspace.
+
 ## Component
 
 A component is the 'theoretical' half of a Model. It represents the
@@ -71,8 +78,8 @@ will connect to the input sockets of the frame.
 
 ## Edge
 
-A representation of a relationship between one components output socket and another
-components input socket.
+A representation of a relationship between one component's output socket and
+another component's input socket.
 
 ## HEAD
 
@@ -129,8 +136,8 @@ A resource is the data about the real-world thing represented by a component.
 
 ## Schema
 
-Assets in System Initiative are defined by a Schema. Each version of the
-schema is referred to as a Schema Variant.
+Assets in System Initiative are defined by a Schema. Each version of the schema
+is referred to as a Schema Variant.
 
 ## Secret
 
