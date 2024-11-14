@@ -16,19 +16,27 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 // import plur from "plur";
 import { RouteLocationRaw } from "vue-router";
+import { useToast } from "vue-toastification";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { BindingWithDisplayName, useFuncStore } from "@/store/func/funcs.store";
+import {
+  BindingWithDisplayName,
+  useFuncStore,
+  MgmtPrototype,
+} from "@/store/func/funcs.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
+const toast = useToast();
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
 const actionsStore = useActionsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const {
   selectedComponentId,
@@ -177,6 +185,28 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
+    // management funcs
+    if (
+      funcStore.managementFunctionsForSelectedComponent.length > 0 &&
+      featureFlagsStore.MANAGEMENT_FUNCTIONS
+    ) {
+      const submenuItems: DropdownMenuItemObjectDef[] = [];
+      funcStore.managementFunctionsForSelectedComponent.forEach((fn) => {
+        submenuItems.push({
+          label: fn.label,
+          icon: "play",
+          onSelect: () => {
+            runManagementFunc(fn);
+          },
+        });
+      });
+      items.push({
+        label: "Management",
+        icon: "func",
+        submenuItems,
+      });
+    }
+
     // copy, restore, delete
     items.push({
       label: `Copy`,
@@ -315,6 +345,33 @@ const rightClickMenuItems = computed(() => {
 
   return items;
 });
+
+const runManagementFunc = async (prototype: MgmtPrototype) => {
+  if (!selectedComponent.value) return;
+
+  const result = await funcStore.RUN_MGMT_PROTOTYPE(
+    prototype.managementPrototypeId,
+    selectedComponent.value.def.id,
+  );
+
+  if (result.result.success && result.result.data.message) {
+    const toastOptions = {
+      pauseOnHover: true,
+      timeout: 5000,
+    };
+    if (result.result.data.status === "ok") {
+      toast.success(
+        `${prototype.label}: ${result.result.data.message}`,
+        toastOptions,
+      );
+    } else {
+      toast.warning(
+        `${prototype.label}: ${result.result.data.message}`,
+        toastOptions,
+      );
+    }
+  }
+};
 
 function triggerCopySelection() {
   componentsStore.copyingFrom = elementPos.value;
