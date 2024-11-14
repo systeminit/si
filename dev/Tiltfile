@@ -12,6 +12,7 @@ groups = {
     "platform": [
         "db",
         "nats",
+        "otelcol",
         "postgres",
         "spicedb",
     ],
@@ -35,7 +36,6 @@ groups = {
         "grafana",
         "jaeger",
         "loki",
-        "otelcol",
         "prometheus",
         "promtail",
     ],
