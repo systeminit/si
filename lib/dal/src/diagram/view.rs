@@ -6,9 +6,12 @@ use crate::{
     },
     id, implement_add_edge_to,
     layer_db_types::{ViewContent, ViewContentV1},
-    workspace_snapshot::node_weight::{
-        category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
-        view_node_weight::ViewNodeWeight, NodeWeight,
+    workspace_snapshot::{
+        node_weight::{
+            category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
+            view_node_weight::ViewNodeWeight, NodeWeight,
+        },
+        traits::diagram::view::ViewExt,
     },
     ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
@@ -392,6 +395,13 @@ impl View {
 
         Ok(geometry_pre)
     }
+
+    pub async fn remove(ctx: &DalContext, view_id: ViewId) -> DiagramResult<()> {
+        ctx.workspace_snapshot()?
+            .view_remove(view_id)
+            .await
+            .map_err(Into::into)
+    }
 }
 
 /// Frontend representation for a [View](View) with a geometry.
@@ -505,7 +515,6 @@ impl WsEvent {
         .await
     }
 
-    #[allow(unused)]
     pub async fn view_deleted(ctx: &DalContext, view_id: ViewId) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,

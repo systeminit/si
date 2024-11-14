@@ -1,9 +1,16 @@
-use dal::diagram::Diagram;
-use dal::{Component, DalContext};
-use dal_test::expected::{generate_fake_name, ExpectView};
-use dal_test::helpers::create_component_for_default_schema_name;
-use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
-use dal_test::test;
+use dal::{
+    diagram::{geometry::Geometry, view::View, Diagram, DiagramError},
+    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
+    Component, DalContext, Ulid, WorkspaceSnapshotError,
+};
+use dal_test::{
+    expected::{generate_fake_name, ExpectView},
+    helpers::{
+        create_component_for_default_schema_name,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::RawGeometry;
 
@@ -100,4 +107,177 @@ async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
         .expect("assemble another diagram");
 
     assert_eq!(another_diagram.components.len(), 0);
+}
+
+#[test]
+async fn remove_view_with_no_components(ctx: &mut DalContext) {
+    let new_view = ExpectView::create(ctx).await;
+
+    create_component_for_default_schema_name_in_default_view(ctx, "swifty", generate_fake_name())
+        .await
+        .expect("could not create component");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, default_diagram.components.len());
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+
+    let alternative_diagram = Diagram::assemble(ctx, Some(new_view.id()))
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(0, alternative_diagram.components.len());
+
+    View::remove(ctx, new_view.id())
+        .await
+        .expect("Unable to remove View");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, default_diagram.components.len());
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+}
+
+#[test]
+async fn remove_view_with_no_exclusive_components(ctx: &mut DalContext) {
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "swifty",
+        generate_fake_name(),
+    )
+    .await
+    .expect("could not create component");
+
+    let new_view = ExpectView::create(ctx).await;
+
+    Geometry::new_for_component(ctx, component.id(), new_view.id())
+        .await
+        .expect("Unable to create Geometry for Component in new View");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, default_diagram.components.len());
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+
+    let alternative_diagram = Diagram::assemble(ctx, Some(new_view.id()))
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, alternative_diagram.components.len());
+
+    View::remove(ctx, new_view.id())
+        .await
+        .expect("Unable to remove View");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, default_diagram.components.len());
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+}
+
+#[test]
+async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
+    let new_view = ExpectView::create(ctx).await;
+
+    let component = create_component_for_default_schema_name(
+        ctx,
+        "swifty",
+        generate_fake_name(),
+        new_view.id(),
+    )
+    .await
+    .expect("could not create component");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(0, default_diagram.components.len());
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+
+    let alternative_diagram = Diagram::assemble(ctx, Some(new_view.id()))
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, alternative_diagram.components.len());
+
+    let result = View::remove(ctx, new_view.id()).await;
+    let Err(DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+        WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(orphans),
+    ))) = result
+    else {
+        panic!("View removal did not error appropriately: {:?}", result);
+    };
+    assert_eq!(vec![Ulid::from(component.id())], orphans,);
+}
+
+#[test]
+async fn remove_view_with_removal_of_exclusive_components(ctx: &mut DalContext) {
+    let new_view = ExpectView::create(ctx).await;
+
+    let component = create_component_for_default_schema_name(
+        ctx,
+        "swifty",
+        generate_fake_name(),
+        new_view.id(),
+    )
+    .await
+    .expect("could not create component");
+
+    let default_diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(0, default_diagram.components.len());
+
+    assert_eq!(
+        2,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
+
+    let alternative_diagram = Diagram::assemble(ctx, Some(new_view.id()))
+        .await
+        .expect("assemble default diagram");
+
+    assert_eq!(1, alternative_diagram.components.len());
+
+    Component::remove(ctx, component.id())
+        .await
+        .expect("Unable to remove Component");
+    View::remove(ctx, new_view.id())
+        .await
+        .expect("Unable to remove View");
+
+    assert_eq!(
+        1,
+        View::list(ctx).await.expect("Unable to list views").len()
+    );
 }

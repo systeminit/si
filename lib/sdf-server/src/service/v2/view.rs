@@ -1,17 +1,18 @@
 use std::num::ParseIntError;
 
-use crate::app_state::AppState;
-use crate::service::ApiError;
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post, put};
-use axum::Router;
-use dal::cached_module::CachedModuleError;
-use dal::component::frame::FrameError;
-use dal::component::inferred_connection_graph::InferredConnectionGraphError;
-use dal::pkg::PkgError;
-use dal::slow_rt::SlowRuntimeError;
+use crate::{app_state::AppState, service::ApiError};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::{delete, get, post, put},
+    Router,
+};
 use dal::{
+    cached_module::CachedModuleError,
+    component::{frame::FrameError, inferred_connection_graph::InferredConnectionGraphError},
+    pkg::PkgError,
+    slow_rt::SlowRuntimeError,
+    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
     ChangeSetError, ComponentError, SchemaError, SchemaId, SchemaVariantError, TransactionsError,
     WorkspaceSnapshotError, WsEventError,
 };
@@ -27,6 +28,7 @@ mod erase_view_object;
 pub mod get_diagram;
 pub mod list_views;
 mod paste_component;
+mod remove_view;
 mod set_component_parent;
 mod set_geometry;
 pub mod update_view;
@@ -93,6 +95,11 @@ impl IntoResponse for ViewError {
             ViewError::DalDiagram(dal::diagram::DiagramError::ViewNotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
+            ViewError::DalDiagram(dal::diagram::DiagramError::WorkspaceSnapshot(
+                WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                    WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(_),
+                ),
+            )) => (StatusCode::CONFLICT, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
@@ -109,7 +116,10 @@ pub fn v2_routes() -> Router<AppState> {
             "/create_and_move",
             post(create_view_and_move::create_view_and_move),
         )
-        .route("/:view_id", put(update_view::update_view))
+        .route(
+            "/:view_id",
+            put(update_view::update_view).delete(remove_view::remove_view),
+        )
         .route("/:view_id/get_diagram", get(get_diagram::get_diagram))
         .route("/:view_id/get_geometry", get(get_diagram::get_geometry))
         .route(

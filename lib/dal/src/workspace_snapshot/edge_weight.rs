@@ -8,7 +8,7 @@ pub mod deprecated;
 
 /// This type is postcard serialized and new enum variants *MUST* be added to the end *ONLY*.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
-#[strum_discriminants(derive(Hash, Serialize, Deserialize, strum::EnumIter))]
+#[strum_discriminants(derive(Hash, Serialize, Deserialize, strum::EnumIter, strum::Display))]
 pub enum EdgeWeightKind {
     Action,
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
