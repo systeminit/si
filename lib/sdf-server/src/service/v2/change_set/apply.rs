@@ -1,7 +1,8 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use si_events::audit_log::AuditLogKind;
 
-use super::Result;
+use super::{Error, Result};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track,
@@ -18,7 +19,9 @@ pub async fn apply(
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
-
+    let change_set = ChangeSet::find(&ctx, change_set_id)
+        .await?
+        .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?;
     ChangeSet::prepare_for_apply(&ctx).await?;
 
     // We need to run a commit before apply so changes get saved
@@ -36,6 +39,9 @@ pub async fn apply(
             "merged_change_set": change_set_id,
         }),
     );
+
+    ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name)
+        .await?;
 
     // WS Event fires from the dal
     ctx.commit().await?;

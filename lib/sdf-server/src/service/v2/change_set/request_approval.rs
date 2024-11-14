@@ -1,5 +1,6 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
+use si_events::audit_log::AuditLogKind;
 
 use super::{Error, Result};
 use crate::{
@@ -42,6 +43,15 @@ pub async fn request_approval(
         .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?
         .into_frontend_type(&ctx)
         .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::RequestChangeSetApproval {
+            from_status: old_status.into(),
+        },
+        change_set_view.name.clone(),
+    )
+    .await?;
+
     WsEvent::change_set_status_changed(&ctx, old_status, change_set_view)
         .await?
         .publish_on_commit(&ctx)
