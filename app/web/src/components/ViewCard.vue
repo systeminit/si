@@ -9,7 +9,10 @@
       )
     "
   >
-    <div class="flex flex-col flex-grow min-w-0">
+    <div
+      class="flex flex-col flex-grow min-w-0"
+      @click="() => viewStore.selectView(view.id)"
+    >
       <TruncateWithTooltip class="w-full">
         <span class="text-sm">
           {{ view.name }}
@@ -24,6 +27,22 @@
           }
         "
         label="Edit Name"
+      />
+      <DropdownMenuItem
+        label="Open View in Diagram"
+        :onSelect="
+          () => {
+            viewStore.selectView(view.id);
+          }
+        "
+      />
+      <DropdownMenuItem
+        label="Inspect View in Outliner"
+        :onSelect="
+          () => {
+            viewStore.outlinerViewId = view.id;
+          }
+        "
       />
       <DropdownMenuItem disabled label="Delete View" />
     </DropdownMenu>
@@ -102,8 +121,4 @@ watch(
   },
   { immediate: true },
 );
-
-const emit = defineEmits<{
-  (e: "closeDrawer"): void;
-}>();
 </script>

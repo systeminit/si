@@ -51,7 +51,10 @@ pub async fn create_view(
 
     let view_view = ViewView::from_view(&ctx, view).await?;
 
-    WsEvent::view_created(&ctx, view_view.clone()).await?;
+    WsEvent::view_created(&ctx, view_view.clone())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

@@ -284,6 +284,8 @@ impl View {
             .update_content(self.id.into(), hash)
             .await?;
 
+        self.name = name.as_ref().to_string();
+
         Ok(())
     }
 
@@ -339,6 +341,7 @@ impl View {
 /// Yeah, it's a silly name, but all the other frontend representation structs are *View,
 /// so we either keep it or change everything.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ViewView {
     id: ViewId,
     name: String,

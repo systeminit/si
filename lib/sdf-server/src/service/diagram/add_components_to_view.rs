@@ -6,7 +6,7 @@ use axum::extract::{Host, OriginalUri};
 use axum::Json;
 use dal::diagram::geometry::Geometry;
 use dal::diagram::view::{View, ViewComponentsUpdateList, ViewId};
-use dal::{ChangeSet, Component, ComponentId, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentError, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;
@@ -46,10 +46,24 @@ pub async fn add_components_to_view(
 
     let mut updated_components = ViewComponentsUpdateList::new();
 
+    let mut successful_erase = false;
+    let mut latest_error = None;
     for (component_id, string_geometry) in geometries_by_component_id.clone() {
         let geometry: RawGeometry = string_geometry.try_into()?;
 
-        Component::add_to_view(&ctx, component_id, destination_view_id, geometry.clone()).await?;
+        match Component::add_to_view(&ctx, component_id, destination_view_id, geometry.clone())
+            .await
+        {
+            Ok(_) => {}
+            Err(err @ ComponentError::ComponentAlreadyInView(_, _)) => {
+                latest_error = Some(err);
+                continue;
+            }
+            Err(err) => return Err(err)?,
+        };
+
+        successful_erase = true;
+
         updated_components
             .entry(destination_view_id)
             .or_default()
@@ -67,6 +81,12 @@ pub async fn add_components_to_view(
                 .insert(component_id.into());
 
             Geometry::remove(&ctx, old_geometry.id()).await?
+        }
+    }
+
+    if let Some(err) = latest_error {
+        if !successful_erase {
+            return Err(err)?;
         }
     }
 

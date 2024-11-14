@@ -81,7 +81,12 @@ impl IntoResponse for ViewError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
             ViewError::NameAlreadyInUse(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
-
+            ViewError::DalDiagram(
+                dal::diagram::DiagramError::DeletingLastGeometryForComponent(_, _),
+            )
+            | ViewError::Component(ComponentError::ComponentAlreadyInView(_, _)) => {
+                (StatusCode::FORBIDDEN, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
@@ -96,6 +101,7 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/", post(create_view::create_view))
         .route("/:view_id", put(update_view::update_view))
         .route("/:view_id/get_diagram", get(get_diagram::get_diagram))
+        .route("/:view_id/get_geometry", get(get_diagram::get_geometry))
         .route(
             "/default/get_diagram",
             get(get_diagram::get_default_diagram),

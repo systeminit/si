@@ -26,6 +26,8 @@
       @contextmenu="onClick"
       @mouseenter="onHoverStart"
       @mouseleave="onHoverEnd"
+      @mousedown.left.stop="onSelect(component.def.id, $event)"
+      @click.right.prevent
     >
       <!-- parent breadcrumbs (only shown in filtered mode) -->
       <div
@@ -190,11 +192,21 @@
         :component="child"
       />
     </div>
+    <template v-if="addingComponent">
+      <Teleport to="body">
+        <div
+          ref="mouseNode"
+          class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
+        >
+          <NodeSkeleton :color="addingComponent.def.color" />
+        </div>
+      </Teleport>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, onBeforeUnmount, onMounted, nextTick } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
@@ -204,10 +216,13 @@ import {
   COMPONENT_TYPE_ICONS,
   IconButton,
 } from "@si/vue-lib/design-system";
+import { windowListenerManager } from "@si/vue-lib";
 import { useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
+import NodeSkeleton from "@/components/NodeSkeleton.vue";
 
 import { ComponentId } from "@/api/sdf/dal/component";
+import { useViewsStore } from "@/store/views.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
@@ -235,6 +250,7 @@ const toggleGroup = () => {
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
+const viewStore = useViewsStore();
 
 const refreshRequestStatus = componentsStore.getRequestStatus(
   "REFRESH_RESOURCE_INFO",
@@ -246,9 +262,25 @@ const isDestroyed = computed(
   () => props.component.def.changeStatus === "deleted",
 );
 
-const childComponents = computed(
-  () => componentsStore.componentsByParentId[props.component.def.id] || [],
+const viewId = computed(
+  () => viewStore.outlinerViewId || viewStore.selectedViewId,
 );
+
+const viewComponentIds = computed<ComponentId[] | null>(() => {
+  if (viewId.value) {
+    return Object.keys(
+      viewStore.viewsById[viewId.value]?.components || [],
+    ).concat(Object.keys(viewStore.viewsById[viewId.value]?.groups || []));
+  } else return null;
+});
+
+const childComponents = computed(() => {
+  const children =
+    componentsStore.componentsByParentId[props.component.def.id] || [];
+  if (!viewComponentIds.value) return children;
+  else
+    return children.filter((c) => viewComponentIds.value?.includes(c.def.id));
+});
 
 const isSelected = computed(() =>
   componentsStore.selectedComponentIds.includes(props.component.def.id),
@@ -306,6 +338,63 @@ const parentIdPathByComponentId = computed<Record<ComponentId, ComponentId[]>>(
     return parentsLookup;
   },
 );
+
+const mouseNode = ref();
+
+const updateMouseNode = (e: MouseEvent) => {
+  if (mouseNode.value) {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    mouseNode.value.style.left = `${mouseX}px`;
+    mouseNode.value.style.top = `${mouseY}px`;
+  }
+};
+
+const onMouseDown = (e: MouseEvent) => {
+  updateMouseNode(e);
+  if (viewStore.addComponentId) {
+    viewStore.cancelAdd();
+  }
+};
+
+const onMouseMove = (e: MouseEvent) => {
+  updateMouseNode(e);
+};
+
+const addingComponent = computed(() => {
+  if (viewStore.addComponentId)
+    return componentsStore.allComponentsById[viewStore.addComponentId];
+  return undefined;
+});
+
+onMounted(() => {
+  windowListenerManager.addEventListener("mousemove", onMouseMove);
+  windowListenerManager.addEventListener("mousedown", onMouseDown);
+});
+
+onBeforeUnmount(() => {
+  windowListenerManager.removeEventListener("mousemove", onMouseMove);
+  windowListenerManager.removeEventListener("mousedown", onMouseDown);
+});
+
+function onSelect(id: string, e: MouseEvent) {
+  // cannot drag items from the view you're looking at into the same view
+  if (viewStore.outlinerViewId === viewStore.selectedViewId) return;
+  // cannot dupe components onto a view
+  if (Object.keys(viewStore.components).includes(id)) return;
+  if (Object.keys(viewStore.groups).includes(id)) return;
+
+  if (viewStore.addComponentId === id) {
+    viewStore.cancelAdd();
+  } else {
+    viewStore.setAddComponentId(id);
+    if (e) {
+      nextTick(() => {
+        updateMouseNode(e);
+      });
+    }
+  }
+}
 
 const parentBreadcrumbsText = computed(() => {
   const parentIds = parentIdPathByComponentId.value[props.component.def.id];

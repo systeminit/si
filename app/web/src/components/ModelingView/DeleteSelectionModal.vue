@@ -9,7 +9,7 @@
         <div class="pb-xs">
           You are about to delete
           {{
-            componentsStore.deletableSelectedComponents.length > 1
+            deletableComponentsInView.length > 1
               ? "the following components"
               : "this component"
           }}:
@@ -18,14 +18,13 @@
           :class="
             clsx(
               'flex-grow overflow-y-auto border-neutral-300 dark:border-neutral-700 p-xs',
-              componentsStore.deletableSelectedComponents.length > 1 &&
-                'border',
+              deletableComponentsInView.length > 1 && 'border',
             )
           "
         >
           <Stack spacing="xs">
             <ComponentCard
-              v-for="component in componentsStore.deletableSelectedComponents"
+              v-for="component in deletableComponentsInView"
               :key="component.def.id"
               :titleCard="false"
               :component="component"
@@ -34,15 +33,26 @@
         </div>
       </template>
       <div class="py-xs">
-        Items that exist on HEAD will be marked for deletion, and removed from
-        the model when this change set is merged. Items that were created in
-        this change set will be deleted immediately.
+        <VormInput v-model="removeOrDelete" noLabel type="radio">
+          <VormInputOption :value="DELETE">
+            <p class="text-xs mt-sm">
+              <strong>Delete</strong>: Items that exist on HEAD will be marked
+              for deletion, and removed from the model when this change set is
+              merged. Items that were created in this change set will be deleted
+              immediately.
+            </p>
+          </VormInputOption>
+          <VormInputOption :value="REMOVE">
+            <p class="text-xs my-sm">
+              <strong>Remove</strong>: Items will be removed from this view of
+              your diagram. It will remain in other views.
+            </p>
+          </VormInputOption>
+        </VormInput>
       </div>
 
       <div class="flex gap-sm">
-        <VButton icon="x" tone="shade" variant="ghost" @click="close">
-          Cancel
-        </VButton>
+        <VButton tone="shade" variant="ghost" @click="close"> Cancel </VButton>
         <VButton
           icon="trash"
           tone="destructive"
@@ -58,19 +68,36 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { Modal, Stack, useModal, VButton } from "@si/vue-lib/design-system";
+import {
+  Modal,
+  Stack,
+  useModal,
+  VButton,
+  VormInput,
+  VormInputOption,
+} from "@si/vue-lib/design-system";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const selectedEdge = computed(() => componentsStore.selectedEdge);
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
+
+const deletableComponentsInView = computed(() => {
+  return componentsStore.deletableSelectedComponents.filter((c) => {
+    if (viewStore.components[c.def.id]) return true;
+    if (viewStore.groups[c.def.id]) return true;
+    return false;
+  });
+});
 
 function open() {
   // event is triggered regardless of selection
@@ -79,32 +106,44 @@ function open() {
     if (selectedEdge.value?.changeStatus === "deleted") return;
   } else {
     // TODO: more logic to decide if modal is necessary for other situations
-    if (!componentsStore.deletableSelectedComponents.length) return;
+    if (!deletableComponentsInView.value.length) return;
   }
 
   openModal();
 }
+const DELETE = "delete";
+const REMOVE = "remove";
+const removeOrDelete = ref(DELETE);
 
 async function onConfirmDelete() {
   close();
-  if (
-    componentsStore.selectedEdgeId &&
-    componentsStore.selectedEdge?.toSocketId &&
-    componentsStore.selectedEdge?.fromSocketId
-  ) {
-    await componentsStore.DELETE_EDGE(
-      componentsStore.selectedEdgeId,
-      componentsStore.selectedEdge?.toSocketId,
-      componentsStore.selectedEdge?.fromSocketId,
-      componentsStore.selectedEdge?.toComponentId,
-      componentsStore.selectedEdge?.fromComponentId,
-    );
-  } else if (componentsStore.deletableSelectedComponents.length > 0) {
-    await componentsStore.DELETE_COMPONENTS([
-      ...new Set(
-        componentsStore.deletableSelectedComponents.map((c) => c.def.id),
-      ),
-    ]);
+  if (removeOrDelete.value === DELETE) {
+    if (
+      componentsStore.selectedEdgeId &&
+      componentsStore.selectedEdge?.toSocketId &&
+      componentsStore.selectedEdge?.fromSocketId
+    ) {
+      await componentsStore.DELETE_EDGE(
+        componentsStore.selectedEdgeId,
+        componentsStore.selectedEdge?.toSocketId,
+        componentsStore.selectedEdge?.fromSocketId,
+        componentsStore.selectedEdge?.toComponentId,
+        componentsStore.selectedEdge?.fromComponentId,
+      );
+    } else if (deletableComponentsInView.value.length > 0) {
+      await componentsStore.DELETE_COMPONENTS([
+        ...new Set(deletableComponentsInView.value.map((c) => c.def.id)),
+      ]);
+    }
+  } else if (removeOrDelete.value === REMOVE) {
+    if (
+      viewStore.selectedViewId &&
+      deletableComponentsInView.value.length > 0
+    ) {
+      await viewStore.REMOVE_FROM(viewStore.selectedViewId, [
+        ...new Set(deletableComponentsInView.value.map((c) => c.def.id)),
+      ]);
+    }
   }
   componentsStore.setSelectedComponentId(null);
 }
