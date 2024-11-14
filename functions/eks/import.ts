@@ -1,77 +1,83 @@
 async function main({
     thisComponent
 }: Input): Promise<Output> {
-
-    const component = thisComponent.properties;
-    let clusterName = _.get(component, ["si", "resourceId"]);
-    const region = component.domain?.extra?.Region || "";
-
-    if (!clusterName) {
+    // Get the name from the resourceId.
+    const component = thisComponent;
+    const name = component.properties?.si?.resourceId;
+    if (!name) {
         return {
             status: "error",
-            message: "Cluster Name is required for importing the resource.",
+            message: "No resourceId present",
         };
     }
 
-    // Fetch the EKS Cluster details using AWS CLI
-    const eksClusterResp = await siExec.waitUntilEnd("aws", [
+    // Run the AWS CLI command.
+    const cliInput = { name };
+    const Region = component.properties?.domain?.extra?.Region ?? "";
+    const child = await siExec.waitUntilEnd("aws", [
         "eks",
         "describe-cluster",
+        "--cli-input-json",
+        JSON.stringify(cliInput),
         "--region",
-        region,
-        "--name",
-        clusterName,
-    ]);
+        Region,
+    ], { stderr: ["inherit", "pipe"] });
 
-    if (eksClusterResp.exitCode !== 0) {
-        console.error(eksClusterResp.stderr);
+    // Return an error if the CLI command failed. (Handle specific error cases here.)
+    if (child.failed) {
+        // Remove the payload if the resource no longer exists in AWS
+        const NOT_FOUND_MESSAGE = "ResourceNotFoundException"
+        if (child.stderr?.includes(NOT_FOUND_MESSAGE)) {
+            console.log(`Resource not found upstream (${NOT_FOUND_MESSAGE}) so removing the resource.`)
+            return {
+                status: "ok",
+                payload: null
+            };
+        }
         return {
             status: "error",
-            message: `Unable to fetch EKS cluster details: AWS CLI exited with non-zero code ${eksClusterResp.exitCode} ${eksClusterResp}`,
-        };
+            message: child.message
+        }
     }
 
-    const eksCluster = JSON.parse(eksClusterResp.stdout).cluster;
-
-    // Map EKS cluster details to component properties
-    component["domain"]["name"] = eksCluster.name || "";
-    component["domain"]["version"] = eksCluster.version || "";
-    component["domain"]["roleArn"] = eksCluster.roleArn || "";
-
-    // Map resourcesVpcConfig properties
-    component["domain"]["resourcesVpcConfig"] = {
-        subnetIds: eksCluster.resourcesVpcConfig.subnetIds || [],
-        securityGroupIds: eksCluster.resourcesVpcConfig.securityGroupIds || [],
-        endpointPublicAccess: eksCluster.resourcesVpcConfig.endpointPublicAccess || false,
-        endpointPrivateAccess: eksCluster.resourcesVpcConfig.endpointPrivateAccess || false,
-        publicAccessCidrs: eksCluster.resourcesVpcConfig.publicAccessCidrs || []
+    // Construct the SI properties by looking at the AWS resource
+    const cluster = JSON.parse(child.stdout).cluster;
+    let domain = {
+        name: cluster.name,
+        version: cluster.version ?? "",
+        roleArn: cluster.roleArn ?? "",
+        resourcesVpcConfig: {
+            subnetIds: cluster.resourcesVpcConfig.subnetIds || [],
+            securityGroupIds: cluster.resourcesVpcConfig.securityGroupIds || [],
+            endpointPublicAccess: cluster.resourcesVpcConfig.endpointPublicAccess || false,
+            endpointPrivateAccess: cluster.resourcesVpcConfig.endpointPrivateAccess || false,
+            publicAccessCidrs: cluster.resourcesVpcConfig.publicAccessCidrs || []
+        },
+        kubernetesNetworkConfig: {
+            serviceIpv4Cidr: cluster.kubernetesNetworkConfig?.serviceIpv4Cidr || "",
+            ipFamily: cluster.kubernetesNetworkConfig?.ipFamily || ""
+        },
+        enabledLoggingTypes: (cluster.logging?.clusterLogging || [])
+            .filter((log: any) => log.enabled)
+            .flatMap((log: any) => log.types),
+        tags: cluster.tags || {},
     };
-
-    // Map kubernetesNetworkConfig properties
-    component["domain"]["kubernetesNetworkConfig"] = {
-        serviceIpv4Cidr: eksCluster.kubernetesNetworkConfig?.serviceIpv4Cidr || "",
-        ipFamily: eksCluster.kubernetesNetworkConfig?.ipFamily || ""
-    };
-
-    // Map enabled logging types
-    component["domain"]["enabledLoggingTypes"] = eksCluster.logging?.clusterLogging
-        .filter((log: any) => log.enabled)
-        .flatMap((log: any) => log.types) || [];
-
-    // Map tags
-    component["domain"]["tags"] = eksCluster.tags || {};
 
     // Optional mapping for encryptionConfig, certificateAuthority, or other fields can be added similarly if required
 
-    // Return the updated component
+    // Update component properties with the new domain, and queue a refresh.
     return {
         status: "ok",
-        message: JSON.stringify(eksCluster),
+        message: JSON.stringify(cluster),
         ops: {
             update: {
                 self: {
                     properties: {
-                        ...component, // Push updated component properties back onto the tree
+                        ...component?.properties,
+                        domain: {
+                            ...component?.properties?.domain,
+                            ...domain,
+                        },
                     }
                 }
             },

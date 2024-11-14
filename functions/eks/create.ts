@@ -1,36 +1,37 @@
 async function main(component: Input): Promise<Output> {
-    if (component.properties.resource?.payload) {
+    // If the resource already exists, return an error.
+    const payload = component.properties?.resource.payload ?? {};
+    if (component.properties?.si?.resourceId ?? payload.length) {
         return {
             status: "error",
             message: "Resource already exists",
-            payload: component.properties.resource.payload,
         };
     }
 
-    const code = component.properties.code?.["awsEksClusterCodeGen"]?.code;
-    const domain = component.properties?.domain;
-
+    // Run the AWS CLI command.
+    const cliInput = component.properties?.code?.["awsEksClusterCodeGen"]?.code ?? {};
+    const Region = component.properties?.domain?.extra?.Region ?? "";
     const child = await siExec.waitUntilEnd("aws", [
         "eks",
         "create-cluster",
-        "--region",
-        domain?.extra?.Region || "",
         "--cli-input-json",
-        code || "",
-    ]);
+        JSON.stringify(cliInput),
+        "--region",
+        Region,
+    ], { stderr: ["inherit", "pipe"] });
 
-    if (child.exitCode !== 0) {
-        console.error(child.stderr);
+    // Return an error if the CLI command failed. (Handle specific error cases here.)
+    if (child.failed) {
         return {
             status: "error",
-            message: `Unable to create; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+            message: child.message,
         };
     }
 
-    const response = JSON.parse(child.stdout).cluster;
-
+    // The resource is successfully deleted; ship the payload
+    const response = JSON.parse(child.stdout);
     return {
-        resourceId: response.name,
         status: "ok",
+        resourceId: response.cluster.name,
     };
 }

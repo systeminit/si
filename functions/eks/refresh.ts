@@ -1,52 +1,47 @@
 async function main(component: Input): Promise<Output> {
-    let name = component.properties?.si?.resourceId;
-    const resource = component.properties.resource?.payload;
-    if (!name) {
-        name = resource.name;
-    }
+    // Get the name from the resourceId (or from payload, for backwards compatibility if this isn't a purely new asset).
+    const payload = component.properties?.resource?.payload;
+    const name = component.properties?.si?.resourceId ?? payload?.name;
     if (!name) {
         return {
-            status: component.properties.resource?.status ?? "error",
-            message: "Could not refresh, no resourceId present for EKS Cluster component",
+            status: "error",
+            message: "No resourceId present",
         };
     }
 
-    const cliArguments = {};
-    _.set(
-        cliArguments,
-        "name",
-        name,
-    );
-
+    // Run the AWS CLI command.
+    const cliInput = { name };
+    const Region = component.properties?.domain?.extra?.Region ?? "";
     const child = await siExec.waitUntilEnd("aws", [
         "eks",
         "describe-cluster",
-        "--region",
-        _.get(component, "properties.domain.extra.Region", ""),
         "--cli-input-json",
-        JSON.stringify(cliArguments),
-    ]);
+        JSON.stringify(cliInput),
+        "--region",
+        Region,
+    ], { stderr: ["inherit", "pipe"] });
 
-    if (child.exitCode !== 0) {
-        console.log(`cluster Name: ${name}`);
-        console.error(child.stderr);
-        if (child.stderr.includes("ResourceNotFoundException")) {
-            console.log("EKS Cluster not found  upstream (ResourceNotFoundException) so removing the resource")
+    // Return an error if the CLI command failed. (Handle specific error cases here.)
+    if (child.failed) {
+        // Remove the payload if the resource no longer exists in AWS
+        const NOT_FOUND_MESSAGE = "ResourceNotFoundException"
+        if (child.stderr?.includes(NOT_FOUND_MESSAGE)) {
+            console.log(`Resource not found upstream (${NOT_FOUND_MESSAGE}) so removing the resource.`)
             return {
                 status: "ok",
-                payload: null,
+                payload: null
             };
         }
         return {
             status: "error",
-            payload: resource,
-            message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-        };
+            message: child.message
+        }
     }
 
-    const object = JSON.parse(child.stdout).cluster;
+    // Return the updated resource.
+    const response = JSON.parse(child.stdout);
     return {
-        payload: object,
         status: "ok",
+        payload: response.cluster
     };
 }

@@ -1,40 +1,14 @@
-async function main(input: Input): Promise<Output> {
-    if (input.domain?.extra) {
-        delete input.domain.extra;
+async function main({ domain }: Input): Promise<Output> {
+    // Steal fields from input.domain and assign the rest to "code"
+    const { extra, enabledLoggingTypes, encryptionConfig, ...code } = domain ?? {};
+
+    if (enabledLoggingTypes?.length > 0) {
+        code.logging = { clusterLogging: [{ types: enabledLoggingTypes, enabled: true }] }
     }
 
-    const object = input.domain;
-
-    if (input.domain?.enabledLoggingTypes) {
-        let loggingTypes: String[] = [];
-        for (const loggingType of input.domain?.enabledLoggingTypes) {
-            loggingTypes.push(loggingType)
-        }
-        object.logging = {
-            clusterLogging: [{
-                types: loggingTypes,
-                enabled: true,
-            }]
-        }
-        delete object.enabledLoggingTypes
+    if (encryptionConfig?.resources?.length > 0) {
+        code.encryptionConfig = [encryptionConfig]
     }
 
-    if (input.domain.encryptionConfig) {
-        if (input.domain.encryptionConfig.resources && input.domain.encryptionConfig.resources.length > 0) {
-            let config: Record<string, any> = {
-                resources: input.domain.encryptionConfig.resources,
-                provider: {
-                    KeyArn: input.domain.encryptionConfig.provider.keyArn
-                }
-            }
-            object.encryptionConfig = [config];
-        } else {
-            delete object.encryptionConfig
-        }
-    }
-
-    return {
-        format: "json",
-        code: JSON.stringify(object || {}, null, 2),
-    };
+    return { format: "json", code };
 }

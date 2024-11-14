@@ -1,38 +1,37 @@
 async function main(component: Input): Promise<Output> {
-    const cliArguments = {};
-    _.set(
-        cliArguments,
-        "name",
-        _.get(component, "properties.resource.payload.name"),
-    );
+    // Get the name from the resourceId (or from payload, for backwards compatibility if this isn't a purely new asset).
+    const payload = component.properties?.resource?.payload;
+    const name = component.properties?.si?.resourceId ?? payload?.name;
+    if (!name) {
+        return {
+            status: "error",
+            message: "No resourceId present",
+        };
+    }
 
+    // Run the AWS CLI command.
+    const cliInput = { name };
+    const Region = component.properties?.domain?.extra?.Region ?? "";
     const child = await siExec.waitUntilEnd("aws", [
         "eks",
         "delete-cluster",
-        "--region",
-        _.get(component, "properties.domain.extra.Region", ""),
         "--cli-input-json",
-        JSON.stringify(cliArguments),
-    ]);
+        JSON.stringify(cliInput),
+        "--region",
+        Region,
+    ], { stderr: ["inherit", "pipe"] });
 
-    if (child.exitCode !== 0) {
-        const payload = _.get(component, "properties.resource.payload");
-        if (payload) {
-            return {
-                status: "error",
-                payload,
-                message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-        } else {
-            return {
-                status: "error",
-                message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-            };
-        }
+    // Return an error if the CLI command failed. (Handle specific error cases here.)
+    if (child.failed) {
+        return {
+            status: "error",
+            message: child.message,
+        };
     }
 
+    // The resource is successfully deleted; remove the payload.
     return {
-        payload: null,
         status: "ok",
+        payload: null,
     };
 }
