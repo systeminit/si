@@ -45,7 +45,7 @@ const props = defineProps({
           entityType: string;
           entityName: string;
           changeSetId?: string;
-          changeSetName?: string;
+          changeSetName: string;
           metadata: Record<string, unknown>;
         },
         unknown

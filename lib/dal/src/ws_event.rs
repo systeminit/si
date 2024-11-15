@@ -1,5 +1,13 @@
 use std::num::ParseIntError;
 
+use serde::{Deserialize, Serialize};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
+use si_frontend_types as frontend_types;
+use thiserror::Error;
+use ulid::Ulid;
+
+use crate::audit_logging::AuditLogsPublishedPayload;
 use crate::change_set::event::{
     ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
     ChangeSetStateChangePayload,
@@ -32,12 +40,6 @@ use crate::{
     TransactionsError, WorkspacePk,
 };
 use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
-use serde::{Deserialize, Serialize};
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
-use si_frontend_types as frontend_types;
-use thiserror::Error;
-use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -74,6 +76,7 @@ pub enum WsPayload {
     ActionsListUpdated(ChangeSetId),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
+    AuditLogsPublished(AuditLogsPublishedPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
     ChangeSetAbandonVote(ChangeSetMergeVotePayload),
     ChangeSetApplied(ChangeSetAppliedPayload),

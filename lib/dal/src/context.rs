@@ -1016,21 +1016,22 @@ impl DalContext {
         kind: AuditLogKind,
         entity_name: String,
     ) -> TransactionsResult<()> {
-        Ok(audit_logging::write(self, kind, entity_name).await?)
+        Ok(audit_logging::write(self, kind, entity_name, None).await?)
     }
 
-    /// Convenience wrapper around [`audit_logging::write_to_head`].
+    /// Convenience wrapper around [`audit_logging::write`] that writes to HEAD.
     #[instrument(
-        name = "dal_context.write_audit_log_on_head",
+        name = "dal_context.write_audit_log_to_head",
         level = "debug",
         skip_all
     )]
-    pub async fn write_audit_log_on_head(
+    pub async fn write_audit_log_to_head(
         &self,
         kind: AuditLogKind,
         entity_name: String,
     ) -> TransactionsResult<()> {
-        Ok(audit_logging::write_to_head(self, kind, entity_name).await?)
+        let head_change_set_id = self.get_workspace_default_change_set_id().await?;
+        Ok(audit_logging::write(self, kind, entity_name, Some(head_change_set_id.into())).await?)
     }
 
     /// Convenience wrapper around [`audit_logging::write_final_message`].

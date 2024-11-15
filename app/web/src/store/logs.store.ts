@@ -3,18 +3,25 @@ import * as _ from "lodash-es";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useChangeSetsStore } from "./change_sets.store";
 import { UserId } from "./auth.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-export type LogFilters = {
-  page: number;
-  pageSize: number;
-  sortTimestampAscending: boolean;
-  changeSetFilter: ChangeSetId[];
+export type AuditLogFilters = {
+  changeSetFilter: string[];
+  entityNameFilter: string[];
   entityTypeFilter: string[];
-  kindFilter: string[];
-  userFilter: UserId[];
+  titleFilter: string[];
+  userFilter: string[];
+};
+
+export type AuditLogHeaderOptions = {
+  changeSet: { label: string; value: string }[];
+  entityName: { label: string; value: string }[];
+  entityType: { label: string; value: string }[];
+  title: { label: string; value: string }[];
+  user: { label: string; value: string }[];
 };
 
 interface AuditLogCommon {
@@ -26,15 +33,16 @@ interface AuditLogCommon {
   entityType: string;
   timestamp: string;
   changeSetId?: ChangeSetId;
-  changeSetName?: string;
   metadata: Record<string, unknown>;
 }
 
 export interface AuditLog extends AuditLogCommon {
+  changeSetName?: string;
   userName?: string;
 }
 
 export interface AuditLogDisplay extends AuditLogCommon {
+  changeSetName: string;
   userName: string;
 }
 
@@ -53,6 +61,8 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const selectedChangeSetId = changeSetsStore.selectedChangeSet?.id;
+
+  let debouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
   const API_PREFIX = [
     "v2",
@@ -77,18 +87,32 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
       {
         state: () => ({
           logs: [] as AuditLogDisplay[],
-          total: 0 as number,
-          changeSets: [] as { id: ChangeSetId; name: string }[],
-          users: [] as { id: UserId; name: string }[],
+          size: 50 as number,
+          canLoadMore: true as boolean,
+          filters: {
+            changeSetFilter: [],
+            entityNameFilter: [],
+            entityTypeFilter: [],
+            titleFilter: [],
+            userFilter: [],
+          } as AuditLogFilters,
+          headerOptions: {
+            changeSet: [],
+            entityName: [],
+            entityType: [],
+            title: [],
+            user: [],
+          } as AuditLogHeaderOptions,
         }),
         actions: {
-          async LOAD_PAGE(filters: LogFilters) {
-            return new ApiRequest<{ logs: AuditLog[]; total: number }>({
+          async LOAD_PAGE(size: number, identifier?: string) {
+            return new ApiRequest<{ logs: AuditLog[]; canLoadMore: boolean }>({
               url: API_PREFIX,
-              params: { ...visibility, ...filters },
+              params: { ...visibility, size },
+              keyRequestStatusBy: identifier,
               method: "get",
               onSuccess: (response) => {
-                this.total = response.total;
+                this.canLoadMore = response.canLoadMore;
                 this.logs = response.logs.map(
                   (log) =>
                     ({
@@ -102,58 +126,96 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                       metadata: log.metadata,
                       timestamp: log.timestamp,
                       changeSetId: log.changeSetId,
-                      changeSetName: log.changeSetName,
+                      changeSetName: log.changeSetName ?? "- none -",
                     } as AuditLogDisplay),
                 );
+
+                // TODO(nick): make everything below this comment more efficient and automatic.
+                const inProgressChangeSets: Record<string, string> = {};
+                const inProgressEntityNames: Record<string, string> = {};
+                const inProgressEntityTypes: Record<string, string> = {};
+                const inProgressTitles: Record<string, string> = {};
+                const inProgressUsers: Record<string, string> = {};
+
+                for (const log of this.logs) {
+                  inProgressChangeSets[log.changeSetName] = log.changeSetName;
+                  inProgressEntityNames[log.entityName] = log.entityName;
+                  inProgressEntityTypes[log.entityType] = log.entityType;
+                  inProgressTitles[log.title] = log.title;
+                  inProgressUsers[log.userName] = log.userName;
+                }
+
+                const resultForChangeSet: { label: string; value: string }[] =
+                  [];
+                Object.keys(inProgressChangeSets).forEach((key) => {
+                  resultForChangeSet.push({ label: key, value: key });
+                });
+                resultForChangeSet.sort();
+                this.headerOptions.changeSet = resultForChangeSet;
+
+                const resultForEntityName: { label: string; value: string }[] =
+                  [];
+                Object.keys(inProgressEntityNames).forEach((key) => {
+                  resultForEntityName.push({ label: key, value: key });
+                });
+                resultForEntityName.sort();
+                this.headerOptions.entityName = resultForEntityName;
+
+                const resultForEntityType: { label: string; value: string }[] =
+                  [];
+                Object.keys(inProgressEntityTypes).forEach((key) => {
+                  resultForEntityType.push({ label: key, value: key });
+                });
+                resultForEntityType.sort();
+                this.headerOptions.entityType = resultForEntityType;
+
+                const resultForTitle: { label: string; value: string }[] = [];
+                Object.keys(inProgressTitles).forEach((key) => {
+                  resultForTitle.push({ label: key, value: key });
+                });
+                resultForTitle.sort();
+                this.headerOptions.title = resultForTitle;
+
+                const resultForUser: { label: string; value: string }[] = [];
+                Object.keys(inProgressUsers).forEach((key) => {
+                  resultForUser.push({ label: key, value: key });
+                });
+                resultForUser.sort();
+                this.headerOptions.user = resultForUser;
               },
             });
           },
-          async GET_FILTER_OPTIONS() {
-            return new ApiRequest<{
-              changeSets: { id: ChangeSetId; name: string }[];
-              users: { id: UserId; name: string }[];
-            }>({
-              url: API_PREFIX.concat(["filters"]),
-              params: { ...visibility },
-              method: "get",
-              onSuccess: (response) => {
-                // Why do we manage our own change sets and users? The admin store was the only store that had routes
-                // containing this information at the time of writing, but we do not want to leak the admin store
-                // outside of the admin dashbaord for security and architecture concerns. As a result, this store is,
-                // at the time of writing, the only non-admin store concerned with this information.
-                this.changeSets = response.changeSets;
-                this.users = response.users;
-
-                this.changeSets.sort((a, b) => a.name.localeCompare(b.name));
-                this.users.sort((a, b) => a.name.localeCompare(b.name));
-              },
-            });
+          enqueueLoadPage(size: number, identifier: string) {
+            if (!debouncer) {
+              debouncer = keyedDebouncer((identifier: string) => {
+                this.LOAD_PAGE(size, identifier);
+              }, 500);
+            }
+            const loadPage = debouncer(identifier);
+            if (loadPage) {
+              loadPage(identifier);
+            }
           },
         },
         onActivated() {
-          this.GET_FILTER_OPTIONS();
-
-          // TODO(nick): handle user invitations. Inviting workspace members happens in the auth portal, so need a way
-          // to tell this store that it needs to add a user.
           if (workspaceId) {
             const realtimeStore = useRealtimeStore();
             realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
               {
-                eventType: "ChangeSetCreated",
-                callback: (payload, metadata) => {
-                  const newChangeSet = {
-                    id: metadata.change_set_id,
-                    name: payload,
-                  };
-                  if (
-                    !this.changeSets.some(
-                      (changeSet) => changeSet.id === newChangeSet.id,
-                    )
-                  ) {
-                    this.changeSets.push(newChangeSet);
-                    this.changeSets.sort((a, b) =>
-                      a.name.localeCompare(b.name),
-                    );
+                eventType: "AuditLogsPublished",
+                callback: (payload) => {
+                  if (changeSetId) {
+                    // If the change set of the event is the same as ours, then let's reload. Otherwise, let's only
+                    // reload if we are on HEAD and the change set has been applied or abandoned.
+                    if (changeSetId === payload.changeSetId) {
+                      this.enqueueLoadPage(this.size, "event");
+                    } else if (
+                      changeSetId === changeSetsStore.headChangeSetId &&
+                      (payload.changeSetStatus === "Applied" ||
+                        payload.changeSetStatus === "Abandoned")
+                    ) {
+                      this.enqueueLoadPage(this.size, "event");
+                    }
                   }
                 },
               },
