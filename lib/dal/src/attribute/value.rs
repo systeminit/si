@@ -2630,7 +2630,11 @@ impl AttributeValue {
     ) -> AttributeValueResult<Option<String>> {
         Ok(ctx
             .workspace_snapshot()?
-            .find_edge(parent_attribute_value_id, child_attribute_value_id)
+            .find_edge(
+                parent_attribute_value_id,
+                child_attribute_value_id,
+                EdgeWeightKindDiscriminants::Contain,
+            )
             .await?
             .and_then(|weight| match weight.kind() {
                 EdgeWeightKind::Contain(key) => key.to_owned(),

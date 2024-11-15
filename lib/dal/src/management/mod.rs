@@ -9,7 +9,6 @@ use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 use crate::component::frame::{Frame, FrameError};
 use crate::diagram::view::{View, ViewId};
 use crate::diagram::DiagramError;
-use crate::WorkspaceSnapshotError;
 use crate::{
     action::{
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -29,6 +28,7 @@ use crate::{
     Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
     Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
 };
+use crate::{EdgeWeightKind, WorkspaceSnapshotError};
 
 pub mod prototype;
 
@@ -396,7 +396,9 @@ struct PendingParent {
 #[derive(Clone, Debug)]
 enum PendingOperation {
     Connect(PendingConnect),
+    Manage(ComponentId),
     Parent(PendingParent),
+    RemoveConnection(PendingConnect),
 }
 
 impl<'a> ManagementOperator<'a> {
@@ -649,6 +651,20 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
+    async fn manage(&self, component_id: ComponentId) -> ManagementResult<()> {
+        let cycle_check_guard = self.ctx.workspace_snapshot()?.enable_cycle_check().await;
+        Component::add_manages_edge_to_component(
+            self.ctx,
+            self.manager_component_id,
+            component_id,
+            EdgeWeightKind::Manages,
+        )
+        .await?;
+        drop(cycle_check_guard);
+
+        Ok(())
+    }
+
     async fn creates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
         // We take here to avoid holding on to an immutable ref to self throughout the loop
         let creates = self.operations.create.take();
@@ -712,16 +728,7 @@ impl<'a> ManagementOperator<'a> {
                         parent: parent.to_owned(),
                     }));
                 }
-
-                let cycle_check_guard = self.ctx.workspace_snapshot()?.enable_cycle_check().await;
-                Component::add_manages_edge_to_component(
-                    self.ctx,
-                    self.manager_component_id,
-                    component_id,
-                    crate::EdgeWeightKind::Manages,
-                )
-                .await?;
-                drop(cycle_check_guard);
+                pending_operations.push(PendingOperation::Manage(component_id));
             }
         }
 
@@ -737,10 +744,12 @@ impl<'a> ManagementOperator<'a> {
             ))
     }
 
-    async fn updates(&mut self) -> ManagementResult<()> {
+    async fn updates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
+        let mut pending = vec![];
+
         let updates = self.operations.update.take();
         let Some(updates) = &updates else {
-            return Ok(());
+            return Ok(pending);
         };
 
         for (placeholder, operation) in updates {
@@ -777,25 +786,34 @@ impl<'a> ManagementOperator<'a> {
             if let Some(update_conns) = &operation.connect {
                 if let Some(remove_conns) = &update_conns.remove {
                     for to_remove in remove_conns {
-                        self.remove_connection(component_id, to_remove).await?;
+                        pending.push(PendingOperation::RemoveConnection(PendingConnect {
+                            from_component_id: component_id,
+                            connection: to_remove.to_owned(),
+                        }));
                     }
                 }
 
                 if let Some(add_conns) = &update_conns.add {
                     for to_add in add_conns {
-                        self.create_connection(component_id, to_add).await?;
+                        pending.push(PendingOperation::Connect(PendingConnect {
+                            from_component_id: component_id,
+                            connection: to_add.to_owned(),
+                        }));
                     }
                 }
             }
 
             if let Some(new_parent) = &operation.parent {
-                self.set_parent(component_id, new_parent).await?;
+                pending.push(PendingOperation::Parent(PendingParent {
+                    child_component_id: component_id,
+                    parent: new_parent.to_owned(),
+                }));
             }
 
             self.updated_components.push(component_id);
         }
 
-        Ok(())
+        Ok(pending)
     }
 
     async fn actions(&self) -> ManagementResult<()> {
@@ -816,26 +834,19 @@ impl<'a> ManagementOperator<'a> {
     }
 
     pub async fn operate(&mut self) -> ManagementResult<()> {
-        let pending_operations = self.creates().await?;
-        self.updates().await?;
+        let mut pending_operations = self.creates().await?;
+        pending_operations.extend(self.updates().await?);
 
-        // We have to execute these after the creation of the component, and
-        // after updates, so that they can reference other created components
-        // and so that we can ensure the updates have been applied
-        for pending_operation in pending_operations {
-            match pending_operation {
-                PendingOperation::Connect(pending_connect) => {
-                    self.create_connection(
-                        pending_connect.from_component_id,
-                        &pending_connect.connection,
-                    )
-                    .await?
-                }
-                PendingOperation::Parent(pending_parent) => {
-                    self.set_parent(pending_parent.child_component_id, &pending_parent.parent)
-                        .await?
-                }
-            }
+        // Parents have to be set before component events are sent
+        for pending_parent in pending_operations
+            .iter()
+            .filter_map(|pending_op| match pending_op {
+                PendingOperation::Parent(pending_parent) => Some(pending_parent),
+                _ => None,
+            })
+        {
+            self.set_parent(pending_parent.child_component_id, &pending_parent.parent)
+                .await?
         }
 
         for &created_id in &self.created_components {
@@ -872,6 +883,30 @@ impl<'a> ManagementOperator<'a> {
             .await?
             .publish_on_commit(self.ctx)
             .await?;
+        }
+
+        // Now, the rest of the pending ops can be executed, which need to have
+        // their wsevents sent *after* the component ws events (otherwise some
+        // will be discarded by the frontend, since it does not know about the
+        // newly created components until the above events are sent)
+        for pending_op in pending_operations {
+            match pending_op {
+                PendingOperation::Connect(pending_connect) => {
+                    self.create_connection(
+                        pending_connect.from_component_id,
+                        &pending_connect.connection,
+                    )
+                    .await?;
+                }
+                PendingOperation::RemoveConnection(remove) => {
+                    self.remove_connection(remove.from_component_id, &remove.connection)
+                        .await?;
+                }
+                PendingOperation::Manage(managed_id) => {
+                    self.manage(managed_id).await?;
+                }
+                PendingOperation::Parent(_) => {}
+            }
         }
 
         self.actions().await?;
