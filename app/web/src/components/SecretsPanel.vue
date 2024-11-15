@@ -99,7 +99,16 @@
       v-else
       class="w-full text-center p-sm text-neutral-500 dark:text-neutral-400 italic"
     >
-      No secret definitions found.
+      <p>No secret definitions found.</p>
+      <br />
+      <p>
+        To configure a secret, drag the corresponding asset onto the canvas.
+      </p>
+      <br />
+      <p class="text-sm">
+        Example: Drag the AWS Credential to the canvas, and the AWS Credential
+        Secret will show up here for configuration.
+      </p>
     </div>
     <RightPanelDrawer :open="!!addingSecretId">
       <TabGroup
