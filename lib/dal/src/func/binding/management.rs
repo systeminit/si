@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -27,6 +29,7 @@ impl ManagementBinding {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
+        managed_schemas: Option<HashSet<SchemaId>>,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         // don't add binding if parent is locked
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
@@ -37,7 +40,7 @@ impl ManagementBinding {
             func.name.to_owned(),
             func.description.to_owned(),
             func.id,
-            None,
+            managed_schemas,
             schema_variant_id,
         )
         .await?;
@@ -195,9 +198,14 @@ type Input = {{
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let schema_variant_id = self.schema_variant_id;
 
+        let managed_schemas = ManagementPrototype::get_by_id(ctx, self.management_prototype_id)
+            .await?
+            .and_then(|prototype| prototype.managed_schemas().map(ToOwned::to_owned));
+
         ManagementPrototype::remove(ctx, self.management_prototype_id).await?;
 
-        Self::create_management_binding(ctx, new_func_id, schema_variant_id).await?;
+        Self::create_management_binding(ctx, new_func_id, schema_variant_id, managed_schemas)
+            .await?;
 
         FuncBinding::for_func_id(ctx, new_func_id).await
     }
