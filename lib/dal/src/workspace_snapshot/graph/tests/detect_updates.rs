@@ -71,7 +71,7 @@ mod test {
                 ContentAddress::Component(ContentHash::from("Component B")),
             ))
             .expect("Unable to add Component B");
-        let _new_onto_root_component_edge_index = base_graph
+        base_graph
             .add_edge(
                 base_graph.root(),
                 EdgeWeight::new(EdgeWeightKind::new_use()),

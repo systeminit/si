@@ -263,19 +263,30 @@ impl WorkspaceSnapshotGraphV4 {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
         cycle_check: bool,
-    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<()> {
         if cycle_check {
             self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
         }
 
         self.touch_node(from_node_index);
 
-        // Add the new edge to the new version of the "from" node.
-        let edge_index = self
-            .graph
-            .update_edge(from_node_index, to_node_index, edge_weight);
+        let discrim: EdgeWeightKindDiscriminants = edge_weight.kind().into();
 
-        Ok(edge_index)
+        if !self
+            .graph
+            .edges_directed(from_node_index, Direction::Outgoing)
+            // Only allow one edge of each weight kind between two nodes. This
+            // keeps "add_edge" idempotent, and guards against any places where
+            // we might add the same edge twice
+            .any(|edge_ref| {
+                edge_ref.target() == to_node_index && discrim == edge_ref.weight().kind().into()
+            })
+        {
+            self.graph
+                .add_edge(from_node_index, to_node_index, edge_weight);
+        }
+
+        Ok(())
     }
 
     fn add_temp_edge_cycle_check(
@@ -286,7 +297,7 @@ impl WorkspaceSnapshotGraphV4 {
     ) -> WorkspaceSnapshotGraphResult<()> {
         let temp_edge = self
             .graph
-            .update_edge(from_node_index, to_node_index, edge_weight.clone());
+            .add_edge(from_node_index, to_node_index, edge_weight.clone());
 
         let would_create_a_cycle = !self.is_acyclic_directed();
         self.graph.remove_edge(temp_edge);
@@ -322,7 +333,7 @@ impl WorkspaceSnapshotGraphV4 {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<()> {
         self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
     }
 
@@ -331,7 +342,7 @@ impl WorkspaceSnapshotGraphV4 {
         from_node_id: Ulid,
         edge_weight: EdgeWeight,
         to_node_id: Ulid,
-    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<()> {
         let from_node_index = *self
             .node_index_by_id
             .get(&from_node_id)
@@ -349,7 +360,7 @@ impl WorkspaceSnapshotGraphV4 {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<()> {
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
         // Configured to run only in tests because it has a major perf impact otherwise
         #[cfg(test)]
@@ -465,10 +476,16 @@ impl WorkspaceSnapshotGraphV4 {
         self.graph.neighbors_directed(node_index, direction)
     }
 
-    pub fn find_edge(&self, from_idx: NodeIndex, to_idx: NodeIndex) -> Option<&EdgeWeight> {
+    pub fn find_edge(
+        &self,
+        from_idx: NodeIndex,
+        to_idx: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) -> Option<&EdgeWeight> {
         self.graph
-            .find_edge(from_idx, to_idx)
-            .and_then(|edge_idx| self.graph.edge_weight(edge_idx))
+            .edges_connecting(from_idx, to_idx)
+            .find(|edge_ref| edge_kind == edge_ref.weight().kind().into())
+            .map(|edge_ref| edge_ref.weight())
     }
 
     pub fn edges_directed_for_edge_weight_kind(
@@ -518,17 +535,17 @@ impl WorkspaceSnapshotGraphV4 {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<(EdgeIndex, Option<EdgeIndex>)> {
-        let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        self.add_edge(from_node_index, edge_weight, to_node_index)?;
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
         // by the `to_node_index` to the ordering. Also point the ordering node at the thing with
         // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
         // in a depth first search
-        let maybe_ordinal_edge_index = if let Some(container_ordering_node_index) =
+        if let Some(container_ordering_node_index) =
             self.ordering_node_index_for_container(from_node_index)?
         {
-            let ordinal_edge_index = self.add_edge(
+            self.add_edge(
                 container_ordering_node_index,
                 EdgeWeight::new(EdgeWeightKind::Ordinal),
                 to_node_index,
@@ -544,13 +561,9 @@ impl WorkspaceSnapshotGraphV4 {
                 ordering_node_weight.push_to_order(element_id);
                 self.touch_node(container_ordering_node_index);
             }
+        }
 
-            Some(ordinal_edge_index)
-        } else {
-            None
-        };
-
-        Ok((new_edge_index, maybe_ordinal_edge_index))
+        Ok(())
     }
 
     pub fn add_ordered_node(
@@ -565,13 +578,13 @@ impl WorkspaceSnapshotGraphV4 {
             OrderingNodeWeight::new(ordering_node_id, ordering_node_lineage_id),
         ))?;
 
-        let edge_index = self.add_edge(
+        self.add_edge(
             new_node_index,
             EdgeWeight::new(EdgeWeightKind::Ordering),
             ordering_node_index,
         )?;
-        let (source, _) = self.edge_endpoints(edge_index)?;
-        Ok(source)
+
+        Ok(new_node_index)
     }
 
     /// Remove any orphaned nodes from the graph, then recalculate the merkle

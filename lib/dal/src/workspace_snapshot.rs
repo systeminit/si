@@ -658,13 +658,13 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotResult<()> {
         let from_node_index = self
             .working_copy()
             .await
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
-        Ok(if self.cycle_check().await {
+        if self.cycle_check().await {
             let self_clone = self.clone();
             slow_rt::spawn(async move {
                 let mut working_copy = self_clone.working_copy_mut().await;
@@ -675,7 +675,9 @@ impl WorkspaceSnapshot {
             self.working_copy_mut()
                 .await
                 .add_edge(from_node_index, edge_weight, to_node_index)?
-        })
+        }
+
+        Ok(())
     }
 
     /// Add an edge to the graph, bypassing any cycle checks and using node
@@ -685,13 +687,12 @@ impl WorkspaceSnapshot {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        let edge_index =
-            self.working_copy_mut()
-                .await
-                .add_edge(from_node_index, edge_weight, to_node_index)?;
+    ) -> WorkspaceSnapshotResult<()> {
+        self.working_copy_mut()
+            .await
+            .add_edge(from_node_index, edge_weight, to_node_index)?;
 
-        Ok(edge_index)
+        Ok(())
     }
 
     pub async fn add_ordered_edge(
@@ -699,19 +700,19 @@ impl WorkspaceSnapshot {
         from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
         to_node_id: impl Into<Ulid>,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotResult<()> {
         let from_node_index = self
             .working_copy()
             .await
             .get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy().await.get_node_index_by_id(to_node_id)?;
-        let (edge_index, _) = self.working_copy_mut().await.add_ordered_edge(
+        self.working_copy_mut().await.add_ordered_edge(
             from_node_index,
             edge_weight,
             to_node_index,
         )?;
 
-        Ok(edge_index)
+        Ok(())
     }
 
     #[instrument(
@@ -1232,6 +1233,7 @@ impl WorkspaceSnapshot {
         &self,
         from_id: impl Into<Ulid>,
         to_id: impl Into<Ulid>,
+        edge_weight_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Option<EdgeWeight>> {
         let working_copy = self.working_copy().await;
 
@@ -1239,7 +1241,7 @@ impl WorkspaceSnapshot {
         let to_idx = working_copy.get_node_index_by_id(to_id)?;
 
         Ok(working_copy
-            .find_edge(from_idx, to_idx)
+            .find_edge(from_idx, to_idx, edge_weight_kind)
             .map(ToOwned::to_owned))
     }
 
