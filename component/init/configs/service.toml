@@ -64,3 +64,12 @@ url = "$SI_NATS_URL"
 
 [layer_db_config.cache_config]
 disk_path = "$SI_LAYER_CACHE_DISK_PATH"
+
+[audit.pg]
+user = "si"
+password = "$SI_PG_PASSWORD"
+dbname = "$SI_AUDIT_DBNAME"
+application_name = "$SI_SERVICE"
+hostname = "$SI_PG_PROXY_HOST"
+port = 5432
+pool_max_size = $SI_PG_POOL_SIZE

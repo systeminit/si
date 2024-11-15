@@ -412,10 +412,12 @@ dependencies = [
 name = "audit-logs"
 version = "0.1.0"
 dependencies = [
+ "refinery",
  "remain",
  "serde",
  "serde_json",
  "si-data-nats",
+ "si-data-pg",
  "si-events",
  "telemetry",
  "telemetry-nats",
@@ -6156,6 +6158,7 @@ dependencies = [
  "asset-sprayer",
  "async-openai",
  "async-trait",
+ "audit-logs",
  "axum",
  "base64 0.22.1",
  "buck2-resources",

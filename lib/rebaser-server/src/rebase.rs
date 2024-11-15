@@ -1,4 +1,4 @@
-use audit_logs::AuditLogsError;
+use audit_logs::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     workspace_snapshot::WorkspaceSnapshotError,
@@ -20,8 +20,8 @@ use tokio_util::task::TaskTracker;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
-    #[error("audit logs error: {0}")]
-    AuditLogs(#[from] AuditLogsError),
+    #[error("audit logs stream error: {0}")]
+    AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("layerdb error: {0}")]

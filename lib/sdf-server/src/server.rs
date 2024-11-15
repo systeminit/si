@@ -1,12 +1,12 @@
 use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use asset_sprayer::AssetSprayer;
+use audit_logs::pg::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::{JwtPublicSigningKey, ServicesContext};
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
-use si_data_nats::NatsClient;
 use si_data_spicedb::SpiceDbClient;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
@@ -43,8 +43,13 @@ pub struct Server {
     metadata: Arc<ServerMetadata>,
     inner: Box<dyn Runnable + Send>,
     // Only used to build a [`Migrator`] for migrations
-    services_context: ServicesContext,
+    migrator_toolkit: MigratorToolkit,
     socket: ServerSocket,
+}
+
+struct MigratorToolkit {
+    services_context: ServicesContext,
+    audit_database_context: AuditDatabaseContext,
 }
 
 impl fmt::Debug for Server {
@@ -122,6 +127,8 @@ impl Server {
         helping_tasks_tracker.spawn(ws_multiplexer.run());
         helping_tasks_tracker.spawn(crdt_multiplexer.run());
 
+        let audit_database_context = AuditDatabaseContext::from_config(config.audit()).await?;
+
         Self::from_services(
             config.instance_id().to_string(),
             config.incoming_stream().clone(),
@@ -137,6 +144,7 @@ impl Server {
             application_runtime_mode,
             token,
             spicedb_client,
+            audit_database_context,
         )
         .await
     }
@@ -158,6 +166,7 @@ impl Server {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        audit_database_context: AuditDatabaseContext,
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
             services_context.clone(),
@@ -208,7 +217,10 @@ impl Server {
         Ok(Self {
             metadata,
             inner,
-            services_context,
+            migrator_toolkit: MigratorToolkit {
+                services_context,
+                audit_database_context,
+            },
             socket,
         })
     }
@@ -222,15 +234,10 @@ impl Server {
 
     /// Builds and returns a [`Migrator`] for running migrations.
     pub fn migrator(&self) -> Migrator {
-        Migrator::from_services(self.services_context.clone())
-    }
-
-    /// Returns the configured [`NatsClient`] used by the server.
-    ///
-    /// NOTE(fnichol): currently only used to construct a `BillingEventsServer` in the SDF binary.
-    /// If this is moved, this method could be removed.
-    pub fn nats(&self) -> &NatsClient {
-        self.services_context.nats_conn()
+        Migrator::from_services(
+            self.migrator_toolkit.services_context.clone(),
+            self.migrator_toolkit.audit_database_context.clone(),
+        )
     }
 }
 

@@ -14,6 +14,7 @@
 
 use std::io;
 
+use audit_logs::pg::AuditDatabaseContextError;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
@@ -57,6 +58,8 @@ pub use dal::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("audit database context error: {0}")]
+    AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("axum error: {0}")]
     Axum(#[source] hyper::Error),
     #[error("error while initializing: {0}")]
