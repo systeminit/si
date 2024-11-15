@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use dal::{
     diagram::view::View,
     management::{
@@ -5,7 +7,7 @@ use dal::{
     },
     AttributeValue, Component, DalContext, SchemaId,
 };
-use dal_test::expected::ExpectView;
+use dal_test::expected::{apply_change_set_to_base, ExpectView};
 use dal_test::{
     helpers::create_component_for_default_schema_name_in_default_view, test,
     SCHEMA_ID_SMALL_EVEN_LEGO,
@@ -183,7 +185,7 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
 }
 
 #[test]
-async fn create_and_connect_to_self_as_children(ctx: &DalContext) {
+async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
@@ -245,21 +247,64 @@ async fn create_and_connect_to_self_as_children(ctx: &DalContext) {
     let components = Component::list(ctx).await.expect("get components");
     assert_eq!(4, components.len());
 
-    let children = Component::get_children_for_id(ctx, small_odd_lego.id())
+    let workspace_snapshot = ctx.workspace_snapshot().expect("get snap");
+    let edges = workspace_snapshot
+        .edges_directed(small_odd_lego.id(), petgraph::Direction::Outgoing)
         .await
-        .expect("get frame children");
+        .expect("get edges");
+    for (weight, _, tgt) in edges {
+        let target_id = workspace_snapshot
+            .get_node_weight(tgt)
+            .await
+            .expect("get target")
+            .id();
+        println!("{:?} -> {}", weight.kind(), target_id);
+    }
+
+    let children: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
+        .await
+        .expect("get frame children")
+        .into_iter()
+        .collect();
     assert_eq!(3, children.len());
+    let managed: HashSet<_> = small_odd_lego
+        .get_managed(ctx)
+        .await
+        .expect("get managed")
+        .into_iter()
+        .collect();
+    assert_eq!(children, managed);
+
     let small_even_lego_schema_id: SchemaId = ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)
         .expect("make ulid")
         .into();
 
-    for child_id in children {
+    for &child_id in &children {
         let c = Component::get_by_id(ctx, child_id)
             .await
             .expect("get component");
         let schema_id = c.schema(ctx).await.expect("get schema").id();
         assert_eq!(small_even_lego_schema_id, schema_id);
     }
+
+    // Ensure parallel edges make it through the rebase
+    apply_change_set_to_base(ctx).await;
+
+    let children_base: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
+        .await
+        .expect("get frame children")
+        .into_iter()
+        .collect();
+    assert_eq!(3, children_base.len());
+    let managed_base: HashSet<_> = small_odd_lego
+        .get_managed(ctx)
+        .await
+        .expect("get managed")
+        .into_iter()
+        .collect();
+
+    assert_eq!(children, children_base);
+    assert_eq!(children_base, managed_base);
 }
 
 #[test]
