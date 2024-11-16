@@ -22,6 +22,7 @@ static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("data/defaults/code_gen
 static DEFAULT_QUALIFICATION_CODE: &str = include_str!("data/defaults/qualification.ts");
 static DEFAULT_ACTION_CODE: &str = include_str!("data/defaults/action.ts");
 static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("data/defaults/authentication.ts");
+static DEFAULT_MGMT_CODE: &str = include_str!("data/defaults/management.ts");
 
 #[allow(dead_code)]
 static DEFAULT_VALIDATION_CODE: &str = include_str!("data/defaults/validation.ts");
@@ -41,7 +42,7 @@ pub(crate) async fn create_management_func(
         name.clone(),
         FuncBackendKind::Management,
         FuncBackendResponseType::Management,
-        DEFAULT_ACTION_CODE,
+        DEFAULT_MGMT_CODE,
         DEFAULT_CODE_HANDLER,
     )
     .await?;
