@@ -1,5 +1,8 @@
 use std::{future::IntoFuture as _, time::Duration};
 
+use audit_logs::pg::{
+    AuditDatabaseContext, AuditDatabaseContextError, AuditDatabaseMigrationError,
+};
 use dal::{
     builtins, cached_module::CachedModuleError, pkg::PkgError, slow_rt::SlowRuntimeError,
     workspace_snapshot::migrator::SnapshotGraphMigrator, DalContext, ServicesContext, Workspace,
@@ -20,10 +23,14 @@ use crate::{init, Config};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum MigratorError {
+    #[error("audit database context error: {0}")]
+    AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("error while initializing: {0}")]
     Init(#[from] init::InitError),
     #[error("tokio join error: {0}")]
     Join(#[from] JoinError),
+    #[error("error while migrating audit database: {0}")]
+    MigrateAuditDatabase(#[source] AuditDatabaseMigrationError),
     #[error("error while migrating builtins from module index: {0}")]
     MigrateBuiltins(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("error while migrating dal database: {0}")]
@@ -61,6 +68,7 @@ type MigratorResult<T> = std::result::Result<T, MigratorError>;
 #[derive(Clone)]
 pub struct Migrator {
     services_context: ServicesContext,
+    audit_database_context: AuditDatabaseContext,
 }
 
 impl Migrator {
@@ -76,12 +84,23 @@ impl Migrator {
         // Spawn helping tasks and track them for graceful shutdown
         helping_tasks_tracker.spawn(layer_db_graceful_shutdown.into_future());
 
-        Ok(Self::from_services(services_context))
+        let audit_database_context = AuditDatabaseContext::from_config(config.audit()).await?;
+
+        Ok(Self::from_services(
+            services_context,
+            audit_database_context,
+        ))
     }
 
     #[instrument(name = "sdf.migrator.init.from_services", level = "info", skip_all)]
-    pub fn from_services(services_context: ServicesContext) -> Self {
-        Self { services_context }
+    pub fn from_services(
+        services_context: ServicesContext,
+        audit_database_context: AuditDatabaseContext,
+    ) -> Self {
+        Self {
+            services_context,
+            audit_database_context,
+        }
     }
 
     #[instrument(
@@ -95,6 +114,15 @@ impl Migrator {
     )]
     pub async fn run_migrations(self) -> MigratorResult<()> {
         let span = current_span_for_instrument_at!("info");
+
+        // TODO(nick,john): once we have seeded the database successfully, we can replace this with
+        // error propagation.
+        if let Err(err) = self.migrate_audit_database().await {
+            warn!(
+                ?err,
+                "skipping audit database migration due to error, which is currently expected"
+            );
+        }
 
         self.migrate_layer_db_database()
             .await
@@ -114,6 +142,13 @@ impl Migrator {
 
         span.record_ok();
         Ok(())
+    }
+
+    #[instrument(name = "sdf.migrator.migrate_audit_database", level = "info", skip_all)]
+    async fn migrate_audit_database(&self) -> MigratorResult<()> {
+        audit_logs::pg::migrate(&self.audit_database_context)
+            .await
+            .map_err(MigratorError::MigrateAuditDatabase)
     }
 
     #[instrument(

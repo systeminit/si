@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use audit_logs::AuditLogsError;
 use audit_logs::AuditLogsStream;
+use audit_logs::AuditLogsStreamError;
 use futures::StreamExt;
 use pending_events::PendingEventsError;
 use pending_events::PendingEventsStream;
@@ -45,8 +45,8 @@ pub enum AuditLoggingError {
     AsyncNatsConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
     #[error("async nats request error: {0}")]
     AsyncNatsRequest(#[from] async_nats::error::Error<RequestErrorKind>),
-    #[error("audit logs error: {0}")]
-    AuditLogs(#[from] AuditLogsError),
+    #[error("audit logs stream error: {0}")]
+    AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("cannot return list of unbounded size: both page ({0}) and page size ({1})")]
     CannotReturnListOfUnboundedSize(usize, usize),
     #[error("change set error: {0}")]

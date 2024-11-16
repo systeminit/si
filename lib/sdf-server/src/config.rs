@@ -1,4 +1,5 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
+use audit_logs::pg::AuditDatabaseConfig;
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
@@ -142,6 +143,9 @@ pub struct Config {
     create_workspace_permissions: WorkspacePermissionsMode,
 
     create_workspace_allowlist: Vec<WorkspacePermissions>,
+
+    #[builder(default)]
+    audit: AuditDatabaseConfig,
 }
 
 impl StandardConfig for Config {
@@ -254,6 +258,12 @@ impl Config {
     pub fn spicedb(&self) -> &SpiceDbConfig {
         &self.spicedb
     }
+
+    /// Gets a reference to the config's audit database config
+    #[must_use]
+    pub fn audit(&self) -> &AuditDatabaseConfig {
+        &self.audit
+    }
 }
 
 impl ConfigBuilder {
@@ -304,6 +314,8 @@ pub struct ConfigFile {
     create_workspace_allowlist: Vec<WorkspacePermissions>,
     #[serde(default)]
     spicedb: SpiceDbConfig,
+    #[serde(default)]
+    audit: AuditDatabaseConfig,
 }
 
 impl Default for ConfigFile {
@@ -327,6 +339,7 @@ impl Default for ConfigFile {
             create_workspace_permissions: Default::default(),
             create_workspace_allowlist: Default::default(),
             spicedb: Default::default(),
+            audit: Default::default(),
         }
     }
 }
@@ -361,6 +374,7 @@ impl TryFrom<ConfigFile> for Config {
             create_workspace_permissions: value.create_workspace_permissions,
             create_workspace_allowlist: value.create_workspace_allowlist,
             spicedb: value.spicedb,
+            audit: value.audit,
         })
     }
 }
@@ -495,8 +509,10 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.layer_db_config.pg_pool_config.certificate_path =
         Some(postgres_cert.clone().try_into()?);
     config.pkgs_path = pkgs_path;
-    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
+    config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.spicedb.enabled = true;
+    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.dbname = audit_logs::pg::DBNAME.to_string();
 
     Ok(())
 }
@@ -554,9 +570,11 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.layer_db_config.pg_pool_config.certificate_path =
         Some(postgres_cert.clone().try_into()?);
-    config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
+    config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.pkgs_path = pkgs_path;
     config.spicedb.enabled = true;
+    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.dbname = audit_logs::pg::DBNAME.to_string();
 
     Ok(())
 }
