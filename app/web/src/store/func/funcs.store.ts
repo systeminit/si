@@ -854,10 +854,9 @@ export const useFuncStore = () => {
           },
           {
             eventType: "FuncCodeSaved",
-            callback: (data, metadata) => {
+            callback: ({ generated, funcCode: { funcId } }, metadata) => {
               if (metadata.change_set_id !== selectedChangeSetId) return;
 
-              const funcId = data.funcCode.funcId;
               // TODO we update every time *any* function is generated unless you are in the
               // function editor. That's because we can't tell from here if the function is
               // the asset function editor from here (and we can't useAssetStore() because
@@ -865,7 +864,7 @@ export const useFuncStore = () => {
               // generation doesn't happen so often it's a giant problem right now.
               if (
                 (funcId === this.selectedFuncId || !this.selectedFuncId) &&
-                data.generated &&
+                generated &&
                 this.generatingFuncCode[funcId]
               ) {
                 this.FETCH_CODE(funcId);
