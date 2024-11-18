@@ -603,12 +603,15 @@ impl SchemaVariant {
             return Err(SchemaVariantError::SchemaVariantLocked(schema_variant_id));
         }
 
-        Self::cleanup_variant(ctx, variant).await
+        Self::cleanup_variant(ctx, variant).await?;
+        // Remove props/sockets/other dangling edges/nodes
+        Ok(ctx.workspace_snapshot()?.cleanup().await?)
     }
 
     /// Removes a schema variant from the graph, even if it is locked. You probably want to use [Self::cleanup_unlocked_variant]
     /// unless you're garbage collecting unused variants
-    pub async fn cleanup_variant(
+    /// Does not call cleanup() at the end--caller is responsible for ensuring dangling props and such are removed
+    pub(crate) async fn cleanup_variant(
         ctx: &DalContext,
         schema_variant: SchemaVariant,
     ) -> SchemaVariantResult<()> {
