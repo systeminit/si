@@ -88,7 +88,7 @@ watch(
 );
 
 watch(
-  () => selectedFuncCode.value?.funcId,
+  () => [selectedFuncCode.value?.funcId, selectedFuncCode.value?.code],
   () => {
     if (!selectedFuncCode.value) {
       return;
