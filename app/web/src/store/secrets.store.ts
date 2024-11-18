@@ -550,6 +550,13 @@ export function useSecretsStore() {
               },
             },
             {
+              eventType: "ModuleImported",
+              callback: (schemaVariants, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                this.LOAD_SECRETS();
+              },
+            },
+            {
               eventType: "SecretDeleted",
               callback: (data) => {
                 if (data.changeSetId !== changeSetId) return;
