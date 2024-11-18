@@ -39,11 +39,13 @@ use crate::{
     user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId, StandardModelError,
     TransactionsError, WorkspacePk,
 };
-use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
+use crate::{ChangeSetError, SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WsEventError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("func error: {0}")]
     Func(#[from] Box<FuncError>),
     #[error("nats txn error: {0}")]

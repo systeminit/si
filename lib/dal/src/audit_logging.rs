@@ -463,7 +463,9 @@ pub struct AuditLogsPublishedPayload {
 
 impl WsEvent {
     pub async fn audit_logs_published(ctx: &DalContext) -> WsEventResult<Self> {
-        let change_set = ctx.change_set()?;
+        let change_set = ChangeSet::find(ctx, ctx.change_set_id())
+            .await?
+            .ok_or(ChangeSetError::ChangeSetNotFound(ctx.change_set_id()))?;
         WsEvent::new(
             ctx,
             WsPayload::AuditLogsPublished(AuditLogsPublishedPayload {
