@@ -115,6 +115,12 @@ pub async fn create_component(
 
             let variant = SchemaVariant::get_by_id_or_error(&ctx, variant_id).await?;
 
+            let front_end_variant = variant.clone().into_frontend_type(&ctx, schema_id).await?;
+            WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+
             (
                 variant_id,
                 Some(variant.into_frontend_type(&ctx, schema_id).await?),
