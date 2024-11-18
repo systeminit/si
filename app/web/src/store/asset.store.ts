@@ -354,13 +354,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               name,
               color: this.generateMockColor(),
             },
-            onSuccess: (variant) => {
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
-            },
+            onSuccess: (variant) => this.setSchemaVariant(variant),
           });
         },
 
@@ -379,13 +373,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               id: schemaVariantId,
               name,
             },
-            onSuccess: (variant) => {
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
-            },
+            onSuccess: (variant) => this.setSchemaVariant(variant),
           });
         },
 
@@ -428,12 +416,76 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           }
         },
 
-        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code?: string) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
+        /**
+         * Insert or update the variant in the variantList.
+         *
+         * @param variant The variant to put in the list.
+         * @returns The index of the variant in the variantList.
+         */
+        setSchemaVariant(variant: SchemaVariant) {
+          this.replaceSchemaVariant(variant.schemaVariantId, variant);
+        },
+        /**
+         * Replace an existing variant in the variant list (or insert if it's new).
+         *
+         * @param variant The variant to put in the list.
+         * @param replaceId The id of the variant to replace.
+         * @returns The index of the variant in the variantList.
+         */
+        replaceSchemaVariant(
+          replaceId: SchemaVariantId,
+          variant: SchemaVariant,
+        ) {
+          let savedAssetIdx = this.variantList.findIndex(
+            (v) => v.schemaVariantId === replaceId,
+          );
+          if (savedAssetIdx === -1) {
+            savedAssetIdx = this.variantList.push(variant) - 1;
+          }
 
+          if (replaceId !== variant.schemaVariantId) {
+            // Make sure we didn't somehow create two copies!
+            assert(
+              this.variantList.find(
+                (v) => v.schemaVariantId === variant.schemaVariantId,
+              ) === undefined,
+            );
+
+            // Replace the selection, too, since the ID has changed but it's the same thing!
+            if (this.selectedSchemaVariants.includes(replaceId)) {
+              if (this.selectedSchemaVariants.length === 1) {
+                // setSchemaVariantSelection() unsets selected funcs, but we want to restore them after
+                const selectedFuncs = _.clone(this.selectedFuncs);
+                this.setSchemaVariantSelection(variant.schemaVariantId);
+                // Right now you can't multi select functions but they're in an array,
+                // so we just set the values in the array, which will leave the last one selected
+                for (const funcId of selectedFuncs) {
+                  this.setFuncSelection(funcId);
+                }
+              } else {
+                this.removeSchemaVariantSelection(replaceId);
+                this.addSchemaVariantSelection(variant.schemaVariantId);
+              }
+            }
+          }
+        },
+        /**
+         * Remove the variant from the variantList.
+         * @param id The variant to remove.
+         * @returns The former index of the removed variant, or -1 if it was not in the list to begin with.
+         */
+        deleteSchemaVariant(id: SchemaVariantId) {
+          const savedAssetIdx = this.variantList.findIndex(
+            (v) => v.schemaVariantId === id,
+          );
+          if (savedAssetIdx !== -1) {
+            this.variantList.splice(savedAssetIdx, 1);
+          }
+          // Remove from selection
+          this.removeSchemaVariantSelection(id);
+        },
+
+        async SAVE_SCHEMA_VARIANT(schemaVariant: SchemaVariant, code?: string) {
           if (schemaVariant.isLocked)
             throw new Error(
               `cant save locked schema variant (${schemaVariant.displayName},${schemaVariant.schemaVariantId})`,
@@ -531,13 +583,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               });
             },
             onSuccess: (variant) => {
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
-
+              this.setSchemaVariant(variant);
               this.setSchemaVariantSelection(variant.schemaVariantId);
             },
           });
@@ -555,13 +601,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             params: {
               // ...visibility,
             },
-            onSuccess: (variant) => {
-              const deletedVariantIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-              if (deletedVariantIdx !== -1)
-                this.variantList.splice(deletedVariantIdx, 1, variant);
-            },
+            onSuccess: (variant) => this.replaceSchemaVariant(id, variant),
           });
         },
       },
@@ -593,21 +633,14 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             eventType: "SchemaVariantCreated",
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
-              if (savedAssetIdx === -1) this.variantList.push(variant);
-              else this.variantList.splice(savedAssetIdx, 1, variant);
+              this.setSchemaVariant(variant);
             },
           },
           {
             eventType: "SchemaVariantDeleted",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === data.schemaVariantId,
-              );
-              this.variantList.splice(savedAssetIdx, 1);
+              this.deleteSchemaVariant(data.schemaVariantId);
             },
           },
           {
@@ -622,29 +655,16 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             eventType: "SchemaVariantSaved",
             callback: (data) => {
               if (data.changeSetId !== changeSetId) return;
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === data.schemaVariantId,
-              );
-              const savedAsset = this.variantList[savedAssetIdx];
+              const savedAsset = this.variantFromListById[data.schemaVariantId];
               if (savedAsset) {
+                // TODO seems like an issue if it doesn't exist in the list?
                 savedAsset.schemaName = data.name;
                 savedAsset.category = data.category;
                 savedAsset.color = data.color;
                 savedAsset.componentType = data.componentType;
                 savedAsset.displayName = data.displayName || null;
-                this.variantList.splice(savedAssetIdx, 1, savedAsset);
-              }
-
-              const existingAsset =
-                this.variantFromListById[data.schemaVariantId];
-              if (existingAsset) {
-                existingAsset.schemaName = data.name;
-                existingAsset.category = data.category;
-                existingAsset.color = data.color;
-                existingAsset.componentType = data.componentType;
-                existingAsset.displayName = data.displayName || null;
-                existingAsset.description = data.description || "";
-                existingAsset.link = data.link || null;
+                savedAsset.description = data.description || "";
+                savedAsset.link = data.link || null;
               }
             },
           },
@@ -660,50 +680,19 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
             eventType: "SchemaVariantUpdated",
             callback: (variant, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
-              const savedAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === variant.schemaVariantId,
-              );
 
               if (variant?.assetFuncId)
                 funcStore.FETCH_CODE(variant.assetFuncId);
 
-              if (savedAssetIdx !== -1) {
-                this.variantList.splice(savedAssetIdx, 1, variant);
-              } else this.variantList.push(variant);
+              this.setSchemaVariant(variant);
             },
           },
           {
             eventType: "SchemaVariantReplaced",
-            callback: (
-              {
-                newSchemaVariant: newVariant,
-                oldSchemaVariantId: oldVariantId,
-              },
-              metadata,
-            ) => {
+            callback: ({ newSchemaVariant, oldSchemaVariantId }, metadata) => {
               if (metadata.change_set_id !== changeSetId) return;
 
-              const oldAssetIdx = this.variantList.findIndex(
-                (a) => a.schemaVariantId === oldVariantId,
-              );
-              if (oldAssetIdx !== -1) {
-                this.variantList.splice(oldAssetIdx, 1, newVariant);
-              } else this.variantList.push(newVariant);
-
-              if (this.selectedSchemaVariants.includes(oldVariantId)) {
-                if (this.selectedSchemaVariants.length === 1) {
-                  const selectedFuncs = _.clone(this.selectedFuncs);
-                  this.setSchemaVariantSelection(newVariant.schemaVariantId);
-                  // Right now you can't multi select functions but they're in an array,
-                  // so we just set the values in the array, which will leave the last one selected
-                  for (const funcId of selectedFuncs) {
-                    this.setFuncSelection(funcId);
-                  }
-                } else {
-                  this.removeSchemaVariantSelection(oldVariantId);
-                  this.addSchemaVariantSelection(newVariant.schemaVariantId);
-                }
-              }
+              this.replaceSchemaVariant(oldSchemaVariantId, newSchemaVariant);
             },
           },
           {
@@ -712,13 +701,14 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               if (metadata.change_set_id !== changeSetId) return;
 
               for (const variant of schemaVariants) {
-                const savedAssetIdx = this.variantList.findIndex(
-                  (a) => a.schemaId === variant.schemaId,
+                // If there is already a variant from the same schema, replace it
+                const oldVariant = this.variantList.find(
+                  (v) => v.schemaId === variant.schemaId,
                 );
-                if (savedAssetIdx !== -1) {
-                  this.variantList.splice(savedAssetIdx, 1, variant);
-                  this.setSchemaVariantSelection(variant.schemaVariantId);
-                } else this.variantList.push(variant);
+                if (oldVariant) {
+                  const { schemaVariantId } = oldVariant;
+                  this.replaceSchemaVariant(schemaVariantId, variant);
+                }
               }
             },
           },
