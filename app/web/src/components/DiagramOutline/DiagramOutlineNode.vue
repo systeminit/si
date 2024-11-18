@@ -10,9 +10,11 @@
     <div
       :class="
         clsx(
-          'relative border-b border-l-[2px] cursor-pointer group',
+          'relative border-b border-l-[2px] group',
           themeClasses('border-neutral-200', 'border-neutral-700'),
-          isHover &&
+          inView && 'cursor-pointer',
+          inView &&
+            isHover &&
             'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1 outline-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
         )
@@ -45,7 +47,26 @@
         <Icon name="tree-parents" size="xs" class="mr-2xs" />
         {{ parentBreadcrumbsText }}
       </div>
-      <div class="flex flex-row items-center px-xs w-full gap-1">
+
+      <div
+        v-if="!inView"
+        :class="
+          clsx(
+            'text-[10px] capsize pl-xs flex items-center',
+            themeClasses(
+              'bg-neutral-100 text-neutral-600',
+              'bg-neutral-700 text-neutral-300',
+            ),
+          )
+        "
+      >
+        <Icon name="tree-parents" size="xs" class="mr-2xs" />
+        <div class="truncate w-full">
+          {{ component.def.schemaName }}: {{ component.def.displayName }}
+        </div>
+      </div>
+
+      <div v-else class="flex flex-row items-center px-xs w-full gap-1">
         <Icon
           :name="component.def.icon"
           size="sm"
@@ -266,20 +287,28 @@ const viewId = computed(
   () => viewStore.outlinerViewId || viewStore.selectedViewId,
 );
 
-const viewComponentIds = computed<ComponentId[] | null>(() => {
+const viewComponentIds = computed<ComponentId[]>(() => {
   if (viewId.value) {
     return Object.keys(
       viewStore.viewsById[viewId.value]?.components || [],
     ).concat(Object.keys(viewStore.viewsById[viewId.value]?.groups || []));
-  } else return null;
+  } else return [];
 });
 
+// minimize a frame that is not in this view
+const inView = computed(() =>
+  viewComponentIds.value.includes(props.component.def.id),
+);
+
+// show child frames not in view, but not components
 const childComponents = computed(() => {
   const children =
     componentsStore.componentsByParentId[props.component.def.id] || [];
-  if (!viewComponentIds.value) return children;
-  else
-    return children.filter((c) => viewComponentIds.value?.includes(c.def.id));
+  return children.filter((c) => {
+    if (!c.def.isGroup && !viewComponentIds.value.includes(c.def.id))
+      return false;
+    return true;
+  });
 });
 
 const isSelected = computed(() =>
@@ -301,6 +330,7 @@ const qualificationStatus = computed(
 );
 
 function onClick(e: MouseEvent, tabSlug?: string) {
+  if (!inView.value) return;
   rootCtx.itemClickHandler(e, props.component, tabSlug);
 }
 
