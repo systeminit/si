@@ -17,7 +17,10 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useFuncStore } from "./func/funcs.store";
-import { useChangeSetsStore } from "./change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "./change_sets.store";
 import { useModuleStore } from "./module.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
@@ -342,11 +345,10 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async CREATE_VARIANT(name: string) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetStore.headChangeSetId)
-            changeSetStore.creatingChangeSet = true;
-          return new ApiRequest<SchemaVariant, SchemaVariantCreateRequest>({
+          return forceChangeSetApiRequest<
+            SchemaVariant,
+            SchemaVariantCreateRequest
+          >({
             method: "post",
             url: "/variant/create_variant",
             params: {
@@ -365,12 +367,10 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async CLONE_VARIANT(schemaVariantId: SchemaVariantId, name: string) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
-          return new ApiRequest<SchemaVariant, SchemaVariantCloneRequest>({
+          return forceChangeSetApiRequest<
+            SchemaVariant,
+            SchemaVariantCloneRequest
+          >({
             method: "post",
             keyRequestStatusBy: schemaVariantId,
             url: "/variant/clone_variant",
@@ -439,7 +439,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               `cant save locked schema variant (${schemaVariant.displayName},${schemaVariant.schemaVariantId})`,
             );
 
-          return new ApiRequest<
+          return forceChangeSetApiRequest<
             { success: boolean; assetFuncId: FuncId },
             SchemaVariantSaveRequest
           >({
@@ -460,17 +460,12 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async REGENERATE_VARIANT(schemaVariantId: SchemaVariantId) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
           this.detachmentWarnings = [];
           const variant = this.variantFromListById[schemaVariantId];
           if (!variant)
             throw new Error(`${schemaVariantId} Variant does not exist`);
 
-          return new ApiRequest<{
+          return forceChangeSetApiRequest<{
             schemaVariantId: SchemaVariantId;
           }>({
             method: "post",
@@ -498,14 +493,9 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async CREATE_UNLOCKED_COPY(id: SchemaVariantId) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
           this.detachmentWarnings = [];
 
-          return new ApiRequest<SchemaVariant>({
+          return forceChangeSetApiRequest<SchemaVariant>({
             method: "post",
             url: API_PREFIX.concat([id]),
             keyRequestStatusBy: id,
@@ -543,12 +533,7 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async DELETE_UNLOCKED_VARIANT(id: SchemaVariantId) {
-          if (changeSetStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetStore.headSelected)
-            changeSetStore.creatingChangeSet = true;
-
-          return new ApiRequest<SchemaVariant>({
+          return forceChangeSetApiRequest<SchemaVariant>({
             method: "delete",
             url: API_PREFIX.concat([id]),
             keyRequestStatusBy: id,

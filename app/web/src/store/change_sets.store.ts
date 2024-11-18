@@ -1,7 +1,12 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-import { ApiRequest, addStoreHooks, URLPattern } from "@si/vue-lib/pinia";
+import {
+  ApiRequest,
+  addStoreHooks,
+  URLPattern,
+  ApiRequestDescription,
+} from "@si/vue-lib/pinia";
 import { useToast } from "vue-toastification";
 import { ulid } from "ulid";
 import {
@@ -696,3 +701,30 @@ export function useChangeSetsStore() {
     }),
   )();
 }
+
+/**
+  * Perform an API request that will automatically create a new changeset.
+  *
+  * This will set `creatingChangeSet` to true, and will set it back to false if the
+  * request fails.
+  */
+export function forceChangeSetApiRequest<
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ Response = any,
+ RequestParams = Record<string, unknown>,
+>(requestSpec: ApiRequestDescription<Response, RequestParams>) {
+  const changeSetsStore = useChangeSetsStore();
+  if (changeSetsStore.creatingChangeSet)
+    throw new Error("race, wait until the change set is created");
+  if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
+
+ return new ApiRequest({
+   ...requestSpec,
+   onFail: (response) => {
+     changeSetsStore.creatingChangeSet = false;
+     if (requestSpec.onFail) {
+       requestSpec.onFail(response);
+     }
+   },
+ });
+},

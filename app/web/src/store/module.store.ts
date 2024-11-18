@@ -11,7 +11,10 @@ import {
   ModuleContributeRequest,
   ModuleId,
 } from "@/api/sdf/dal/module";
-import { useChangeSetsStore } from "./change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ModuleIndexApiRequest } from ".";
@@ -370,21 +373,13 @@ export const useModuleStore = () => {
           },
 
           async INSTALL_REMOTE_MODULE(moduleIds: ModuleId[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ id: string }>({
+            return forceChangeSetApiRequest<{ id: string }>({
               method: "post",
               url: "/module/install_module",
               keyRequestStatusBy: moduleIds,
               params: {
                 ids: moduleIds,
                 ...getVisibilityParams(),
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
               },
               onSuccess: () => {
                 // reset installed list

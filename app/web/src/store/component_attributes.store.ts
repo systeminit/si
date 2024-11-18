@@ -13,7 +13,10 @@ import {
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import handleStoreError from "./errors";
-import { useChangeSetsStore } from "./change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useComponentsStore } from "./components.store";
 
@@ -249,12 +252,9 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           async REMOVE_PROPERTY_VALUE(
             removePayload: DeletePropertyEditorValueArgs,
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<{ success: true }>({
+            return forceChangeSetApiRequest<{
+              success: true;
+            }>({
               method: "post",
               url: "component/delete_property_editor_value",
               params: {
@@ -270,11 +270,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               | { update: UpdatePropertyEditorValueArgs }
               | { insert: InsertPropertyEditorValueArgs },
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             const isInsert = "insert" in updatePayload;
 
             // If the valueid for this update does not exist in the values tree,
@@ -289,7 +284,9 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               return;
             }
 
-            return new ApiRequest<{ success: true }>({
+            return forceChangeSetApiRequest<{
+              success: true;
+            }>({
               method: "post",
               url: isInsert
                 ? "component/insert_property_editor_value"
@@ -301,11 +298,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             });
           },
           async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             // NOTE Since views came in overriding geometries on this operation
             // became way more complex. Also frames start at the size of the
             // original component so this is not going to be a problem for now.
@@ -390,7 +382,9 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             //   };
             // }
 
-            return new ApiRequest<{ success: true }>({
+            return forceChangeSetApiRequest<{
+              success: true;
+            }>({
               method: "post",
               url: "component/set_type",
               params: {
@@ -402,11 +396,9 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           async RESET_PROPERTY_VALUE(
             resetPayload: ResetPropertyEditorValueArgs,
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-            return new ApiRequest<{ success: true }>({
+            return forceChangeSetApiRequest<{
+              success: true;
+            }>({
               method: "post",
               url: "component/restore_default_function",
               params: {
