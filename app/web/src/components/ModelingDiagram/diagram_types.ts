@@ -7,6 +7,7 @@ import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import {
+  GROUP_BOTTOM_INTERNAL_PADDING,
   NODE_HEADER_HEIGHT,
   NODE_PADDING_BOTTOM,
   NODE_SUBTITLE_TEXT_HEIGHT,
@@ -50,6 +51,19 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     super();
     this.sockets =
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+  }
+
+  get socketEndingY() {
+    return (
+      SOCKET_TOP_MARGIN +
+      SOCKET_MARGIN_TOP +
+      SOCKET_GAP *
+        (this.layoutLeftSockets(0).sockets.length +
+          this.layoutRightSockets(0).sockets.length -
+          1) +
+      SOCKET_SIZE / 2 +
+      GROUP_BOTTOM_INTERNAL_PADDING
+    );
   }
 
   layoutLeftSockets(nodeWidth: number) {
@@ -140,6 +154,9 @@ export class DiagramGroupData extends DiagramNodeHasSockets {
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
   }
+
+  public readonly socketStartingY: number =
+    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;

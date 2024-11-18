@@ -1899,6 +1899,14 @@ function onResizeMove() {
         if (sizeDelta.y < minDelta) {
           sizeDelta.y = minDelta;
         }
+        if (
+          resizedElementGeometryPreResize.value.height + sizeDelta.y <
+          resizeElement.value.socketEndingY
+        ) {
+          sizeDelta.y =
+            resizeElement.value.socketEndingY -
+            resizedElementGeometryPreResize.value.height;
+        }
       }
       break;
     case "top":
