@@ -33,22 +33,31 @@
         </div>
       </template>
       <div class="py-xs">
-        <VormInput v-model="removeOrDelete" noLabel type="radio">
-          <VormInputOption :value="DELETE">
-            <p class="text-xs mt-sm">
-              <strong>Delete</strong>: Items that exist on HEAD will be marked
-              for deletion, and removed from the model when this change set is
-              merged. Items that were created in this change set will be deleted
-              immediately.
-            </p>
-          </VormInputOption>
-          <VormInputOption :value="REMOVE">
-            <p class="text-xs my-sm">
-              <strong>Remove</strong>: Items will be removed from this view of
-              your diagram. It will remain in other views.
-            </p>
-          </VormInputOption>
-        </VormInput>
+        <template v-if="selectedEdge">
+          <p class="text-xs mt-sm">
+            Items that exist on HEAD will be marked for deletion, and removed
+            from the model when this change set is merged. Items that were
+            created in this change set will be deleted immediately.
+          </p>
+        </template>
+        <template v-else>
+          <VormInput v-model="removeOrDelete" noLabel type="radio">
+            <VormInputOption :value="DELETE">
+              <p class="text-xs mt-sm">
+                <strong>Delete</strong>: Items that exist on HEAD will be marked
+                for deletion, and removed from the model when this change set is
+                merged. Items that were created in this change set will be
+                deleted immediately.
+              </p>
+            </VormInputOption>
+            <VormInputOption :value="REMOVE">
+              <p class="text-xs my-sm">
+                <strong>Remove</strong>: Items will be removed from this view of
+                your diagram. It will remain in other views.
+              </p>
+            </VormInputOption>
+          </VormInput>
+        </template>
       </div>
 
       <div class="flex gap-sm">
@@ -59,7 +68,8 @@
           class="flex-grow"
           @click="onConfirmDelete"
         >
-          Confirm
+          <template v-if="selectedEdge"> Delete </template>
+          <template v-else> Confirm </template>
         </VButton>
       </div>
     </div>
@@ -117,7 +127,7 @@ const removeOrDelete = ref(DELETE);
 
 async function onConfirmDelete() {
   close();
-  if (removeOrDelete.value === DELETE) {
+  if (selectedEdge.value || removeOrDelete.value === DELETE) {
     if (
       componentsStore.selectedEdgeId &&
       componentsStore.selectedEdge?.toSocketId &&
