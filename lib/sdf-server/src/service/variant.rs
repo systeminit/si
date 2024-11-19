@@ -24,8 +24,6 @@ pub mod save_variant;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
-    #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("trying to create unlocked copy for schema variant that's not the default: {0}")]
@@ -50,8 +48,6 @@ pub enum SchemaVariantError {
     NoDefaultSchemaVariantFoundForSchema(SchemaId),
     #[error("pkg error: {0}")]
     Pkg(#[from] PkgError),
-    #[error("prop error: {0}")]
-    Prop(#[from] dal::prop::PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("Schema name {0} already taken")]
