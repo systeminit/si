@@ -80,4 +80,5 @@ export type RawEdge = {
 export type Edge = RawEdge & {
   id: EdgeId;
   isInferred: boolean;
+  isManagement?: boolean;
 };

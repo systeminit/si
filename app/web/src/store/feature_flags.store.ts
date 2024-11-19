@@ -12,6 +12,7 @@ const FLAG_MAPPING = {
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
   MANAGEMENT_FUNCTIONS: "management-functions",
+  MANAGEMENT_EDGES: "management-edges",
   AUDIT_PAGE: "audit-page",
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
@@ -41,7 +42,9 @@ export function useFeatureFlagsStore() {
             }
           });
         });
-        // You can override feature flags while working on a feature by setting them to true here
+        // You can override feature flags while working on a feature by setting them to true/false here
+        // for example:
+        // this.MANAGEMENT_EDGES = false;
       },
     }),
   )();

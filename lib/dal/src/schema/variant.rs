@@ -10,7 +10,9 @@ use thiserror::Error;
 use url::ParseError;
 
 use si_events::{ulid::Ulid, ContentHash};
-use si_frontend_types::SchemaVariant as FrontendVariant;
+use si_frontend_types::{
+    DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, SchemaVariant as FrontendVariant,
+};
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
@@ -22,6 +24,7 @@ use crate::attribute::prototype::argument::{
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, ValueIsFor};
 use crate::change_set::ChangeSetError;
+use crate::diagram::SummaryDiagramManagementEdge;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::{FuncError, FuncKind};
@@ -1628,6 +1631,48 @@ impl SchemaVariant {
         }
 
         Ok(())
+    }
+
+    /// Management "sockets" are a confected Diagram socket that is used to
+    /// render management sockets on the diagram
+    pub async fn get_management_sockets(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<(DiagramSocket, Option<DiagramSocket>)> {
+        let schema_id =
+            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let managed_schemas = Self::all_managed_schemas(ctx, schema_variant_id).await?;
+        let has_mgmt_protos =
+            ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id)
+                .await
+                .map_err(Box::new)?;
+
+        let management_input_socket = DiagramSocket {
+            id: SummaryDiagramManagementEdge::input_socket_id(schema_id),
+            label: "Manager".into(),
+            connection_annotations: vec![],
+            direction: DiagramSocketDirection::Input,
+            max_connections: None,
+            is_required: Some(false),
+            node_side: DiagramSocketNodeSide::Left,
+            is_management: Some(true),
+            managed_schemas: None,
+        };
+
+        // You only have an "output" if you have management prototypes
+        let management_output_socket = has_mgmt_protos.then(|| DiagramSocket {
+            id: SummaryDiagramManagementEdge::output_socket_id(schema_id),
+            label: "Manage".into(),
+            connection_annotations: vec![],
+            direction: DiagramSocketDirection::Output,
+            max_connections: None,
+            is_required: Some(false),
+            node_side: DiagramSocketNodeSide::Right,
+            is_management: Some(true),
+            managed_schemas: Some(managed_schemas.into_iter().map(Into::into).collect()),
+        });
+
+        Ok((management_input_socket, management_output_socket))
     }
 
     pub async fn list_all_sockets(

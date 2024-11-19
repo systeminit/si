@@ -1,6 +1,23 @@
 <template>
   <v-group>
+    <v-rect
+      v-if="socket.def.isManagement"
+      :config="{
+        id: socket.uniqueKey,
+        x: 0,
+        y: props.position.y - socketSize / 2 - 1,
+        width: socketSize - 3,
+        height: socketSize - 3,
+        stroke: colors.stroke,
+        strokeWidth: isHovered ? 2 : 1,
+        fill: colors.fill,
+        rotation: 45,
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+    />
     <v-circle
+      v-else
       :config="{
         id: socket.uniqueKey,
         x: 0,
@@ -86,6 +103,7 @@ const props = defineProps<{
   nodeWidth: number;
   isHovered?: boolean;
   isSelected?: boolean;
+  isManagement?: boolean;
 }>();
 
 const emit = defineEmits(["hover:start", "hover:end"]);

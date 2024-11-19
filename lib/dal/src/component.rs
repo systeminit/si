@@ -30,7 +30,9 @@ use crate::attribute::value::{
 use crate::change_set::ChangeSetError;
 use crate::change_status::ChangeStatus;
 use crate::code_view::CodeViewError;
-use crate::diagram::{DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge};
+use crate::diagram::{
+    DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge,
+};
 use crate::func::argument::FuncArgumentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV2};
@@ -3186,7 +3188,7 @@ impl Component {
                     to_delete: false,
                     from_base_change_set: false,
                 };
-                WsEvent::connection_upserted(ctx, edge)
+                WsEvent::connection_upserted(ctx, edge.into())
                     .await?
                     .publish_on_commit(ctx)
                     .await?;
@@ -3224,7 +3226,7 @@ impl Component {
                     to_delete: false,
                     from_base_change_set: false,
                 };
-                WsEvent::connection_upserted(ctx, edge)
+                WsEvent::connection_upserted(ctx, edge.into())
                     .await?
                     .publish_on_commit(ctx)
                     .await?;
@@ -3394,6 +3396,24 @@ impl Component {
         })
     }
 
+    /// Remove a [`Manages`](`crate::edge_weight::EdgeWeightKind::Manages`)
+    /// edge from a manager component to a managed component
+    pub async fn unmanage_component(
+        ctx: &DalContext,
+        manager_component_id: ComponentId,
+        managed_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        ctx.workspace_snapshot()?
+            .remove_edge_for_ulids(
+                manager_component_id,
+                managed_component_id,
+                EdgeWeightKindDiscriminants::Manages,
+            )
+            .await?;
+
+        Ok(())
+    }
+
     /// Add a [`Manages`](`crate::edge_weight::EdgeWeightKind::Manages`) edge
     /// from a manager component to a managed component, if the managed
     /// component is based on a managed schema
@@ -3401,7 +3421,7 @@ impl Component {
         ctx: &DalContext,
         manager_component_id: ComponentId,
         managed_component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    ) -> ComponentResult<SummaryDiagramManagementEdge> {
         let manager_schema_id = Component::schema_for_component_id(ctx, manager_component_id)
             .await?
             .id();
@@ -3435,11 +3455,16 @@ impl Component {
 
         drop(guard);
 
-        Ok(())
+        Ok(SummaryDiagramManagementEdge::new(
+            manager_schema_id,
+            managed_component_schema_id,
+            manager_component_id,
+            managed_component_id,
+        ))
     }
 
     /// Return the ids of all the components that manage this component
-    pub async fn get_managers(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+    pub async fn managers(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
         let mut result = vec![];
 
         let snapshot = ctx.workspace_snapshot()?;
@@ -3490,7 +3515,11 @@ impl Component {
                 let (output_sockets, input_sockets) =
                     SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
 
+                let (management_input_socket, management_output_socket) =
+                    SchemaVariant::get_management_sockets(ctx, schema_variant.id()).await?;
+
                 let mut sockets = vec![];
+                sockets.push(management_input_socket);
 
                 for socket in input_sockets {
                     sockets.push(DiagramSocket {
@@ -3508,7 +3537,13 @@ impl Component {
                         },
                         is_required: Some(false),
                         node_side: DiagramSocketNodeSide::Left,
+                        is_management: Some(false),
+                        managed_schemas: None,
                     });
+                }
+
+                if let Some(management_output_socket) = management_output_socket {
+                    sockets.push(management_output_socket);
                 }
 
                 for socket in output_sockets {
@@ -3527,6 +3562,8 @@ impl Component {
                         },
                         is_required: Some(false),
                         node_side: DiagramSocketNodeSide::Right,
+                        is_management: Some(false),
+                        managed_schemas: None,
                     });
                 }
                 entry.insert(sockets.to_owned());
@@ -3645,12 +3682,39 @@ pub struct ComponentDeletedPayload {
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionDeletedPayload {
-    from_component_id: ComponentId,
-    to_component_id: ComponentId,
-    from_socket_id: OutputSocketId,
-    to_socket_id: InputSocketId,
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum ConnectionDeletedPayload {
+    #[serde(rename_all = "camelCase")]
+    AttributeValueEdge {
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+        from_socket_id: OutputSocketId,
+        to_socket_id: InputSocketId,
+    },
+    #[serde(rename_all = "camelCase")]
+    ManagementEdge {
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+    },
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum ConnectionUpsertedPayload {
+    AttribueValueEdge(SummaryDiagramEdge),
+    ManagementEdge(SummaryDiagramManagementEdge),
+}
+
+impl From<SummaryDiagramEdge> for ConnectionUpsertedPayload {
+    fn from(value: SummaryDiagramEdge) -> Self {
+        ConnectionUpsertedPayload::AttribueValueEdge(value)
+    }
+}
+
+impl From<SummaryDiagramManagementEdge> for ConnectionUpsertedPayload {
+    fn from(value: SummaryDiagramManagementEdge) -> Self {
+        ConnectionUpsertedPayload::ManagementEdge(value)
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -3806,9 +3870,9 @@ impl WsEvent {
 
     pub async fn connection_upserted(
         ctx: &DalContext,
-        edge: SummaryDiagramEdge,
+        payload: ConnectionUpsertedPayload,
     ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ConnectionUpserted(edge)).await
+        WsEvent::new(ctx, WsPayload::ConnectionUpserted(payload)).await
     }
 
     pub async fn connection_deleted(
@@ -3820,11 +3884,26 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ConnectionDeleted(ConnectionDeletedPayload {
+            WsPayload::ConnectionDeleted(ConnectionDeletedPayload::AttributeValueEdge {
                 from_component_id,
                 to_component_id,
                 from_socket_id,
                 to_socket_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn manages_edge_deleted(
+        ctx: &DalContext,
+        from_component_id: ComponentId,
+        to_component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionDeleted(ConnectionDeletedPayload::ManagementEdge {
+                from_component_id,
+                to_component_id,
             }),
         )
         .await

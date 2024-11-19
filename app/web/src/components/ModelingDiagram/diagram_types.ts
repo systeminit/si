@@ -69,12 +69,21 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
   layoutLeftSockets(nodeWidth: number) {
     if (!this.sockets) return { x: 0, y: 0, sockets: [] };
     const layout: DiagramSocketDataWithPosition[] = [];
+    const leftManagementSocket = this.sockets.find(
+      (s) => s.def.isManagement && s.def.nodeSide === "left",
+    );
     const sockets = _.sortBy(
-      this.sockets
-        .filter((s) => s.def.label !== "Frame")
-        .filter((s) => s.def.nodeSide === "left"),
+      this.sockets.filter(
+        (s) =>
+          s.def.label !== "Frame" &&
+          s.def.nodeSide === "left" &&
+          !s.def.isManagement,
+      ),
       (s) => s.def.label,
     );
+    if (leftManagementSocket) {
+      sockets.unshift(leftManagementSocket);
+    }
     for (const [i, socket] of sockets.entries()) {
       const y = i * SOCKET_GAP;
       const x = 15;
@@ -94,12 +103,23 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
       .filter((s) => s.def.nodeSide === "left")
       .filter((s) => s.def.label !== "Frame").length;
     const layout: DiagramSocketDataWithPosition[] = [];
+    const rightManagementSocket = this.sockets.find(
+      (s) => s.def.isManagement && s.def.nodeSide === "right",
+    );
     const sockets = _.sortBy(
-      this.sockets
-        .filter((s) => s.def.label !== "Frame")
-        .filter((s) => s.def.nodeSide === "right"),
+      this.sockets.filter(
+        (s) =>
+          s.def.label !== "Frame" &&
+          s.def.nodeSide === "right" &&
+          !s.def.isManagement,
+      ),
       (s) => s.def.label,
     );
+
+    if (rightManagementSocket) {
+      sockets.unshift(rightManagementSocket);
+    }
+
     for (const [i, socket] of sockets.entries()) {
       const y = i * SOCKET_GAP;
       const x = -nodeWidth + 15;
@@ -345,6 +365,12 @@ export type DiagramSocketDef = {
   isRequired?: boolean;
   /** which side of the node is the socket displayed on */
   nodeSide: "left" | "right"; // add top/bottom later?
+  /** is the socket a management socket */
+  isManagement?: boolean;
+  /** the schema ids managed by the socket, if a management socket, if any */
+  managedSchemas?: string[];
+  /** schema id, for management socket compatibility */
+  schemaId?: string;
 
   // color
   // shape
@@ -360,6 +386,7 @@ export type DiagramEdgeDef = {
   toSocketId: DiagramElementId;
   isBidirectional?: boolean;
   isInferred?: boolean;
+  isManagement?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
   createdAt?: Date;

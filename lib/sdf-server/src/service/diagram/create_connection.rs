@@ -77,7 +77,7 @@ pub async fn create_connection(
                 &to_component,
                 ChangeStatus::Added,
             )?;
-            WsEvent::connection_upserted(&ctx, edge)
+            WsEvent::connection_upserted(&ctx, edge.into())
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;

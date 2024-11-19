@@ -785,6 +785,13 @@ impl WorkspaceSnapshot {
             .to_owned())
     }
 
+    pub async fn get_node_weight_opt(&self, node_index: NodeIndex) -> Option<NodeWeight> {
+        self.working_copy()
+            .await
+            .get_node_weight_opt(node_index)
+            .map(ToOwned::to_owned)
+    }
+
     #[instrument(
         name = "workspace_snapshot.find_equivalent_node",
         level = "debug",
@@ -1234,15 +1241,16 @@ impl WorkspaceSnapshot {
         from_id: impl Into<Ulid>,
         to_id: impl Into<Ulid>,
         edge_weight_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<Option<EdgeWeight>> {
+    ) -> Option<EdgeWeight> {
         let working_copy = self.working_copy().await;
 
-        let from_idx = working_copy.get_node_index_by_id(from_id)?;
-        let to_idx = working_copy.get_node_index_by_id(to_id)?;
+        let (from_idx, to_idx) = working_copy
+            .get_node_index_by_id_opt(from_id)
+            .zip(working_copy.get_node_index_by_id_opt(to_id))?; // `?` works on Option, too
 
-        Ok(working_copy
+        working_copy
             .find_edge(from_idx, to_idx, edge_weight_kind)
-            .map(ToOwned::to_owned))
+            .map(ToOwned::to_owned)
     }
 
     pub async fn remove_edge_for_ulids(

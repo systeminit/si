@@ -188,11 +188,22 @@ export const getAssetIcon = (name: string) => {
 };
 
 const edgeFromRawEdge =
-  (isInferred: boolean) =>
+  ({
+    isInferred,
+    isManagement,
+  }: {
+    isInferred?: boolean;
+    isManagement?: boolean;
+  }) =>
   (e: RawEdge): Edge => {
     const edge = structuredClone(e) as Edge;
-    edge.id = `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
-    edge.isInferred = isInferred;
+    if (isManagement) {
+      edge.id = `mgmt-${edge.toComponentId}_${edge.fromComponentId}`;
+    } else {
+      edge.id = `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
+    }
+    edge.isInferred = isInferred ?? false;
+    edge.isManagement = isManagement ?? false;
     return edge;
   };
 
@@ -232,6 +243,7 @@ export const processRawComponent = (
   component: RawComponent,
   allComponents: Record<ComponentId, RawComponent>,
 ) => {
+  const featureFlagsStore = useFeatureFlagsStore();
   const typeIcon = getAssetIcon(component?.schemaCategory);
 
   const ancestorIds = getAncestorIds(allComponents, component.id);
@@ -241,6 +253,17 @@ export const processRawComponent = (
     if (component.id === parentId) {
       childIds.push(childId);
     }
+  }
+
+  // insert the schema id into the socket defs, so we can match management
+  // sockets
+  component.sockets = component.sockets.map((s) => ({
+    ...s,
+    schemaId: component.schemaId,
+  }));
+
+  if (!featureFlagsStore.MANAGEMENT_EDGES) {
+    component.sockets = component.sockets.filter((s) => !s.isManagement);
   }
 
   const fullComponent = {
@@ -289,6 +312,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -448,7 +472,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           categories(): Categories {
-            const featureFlagsStore = useFeatureFlagsStore();
             const assetStore = useAssetStore();
             const installedGroups = _.groupBy(
               assetStore.variantList,
@@ -596,6 +619,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               components: RawComponent[];
               edges: RawEdge[];
               inferredEdges: RawEdge[];
+              managementEdges: RawEdge[];
             }>({
               method: "get",
               url: "diagram/get_all_components_and_edges",
@@ -612,6 +636,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             components: RawComponent[];
             edges: RawEdge[];
             inferredEdges: RawEdge[];
+            managementEdges: RawEdge[];
           }) {
             // i want to avoid strict assignments here, so i can re-use this
             // this.rawComponentsById = _.keyBy(response.components, "id");
@@ -627,13 +652,30 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const edges =
               response.edges && response.edges.length > 0
-                ? response.edges.map(edgeFromRawEdge(false))
+                ? response.edges.map(
+                    edgeFromRawEdge({ isInferred: false, isManagement: false }),
+                  )
                 : [];
             const inferred =
               response.inferredEdges && response.inferredEdges.length > 0
-                ? response.inferredEdges.map(edgeFromRawEdge(true))
+                ? response.inferredEdges.map(
+                    edgeFromRawEdge({ isInferred: true, isManagement: false }),
+                  )
                 : [];
-            this.rawEdgesById = _.keyBy([...edges, ...inferred], "id");
+
+            const management =
+              response.managementEdges?.length > 0 &&
+              featureFlagsStore.MANAGEMENT_EDGES
+                ? response.managementEdges.map(
+                    edgeFromRawEdge({ isInferred: false, isManagement: true }),
+                  )
+                : [];
+
+            this.rawEdgesById = _.keyBy(
+              [...edges, ...inferred, ...management],
+              "id",
+            );
+
             Object.keys(this.rawEdgesById).forEach((edgeId) => {
               this.processRawEdge(edgeId);
             });
@@ -668,6 +710,51 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedInsertCategoryVariantId = null;
           },
 
+          async MANAGE_COMPONENT(
+            from: { componentId: ComponentNodeId; socketId: SocketId },
+            to: { componentId: ComponentNodeId; socketId: SocketId },
+          ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === changeSetsStore.headChangeSetId)
+              changeSetsStore.creatingChangeSet = true;
+
+            const timestamp = new Date().toISOString();
+
+            const newEdge = edgeFromRawEdge({ isManagement: true })({
+              fromComponentId: from.componentId,
+              fromSocketId: from.socketId,
+              toComponentId: to.componentId,
+              toSocketId: to.socketId,
+              toDelete: false,
+              changeStatus: "added",
+              createdInfo: {
+                timestamp,
+                actor: { kind: "user", label: "You" },
+              },
+            });
+
+            return new ApiRequest({
+              method: "post",
+              url: "component/manage",
+              params: {
+                managerComponentId: from.componentId,
+                managedComponentId: to.componentId,
+                ...visibilityParams,
+              },
+              onFail: () => {
+                delete this.rawEdgesById[newEdge.id];
+              },
+              optimistic: () => {
+                this.rawEdgesById[newEdge.id] = newEdge;
+                this.processRawEdge(newEdge.id);
+                return () => {
+                  delete this.rawEdgesById[newEdge.id];
+                };
+              },
+            });
+          },
+
           async CREATE_COMPONENT_CONNECTION(
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
@@ -679,7 +766,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const timestamp = new Date().toISOString();
 
-            const newEdge = edgeFromRawEdge(false)({
+            const newEdge = edgeFromRawEdge({})({
               fromComponentId: from.componentId,
               fromSocketId: from.socketId,
               toComponentId: to.componentId,
@@ -828,23 +915,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
+            const edge = this.rawEdgesById[edgeId];
+            const params = edge?.isManagement
+              ? {
+                  managedComponentId: toComponentId,
+                  managerComponentId: fromComponentId,
+                  ...visibilityParams,
+                }
+              : {
+                  fromSocketId,
+                  toSocketId,
+                  toComponentId,
+                  fromComponentId,
+                  ...visibilityParams,
+                };
+
+            const url = edge?.isManagement
+              ? "component/unmanage"
+              : "diagram/delete_connection";
+
             return new ApiRequest({
               method: "post",
-              url: "diagram/delete_connection",
+              url,
               keyRequestStatusBy: edgeId,
-              params: {
-                fromSocketId,
-                toSocketId,
-                toComponentId,
-                fromComponentId,
-                ...visibilityParams,
-              },
+              params,
               onSuccess: (response) => {
                 // this.componentDiffsById[componentId] = response.componentDiff;
               },
               optimistic: () => {
-                const edge = this.rawEdgesById[edgeId];
-
                 if (edge?.changeStatus === "added") {
                   const originalEdge = this.rawEdgesById[edgeId];
                   delete this.rawEdgesById[edgeId];
@@ -1157,7 +1255,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
 
-                  const e = edgeFromRawEdge(false)(edge);
+                  const e = edgeFromRawEdge({
+                    isManagement: edge.type === "managementEdge",
+                  })(edge);
+
                   this.rawEdgesById[e.id] = e;
                   this.processRawEdge(e.id);
                 },
@@ -1166,16 +1267,40 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 eventType: "ConnectionDeleted",
                 callback: (edge, metadata) => {
                   if (metadata.change_set_id !== changeSetId) return;
-                  // making TS happy, we don't need this data since we're just deleting
-                  const _edge = edge as RawEdge;
-                  _edge.toDelete = true;
-                  _edge.createdInfo = {
-                    actor: { kind: "system", label: "" },
-                    timestamp: "",
-                  };
-                  const e = edgeFromRawEdge(false)(_edge);
-                  delete this.rawEdgesById[e.id];
-                  delete this.diagramEdgesById[e.id];
+
+                  let removedEdge: RawEdge;
+                  if (edge.type === "attributeValueEdge") {
+                    removedEdge = {
+                      toDelete: true,
+                      createdInfo: {
+                        actor: { kind: "system", label: "" },
+                        timestamp: "",
+                      },
+                      fromComponentId: edge.fromComponentId,
+                      toComponentId: edge.toComponentId,
+                      fromSocketId: edge.fromSocketId,
+                      toSocketId: edge.toSocketId,
+                    };
+                  } else {
+                    removedEdge = {
+                      toDelete: true,
+                      createdInfo: {
+                        actor: { kind: "system", label: "" },
+                        timestamp: "",
+                      },
+                      fromComponentId: edge.fromComponentId,
+                      toComponentId: edge.toComponentId,
+                      fromSocketId: "",
+                      toSocketId: "",
+                    };
+                  }
+
+                  const edgeId = edgeFromRawEdge({
+                    isManagement: edge.type === "managementEdge",
+                  })(removedEdge).id;
+
+                  delete this.rawEdgesById[edgeId];
+                  delete this.diagramEdgesById[edgeId];
                 },
               },
               {
@@ -1223,7 +1348,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (data.changeSetId !== changeSetId) return;
                   const edges =
                     data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge(true))
+                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
                       : [];
                   for (const edge of edges) {
                     this.rawEdgesById[edge.id] = edge;
@@ -1237,7 +1362,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (data.changeSetId !== changeSetId) return;
                   const edges =
                     data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge(true))
+                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
                       : [];
                   for (const edge of edges) {
                     delete this.rawEdgesById[edge.id];

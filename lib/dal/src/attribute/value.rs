@@ -2635,7 +2635,7 @@ impl AttributeValue {
                 child_attribute_value_id,
                 EdgeWeightKindDiscriminants::Contain,
             )
-            .await?
+            .await
             .and_then(|weight| match weight.kind() {
                 EdgeWeightKind::Contain(key) => key.to_owned(),
                 _ => None,

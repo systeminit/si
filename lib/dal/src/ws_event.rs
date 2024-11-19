@@ -15,10 +15,9 @@ use crate::change_set::event::{
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
     ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionDeletedPayload,
-    InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
+    ConnectionUpsertedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
 };
 use crate::diagram::view::{ViewComponentsUpdatePayload, ViewDeletedPayload, ViewWsPayload};
-use crate::diagram::SummaryDiagramEdge;
 use crate::func::runner::FuncRunLogUpdatedPayload;
 use crate::func::{
     FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventGenerating, FuncWsEventPayload,
@@ -97,7 +96,7 @@ pub enum WsPayload {
     ComponentUpdated(ComponentUpdatedPayload),
     ComponentUpgraded(ComponentUpgradedPayload),
     ConnectionDeleted(ConnectionDeletedPayload),
-    ConnectionUpserted(SummaryDiagramEdge),
+    ConnectionUpserted(ConnectionUpsertedPayload),
     Cursor(CursorPayload),
     FuncArgumentsSaved(FuncWsEventPayload),
     FuncCodeSaved(FuncWsEventCodeSaved),
