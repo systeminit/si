@@ -37,6 +37,11 @@ impl AuditDatabaseContext {
             pg_pool: PgPool::new(&config.pg).await?,
         })
     }
+
+    /// Returns a reference to the [`PgPool`].
+    pub fn pg_pool(&self) -> &PgPool {
+        &self.pg_pool
+    }
 }
 
 /// The configuration used for communicating with and setting up the audit database.

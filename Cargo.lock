@@ -419,6 +419,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "strum",
  "telemetry",
  "telemetry-nats",
  "thiserror",
