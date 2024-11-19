@@ -1,12 +1,10 @@
-use std::collections::HashSet;
-
 use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
 use dal::{
-    schema::variant::authoring::VariantAuthoringClient, AttributePrototype, ChangeSet, DalContext,
-    Func, FuncId, Prop, SchemaVariant, SchemaVariantId, Visibility, WsEvent,
+    schema::variant::authoring::VariantAuthoringClient, ChangeSet, SchemaVariant, SchemaVariantId,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -102,21 +100,6 @@ pub async fn regenerate_variant(
             .await?;
     }
 
-    // Send FuncUpdated for all functions bound to the schema variant, since there may be new props/sockets (and since
-    // regenerated props/sockets now have new bindings, we need to send those too).
-    // TODO most props and sockets generally stay the same during regeneration, so maybe send fewer of these
-    for func_id in all_bound_functions(&ctx, updated_schema_variant_id).await? {
-        let func_summary = Func::get_by_id_or_error(&ctx, func_id)
-            .await?
-            .into_frontend_type(&ctx)
-            .await?;
-
-        WsEvent::func_updated(&ctx, func_summary, None)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    }
-
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::new(
@@ -125,37 +108,4 @@ pub async fn regenerate_variant(
             schema_variant_id: updated_schema_variant_id,
         },
     ))
-}
-
-async fn all_bound_functions(
-    ctx: &DalContext,
-    schema_variant_id: SchemaVariantId,
-) -> SchemaVariantResult<HashSet<FuncId>> {
-    let mut bound_func_ids = HashSet::new();
-    // Add all prop bindings
-    for prop_id in SchemaVariant::all_prop_ids(ctx, schema_variant_id).await? {
-        let ap_id = Prop::prototype_id(ctx, prop_id).await?;
-        let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
-        bound_func_ids.insert(func_id);
-    }
-
-    // Add all input and output socket bindings
-    let (output_socket_ids, input_socket_ids) =
-        SchemaVariant::list_all_socket_ids(ctx, schema_variant_id).await?;
-
-    for socket_id in input_socket_ids {
-        if let Some(ap_id) = AttributePrototype::find_for_input_socket(ctx, socket_id).await? {
-            let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
-            bound_func_ids.insert(func_id);
-        }
-    }
-
-    for socket_id in output_socket_ids {
-        if let Some(ap_id) = AttributePrototype::find_for_output_socket(ctx, socket_id).await? {
-            let func_id = AttributePrototype::func_id(ctx, ap_id).await?;
-            bound_func_ids.insert(func_id);
-        }
-    }
-
-    Ok(bound_func_ids)
 }
