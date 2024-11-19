@@ -243,6 +243,7 @@ export const processRawComponent = (
   component: RawComponent,
   allComponents: Record<ComponentId, RawComponent>,
 ) => {
+  const featureFlagsStore = useFeatureFlagsStore();
   const typeIcon = getAssetIcon(component?.schemaCategory);
 
   const ancestorIds = getAncestorIds(allComponents, component.id);
@@ -260,6 +261,10 @@ export const processRawComponent = (
     ...s,
     schemaId: component.schemaId,
   }));
+
+  if (!featureFlagsStore.MANAGEMENT_EDGES) {
+    component.sockets = component.sockets.filter((s) => !s.isManagement);
+  }
 
   const fullComponent = {
     ...component,
@@ -307,6 +312,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -466,7 +472,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           categories(): Categories {
-            const featureFlagsStore = useFeatureFlagsStore();
             const assetStore = useAssetStore();
             const installedGroups = _.groupBy(
               assetStore.variantList,
@@ -659,7 +664,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 : [];
 
             const management =
-              response.managementEdges?.length > 0
+              response.managementEdges?.length > 0 &&
+              featureFlagsStore.MANAGEMENT_EDGES
                 ? response.managementEdges.map(
                     edgeFromRawEdge({ isInferred: false, isManagement: true }),
                   )
