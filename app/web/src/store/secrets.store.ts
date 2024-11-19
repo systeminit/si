@@ -4,7 +4,10 @@ import * as _ from "lodash-es";
 
 import { POSITION, useToast } from "vue-toastification";
 import { useAuthStore } from "@/store/auth.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
@@ -217,11 +220,6 @@ export function useSecretsStore() {
             });
           },
           async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             if (_.isEmpty(secret.name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -282,7 +280,7 @@ export function useSecretsStore() {
             }
 
             let toastID: number | string;
-            return new ApiRequest<Secret>({
+            return forceChangeSetApiRequest<Secret>({
               method: "patch",
               url: "secret",
               params,
@@ -355,9 +353,6 @@ export function useSecretsStore() {
                 );
                 this.secretIsTransitioning[id] = false;
               },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
             });
           },
           async SAVE_SECRET(
@@ -366,11 +361,6 @@ export function useSecretsStore() {
             value: Record<string, string>,
             description?: string,
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             if (_.isEmpty(name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -406,7 +396,7 @@ export function useSecretsStore() {
             const crypted = await encryptMessage(value, this.publicKey);
 
             let toastID: number | string;
-            return new ApiRequest<Secret>({
+            return forceChangeSetApiRequest<Secret>({
               method: "post",
               url: "secret",
               params: {
@@ -484,22 +474,14 @@ export function useSecretsStore() {
                 );
                 this.secretIsTransitioning[tempId] = false;
               },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
             });
           },
           async DELETE_SECRET(id: SecretId) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             const secret = this.secretsById[id];
 
             if (_.isNil(secret)) return;
 
-            return new ApiRequest<Secret>({
+            return forceChangeSetApiRequest<Secret>({
               method: "delete",
               url: "secret",
               params: {

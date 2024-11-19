@@ -38,7 +38,10 @@ import { CodeView } from "@/api/sdf/dal/code_view";
 import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
 import handleStoreError from "./errors";
-import { useChangeSetsStore } from "./change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
@@ -672,11 +675,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
             const timestamp = new Date().toISOString();
 
             const newEdge = edgeFromRawEdge(false)({
@@ -692,7 +690,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
 
-            return new ApiRequest({
+            return forceChangeSetApiRequest({
               method: "post",
               url: "diagram/create_connection",
               params: {
@@ -823,12 +821,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             toComponentId: ComponentId,
             fromComponentId: ComponentId,
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest({
+            return forceChangeSetApiRequest({
               method: "post",
               url: "diagram/delete_connection",
               keyRequestStatusBy: edgeId,
@@ -885,12 +878,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             componentIds: ComponentId[],
             forceErase = false,
           ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest<Record<ComponentId, boolean>>({
+            return forceChangeSetApiRequest<
+              Record<ComponentId, boolean>
+            >({
               method: "post",
               url: "diagram/delete_components",
               keyRequestStatusBy: componentIds,
@@ -940,12 +930,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async RESTORE_COMPONENTS(...components: ComponentId[]) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            return new ApiRequest({
+            return forceChangeSetApiRequest({
               method: "post",
               url: "diagram/remove_delete_intent",
               keyRequestStatusBy: Object.keys(components),

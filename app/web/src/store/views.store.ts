@@ -34,6 +34,7 @@ import handleStoreError from "./errors";
 
 import {
   useChangeSetsStore,
+  forceChangeSetApiRequest,
   diagramUlid as clientUlid,
 } from "./change_sets.store";
 import { useComponentsStore, processRawComponent } from "./components.store";
@@ -776,11 +777,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           parentId?: string,
           size?: Size2D,
         ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetsStore.headChangeSetId)
-            changeSetsStore.creatingChangeSet = true;
-
           const categoryVariant =
             componentsStore.categoryVariantById[categoryVariantId];
           if (!categoryVariant) {
@@ -800,7 +796,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           const tempInsertId = _.uniqueId("temp-insert-component");
 
-          return new ApiRequest<{
+          return forceChangeSetApiRequest<{
             componentId: ComponentId;
             installedVariant?: SchemaVariant;
           }>({
@@ -864,11 +860,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           }[],
           newParentNodeId?: ComponentId,
         ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetId === changeSetsStore.headChangeSetId)
-            changeSetsStore.creatingChangeSet = true;
-
           if (components.length === 0) return;
 
           const tempInserts = _.map(components, (c) => ({
@@ -896,7 +887,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           }));
 
-          return new ApiRequest<{
+          return forceChangeSetApiRequest<{
             id: string;
           }>({
             method: "post",
@@ -925,6 +916,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             },
             onSuccess: () => {
+              for (const { id } of tempInserts) {
+                delete this.pendingInsertedComponents[id];
+              }
+            },
+            onFail: () => {
               for (const { id } of tempInserts) {
                 delete this.pendingInsertedComponents[id];
               }

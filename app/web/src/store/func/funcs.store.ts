@@ -31,7 +31,10 @@ import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { useChangeSetsStore } from "../change_sets.store";
+import {
+  useChangeSetsStore,
+  forceChangeSetApiRequest,
+} from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
@@ -343,12 +346,10 @@ export const useFuncStore = () => {
           kind: FuncKind;
           binding: FuncBinding;
         }) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
+          return forceChangeSetApiRequest<{
+            summary: FuncSummary;
+            code: FuncCode;
+          }>({
             method: "post",
             url: API_PREFIX,
             params: { ...createFuncRequest },
@@ -356,9 +357,6 @@ export const useFuncStore = () => {
               // summary coming through the WsEvent
               this.funcCodeById[response.code.funcId] = response.code;
               // select the fn to load it in the editor done in the component
-            },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
             },
           });
         },
@@ -395,13 +393,9 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_FUNC(func: FuncSummary) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
-          return new ApiRequest({
+          return forceChangeSetApiRequest({
             method: "put",
             url: API_PREFIX.concat([{ funcId: func.funcId }]),
             params: {
@@ -428,19 +422,11 @@ export const useFuncStore = () => {
                 }
               };
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
             keyRequestStatusBy: func.funcId,
           });
         },
         async CREATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<FuncBinding[]>({
+          return forceChangeSetApiRequest<FuncBinding[]>({
             method: "post",
             url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
@@ -506,89 +492,49 @@ export const useFuncStore = () => {
                   _bindings.managementBindings;
               }
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async UPDATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "put",
             url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
               funcId,
               bindings,
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         // How you "DETACH" an attribute function
         async RESET_ATTRIBUTE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "post",
             url: API_PREFIX.concat([{ funcId }, "reset_attribute_binding"]),
             params: {
               bindings,
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         // How you "DETACH" all other function bindings
         async DELETE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "delete",
             url: API_PREFIX.concat([{ funcId }, "bindings"]),
             params: {
               bindings,
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async CREATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "post",
             url: API_PREFIX.concat([{ funcId }, "arguments"]),
             params: {
               ...funcArg,
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async UPDATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "put",
             url: API_PREFIX.concat([
               { funcId },
@@ -598,30 +544,19 @@ export const useFuncStore = () => {
             params: {
               ...funcArg,
             },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async DELETE_FUNC_ARGUMENT(
           funcId: FuncId,
           funcArgumentId: FuncArgumentId,
         ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<null>({
+          return forceChangeSetApiRequest<null>({
             method: "delete",
             url: API_PREFIX.concat([
               { funcId },
               "arguments",
               { funcArgumentId },
             ]),
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async EXEC_FUNC(funcId: FuncId) {
@@ -633,18 +568,10 @@ export const useFuncStore = () => {
             });
           }
 
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest({
+          forceChangeSetApiRequest({
             method: "post",
             url: API_PREFIX.concat([{ funcId }, "execute"]),
             keyRequestStatusBy: funcId,
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
         async FETCH_PROTOTYPE_ARGUMENTS(
@@ -690,12 +617,7 @@ export const useFuncStore = () => {
           { command, subcommand }: AwsCliCommand,
           schemaVariantId: SchemaVariantId,
         ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
-
-          return new ApiRequest<{
+          return forceChangeSetApiRequest<{
             command: string;
             subcommand: string;
             schemaVariantId: SchemaVariantId;
@@ -743,13 +665,10 @@ export const useFuncStore = () => {
         },
 
         async SAVE_FUNC(func: FuncCode) {
-          return new ApiRequest<FuncCode>({
+          return forceChangeSetApiRequest<FuncCode>({
             method: "put",
             url: API_PREFIX.concat([{ funcId: func.funcId }, "code"]),
             params: { code: func.code },
-            onFail: () => {
-              changeSetsStore.creatingChangeSet = false;
-            },
           });
         },
       },
