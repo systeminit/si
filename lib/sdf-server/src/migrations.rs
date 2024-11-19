@@ -1,6 +1,6 @@
 use std::{future::IntoFuture as _, time::Duration};
 
-use audit_logs::pg::{
+use audit_logs::database::{
     AuditDatabaseContext, AuditDatabaseContextError, AuditDatabaseMigrationError,
 };
 use dal::{
@@ -146,7 +146,7 @@ impl Migrator {
 
     #[instrument(name = "sdf.migrator.migrate_audit_database", level = "info", skip_all)]
     async fn migrate_audit_database(&self) -> MigratorResult<()> {
-        audit_logs::pg::migrate(&self.audit_database_context)
+        audit_logs::database::migrate(&self.audit_database_context)
             .await
             .map_err(MigratorError::MigrateAuditDatabase)
     }

@@ -25,9 +25,7 @@
     while_true
 )]
 
-mod app_state;
 mod config;
-mod handlers;
 mod server;
 
 pub use config::Config;

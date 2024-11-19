@@ -1,6 +1,11 @@
+use std::{env, path::Path};
+
+use audit_logs::database::AuditDatabaseConfig;
+use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
+use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -15,10 +20,20 @@ const DEFAULT_CONCURRENCY_LIMIT: usize = 1000;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    #[error("canonical file error: {0}")]
+    CanonicalFile(#[from] CanonicalFileError),
     #[error("config builder error: {0}")]
     ConfigBuilder(#[from] ConfigBuilderError),
+    #[error("error configuring for development")]
+    Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("si settings error: {0}")]
     SiSettings(#[from] si_settings::SettingsError),
+}
+
+impl ConfigError {
+    fn development(err: impl std::error::Error + 'static + Sync + Send) -> Self {
+        Self::Development(Box::new(err))
+    }
 }
 
 type Result<T> = std::result::Result<T, ConfigError>;
@@ -37,6 +52,12 @@ pub struct Config {
 
     #[builder(default = "default_data_warehouse_stream_name()")]
     data_warehouse_stream_name: Option<String>,
+
+    #[builder(default)]
+    enable_audit_logs_app: bool,
+
+    #[builder(default)]
+    audit: AuditDatabaseConfig,
 }
 
 impl StandardConfig for Config {
@@ -69,6 +90,16 @@ impl Config {
     pub fn data_warehouse_stream_name(&self) -> Option<&str> {
         self.data_warehouse_stream_name.as_deref()
     }
+
+    /// Indicates whether or not the audit logs app will be enabled.
+    pub fn enable_audit_logs_app(&self) -> bool {
+        self.enable_audit_logs_app
+    }
+
+    /// Gets a reference to the audit database config.
+    pub fn audit(&self) -> &AuditDatabaseConfig {
+        &self.audit
+    }
 }
 
 #[allow(missing_docs)]
@@ -82,6 +113,10 @@ pub struct ConfigFile {
     pub nats: NatsConfig,
     #[serde(default = "default_data_warehouse_stream_name")]
     pub data_warehouse_stream_name: Option<String>,
+    #[serde(default)]
+    pub enable_audit_logs_app: bool,
+    #[serde(default)]
+    pub audit: AuditDatabaseConfig,
 }
 
 impl Default for ConfigFile {
@@ -91,6 +126,8 @@ impl Default for ConfigFile {
             concurrency_limit: default_concurrency_limit(),
             nats: Default::default(),
             data_warehouse_stream_name: default_data_warehouse_stream_name(),
+            enable_audit_logs_app: Default::default(),
+            audit: Default::default(),
         }
     }
 }
@@ -102,13 +139,17 @@ impl StandardConfigFile for ConfigFile {
 impl TryFrom<ConfigFile> for Config {
     type Error = ConfigError;
 
-    fn try_from(value: ConfigFile) -> Result<Self> {
-        let mut config = Config::builder();
-        config.instance_id(value.instance_id);
-        config.concurrency_limit(value.concurrency_limit);
-        config.nats(value.nats);
-        config.data_warehouse_stream_name(value.data_warehouse_stream_name);
-        config.build().map_err(Into::into)
+    fn try_from(mut value: ConfigFile) -> Result<Self> {
+        detect_and_configure_development(&mut value)?;
+
+        Ok(Config {
+            instance_id: value.instance_id,
+            concurrency_limit: value.concurrency_limit,
+            nats: value.nats,
+            data_warehouse_stream_name: value.data_warehouse_stream_name,
+            enable_audit_logs_app: value.enable_audit_logs_app,
+            audit: value.audit,
+        })
     }
 }
 
@@ -122,4 +163,52 @@ fn default_concurrency_limit() -> usize {
 
 fn default_data_warehouse_stream_name() -> Option<String> {
     None
+}
+
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
+fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        buck2_development(config)
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        cargo_development(dir, config)
+    } else {
+        Ok(())
+    }
+}
+
+fn buck2_development(config: &mut ConfigFile) -> Result<()> {
+    let resources = Buck2Resources::read().map_err(ConfigError::development)?;
+
+    let postgres_cert = resources
+        .get_ends_with("dev.postgres.root.crt")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
+
+    warn!(
+        postgres_cert = postgres_cert.as_str(),
+        "detected development run",
+    );
+
+    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+
+    Ok(())
+}
+
+fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
+    let postgres_cert = Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string();
+
+    warn!(
+        postgres_cert = postgres_cert.as_str(),
+        "detected development run",
+    );
+
+    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+
+    Ok(())
 }

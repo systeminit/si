@@ -76,6 +76,11 @@ impl AuditLogsStream {
         Subject::from(self.prefixed_subject(SUBJECT_PREFIX, &format!("{workspace_id}.>")))
     }
 
+    /// Returns the subject for consuming [`AuditLogs`](AuditLog) for all workspaces.
+    pub fn consuming_subject_for_all_workspaces(&self) -> Subject {
+        Subject::from(self.prefixed_subject(SUBJECT_PREFIX, ">"))
+    }
+
     /// Returns the subject for publishing and consuming [`AuditLogs`](AuditLog) for a given change set.
     pub fn subject_for_change_set(
         &self,

@@ -1,5 +1,5 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
-use audit_logs::pg::AuditDatabaseConfig;
+use audit_logs::database::AuditDatabaseConfig;
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
@@ -437,7 +437,7 @@ fn default_layer_db_config() -> LayerDbConfig {
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
-pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
@@ -512,7 +512,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::pg::DBNAME.to_string();
+    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
 
     Ok(())
 }
@@ -574,7 +574,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.pkgs_path = pkgs_path;
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::pg::DBNAME.to_string();
+    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
 
     Ok(())
 }

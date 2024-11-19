@@ -14,7 +14,7 @@
 
 use std::io;
 
-use audit_logs::pg::AuditDatabaseContextError;
+use audit_logs::database::AuditDatabaseContextError;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
@@ -38,9 +38,8 @@ pub use self::{
     app::AxumApp,
     app_state::ApplicationRuntimeMode,
     config::{
-        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
-        IncomingStream, MigrationMode, StandardConfig, StandardConfigFile, WorkspacePermissions,
-        WorkspacePermissionsMode,
+        Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, MigrationMode,
+        StandardConfig, StandardConfigFile, WorkspacePermissions, WorkspacePermissionsMode,
     },
     migrations::Migrator,
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,

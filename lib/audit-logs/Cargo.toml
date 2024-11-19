@@ -15,6 +15,7 @@ si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 
+chrono = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

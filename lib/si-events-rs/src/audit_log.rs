@@ -1,13 +1,14 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use v1::{AuditLogKindV1, AuditLogV1};
+use v1::{AuditLogKindV1, AuditLogMetadataV1, AuditLogV1};
 
 use crate::{Actor, ChangeSetId};
 
 mod v1;
 
 pub type AuditLogKind = AuditLogKindV1;
+pub type AuditLogMetadata = AuditLogMetadataV1;
 
 // TODO(nick): switch to something like "naxum-api-types" crate to avoid sizing issues.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
