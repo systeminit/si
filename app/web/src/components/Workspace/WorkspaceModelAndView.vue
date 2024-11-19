@@ -32,10 +32,7 @@
   </section>
 
   <div
-    v-if="
-      featureFlagsStore.REBAC &&
-      changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open
-    "
+    v-if="changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open"
     :class="
       clsx(
         'grow flex flew-row items-center justify-center',

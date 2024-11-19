@@ -39,11 +39,14 @@ async function create_and_and_apply_across_change_sets_inner(
 
     await sdf.waitForDVUs(2000, 60000);
     console.log("Done! Running an apply...");
+    const workspaceId = sdf.workspaceId;
     await sdf.call({
-      route: "apply_change_set",
-      body: {
-        visibility_change_set_pk: changeSetIds.pop(),
-      },
+      route: "force_apply",
+      routeVars:
+      {
+        workspaceId,
+        changeSetId: changeSetIds.pop(),
+      }
     });
 
     await sdf.waitForDVUs(2000, 60000);
@@ -54,7 +57,7 @@ async function create_and_and_apply_across_change_sets_inner(
     for (const changeSetId of changeSetIds) {
       try {
         const diagram = await getDiagram(sdf, changeSetId);
-        
+
         await sdf.call({
           route: "abandon_change_set",
           body: {
@@ -78,24 +81,26 @@ async function create_and_and_apply_across_change_sets_inner(
 }
 
 async function cleanupHead(sdf: SdfApiClient): Promise<void> {
-  const cleanupChangeSetId = await createChangeSet(sdf);
-  const diagram = await getDiagram(sdf, cleanupChangeSetId);
+  const changeSetId = await createChangeSet(sdf);
+  const workspaceId = sdf.workspaceId;
+  const diagram = await getDiagram(sdf, changeSetId);
   const currentComponentIds = diagram.components.map((c) => c.id);
   if (currentComponentIds) {
     const deleteComponentPayload = {
       componentIds: currentComponentIds,
       forceErase: false,
-      visibility_change_set_pk: cleanupChangeSetId,
-      workspaceId: sdf.workspaceId,
+      visibility_change_set_pk: changeSetId,
+      workspaceId: workspaceId,
     };
     await sdf.call({
       route: "delete_component",
       body: deleteComponentPayload,
     });
     await sdf.call({
-      route: "apply_change_set",
-      body: {
-        visibility_change_set_pk: cleanupChangeSetId,
+      route: "force_apply",
+      routeVars: {
+        workspaceId,
+        changeSetId,
       },
     });
   }

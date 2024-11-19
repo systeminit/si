@@ -14,7 +14,6 @@ const FLAG_MAPPING = {
   MANAGEMENT_FUNCTIONS: "management-functions",
   AUDIT_PAGE: "audit-page",
   AI_GENERATOR: "ai-generator",
-  REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",
 };
 

@@ -10,11 +10,7 @@
         :icon="changeSetStore.headSelected ? 'git-branch' : 'git-branch'"
       >
         <div
-          v-if="
-            featureFlagsStore.REBAC &&
-            userIsApprover &&
-            pendingApprovalCount > 0
-          "
+          v-if="userIsApprover && pendingApprovalCount > 0"
           :class="
             clsx(
               'text-sm font-bold hover:underline cursor-pointer',
