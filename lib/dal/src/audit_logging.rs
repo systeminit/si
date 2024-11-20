@@ -131,13 +131,37 @@ pub(crate) async fn publish_pending(
                 error!(?err, "audit logs shuttle error");
             }
 
-            match WsEvent::audit_logs_published(&ctx_clone_for_ws_event).await {
-                Ok(event) => {
-                    if let Err(err) = event.publish_immediately(&ctx_clone_for_ws_event).await {
-                        error!(?err, "error when publishing ws event for audit logs");
+            match ChangeSet::find(
+                &ctx_clone_for_ws_event,
+                ctx_clone_for_ws_event.change_set_id(),
+            )
+            .await
+            {
+                Ok(Some(change_set)) => {
+                    match WsEvent::audit_logs_published(
+                        &ctx_clone_for_ws_event,
+                        change_set.id,
+                        change_set.status,
+                    )
+                    .await
+                    {
+                        Ok(event) => {
+                            if let Err(err) =
+                                event.publish_immediately(&ctx_clone_for_ws_event).await
+                            {
+                                error!(?err, "error when publishing ws event for audit logs");
+                            }
+                        }
+                        Err(err) => error!(?err, "error when creating ws event for audit logs"),
                     }
                 }
-                Err(err) => error!(?err, "error when creating ws event for audit logs"),
+                Ok(None) => {
+                    trace!("skipping ws event creation for audit logs: no change set found")
+                }
+                Err(err) => error!(
+                    ?err,
+                    "error when attempting to find change set for ws event for audit logs"
+                ),
             }
         });
     } else {
@@ -151,13 +175,37 @@ pub(crate) async fn publish_pending(
             tracker.close();
             tracker.wait().await;
 
-            match WsEvent::audit_logs_published(&ctx_clone_for_ws_event).await {
-                Ok(event) => {
-                    if let Err(err) = event.publish_immediately(&ctx_clone_for_ws_event).await {
-                        error!(?err, "error when publishing ws event for audit logs");
+            match ChangeSet::find(
+                &ctx_clone_for_ws_event,
+                ctx_clone_for_ws_event.change_set_id(),
+            )
+            .await
+            {
+                Ok(Some(change_set)) => {
+                    match WsEvent::audit_logs_published(
+                        &ctx_clone_for_ws_event,
+                        change_set.id,
+                        change_set.status,
+                    )
+                    .await
+                    {
+                        Ok(event) => {
+                            if let Err(err) =
+                                event.publish_immediately(&ctx_clone_for_ws_event).await
+                            {
+                                error!(?err, "error when publishing ws event for audit logs");
+                            }
+                        }
+                        Err(err) => error!(?err, "error when creating ws event for audit logs"),
                     }
                 }
-                Err(err) => error!(?err, "error when creating ws event for audit logs"),
+                Ok(None) => {
+                    trace!("skipping ws event creation for audit logs: no change set found")
+                }
+                Err(err) => error!(
+                    ?err,
+                    "error when attempting to find change set for ws event for audit logs"
+                ),
             }
         });
     }
@@ -462,15 +510,16 @@ pub struct AuditLogsPublishedPayload {
 }
 
 impl WsEvent {
-    pub async fn audit_logs_published(ctx: &DalContext) -> WsEventResult<Self> {
-        let change_set = ChangeSet::find(ctx, ctx.change_set_id())
-            .await?
-            .ok_or(ChangeSetError::ChangeSetNotFound(ctx.change_set_id()))?;
+    pub async fn audit_logs_published(
+        ctx: &DalContext,
+        change_set_id: crate::ChangeSetId,
+        change_set_status: ChangeSetStatus,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::AuditLogsPublished(AuditLogsPublishedPayload {
-                change_set_id: change_set.id,
-                change_set_status: change_set.status,
+                change_set_id,
+                change_set_status,
             }),
         )
         .await
