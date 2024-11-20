@@ -220,12 +220,12 @@ impl FuncRunDb {
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<()> {
-        let postcard_value = serialize::to_vec(&value)?;
+        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
         let cache_key: Arc<str> = value.id().to_string().into();
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone());
+            .insert_or_update(cache_key.clone(), value.clone(), size_hint);
 
         let event = LayeredEvent::new(
             LayeredEventKind::FuncRunWrite,

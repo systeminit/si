@@ -228,7 +228,7 @@ async fn write_deserialization_data(ctx: &DalContext) {
     graph.cleanup_and_merkle_tree_hash().expect("hash it");
 
     let real_graph = WorkspaceSnapshotGraph::V4(graph);
-    let serialized = serialize::to_vec(&real_graph).expect("serialize");
+    let (serialized, _) = serialize::to_vec(&real_graph).expect("serialize");
 
     let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
 

@@ -45,12 +45,12 @@ where
         actor: Actor,
     ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
         let value_clone = value.clone();
-        let postcard_value = serialize::to_vec(&value)?;
+        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
 
         let key = WorkspaceSnapshotAddress::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value_clone);
+        self.cache.insert(cache_key.clone(), value_clone, size_hint);
 
         let event = LayeredEvent::new(
             LayeredEventKind::SnapshotWrite,

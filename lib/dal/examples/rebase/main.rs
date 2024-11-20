@@ -20,7 +20,7 @@ fn load_snapshot_graph<T: DeserializeOwned>(path: &str) -> Result<T> {
 
 fn write_snapshot_graph(path: &str, graph: &WorkspaceSnapshotGraph) -> Result<()> {
     let mut file = File::create(path)?;
-    let bytes = serialize::to_vec(graph)?;
+    let (bytes, _) = serialize::to_vec(graph)?;
     file.write_all(&bytes)?;
 
     Ok(())

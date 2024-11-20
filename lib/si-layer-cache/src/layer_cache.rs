@@ -69,10 +69,11 @@ where
             Some(memory_value) => Some(memory_value),
 
             None => match self.pg.get(&key).await? {
-                Some(value) => {
-                    let deserialized: V = serialize::from_bytes(&value)?;
+                Some(bytes) => {
+                    let deserialized: V = serialize::from_bytes(&bytes)?;
 
-                    self.cache.insert(key.clone(), deserialized.clone());
+                    self.cache
+                        .insert(key.clone(), deserialized.clone(), bytes.len());
 
                     Some(deserialized)
                 }
@@ -119,9 +120,10 @@ where
 
         if !not_found.is_empty() {
             if let Some(pg_found) = self.pg.get_many(&not_found).await? {
-                for (k, v) in pg_found {
-                    let deserialized: V = serialize::from_bytes(&v)?;
-                    self.cache.insert(k.clone().into(), deserialized.clone());
+                for (k, bytes) in pg_found {
+                    let deserialized: V = serialize::from_bytes(&bytes)?;
+                    self.cache
+                        .insert(k.clone().into(), deserialized.clone(), bytes.len());
                     found_keys.insert(
                         K::from_str(&k).map_err(|err| {
                             LayerDbError::CouldNotConvertToKeyFromString(err.to_string())
@@ -157,9 +159,9 @@ where
         self.cache.contains(key)
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V) {
+    pub fn insert(&self, key: Arc<str>, value: V, size_hint: usize) {
         if !self.cache.contains(&key) {
-            self.cache.insert(key, value);
+            self.cache.insert(key, value, size_hint);
         }
     }
 
@@ -168,8 +170,8 @@ where
             .insert_raw_bytes(key.clone(), serialize_value.clone());
     }
 
-    pub fn insert_or_update(&self, key: Arc<str>, value: V) {
-        self.cache.insert(key, value);
+    pub fn insert_or_update(&self, key: Arc<str>, value: V, size_hint: usize) {
+        self.cache.insert(key, value, size_hint);
     }
 
     pub fn insert_or_update_from_cache_updates(&self, key: Arc<str>, serialize_value: Vec<u8>) {

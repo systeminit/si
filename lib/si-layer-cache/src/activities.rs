@@ -165,7 +165,7 @@ impl ActivityPublisher {
 
     pub(crate) async fn publish(&self, activity: &Activity) -> LayerDbResult<()> {
         let nats_subject = subject::for_activity(self.prefix(), activity);
-        let nats_payload = serialize::to_vec(&activity)?;
+        let (nats_payload, _) = serialize::to_vec(&activity)?;
         // Publish message and await confirmation from server that it has been received
         self.context
             .publish(nats_subject, nats_payload.into())

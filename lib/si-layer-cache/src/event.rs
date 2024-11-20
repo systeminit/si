@@ -195,7 +195,7 @@ impl LayeredEventClient {
             headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
             headers.insert(NATS_HEADER_KEY, event.payload.key.as_ref());
             headers.insert(NATS_HEADER_INSTANCE_ID, instance_id.to_string().as_str());
-            let payload = serialize::to_vec(&event)?;
+            let (payload, _) = serialize::to_vec(&event)?;
 
             let event_id = Ulid::new();
             let object_size = payload.len();
