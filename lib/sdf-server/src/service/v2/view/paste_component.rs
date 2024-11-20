@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use telemetry::prelude::*;
 
 use super::{ViewError, ViewResult};
 use crate::{
@@ -70,7 +71,7 @@ pub async fn paste_component(
             &host_name,
             "paste_component",
             serde_json::json!({
-                "how": "/diagram/paste_component",
+                "how": "/v2/view/paste_component",
                 "component_id": pasted_comp.id(),
                 "component_schema_name": schema.name(),
             }),
@@ -82,19 +83,19 @@ pub async fn paste_component(
     for component_payload in &request.components {
         let component_id = component_payload.id;
 
-        let pasted_component =
-            if let Some(component) = pasted_components_by_original.get(&component_id) {
-                component
-            } else {
-                return Err(ViewError::Paste);
-            };
-        let component = Component::get_by_id(&ctx, component_id).await?;
+        let pasted_component = pasted_components_by_original
+            .get(&component_id)
+            .ok_or(ViewError::Paste)?;
+        let original_component = Component::get_by_id(&ctx, component_id).await?;
 
         // If component parent was also pasted on this batch, keep relationship between new components
-        if let Some(parent_id) = component.parent(&ctx).await? {
-            if let Some(pasted_parent) = pasted_components_by_original.get(&parent_id) {
-                Frame::upsert_parent(&ctx, pasted_component.id(), pasted_parent.id()).await?;
-            };
+
+        if let Some(pasted_parent) = original_component
+            .parent(&ctx)
+            .await?
+            .and_then(|parent_id| pasted_components_by_original.get(&parent_id))
+        {
+            Frame::upsert_parent(&ctx, pasted_component.id(), pasted_parent.id()).await?;
         }
 
         // If the pasted component didn't get a parent already, set the new parent
@@ -115,8 +116,35 @@ pub async fn paste_component(
             .publish_on_commit(&ctx)
             .await?;
 
+        for original_manager_id in original_component.managers(&ctx).await? {
+            let Some(pasted_manager) = pasted_components_by_original.get(&original_manager_id)
+            else {
+                continue;
+            };
+
+            match Component::manage_component(&ctx, pasted_manager.id(), pasted_component.id())
+                .await
+            {
+                Ok(edge) => {
+                    WsEvent::connection_upserted(&ctx, edge.into())
+                        .await?
+                        .publish_on_commit(&ctx)
+                        .await?;
+                }
+                Err(dal::ComponentError::ComponentNotManagedSchema(_, _, _)) => {
+                    // This error should not occur, but we also don't want to
+                    // fail the paste just because the managed schemas are out
+                    // of sync
+                    error!("Could not manage pasted component, but continuing paste");
+                }
+                Err(err) => {
+                    return Err(err)?;
+                }
+            };
+        }
+
         // Create on pasted components copies of edges that existed between original components
-        for connection in component.incoming_connections(&ctx).await? {
+        for connection in original_component.incoming_connections(&ctx).await? {
             if let Some(from_component) =
                 pasted_components_by_original.get(&connection.from_component_id)
             {

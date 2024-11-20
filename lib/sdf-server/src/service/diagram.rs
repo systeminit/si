@@ -31,7 +31,6 @@ pub mod set_component_position;
 
 pub mod delete_component;
 pub mod delete_connection;
-pub mod paste_component;
 pub mod remove_delete_intent;
 
 mod add_components_to_view;
@@ -155,7 +154,6 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/paste_components", post(paste_component::paste_components))
         .route(
             "/add_components_to_view",
             post(add_components_to_view::add_components_to_view),
