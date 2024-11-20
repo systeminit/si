@@ -15,7 +15,6 @@ use crate::error::LayerDbResult;
 use crate::LayerDbError;
 
 const FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
-const FOYER_MEMORY_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_MEMORY_RESERVED_PERCENT: u8 = 40;
 const DEFAULT_MEMORY_USABLE_MAX_PERCENT: u8 = 100;
 const DEFAULT_DISK_RESERVED_PERCENT: u8 = 5;
@@ -65,12 +64,7 @@ where
                 * (config.memory_usable_max_percent as f64 / 100.0))
                 .floor() as u64;
 
-            // Ensure that the computed value is at least as big as the Foyer minimum
-            max(
-                computed_memory_cache_capacity_bytes,
-                FOYER_MEMORY_CACHE_MINUMUM,
-            )
-            .try_into()?
+            computed_memory_cache_capacity_bytes.try_into()?
         };
 
         fs::create_dir_all(config.disk_path.as_path()).await?;
