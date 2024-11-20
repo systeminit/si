@@ -38,12 +38,12 @@ impl FuncRunLogDb {
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<()> {
-        let postcard_value = serialize::to_vec(&value)?;
+        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
         let cache_key: Arc<str> = value.id().to_string().into();
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone());
+            .insert_or_update(cache_key.clone(), value.clone(), size_hint);
 
         // We must insert directly before we persist, so that we get it in order.
         self.insert_to_pg(value.clone()).await?;
@@ -115,7 +115,7 @@ impl FuncRunLogDb {
                     &func_run_log.tenancy().workspace_pk.to_string(),
                     &func_run_log.tenancy().change_set_id.to_string(),
                     &func_run_log.func_run_id().to_string(),
-                    &serialize::to_vec(&func_run_log)?,
+                    &serialize::to_vec(&func_run_log)?.0,
                 ],
             )
             .await?;

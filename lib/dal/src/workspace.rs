@@ -549,7 +549,7 @@ impl Workspace {
             .map(|(hash, content)| (hash, (content, "postcard".to_string())))
             .collect::<HashMap<_, _>>();
 
-        let content_store_values = serialize::to_vec(&store_values_map)?;
+        let (content_store_values, _) = serialize::to_vec(&store_values_map)?;
 
         let created_by = if let HistoryActor::User(user_pk) = ctx.history_actor() {
             let user = User::get_by_pk(ctx, *user_pk)

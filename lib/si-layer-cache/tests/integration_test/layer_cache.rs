@@ -28,7 +28,9 @@ async fn make_layer_cache(db_name: &str) -> Arc<LayerCache<String>> {
 async fn empty_insert_and_get() {
     let layer_cache = make_layer_cache("empty_insert_and_get").await;
 
-    layer_cache.insert("skid row".into(), "slave to the grind".into());
+    let value = "slave to the grind";
+    let size_hint = value.len();
+    layer_cache.insert("skid row".into(), value.into(), size_hint);
 
     let skid_row: Arc<str> = "skid row".into();
 
@@ -56,7 +58,8 @@ async fn get_inserts_to_memory() {
 
     let skid_row: Arc<str> = "skid row".into();
 
-    let postcard_serialized = serialize::to_vec("slave to the grind").expect("should serialize");
+    let (postcard_serialized, _) =
+        serialize::to_vec("slave to the grind").expect("should serialize");
 
     layer_cache
         .cache()
@@ -82,7 +85,7 @@ async fn get_bulk_inserts() {
     ];
 
     for value in &values {
-        layer_cache.insert(value.clone().into(), value.to_string());
+        layer_cache.insert(value.clone().into(), value.to_string(), value.len());
     }
 
     let get_values = layer_cache

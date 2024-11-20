@@ -9,22 +9,25 @@ use crate::{error::LayerDbResult, LayerDbError};
     level = "debug",
     skip_all,
     fields(
-        bytes.size = Empty,
+        bytes.size.compressed = Empty,
+        bytes.size.uncompressed = Empty,
     )
 )]
-pub fn to_vec<T>(value: &T) -> LayerDbResult<Vec<u8>>
+pub fn to_vec<T>(value: &T) -> LayerDbResult<(Vec<u8>, usize)>
 where
     T: Serialize + ?Sized,
 {
     let span = current_span_for_instrument_at!("debug");
 
     let serialized = postcard::to_stdvec(value)?;
+    let uncompressed_size = serialized.len();
     // 1 is the best speed, 6 is default, 9 is best compression but may be too slow
     let compressed = miniz_oxide::deflate::compress_to_vec(&serialized, 1);
 
-    span.record("bytes.size", compressed.len());
+    span.record("bytes.size.compressed", compressed.len());
+    span.record("bytes.size.uncompressed", uncompressed_size);
 
-    Ok(compressed)
+    Ok((compressed, uncompressed_size))
 }
 
 #[inline]

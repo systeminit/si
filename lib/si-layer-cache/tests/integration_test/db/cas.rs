@@ -309,7 +309,7 @@ async fn stress_test() {
     for v in values {
         let big_string: Arc<String> = Arc::new(v.repeat(10_000_000));
         let cas_value = Arc::new(CasValue::String(big_string.to_string()));
-        let postcard_value =
+        let (postcard_value, _) =
             serialize::to_vec(&cas_value).expect("cannot deserialize big ass string");
         let cas_pk_string = ContentHash::new(&postcard_value).to_string();
         let ldb_slash_task = ldb_slash.clone();

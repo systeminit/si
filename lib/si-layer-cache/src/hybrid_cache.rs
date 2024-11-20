@@ -37,7 +37,7 @@ where
     V: Serialize + Clone + Send + Sync + 'static,
 {
     RawBytes(Vec<u8>),
-    DeserializedValue(V),
+    DeserializedValue { value: V, size_hint: usize },
 }
 
 #[derive(Clone, Debug)]
@@ -107,7 +107,12 @@ where
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
             .with_name(&config.name)
             .memory(memory_cache_capacity_bytes)
-            .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized<V>| size_of_val(value))
+            .with_weighter(
+                |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
+                    MaybeDeserialized::RawBytes(bytes) => bytes.len(),
+                    MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
+                },
+            )
             .storage(Engine::Large)
             .with_admission_picker(Arc::new(RateLimitPicker::new(
                 config.disk_admission_rate_limit,
@@ -135,13 +140,13 @@ where
     pub async fn get(&self, key: &str) -> Option<V> {
         match self.cache.obtain(key.into()).await {
             Ok(Some(entry)) => match entry.value() {
-                MaybeDeserialized::DeserializedValue(v) => Some(v.clone()),
+                MaybeDeserialized::DeserializedValue { value, .. } => Some(value.clone()),
                 MaybeDeserialized::RawBytes(bytes) => {
                     // If we fail to deserialize the raw bytes for some reason, pretend that we never
                     // had the key in the first place, and also remove it from the cache.
                     match serialize::from_bytes_async::<V>(bytes).await {
                         Ok(deserialized) => {
-                            self.insert(key.into(), deserialized.clone());
+                            self.insert(key.into(), deserialized.clone(), bytes.len());
                             Some(deserialized)
                         }
                         Err(e) => {
@@ -161,9 +166,11 @@ where
         }
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V) {
-        self.cache
-            .insert(key, MaybeDeserialized::DeserializedValue(value));
+    pub fn insert(&self, key: Arc<str>, value: V, size_hint: usize) {
+        self.cache.insert(
+            key,
+            MaybeDeserialized::DeserializedValue { value, size_hint },
+        );
     }
 
     pub fn insert_raw_bytes(&self, key: Arc<str>, raw_bytes: Vec<u8>) {

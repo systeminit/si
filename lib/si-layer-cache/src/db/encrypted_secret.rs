@@ -50,11 +50,12 @@ where
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<PersisterStatusReader> {
-        let postcard_value = serialize::to_vec(&value)?;
+        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
 
         let cache_key: Arc<str> = key.to_string().into();
 
-        self.cache.insert(cache_key.clone(), value.clone());
+        self.cache
+            .insert(cache_key.clone(), value.clone(), size_hint);
 
         let event = LayeredEvent::new(
             LayeredEventKind::EncryptedSecretInsertion,

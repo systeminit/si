@@ -824,7 +824,7 @@ impl WorkspaceSnapshotGraphV4 {
     /// Write the graph to disk. This *MAY PANIC*. Use only for debugging.
     #[allow(clippy::disallowed_methods)]
     pub fn write_to_disk(&self, file_suffix: &str) {
-        let serialized = serialize::to_vec(self).expect("unable to serialize");
+        let (serialized, _) = serialize::to_vec(self).expect("unable to serialize");
         let filename = format!("{}-{}", Ulid::new(), file_suffix);
 
         let home_env = std::env::var("HOME").expect("No HOME environment variable set");
