@@ -94,6 +94,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                 let var = var.0.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "AuditDatabaseContext" => {
+                                let var = expander.setup_audit_database_context();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             _ => panic!("unexpected argument type: {type_path:?}"),
                         };
                     }
@@ -144,6 +149,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                     let var = expander.setup_workspace_signup();
                                     let var = var.0.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
+                                }
+                                "AuditDatabaseContext" => {
+                                    let var = expander.setup_audit_database_context();
+                                    let var = var.as_ref();
+                                    expander.push_arg(parse_quote! {#var});
                                 }
                                 _ => panic!("unexpected argument reference type: {type_ref:?}"),
                             }

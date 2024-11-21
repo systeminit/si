@@ -1,5 +1,7 @@
+pub use ulid::DecodeError;
 pub use ulid::ULID_LEN;
-use ulid::{DecodeError, Ulid as CoreUlid};
+
+use ulid::Ulid as CoreUlid;
 
 /// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;

@@ -181,6 +181,8 @@ impl Server {
             application_runtime_mode,
             token.clone(),
             spicedb_client,
+            // TODO(nick): split the migrator context and the reader-only context (should be read-only pg pool).
+            audit_database_context.clone(),
         )
         .into_inner();
 
@@ -219,6 +221,7 @@ impl Server {
             inner,
             migrator_toolkit: MigratorToolkit {
                 services_context,
+                // TODO(nick): split the migrator context and the reader-only context (should be read-only pg pool).
                 audit_database_context,
             },
             socket,

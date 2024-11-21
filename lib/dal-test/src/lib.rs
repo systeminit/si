@@ -33,6 +33,7 @@ use std::{
     sync::{Arc, Once},
 };
 
+use audit_logs::database::AuditDatabaseContext;
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
@@ -48,7 +49,7 @@ use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
     VeritechEncryptionKey,
 };
-use si_data_nats::{NatsClient, NatsConfig};
+use si_data_nats::{jetstream, NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
@@ -94,12 +95,15 @@ const DEFAULT_TEST_MODULE_INDEX_URL: &str = "http://localhost:5157";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
+
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
-const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
+
+const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
+const ENV_VAR_AUDIT_PG_DBNAME: &str = "SI_TEST_AUDIT_PG_DBNAME";
 
 #[allow(missing_docs)]
 pub static COLOR_EYRE_INIT: Once = Once::new();
@@ -171,10 +175,10 @@ pub struct Config {
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
-    // TODO(nick): determine why this is unused.
-    #[allow(dead_code)]
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
+    #[builder(default = "audit_logs::database::default_pg_pool_config()")]
+    audit_pg_pool: PgPoolConfig,
 }
 
 impl Config {
@@ -183,6 +187,7 @@ impl Config {
     fn create_default(
         pg_dbname: &'static str,
         layer_cache_pg_dbname: &'static str,
+        audit_pg_dbname: &'static str,
     ) -> Result<Self> {
         let mut config = {
             let mut builder = ConfigBuilder::default();
@@ -194,33 +199,52 @@ impl Config {
             config.nats.url = value;
         }
 
-        if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
-            config.pg.hostname = value;
+        {
+            config.pg.dbname =
+                env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
+            if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+                config.pg.hostname = value;
+            }
+            config.pg.user =
+                env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+            config.pg.port = env::var(ENV_VAR_PG_PORT)
+                .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+                .parse()?;
+            config.pg.pool_max_size = 16;
+            config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
         }
-        config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
-        config.pg.user =
-            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
-        config.pg.port = env::var(ENV_VAR_PG_PORT)
-            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
-            .parse()?;
-        //config.pg.pool_max_size *= 32;
-        config.pg.pool_max_size = 16;
-        config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
-        if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
-            config.layer_cache_pg_pool.hostname = value;
+        {
+            config.layer_cache_pg_pool.dbname = env::var(ENV_VAR_LAYER_CACHE_PG_DBNAME)
+                .unwrap_or_else(|_| layer_cache_pg_dbname.to_string());
+            if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+                config.layer_cache_pg_pool.hostname = value;
+            }
+            config.layer_cache_pg_pool.user =
+                env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+            config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
+                .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+                .parse()?;
+            config.layer_cache_pg_pool.pool_max_size = 16;
+            config.layer_cache_pg_pool.certificate_path =
+                Some(config.postgres_key_path.clone().try_into()?);
         }
-        config.layer_cache_pg_pool.dbname = env::var(ENV_VAR_LAYER_CACHE_PG_DBNAME)
-            .unwrap_or_else(|_| layer_cache_pg_dbname.to_string());
-        config.layer_cache_pg_pool.user =
-            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
-        config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
-            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
-            .parse()?;
-        //config.layer_cache_pg_pool.pool_max_size *= 32;
-        config.layer_cache_pg_pool.pool_max_size = 16;
-        config.layer_cache_pg_pool.certificate_path =
-            Some(config.postgres_key_path.clone().try_into()?);
+
+        {
+            config.audit_pg_pool.dbname =
+                env::var(ENV_VAR_AUDIT_PG_DBNAME).unwrap_or_else(|_| audit_pg_dbname.to_string());
+            if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+                config.audit_pg_pool.hostname = value;
+            }
+            config.audit_pg_pool.user =
+                env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+            config.audit_pg_pool.port = env::var(ENV_VAR_PG_PORT)
+                .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+                .parse()?;
+            config.audit_pg_pool.pool_max_size = 16;
+            config.audit_pg_pool.certificate_path =
+                Some(config.postgres_key_path.clone().try_into()?);
+        }
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
@@ -285,6 +309,8 @@ pub struct TestContext {
     layer_db_pg_pool: PgPool,
     /// Dedicated executor for running CPU-intensive tasks
     compute_executor: DedicatedExecutor,
+    /// The audit database context
+    audit_database_context: AuditDatabaseContext,
 }
 
 impl TestContext {
@@ -299,15 +325,17 @@ impl TestContext {
     pub async fn global(
         pg_dbname: &'static str,
         layer_cache_pg_dbname: &'static str,
+        audit_pg_dbname: &'static str,
     ) -> Result<Self> {
         let mut mutex_guard = TEST_CONTEXT_BUILDER.lock().await;
 
         match &*mutex_guard {
             ContextBuilderState::Uninitialized => {
-                let config = Config::create_default(pg_dbname, layer_cache_pg_dbname)
-                    .si_inspect_err(|err| {
-                        *mutex_guard = ContextBuilderState::errored(err.to_string())
-                    })?;
+                let config =
+                    Config::create_default(pg_dbname, layer_cache_pg_dbname, audit_pg_dbname)
+                        .si_inspect_err(|err| {
+                            *mutex_guard = ContextBuilderState::errored(err.to_string())
+                        })?;
 
                 // We want to connect directly when we migrate, then connect to the pool after
                 let mut migrate_config = config.clone();
@@ -316,9 +344,12 @@ impl TestContext {
                     migrate_config.pg.port = 5432;
                     migrate_config.layer_cache_pg_pool.hostname = "db-test".to_string();
                     migrate_config.layer_cache_pg_pool.port = 5432;
+                    migrate_config.audit_pg_pool.hostname = "db-test".to_string();
+                    migrate_config.audit_pg_pool.port = 5432;
                 } else {
                     migrate_config.pg.port = 8432;
                     migrate_config.layer_cache_pg_pool.port = 8432;
+                    migrate_config.audit_pg_pool.port = 8432;
                 }
 
                 let migrate_test_context_builder = TestContextBuilder::create(migrate_config)
@@ -413,6 +444,16 @@ impl TestContext {
     pub fn nats_config(&self) -> &NatsConfig {
         &self.config.nats
     }
+
+    /// Gets a reference to the audit database context.
+    pub fn audit_database_context(&self) -> &AuditDatabaseContext {
+        &self.audit_database_context
+    }
+
+    /// Gets a reference to the NATS client.
+    pub fn nats_conn(&self) -> &NatsClient {
+        &self.nats_conn
+    }
 }
 
 /// A builder for a [`TestContext`].
@@ -450,8 +491,10 @@ impl TestContextBuilder {
             .await
             .wrap_err("failed to create global setup PgPool")?;
         let layer_cache_pg_pool = PgPool::new(&self.config.layer_cache_pg_pool).await?;
+        let audit_pg_pool = PgPool::new(&self.config.audit_pg_pool).await?;
 
-        self.build_inner(pg_pool, layer_cache_pg_pool).await
+        self.build_inner(pg_pool, layer_cache_pg_pool, audit_pg_pool)
+            .await
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling for each test.
@@ -464,10 +507,20 @@ impl TestContextBuilder {
             .create_test_specific_db_with_pg_pool(&self.config.layer_cache_pg_pool)
             .await?;
 
-        self.build_inner(pg_pool, layer_cache_pg_pool).await
+        let audit_pg_pool = self
+            .create_test_specific_db_with_pg_pool(&self.config.audit_pg_pool)
+            .await?;
+
+        self.build_inner(pg_pool, layer_cache_pg_pool, audit_pg_pool)
+            .await
     }
 
-    async fn build_inner(&self, pg_pool: PgPool, layer_db_pg_pool: PgPool) -> Result<TestContext> {
+    async fn build_inner(
+        &self,
+        pg_pool: PgPool,
+        layer_db_pg_pool: PgPool,
+        audit_pg_pool: PgPool,
+    ) -> Result<TestContext> {
         let universal_prefix = random_identifier_string();
 
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
@@ -491,6 +544,7 @@ impl TestContextBuilder {
                 .await?;
 
         let compute_executor = si_runtime::compute_executor("dal-test")?;
+        let audit_database_context = AuditDatabaseContext::from_pg_pool(audit_pg_pool);
 
         Ok(TestContext {
             config,
@@ -502,6 +556,7 @@ impl TestContextBuilder {
             symmetric_crypto_service,
             layer_db_pg_pool,
             compute_executor,
+            audit_database_context,
         })
     }
 
@@ -676,20 +731,31 @@ pub async fn veritech_server_for_uds_cyclone(
 /// Configures and builds a [`forklift_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub async fn forklift_server(
-    nats_config: NatsConfig,
+    nats: NatsClient,
+    audit_database_context: AuditDatabaseContext,
     token: CancellationToken,
 ) -> Result<forklift_server::Server> {
-    let config: forklift_server::Config = {
-        let mut config_file = forklift_server::ConfigFile::default();
-        config_file.nats = nats_config;
-        config_file
-            .try_into()
-            .wrap_err("failed to build forklift server config")?
-    };
+    let config: forklift_server::Config = forklift_server::ConfigFile::default()
+        .try_into()
+        .wrap_err("failed to build forklift server config")?;
 
-    let server = forklift_server::Server::from_config(config, token)
-        .await
-        .wrap_err("failed to create forklift server")?;
+    let connection_metadata = Arc::new(nats.metadata().to_owned());
+    let jetstream_context = jetstream::new(nats);
+
+    let server = forklift_server::Server::from_services(
+        connection_metadata,
+        jetstream_context,
+        config.instance_id(),
+        config.concurrency_limit(),
+        Some((
+            audit_database_context,
+            config.audit().insert_concurrency_limit,
+        )),
+        None,
+        token,
+    )
+    .await
+    .wrap_err("failed to create forklift server")?;
 
     Ok(server)
 }
@@ -762,19 +828,28 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .wrap_err("failed to drop and create layer db database")?;
 
     info!("running database migrations");
-    dal::migrate(services_ctx.pg_pool())
-        .await
-        .wrap_err("failed to migrate database")?;
-
-    services_ctx
-        .layer_db()
-        .pg_migrate()
-        .await
-        .wrap_err("failed to migrate layerdb")?;
+    {
+        dal::migrate(services_ctx.pg_pool())
+            .await
+            .wrap_err("failed to migrate database")?;
+        services_ctx
+            .layer_db()
+            .pg_migrate()
+            .await
+            .wrap_err("failed to migrate layerdb")?;
+        audit_logs::database::migrate(&test_context.audit_database_context)
+            .await
+            .wrap_err("failed to migrate audit database")?;
+    }
 
     // Startup up a Forklift server exclusively for migrations
     info!("starting Forklift server for initial migrations");
-    let forklift_server = forklift_server(test_context.config.nats.clone(), token.clone()).await?;
+    let forklift_server = forklift_server(
+        test_context.nats_conn.to_owned(),
+        test_context.audit_database_context.to_owned(),
+        token.clone(),
+    )
+    .await?;
     tracker.spawn(forklift_server.run());
 
     // Start up a Pinga server as a task exclusively to allow the migrations to run

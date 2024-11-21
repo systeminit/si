@@ -2,14 +2,15 @@
 
 use std::time::Duration;
 
+use audit_logs::database::{AuditDatabaseContext, AuditLogRow};
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::key_pair::KeyPairPk;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
-    OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
+    audit_logging, AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket,
+    KeyPair, OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
 };
 use itertools::Itertools;
 use names::{Generator, Name};
@@ -407,5 +408,34 @@ pub async fn confirm_jetstream_stream_has_no_messages(
 
     Err(eyre!(
         "hit timeout and stream still has at least one message: {message_count}"
+    ))
+}
+
+/// Retries listing audit logs until the expected number of rows are returned.
+pub async fn list_audit_logs_until_expected_number_of_rows(
+    ctx: &DalContext,
+    context: &AuditDatabaseContext,
+    size: usize,
+    expected_number_of_rows: usize,
+    timeout_seconds: u64,
+    interval_milliseconds: u64,
+) -> Result<Vec<AuditLogRow>> {
+    let timeout = Duration::from_secs(timeout_seconds);
+    let interval = Duration::from_millis(interval_milliseconds);
+
+    let start = Instant::now();
+    let mut actual_number_of_rows = 0;
+
+    while start.elapsed() < timeout {
+        let (audit_logs, _) = audit_logging::list(ctx, context, size).await?;
+        actual_number_of_rows = audit_logs.len();
+        if actual_number_of_rows == expected_number_of_rows {
+            return Ok(audit_logs);
+        }
+        tokio::time::sleep(interval).await;
+    }
+
+    Err(eyre!(
+        "hit timeout before audit logs query returns expected number of rows (expected: {expected_number_of_rows}, actual: {actual_number_of_rows})"
     ))
 }

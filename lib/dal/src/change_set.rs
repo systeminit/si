@@ -632,6 +632,30 @@ impl ChangeSet {
         Ok(result)
     }
 
+    /// List all change sets that are applied.
+    pub async fn list_all_applied(
+        ctx: &DalContext,
+        workspace_pk: WorkspacePk,
+    ) -> ChangeSetResult<Vec<Self>> {
+        let mut result = Vec::new();
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status = $2",
+                &[&workspace_pk, &ChangeSetStatus::Applied.to_string()],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     /// List all change sets for a given workspace
     pub async fn list_all_for_workspace(
         ctx: &DalContext,

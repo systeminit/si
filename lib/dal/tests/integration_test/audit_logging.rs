@@ -1,19 +1,29 @@
+use audit_logs::database::AuditDatabaseContext;
 use audit_logs::AuditLogsStream;
-use dal::{audit_logging, prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
+use dal::{prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
     confirm_jetstream_stream_has_no_messages,
     create_named_component_for_schema_variant_on_default_view,
+    list_audit_logs_until_expected_number_of_rows,
 };
 use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pending_events::PendingEventsStream;
 use pretty_assertions_sorted::assert_eq;
 use si_events::audit_log::AuditLogKind;
 
-const TIMEOUT_SECONDS: u64 = 5;
-const INTERVAL_MILLISECONDS: u64 = 100;
+const DATABASE_RETRY_TIMEOUT_SECONDS: u64 = 2;
+const DATABASE_RETRY_INTERVAL_MILLISECONDS: u64 = 100;
+
+const STREAM_RETRY_TIMEOUT_SECONDS: u64 = 5;
+const STREAM_RETRY_INTERVAL_MILLISECONDS: u64 = 100;
+
+const SIZE: usize = 200;
 
 #[test]
-async fn round_trip(ctx: &mut DalContext) {
+async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseContext) {
+    let context = audit_database_context;
+
+    // Collect schema information.
     let schema = Schema::find_by_name(ctx, "swifty")
         .await
         .expect("could not perform find by name")
@@ -70,35 +80,37 @@ async fn round_trip(ctx: &mut DalContext) {
         (source_stream, destination_stream)
     };
 
-    // Check that the streams look as we expect.
-    confirm_jetstream_stream_has_no_messages(
-        &source_stream,
-        TIMEOUT_SECONDS,
-        INTERVAL_MILLISECONDS,
-    )
-    .await
-    .expect("stream message count is greater than zero");
-    let first_destination_stream_message_count = destination_stream
-        .get_info()
+    // Check that everything looks as we expect.
+    {
+        let expected_total = 5;
+        confirm_jetstream_stream_has_no_messages(
+            &source_stream,
+            STREAM_RETRY_TIMEOUT_SECONDS,
+            STREAM_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
-        .expect("could not get destination stream info")
-        .state
-        .messages;
-    assert!(first_destination_stream_message_count > 0);
-
-    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
-    // look as we expect.
-    let (first_run_audit_logs, _) = audit_logging::list(ctx, 200)
+        .expect("stream message count is greater than zero");
+        let destination_stream_message_count = destination_stream
+            .get_info()
+            .await
+            .expect("could not get destination stream info")
+            .state
+            .messages;
+        assert_eq!(
+            expected_total,                   // expected
+            destination_stream_message_count  // actual
+        );
+        list_audit_logs_until_expected_number_of_rows(
+            ctx,
+            &context,
+            SIZE,
+            expected_total as usize,
+            DATABASE_RETRY_TIMEOUT_SECONDS,
+            DATABASE_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
         .expect("could not list audit logs");
-    let (second_run_audit_logs, _) = audit_logging::list(ctx, 200)
-        .await
-        .expect("could not list audit logs");
-    assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(
-        first_destination_stream_message_count as usize, // expected
-        first_run_audit_logs.len()                       // actual
-    );
+    }
 
     // Update a property editor value and commit. Mimic sdf by audit logging here.
     let prop_path_raw = ["root", "domain", "name"];
@@ -143,35 +155,37 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    // Check that the streams look as we expect.
-    confirm_jetstream_stream_has_no_messages(
-        &source_stream,
-        TIMEOUT_SECONDS,
-        INTERVAL_MILLISECONDS,
-    )
-    .await
-    .expect("stream message count is greater than zero");
-    let second_destination_stream_message_count = destination_stream
-        .get_info()
+    // Check that everything looks as we expect.
+    {
+        let expected_total = 9;
+        confirm_jetstream_stream_has_no_messages(
+            &source_stream,
+            STREAM_RETRY_TIMEOUT_SECONDS,
+            STREAM_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
-        .expect("could not get destination stream info")
-        .state
-        .messages;
-    assert!(second_destination_stream_message_count > first_destination_stream_message_count);
-
-    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
-    // look as we expect.
-    let (first_run_audit_logs, _) = audit_logging::list(ctx, 200)
+        .expect("stream message count is greater than zero");
+        let destination_stream_message_count = destination_stream
+            .get_info()
+            .await
+            .expect("could not get destination stream info")
+            .state
+            .messages;
+        assert_eq!(
+            expected_total,                   // expected
+            destination_stream_message_count  // actual
+        );
+        list_audit_logs_until_expected_number_of_rows(
+            ctx,
+            &context,
+            SIZE,
+            expected_total as usize,
+            DATABASE_RETRY_TIMEOUT_SECONDS,
+            DATABASE_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
         .expect("could not list audit logs");
-    let (second_run_audit_logs, _) = audit_logging::list(ctx, 200)
-        .await
-        .expect("could not list audit logs");
-    assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(
-        second_destination_stream_message_count as usize, // expected
-        first_run_audit_logs.len()                        // actual
-    );
+    }
 
     // Delete a component and commit. Mimic sdf by audit logging here.
     ctx.write_audit_log(
@@ -194,33 +208,35 @@ async fn round_trip(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    // Check that the streams look as we expect.
-    confirm_jetstream_stream_has_no_messages(
-        &source_stream,
-        TIMEOUT_SECONDS,
-        INTERVAL_MILLISECONDS,
-    )
-    .await
-    .expect("stream message count is greater than zero");
-    let third_destination_stream_message_count = destination_stream
-        .get_info()
+    // Check that everything looks as we expect.
+    {
+        let expected_total = 10;
+        confirm_jetstream_stream_has_no_messages(
+            &source_stream,
+            STREAM_RETRY_TIMEOUT_SECONDS,
+            STREAM_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
-        .expect("could not get destination stream info")
-        .state
-        .messages;
-    assert!(third_destination_stream_message_count > second_destination_stream_message_count);
-
-    // List all audit logs twice to ensure we don't consume/ack them. After that, check that they
-    // look as we expect.
-    let (first_run_audit_logs, _) = audit_logging::list(ctx, 200)
+        .expect("stream message count is greater than zero");
+        let destination_stream_message_count = destination_stream
+            .get_info()
+            .await
+            .expect("could not get destination stream info")
+            .state
+            .messages;
+        assert_eq!(
+            expected_total,                   // expected
+            destination_stream_message_count  // actual
+        );
+        list_audit_logs_until_expected_number_of_rows(
+            ctx,
+            &context,
+            SIZE,
+            expected_total as usize,
+            DATABASE_RETRY_TIMEOUT_SECONDS,
+            DATABASE_RETRY_INTERVAL_MILLISECONDS,
+        )
         .await
         .expect("could not list audit logs");
-    let (second_run_audit_logs, _) = audit_logging::list(ctx, 200)
-        .await
-        .expect("could not list audit logs");
-    assert_eq!(first_run_audit_logs, second_run_audit_logs);
-    assert_eq!(
-        third_destination_stream_message_count as usize, // expected
-        first_run_audit_logs.len()                       // actual
-    );
+    }
 }

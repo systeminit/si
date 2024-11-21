@@ -105,6 +105,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.0.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "AuditDatabaseContext" => {
+                                let var = expander.setup_audit_database_context();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             _ => panic!("unexpected argument type: {type_path:?}"),
                         };
                     }
@@ -155,6 +160,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                     let var = expander.setup_workspace_signup();
                                     let var = var.0.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
+                                }
+                                "AuditDatabaseContext" => {
+                                    let var = expander.setup_audit_database_context();
+                                    let var = var.as_ref();
+                                    expander.push_arg(parse_quote! {#var});
                                 }
                                 _ => panic!("unexpected argument reference type: {type_ref:?}"),
                             }
@@ -366,6 +376,7 @@ impl SdfTestFnSetupExpander {
         let crdt_multiplexer_client = self.setup_crdt_multiplexer_client();
         let crdt_multiplexer_client = crdt_multiplexer_client.as_ref();
         let spicedb_client = self.setup_spicedb_client();
+        let audit_database_context = self.setup_audit_database_context();
 
         let var = Ident::new("router", Span::call_site());
         self.code_extend(quote! {
@@ -391,6 +402,7 @@ impl SdfTestFnSetupExpander {
                     ),
                     #cancellation_token.clone(),
                     #spicedb_client,
+                    #audit_database_context,
                 ).into_inner()
             };
         });
