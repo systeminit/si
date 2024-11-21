@@ -75,7 +75,7 @@
         >
           <Icon
             v-if="isChildOfMap || isChildOfArray"
-            class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
+            class="w-[14px] h-[14px]"
             name="nested-arrow-right"
             size="none"
           />
@@ -231,10 +231,10 @@
         <template v-if="(isArray || isMap) && propManual">
           <div
             :style="{ marginLeft: indentPx }"
-            class="attributes-panel-item__add-child-row"
+            class="h-[34px] flex flex-row grow gap-xs relative overflow-hidden items-center"
           >
             <Icon
-              class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
+              class="w-[14px] h-[14px] ml-xs"
               name="nested-arrow-right"
               size="none"
             />
@@ -263,13 +263,26 @@
               @keyup.enter="addChildHandler"
             />
 
-            <button
-              class="attributes-panel-item__new-child-button items-center"
+            <div
+              :class="
+                clsx(
+                  'items-center rounded-sm flex flex-row gap-2xs justify-center cursor-pointer shrink-0',
+                  'mr-xs px-sm py-2xs relative border select-none',
+                  themeClasses(
+                    'border-shade-100 hover:bg-action-500 hover:text-shade-0',
+                    'border-shade-0 hover:bg-action-300 hover:text-shade-100',
+                  ),
+                )
+              "
               @click="addChildHandler"
             >
-              <Icon name="plus" size="none" />
+              <Icon
+                name="plus"
+                size="none"
+                class="ml-[-2px] w-[14px] h-[14px]"
+              />
               {{ isArray ? "Add array item" : "Add map item" }}
-            </button>
+            </div>
           </div>
 
           <div
@@ -294,7 +307,9 @@
         )
       "
     >
-      <div class="attributes-panel-item__item-label">
+      <div
+        class="flex flex-row grow gap-xs relative overflow-hidden items-center"
+      >
         <Icon
           v-if="validation && validation.status !== 'Success'"
           :name="showValidationDetails ? 'chevron--down' : 'chevron--right'"
@@ -306,13 +321,13 @@
 
         <Icon
           v-if="isChildOfMap || isChildOfArray"
-          class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
+          class="w-[14px] h-[14px]"
           name="nested-arrow-right"
           size="none"
         />
         <div
           :title="`${propLabelParts[0]}${propLabelParts[1]}`"
-          class="attributes-panel-item__item-label-text"
+          class="cursor-default shrink truncate py-2xs px-0 [&_i]:opacity-50"
         >
           <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
           <template v-else-if="isChildOfArray">
@@ -359,14 +374,22 @@
           </a>
         </div>
       </div>
-
       <div
-        :class="{
-          'force-border-destructive-500':
-            validation && validation.status !== 'Success',
-          'my-1': validation && validation.status !== 'Success',
-        }"
-        class="attributes-panel-item__input-wrap group/input"
+        :class="
+          clsx(
+            'attributes-panel-item__input-wrap group/input',
+            'w-[45%] min-h-[30px] shrink-0',
+            'relative border font-mono text-[13px] leading-[18px]',
+            themeClasses('bg-neutral-100', 'bg-neutral-900'),
+            validation && validation.status !== 'Success'
+              ? 'my-2xs border-destructive-500'
+              : [
+                  isFocus
+                    ? themeClasses('border-action-500', 'border-action-300')
+                    : themeClasses('border-neutral-400', 'border-neutral-600'),
+                ],
+          )
+        "
         @mouseleave="onHoverEnd"
         @mouseover="onHoverStart"
       >
@@ -510,12 +533,13 @@
             :disabled="!propIsEditable"
             @change="updateValue"
             @focus="onFocus"
+            @blur="onBlur"
           >
             <option v-for="o in widgetOptions" :key="o.value" :value="o.value">
               {{ o.label }}
             </option>
           </select>
-          <div class="attributes-panel-item__input-value-select">
+          <div class="block truncate py-[5px] pr-6 pl-xs">
             {{ currentValue }}
           </div>
           <Icon
@@ -776,8 +800,10 @@ import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+import { TreeFormContext } from "./TreeForm.vue";
 
 export type TreeFormProp = {
+  id: string;
   name: string;
   icon: IconNames;
   kind: PropertyEditorPropKind;
@@ -1217,7 +1243,8 @@ function unsetHandler() {
       attributeValueId: props.treeDef.valueId,
     });
   } else {
-    // TODO(Wendy) - make this functional for TreeForm when needed
+    const treeFormContext = rootCtx as TreeFormContext;
+    treeFormContext.resetValue(props.treeDef as TreeFormData);
   }
 }
 
@@ -1270,7 +1297,8 @@ function updateValue() {
       },
     });
   } else {
-    // TODO(Wendy) - make this functional for TreeForm
+    const treeFormContext = rootCtx as TreeFormContext;
+    treeFormContext.setValue(props.treeDef as TreeFormData, newVal as string);
   }
 }
 
@@ -1403,43 +1431,7 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   display: block;
   cursor: pointer;
 }
-
-.attributes-panel-item__item-label,
-.attributes-panel-item__add-child-row {
-  display: flex;
-  flex-grow: 1;
-  gap: @spacing-px[xs];
-  position: relative;
-  overflow: hidden;
-  align-items: center;
-}
-.attributes-panel-item__item-label-text {
-  cursor: default;
-  flex-shrink: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 4px 0; // fixes cut off descenders
-  i {
-    font-style: normal;
-    opacity: 0.5;
-  }
-}
-
-.force-border-destructive-500 {
-  border-color: @colors-destructive-500 !important;
-}
 .attributes-panel-item__input-wrap {
-  position: relative;
-  border: 1px solid var(--input-border-color);
-  min-height: 30px;
-  width: 45%;
-  flex-shrink: 0;
-  background: var(--input-bg-color);
-  font-family: monospace;
-  font-size: 13px;
-  line-height: 18px;
-
   .attributes-panel-item.--focus & {
     background: var(--input-focus-bg-color);
     z-index: 101;
@@ -1447,7 +1439,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
   input,
   textarea {
-    @apply focus:ring-0 focus:ring-offset-0;
     background: transparent;
     font-family: inherit;
     padding: 5px 8px;
@@ -1487,13 +1478,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
     z-index: 2;
     pointer-events: none;
   }
-}
-
-.attributes-panel-item__input-value-select {
-  padding: 5px 24px 5px 8px;
-  display: block;
-  text-overflow: ellipsis;
-  overflow: hidden;
 }
 
 .attributes-panel-item__action-icons {
@@ -1539,8 +1523,7 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 // small icon buttons
 .attributes-panel-item__action-icons .icon,
 .attributes-panel-item__popout-edit-button,
-.attributes-panel-item__popout-view-button,
-.attributes-panel-item__new-child-button {
+.attributes-panel-item__popout-view-button {
   width: 20px;
   height: 20px;
   padding: 2px;
@@ -1595,47 +1578,12 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   z-index: 51;
 }
 
-.attributes-panel-item__add-child-row {
-  height: 34px;
-
-  .attributes-panel-item__nested-arrow-icon {
-    margin-left: @indent-size;
-  }
-}
-.attributes-panel-item__new-child-button {
-  border-radius: 2px;
-  padding: 4px 16px;
-  display: flex;
-  gap: 4px;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  margin-right: 8px;
-
-  // unset a few shared styles from the other buttons
-  width: unset;
-  height: unset;
-  background: none !important;
-
-  .icon {
-    width: 14px;
-    height: 14px;
-    margin-left: -2px;
-  }
-}
-
 .attributes-panel-item.--input .attributes-panel-item__type-icon {
   opacity: 0.5;
 }
 .attributes-panel-item.--input.--invalid .attributes-panel-item__type-icon {
   color: @colors-destructive-500;
   opacity: 1;
-}
-
-.attributes-panel-item.--focus {
-  .attributes-panel-item__input-wrap {
-    border-color: var(--input-focus-border-color);
-  }
 }
 
 // first input in a child list gets a bit of space

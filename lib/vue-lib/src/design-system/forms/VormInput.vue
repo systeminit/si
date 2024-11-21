@@ -1185,7 +1185,6 @@ defineExpose({
 
   input,
   textarea {
-    @apply focus:ring-0 focus:ring-offset-0;
     background: transparent;
     font-family: inherit;
     padding: 5px 8px;
