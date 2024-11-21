@@ -53,7 +53,7 @@ pub struct Config {
     #[builder(default = "default_data_warehouse_stream_name()")]
     data_warehouse_stream_name: Option<String>,
 
-    #[builder(default)]
+    #[builder(default = "default_enable_audit_logs_app()")]
     enable_audit_logs_app: bool,
 
     #[builder(default)]
@@ -113,7 +113,7 @@ pub struct ConfigFile {
     pub nats: NatsConfig,
     #[serde(default = "default_data_warehouse_stream_name")]
     pub data_warehouse_stream_name: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_enable_audit_logs_app")]
     pub enable_audit_logs_app: bool,
     #[serde(default)]
     pub audit: AuditDatabaseConfig,
@@ -126,7 +126,7 @@ impl Default for ConfigFile {
             concurrency_limit: default_concurrency_limit(),
             nats: Default::default(),
             data_warehouse_stream_name: default_data_warehouse_stream_name(),
-            enable_audit_logs_app: Default::default(),
+            enable_audit_logs_app: default_enable_audit_logs_app(),
             audit: Default::default(),
         }
     }
@@ -165,6 +165,10 @@ fn default_data_warehouse_stream_name() -> Option<String> {
     None
 }
 
+fn default_enable_audit_logs_app() -> bool {
+    false
+}
+
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
 fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
@@ -192,6 +196,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    // config.enable_audit_logs_app = true;
 
     Ok(())
 }
@@ -209,6 +214,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    // config.enable_audit_logs_app = true;
 
     Ok(())
 }
