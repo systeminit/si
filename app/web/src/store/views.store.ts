@@ -755,7 +755,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (!component) return;
                 oldParentIds[componentId] = component.parentId;
                 if (newParentId) component.parentId = newParentId;
-                else component.parentId = undefined;
+                else {
+                  component.parentId = undefined;
+                }
                 componentsStore.processRawComponent(componentId, true);
               });
             },
