@@ -1,16 +1,17 @@
 <template>
   <div
     v-if="!isHidden"
-    :class="{
-      '--section': canHaveChildren,
-      '--input': !canHaveChildren,
-      '--hover': isHover,
-      '--section-hover': isSectionHover,
-      '--focus': isFocus,
-      '--open': canHaveChildren && isOpen,
-      '--collapsed': canHaveChildren && !isOpen,
-    }"
-    class="attributes-panel-item"
+    :class="
+      clsx(
+        'attributes-panel-item',
+        'relative text-sm',
+        isFocus && '--focus',
+        isHover && '--hover',
+        isSectionHover && '--section-hover',
+        canHaveChildren ? '--section' : '--input',
+        canHaveChildren && (isOpen ? '--open' : '--collapsed'),
+      )
+    "
   >
     <!-- SECTION -->
     <div
@@ -24,12 +25,19 @@
           top: topPx,
           zIndex: headerZIndex,
         }"
-        class="attributes-panel-item__section-header-wrap"
+        :class="
+          clsx('attributes-panel-item__section-header-wrap', 'sticky h-6')
+        "
       >
         <div
           :class="
             clsx(
               'attributes-panel-item__section-toggle',
+              'absolute w-6 h-6 transition-all duration-200',
+              themeClasses(
+                'bg-neutral-100 text-neutral-700',
+                'bg-neutral-900 text-shade-0',
+              ),
               headerHasContent && 'cursor-pointer',
             )
           "
@@ -44,17 +52,30 @@
                 : 'none'
             "
             size="inherit"
+            class="opacity-80 hover:opacity-100 hover:scale-110"
           />
         </div>
 
         <div
           :style="{ marginLeft: indentPx }"
-          class="attributes-panel-item__section-header"
+          :class="
+            clsx(
+              'attributes-panel-item__section-header',
+              'h-[inherit] flex flex-row gap-2xs items-center select-none pr-2xs border-b',
+              themeClasses(
+                isSectionHover ? 'bg-neutral-900' : 'bg-neutral-500',
+                isSectionHover
+                  ? 'bg-neutral-300 text-shade-100'
+                  : 'bg-neutral-600 text-shade-0',
+              ),
+              themeClasses('text-shade-0 border-shade-0', 'border-neutral-800'),
+            )
+          "
           @click="toggleOpen(true)"
         >
           <Icon
             v-if="isChildOfMap || isChildOfArray"
-            class="attributes-panel-item__nested-arrow-icon"
+            class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
             name="nested-arrow-right"
             size="none"
           />
@@ -63,17 +84,29 @@
             class="attributes-panel-item__type-icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label flex-1">
+          <div
+            :class="
+              clsx(
+                'attributes-panel-item__section-header-label',
+                'flex flex-row flex-1 items-center whitespace-nowrap gap-2xs min-w-0',
+              )
+            "
+          >
             <div
               ref="headerMainLabelRef"
               v-tooltip="headerMainLabelTooltip"
-              class="attributes-panel-item__section-header-label-main leading-loose flex"
+              :class="
+                clsx(
+                  'attributes-panel-item__section-header-label-main',
+                  'leading-loose flex grow truncate basis-0',
+                )
+              "
             >
               <template v-if="isChildOfArray">
-                {{ propName }}[{{ attributeDef.arrayIndex }}]
+                {{ propName }}[{{ treeDef.arrayIndex }}]
               </template>
               <template v-else-if="isChildOfMap">
-                {{ attributeDef.mapKey }}
+                {{ treeDef.mapKey }}
               </template>
               <template v-else>
                 {{ fullPropDef.name }}
@@ -83,7 +116,7 @@
               >
                 <button
                   v-tooltip="'Delete'"
-                  class="attributes-panel-item__delete-child-button hover:scale-125 items-center pl-2xs"
+                  class="hover:scale-125 hover:text-destructive-500 items-center pl-2xs z-30 flex-none"
                   @click="removeChildHandler"
                 >
                   <Icon name="trash" size="xs" />
@@ -93,35 +126,40 @@
 
             <div
               v-if="isMap || isArray"
-              class="attributes-panel-item__section-header-child-count"
+              :class="
+                clsx(
+                  'attributes-panel-item__section-header-child-count',
+                  'italic mr-2xs text-xs opacity-50 flex-none',
+                )
+              "
             >
-              <template v-if="attributeDef.children.length === 0"
-                >(empty)</template
-              >
-              <template v-else-if="attributeDef.children.length === 1"
+              <template v-if="treeDef.children.length === 0">(empty)</template>
+              <template v-else-if="treeDef.children.length === 1"
                 >(1 item)</template
               >
-              <template v-else
-                >({{ attributeDef.children.length }} items)</template
-              >
+              <template v-else>({{ treeDef.children.length }} items)</template>
             </div>
           </div>
           <SourceIconWithTooltip
-            v-if="!(widgetKind === 'secret') && !props.isRootProp"
+            v-if="
+              !(widgetKind === 'secret') && !props.isRootProp && attributesPanel
+            "
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
             header
           />
           <!-- DROPDOWN MENU FOR SELECT SOURCE -->
-          <template v-if="validAttributeValueSources.length > 1">
+          <template
+            v-if="attributesPanel && validAttributeValueSources.length > 1"
+          >
             <div
               class="attributes-panel-item__section-header-source-select"
               @click="sourceSelectMenuRef?.open($event)"
             >
               <div>set:</div>
               <div
-                class="flex flex-row items-center border pl-2xs pr-[2px] h-4 text-xs"
+                class="flex flex-row items-center border pl-2xs pr-3xs h-4 text-xs"
               >
                 <div class="flex-none whitespace-nowrap">{{ propSource }}</div>
                 <Icon name="chevron--down" size="sm" />
@@ -149,7 +187,16 @@
       <div
         v-show="isOpen && headerHasContent"
         :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
-        class="attributes-panel-item__left-border"
+        :class="
+          clsx(
+            'attributes-panel-item__left-border',
+            'absolute w-[1px] top-0 bottom-0 pointer-events-none',
+            themeClasses(
+              isSectionHover ? 'bg-neutral-900' : 'bg-neutral-500',
+              isSectionHover ? 'bg-neutral-300' : 'bg-neutral-600',
+            ),
+          )
+        "
       />
 
       <!-- CHILDREN -->
@@ -157,14 +204,19 @@
         v-show="isOpen && headerHasContent"
         class="attributes-panel-item__children"
       >
-        <AttributesPanelItem
-          v-for="childProp in attributeDef.children"
+        <TreeFormItem
+          v-for="childProp in treeDef.children"
           :key="`${propName}/${childProp.propDef?.name}`"
-          :attributeDef="childProp"
+          :treeDef="childProp"
           :level="level + 1"
+          :context="context"
+          :attributesPanel="attributesPanel"
         />
 
-        <div v-if="numberOfHiddenChildren > 0" class="attributes-panel-item">
+        <div
+          v-if="numberOfHiddenChildren > 0"
+          class="attributes-panel-item relative"
+        >
           <!-- TODO(wendy) - If we want to add the option to show the hidden props, add the click handler here! -->
           <div
             :style="{ paddingLeft: indentPxPlusOne }"
@@ -182,7 +234,7 @@
             class="attributes-panel-item__add-child-row"
           >
             <Icon
-              class="attributes-panel-item__nested-arrow-icon"
+              class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
               name="nested-arrow-right"
               size="none"
             />
@@ -192,9 +244,17 @@
               v-model="newMapChildKey"
               :class="
                 clsx(
-                  'attributes-panel-item__new-child-key-input',
-                  isMapKeyError &&
-                    'attributes-panel-item__new-child-key-input__error',
+                  'border w-[150px] h-[28px] min-w-[80px] shrink text-sm p-2xs',
+                  themeClasses(
+                    'bg-neutral-100 focus:bg-shade-0',
+                    'bg-neutral-900 focus:bg-shade-100',
+                  ),
+                  isMapKeyError
+                    ? 'border-destructive-500 focus:border-destructive-500'
+                    : themeClasses(
+                        'border-neutral-400 focus:border-action-500',
+                        'border-neutral-600 focus:border-action-300',
+                      ),
                 )
               "
               placeholder="key"
@@ -204,7 +264,7 @@
             />
 
             <button
-              class="attributes-panel-item__new-child-button"
+              class="attributes-panel-item__new-child-button items-center"
               @click="addChildHandler"
             >
               <Icon name="plus" size="none" />
@@ -215,7 +275,7 @@
           <div
             v-if="isMap && isMapKeyError"
             :style="{ marginLeft: indentPx }"
-            class="attributes-panel-item__map-key-error"
+            class="pl-8 pb-2xs italic text-destructive-500"
           >
             You must enter a valid key.
           </div>
@@ -227,7 +287,12 @@
     <div
       v-else
       :style="{ paddingLeft: indentPx }"
-      class="attributes-panel-item__item-inner"
+      :class="
+        clsx(
+          'attributes-panel-item__item-inner',
+          'relative flex flex-row items-center w-full pr-xs',
+        )
+      "
     >
       <div class="attributes-panel-item__item-label">
         <Icon
@@ -241,7 +306,7 @@
 
         <Icon
           v-if="isChildOfMap || isChildOfArray"
-          class="attributes-panel-item__nested-arrow-icon"
+          class="attributes-panel-item__nested-arrow-icon w-[14px] h-[14px]"
           name="nested-arrow-right"
           size="none"
         />
@@ -251,45 +316,46 @@
         >
           <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
           <template v-else-if="isChildOfArray">
-            [{{ props.attributeDef.arrayIndex }}]
+            [{{ props.treeDef.arrayIndex }}]
           </template>
           <template v-else>{{ propLabel }}</template>
         </div>
-
-        <!-- TODO - enable tooltip help info -->
-        <!-- <Icon
-          v-if="propName === 'region'"
-          v-tooltip="'Some help info'"
-          name="question-circle"
-          class="attributes-panel-item__help-icon"
-        /> -->
-
-        <div class="attributes-panel-item__static-icons">
+        <div
+          class="flex flex-row gap-2xs mr-2xs flex-none ml-auto items-center [&>*]:cursor-pointer"
+        >
           <button
             v-if="isChildOfMap || isChildOfArray"
             v-tooltip="'Delete'"
-            class="attributes-panel-item__delete-child-button hover:scale-125"
+            class="hover:text-destructive-500 hover:scale-125 z-30 flex-none"
             @click="removeChildHandler"
           >
             <Icon name="trash" size="xs" />
           </button>
 
           <SourceIconWithTooltip
-            v-if="!(widgetKind === 'secret')"
+            v-if="!(widgetKind === 'secret') && attributesPanel"
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltip"
           />
 
           <a
-            v-if="fullPropDef.docLink"
+            v-if="docLink"
             v-tooltip="'View Documentation'"
-            :href="fullPropDef.docLink"
+            :href="docLink"
             class="attributes-panel-item__docs-icon hover:scale-125"
             target="_blank"
             title="show docs"
           >
-            <Icon class="attributes-panel-item__help-icon" name="docs" />
+            <Icon
+              :class="
+                clsx(
+                  'attributes-panel-item__help-icon',
+                  'text-neutral-400 p-[3px] cursor-pointer hover:text-shade-0',
+                )
+              "
+              name="docs"
+            />
           </a>
         </div>
       </div>
@@ -316,7 +382,11 @@
           v-if="unsetButtonShow"
           :class="
             clsx(
-              'attributes-panel-item__unset-button peer',
+              'absolute top-0 w-[28px] h-[28px] p-[3px] opacity-50 hover:opacity-100 cursor-pointer z-[2]',
+              !canHaveChildren && (isHover || isFocus) ? 'block' : 'hidden',
+              widgetKind === 'select' || widgetKind === 'comboBox'
+                ? 'right-5'
+                : 'right-0',
               `widget-${widgetKind}`,
             )
           "
@@ -327,7 +397,7 @@
           v-if="validation"
           :class="
             clsx(
-              'absolute top-[2px]',
+              'absolute top-3xs',
               unsetButtonShow ? 'group-hover/input:right-6 ' : '',
               ['comboBox', 'select'].includes(widgetKind)
                 ? 'right-6'
@@ -416,10 +486,17 @@
               (e) => (newValueBoolean = (e.target as HTMLInputElement)?.checked)
             "
           />
-          <div class="attributes-panel-item__input-value-checkbox">
+          <div
+            :class="
+              clsx(
+                'attributes-panel-item__input-value-checkbox',
+                'flex flex-row px-xs py-[5px] items-center',
+              )
+            "
+          >
             <Icon
               :name="newValueBoolean === true ? 'check-square' : 'empty-square'"
-              class="attributes-panel-item__checkbox-icon"
+              class="inline-block w-[22px] h-[22px] ml-[-4px] mr-2xs my-[-4px] p-0"
             />
             {{ newValueBoolean ? "TRUE" : "FALSE" }}
           </div>
@@ -448,25 +525,25 @@
           />
         </template>
         <template v-else-if="widgetKind === 'secret'">
-          <div
-            class="attributes-panel-item__secret-value-wrap"
-            @click="secretModalRef?.open()"
-          >
+          <div class="p-2xs" @click="secretModalRef?.open()">
             <div
               v-if="secret"
               :class="
                 clsx(
-                  'attributes-panel-item__secret-value line-clamp-6',
+                  'line-clamp-6 px-[10px] py-3xs rounded leading-[18px] text-xs cursor-pointer',
                   secret.isUsable
                     ? themeClasses('bg-action-200', 'bg-action-700')
                     : themeClasses('bg-destructive-400', 'bg-destructive-600'),
                 )
               "
             >
-              <Icon name="key" size="xs" />
+              <Icon name="key" size="2xs" class="inline-block align-middle" />
               {{ secret.definition }} / {{ secret.name }}
             </div>
-            <div v-else class="attributes-panel-item__secret-value-empty">
+            <div
+              v-else
+              class="opacity-60 italic pl-6 cursor-pointer hover:opacity-100"
+            >
               select/add secret
             </div>
           </div>
@@ -482,7 +559,7 @@
           <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
         <div
-          v-if="!propIsEditable"
+          v-if="!propIsEditable && attributesPanel"
           v-tooltip="sourceTooltip"
           :class="
             clsx(
@@ -494,6 +571,8 @@
           @click="openConfirmEditModal"
         />
       </div>
+
+      <DetailsPanelMenuIcon v-if="!attributesPanel" class="ml-xs" />
     </div>
 
     <!-- VALIDATION DETAILS -->
@@ -501,7 +580,7 @@
       v-if="showValidationDetails && validation"
       :class="
         clsx(
-          'attributes-panel-item__validation-details flex flex-col p-2xs border mx-xs text-xs translate-y-[-5px]',
+          'attributes-panel-item__validation-details flex flex-col p-2xs border mx-xs text-xs translate-y-[-5px] font-mono',
           'text-destructive-500 border-destructive-500',
           themeClasses('bg-destructive-100', 'bg-neutral-900'),
         )
@@ -528,15 +607,39 @@
       size="4xl"
       @close="updateValue"
     >
-      <div class="attributes-panel-item__edit-value-modal-code-wrap">
+      <div
+        :class="
+          clsx(
+            'relative h-[40vh]',
+            '[&_.ͼ1.cm-editor.cm-focused]:outline-none [&_.ͼ1.cm-editor]:border',
+            themeClasses(
+              '[&_.ͼ1.cm-editor]:border-neutral-400 [&_.ͼ1.cm-editor.cm-focused]:border-action-500',
+              '[&_.ͼ1.cm-editor]:border-neutral-600 [&_.ͼ1.cm-editor.cm-focused]:border-action-300',
+            ),
+            themeClasses('bg-shade-0', 'bg-shade-100'),
+          )
+        "
+      >
         <template v-if="widgetKind === 'textArea'">
-          <textarea v-model="newValueString" spellcheck="false" />
+          <textarea
+            v-model="newValueString"
+            :class="
+              clsx(
+                'border bg-transparent w-full h-full overflow-auto absolute text-sm leading-5 font-mono resize-none block',
+                themeClasses(
+                  'border-neutral-400 focus:border-action-500',
+                  'border-neutral-600 focus:border-action-300',
+                ),
+              )
+            "
+            spellcheck="false"
+          />
         </template>
         <template v-else-if="widgetKind === 'codeEditor'">
           <CodeEditor
-            :id="`${changeSetsStore.selectedChangeSetId}/${attributeDef.valueId}`"
+            :id="`${changeSetsStore.selectedChangeSetId}/${treeDef.valueId}`"
             v-model="newValueString"
-            :recordId="attributeDef.valueId"
+            :recordId="treeDef.valueId"
           />
         </template>
       </div>
@@ -559,14 +662,26 @@
             : "it is being driven by a socket."
         }}
       </div>
-      <div class="attributes-panel-item__view-value-modal-code-wrap">
+      <div
+        :class="
+          clsx(
+            'relative border max-h-[70vh]',
+            widgetKind === 'textArea' ? 'overflow-auto' : 'overflow-hidden',
+            themeClasses('border-neutral-400', 'border-neutral-600'),
+          )
+        "
+      >
         <template v-if="widgetKind === 'textArea'">
-          <pre class="attributes-panel-item__edit-value-modal__view-text"
+          <pre class="font-mono block overflow-auto p-xs"
             >{{ newValueString }}
           </pre>
         </template>
         <template v-else-if="widgetKind === 'codeEditor'">
-          <CodeViewer :code="newValueString" />
+          <CodeViewer
+            :code="newValueString"
+            disableScroll
+            class="max-h-[70vh]"
+          />
         </template>
       </div>
     </Modal>
@@ -648,22 +763,53 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
-import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
-import { useAttributesPanelContext } from "./AttributesPanel.vue";
+import {
+  PropertyEditorProp,
+  PropertyEditorPropKind,
+  PropertyEditorPropWidgetKind,
+  PropertyEditorValue,
+  ValidationOutput,
+} from "@/api/sdf/dal/property_editor";
+import TreeFormItem from "./TreeFormItem.vue"; // eslint-disable-line import/no-self-import
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
+import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
+
+export type TreeFormProp = {
+  name: string;
+  icon: IconNames;
+  kind: PropertyEditorPropKind;
+  widgetKind: PropertyEditorPropWidgetKind;
+  isHidden: boolean;
+  isReadonly: boolean;
+};
+
+export type TreeFormData = {
+  propDef: TreeFormProp;
+  children: TreeFormData[];
+  value: PropertyEditorValue | undefined;
+  valueId: string;
+  parentValueId: string;
+  validation: ValidationOutput | null;
+  propId: string;
+  mapKey?: string;
+  arrayKey?: string;
+  arrayIndex?: number;
+};
 
 const props = defineProps({
-  parentPath: { type: String },
-  attributeDef: { type: Object as PropType<AttributeTreeItem>, required: true },
+  treeDef: {
+    type: Object as PropType<AttributeTreeItem | TreeFormData>,
+    required: true,
+  },
   level: { type: Number, default: 0 },
-  isArrayItem: Boolean,
-  startCollapsed: { type: Boolean },
-  // number of prop keys to show while collapsed
-  numPreviewProps: { type: Number, default: 3 },
   isRootProp: { type: Boolean, default: false },
+  context: { type: Function, required: true },
+
+  // Only set this boolean to true if this TreeFormItem is part of AttributesPanel
+  attributesPanel: { type: Boolean },
 });
 
 const headerMainLabelRef = ref();
@@ -682,7 +828,7 @@ const headerMainLabelTooltip = computed(() => {
 const isOpen = ref(true); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
 
-const shouldBeHidden = (item: AttributeTreeItem) => {
+const shouldBeHidden = (item: AttributeTreeItem | TreeFormData) => {
   if (!item.value?.isControlledByAncestor) return false;
 
   const canHaveChildren = ["object", "map", "array"].includes(
@@ -708,7 +854,7 @@ const shouldBeHidden = (item: AttributeTreeItem) => {
   return true;
 };
 
-const isHidden = computed(() => shouldBeHidden(props.attributeDef));
+const isHidden = computed(() => shouldBeHidden(props.treeDef));
 
 const unsetButtonShow = computed(
   () =>
@@ -720,7 +866,7 @@ const unsetButtonShow = computed(
 
 const numberOfHiddenChildren = computed(() => {
   let count = 0;
-  props.attributeDef.children.forEach((child) => {
+  props.treeDef.children.forEach((child) => {
     if (shouldBeHidden(child)) count++;
   });
   return count;
@@ -728,12 +874,12 @@ const numberOfHiddenChildren = computed(() => {
 
 const headerHasContent = computed(() => {
   return (
-    props.attributeDef.children.length ||
+    props.treeDef.children.length ||
     ((isArray.value || isMap.value) && propManual.value)
   );
 });
 
-const rootCtx = useAttributesPanelContext();
+const rootCtx = props.context();
 
 // not reactive - and we know it's populated - since the parent will rerender if it changes
 const componentsStore = useComponentsStore();
@@ -741,15 +887,10 @@ const componentsStore = useComponentsStore();
 const componentId = componentsStore.selectedComponentId!;
 
 const changeSetsStore = useChangeSetsStore();
-
 const attributesStore = useComponentAttributesStore(componentId);
+const secretsStore = useSecretsStore();
 
-// const path = computed(() => {
-//   if (!props.parentPath) return props.prop?.toString() || "";
-//   return `${props.parentPath}.${props.prop}`;
-// });
-
-const fullPropDef = computed(() => props.attributeDef.propDef);
+const fullPropDef = computed(() => props.treeDef.propDef);
 const propKind = computed(() => fullPropDef.value.kind);
 const widgetKind = computed(() => fullPropDef.value.widgetKind.kind);
 const widgetOptions = computed(
@@ -759,9 +900,8 @@ const widgetOptions = computed(
 const propName = computed(() => fullPropDef.value.name);
 const propLabelParts = computed(() => {
   if (isChildOfArray.value)
-    return [`${propName.value}[${props.attributeDef.arrayIndex}]`];
-  if (isChildOfMap.value)
-    return [`${propName.value}.`, props.attributeDef.mapKey];
+    return [`${propName.value}[${props.treeDef.arrayIndex}]`];
+  if (isChildOfMap.value) return [`${propName.value}.`, props.treeDef.mapKey];
   return ["", propName.value];
 });
 const propLabel = computed(() => propLabelParts.value.join(""));
@@ -772,10 +912,8 @@ const isMapKeyError = ref(false);
 const clearKeyError = () => {
   isMapKeyError.value = false;
 };
-const isChildOfArray = computed(
-  () => props.attributeDef.arrayIndex !== undefined,
-);
-const isChildOfMap = computed(() => props.attributeDef.mapKey !== undefined);
+const isChildOfArray = computed(() => props.treeDef.arrayIndex !== undefined);
+const isChildOfMap = computed(() => props.treeDef.mapKey !== undefined);
 
 const canHaveChildren = computed(() => {
   return ["object", "map", "array"].includes(propKind.value);
@@ -798,12 +936,22 @@ const WIDGET_ICON_LOOKUP: Record<string, IconNames> = {
 };
 
 const icon = computed((): IconNames => {
+  if (!props.attributesPanel) {
+    return (props.treeDef.propDef as TreeFormProp).icon;
+  }
+
   if (propKind.value === "array") return "brackets-square";
   if (propKind.value === "map") return "brackets-curly";
   if (propKind.value === "object") return "bullet-list";
   if (propKind.value === "integer") return "input-type-number";
   return WIDGET_ICON_LOOKUP[widgetKind.value] || "question-circle";
 });
+
+const docLink = computed(() =>
+  props.attributesPanel
+    ? (props.treeDef as AttributeTreeItem).propDef.docLink
+    : undefined,
+);
 
 const HEADER_HEIGHT = 24;
 const INDENT_SIZE = 8;
@@ -820,7 +968,7 @@ const headerZIndex = computed(() => 300 - props.level);
 
 const newMapChildKey = ref("");
 
-const currentValue = computed(() => props.attributeDef.value?.value);
+const currentValue = computed(() => props.treeDef.value?.value);
 
 const clipIcon = ref<IconNames>("clipboard-copy");
 const copyToClipboard = () => {
@@ -859,14 +1007,12 @@ const iconShouldBeHidden = computed(
 );
 
 const propPopulatedBySocket = computed(
-  () => props.attributeDef.value?.isFromExternalSource,
+  () => props.treeDef.value?.isFromExternalSource,
 );
-const propHasSocket = computed(
-  () => props.attributeDef.value?.canBeSetBySocket,
-);
+const propHasSocket = computed(() => props.treeDef.value?.canBeSetBySocket);
 const propSetByDynamicFunc = computed(
   () =>
-    props.attributeDef.value?.isControlledByDynamicFunc &&
+    props.treeDef.value?.isControlledByDynamicFunc &&
     !propHasSocket.value &&
     !propPopulatedBySocket.value,
 );
@@ -890,7 +1036,10 @@ const validAttributeValueSources = computed(() => {
 
   // TODO(victor): Get if default function is dynamic from the api to show NonSocketAttributeFunc option on the dropdown
 
-  if (props.attributeDef.propDef.defaultCanBeSetBySocket) {
+  if (
+    props.attributesPanel &&
+    (props.treeDef.propDef as PropertyEditorProp).defaultCanBeSetBySocket
+  ) {
     sources.push(AttributeValueSource.Socket);
   }
 
@@ -914,13 +1063,13 @@ const propSource = computed<AttributeValueSource>(() => {
 
 const setSource = (source: AttributeValueSource) => {
   if (source === AttributeValueSource.Manual) {
-    const value = props.attributeDef.value?.value ?? null;
+    const value = props.treeDef.value?.value ?? null;
 
     attributesStore.UPDATE_PROPERTY_VALUE({
       update: {
-        attributeValueId: props.attributeDef.valueId,
-        parentAttributeValueId: props.attributeDef.parentValueId,
-        propId: props.attributeDef.propId,
+        attributeValueId: props.treeDef.valueId,
+        parentAttributeValueId: props.treeDef.parentValueId,
+        propId: props.treeDef.propId,
         componentId,
         value,
         isForSecret: false,
@@ -928,7 +1077,7 @@ const setSource = (source: AttributeValueSource) => {
     });
   } else {
     attributesStore.RESET_PROPERTY_VALUE({
-      attributeValueId: props.attributeDef.valueId,
+      attributeValueId: props.treeDef.valueId,
     });
   }
 };
@@ -940,7 +1089,7 @@ const sourceIcon = computed(() => {
   else return "cursor";
 });
 
-const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
+const sourceOverridden = computed(() => props.treeDef.value?.overridden);
 
 const propIsEditable = computed(() => {
   if (isImmutableSecretProp.value) {
@@ -978,7 +1127,7 @@ const sourceTooltip = computed(() => {
 });
 
 const propControlledByParent = computed(
-  () => props.attributeDef.value?.isControlledByAncestor,
+  () => props.treeDef.value?.isControlledByAncestor,
 );
 
 function resetNewValueToCurrentValue() {
@@ -1006,12 +1155,16 @@ const newMapChildKeyIsValid = computed(() => {
 function removeChildHandler() {
   if (!isChildOfArray.value && !isChildOfMap.value) return;
 
-  attributesStore.REMOVE_PROPERTY_VALUE({
-    attributeValueId: props.attributeDef.valueId,
-    propId: props.attributeDef.propId,
-    componentId,
-    key: getKey(),
-  });
+  if (props.attributesPanel) {
+    attributesStore.REMOVE_PROPERTY_VALUE({
+      attributeValueId: props.treeDef.valueId,
+      propId: props.treeDef.propId,
+      componentId,
+      key: getKey(),
+    });
+  } else {
+    // TODO(Wendy) - make this functional for TreeForm when needed
+  }
 }
 
 const validation = computed(() => {
@@ -1023,13 +1176,13 @@ const validation = computed(() => {
     };
   }
 
-  return props.attributeDef?.validation;
+  return props.treeDef?.validation;
 });
 
 function getKey() {
-  if (isChildOfMap.value) return props.attributeDef?.mapKey;
+  if (isChildOfMap.value) return props.treeDef?.mapKey;
 
-  return props.attributeDef?.arrayKey;
+  return props.treeDef?.arrayKey;
 }
 
 function addChildHandler() {
@@ -1039,25 +1192,33 @@ function addChildHandler() {
     return;
   }
 
-  attributesStore.UPDATE_PROPERTY_VALUE({
-    insert: {
-      parentAttributeValueId: props.attributeDef.valueId,
-      propId: props.attributeDef.propId,
-      componentId,
-      ...(isAddingMapChild && {
-        key: newMapChildKey.value.trim(),
-      }),
-    },
-  });
-  newMapChildKey.value = "";
+  if (props.attributesPanel) {
+    attributesStore.UPDATE_PROPERTY_VALUE({
+      insert: {
+        parentAttributeValueId: props.treeDef.valueId,
+        propId: props.treeDef.propId,
+        componentId,
+        ...(isAddingMapChild && {
+          key: newMapChildKey.value.trim(),
+        }),
+      },
+    });
+    newMapChildKey.value = "";
+  } else {
+    // TODO(Wendy) - make this functional for TreeForm when needed
+  }
 }
 function unsetHandler() {
   newValueBoolean.value = false;
   newValueString.value = "";
 
-  attributesStore.RESET_PROPERTY_VALUE({
-    attributeValueId: props.attributeDef.valueId,
-  });
+  if (props.attributesPanel) {
+    attributesStore.RESET_PROPERTY_VALUE({
+      attributeValueId: props.treeDef.valueId,
+    });
+  } else {
+    // TODO(Wendy) - make this functional for TreeForm when needed
+  }
 }
 
 function updateValue() {
@@ -1097,16 +1258,20 @@ function updateValue() {
     isForSecret = true;
   }
 
-  attributesStore.UPDATE_PROPERTY_VALUE({
-    update: {
-      attributeValueId: props.attributeDef.valueId,
-      parentAttributeValueId: props.attributeDef.parentValueId,
-      propId: props.attributeDef.propId,
-      componentId,
-      value: newVal,
-      isForSecret,
-    },
-  });
+  if (props.attributesPanel) {
+    attributesStore.UPDATE_PROPERTY_VALUE({
+      update: {
+        attributeValueId: props.treeDef.valueId,
+        parentAttributeValueId: props.treeDef.parentValueId,
+        propId: props.treeDef.propId,
+        componentId,
+        value: newVal,
+        isForSecret,
+      },
+    });
+  } else {
+    // TODO(Wendy) - make this functional for TreeForm
+  }
 }
 
 const isHover = ref(false);
@@ -1129,31 +1294,34 @@ function onBlur() {
 }
 function onSectionHoverStart() {
   isHover.value = true;
-  rootCtx.hoverSectionValueId.value = props.attributeDef.valueId;
+  rootCtx.hoverSectionValueId.value = props.treeDef.valueId;
 }
 function onSectionHoverEnd() {
   isHover.value = false;
-  if (rootCtx.hoverSectionValueId.value === props.attributeDef.valueId) {
+  if (rootCtx.hoverSectionValueId.value === props.treeDef.valueId) {
     rootCtx.hoverSectionValueId.value = undefined;
   }
 }
 const isSectionHover = computed(
-  () => rootCtx.hoverSectionValueId.value === props.attributeDef.valueId,
+  () => rootCtx.hoverSectionValueId.value === props.treeDef.valueId,
 );
 
 const viewModalRef = ref<InstanceType<typeof Modal>>();
 const editModalRef = ref<InstanceType<typeof Modal>>();
 const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
-const secretsStore = useSecretsStore();
+
 const secret = computed(
   () => secretsStore.secretsById[newValueString.value?.toString() || ""],
 );
 const isImmutableSecretProp = computed(
-  () => !fullPropDef.value.isOriginSecret && widgetKind.value === "secret",
+  () =>
+    props.attributesPanel &&
+    !(fullPropDef.value as PropertyEditorProp).isOriginSecret &&
+    widgetKind.value === "secret",
 );
 const secretDefinitionIdForProp = computed(() => {
-  if (props.attributeDef.propDef.widgetKind.kind !== "secret") return;
-  const widgetOptions = props.attributeDef.propDef.widgetKind.options;
+  if (props.treeDef.propDef.widgetKind.kind !== "secret") return;
+  const widgetOptions = props.treeDef.propDef.widgetKind.options;
   // A widget of kind=secret has a single option that points to its secret definition
   const secretKind = _.find(
     widgetOptions,
@@ -1211,116 +1379,16 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 @header-height: 24px;
 @indent-size: 8px;
 
-.attributes-panel-item {
-  position: relative;
-  font-size: 14px;
-
-  body.light & {
-    --header-bg-color: @colors-neutral-500;
-    --header-text-color: @colors-white;
-    &.--section-hover {
-      --header-bg-color: @colors-neutral-900;
-      --header-text-color: @colors-white;
-    }
-  }
-  body.dark & {
-    --header-bg-color: @colors-neutral-600;
-    --header-text-color: @colors-white;
-    &.--section-hover {
-      --header-bg-color: @colors-neutral-300;
-      --header-text-color: @colors-black;
-    }
-  }
-}
-
-.attributes-panel-item__section-header-wrap {
-  position: sticky;
-  height: @header-height;
-}
-
-.attributes-panel-item__section-header {
-  height: inherit;
-  background: var(--header-bg-color);
-  color: var(--header-text-color);
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  align-items: center;
-  border-bottom: 1px solid var(--panel-bg-color);
-  user-select: none;
-  padding-right: 4px;
-}
-
-.attributes-panel-item__section-header-label-main {
-  flex-basis: 0px;
-  flex-grow: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attributes-panel-item__section-header-child-count {
-  font-style: italic;
-  margin-right: 4px;
-  font-size: 12px;
-  opacity: 0.5;
-  flex: none;
-}
-
 .attributes-panel-item__section-toggle {
-  background-color: var(--toggle-controls-bg-color);
-  position: absolute;
-  width: @header-height;
-  height: @header-height;
-  transition: all 0.2s;
-
-  body.light & {
-    color: @colors-neutral-700;
-  }
-  body.dark & {
-    color: @colors-white;
-  }
-
-  .icon {
-    opacity: 0.8;
-  }
-
-  &:hover .icon {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-
   .attributes-panel.--show-section-toggles & {
     opacity: 1;
   }
 }
 
-.attributes-panel-item__section-header-label {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  white-space: nowrap;
-  gap: 4px;
-  min-width: 0;
-}
-
-.attributes-panel-item__nested-arrow-icon {
-  width: 14px;
-  height: 14px;
-}
 .attributes-panel-item__type-icon {
   height: 100%;
   padding: 2px;
   position: relative;
-}
-
-.attributes-panel-item__left-border {
-  background: var(--header-bg-color);
-  position: absolute;
-  width: 1px;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
 }
 
 .attributes-panel-item__hidden-input {
@@ -1335,22 +1403,7 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   display: block;
   cursor: pointer;
 }
-.attributes-panel-item__checkbox-icon {
-  display: inline-block;
-  width: 22px;
-  height: 22px;
-  margin: -4px 0;
-  margin-left: -4px;
-  margin-right: 4px;
-  padding: 0;
-}
 
-.attributes-panel-item__item-inner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
 .attributes-panel-item__item-label,
 .attributes-panel-item__add-child-row {
   display: flex;
@@ -1373,15 +1426,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   }
 }
 
-.attributes-panel-item__help-icon {
-  color: @colors-neutral-400;
-  padding: 3px;
-  cursor: pointer;
-  &:hover {
-    color: white;
-  }
-}
-
 .force-border-destructive-500 {
   border-color: @colors-destructive-500 !important;
 }
@@ -1392,7 +1436,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   width: 45%;
   flex-shrink: 0;
   background: var(--input-bg-color);
-  margin-right: 8px;
   font-family: monospace;
   font-size: 13px;
   line-height: 18px;
@@ -1444,11 +1487,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
     z-index: 2;
     pointer-events: none;
   }
-}
-.attributes-panel-item__input-value-checkbox {
-  padding: 5px 8px;
-  display: flex;
-  align-items: center;
 }
 
 .attributes-panel-item__input-value-select {
@@ -1585,30 +1623,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
     margin-left: -2px;
   }
 }
-.attributes-panel-item__new-child-key-input {
-  @apply focus:ring-0 focus:ring-offset-0;
-  border: 1px solid var(--input-border-color);
-  background: var(--input-bg-color);
-  padding: 4px;
-  height: 28px;
-  font-size: inherit;
-  flex-shrink: 1;
-  min-width: 80px;
-  width: 150px;
-
-  &:focus {
-    border-color: var(--input-focus-border-color);
-    background: var(--input-focus-bg-color);
-  }
-}
-
-.attributes-panel-item__new-child-key-input__error {
-  border-color: #ef4444;
-
-  &:focus {
-    border-color: #ef4444;
-  }
-}
 
 .attributes-panel-item.--input .attributes-panel-item__type-icon {
   opacity: 0.5;
@@ -1621,15 +1635,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 .attributes-panel-item.--focus {
   .attributes-panel-item__input-wrap {
     border-color: var(--input-focus-border-color);
-  }
-}
-
-.attributes-panel-item__delete-child-button {
-  z-index: 30;
-  flex: none;
-  &:hover {
-    color: @colors-destructive-500;
-    opacity: 1;
   }
 }
 
@@ -1649,124 +1654,5 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 .attributes-panel-item.--input + .attributes-panel-item.--section,
 .attributes-panel-item.--section.--open + .attributes-panel-item.--section {
   margin-top: 8px;
-}
-
-.attributes-panel-item__unset-button {
-  position: absolute;
-  right: 0px;
-  top: 0px;
-  width: 28px;
-  height: 28px;
-  padding: 3px;
-  opacity: 0.5;
-  cursor: pointer;
-  display: none;
-  z-index: 2;
-  &:hover {
-    opacity: 1;
-  }
-
-  .attributes-panel-item.--input.--hover &,
-  .attributes-panel-item.--input.--focus & {
-    display: block;
-  }
-}
-
-.attributes-panel-item__unset-button.widget-select,
-.attributes-panel-item__unset-button.widget-comboBox {
-  right: 20px;
-}
-
-// SECRETS
-.attributes-panel-item__secret-value-wrap {
-  padding: 4px;
-}
-.attributes-panel-item__secret-value {
-  padding: 2px 10px;
-  border-radius: 4px;
-  line-height: 18px;
-  font-size: 13px;
-  cursor: pointer;
-
-  .icon {
-    height: 12px;
-    width: 12px;
-    display: inline-block;
-    vertical-align: middle;
-  }
-}
-.attributes-panel-item__secret-value-empty {
-  opacity: 0.6;
-  font-style: italic;
-  padding-left: 24px;
-  cursor: pointer;
-  // text-align: center;
-  &:hover {
-    opacity: 1;
-  }
-}
-
-.attributes-panel-item__edit-value-modal,
-.attributes-panel-item__view-value-modal {
-  textarea {
-    @apply focus:ring-0 focus:ring-offset-0;
-    border: none;
-  }
-
-  .attributes-panel-item__edit-value-modal__view-text {
-    padding: 0.5rem;
-    border: 1px solid var(--input-border-color);
-  }
-
-  textarea,
-  .attributes-panel-item__edit-value-modal__view-text {
-    background: transparent;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    position: absolute;
-    font-size: 14px;
-    line-height: 20px;
-    font-family: monospace;
-    resize: none;
-    display: block;
-  }
-}
-.attributes-panel-item__edit-value-modal-code-wrap,
-.attributes-panel-item__view-value-modal-code-wrap {
-  height: 40vh;
-  position: relative;
-  background: var(--input-focus-bg-color);
-}
-.attributes-panel-item__edit-value-modal-code-wrap {
-  border: 1px solid var(--input-focus-border-color);
-}
-.attributes-panel-item__view-value-modal-code-wrap {
-  border: 1px solid var(--input-border-color);
-}
-
-.attributes-panel-item__map-key-error {
-  padding-left: 2rem;
-  padding-bottom: 0.5rem;
-  font-style: italic;
-  color: @colors-destructive-500;
-}
-
-.attributes-panel-item__static-icons {
-  display: flex;
-  flex-direction: row;
-  margin-left: auto;
-  align-items: center;
-  flex: none;
-  gap: 0.25rem;
-  margin-right: 0.25rem;
-}
-
-.attributes-panel-item__static-icons > * {
-  cursor: pointer;
-}
-
-.attributes-panel-item__validation-details {
-  font-family: monospace;
 }
 </style>

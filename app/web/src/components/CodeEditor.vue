@@ -20,6 +20,7 @@
           @click="format"
         />
         <VButton
+          v-tooltip="vimEnabled ? 'Disable Vim Mode' : 'Enable Vim Mode'"
           :tone="vimEnabled ? 'success' : 'neutral'"
           icon="logo-vim"
           size="xs"

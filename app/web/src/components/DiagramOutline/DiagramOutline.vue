@@ -4,7 +4,8 @@
       <template #top>
         <SidebarSubpanelTitle
           icon="bullet-list-indented"
-          :iconPressed="leftDrawerOpen"
+          :iconIsButton="featureFlagsStore.OUTLINER_VIEWS"
+          :selected="leftDrawerOpen"
           @click="toggleDrawer"
         >
           <template #label>
@@ -133,6 +134,7 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import DiagramOutlineNode from "./DiagramOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 import {
@@ -159,6 +161,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+const featureFlagsStore = useFeatureFlagsStore();
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();

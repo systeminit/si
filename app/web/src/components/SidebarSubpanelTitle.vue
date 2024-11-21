@@ -2,17 +2,28 @@
   <div
     :class="
       clsx(
-        'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs cursor-pointer',
-        !selectable && 'select-none',
+        'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs h-[33px] select-none',
+        iconIsButton && 'cursor-pointer',
         variant === 'title'
           ? 'dark:border-neutral-500'
           : 'border-neutral-200 dark:border-neutral-600',
       )
     "
+    @click="emit('click')"
+    @mouseleave="onEndHover"
+    @mouseover="onHover"
   >
     <div class="flex-none empty:hidden">
       <slot name="icon">
-        <Icon v-if="icon" :name="icon" :pressed="iconPressed" />
+        <IconButton
+          v-if="icon && iconIsButton"
+          :icon="icon"
+          iconIdleTone="neutral"
+          :hovered="hover"
+          :selected="selected"
+          @click="emit('click')"
+        />
+        <Icon v-else-if="icon" :name="icon" />
       </slot>
     </div>
 
@@ -37,22 +48,34 @@
 <script setup lang="ts">
 import {
   Icon,
+  IconButton,
   IconNames,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { PropType } from "vue";
+import { PropType, ref } from "vue";
 
 export type SidebarSubpanelTitleVariant = "title" | "subtitle";
 
 const props = defineProps({
   label: { type: String },
   icon: { type: String as PropType<IconNames> },
-  iconPressed: { type: Boolean, default: false },
+  iconIsButton: { type: Boolean },
+  selected: { type: Boolean },
   variant: {
     type: String as PropType<SidebarSubpanelTitleVariant>,
     default: "title",
   },
-  selectable: { type: Boolean },
 });
+
+const emit = defineEmits(["click"]);
+
+const hover = ref(false);
+
+const onHover = () => {
+  hover.value = true;
+};
+const onEndHover = () => {
+  hover.value = false;
+};
 </script>

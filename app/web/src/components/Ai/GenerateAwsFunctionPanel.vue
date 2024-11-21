@@ -24,7 +24,7 @@
     />
     <VButton
       v-tooltip="'Generate Schema From AWS Command'"
-      class="mb-[2px]"
+      class="mb-3xs"
       :loading="generating"
       loadingIcon="sparkles"
       loadingText="Generating ..."

@@ -182,7 +182,7 @@ const userTooltips = computed(() => {
   displayUsers.value.forEach((user) => {
     tooltips.push({
       content: `<div class='flex flex-col items-center max-w-lg'>
-        <div class='text-center font-bold w-full break-words line-clamp-3 pb-[2px] px-sm min-w-0'>${
+        <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${
           user.name
         }</div>
         <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${

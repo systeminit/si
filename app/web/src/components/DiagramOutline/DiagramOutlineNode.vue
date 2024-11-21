@@ -10,7 +10,7 @@
     <div
       :class="
         clsx(
-          'relative border-b border-l-[2px] group',
+          'relative border-b border-l-2 group',
           themeClasses('border-neutral-200', 'border-neutral-700'),
           inView && 'cursor-pointer',
           inView &&

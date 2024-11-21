@@ -103,6 +103,13 @@
               <TabGroupItem label="Attributes" slug="attributes">
                 <AttributesPanel />
               </TabGroupItem>
+              <TabGroupItem
+                v-if="featureFlagsStore.OUTLINER_VIEWS"
+                label="Connections"
+                slug="connections"
+              >
+                <ComponentConnectionsPanel />
+              </TabGroupItem>
               <TabGroupItem label="Code" slug="code">
                 <ComponentDetailsCode />
               </TabGroupItem>
@@ -157,7 +164,7 @@
           </TabGroupItem>
           <TabGroupItem
             v-if="
-              ffStore.MANAGEMENT_FUNCTIONS &&
+              featureFlagsStore.MANAGEMENT_FUNCTIONS &&
               funcStore.managementFunctionsForSelectedComponent.length > 0
             "
             slug="management"
@@ -207,6 +214,7 @@ import {
   DiagramGroupData,
   DiagramNodeData,
 } from "./ModelingDiagram/diagram_types";
+import ComponentConnectionsPanel from "./ComponentConnectionsPanel.vue";
 
 const props = defineProps<{
   menuSelected: boolean;
@@ -224,7 +232,7 @@ const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
 
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 

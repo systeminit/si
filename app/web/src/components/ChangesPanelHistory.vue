@@ -50,7 +50,15 @@
       primaryIconClasses=""
       label="Management Functions"
     >
-      <div ref="managementDivRef" class="w-full h-full">
+      <div
+        ref="managementDivRef"
+        :class="
+          clsx(
+            'w-full h-full',
+            managementHistoryForChangeSet.length === 0 && 'py-2xs',
+          )
+        "
+      >
         <ManagementHistoryList
           v-if="managementHistoryForChangeSet.length > 0"
           :managementHistory="managementHistoryForChangeSet"
@@ -99,6 +107,7 @@
 <script lang="ts" setup>
 import { TreeNode } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
+import clsx from "clsx";
 import {
   ActionHistoryView,
   ActionProposedView,

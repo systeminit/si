@@ -1,46 +1,44 @@
 <template>
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
-      <div
-        class="flex flex-row gap-sm align-middle items-start justify-between"
-      >
-        <div
-          ref="workspaceNameRef"
-          v-tooltip="workspaceNameTooltip"
-          class="text-lg font-bold line-clamp-3 break-words"
-        >
-          {{
-            draftWorkspace.displayName ||
-            (createMode ? "Create New Workspace" : "Workspace Details")
-          }}
-        </div>
-        <div class="flex flex-col items-end relative">
-          <RouterLink
-            :to="{
-              name: 'workspaces',
-            }"
-          >
-            <VButton label="Return To Workspaces" tone="neutral" />
-          </RouterLink>
+      <div class="flex flex-row gap-sm items-center mb-md">
+        <div class="flex flex-col gap-2xs grow">
           <div
-            class="absolute -bottom-10 left-0 right-0 flex justify-center cursor-not-allowed opacity-50"
-            @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
+            ref="workspaceNameRef"
+            v-tooltip="workspaceNameTooltip"
+            class="text-lg font-bold line-clamp-3 break-words"
           >
-            <Icon
-              :name="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
-              size="xl"
-            />
+            {{
+              draftWorkspace.displayName ||
+              (createMode ? "Create New Workspace" : "Workspace Details")
+            }}
+          </div>
+          <div>
+            {{
+              createMode
+                ? "Fill out this form to create a new workspace."
+                : "From here you can manage this workspace and invite users to be part of it."
+            }}
           </div>
         </div>
-      </div>
-      <div class="mt-sm pb-md">
-        <div>
-          {{
-            createMode
-              ? "Fill out this form to create a new workspace."
-              : "From here you can manage this workspace and invite users to be part of it."
-          }}
-        </div>
+        <IconButton
+          :tooltip="draftWorkspace.isFavourite ? 'Remove Star' : 'Add Star'"
+          tooltipPlacement="top"
+          :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
+          size="lg"
+          class="flex-none"
+          iconTone="warning"
+          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
+          iconBgActiveTone="action"
+          @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
+        />
+        <RouterLink
+          :to="{
+            name: 'workspaces',
+          }"
+        >
+          <VButton label="Return To Workspaces" tone="neutral" />
+        </RouterLink>
       </div>
 
       <Stack>
@@ -209,6 +207,7 @@ import {
   ErrorMessage,
   VButton,
   useValidatedInputGroup,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";

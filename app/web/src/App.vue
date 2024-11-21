@@ -169,7 +169,6 @@ body.light {
   --input-bg-color: @colors-neutral-100;
   --input-focus-bg-color: @colors-white;
   --input-focus-border-color: @colors-action-400;
-  --panel-bg-color: @colors-white;
   --toast-text-color: @colors-black;
   --toast-bg-color: @colors-white;
 }
@@ -178,7 +177,6 @@ body.dark {
   --input-bg-color: @colors-neutral-900;
   --input-focus-bg-color: @colors-black;
   --input-focus-border-color: @colors-action-300;
-  --panel-bg-color: @colors-neutral-800;
   --toast-text-color: @colors-white;
   --toast-bg-color: @colors-black;
 }

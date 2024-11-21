@@ -1,11 +1,6 @@
 <template>
   <TabGroupItem :label="label" :slug="slug">
-    <CodeViewer
-      v-if="data"
-      class="pl-[2px] h-full"
-      height="100%"
-      :code="data"
-    />
+    <CodeViewer v-if="data" class="pl-3xs h-full" height="100%" :code="data" />
     <EmptyStateCard
       v-else
       iconName="no-changes"

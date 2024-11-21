@@ -5,7 +5,7 @@
     ref="leftResizablePanelRef"
     rememberSizeKey="func-picker"
     side="left"
-    :minSize="300"
+    :minSize="320"
   >
     <div class="flex flex-col h-full">
       <div class="relative flex-grow">

@@ -22,8 +22,6 @@
         computedRotate && `--rotate-${computedRotate}`,
         AUTO_SPIN_ICONS_CLOCKWISE.includes(name) && '--spin',
         AUTO_SPIN_ICONS_COUNTER_CLOCKWISE.includes(name) && '--spin-cc',
-        pressed && 'bg-action-500 shadow-inner',
-        pressed && themeClasses('text-black', 'text-white'),
       )
     "
     v-html="iconSvgRaw"
@@ -36,7 +34,6 @@ import { computed, PropType } from "vue";
 import clsx from "clsx";
 import { getToneTextColorClass, Tones } from "../utils/color_utils";
 import { getIconByName, IconNames } from "./icon_set";
-import { themeClasses } from "../utils/theme_tools";
 
 export type IconSizes =
   | "2xs"
@@ -57,10 +54,6 @@ const props = defineProps({
   },
   tone: {
     type: String as PropType<Tones>,
-  },
-  pressed: {
-    type: Boolean,
-    default: false,
   },
 });
 

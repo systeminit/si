@@ -65,7 +65,7 @@
               <div
                 :class="
                   clsx(
-                    'border-t border-gray-200 dark:border-gray-900 flex flex-col place-content-center text-sm',
+                    'border-t border-neutral-200 dark:border-shade-100 flex flex-col place-content-center text-sm',
                     !noInnerPadding && 'p-sm',
                   )
                 "
@@ -74,13 +74,14 @@
 
                 <div
                   v-if="type === 'save' && !noWrapper"
-                  class="py-3 flex justify-between"
+                  class="py-3 flex flex-row justify-between gap-sm"
                 >
                   <VButton
                     tone="destructive"
                     buttonRank="tertiary"
                     icon="trash"
                     label="Cancel"
+                    variant="ghost"
                     size="xs"
                     @click="close"
                   />
@@ -90,6 +91,7 @@
                     icon="check"
                     :label="saveLabel"
                     size="xs"
+                    class="grow"
                     @click="emit('save')"
                   />
                 </div>
