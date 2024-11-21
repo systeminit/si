@@ -9,7 +9,7 @@ use si_data_nats::Subject;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{app_state::AppState, app_state::NoopAppState};
+use super::app_state::{AppState, NoopAppState};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

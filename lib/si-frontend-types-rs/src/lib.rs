@@ -7,7 +7,7 @@ mod module;
 mod schema_variant;
 mod workspace;
 
-pub use crate::audit_log::{AuditLog, AuditLogDeserializedMetadata};
+pub use crate::audit_log::AuditLog;
 pub use crate::change_set::ChangeSet;
 pub use crate::component::{
     ChangeStatus, ConnectionAnnotation, DiagramComponentView, DiagramSocket,

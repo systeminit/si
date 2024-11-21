@@ -17,9 +17,9 @@ use si_data_nats::async_nats::jetstream::context::RequestErrorKind;
 use si_data_nats::async_nats::jetstream::stream::ConsumerErrorKind;
 use si_events::audit_log::AuditLog;
 use si_events::audit_log::AuditLogKind;
+use si_events::audit_log::AuditLogMetadata;
 use si_events::Actor;
 use si_frontend_types::AuditLog as FrontendAuditLog;
-use si_frontend_types::AuditLogDeserializedMetadata as FrontendAuditLogDeserializedMetadata;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
@@ -383,8 +383,7 @@ impl FrontendAuditLogAssembler {
                 // If we are working on HEAD, we show all audit logs without a change set, all
                 // audit logs on HEAD, and all audit logs for abandoned or applied change sets.
                 //
-                // If we are not working on HEAD, we only show audit logs for our own change set as
-                // well as certain audit logs that are relevant on HEAD, like "CreateChangeSet".
+                // If we are not working on HEAD, we only show audit logs for our own change set.
                 if self.working_on_head {
                     if let Some((change_set_id, _, change_set_status)) = change_set_metadata {
                         if change_set_id != self.change_set_id {
@@ -418,8 +417,9 @@ impl FrontendAuditLogAssembler {
                     self.find_user_metadata(ctx, inner.actor).await?;
 
                 let kind = inner.kind.to_string();
-                let deserialized_metadata = FrontendAuditLogDeserializedMetadata::from(inner.kind);
-                let (title, entity_type) = deserialized_metadata.title_and_entity_type();
+                let metadata = AuditLogMetadata::from(inner.kind);
+                let (title, entity_type) = metadata.title_and_entity_type();
+                let entity_type = entity_type.unwrap_or(" ");
                 let (change_set_id, change_set_name) = match change_set_metadata {
                     Some((change_set_id, change_set_name, _)) => {
                         (Some(change_set_id), Some(change_set_name))
@@ -438,7 +438,7 @@ impl FrontendAuditLogAssembler {
                     timestamp: inner.timestamp,
                     change_set_id,
                     change_set_name,
-                    metadata: serde_json::to_value(deserialized_metadata)?,
+                    metadata: serde_json::to_value(metadata)?,
                 }))
             }
         }

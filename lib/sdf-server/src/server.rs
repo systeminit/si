@@ -1,7 +1,7 @@
 use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use asset_sprayer::AssetSprayer;
-use audit_logs::pg::AuditDatabaseContext;
+use audit_logs::database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
 use dal::{JwtPublicSigningKey, ServicesContext};
 use hyper::server::accept::Accept;

@@ -18,7 +18,7 @@ type Result<T> = std::result::Result<T, AuditDatabaseMigrationError>;
 /// Performs migrations for the audit database.
 #[instrument(level = "info", name = "audit.init.migrate", skip_all)]
 pub async fn migrate(context: &AuditDatabaseContext) -> Result<()> {
-    migrate_inner(&context.pg_pool).await
+    migrate_inner(context.pg_pool()).await
 }
 
 #[instrument(level = "info", name = "audit.init.migrate.inner", skip_all)]

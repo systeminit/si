@@ -412,6 +412,7 @@ dependencies = [
 name = "audit-logs"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "refinery",
  "remain",
  "serde",
@@ -2622,18 +2623,24 @@ dependencies = [
 name = "forklift-server"
 version = "0.1.0"
 dependencies = [
+ "audit-logs",
  "billing-events",
+ "buck2-resources",
  "data-warehouse-stream-client",
  "derive_builder",
+ "futures",
  "naxum",
  "remain",
  "serde",
  "serde_json",
  "si-data-nats",
+ "si-events",
  "si-settings",
+ "si-std",
  "telemetry",
  "telemetry-nats",
  "thiserror",
+ "tokio",
  "tokio-util",
  "ulid",
 ]
