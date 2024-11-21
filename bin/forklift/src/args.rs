@@ -81,8 +81,8 @@ pub(crate) struct Args {
     pub(crate) data_warehouse_stream_name: Option<String>,
 
     /// Enables the audit logs app
-    #[arg(long, default_value = "false")]
-    pub(crate) enable_audit_logs_app: bool,
+    #[arg(long)]
+    pub(crate) enable_audit_logs_app: Option<bool>,
 }
 
 impl TryFrom<Args> for Config {
@@ -109,7 +109,9 @@ impl TryFrom<Args> for Config {
             if let Some(data_warehouse_stream_name) = args.data_warehouse_stream_name {
                 config_map.set("data_warehouse_stream_name", data_warehouse_stream_name);
             }
-            config_map.set("enable_audit_logs_app", args.enable_audit_logs_app);
+            if let Some(enable_audit_logs_app) = args.enable_audit_logs_app {
+                config_map.set("enable_audit_logs_app", enable_audit_logs_app);
+            }
         })?
         .try_into()
     }

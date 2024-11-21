@@ -35,7 +35,7 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec![BIN_NAME, LIB_NAME])
-            .interesting_modules(vec!["naxum", "si_data_nats", "si_service"])
+            .interesting_modules(vec!["naxum", "si_data_nats", "si_data_pg", "si_service"])
             .build()?;
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
@@ -51,6 +51,7 @@ async fn async_main() -> Result<()> {
     debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
+    debug!(?config, "computed configuration");
 
     let server = Server::from_config(config, main_token.clone()).await?;
 
