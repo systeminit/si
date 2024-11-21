@@ -48,7 +48,7 @@ services:
   pgbouncer:
     container_name: pgbouncer
     image: systeminit/pgbouncer:${INIT_VERSION:-stable}
-    profiles: [rebaser, pinga, sdf]
+    profiles: [rebaser, pinga, sdf, forklift]
     ports:
       - 5432:5432
     volumes:
