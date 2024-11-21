@@ -18,7 +18,6 @@
 }
 
 .details-panel-title {
-  /* @apply font-normal text-xs; */
   font-weight: 400;
   font-size: 0.75rem;
   line-height: 1rem;

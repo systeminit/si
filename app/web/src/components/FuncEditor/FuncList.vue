@@ -8,7 +8,7 @@
       alwaysShowArrow
       indentationSize="none"
       leftBorderSize="none"
-      defaultOpen
+      :defaultOpen="funcsForKind(kind).length > 0"
       internalScrolling
       class="min-h-[32px]"
       primaryIconClasses=""

@@ -33,7 +33,7 @@
           @click="clearSearch"
         />
         <IconButton
-          v-if="filtersEnabled"
+          v-if="filtersEnabled && filters && filters.length > 0"
           icon="filter"
           :selected="showFilters"
           @click="toggleShowFilters"

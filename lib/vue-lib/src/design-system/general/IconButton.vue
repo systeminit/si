@@ -7,7 +7,7 @@
     }"
     :class="
       clsx(
-        'cursor-pointer rounded p-[2px] group/iconbutton',
+        'cursor-pointer rounded p-3xs group/iconbutton',
         disableClicking
           ? `opacity-50 ${getToneTextColorClass(iconToneDefault)}`
           : [
@@ -19,7 +19,7 @@
                       : getToneBgColorClass(iconTone),
                   ]
                 : [
-                    hover
+                    hover || hovered
                       ? [
                           iconIdleTone
                             ? getToneTextColorClass(iconTone)
@@ -72,6 +72,7 @@ const props = defineProps({
   iconIdleTone: { type: String as PropType<Tones> },
   iconBgActiveTone: { type: String as PropType<Tones> },
   selected: { type: Boolean },
+  hovered: { type: Boolean },
   tooltip: { type: String },
   tooltipPlacement: { type: String as PropType<Placement>, default: "left" },
   rotate: {

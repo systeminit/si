@@ -3,7 +3,7 @@
   <component
     :is="ResizablePanel"
     ref="leftResizablePanelRef"
-    :minSize="300"
+    :minSize="320"
     rememberSizeKey="func-picker"
     side="left"
   >

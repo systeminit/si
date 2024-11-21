@@ -5,7 +5,7 @@
       clsx(
         'tree-node',
         internalScrolling && 'overflow-hidden flex flex-col',
-        internalScrolling && isOpen ? 'flex-1' : 'flex-none',
+        internalScrolling && isOpen ? 'flex-1 max-h-fit' : 'flex-none',
         styleAsGutter &&
           enableGroupToggle && [
             'ml-sm border-l',

@@ -24,6 +24,8 @@ At System initiative, we follow the following best practices to write clean, con
  - The vue library contains a few utils files you should know about!
 	 - `theme_tools.ts` contains multiple helper functions to manage dark/light mode - most importantly, `themeClasses()` is a helpful function that allows for easy composition of the two distinct styles for light and dark mode. It is always preferable to use `themeClasses()` instead of the Tailwind light/dark mode system.
 	 - `color_utils.ts`contains helper functions which allow for easier and faster applications of semantic color classes. Make sure your use case matches the standard cases laid out by the TONES object!
+- Only use the approved abstract colors - `shade`, `neutral`, `action`, `success`, `warning`, and `destructive`. Do not use named Tailwind colors like `red` or `gray`.
+- You can reference all of the current icons, svgs, semantic sizes, and colors which are in the front end on the `Debug Design Reference Page` which can be accessed through the `Dev Dashboard`.
 
 ## Code Examples
 

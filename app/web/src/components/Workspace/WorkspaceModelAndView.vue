@@ -1,5 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
+  <!-- Left Panel - views drawer and outline + asset palette -->
   <section
     class="absolute flex flex-row h-full"
     :style="{ left: drawerLeftPos + 'px', transition: 'left 0.15s ease-out' }"
@@ -8,7 +9,6 @@
       v-if="featureFlagsStore.OUTLINER_VIEWS"
       @closed="toggleDrawer"
     />
-    <!-- left panel - outline + asset palette -->
     <component
       :is="ResizablePanel"
       ref="leftResizablePanelRef"
@@ -31,6 +31,7 @@
     </component>
   </section>
 
+  <!-- Middle Area - ModelingDiagram or InsetApprovalModal -->
   <div
     v-if="
       featureFlagsStore.REBAC &&
@@ -48,17 +49,17 @@
   <ModelingDiagram
     v-else
     ref="diagramRef"
-    :viewId="route.params.viewId  as (string | undefined)"
+    :viewId="viewId"
     @mouseout="presenceStore.clearCursor"
     @right-click-element="onRightClickElement"
   />
 
-  <!-- Right panel (selection details) -->
+  <!-- Right Panel - selection details -->
   <component
     :is="ResizablePanel"
     ref="rightResizablePanelRef"
     :defaultSize="400"
-    :minSize="400"
+    :minSize="320"
     rememberSizeKey="details-panel"
     side="right"
   >
@@ -84,6 +85,7 @@
     </div>
   </component>
 
+  <!-- Modals and Menus outside of the flow of the page -->
   <ModelingRightClickMenu ref="contextMenuRef" />
   <DeleteSelectionModal />
   <RestoreSelectionModal />
@@ -249,4 +251,6 @@ function onOutlineRightClick(ev: {
 function onThreeDotMenuClick(mouse: MouseEvent) {
   contextMenuRef.value?.open(mouse, false);
 }
+
+const viewId = computed(() => route.params.viewId as string | undefined);
 </script>

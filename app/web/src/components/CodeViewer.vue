@@ -36,7 +36,7 @@
       :class="
         clsx(
           'absolute z-100 right-xs',
-          numberOfLinesInCode > 1 ? 'top-xs' : 'top-[2px]',
+          numberOfLinesInCode > 1 ? 'top-xs' : 'top-3xs',
         )
       "
       @click="copyCodeToClipboard"

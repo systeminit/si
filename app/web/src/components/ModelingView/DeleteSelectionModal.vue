@@ -32,7 +32,7 @@
           </Stack>
         </div>
       </template>
-      <div class="py-xs">
+      <div class="px-2xs py-xs">
         <template v-if="selectedEdge">
           <p class="text-xs mt-sm">
             Items that exist on HEAD will be marked for deletion, and removed

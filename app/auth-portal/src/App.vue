@@ -28,15 +28,13 @@
         <SiLogo class="w-[60px] h-[60px] animate-pulse" />
         <div
           :class="
-            clsx(
-              'w-[140px] h-[2px] bg-neutral-300 dark:bg-neutral-800 relative',
-            )
+            clsx('w-[140px] h-3xs bg-neutral-300 dark:bg-neutral-800 relative')
           "
         >
           <div
             :class="
               clsx(
-                'h-[2px] bg-action-500 transition-all duration-500',
+                'h-3xs bg-action-500 transition-all duration-500',
                 runAuthProgressBar ? 'w-[90%]' : 'w-[5%]',
               )
             "
