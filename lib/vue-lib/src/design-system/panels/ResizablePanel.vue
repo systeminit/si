@@ -238,6 +238,12 @@ const collapseSet = (collapse: boolean) => {
   if (!collapsed.value) {
     panelOpeningFromCollapse.value = true;
     panelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
+      emit("sizeSet", displaySize.value);
+      panelOpeningFromCollapse.value = false;
+    }, PANEL_COLLAPSE_HIDE_CONTENT_TIME);
+  } else {
+    panelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
+      emit("sizeSet", displaySize.value);
       panelOpeningFromCollapse.value = false;
     }, PANEL_COLLAPSE_HIDE_CONTENT_TIME);
   }

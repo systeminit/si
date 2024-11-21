@@ -5,7 +5,7 @@ overflow hidden */
   <div
     class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
     :style="{
-      marginLeft: '230px', // related to left panel drawer
+      marginLeft: presenceStore.leftResizePanelWidth === 0 ? '0' : '230px', // related to left panel drawer
     }"
   >
     <!-- This section contains the DiagramGridBackground and other elements which should render underneath all of the components/frames/cursors -->

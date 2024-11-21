@@ -104,7 +104,8 @@ const roundedZoomPercent = computed(() => Math.round(zoomLevel.value * 100));
 const leftPx = computed(() => {
   const minPanelWidth = 230;
   let base = 16;
-  base += presenceStore.leftResizePanelWidth - minPanelWidth;
+  if (presenceStore.leftResizePanelWidth > 0)
+    base += presenceStore.leftResizePanelWidth - minPanelWidth;
   if (presenceStore.leftDrawerOpen) base += 230;
   return base;
 });
