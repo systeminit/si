@@ -3,7 +3,10 @@
   <!-- Left Panel - views drawer and outline + asset palette -->
   <section
     class="absolute flex flex-row h-full"
-    :style="{ left: drawerLeftPos + 'px', transition: 'left 0.15s ease-out' }"
+    :style="{
+      left: drawerLeftPos + 'px',
+      transition: 'left 0.15s ease-out',
+    }"
   >
     <LeftPanelDrawer
       v-if="featureFlagsStore.OUTLINER_VIEWS"
