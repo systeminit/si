@@ -62,20 +62,20 @@ impl Geometry {
         self.id
     }
 
-    pub fn x(&self) -> &isize {
-        &self.x
+    pub fn x(&self) -> isize {
+        self.x
     }
 
-    pub fn y(&self) -> &isize {
-        &self.y
+    pub fn y(&self) -> isize {
+        self.y
     }
 
-    pub fn width(&self) -> Option<&isize> {
-        self.width.as_ref()
+    pub fn width(&self) -> Option<isize> {
+        self.width
     }
 
-    pub fn height(&self) -> Option<&isize> {
-        self.height.as_ref()
+    pub fn height(&self) -> Option<isize> {
+        self.height
     }
 
     fn assemble(node_weight: GeometryNodeWeight, content: GeometryContent) -> Self {

@@ -13,6 +13,7 @@ import { RequestCtx } from "../request";
 const debug = Debug("langJs:management");
 
 export interface ManagementFunc extends Func {
+  currentView: string;
   thisComponent: ComponentWithGeometry;
   components: {
     [key: string]: ComponentWithGeometry;
@@ -20,8 +21,8 @@ export interface ManagementFunc extends Func {
 }
 
 export type ManagementFuncResult =
-    | ManagementFuncResultSuccess
-    | ManagementFuncResultFailure;
+  | ManagementFuncResultSuccess
+  | ManagementFuncResultFailure;
 
 export interface ManagmentConnect {
   from: string,
@@ -32,22 +33,26 @@ export interface ManagmentConnect {
 }
 
 export interface ManagementOperations {
-  create?: { [key: string]: {
-    kind: string;
-    properties?: object;
-    geometry?: Geometry;
-    parent?: string;
-    connect?: ManagmentConnect[],
-  } };
-  update?: { [key: string]: {
-    properties?: object;
-    geometry?: Geometry;
-    parent?: string;
-    connect: {
-      add?: ManagmentConnect[],
-      remove?: ManagmentConnect[],
+  create?: {
+    [key: string]: {
+      kind: string;
+      properties?: object;
+      geometry?: Geometry;
+      parent?: string;
+      connect?: ManagmentConnect[],
     }
-  } };
+  };
+  update?: {
+    [key: string]: {
+      properties?: object;
+      geometry?: { [key: string]: Geometry };
+      parent?: string;
+      connect: {
+        add?: ManagmentConnect[],
+        remove?: ManagmentConnect[],
+      }
+    }
+  };
   actions?: {
     [key: string]: {
       add?: string[],
@@ -66,14 +71,14 @@ export interface ManagementFuncResultFailure extends ResultFailure { }
 async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
-  { thisComponent, components }: ManagementFunc,
+  { thisComponent, components, currentView }: ManagementFunc,
   code: string,
 ): Promise<ManagementFuncResult> {
   let managementResult: Record<string, unknown> | undefined | null;
   try {
     const runner = vm.run(code);
     managementResult = await new Promise((resolve) => {
-      runner({ thisComponent, components }, (resolution: Record<string, unknown>) => resolve(resolution));
+      runner({ thisComponent, components, currentView }, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
     return failureExecution(err as Error, executionId);

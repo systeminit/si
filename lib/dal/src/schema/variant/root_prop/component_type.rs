@@ -106,4 +106,11 @@ impl ComponentType {
             Self::ConfigurationFrameUp => "Configuration Frame (up)",
         }
     }
+
+    pub fn is_frame(&self) -> bool {
+        matches!(
+            self,
+            Self::AggregationFrame | Self::ConfigurationFrameDown | Self::ConfigurationFrameUp
+        )
+    }
 }

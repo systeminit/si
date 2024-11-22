@@ -880,4 +880,8 @@ impl ExpectView {
         let name = generate_fake_name();
         View::new(ctx, name).await.expect("create view")
     }
+
+    pub async fn create_with_name(ctx: &DalContext, name: &str) -> View {
+        View::new(ctx, name).await.expect("create view")
+    }
 }

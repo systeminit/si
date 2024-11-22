@@ -7,7 +7,18 @@
       )
     "
   >
-    <IconButton icon="play" :requestStatus="request" @click="runPrototype()" />
+    <DropdownMenu ref="viewSelectorMenuRef" forceRight>
+      <DropdownMenuItem header label="RUN IN VIEW" />
+      <DropdownMenuItem
+        v-for="viewId in componentViews"
+        :key="viewId"
+        :label="viewsStore.viewsById[viewId]?.name ?? 'unknown'"
+        :onSelect="() => runPrototype(viewId)"
+      />
+    </DropdownMenu>
+
+    <IconButton icon="play" :requestStatus="request" @click="runClick" />
+
     <TruncateWithTooltip class="grow">{{
       `Run ${props.prototype.label}`
     }}</TruncateWithTooltip>
@@ -31,6 +42,8 @@ import { ref, computed, onMounted, watch } from "vue";
 import clsx from "clsx";
 import { useToast } from "vue-toastification";
 import {
+  DropdownMenu,
+  DropdownMenuItem,
   IconButton,
   themeClasses,
   TruncateWithTooltip,
@@ -44,6 +57,8 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { FuncRunId } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
+import { useViewsStore } from "@/store/views.store";
+import { ViewId } from "@/api/sdf/dal/views";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -56,6 +71,9 @@ const componentsStore = useComponentsStore();
 const router = useRouter();
 const toast = useToast();
 const managementRunsStore = useManagementRunsStore();
+const viewsStore = useViewsStore();
+
+const viewSelectorMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const lastExecution = ref<MgmtPrototypeResult | undefined>(undefined);
 
@@ -89,16 +107,25 @@ const latestRunId = computed(() =>
   ),
 );
 
+const componentViews = computed(() =>
+  Object.keys(viewsStore.viewsById).filter(
+    (viewId) =>
+      !!viewsStore.viewsById[viewId]?.components[props.component.def.id] ||
+      !!viewsStore.viewsById[viewId]?.groups[props.component.def.id],
+  ),
+);
+
 watch(latestRunId, (latest) => {
   if (latest) {
     emit("runUpdated", latest);
   }
 });
 
-const runPrototype = async () => {
+const runPrototype = async (viewId: ViewId) => {
   const result = await funcStore.RUN_MGMT_PROTOTYPE(
     props.prototype.managementPrototypeId,
     props.component.def.id,
+    viewId,
   );
 
   if (result.result.success) {
@@ -120,6 +147,16 @@ const runPrototype = async () => {
         );
       }
     }
+  }
+};
+
+const runClick = async (e?: MouseEvent) => {
+  if (componentViews.value.length === 1 && componentViews.value[0]) {
+    await runPrototype(componentViews.value[0]);
+  } else if (componentViews.value.length > 1) {
+    viewSelectorMenuRef.value?.open(e, false);
+  } else if (viewsStore.selectedViewId) {
+    await runPrototype(viewsStore.selectedViewId);
   }
 };
 

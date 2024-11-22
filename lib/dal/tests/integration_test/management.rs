@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 
 use dal::{
-    diagram::view::View,
+    diagram::{geometry::Geometry, view::View},
     management::{
-        prototype::ManagementPrototype, ManagementFuncReturn, ManagementOperator, NumericGeometry,
+        prototype::ManagementPrototype, ManagementFuncReturn, ManagementGeometry,
+        ManagementOperator,
     },
     AttributeValue, Component, DalContext, SchemaId,
 };
@@ -13,6 +14,107 @@ use dal_test::{
     SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 use veritech_client::ManagementFuncStatus;
+
+#[test]
+async fn update_managed_components_in_view(ctx: &DalContext) {
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+    let small_even_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "small even lego",
+    )
+    .await
+    .expect("could not create component");
+
+    let view_name = "a view askew";
+    let new_view_id = ExpectView::create_with_name(ctx, view_name).await.id();
+    Geometry::new(ctx, small_odd_lego.id(), new_view_id)
+        .await
+        .expect("create geometry in view");
+    Geometry::new(ctx, small_even_lego.id(), new_view_id)
+        .await
+        .expect("create geometry in view");
+
+    Component::manage_component(ctx, small_odd_lego.id(), small_even_lego.id())
+        .await
+        .expect("add manages edge");
+
+    let manager_variant = small_odd_lego
+        .schema_variant(ctx)
+        .await
+        .expect("get variant");
+
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, manager_variant.id())
+        .await
+        .expect("get prototypes")
+        .into_iter()
+        .find(|proto| proto.name() == "Update in View")
+        .expect("could not find prototype");
+
+    let mut execution_result = management_prototype
+        .execute(ctx, small_odd_lego.id(), Some(new_view_id))
+        .await
+        .expect("should execute management prototype func");
+
+    let result: ManagementFuncReturn = execution_result
+        .result
+        .take()
+        .expect("should have a result success")
+        .try_into()
+        .expect("should be a valid management func return");
+
+    assert_eq!(ManagementFuncStatus::Ok, result.status);
+    assert_eq!(Some(view_name), result.message.as_deref());
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        Some(new_view_id),
+    )
+    .await
+    .expect("should create operator")
+    .operate()
+    .await
+    .expect("should operate");
+
+    let mut new_component = None;
+    let components = Component::list(ctx).await.expect("list components");
+    assert_eq!(2, components.len());
+    for c in components {
+        if c.name(ctx).await.expect("get name") == "small even lego managed by small odd lego" {
+            new_component = Some(c);
+            break;
+        }
+    }
+
+    let new_component = new_component.expect("should have found the cloned component");
+    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_geometry = new_component
+        .geometry(ctx, default_view_id)
+        .await
+        .expect("get geometry for default view");
+
+    assert_eq!(0, default_view_geometry.x());
+    assert_eq!(0, default_view_geometry.y());
+
+    let new_view_geometry = new_component
+        .geometry(ctx, new_view_id)
+        .await
+        .expect("get geo for view askew");
+
+    assert_eq!(1000, new_view_geometry.x());
+    assert_eq!(750, new_view_geometry.y());
+}
 
 #[test]
 async fn update_managed_components(ctx: &DalContext) {
@@ -48,7 +150,7 @@ async fn update_managed_components(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -133,7 +235,7 @@ async fn create_component_of_other_schema(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -222,7 +324,7 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -244,22 +346,16 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) {
         .await
         .expect("should operate");
 
+    let geometry = small_odd_lego
+        .geometry(ctx, ExpectView::get_id_for_default(ctx).await)
+        .await
+        .expect("get geometry");
+
+    assert_eq!(Some(500), geometry.width());
+    assert_eq!(Some(500), geometry.height());
+
     let components = Component::list(ctx).await.expect("get components");
     assert_eq!(4, components.len());
-
-    let workspace_snapshot = ctx.workspace_snapshot().expect("get snap");
-    let edges = workspace_snapshot
-        .edges_directed(small_odd_lego.id(), petgraph::Direction::Outgoing)
-        .await
-        .expect("get edges");
-    for (weight, _, tgt) in edges {
-        let target_id = workspace_snapshot
-            .get_node_weight(tgt)
-            .await
-            .expect("get target")
-            .id();
-        println!("{:?} -> {}", weight.kind(), target_id);
-    }
 
     let children: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
         .await
@@ -361,7 +457,7 @@ async fn create_and_connect_to_self(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -453,7 +549,7 @@ async fn create_and_connect_from_self(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -517,7 +613,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -552,15 +648,15 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
     let default_view_id = ExpectView::get_id_for_default(ctx).await;
 
     let new_component = new_component.expect("should have found the cloned component");
-    let new_geometry: NumericGeometry = new_component
+    let new_geometry: ManagementGeometry = new_component
         .geometry(ctx, default_view_id)
         .await
         .expect("get geometry")
         .into_raw()
         .into();
 
-    assert_eq!(10.0, new_geometry.x);
-    assert_eq!(20.0, new_geometry.y);
+    assert_eq!(Some(10.0), new_geometry.x);
+    assert_eq!(Some(20.0), new_geometry.y);
 
     let managers = new_component.managers(ctx).await.expect("get managers");
 
@@ -572,7 +668,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) {
     );
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 
@@ -642,7 +738,7 @@ async fn execute_management_func(ctx: &DalContext) {
         .expect("could not find prototype");
 
     let mut execution_result = management_prototype
-        .execute(ctx, small_odd_lego.id())
+        .execute(ctx, small_odd_lego.id(), None)
         .await
         .expect("should execute management prototype func");
 

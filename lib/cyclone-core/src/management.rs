@@ -12,6 +12,7 @@ pub struct ManagementRequest {
     pub execution_id: String,
     pub handler: String,
     pub code_base64: String,
+    pub current_view: String,
     pub this_component: ComponentViewWithGeometry,
     pub components: HashMap<String, ComponentViewWithGeometry>,
     pub before: Vec<BeforeFunction>,

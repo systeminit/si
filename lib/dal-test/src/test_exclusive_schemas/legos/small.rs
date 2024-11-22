@@ -149,6 +149,44 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     let update_mgmt_func_name = "test:updateManagedComponent";
     let update_mgmt_func = build_management_func(update_managed_func_code, update_mgmt_func_name)?;
 
+    let update_managed_func_in_view_code = r#"
+    async function main({ thisComponent, components, currentView }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        const update: { [key: string]: unknown } = {};
+
+        for (let [id, component] of Object.entries(components)) {
+            let name = component.properties?.si?.name ?? "unknown";
+            update[id] = {
+                properties: {
+                    ...component.properties,
+                    si: {
+                        ...component.properties?.si,
+                        name: `${name} managed by ${thisName}`,
+                    }
+                },
+                geometry: {
+                    [currentView]: {
+                        x: 1000,
+                        y: 750,
+                    }
+                }
+            };
+        }
+
+        return {
+            status: "ok",
+            message: currentView,
+            ops: { update },
+        }
+    }
+    "#;
+    let update_in_view_mgmt_func_name = "test:updateManagedComponentInView";
+    let update_in_view_mgmt_func = build_management_func(
+        update_managed_func_in_view_code,
+        update_in_view_mgmt_func_name,
+    )?;
+
     let create_and_connect_from_self_func_code = r#"
     async function main({ thisComponent, components }: Input): Promise<Output> {
         const thisName = thisComponent.properties?.si?.name ?? "unknown";
@@ -355,6 +393,15 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
+                        .name("Update in View")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&update_in_view_mgmt_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
                         .name("Create and Connect From Self")
                         .managed_schemas(Some(HashSet::from([
                             SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
@@ -395,6 +442,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(import_management_func)
         .func(clone_me_mgmt_func)
         .func(update_mgmt_func)
+        .func(update_in_view_mgmt_func)
         .func(create_and_connect_from_self_func)
         .func(create_and_connect_to_self_func)
         .func(create_and_connect_to_self_as_children_func)

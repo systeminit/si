@@ -7,6 +7,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::component::frame::{Frame, FrameError};
+use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
 use crate::diagram::{DiagramError, SummaryDiagramManagementEdge};
 use crate::{
@@ -89,15 +90,18 @@ pub type ManagementResult<T> = Result<T, ManagementError>;
 /// Geometry type for deserialization lang-js, so even if we should only care about integers,
 /// until we implement custom deserialization we can't merge it with [RawGeometry](RawGeometry)
 #[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq)]
-pub struct NumericGeometry {
-    pub x: f64,
-    pub y: f64,
+pub struct ManagementGeometry {
+    pub x: Option<f64>,
+    pub y: Option<f64>,
     pub width: Option<f64>,
     pub height: Option<f64>,
 }
 
-impl NumericGeometry {
-    pub fn offset_by(&self, mut x_off: f64, mut y_off: f64) -> Self {
+impl ManagementGeometry {
+    pub fn offset_by(&self, x_off: Option<f64>, y_off: Option<f64>) -> Self {
+        let mut x_off = x_off.unwrap_or(0.0);
+        let mut y_off = y_off.unwrap_or(0.0);
+
         if !x_off.is_normal() {
             x_off = 0.0;
         }
@@ -105,21 +109,24 @@ impl NumericGeometry {
             y_off = 0.0;
         }
 
-        let x = if self.x.is_normal() {
-            self.x + x_off
+        let self_x = self.x.unwrap_or(0.0);
+        let self_y = self.y.unwrap_or(0.0);
+
+        let x = if self_x.is_normal() {
+            self_x + x_off
         } else {
             x_off
         };
 
-        let y = if self.y.is_normal() {
-            self.y + y_off
+        let y = if self_y.is_normal() {
+            self_y + y_off
         } else {
             y_off
         };
 
         Self {
-            x,
-            y,
+            x: Some(x),
+            y: Some(y),
             width: self.width,
             height: self.height,
         }
@@ -132,22 +139,22 @@ fn avoid_nan_string(n: f64, fallback: f64) -> String {
     if n.is_normal() { n.round() } else { fallback }.to_string()
 }
 
-impl From<NumericGeometry> for RawGeometry {
-    fn from(value: NumericGeometry) -> Self {
+impl From<ManagementGeometry> for RawGeometry {
+    fn from(value: ManagementGeometry) -> Self {
         Self {
-            x: value.x as isize,
-            y: value.y as isize,
+            x: value.x.unwrap_or(0.0) as isize,
+            y: value.y.unwrap_or(0.0) as isize,
             width: value.width.map(|w| w as isize),
             height: value.height.map(|h| h as isize),
         }
     }
 }
 
-impl From<RawGeometry> for NumericGeometry {
+impl From<RawGeometry> for ManagementGeometry {
     fn from(value: RawGeometry) -> Self {
         Self {
-            x: value.x as f64,
-            y: value.y as f64,
+            x: Some(value.x as f64),
+            y: Some(value.y as f64),
             width: value.width.map(|w| w as f64),
             height: value.height.map(|h| h as f64),
         }
@@ -179,7 +186,7 @@ pub struct ManagementUpdateConnections {
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
-    geometry: Option<RawGeometry>,
+    geometry: Option<HashMap<String, ManagementGeometry>>,
     connect: Option<ManagementUpdateConnections>,
     parent: Option<String>,
 }
@@ -189,7 +196,7 @@ pub struct ManagementUpdateOperation {
 pub struct ManagementCreateOperation {
     kind: Option<String>,
     properties: Option<serde_json::Value>,
-    geometry: Option<NumericGeometry>,
+    geometry: Option<ManagementGeometry>,
     connect: Option<Vec<ManagementConnection>>,
     parent: Option<String>,
 }
@@ -368,15 +375,16 @@ impl VariantSocketMap {
 pub struct ManagementOperator<'a> {
     ctx: &'a DalContext,
     manager_component_id: ComponentId,
-    manager_component_geometry: NumericGeometry,
+    manager_component_geometry: ManagementGeometry,
     manager_schema_id: SchemaId,
-    last_component_geometry: NumericGeometry,
+    last_component_geometry: ManagementGeometry,
     operations: ManagementOperations,
     schema_map: HashMap<String, SchemaId>,
     component_id_placeholders: HashMap<String, ComponentId>,
     component_schema_map: ComponentSchemaMap,
     socket_map: VariantSocketMap,
     view_id: ViewId,
+    views: HashMap<String, ViewId>,
     created_components: Vec<ComponentId>,
     updated_components: Vec<ComponentId>,
 }
@@ -409,7 +417,7 @@ enum PendingOperation {
 
 struct CreatedComponent {
     component: Component,
-    geometry: NumericGeometry,
+    geometry: ManagementGeometry,
     schema_id: SchemaId,
 }
 
@@ -437,18 +445,30 @@ impl<'a> ManagementOperator<'a> {
             None => View::get_id_for_default(ctx).await?,
         };
 
+        let manager_component_geometry_in_view: ManagementGeometry =
+            Geometry::get_by_component_and_view(ctx, manager_component_id, view_id)
+                .await?
+                .into_raw()
+                .into();
+
+        let mut views = HashMap::new();
+        for view in View::list(ctx).await? {
+            views.insert(view.name().to_owned(), view_id);
+        }
+
         Ok(Self {
             ctx,
             manager_component_id,
             manager_schema_id,
-            last_component_geometry: management_execution.manager_component_geometry,
-            manager_component_geometry: management_execution.manager_component_geometry,
+            last_component_geometry: manager_component_geometry_in_view,
+            manager_component_geometry: manager_component_geometry_in_view,
             operations,
             schema_map: management_execution.managed_schema_map,
             component_id_placeholders,
             component_schema_map,
             socket_map: VariantSocketMap::new(),
             view_id,
+            views,
             created_components: vec![],
             updated_components: vec![],
         })
@@ -471,27 +491,42 @@ impl<'a> ManagementOperator<'a> {
         let variant_id = Schema::get_or_install_default_variant(self.ctx, schema_id).await?;
 
         let mut component = Component::new(self.ctx, placeholder, variant_id, self.view_id).await?;
-        let geometry = if let Some(numeric_geometry) = &operation.geometry {
-            let real_geometry = numeric_geometry.offset_by(
+        let will_be_frame =
+            component_will_be_frame(self.ctx, &component, operation.properties.as_ref()).await?;
+
+        let mut auto_geometry = self
+            .last_component_geometry
+            .offset_by(75.0.into(), 75.0.into());
+
+        auto_geometry.width.take();
+        auto_geometry.height.take();
+
+        let mut geometry = if let Some(mut create_geometry) = &operation.geometry {
+            create_geometry
+                .x
+                .get_or_insert(auto_geometry.x.unwrap_or(0.0));
+
+            create_geometry
+                .y
+                .get_or_insert(auto_geometry.y.unwrap_or(0.0));
+
+            // Creation geometry is relative to the manager component
+            create_geometry.offset_by(
                 self.manager_component_geometry.x,
                 self.manager_component_geometry.y,
-            );
-            component
-                .set_raw_geometry(self.ctx, (real_geometry).into(), self.view_id)
-                .await?;
-
-            *numeric_geometry
+            )
         } else {
-            // We don't want to just stack components on top of each other if no
-            // geometry is provided, so we're gonna do a bit of you-just-won
-            // solitaire staggering
-            let auto_geometry = self.last_component_geometry.offset_by(50.0, 50.0);
-            component
-                .set_raw_geometry(self.ctx, auto_geometry.into(), self.view_id)
-                .await?;
-
             auto_geometry
         };
+
+        if will_be_frame && geometry.width.zip(geometry.height).is_none() {
+            geometry.width = Some(500.0);
+            geometry.height = Some(500.0);
+        }
+
+        component
+            .set_raw_geometry(self.ctx, geometry.into(), self.view_id)
+            .await?;
 
         Ok(CreatedComponent {
             component,
@@ -725,16 +760,6 @@ impl<'a> ManagementOperator<'a> {
                     .insert(placeholder.to_owned(), component_id);
 
                 if let Some(properties) = &operation.properties {
-                    if is_setting_type_to_frame(Some(properties)) {
-                        ensure_geometry_has_width_and_height(
-                            self.ctx,
-                            component_id,
-                            self.view_id,
-                            Some(geometry),
-                        )
-                        .await?;
-                    }
-
                     update_component(
                         self.ctx,
                         component_id,
@@ -790,29 +815,64 @@ impl<'a> ManagementOperator<'a> {
 
         for (placeholder, operation) in updates {
             let component_id = self.get_real_component_id(placeholder).await?;
+            let mut component = Component::get_by_id(self.ctx, component_id).await?;
 
-            let offset_geometry = operation.geometry.as_ref().map(|geo| {
-                let numeric_geometry: NumericGeometry = geo.clone().into();
-                numeric_geometry.offset_by(
-                    self.manager_component_geometry.x,
-                    self.manager_component_geometry.y,
-                )
-            });
-
-            if is_setting_type_to_frame(operation.properties.as_ref()) {
-                ensure_geometry_has_width_and_height(
-                    self.ctx,
-                    component_id,
-                    self.view_id,
-                    offset_geometry,
-                )
-                .await?;
-            } else if let Some(offset_geo) = offset_geometry {
-                let mut component = Component::get_by_id(self.ctx, component_id).await?;
-
-                component
-                    .set_raw_geometry(self.ctx, offset_geo.into(), self.view_id)
+            let will_be_frame =
+                component_will_be_frame(self.ctx, &component, operation.properties.as_ref())
                     .await?;
+
+            for (view_name, &view_id) in &self.views {
+                let maybe_geometry = operation
+                    .geometry
+                    .as_ref()
+                    .and_then(|geo_map| geo_map.get(view_name))
+                    .copied();
+
+                let maybe_geometry = if will_be_frame && maybe_geometry.is_none() {
+                    Some(ManagementGeometry {
+                        x: None,
+                        y: None,
+                        width: None,
+                        height: None,
+                    })
+                } else {
+                    maybe_geometry
+                };
+
+                if let Some(mut view_geometry) = maybe_geometry {
+                    // If the component does not exist in this view then there's nothing to do
+                    let Some(current_geometry) =
+                        Geometry::try_get_by_component_and_view(self.ctx, component_id, view_id)
+                            .await?
+                    else {
+                        continue;
+                    };
+
+                    let current_geometry: ManagementGeometry = current_geometry.into_raw().into();
+
+                    view_geometry
+                        .x
+                        .get_or_insert(current_geometry.x.unwrap_or(0.0));
+                    view_geometry
+                        .y
+                        .get_or_insert(current_geometry.y.unwrap_or(0.0));
+                    if let Some(current_width) = current_geometry.width {
+                        view_geometry.width.get_or_insert(current_width);
+                    }
+                    if let Some(current_height) = current_geometry.height {
+                        view_geometry.width.get_or_insert(current_height);
+                    }
+
+                    // Ensure frames have a width and height
+                    if view_geometry.width.zip(view_geometry.height).is_none() && will_be_frame {
+                        view_geometry.width = Some(500.0);
+                        view_geometry.height = Some(500.0);
+                    }
+
+                    component
+                        .set_raw_geometry(self.ctx, view_geometry.into(), view_id)
+                        .await?;
+                }
             }
 
             if let Some(properties) = &operation.properties {
@@ -1113,73 +1173,6 @@ const IGNORE_PATHS: [&[&str]; 6] = [
 
 const ROOT_SI_TYPE_PATH: &[&str] = &["root", "si", "type"];
 
-async fn ensure_geometry_has_width_and_height(
-    ctx: &DalContext,
-    component_id: ComponentId,
-    view_id: ViewId,
-    input_geometry: Option<NumericGeometry>,
-) -> ManagementResult<NumericGeometry> {
-    let mut component = Component::get_by_id(ctx, component_id).await?;
-    let mut raw_geometry = match input_geometry {
-        Some(geometry) => geometry.into(),
-        None => component.geometry(ctx, view_id).await?.into_raw(),
-    };
-
-    raw_geometry.width.get_or_insert(500);
-    raw_geometry.height.get_or_insert(500);
-
-    component
-        .set_raw_geometry(ctx, raw_geometry.to_owned(), view_id)
-        .await?;
-
-    Ok(raw_geometry.into())
-}
-
-fn is_setting_type_to_frame(properties: Option<&serde_json::Value>) -> bool {
-    let Some(properties) = properties else {
-        return false;
-    };
-
-    let mut work_queue = VecDeque::from([("root", properties)]);
-
-    while let Some((path, current_val)) = work_queue.pop_front() {
-        let match_key = match path {
-            "root" => "si",
-            "si" => "type",
-            "type" => {
-                let Ok(new_type) = serde_json::from_value::<ComponentType>(current_val.to_owned())
-                else {
-                    break;
-                };
-
-                if matches!(
-                    new_type,
-                    ComponentType::ConfigurationFrameDown
-                        | ComponentType::ConfigurationFrameUp
-                        | ComponentType::AggregationFrame
-                ) {
-                    return true;
-                }
-
-                break;
-            }
-            _ => break,
-        };
-
-        let serde_json::Value::Object(map) = current_val else {
-            break;
-        };
-
-        let Some(next_value) = map.get(match_key) else {
-            break;
-        };
-
-        work_queue.push_back((match_key, next_value));
-    }
-
-    false
-}
-
 async fn update_component(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -1331,4 +1324,47 @@ async fn update_component(
     }
 
     Ok(())
+}
+
+async fn component_will_be_frame(
+    ctx: &DalContext,
+    component: &Component,
+    new_properties: Option<&serde_json::Value>,
+) -> ManagementResult<bool> {
+    if type_being_set(new_properties).is_some_and(|c_type| c_type.is_frame()) {
+        return Ok(true);
+    }
+
+    Ok(component.get_type(ctx).await?.is_frame())
+}
+
+fn type_being_set(properties: Option<&serde_json::Value>) -> Option<ComponentType> {
+    let mut work_queue = VecDeque::from([("root", properties?)]);
+
+    while let Some((path, current_val)) = work_queue.pop_front() {
+        let match_key = match path {
+            "root" => "si",
+            "si" => "type",
+            "type" => {
+                let Ok(new_type) = serde_json::from_value::<ComponentType>(current_val.to_owned())
+                else {
+                    break;
+                };
+                return Some(new_type);
+            }
+            _ => break,
+        };
+
+        let serde_json::Value::Object(map) = current_val else {
+            break;
+        };
+
+        let Some(next_value) = map.get(match_key) else {
+            break;
+        };
+
+        work_queue.push_back((match_key, next_value));
+    }
+
+    None
 }

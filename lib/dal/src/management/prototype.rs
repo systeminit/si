@@ -10,9 +10,13 @@ use si_events::FuncRunId;
 use thiserror::Error;
 use veritech_client::ManagementResultSuccess;
 
-use crate::diagram::view::View;
 use crate::{
     cached_module::{CachedModule, CachedModuleError},
+    diagram::{
+        geometry::Geometry,
+        view::{View, ViewId},
+        DiagramError,
+    },
     func::runner::{FuncRunner, FuncRunnerError},
     id, implement_add_edge_to,
     layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
@@ -20,11 +24,10 @@ use crate::{
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
     EdgeWeightKindDiscriminants, FuncId, HelperError, NodeWeightDiscriminants, Schema, SchemaError,
     SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, TransactionsError,
-    WorkspaceSnapshotError, WsEventError, WsEventResult,
+    WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult,
 };
-use crate::{diagram::DiagramError, WsEvent};
 
-use super::NumericGeometry;
+use super::ManagementGeometry;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -98,7 +101,7 @@ impl From<ManagementPrototype> for ManagementPrototypeContent {
 pub struct ManagementPrototypeExecution {
     pub func_run_id: FuncRunId,
     pub result: Option<ManagementResultSuccess>,
-    pub manager_component_geometry: NumericGeometry,
+    pub manager_component_geometry: HashMap<String, ManagementGeometry>,
     pub managed_schema_map: HashMap<String, SchemaId>,
     pub placeholders: HashMap<String, ComponentId>,
 }
@@ -108,7 +111,45 @@ pub struct ManagementPrototypeExecution {
 pub struct ManagedComponent {
     kind: String,
     properties: Option<serde_json::Value>,
-    geometry: NumericGeometry,
+    geometry: HashMap<String, ManagementGeometry>,
+}
+
+async fn build_management_geometry_map(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    views: &HashMap<ViewId, String>,
+) -> ManagementPrototypeResult<HashMap<String, ManagementGeometry>> {
+    let mut geometry_map = HashMap::new();
+    for (&view_id, view_name) in views {
+        let Some(geometry) =
+            Geometry::try_get_by_component_and_view(ctx, component_id, view_id).await?
+        else {
+            continue;
+        };
+
+        geometry_map.insert(view_name.clone(), geometry.into_raw().into());
+    }
+
+    Ok(geometry_map)
+}
+
+impl ManagedComponent {
+    pub async fn new(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        kind: &str,
+        views: &HashMap<ViewId, String>,
+    ) -> ManagementPrototypeResult<Self> {
+        let component = Component::get_by_id(ctx, component_id).await?;
+        let properties = component.view(ctx).await?;
+        let geometry = build_management_geometry_map(ctx, component_id, views).await?;
+
+        Ok(Self {
+            kind: kind.to_owned(),
+            properties,
+            geometry,
+        })
+    }
 }
 
 impl ManagementPrototype {
@@ -336,54 +377,48 @@ impl ManagementPrototype {
         &self,
         ctx: &DalContext,
         manager_component_id: ComponentId,
+        view_id: Option<ViewId>,
     ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
-        Self::execute_by_id(ctx, self.id, manager_component_id).await
+        Self::execute_by_id(ctx, self.id, manager_component_id, view_id).await
     }
 
     pub async fn execute_by_id(
         ctx: &DalContext,
         id: ManagementPrototypeId,
         manager_component_id: ComponentId,
+        view_id: Option<ViewId>,
     ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
         let prototype = Self::get_by_id(ctx, id)
             .await?
             .ok_or(ManagementPrototypeError::NotFound(id))?;
 
+        let mut views = HashMap::new();
+        for view in View::list(ctx).await? {
+            views.insert(view.id(), view.name().to_owned());
+        }
+
         let (managed_schema_map, reverse_map) = prototype.managed_schemas_map(ctx).await?;
+
+        let view_id = match view_id {
+            Some(view_id) => view_id,
+            None => View::get_id_for_default(ctx).await?,
+        };
+        let current_view = views.get(&view_id).cloned().unwrap_or(view_id.to_string());
 
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
-        let manager_component_view = manager_component.view(ctx).await?;
-        let default_view_id = View::get_id_for_default(ctx).await?;
-        let manager_geometry: NumericGeometry = manager_component
-            .geometry(ctx, default_view_id)
-            .await?
-            .into_raw()
-            .into();
-
-        let managed_schema_names: Vec<String> = managed_schema_map.keys().cloned().collect();
 
         let mut managed_components = HashMap::new();
         for component_id in manager_component.get_managed(ctx).await? {
-            let component = Component::get_by_id(ctx, component_id).await?;
-            let component_view = component.view(ctx).await?;
-            let component_geometry: NumericGeometry = component
-                .geometry(ctx, default_view_id)
+            let schema_id = Component::schema_for_component_id(ctx, component_id)
                 .await?
-                .into_raw()
-                .into();
-            let schema_id = component.schema(ctx).await?.id();
+                .id();
 
             if let Some(managed_schema_name) = reverse_map.get(&schema_id) {
-                managed_components.insert(
-                    component_id,
-                    ManagedComponent {
-                        kind: managed_schema_name.clone(),
-                        properties: component_view,
-                        geometry: component_geometry
-                            .offset_by(-manager_geometry.x, -manager_geometry.y),
-                    },
-                );
+                let managed_component =
+                    ManagedComponent::new(ctx, component_id, managed_schema_name, &views).await?;
+
+                managed_components.insert(component_id, managed_component);
             }
         }
 
@@ -393,17 +428,18 @@ impl ManagementPrototype {
             .map(|id| (id.to_string(), id))
             .collect();
 
+        let this_schema = Component::schema_for_component_id(ctx, manager_component_id)
+            .await?
+            .name()
+            .to_string();
+
+        let manager_component =
+            ManagedComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
+        let manager_component_geometry = manager_component.geometry.to_owned();
+
         let args = serde_json::json!({
-            "this_component": {
-                "properties": manager_component_view,
-                "geometry": NumericGeometry {
-                    x: 0.0,
-                    y: 0.0,
-                    width: manager_geometry.width,
-                    height: manager_geometry.height,
-                }
-            },
-            "managed_schemas": managed_schema_names,
+            "current_view": current_view,
+            "this_component": manager_component,
             "components": managed_components,
         });
 
@@ -473,7 +509,7 @@ impl ManagementPrototype {
         Ok(ManagementPrototypeExecution {
             func_run_id,
             result: maybe_run_result,
-            manager_component_geometry: manager_geometry,
+            manager_component_geometry,
             managed_schema_map,
             placeholders,
         })

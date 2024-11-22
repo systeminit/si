@@ -105,6 +105,7 @@ async fn executes_simple_management_function() {
     let request = ManagementRequest {
         execution_id: "1234".to_string(),
         handler: "numberOfInputs".to_string(),
+        current_view: "DEFAULT".to_string(),
         this_component: ComponentViewWithGeometry {
             kind: None,
             properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
