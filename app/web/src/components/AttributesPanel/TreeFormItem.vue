@@ -4,7 +4,7 @@
     :class="
       clsx(
         'attributes-panel-item',
-        'relative text-sm',
+        'relative text-sm first:mt-xs',
         isFocus && '--focus',
         isHover && '--hover',
         isSectionHover && '--section-hover',
@@ -79,11 +79,7 @@
             name="nested-arrow-right"
             size="none"
           />
-          <Icon
-            :name="icon"
-            class="attributes-panel-item__type-icon"
-            size="none"
-          />
+          <Icon :name="icon" class="h-full p-3xs relative" size="none" />
           <div
             :class="
               clsx(
@@ -154,12 +150,17 @@
             v-if="attributesPanel && validAttributeValueSources.length > 1"
           >
             <div
-              class="attributes-panel-item__section-header-source-select"
+              class="flex flex-row items-center gap-2xs ml-auto cursor-pointer"
               @click="sourceSelectMenuRef?.open($event)"
             >
               <div>set:</div>
               <div
-                class="flex flex-row items-center border pl-2xs pr-3xs h-4 text-xs"
+                :class="
+                  clsx(
+                    'flex flex-row items-center border pl-2xs pr-3xs h-4 text-xs',
+                    isSectionHover && 'dark:border-shade-100',
+                  )
+                "
               >
                 <div class="flex-none whitespace-nowrap">{{ propSource }}</div>
                 <Icon name="chevron--down" size="sm" />
@@ -231,7 +232,7 @@
         <template v-if="(isArray || isMap) && propManual">
           <div
             :style="{ marginLeft: indentPx }"
-            class="h-[34px] flex flex-row grow gap-xs relative overflow-hidden items-center"
+            class="h-[34px] flex flex-row grow gap-xs relative overflow-hidden items-center pt-2xs"
           >
             <Icon
               class="w-[14px] h-[14px] ml-xs"
@@ -380,7 +381,9 @@
             'attributes-panel-item__input-wrap group/input',
             'w-[45%] min-h-[30px] shrink-0',
             'relative border font-mono text-[13px] leading-[18px]',
-            themeClasses('bg-neutral-100', 'bg-neutral-900'),
+            isFocus
+              ? [themeClasses('bg-shade-0', 'bg-shade-100'), 'z-[101]']
+              : themeClasses('bg-neutral-100', 'bg-neutral-900'),
             validation && validation.status !== 'Success'
               ? 'my-2xs border-destructive-500'
               : [
@@ -388,6 +391,16 @@
                     ? themeClasses('border-action-500', 'border-action-300')
                     : themeClasses('border-neutral-400', 'border-neutral-600'),
                 ],
+            // These styles apply to all of the nested <input> elements
+            '[&_input]:py-[5px] [&_input]:px-xs [&_input]:bg-transparent [&_input]:font-mono',
+            '[&_input]:text-[13px] [&_input]:leading-[18px] [&_input]:w-full',
+            '[&_input]:border-none [&_input]:block [&_input]:overflow-hidden [&_input]:text-ellipsis',
+            (isFocus || isHover) && !noValue && '[&_input]:pr-7',
+            // These styles apply to all of the nested <textarea> elements
+            '[&_textarea]:py-[5px] [&_textarea]:px-xs [&_textarea]:bg-transparent [&_textarea]:font-mono',
+            '[&_textarea]:text-[13px] [&_textarea]:leading-[18px] [&_textarea]:w-full',
+            '[&_textarea]:border-none [&_textarea]:block [&_textarea]:overflow-hidden [&_textarea]:text-ellipsis',
+            (isFocus || isHover) && !noValue && '[&_textarea]:pr-7',
           )
         "
         @mouseleave="onHoverEnd"
@@ -398,8 +411,15 @@
             noValue && !iconShouldBeHidden && !isFocus && !propPopulatedBySocket
           "
           :name="icon"
-          class="attributes-panel-item__type-icon"
-          size="sm"
+          size="none"
+          :class="
+            clsx(
+              'absolute left-0 top-0 w-7 h-7 p-[3px] z-10 pointer-events-none',
+              validation && validation.status !== 'Success'
+                ? 'opacity-100 text-destructive-500'
+                : 'opacity-50',
+            )
+          "
         />
         <Icon
           v-if="unsetButtonShow"
@@ -469,7 +489,7 @@
         >
           <textarea
             v-model="newValueString"
-            :class="`$propLabelParts`"
+            :class="clsx(`$propLabelParts`, 'min-h-[80px] m-0')"
             :disabled="!propIsEditable"
             spellcheck="false"
             @blur="onBlur"
@@ -478,28 +498,49 @@
           />
           <Icon
             v-if="propControlledByParent"
-            class="attributes-panel-item__popout-view-button"
+            :class="
+              clsx(
+                'absolute right-1 bottom-1 z-60 p-3xs cursor-pointer rounded-sm border scale-x-[-1]',
+                isFocus || isHover ? 'block' : 'hidden',
+                'group-hover/input:block',
+                themeClasses(
+                  'bg-shade-0 text-shade-100 border-shade-100 hover:bg-action-500 hover:text-shade-0',
+                  'bg-shade-100 text-shade-0 border-shade-0 hover:bg-action-300',
+                ),
+              )
+            "
             name="external-link"
+            size="sm"
             title="View in popup"
             @click="viewModalRef?.open()"
           />
           <Icon
             v-else
-            class="attributes-panel-item__popout-edit-button"
+            :class="
+              clsx(
+                'absolute right-1 bottom-1 z-60 p-3xs cursor-pointer rounded-sm border scale-x-[-1]',
+                isFocus || isHover ? 'block' : 'hidden',
+                themeClasses(
+                  'bg-shade-0 text-shade-100 border-shade-100 hover:bg-action-500 hover:text-shade-0',
+                  'bg-shade-100 text-shade-0 border-shade-0 hover:bg-action-300',
+                ),
+              )
+            "
             name="external-link"
+            size="sm"
             title="Edit in popup"
             @click="editModalRef?.open()"
           />
-
-          <!-- <button class="attributes-panel-item__popout-edit-button2">
-            <Icon name="external-link" size="none" />
-            Expand
-          </button> -->
         </template>
         <template v-else-if="widgetKind === 'checkbox'">
           <input
             :checked="newValueBoolean"
-            :class="`attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`"
+            :class="
+              clsx(
+                `attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`,
+                'absolute left-0 right-0 top-0 p-0 h-full opacity-0 z-[1] block cursor-pointer',
+              )
+            "
             :disabled="!propIsEditable"
             type="checkbox"
             @blur="onBlur"
@@ -529,13 +570,23 @@
         >
           <select
             v-model="newValueString"
-            :class="`attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`"
+            :class="
+              clsx(
+                `attributes-panel-item__hidden-input ${propLabelParts[0]}${propLabelParts[1]}`,
+                'absolute left-0 right-0 top-0 p-0 h-full opacity-0 z-[1] block cursor-pointer',
+              )
+            "
             :disabled="!propIsEditable"
             @change="updateValue"
             @focus="onFocus"
             @blur="onBlur"
           >
-            <option v-for="o in widgetOptions" :key="o.value" :value="o.value">
+            <option
+              v-for="o in widgetOptions"
+              :key="o.value"
+              :value="o.value"
+              class="bg-shade-0 text-shade-100"
+            >
               {{ o.label }}
             </option>
           </select>
@@ -1026,7 +1077,7 @@ const instantValue = computed(() => {
 });
 
 const noValue = computed(() => {
-  return instantValue.value === null && newValueString.value === "";
+  return !instantValue.value && newValueString.value === "";
 });
 const iconShouldBeHidden = computed(
   () => icon.value === "input-type-select" || icon.value === "check",
@@ -1128,6 +1179,10 @@ const propIsEditable = computed(() => {
   );
 });
 
+const propControlledByParent = computed(
+  () => props.treeDef.value?.isControlledByAncestor,
+);
+
 const sourceTooltip = computed(() => {
   if (sourceOverridden.value) {
     if (propPopulatedBySocket.value) {
@@ -1151,10 +1206,6 @@ const sourceTooltip = computed(() => {
     return `${propName.value} can be set manually`;
   }
 });
-
-const propControlledByParent = computed(
-  () => props.treeDef.value?.isControlledByAncestor,
-);
 
 function resetNewValueToCurrentValue() {
   newValueBoolean.value = !!currentValue.value;
@@ -1403,194 +1454,6 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 </script>
 
 <style lang="less">
-// sync these with above
-@header-height: 24px;
-@indent-size: 8px;
-
-.attributes-panel-item__section-toggle {
-  .attributes-panel.--show-section-toggles & {
-    opacity: 1;
-  }
-}
-
-.attributes-panel-item__type-icon {
-  height: 100%;
-  padding: 2px;
-  position: relative;
-}
-
-.attributes-panel-item__hidden-input {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  padding: 0;
-  height: 100%;
-  opacity: 0;
-  z-index: 1;
-  display: block;
-  cursor: pointer;
-}
-.attributes-panel-item__input-wrap {
-  .attributes-panel-item.--focus & {
-    background: var(--input-focus-bg-color);
-    z-index: 101;
-  }
-
-  input,
-  textarea {
-    background: transparent;
-    font-family: inherit;
-    padding: 5px 8px;
-    width: 100%;
-    border: none;
-    font-size: inherit;
-    line-height: inherit;
-    display: block;
-    text-overflow: ellipsis;
-    overflow: hidden;
-
-    .attributes-panel-item.--input.--focus &,
-    .attributes-panel-item.--input.--hover & {
-      padding-right: 28px; // to give space for unset button
-    }
-  }
-  textarea {
-    min-height: 80px;
-    margin: 0;
-  }
-
-  // chrome + linux showing white on white text - this might fix it?
-  select {
-    option {
-      background: white;
-      color: black;
-    }
-  }
-
-  .attributes-panel-item__type-icon {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    width: 28px;
-    height: 28px;
-    padding: 3px;
-    z-index: 2;
-    pointer-events: none;
-  }
-}
-
-.attributes-panel-item__action-icons {
-  gap: 4px;
-  padding: 4px;
-  margin-left: 4px;
-  margin-right: 4px;
-
-  .attributes-panel-item__item-inner & {
-    position: absolute;
-    display: none;
-    right: 30px;
-  }
-  .attributes-panel-item__item-inner:hover & {
-    display: flex;
-  }
-
-  .attributes-panel-item__section-header & {
-    display: none;
-  }
-  .attributes-panel-item__section-header:hover & {
-    display: flex;
-  }
-}
-
-.attributes-panel-item__section-header-source-select {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  cursor: pointer;
-}
-
-.attributes-panel-item__section-header-source-select > div {
-  .attributes-panel-item__section-header:hover & {
-    body.dark & {
-      border-color: black;
-    }
-  }
-}
-
-// small icon buttons
-.attributes-panel-item__action-icons .icon,
-.attributes-panel-item__popout-edit-button,
-.attributes-panel-item__popout-view-button {
-  width: 20px;
-  height: 20px;
-  padding: 2px;
-  position: relative;
-  border: 1px solid currentColor;
-
-  border-radius: 2px;
-  cursor: pointer;
-
-  body.light & {
-    background: white;
-    color: black;
-  }
-  body.dark & {
-    background: black;
-    color: white;
-  }
-
-  &:hover {
-    background: @colors-action-400 !important;
-    color: white !important;
-    border-color: @colors-action-400 !important;
-  }
-
-  .attributes-panel-item__section-header & {
-    background: white;
-    color: black;
-    &:hover {
-      background: @colors-action-400;
-      color: white;
-    }
-  }
-}
-.attributes-panel-item__popout-edit-button,
-.attributes-panel-item__popout-view-button {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  display: none;
-  z-index: 51;
-  transform: scaleX(-1);
-
-  .attributes-panel-item.--input.--focus &,
-  .attributes-panel-item.--input.--hover & {
-    display: block;
-  }
-}
-
-.attributes-panel-item__input-wrap:hover
-  .attributes-panel-item__popout-view-button {
-  display: block;
-  z-index: 51;
-}
-
-.attributes-panel-item.--input .attributes-panel-item__type-icon {
-  opacity: 0.5;
-}
-.attributes-panel-item.--input.--invalid .attributes-panel-item__type-icon {
-  color: @colors-destructive-500;
-  opacity: 1;
-}
-
-// first input in a child list gets a bit of space
-.attributes-panel-item.--input:first-child {
-  margin-top: 8px;
-}
-
 // inputs next to each other push together to overlap their input borders
 .attributes-panel-item.--input + .attributes-panel-item.--input {
   margin-top: -1px;
