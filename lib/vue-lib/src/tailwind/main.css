@@ -16,35 +16,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-
-.si-property:focus {
-  background-color: #2a7889;
-}
-
-.input-border-grey {
-  border-color: #444444;
-}
-
-.input-border-gold {
-  border-color: #ce7f3e;
-}
-
-.text-gold {
-  color: #ce7f3e;
-}
-
-.text-green {
-  color: #69e39b;
-}
-
-.input-bg-color-grey {
-  background-color: #292c2d;
-}
-
-.driven-field {
-  color: #69c6e3;
-}
-
 /* Classes for applying forced theme to scrollbars */
 .color-scheme-light {
   color-scheme: light;

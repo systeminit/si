@@ -54,6 +54,19 @@ you can pass in options as props too */
               ? 'flex-1'
               : ['flex-none', compactWide ? 'w-[70%]' : 'w-[45%]'],
             !rename && 'min-h-[30px]',
+            'border',
+            isFocus
+              ? [
+                  'z-[101]',
+                  themeClasses(
+                    'bg-shade-0 border-action-500',
+                    'bg-shade-100 border-action-300',
+                  ),
+                ]
+              : themeClasses(
+                  'bg-neutral-100 border-neutral-400',
+                  'bg-neutral-900 border-neutral-600',
+                ),
           ],
         )
       "
@@ -967,15 +980,6 @@ defineExpose({
     color: var(--text-color-muted);
     font-style: italic;
   }
-
-  // &:focus {
-  //   border-color: @border-color--focus;
-  // }
-
-  // &:focus {
-  //   // we have a custom focus style instead
-  //    outline: none;
-  // }
 }
 
 .vorm-input__pass-show-hide-toggle + .vorm-input__input {
@@ -1167,16 +1171,9 @@ defineExpose({
 
 .vorm-input-compact > .vorm-input__input-and-instructions-wrap {
   position: relative;
-  border: 1px solid var(--input-border-color);
-  background: var(--input-bg-color);
   font-family: monospace;
   font-size: 13px;
   line-height: 18px;
-
-  .attributes-panel-item.--focus & {
-    background: var(--input-focus-bg-color);
-    z-index: 101;
-  }
 
   .vorm-input-compact__input__rename {
     font-family: "Inter";
@@ -1230,14 +1227,6 @@ defineExpose({
 // inputs next to each other push together to overlap their input borders
 .vorm-input-compact + .vorm-input-compact {
   margin-top: -1px;
-}
-
-.vorm-input-compact.--focused {
-  .vorm-input__input-and-instructions-wrap {
-    border-color: var(--input-focus-border-color);
-    background: var(--input-focus-bg-color);
-    z-index: 101;
-  }
 }
 
 .vorm-input-compact__input {

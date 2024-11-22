@@ -163,24 +163,6 @@ const realtimeStore = useRealtimeStore();
   );
 }
 
-/* some global css vars to be used in a few places... */
-body.light {
-  --input-border-color: @colors-neutral-400;
-  --input-bg-color: @colors-neutral-100;
-  --input-focus-bg-color: @colors-white;
-  --input-focus-border-color: @colors-action-400;
-  --toast-text-color: @colors-black;
-  --toast-bg-color: @colors-white;
-}
-body.dark {
-  --input-border-color: @colors-neutral-600;
-  --input-bg-color: @colors-neutral-900;
-  --input-focus-bg-color: @colors-black;
-  --input-focus-border-color: @colors-action-300;
-  --toast-text-color: @colors-white;
-  --toast-bg-color: @colors-black;
-}
-
 @keyframes siToastFadeIn {
   from {
     opacity: 0;
@@ -217,6 +199,15 @@ body.dark {
   margin: 0;
   min-width: 0;
   min-height: 0;
+}
+
+body.light {
+  --toast-text-color: @colors-black;
+  --toast-bg-color: @colors-white;
+}
+body.dark {
+  --toast-text-color: @colors-white;
+  --toast-bg-color: @colors-black;
 }
 
 .Vue-Toastification__container.diagram-toast-container {
