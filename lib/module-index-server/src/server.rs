@@ -89,18 +89,21 @@ impl Server<(), ()> {
                 Ok(creds) => creds,
                 Err(CredentialsError::MissingEnvVar(_, _)) => {
                     // Attempt to load from local AWS Profile
+                    info!("could not load credentials from environment; falling back to profile");
                     match AwsCredentials::from_profile(None) {
                         Ok(creds) => creds,
-                        Err(CredentialsError::ConfigNotFound)
-                        | Err(CredentialsError::Io(_))
-                        | Err(CredentialsError::Ini(_)) => {
+                        Err(err) => {
+                            info!(
+                                ?err,
+                                "could not load credentials from profile; falling back to instance metadata"
+                            );
+
                             // Attempt to load from instance metadata
                             match AwsCredentials::from_instance_metadata() {
                                 Ok(creds) => creds,
                                 Err(err) => return Err(err.into()),
                             }
                         }
-                        Err(err) => return Err(err.into()),
                     }
                 }
                 Err(err) => return Err(err.into()),
