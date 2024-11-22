@@ -1325,6 +1325,7 @@ mod tests {
         let req = ManagementRequest {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
+            current_view: "DEFAULT".to_string(),
             this_component: ComponentViewWithGeometry {
                 kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
@@ -1409,6 +1410,7 @@ mod tests {
         let req = ManagementRequest {
             execution_id: "1234".to_string(),
             handler: "manage".to_string(),
+            current_view: "DEFAULT".to_string(),
             this_component: ComponentViewWithGeometry {
                 kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),

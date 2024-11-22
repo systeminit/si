@@ -126,8 +126,8 @@ pub async fn set_component_position(
 
             if component_type != ComponentType::Component {
                 size = (
-                    new_geometry.width.or_else(|| geometry.width().copied()),
-                    new_geometry.height.or_else(|| geometry.height().copied()),
+                    new_geometry.width.or_else(|| geometry.width()),
+                    new_geometry.height.or_else(|| geometry.height()),
                 );
             }
 

@@ -10,6 +10,7 @@ use axum::{
     Router,
 };
 use dal::{
+    diagram::view::ViewId,
     management::{
         prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
         ManagementError, ManagementFuncReturn, ManagementOperator,
@@ -78,11 +79,12 @@ pub async fn run_prototype(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((_workspace_pk, change_set_id, prototype_id, component_id)): Path<(
+    Path((_workspace_pk, change_set_id, prototype_id, component_id, view_id)): Path<(
         WorkspacePk,
         ChangeSetId,
         ManagementPrototypeId,
         ComponentId,
+        ViewId,
     )>,
 ) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
     let mut ctx = builder
@@ -93,7 +95,8 @@ pub async fn run_prototype(
 
     // TODO check that this is a valid prototypeId
     let mut execution_result =
-        ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id).await?;
+        ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id, view_id.into())
+            .await?;
 
     track(
         &posthog_client,
@@ -103,8 +106,9 @@ pub async fn run_prototype(
         "run_prototype",
         serde_json::json!({
             "how": "/management/run_prototype",
-            "prototype_id": prototype_id.clone(),
-            "component_id": component_id.clone(),
+            "view_id": view_id,
+            "prototype_id": prototype_id,
+            "component_id": component_id,
         }),
     );
 
@@ -112,10 +116,16 @@ pub async fn run_prototype(
         let result: ManagementFuncReturn = result.try_into()?;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
-                ManagementOperator::new(&ctx, component_id, operations, execution_result, None)
-                    .await?
-                    .operate()
-                    .await?;
+                ManagementOperator::new(
+                    &ctx,
+                    component_id,
+                    operations,
+                    execution_result,
+                    Some(view_id),
+                )
+                .await?
+                .operate()
+                .await?;
             }
         }
 
@@ -137,7 +147,10 @@ pub async fn run_prototype(
 
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
-        .route("/prototype/:prototypeId/:componentId", post(run_prototype))
+        .route(
+            "/prototype/:prototypeId/:componentId/:viewId",
+            post(run_prototype),
+        )
         .route(
             "/prototype/:prototypeId/:componentId/latest",
             get(latest::latest),

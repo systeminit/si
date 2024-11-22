@@ -314,8 +314,8 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
                 ctx,
                 default_view_id,
                 RawGeometry {
-                    x: *geometry.x(),
-                    y: *geometry.y(),
+                    x: geometry.x(),
+                    y: geometry.y(),
                     width: None,
                     height: None,
                 },
@@ -340,8 +340,8 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
             ctx,
             default_view_id,
             RawGeometry {
-                x: *user_component_geometry.x(),
-                y: *user_component_geometry.y(),
+                x: user_component_geometry.x(),
+                y: user_component_geometry.y(),
                 width: None,
                 height: None,
             },

@@ -4,13 +4,13 @@ export interface Component {
 }
 
 export interface Geometry {
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
   width?: number;
   height?: number;
 }
 
 export interface ComponentWithGeometry {
   properties: Record<string, unknown>;
-  geometry: Geometry;
+  geometry: { [key: string]: Geometry };
 }

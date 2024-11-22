@@ -31,6 +31,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { ViewId } from "@/api/sdf/dal/views";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -287,6 +288,7 @@ export const useFuncStore = () => {
         async RUN_MGMT_PROTOTYPE(
           prototypeId: ManagementPrototypeId,
           componentId: ComponentId,
+          viewId: ViewId,
         ) {
           return new ApiRequest<MgmtPrototypeResult>({
             method: "post",
@@ -296,6 +298,7 @@ export const useFuncStore = () => {
               "prototype",
               { prototypeId },
               { componentId },
+              { viewId },
             ]),
           });
         },

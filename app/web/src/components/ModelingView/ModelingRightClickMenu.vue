@@ -433,10 +433,12 @@ const rightClickMenuItems = computed(() => {
 
 const runManagementFunc = async (prototype: MgmtPrototype) => {
   if (!selectedComponent.value) return;
+  if (!viewStore.selectedViewId) return;
 
   const result = await funcStore.RUN_MGMT_PROTOTYPE(
     prototype.managementPrototypeId,
     selectedComponent.value.def.id,
+    viewStore.selectedViewId,
   );
 
   if (result.result.success && result.result.data.message) {

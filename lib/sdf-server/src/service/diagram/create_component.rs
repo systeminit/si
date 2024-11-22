@@ -132,8 +132,8 @@ pub async fn create_component(
                 view_id,
                 x,
                 y,
-                width.or_else(|| initial_geometry.width().copied()),
-                height.or_else(|| initial_geometry.height().copied()),
+                width.or_else(|| initial_geometry.width()),
+                height.or_else(|| initial_geometry.height()),
             )
             .await?;
     } else {

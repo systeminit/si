@@ -54,9 +54,13 @@ impl ManagementBinding {
     ) -> FuncBindingResult<String> {
         let default_this_component = "object".to_string();
         let default_component_types = "object".to_string();
-        let default_types = (default_this_component, default_component_types.to_owned());
+        let default_types = (
+            default_this_component,
+            default_component_types.to_owned(),
+            default_component_types.to_owned(),
+        );
 
-        let (this_component_iface, component_types) =
+        let (this_component_iface, component_create_type, component_input_type) =
             match ManagementPrototype::prototype_id_for_func_id(ctx, func_id).await? {
                 Some(prototype_id) => {
                     match ManagementPrototype::get_by_id(ctx, prototype_id).await? {
@@ -72,7 +76,8 @@ impl ManagementBinding {
 
                             let (_, reverse_map) = prototype.managed_schemas_map(ctx).await?;
 
-                            let mut component_types = vec![];
+                            let mut component_create_types = vec![];
+                            let mut component_update_types = vec![];
                             for (schema_id, name) in reverse_map {
                                 let variant_id =
                                     Schema::get_or_install_default_variant(ctx, schema_id).await?;
@@ -85,7 +90,25 @@ impl ManagementBinding {
 
                                 let sv_type = root_prop.ts_type(ctx).await?;
 
-                                let component_type = format!(
+                                let component_update_type = format!(
+                                    r#"
+                                {{
+                                    kind: "{name}",
+                                    properties?: {sv_type},
+                                    geometry?: {{ [key: string]: Geometry }},
+                                    connect?: {{
+                                        from: string,
+                                        to: {{
+                                            component: string;
+                                            socket: string;
+                                        }}
+                                    }}[],
+                                    parent?: string,
+                                }}
+                                "#
+                                );
+
+                                let component_create_type = format!(
                                     r#"
                                 {{
                                     kind: "{name}",
@@ -102,12 +125,18 @@ impl ManagementBinding {
                                 }}
                                 "#
                                 );
-                                component_types.push(component_type);
+                                component_create_types.push(component_create_type);
+                                component_update_types.push(component_update_type);
                             }
 
-                            let component_types = component_types.join("|\n");
+                            let component_create_type = component_create_types.join("|\n");
+                            let component_input_type = component_update_types.join("|\n");
 
-                            (root_prop.ts_type(ctx).await?, component_types)
+                            (
+                                root_prop.ts_type(ctx).await?,
+                                component_create_type,
+                                component_input_type,
+                            )
                         }
                         None => default_types,
                     }
@@ -118,18 +147,18 @@ impl ManagementBinding {
         Ok(format!(
             r#"
 type Geometry = {{
-    x: number,
-    y: number,
+    x?: number,
+    y?: number,
     width?: number,
     height?: number,
 }};
 type Output = {{
   status: 'ok' | 'error';
   ops?: {{
-    create?: {{ [key: string]: {component_types} }},
+    create?: {{ [key: string]: {component_create_type} }},
     update?: {{ [key: string]: {{ 
         properties?: {{ [key: string]: unknown }}, 
-        geometry?: Geometry, 
+        geometry?: {{ [key: string]: Geometry }}, 
         connect?: {{
             add?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
             remove?: {{ from: string, to: {{ component: string; socket: string; }} }}[],
@@ -144,11 +173,12 @@ type Output = {{
   message?: string | null;
 }};
 type Input = {{
+   currentView: string, 
     thisComponent: {{
         properties: {this_component_iface},
-        geometry: Geometry,
+        geometry: {{ [key: string]: Geometry }},
     }},
-    components: {{ [key: string]: {component_types} }}
+    components: {{ [key: string]: {component_input_type} }}
 }};"#
         ))
     }

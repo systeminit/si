@@ -15,6 +15,7 @@ use super::ExtractPayload;
 pub struct FuncBackendManagementArgs {
     this_component: ComponentViewWithGeometry,
     components: HashMap<String, ComponentViewWithGeometry>,
+    current_view: String,
 }
 
 #[derive(Debug)]
@@ -41,6 +42,7 @@ impl FuncDispatch for FuncBackendManagement {
             code_base64: code_base64.into(),
             this_component: args.this_component,
             components: args.components,
+            current_view: args.current_view,
             before,
         };
 

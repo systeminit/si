@@ -49,12 +49,8 @@ pub async fn set_component_geometry(
         let new_geometry_cache = new_geometry.clone();
 
         let (width, height) = (
-            new_geometry
-                .width
-                .or_else(|| current_geometry.width().copied()),
-            new_geometry
-                .height
-                .or_else(|| current_geometry.height().copied()),
+            new_geometry.width.or_else(|| current_geometry.width()),
+            new_geometry.height.or_else(|| current_geometry.height()),
         );
 
         component
