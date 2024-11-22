@@ -87,7 +87,20 @@ impl Server<(), ()> {
             }
             (None, None) => match AwsCredentials::from_env() {
                 Ok(creds) => creds,
-                Err(CredentialsError::MissingEnvVar(_, _)) => AwsCredentials::from_profile(None)?,
+                Err(CredentialsError::MissingEnvVar(_, _)) => {
+                    // Attempt to load from local AWS Profile
+                    match AwsCredentials::from_profile(None) {
+                        Ok(creds) => creds,
+                        Err(CredentialsError::ConfigNotFound) => {
+                            // Attempt to load from instance metadata
+                            match AwsCredentials::from_instance_metadata() {
+                                Ok(creds) => creds,
+                                Err(err) => return Err(err.into()),
+                            }
+                        }
+                        Err(err) => return Err(err.into()),
+                    }
+                }
                 Err(err) => return Err(err.into()),
             },
             _ => {
