@@ -25,8 +25,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
-    WsEvent, WsEventResult, WsPayload,
+    id, implement_add_edge_to, pkg, ChangeSetId, DalContext, HelperError, Timestamp,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -37,6 +37,7 @@ pub mod backend;
 pub mod binding;
 pub mod intrinsics;
 mod kind;
+pub mod resource_payload_to_value;
 pub mod runner;
 pub use kind::FuncKind;
 
@@ -75,6 +76,12 @@ pub enum FuncError {
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("si pkg error: {0}")]
+    Pkg(#[from] Box<pkg::PkgError>),
+    #[error("pkg error: {0}")]
+    SiPkg(#[from] si_pkg::SiPkgError),
+    #[error("pkg spec error: {0}")]
+    Spec(#[from] si_pkg::SpecError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
