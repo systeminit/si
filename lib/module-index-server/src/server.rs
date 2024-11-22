@@ -91,7 +91,9 @@ impl Server<(), ()> {
                     // Attempt to load from local AWS Profile
                     match AwsCredentials::from_profile(None) {
                         Ok(creds) => creds,
-                        Err(CredentialsError::ConfigNotFound) => {
+                        Err(CredentialsError::ConfigNotFound)
+                        | Err(CredentialsError::Io(_))
+                        | Err(CredentialsError::Ini(_)) => {
                             // Attempt to load from instance metadata
                             match AwsCredentials::from_instance_metadata() {
                                 Ok(creds) => creds,
