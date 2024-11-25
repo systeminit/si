@@ -186,6 +186,7 @@ export const useModuleStore = () => {
               (m) => m.hash,
             );
           },
+          builtins: (state) => _.values(state.builtinsSearchResults),
           builtinModuleSummaryByHash: (state) =>
             _.keyBy(state.builtinsSearchResults, (m) => m.hash),
           builtinModuleDetailsByHash: (state) =>

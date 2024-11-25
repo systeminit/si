@@ -11,12 +11,12 @@
     />
 
     <ModuleList
-      label="Local / Installed"
-      :modules="filteredLocalModules"
-      :loading="loadLocalModulesReqStatus"
-      loadingMessage="Loading local modules..."
+      label="Builtin List"
+      :modules="filteredBuiltins"
+      :loading="loadBuiltinsReqStatus"
+      loadingMessage="Loading builtins..."
       :textSearch="textSearch"
-      noModulesMessage="No modules installed"
+      noModulesMessage="No builtins found"
     />
 
     <ModuleList
@@ -38,18 +38,17 @@ import ModuleList from "./ModuleList.vue";
 import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 
 const moduleStore = useModuleStore();
-const loadLocalModulesReqStatus =
-  moduleStore.getRequestStatus("LOAD_LOCAL_MODULES");
+const loadBuiltinsReqStatus = moduleStore.getRequestStatus("LIST_BUILTINS");
 const searchRemoteModulesReqStatus = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULES_LIST",
 );
 
 const textSearch = ref("");
 
-const filteredLocalModules = computed(() => {
-  if (!textSearch.value) return moduleStore.localModules;
+const filteredBuiltins = computed(() => {
+  if (!textSearch.value) return moduleStore.builtins;
 
-  return _.filter(moduleStore.localModules, (m) =>
+  return _.filter(moduleStore.builtins, (m) =>
     m.name.toLowerCase().includes(textSearch.value.toLowerCase()),
   );
 });

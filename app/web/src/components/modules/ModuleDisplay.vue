@@ -4,38 +4,38 @@
     class="inset-0 p-sm absolute overflow-auto"
   >
     <div
-      v-if="localSummary || remoteSummary"
+      v-if="builtinSummary || remoteSummary"
       class="flex flex-row items-center gap-xs flex-none"
     >
       <Icon name="component" />
       <div class="text-3xl font-bold truncate">
         {{
-          localSummary?.name ||
+          builtinSummary?.name ||
           remoteSummary?.name ||
           moduleStore.urlSelectedModuleSlug
         }}
       </div>
     </div>
 
-    <!-- A local module is selected -->
-    <template v-if="localSummary">
+    <!-- A builtin is selected -->
+    <template v-if="builtinSummary">
       <div
         class="text-sm italic pb-sm flex flex-row flex-wrap gap-x-8 gap-y-1 flex-none"
       >
         <div>
           <span class="font-bold">Hash:</span>
-          {{ localSummary.hash }}
+          {{ builtinSummary.hash }}
         </div>
         <div>
           <span class="font-bold">Created At: </span>
           <Timestamp
-            :date="remoteDetails?.createdAt || localDetails?.createdAt"
+            :date="remoteDetails?.createdAt || builtinSummary?.createdAt"
             size="long"
           />
         </div>
         <div>
           <span class="font-bold">Created By: </span
-          >{{ remoteDetails?.ownerDisplayName || localDetails?.createdBy }}
+          >{{ remoteDetails?.ownerDisplayName || builtinDetails?.createdAt }}
         </div>
       </div>
 
@@ -44,13 +44,13 @@
         tone="warning"
         class="mb-sm"
       >
-        Module only exists locally
+        Module doesn't exist
       </ErrorMessage>
 
       <div
         class="border dark:border-neutral-600 rounded flex flex-col gap-sm overflow-auto"
       >
-        <template v-if="interactWithBuiltin">
+        <template v-if="builtinSummary">
           <ErrorMessage :requestStatus="rejectReqStatus" />
           <VButton
             :requestStatus="rejectReqStatus"
@@ -78,8 +78,7 @@
 
         <ul class="p-sm overflow-y-auto">
           <li
-            v-for="func in remoteDetails?.metadata?.funcs ||
-            localDetails?.funcs"
+            v-for="func in remoteDetails?.metadata?.funcs"
             :key="func.name"
             class="flex flex-col"
           >
@@ -103,8 +102,7 @@
 
         <ul class="p-sm overflow-y-auto">
           <li
-            v-for="sv in remoteDetails?.metadata?.schemas ||
-            localDetails?.schemas"
+            v-for="sv in remoteDetails?.metadata?.schemas"
             :key="sv"
             class="flex flex-col"
           >
@@ -198,8 +196,8 @@
   </div>
   <WorkspaceCustomizeEmptyState
     v-else
-    :requestStatus="loadLocalModulesReqStatus"
-    loadingMessage="Loading modules..."
+    :requestStatus="loadBuiltsReqStatus"
+    loadingMessage="Loading builtins..."
   />
 </template>
 
@@ -219,18 +217,11 @@ import CodeViewer from "../CodeViewer.vue";
 import WorkspaceCustomizeEmptyState from "../WorkspaceCustomizeEmptyState.vue";
 
 const moduleStore = useModuleStore();
-const loadLocalModulesReqStatus =
-  moduleStore.getRequestStatus("LOAD_LOCAL_MODULES");
+const loadBuiltsReqStatus = moduleStore.getRequestStatus("LIST_BUILTINS");
 const loadRemoteModulesReqStatus = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULES_LIST",
 );
 
-const _localDetailsReq = moduleStore.getRequestStatus(
-  "GET_LOCAL_MODULE_DETAILS",
-);
-const _remoteDetailsReq = moduleStore.getRequestStatus(
-  "GET_REMOTE_MODULE_DETAILS",
-);
 const remoteModuleSpecStatus = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_SPEC",
 );
@@ -241,18 +232,10 @@ const promoteToBuiltinReqStatus =
 
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
-const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
-const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
 const remoteSummary = computed(() => moduleStore.selectedModuleRemoteSummary);
-const remoteDetails = computed(
-  () =>
-    moduleStore.selectedModuleRemoteDetails ||
-    moduleStore.selectedBuiltinModuleDetails,
-);
+const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
 const builtinSummary = computed(() => moduleStore.selectedBuiltinModuleSummary);
-const interactWithBuiltin = computed(
-  () => builtinSummary.value || !localSummary.value?.isBuiltin,
-);
+const builtinDetails = computed(() => moduleStore.selectedBuiltinModuleDetails);
 const remoteSpec = computed(() =>
   remoteSummary.value?.id
     ? moduleStore.remoteModuleSpecsById[remoteSummary.value?.id]
@@ -265,13 +248,11 @@ const installReqStatus = moduleStore.getRequestStatus(
   remoteSummaryId,
 );
 
-// since the URL is based on the name, but we need the hash to fetch the module details
-// we have to wait until we have the local info loaded
 watch(
-  localSummary,
+  builtinSummary,
   () => {
-    if (localSummary.value) {
-      moduleStore.GET_LOCAL_MODULE_DETAILS(localSummary.value.hash);
+    if (builtinSummary.value) {
+      moduleStore.GET_REMOTE_MODULE_DETAILS(builtinSummary.value.id);
     }
   },
   { immediate: true },
