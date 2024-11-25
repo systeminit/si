@@ -712,6 +712,12 @@ export const useAssetStore = (forceChangeSetId?: ChangeSetId) => {
               if (metadata.change_set_id !== changeSetId) return;
 
               for (const variant of schemaVariants) {
+                this.uninstalledVariantList =
+                  this.uninstalledVariantList.filter(
+                    (uninstalledVariant) =>
+                      uninstalledVariant.schemaId !== variant.schemaId,
+                  );
+
                 const savedAssetIdx = this.variantList.findIndex(
                   (a) => a.schemaId === variant.schemaId,
                 );

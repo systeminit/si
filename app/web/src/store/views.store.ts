@@ -51,7 +51,6 @@ import {
 import { useComponentsStore, processRawComponent } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { useAssetStore } from "./asset.store";
 import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
 
@@ -1317,18 +1316,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onSuccess: (response) => {
               delete this.pendingInsertedComponents[tempInsertId];
-              if (
-                categoryVariant.type === "uninstalled" &&
-                response.installedVariant
-              ) {
-                const assetStore = useAssetStore();
-                const installedVariant = response.installedVariant;
-                assetStore.uninstalledVariantList =
-                  assetStore.uninstalledVariantList.filter(
-                    (variant) => variant.schemaId !== installedVariant.schemaId,
-                  );
-                assetStore.schemaVariants.push(installedVariant);
-              }
             },
           });
         },
