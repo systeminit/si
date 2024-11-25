@@ -16,7 +16,6 @@ import IncomingChangesMerging from "@/components/toasts/IncomingChangesMerging.v
 import MovedToHead from "@/components/toasts/MovedToHead.vue";
 import RebaseOnBase from "@/components/toasts/RebaseOnBase.vue";
 import ChangeSetStatusChanged from "@/components/toasts/ChangeSetStatusChanged.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
@@ -41,7 +40,6 @@ export interface OpenChangeSetsView {
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
-  const featureFlagsStore = useFeatureFlagsStore();
   const authStore = useAuthStore();
   const BASE_API = [
     "v2",
@@ -149,25 +147,15 @@ export function useChangeSetsStore() {
         },
 
         async FETCH_CHANGE_SETS() {
-          if (featureFlagsStore.REBAC) {
-            return new ApiRequest<WorkspaceMetadata>({
-              method: "get",
-              url: BASE_API,
-              onSuccess: (response) => {
-                this.headChangeSetId = response.defaultChangeSetId;
-                this.changeSetsById = _.keyBy(response.changeSets, "id");
-                this.approvers = response.approvers;
-              },
-            });
-          } else {
-            return new ApiRequest<OpenChangeSetsView>({
-              url: "change_set/list_open_change_sets",
-              onSuccess: (response) => {
-                this.headChangeSetId = response.headChangeSetId;
-                this.changeSetsById = _.keyBy(response.changeSets, "id");
-              },
-            });
-          }
+          return new ApiRequest<WorkspaceMetadata>({
+            method: "get",
+            url: BASE_API,
+            onSuccess: (response) => {
+              this.headChangeSetId = response.defaultChangeSetId;
+              this.changeSetsById = _.keyBy(response.changeSets, "id");
+              this.approvers = response.approvers;
+            },
+          });
         },
         async CREATE_CHANGE_SET(name: string) {
           return new ApiRequest<{ changeSet: ChangeSet }>({
@@ -249,12 +237,10 @@ export function useChangeSetsStore() {
         },
         async APPLY_CHANGE_SET(username: string) {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
+          const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
-            url: "change_set/apply_change_set",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
+            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
             optimistic: () => {
               toast({
                 component: IncomingChangesMerging,
@@ -264,12 +250,6 @@ export function useChangeSetsStore() {
               });
             },
             _delay: 2000,
-            onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
-            },
-            onFail: () => {
-              // todo: show something!
-            },
           });
         },
         async FORCE_APPLY_CHANGE_SET(username: string) {
@@ -336,77 +316,6 @@ export function useChangeSetsStore() {
             url: BASE_API.concat([{ selectedChangeSetId }, "reopen"]),
           });
         },
-        async APPLY_CHANGE_SET_V2() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          const selectedChangeSetId = this.selectedChangeSetId;
-          return new ApiRequest({
-            method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
-          });
-        },
-        async APPLY_CHANGE_SET_VOTE(vote: string) {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/merge_vote",
-            params: {
-              vote,
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async BEGIN_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/begin_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async CANCEL_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/cancel_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async APPLY_ABANDON_VOTE(vote: string) {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/abandon_vote",
-            params: {
-              vote,
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async BEGIN_ABANDON_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/begin_abandon_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async CANCEL_ABANDON_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/cancel_abandon_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-
         getAutoSelectedChangeSetId() {
           const lastChangeSetId = sessionStorage.getItem(
             `SI:LAST_CHANGE_SET/${workspacePk}`,
@@ -414,7 +323,7 @@ export function useChangeSetsStore() {
           if (
             lastChangeSetId &&
             this.changeSetsById[lastChangeSetId]?.status ===
-              ChangeSetStatus.Open
+            ChangeSetStatus.Open
           ) {
             return lastChangeSetId;
           }
@@ -605,75 +514,6 @@ export function useChangeSetsStore() {
                       },
                     });
                 }
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetBeginApprovalProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.NeedsApproval;
-                changeSet.mergeRequestedAt = new Date().toISOString();
-                changeSet.mergeRequestedByUserId = data.userPk;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetCancelApprovalProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.Open;
-              }
-            },
-          },
-
-          {
-            eventType: "ChangeSetBeginAbandonProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.NeedsAbandonApproval;
-                changeSet.abandonRequestedAt = new Date().toISOString();
-                changeSet.abandonRequestedByUserId = data.userPk;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetCancelAbandonProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.Open;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetMergeVote",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals[data.userPk] = data.vote;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetAbandonVote",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals[data.userPk] = data.vote;
               }
             },
           },

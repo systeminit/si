@@ -13,8 +13,9 @@ interface API_DESCRIPTION {
 
 export const ROUTES = {
   // Change Set Management ------------------------------------------------------
-  apply_change_set: {
-    path: () => "/change_set/apply_change_set",
+  force_apply: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/force_apply`,
     method: "POST",
   },
   create_change_set: {
@@ -26,7 +27,8 @@ export const ROUTES = {
     method: "POST",
   },
   open_change_sets: {
-    path: () => "/change_set/list_open_change_sets",
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets`,
     method: "GET",
   },
   schema_variants: {

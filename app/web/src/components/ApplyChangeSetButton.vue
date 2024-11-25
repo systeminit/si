@@ -51,22 +51,13 @@
         "
       />
     </template>
-
-    <ApprovalFlowModal
-      v-if="!featureFlagsStore.REBAC"
-      ref="approvalFlowModalRef"
-      votingKind="merge"
-      @completeVoting="applyChangeSet"
-    />
-
-    <ApprovalFlowModal2 v-else ref="approvalFlowModal2Ref" votingKind="merge" />
+    <ApprovalFlowModal ref="approvalFlowModalRef" votingKind="merge" />
   </VButton>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import * as _ from "lodash-es";
-import { useRouter, useRoute } from "vue-router";
 import {
   VButton,
   Icon,
@@ -74,24 +65,18 @@ import {
   themeClasses,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useToast } from "vue-toastification";
+
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
-import { useAuthStore } from "@/store/auth.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import RetryApply from "@/components/toasts/RetryApply.vue";
-import ApprovalFlowModal from "./ApprovalFlowModal.vue";
-import ApprovalFlowModal2 from "./ApprovalFlowModal2.vue";
 
-const featureFlagsStore = useFeatureFlagsStore();
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import ApprovalFlowModal from "./ApprovalFlowModal.vue";
+
 const actionsStore = useActionsStore();
-const authStore = useAuthStore();
+
 const changeSetsStore = useChangeSetsStore();
-const route = useRoute();
-const router = useRouter();
 const statusStore = useStatusStore();
-const toast = useToast();
 
 const displayCount = computed(() => actionsStore.proposedActions.length);
 
@@ -101,38 +86,9 @@ const applyChangeSetReqStatus =
 const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
   null,
 );
-const approvalFlowModal2Ref = ref<InstanceType<
-  typeof ApprovalFlowModal2
-> | null>(null);
 
 const openApprovalFlowModal = () => {
-  if (featureFlagsStore.REBAC) {
-    approvalFlowModal2Ref.value?.open();
-  } else {
-    approvalFlowModalRef.value?.open();
-  }
-};
-
-// Applies the current change set3
-const applyChangeSet = async () => {
-  if (!route.name) return;
-  // if (featureFlagsStore.REBAC) return;
-  const resp = await changeSetsStore.APPLY_CHANGE_SET(
-    authStore.user?.email ?? "",
-  );
-  if (resp.result.success) {
-    router.replace({
-      name: route.name,
-      params: {
-        ...route.params,
-        changeSetId: "head",
-      },
-    });
-  } else if (resp.result.statusCode === 428) {
-    toast({
-      component: RetryApply,
-    });
-  }
+  approvalFlowModalRef.value?.open();
 };
 
 const statusStoreUpdating = computed(() => {
