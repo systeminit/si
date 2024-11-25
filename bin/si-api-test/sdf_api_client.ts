@@ -49,6 +49,11 @@ export const ROUTES = {
     path: () => `/component/set_type`,
     method: "POST",
   },
+  dvu_roots: {
+    path: (vars: ROUTE_VARS) =>
+      `/diagram/dvu_roots?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
+    method: "GET",
+  },
 
   // Component Management -------------------------------------------------------
   delete_component: {
@@ -85,6 +90,19 @@ export const ROUTES = {
     path: () => `/variant/create_variant`,
     method: "POST",
   },
+  save_variant: {
+    path: () => `/variant/save_variant`,
+    method: "POST",
+  },
+  regenerate_variant: {
+    path: () => `/variant/regenerate_variant`,
+    method: "POST",
+  },
+  get_variant: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants/${vars.schemaVariantId}`,
+    method: "GET",
+  },
 
   // Action Management -----------------------------------------------------------
   action_list: {
@@ -105,6 +123,26 @@ export const ROUTES = {
     path: (vars: ROUTE_VARS) =>
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs`,
     method: "GET",
+  },
+  create_func: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs`,
+    method: "POST",
+  },
+  create_func_arg: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/arguments`,
+    method: "POST",
+  },
+  create_func_binding: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/bindings`,
+    method: "PUT",
+  },
+  update_func_code: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/funcs/${vars.funcId}/code`,
+    method: "PUT",
   },
 
   // Websockets -----------------------------------------
@@ -241,6 +279,39 @@ export class SdfApiClient {
 
     console.log("Starting WebSocket listener for workspace updates...");
     dvuListener.listen();
+  }
+
+  public async waitForDVURoots(
+    changeSetId: string,
+    interval_ms: number,
+    timeout_ms: number,
+  ): Promise<void> {
+    console.log(`Waiting on DVUs for ${this.workspaceId}...`);
+    const dvuPromise = new Promise<void>((resolve) => {
+      const interval = setInterval(async () => {
+        const remainingRoots = await this.call({ route: "dvu_roots", routeVars: { changeSetId } });
+        if (remainingRoots?.count === 0) {
+          console.log(`All DVUs for ${this.workspaceId} finished!`);
+          clearInterval(interval);
+          resolve();
+        } else {
+          console.log(
+            `Waiting for DVUs in workspace ${this.workspaceId} to finish, ${remainingRoots?.count} remain...`,
+          );
+        }
+      }, interval_ms);
+    });
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        console.log(
+          `Timeout reached while waiting for DVUs in workspace ${this.workspaceId}.`,
+        );
+        reject(new Error("Timeout while waiting for DVUs to finish."));
+      }, timeout_ms);
+    });
+
+    return Promise.race([dvuPromise, timeoutPromise]);
   }
 
   public async waitForDVUs(

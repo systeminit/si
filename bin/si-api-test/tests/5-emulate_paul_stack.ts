@@ -5,6 +5,13 @@ import {
   runWithTemporaryChangeset,
   sleep,
   sleepBetween,
+  createComponent,
+  getPropertyEditor,
+  setAttributeValue,
+  attributeValueIdForPropPath,
+  getQualificationSummary,
+  getActions,
+  getFuncs,
 } from "../test_helpers.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
@@ -225,45 +232,31 @@ async function emulate_paul_stack_inner(
     }
   }
 
-  await sdf.waitForDVUs(2000, 60000);
+  await sdf.waitForDVURoots(changeSetId, 2000, 60000);
+
 }
 
 // REQUEST HELPERS WITH VALIDATIONS
-async function createComponent(
+
+async function getDiagram(
   sdf: SdfApiClient,
   changeSetId: string,
-  schemaVariantId: string,
-  x: number,
-  y: number,
-  parentId?: string,
-  newCreateComponentApi?: boolean,
-): Promise<string> {
-  const parentArgs = parentId ? { parentId } : {};
-  const payload = {
-    schemaType: newCreateComponentApi ? "installed" : undefined,
-    schemaVariantId,
-    x: x.toString(),
-    y: y.toString(),
-    visibility_change_set_pk: changeSetId,
-    workspaceId: sdf.workspaceId,
-    ...parentArgs,
-  };
-  const createResp = await sdf.call({
-    route: "create_component",
-    body: payload,
+): Promise<{ components: any[]; edges: any[] }> {
+  const diagram = await sdf.call({
+    route: "get_diagram",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+    },
   });
-  const componentId = createResp?.componentId;
-  assert(componentId, "Expected to get a component id after creation");
 
-  // Run side effect calls
-  await Promise.all([
-    getQualificationSummary(sdf, changeSetId),
-    getActions(sdf, changeSetId),
-    getFuncs(sdf, changeSetId),
-    getPropertyEditor(sdf, changeSetId, componentId),
-  ]);
+  assert(
+    Array.isArray(diagram?.components),
+    "Expected components list on the diagram",
+  );
+  assert(Array.isArray(diagram?.edges), "Expected edges list on the diagram");
 
-  return componentId;
+  return diagram;
 }
 
 async function setComponentGeometry(
@@ -347,52 +340,6 @@ async function setComponentType(
   return result;
 }
 
-async function getDiagram(
-  sdf: SdfApiClient,
-  changeSetId: string,
-): Promise<{ components: any[]; edges: any[] }> {
-  const diagram = await sdf.call({
-    route: "get_diagram",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-
-  assert(
-    Array.isArray(diagram?.components),
-    "Expected components list on the diagram",
-  );
-  assert(Array.isArray(diagram?.edges), "Expected edges list on the diagram");
-
-  return diagram;
-}
-
-async function setAttributeValue(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-  attributeValueId: string,
-  parentAttributeValueId: string,
-  propId: string,
-  value: unknown,
-) {
-  const updateValuePayload = {
-    visibility_change_set_pk: changeSetId,
-    componentId,
-    attributeValueId,
-    parentAttributeValueId,
-    propId,
-    value,
-    isForSecret: false,
-  };
-
-  await sdf.call({
-    route: "update_property_value",
-    body: updateValuePayload,
-  });
-}
-
 async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
   let schemaVariants = await sdf.call({
     route: "schema_variants",
@@ -415,67 +362,7 @@ async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
   return { schemaVariants, newCreateComponentApi };
 }
 
-async function getPropertyEditor(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-) {
-  const values = await sdf.call({
-    route: "get_property_values",
-    routeVars: {
-      componentId,
-      changeSetId,
-    },
-  });
-  assert(typeof values?.values === "object", "Expected prop values");
-  assert(typeof values?.childValues === "object", "Expected prop childValues:");
 
-  const schema = await sdf.call({
-    route: "get_property_schema",
-    routeVars: {
-      componentId,
-      changeSetId,
-    },
-  });
-  assert(typeof schema?.rootPropId === "string", "Expected rootPropId");
-  assert(typeof schema?.props === "object", "Expected props");
-  assert(typeof schema?.childProps === "object", "Expected childProps list");
-
-  return {
-    values,
-    schema,
-  };
-}
-
-async function getQualificationSummary(sdf: SdfApiClient, changeSetId: string) {
-  return await sdf.call({
-    route: "qualification_summary",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-}
-
-async function getActions(sdf: SdfApiClient, changeSetId: string) {
-  return await sdf.call({
-    route: "action_list",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-}
-
-async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
-  return await sdf.call({
-    route: "func_list",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-}
 
 // Data Extractors
 function extractSchemaVariant(
@@ -497,37 +384,4 @@ function extractSchemaVariant(
   return variant;
 }
 
-function attributeValueIdForPropPath(
-  propPath: string,
-  propList: any[],
-  attributeValuesView: {
-    values: any[];
-    childValues: any[];
-  },
-) {
-  const prop = propList.find((p) => p.path === propPath);
-  assert(prop, `Expected to find ${propPath} prop`);
 
-  let attributeValueId;
-  for (const attributeValue in attributeValuesView.values) {
-    if (attributeValuesView.values[attributeValue]?.propId === prop.id) {
-      attributeValueId = attributeValue;
-    }
-  }
-  assert(attributeValueId, "Expected source attribute value");
-
-  let parentAttributeValueId;
-  for (const attributeValue in attributeValuesView?.childValues) {
-    const avChildren = attributeValuesView?.childValues[attributeValue] ?? [];
-    if (avChildren.includes(attributeValueId)) {
-      parentAttributeValueId = attributeValue;
-    }
-  }
-  assert(parentAttributeValueId, "Expected parent of source attribute value");
-
-  return {
-    attributeValueId,
-    parentAttributeValueId,
-    propId: prop.id,
-  };
-}
