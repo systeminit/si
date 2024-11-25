@@ -48,6 +48,7 @@ import { TreeNode, useTheme } from "@si/vue-lib/design-system";
 import { ActionProposedView } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 const changeSetsStore = useChangeSetsStore();
@@ -83,11 +84,13 @@ const componentNameTooltip = computed(() => {
   return {};
 });
 
+const viewStore = useViewsStore();
+
 function onClick() {
   const component =
     componentsStore.allComponentsById[props.action.componentId || ""];
   if (component) {
-    componentsStore.setSelectedComponentId(props.action.componentId);
+    viewStore.setSelectedComponentId(props.action.componentId);
     componentsStore.eventBus.emit("panToComponent", {
       component,
       center: true,
@@ -97,7 +100,7 @@ function onClick() {
 }
 
 const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.action.componentId,
+  () => viewStore.hoveredComponentId === props.action.componentId,
 );
 
 function onHoverStart() {
@@ -105,7 +108,7 @@ function onHoverStart() {
     props.action.componentId &&
     componentsStore.allComponentsById[props.action.componentId]
   ) {
-    componentsStore.setHoveredComponentId(props.action.componentId);
+    viewStore.setHoveredComponentId(props.action.componentId);
   }
 }
 
@@ -114,7 +117,7 @@ function onHoverEnd() {
     props.action.componentId &&
     componentsStore.allComponentsById[props.action.componentId]
   ) {
-    componentsStore.setHoveredComponentId(null);
+    viewStore.setHoveredComponentId(null);
   }
 }
 </script>

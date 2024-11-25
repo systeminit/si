@@ -1,6 +1,10 @@
 <template>
   <div
-    v-if="selectedComponent && selectedComponent.def.changeStatus !== 'deleted'"
+    v-if="
+      selectedComponent &&
+      'changeStatus' in selectedComponent.def &&
+      selectedComponent.def.changeStatus !== 'deleted'
+    "
     class="h-full relative"
   >
     <ErrorMessage :requestStatus="diffReqStatus" />
@@ -46,15 +50,17 @@ import { ErrorMessage } from "@si/vue-lib/design-system";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const changeSetsStore = useChangeSetsStore();
 
-const selectedComponentId = computed(() => componentsStore.selectedComponentId);
-const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedComponentId = computed(() => viewStore.selectedComponentId);
+const selectedComponent = computed(() => viewStore.selectedComponent);
 
 const selectedComponentDiff = computed(
-  () => componentsStore.selectedComponentDiff,
+  () => componentsStore.componentDiffsById[viewStore.selectedComponentId || ""],
 );
 
 const diffReqStatus = componentsStore.getRequestStatus(

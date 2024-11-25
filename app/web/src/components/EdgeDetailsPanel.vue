@@ -58,6 +58,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { isDevMode } from "@/utils/debug";
+import { useViewsStore } from "@/store/views.store";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
@@ -68,9 +69,10 @@ defineProps({
 });
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const modelingEventBus = componentsStore.eventBus;
 
-const selectedEdge = computed(() => componentsStore.selectedEdge);
+const selectedEdge = computed(() => viewStore.selectedEdge);
 
 const emit = defineEmits<{
   (e: "openMenu", mouse: MouseEvent): void;

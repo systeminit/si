@@ -73,9 +73,7 @@
         <TabGroup
           ref="tabsRef"
           trackingSlug="asset_details"
-          :startSelectedTabSlug="
-            componentsStore.detailsTabSlugs[0] || undefined
-          "
+          :startSelectedTabSlug="viewStore.detailsTabSlugs[0] || undefined"
           @update:selectedTab="onTabSelected"
         >
           <TabGroupItem slug="component">
@@ -94,9 +92,7 @@
               ref="componentSubTabsRef"
               trackingSlug="asset_details/component"
               variant="secondary"
-              :startSelectedTabSlug="
-                componentsStore.detailsTabSlugs[1] || undefined
-              "
+              :startSelectedTabSlug="viewStore.detailsTabSlugs[1] || undefined"
               marginTop="2xs"
               @update:selectedTab="onTabSelected"
             >
@@ -199,6 +195,7 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useViewsStore } from "@/store/views.store";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsManagement from "./ComponentDetailsManagement.vue";
@@ -228,6 +225,7 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
@@ -265,11 +263,11 @@ const tabsRef = ref<InstanceType<typeof TabGroup>>();
 const componentSubTabsRef = ref<InstanceType<typeof TabGroup>>();
 
 function onTabSelected(newTabSlug?: string) {
-  componentsStore.setComponentDetailsTab(newTabSlug || null);
+  viewStore.setComponentDetailsTab(newTabSlug || null);
 }
 
 watch(
-  () => componentsStore.selectedComponentDetailsTab,
+  () => viewStore.selectedComponentDetailsTab,
   (tabSlug) => {
     if (tabSlug?.startsWith("resource")) {
       tabsRef.value?.selectTab("resource");

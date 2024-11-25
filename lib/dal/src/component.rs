@@ -436,7 +436,7 @@ impl Component {
                 .await?;
 
         // Create geometry node
-        Geometry::new(ctx, component.id, view_id)
+        Geometry::new_for_component(ctx, component.id, view_id)
             .await
             .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
@@ -2791,7 +2791,7 @@ impl Component {
             ));
         }
 
-        let mut geometry = Geometry::new(ctx, component_id, view_id)
+        let mut geometry = Geometry::new_for_component(ctx, component_id, view_id)
             .await
             .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
@@ -3829,13 +3829,13 @@ impl WsEvent {
         ctx: &DalContext,
         change_set_id: ChangeSetId,
         view_id: ViewId,
-        geometries: Vec<(ComponentId, RawGeometry)>,
+        geometries: Vec<(Ulid, RawGeometry)>,
         client_ulid: Option<ulid::Ulid>,
     ) -> WsEventResult<Self> {
         let mut positions: Vec<ComponentSetPosition> = vec![];
         for (component_id, geometry) in geometries {
             positions.push(ComponentSetPosition {
-                component_id,
+                component_id: component_id.into(),
                 x: geometry.x,
                 y: geometry.y,
                 width: geometry.width,

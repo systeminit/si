@@ -44,9 +44,11 @@ import {
 } from "@/store/func/funcs.store";
 import { Action, FuncId, FuncSummary } from "@/api/sdf/dal/func";
 import { ActionPrototypeId } from "@/api/sdf/dal/action";
+import { useViewsStore } from "@/store/views.store";
 
 const actionsStore = useActionsStore();
 const componentStore = useComponentsStore();
+const viewStore = useViewsStore();
 const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 
@@ -67,7 +69,7 @@ class Pan implements Command {
     const componentId = this.choices[0]?.value;
     if (!componentId) throw new Error("ComponentId Expected");
     componentStore.panTargetComponentId = componentId;
-    componentStore.setSelectedComponentId(componentId);
+    viewStore.setSelectedComponentId(componentId);
   }
   // I can't make this static because the instance won't have a reference to it
   // eslint-disable-next-line class-methods-use-this

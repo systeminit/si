@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::extract::{AccessBuilder, HandlerContext};
 use crate::service::v2::view::{ViewError, ViewResult};
 use axum::extract::{Json, Path};
-use dal::diagram::geometry::Geometry;
+use dal::diagram::geometry::{Geometry, GeometryRepresents};
 use dal::diagram::view::{View, ViewId, ViewView};
 use dal::diagram::{Diagram, DiagramError};
 use dal::{slow_rt, ChangeSetId, ComponentId, WorkspacePk};
@@ -16,6 +16,7 @@ pub struct GeometryResponse {
     view_id: ViewId,
     name: String,
     components: HashMap<ComponentId, Geometry>,
+    views: HashMap<ViewId, Geometry>,
 }
 
 pub async fn get_geometry(
@@ -29,39 +30,44 @@ pub async fn get_geometry(
 
     let view = View::get_by_id(&ctx, view_id).await?;
 
-    let components = {
-        let mut map = HashMap::new();
+    let mut components = HashMap::new();
+    let mut views = HashMap::new();
 
-        for geometry in Geometry::list_by_view_id(&ctx, view_id).await? {
-            let component_id = match Geometry::component_id(&ctx, geometry.id()).await {
-                Ok(id) => id,
-                Err(DiagramError::ComponentNotFoundForGeometry(geo_id)) => {
-                    let changeset_id = ctx.change_set_id();
-                    // NOTE(victor): The first version of views didn't delete geometries with components,
-                    // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                    // but we just skip orphan geometries here to make assemble work.
+    for geometry in Geometry::list_by_view_id(&ctx, view_id).await? {
+        let geo_represents = match Geometry::represented_id(&ctx, geometry.id()).await {
+            Ok(id) => id,
+            Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
+                let changeset_id = ctx.change_set_id();
+                // NOTE(victor): The first version of views didn't delete geometries with components,
+                // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                // but we just skip orphan geometries here to make assemble work.
 
-                    debug!(
-                        si.change_set.id = %changeset_id,
-                        si.geometry.id = %geo_id,
-                        "Could not find component for geometry - skipping"
-                    );
+                debug!(
+                    si.change_set.id = %changeset_id,
+                    si.geometry.id = %geo_id,
+                    "Could not find component for geometry - skipping"
+                );
 
-                    continue;
-                }
-                Err(err) => return Err(err)?,
-            };
+                continue;
+            }
+            Err(err) => return Err(err)?,
+        };
 
-            map.insert(component_id, geometry);
+        match geo_represents {
+            GeometryRepresents::Component(component_id) => {
+                components.insert(component_id, geometry);
+            }
+            GeometryRepresents::View(view_id) => {
+                views.insert(view_id, geometry);
+            }
         }
-
-        map
-    };
+    }
 
     Ok(Json(GeometryResponse {
         view_id,
         name: view.name().to_string(),
         components,
+        views,
     }))
 }
 

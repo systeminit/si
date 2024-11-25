@@ -29,6 +29,9 @@ use super::graph::{
     deprecated::v1::DeprecatedNodeWeightV1, detect_updates::Update, WorkspaceSnapshotGraphError,
 };
 use crate::layer_db_types::ComponentContentDiscriminants;
+use crate::workspace_snapshot::node_weight::diagram_object_node_weight::{
+    DiagramObjectKind, DiagramObjectNodeWeight,
+};
 use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
@@ -58,6 +61,7 @@ pub mod category_node_weight;
 pub mod component_node_weight;
 pub mod content_node_weight;
 pub mod dependent_value_root_node_weight;
+pub mod diagram_object_node_weight;
 pub mod finished_dependent_value_root_node_weight;
 pub mod func_argument_node_weight;
 pub mod func_node_weight;
@@ -141,6 +145,7 @@ pub enum NodeWeight {
     ManagementPrototype(ManagementPrototypeNodeWeight),
     Geometry(GeometryNodeWeight),
     View(ViewNodeWeight),
+    DiagramObject(DiagramObjectNodeWeight),
 }
 
 impl NodeWeight {
@@ -165,6 +170,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.content_hash(),
             NodeWeight::Geometry(w) => w.content_hash(),
             NodeWeight::View(w) => w.content_hash(),
+            NodeWeight::DiagramObject(w) => w.content_hash(),
         }
     }
 
@@ -189,6 +195,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.content_store_hashes(),
             NodeWeight::Geometry(weight) => weight.content_store_hashes(),
             NodeWeight::View(weight) => weight.content_store_hashes(),
+            NodeWeight::DiagramObject(w) => w.content_store_hashes(),
         }
     }
 
@@ -212,7 +219,8 @@ impl NodeWeight {
             | NodeWeight::InputSocket(_)
             | NodeWeight::ManagementPrototype(_)
             | NodeWeight::View(_)
-            | NodeWeight::SchemaVariant(_) => None,
+            | NodeWeight::SchemaVariant(_)
+            | NodeWeight::DiagramObject(_) => None,
         }
     }
 
@@ -237,6 +245,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.id(),
             NodeWeight::Geometry(weight) => weight.id(),
             NodeWeight::View(weight) => weight.id(),
+            NodeWeight::DiagramObject(weight) => weight.id(),
         }
     }
 
@@ -261,6 +270,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.lineage_id(),
             NodeWeight::Geometry(weight) => weight.lineage_id(),
             NodeWeight::View(weight) => weight.lineage_id(),
+            NodeWeight::DiagramObject(weight) => weight.lineage_id(),
         }
     }
 
@@ -342,6 +352,10 @@ impl NodeWeight {
                 weight.set_id(id.into());
                 weight.set_lineage_id(lineage_id);
             }
+            NodeWeight::DiagramObject(weight) => {
+                weight.set_id(id.into());
+                weight.set_lineage_id(lineage_id);
+            }
         }
     }
 
@@ -366,6 +380,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.merkle_tree_hash(),
             NodeWeight::Geometry(w) => w.merkle_tree_hash(),
             NodeWeight::View(w) => w.merkle_tree_hash(),
+            NodeWeight::DiagramObject(w) => w.merkle_tree_hash(),
         }
     }
 
@@ -396,7 +411,8 @@ impl NodeWeight {
             | NodeWeight::Category(_)
             | NodeWeight::DependentValueRoot(_)
             | NodeWeight::FinishedDependentValueRoot(_)
-            | NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+            | NodeWeight::Ordering(_)
+            | NodeWeight::DiagramObject(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
             NodeWeight::Geometry(w) => {
                 traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
                 Ok(())
@@ -432,6 +448,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.node_hash(),
             NodeWeight::Geometry(weight) => weight.node_hash(),
             NodeWeight::View(weight) => weight.node_hash(),
+            NodeWeight::DiagramObject(weight) => weight.node_hash(),
         }
     }
 
@@ -456,6 +473,7 @@ impl NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::Geometry(weight) => weight.set_merkle_tree_hash(new_hash),
             NodeWeight::View(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::DiagramObject(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -482,6 +500,7 @@ impl NodeWeight {
             | NodeWeight::Secret(_)
             | NodeWeight::InputSocket(_)
             | NodeWeight::ManagementPrototype(_)
+            | NodeWeight::DiagramObject(_)
             | NodeWeight::SchemaVariant(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
     }
@@ -517,6 +536,7 @@ impl NodeWeight {
             NodeWeight::InputSocket(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::SchemaVariant(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ManagementPrototype(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 
@@ -603,6 +623,16 @@ impl NodeWeight {
             NodeWeight::View(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::View,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_diagram_object_weight(&self) -> NodeWeightResult<DiagramObjectNodeWeight> {
+        match self {
+            NodeWeight::DiagramObject(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::DiagramObject,
                 other.into(),
             )),
         }
@@ -814,6 +844,10 @@ impl NodeWeight {
 
     pub fn new_view(view_id: Ulid, lineage_id: Ulid, content_hash: ContentHash) -> Self {
         NodeWeight::View(ViewNodeWeight::new(view_id, lineage_id, content_hash))
+    }
+
+    pub fn new_diagram_object(id: Ulid, lineage_id: Ulid, object_kind: DiagramObjectKind) -> Self {
+        NodeWeight::DiagramObject(DiagramObjectNodeWeight::new(id, lineage_id, object_kind))
     }
 
     pub fn new_prop(
@@ -1044,6 +1078,11 @@ impl CorrectTransforms for NodeWeight {
                 updates,
                 from_different_change_set,
             ),
+            NodeWeight::DiagramObject(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
@@ -1072,6 +1111,7 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::ManagementPrototype(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Geometry(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::View(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 }

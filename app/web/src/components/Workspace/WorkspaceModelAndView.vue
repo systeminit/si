@@ -104,7 +104,6 @@ import { ResizablePanel, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { IRect } from "konva/lib/types";
 import ComponentDetails from "@/components/ComponentDetails.vue";
-import { useComponentsStore } from "@/store/components.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { usePresenceStore } from "@/store/presence.store";
@@ -115,6 +114,7 @@ import { useStatusStore } from "@/store/status.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -135,7 +135,6 @@ import CommandModal from "./CommandModal.vue";
 import InsetApprovalModal from "../InsetApprovalModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
-const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
 const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
@@ -207,12 +206,16 @@ onBeforeUnmount(() => {
 
 const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 
-const selectedComponentIds = computed(
-  () => componentsStore.selectedComponentIds,
-);
+const selectedComponentIds = computed(() => viewStore.selectedComponentIds);
 
-const selectedEdge = computed(() => componentsStore.selectedEdge);
-const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedEdge = computed(() => viewStore.selectedEdge);
+const selectedComponent = computed<
+  DiagramGroupData | DiagramNodeData | undefined
+>(() =>
+  viewStore.selectedComponent?.def.componentType !== ComponentType.View
+    ? (viewStore.selectedComponent as DiagramGroupData | DiagramNodeData)
+    : undefined,
+);
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
   const id = rightClickEventInfo.element.def.id;

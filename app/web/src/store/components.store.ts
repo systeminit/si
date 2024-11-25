@@ -6,7 +6,6 @@ import { IconNames } from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
 
 import mitt from "mitt";
-import { watch } from "vue";
 import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -14,7 +13,6 @@ import {
   DiagramNodeData,
   DiagramNodeDef,
   DiagramStatusIcon,
-  ElementHoverMeta,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
@@ -23,7 +21,6 @@ import {
   UninstalledVariant,
 } from "@/api/sdf/dal/schema";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import router from "@/router";
 import {
   ComponentDiff,
   ComponentId,
@@ -360,12 +357,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           rawEdgesById: {} as Record<EdgeId, Edge>,
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
           copyingFrom: null as { x: number; y: number } | null,
-          selectedComponentIds: [] as ComponentId[],
-          selectedEdgeId: null as EdgeId | null,
-          selectedComponentDetailsTab: null as string | null,
-          hoveredComponentId: null as ComponentId | null,
-          hoveredEdgeId: null as EdgeId | null,
-          hoveredComponentMeta: null as ElementHoverMeta | null,
 
           panTargetComponentId: null as ComponentId | null,
 
@@ -382,11 +373,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         getters: {
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
-          selectedComponentId: (state) => {
-            return state.selectedComponentIds.length === 1
-              ? state.selectedComponentIds[0]
-              : null;
-          },
           componentsByParentId(): Record<
             ComponentId,
             (DiagramGroupData | DiagramNodeData)[]
@@ -396,81 +382,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               (c) => c.def.parentId ?? "root",
             );
           },
-
-          selectedComponent(): DiagramNodeData | DiagramGroupData | undefined {
-            return this.allComponentsById[this.selectedComponentId || 0];
-          },
-          selectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
-            return _.compact(
-              _.map(
-                this.selectedComponentIds,
-                (id) => this.allComponentsById[id],
-              ),
-            );
-          },
-          selectedEdge(): Edge | undefined {
-            return this.rawEdgesById[this.selectedEdgeId || 0];
-          },
-          hoveredComponent(): DiagramNodeData | DiagramGroupData | undefined {
-            return this.allComponentsById[this.hoveredComponentId || 0];
-          },
-
-          selectedComponentsAndChildren(): (
-            | DiagramNodeData
-            | DiagramGroupData
-          )[] {
-            const selectedAndChildren: Record<
-              string,
-              DiagramNodeData | DiagramGroupData
-            > = {};
-            Object.values(this.allComponentsById).forEach((component) => {
-              this.selectedComponents?.forEach((el) => {
-                if (component.def.ancestorIds?.includes(el.def.id)) {
-                  selectedAndChildren[component.def.id] = component;
-                }
-              });
-            });
-            this.selectedComponents?.forEach((el) => {
-              selectedAndChildren[el.def.id] = el;
-            });
-
-            return Object.values(selectedAndChildren);
-          },
-
-          deletableSelectedComponents(): (
-            | DiagramNodeData
-            | DiagramGroupData
-          )[] {
-            return _.reject(
-              this.selectedComponentsAndChildren,
-              (c) => c.def.changeStatus === "deleted",
-            );
-          },
-          restorableSelectedComponents(): (
-            | DiagramNodeData
-            | DiagramGroupData
-          )[] {
-            return _.filter(
-              this.selectedComponents,
-              (c) => c.def.changeStatus === "deleted",
-            );
-          },
-          erasableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
-            return _.reject(
-              this.selectedComponents,
-              (c) => c.def.changeStatus === "deleted",
-            );
-          },
-          selectedComponentDiff(): ComponentDiff | undefined {
-            return this.componentDiffsById[this.selectedComponentId || 0];
-          },
-          selectedComponentCode(): CodeView[] | undefined {
-            return this.componentCodeViewsById[this.selectedComponentId || 0];
-          },
-          selectedComponentResource(): Resource | undefined {
-            return this.componentResourceById[this.selectedComponentId || 0];
-          },
-
           categories(): Categories {
             const assetStore = useAssetStore();
             const installedGroups = _.groupBy(
@@ -534,22 +445,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               });
               return accum;
             }, {} as { [key: string]: CategoryVariant });
-          },
-
-          detailsTabSlugs: (state) => {
-            const slug = state.selectedComponentDetailsTab;
-
-            // root level tabs
-            if (["resource", "management", "component"].includes(slug || "")) {
-              return [slug, undefined];
-            }
-
-            // subtabs
-            if (slug?.startsWith("management-")) return ["management", slug];
-            if (slug?.startsWith("resource-")) return ["resource", slug];
-
-            // all other subtabs (currently) are in the component tab
-            return ["component", slug];
           },
         },
         actions: {
@@ -679,13 +574,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             Object.keys(this.rawEdgesById).forEach((edgeId) => {
               this.processRawEdge(edgeId);
             });
-
-            // remove invalid component IDs from the selection
-            const validComponentIds = _.intersection(
-              this.selectedComponentIds,
-              _.keys(this.rawComponentsById),
-            );
-            this.setSelectedComponentId(validComponentIds);
           },
 
           async FETCH_COMPONENT_DEBUG_VIEW(componentId: ComponentId) {
@@ -704,7 +592,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           setInsertSchema(id: string) {
             this.selectedInsertCategoryVariantId = id;
-            this.setSelectedComponentId(null);
           },
           cancelInsert() {
             this.selectedInsertCategoryVariantId = null;
@@ -947,13 +834,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   const originalEdge = this.rawEdgesById[edgeId];
                   delete this.rawEdgesById[edgeId];
                   delete this.diagramEdgesById[edgeId];
-                  this.selectedEdgeId = null;
                   return () => {
                     if (originalEdge) {
                       this.rawEdgesById[edgeId] = originalEdge;
                       this.processRawEdge(edgeId);
                     }
-                    this.selectedEdgeId = edgeId;
                   };
                 } else if (edge) {
                   const originalStatus = edge.changeStatus;
@@ -972,7 +857,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       deletedInfo: undefined,
                     };
                     this.processRawEdge(edgeId);
-                    this.selectedEdgeId = edgeId;
                   };
                 }
               },
@@ -1068,116 +952,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          syncSelectionIntoUrl() {
-            let selectedIds: string[] = [];
-            if (this.selectedEdgeId) {
-              selectedIds = [`e_${this.selectedEdgeId}`];
-            } else if (this.selectedComponentIds.length) {
-              selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
-            }
-
-            const newQueryObj = {
-              ...(selectedIds.length && { s: selectedIds.join("|") }),
-              ...(this.selectedComponentDetailsTab && {
-                t: this.selectedComponentDetailsTab,
-              }),
-            };
-
-            if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
-              router.replace({
-                query: newQueryObj,
-              });
-            }
-          },
-          syncUrlIntoSelection() {
-            const ids = (
-              (router.currentRoute.value.query?.s as string) || ""
-            ).split("|");
-            if (!ids.length) {
-              this.selectedComponentIds = [];
-              this.selectedEdgeId = null;
-            } else if (ids.length === 1 && ids[0]?.startsWith("e_")) {
-              this.selectedComponentIds = [];
-              this.selectedEdgeId = ids[0].substring(2);
-            } else {
-              this.selectedComponentIds = ids.map((id) => id.substring(2));
-              this.selectedEdgeId = null;
-            }
-
-            const tabSlug =
-              (router.currentRoute.value.query?.t as string) || null;
-            if (this.selectedComponentIds.length === 1) {
-              this.selectedComponentDetailsTab = tabSlug;
-            } else {
-              this.selectedComponentDetailsTab = null;
-            }
-          },
-
-          setSelectedEdgeId(selection: EdgeId | null) {
-            // clear component selection
-            this.selectedComponentIds = [];
-            this.selectedEdgeId = selection;
-            this.selectedComponentDetailsTab = null;
-            this.syncSelectionIntoUrl();
-          },
-          setSelectedComponentId(
-            selection: ComponentId | ComponentId[] | null,
-            opts?: { toggle?: boolean; detailsTab?: string },
-          ) {
-            const key = `${changeSetId}_selected_component`;
-            this.selectedEdgeId = null;
-            if (!selection || !selection.length) {
-              this.selectedComponentIds = [];
-              // forget which details tab is active when selection is cleared
-              this.selectedComponentDetailsTab = null;
-              if (router.currentRoute.value.name === "workspace-compose")
-                window.localStorage.removeItem(key);
-            } else {
-              const validSelectionArray = _.reject(
-                _.isArray(selection) ? selection : [selection],
-                (id) => !Object.keys(this.allComponentsById).includes(id),
-              );
-              if (opts?.toggle) {
-                this.selectedComponentIds = _.xor(
-                  this.selectedComponentIds,
-                  validSelectionArray,
-                );
-              } else {
-                this.selectedComponentIds = validSelectionArray;
-              }
-            }
-            if (opts?.detailsTab) {
-              this.selectedComponentDetailsTab = opts.detailsTab;
-            }
-            if (this.selectedComponentIds.length === 1) {
-              const _id = this.selectedComponentIds[0];
-              if (_id) window.localStorage.setItem(key, _id);
-            }
-
-            this.syncSelectionIntoUrl();
-          },
-          setHoveredComponentId(
-            id: ComponentId | null,
-            meta?: ElementHoverMeta,
-          ) {
-            this.hoveredComponentId = id;
-            this.hoveredComponentMeta = meta || null;
-            this.hoveredEdgeId = null;
-          },
-          setHoveredEdgeId(id: ComponentId | null) {
-            this.hoveredComponentId = null;
-            this.hoveredEdgeId = id;
-          },
-          setComponentDetailsTab(tabSlug: string | null) {
-            // we ignore the top level "component" and "actions" tabs
-            // since we always need a child selected, and setting these
-            // would overwrite the child being selected
-            if (["component", "actions"].includes(tabSlug || "")) return;
-            this.selectedComponentDetailsTab = tabSlug;
-
-            this.syncSelectionIntoUrl();
-          },
-
           async REFRESH_RESOURCE_INFO(componentId: ComponentId) {
             this.refreshingStatus[componentId] = true;
             return new ApiRequest({
@@ -1205,31 +979,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         onActivated() {
           if (!changeSetId) return;
-
-          // TODO: prob want to take loading state into consideration as this will set it before its loaded
-          const stopWatchingUrl = watch(
-            router.currentRoute,
-            () => {
-              if (router.currentRoute.value.name === "workspace-compose")
-                this.syncUrlIntoSelection();
-            },
-            {
-              immediate: true,
-            },
-          );
-
-          if (router.currentRoute.value.name === "workspace-compose") {
-            const key = `${changeSetId}_selected_component`;
-            const lastId = window.localStorage.getItem(key);
-            window.localStorage.removeItem(key);
-            if (
-              lastId &&
-              Object.values(this.selectedComponentIds).filter(Boolean)
-                .length === 0
-            ) {
-              this.setSelectedComponentId(lastId);
-            }
-          }
 
           // realtime subs
           const realtimeStore = useRealtimeStore();
@@ -1311,13 +1060,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.allComponentsById[data.componentId];
                   delete this.nodesById[data.componentId];
                   delete this.groupsById[data.componentId];
-
-                  // remove invalid component IDs from the selection
-                  const validComponentIds = _.intersection(
-                    this.selectedComponentIds,
-                    _.keys(this.rawComponentsById),
-                  );
-                  this.setSelectedComponentId(validComponentIds);
                 },
               },
               {
@@ -1328,18 +1070,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (metadata.change_set_id !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processRawComponent(data.component.id);
-
-                  if (this.selectedComponentId === data.component.id) {
-                    const component = this.rawComponentsById[data.component.id];
-                    if (component && component.changeStatus !== "deleted")
-                      this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
-                    else {
-                      const idx = this.selectedComponentIds.findIndex(
-                        (cId) => cId === data.component.id,
-                      );
-                      if (idx !== -1) this.selectedComponentIds.slice(idx, 1);
-                    }
-                  }
                 },
               },
               {
@@ -1383,7 +1113,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.groupsById[data.originalComponentId];
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processRawComponent(data.component.id);
-                  this.setSelectedComponentId(data.component.id);
                 },
               },
               {
@@ -1395,8 +1124,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processRawComponent(data.component.id);
                   this.refreshingStatus[data.component.id] = false;
-                  if (this.selectedComponentId === data.component.id)
-                    this.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
                 },
               },
               /* { TODO PUT BACK
@@ -1430,12 +1157,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const actionUnsub = this.$onAction(handleStoreError);
 
           return () => {
-            // clear selection without triggering url stuff
-            this.selectedComponentIds = [];
-            this.selectedEdgeId = null;
-
             actionUnsub();
-            stopWatchingUrl();
             realtimeStore.unsubscribe(`${this.$id}-changeset`);
             realtimeStore.unsubscribe(`${this.$id}-workspace`);
           };

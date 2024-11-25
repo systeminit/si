@@ -32,13 +32,17 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
 import { nonNullable } from "@/utils/typescriptLinter";
+import { useViewsStore } from "@/store/views.store";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+} from "../ModelingDiagram/diagram_types";
 
 const componentsStore = useComponentsStore();
-const selectedEdge = computed(() => componentsStore.selectedEdge);
+const viewStore = useViewsStore();
+const selectedEdge = computed(() => viewStore.selectedEdge);
 
-const selectedComponentIds = computed(
-  () => componentsStore.selectedComponentIds,
-);
+const selectedComponentIds = computed(() => viewStore.selectedComponentIds);
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
@@ -46,7 +50,8 @@ const { open: openModal, close } = useModal(modalRef);
 const restoreBlockedReason = computed(() => {
   if (!selectedComponentIds.value) return undefined;
   // Block restoring child of deleted frame
-  const parentIds = componentsStore.selectedComponents
+  const parentIds = viewStore.selectedComponents
+    .filter((c): c is DiagramGroupData | DiagramNodeData => "parentId" in c.def)
     .map((c) => c.def.parentId)
     .filter(nonNullable);
 
@@ -75,25 +80,25 @@ function open() {
 
 async function onConfirmRestore() {
   if (
-    componentsStore.selectedComponentIds &&
-    componentsStore.selectedComponentIds.length > 0
+    viewStore.selectedComponentIds &&
+    viewStore.selectedComponentIds.length > 0
   ) {
     await componentsStore.RESTORE_COMPONENTS(
-      ...toRaw(componentsStore.selectedComponentIds),
+      ...toRaw(viewStore.selectedComponentIds),
     );
-  } else if (componentsStore.selectedEdge) {
+  } else if (viewStore.selectedEdge) {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
-        componentId: componentsStore.selectedEdge.fromComponentId,
-        socketId: componentsStore.selectedEdge.fromSocketId,
+        componentId: viewStore.selectedEdge.fromComponentId,
+        socketId: viewStore.selectedEdge.fromSocketId,
       },
       {
-        componentId: componentsStore.selectedEdge.toComponentId,
-        socketId: componentsStore.selectedEdge.toSocketId,
+        componentId: viewStore.selectedEdge.toComponentId,
+        socketId: viewStore.selectedEdge.toSocketId,
       },
     );
   }
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
   close();
 }
 

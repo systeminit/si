@@ -117,6 +117,16 @@ overflow hidden */
               "
             />
           </template>
+          <template
+            v-for="view in Object.values(viewStore.viewNodes)"
+            :key="view.id"
+          >
+            <DiagramView
+              :view="view.def"
+              :isHovered="elementIsHovered(view)"
+              :isSelected="elementIsSelected(view)"
+            />
+          </template>
           <DiagramCursor
             v-for="mouseCursor in presenceStore.diagramCursors"
             :key="mouseCursor.userId"
@@ -310,6 +320,7 @@ import {
   SideAndCornerIdentifiers,
   ElementHoverMeta,
   MoveElementsState,
+  DiagramViewData,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -349,6 +360,7 @@ import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
+import DiagramView from "./DiagramView.vue";
 
 const route = useRoute();
 const toast = useToast();
@@ -762,11 +774,16 @@ async function onKeyDown(e: KeyboardEvent) {
   if (
     (e.metaKey || e.ctrlKey) &&
     e.key === "c" &&
-    componentsStore.selectedComponentIds.length
+    viewStore.selectedComponentIds.length
   ) {
-    const component = componentsStore.selectedComponents.pop();
-    const containsUpgradeable = componentsStore.selectedComponents.some(
-      (c) => c.def.canBeUpgraded,
+    const component = viewStore.selectedComponents
+      .filter(
+        (c): c is DiagramNodeData | DiagramGroupData =>
+          !(c instanceof DiagramViewData),
+      )
+      .pop();
+    const containsUpgradeable = viewStore.selectedComponents.some(
+      (c) => "canBeUpgraded" in c.def && c.def.canBeUpgraded,
     );
     if (containsUpgradeable) {
       toast("Components that can be upgraded cannot be copied");
@@ -775,7 +792,7 @@ async function onKeyDown(e: KeyboardEvent) {
       window.localStorage.setItem(
         CLIPBOARD_LOCALSTORAGE_KEY.value,
         JSON.stringify({
-          componentIds: componentsStore.selectedComponentIds,
+          componentIds: viewStore.selectedComponentIds,
           copyingFrom: component.def.isGroup
             ? { ...viewStore.groups[component.def.id] }
             : { ...viewStore.components[component.def.id] },
@@ -787,7 +804,7 @@ async function onKeyDown(e: KeyboardEvent) {
     if (json !== null && json !== "null") {
       try {
         const { componentIds, copyingFrom } = JSON.parse(json);
-        componentsStore.selectedComponentIds = componentIds;
+        viewStore.selectedComponentIds = componentIds;
         componentsStore.copyingFrom = copyingFrom;
         triggerPasteElements();
       } catch {
@@ -832,16 +849,16 @@ async function onKeyDown(e: KeyboardEvent) {
   if (
     !props.readOnly &&
     e.key === "r" &&
-    componentsStore.selectedComponent?.def.hasResource &&
+    viewStore.selectedComponent?.def &&
+    "hasResource" in viewStore.selectedComponent.def &&
+    viewStore.selectedComponent?.def.hasResource &&
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId
   ) {
-    componentsStore.REFRESH_RESOURCE_INFO(
-      componentsStore.selectedComponent.def.id,
-    );
+    componentsStore.REFRESH_RESOURCE_INFO(viewStore.selectedComponent.def.id);
   }
-  if (!props.readOnly && e.key === "n" && componentsStore.selectedComponentId) {
+  if (!props.readOnly && e.key === "n" && viewStore.selectedComponentId) {
     e.preventDefault();
-    renameOnDiagramByComponentId(componentsStore.selectedComponentId);
+    renameOnDiagramByComponentId(viewStore.selectedComponentId);
   }
 }
 
@@ -895,6 +912,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   if (dragToPanArmed.value || e.button === 1) beginDragToPan();
   else if (insertElementActive.value) triggerInsertElement();
   else if (outlinerAddActive.value) triggerAddToView();
+  else if (viewAddActive.value) triggerAddViewToView();
   else if (pasteElementsActive.value) triggerPasteElements();
   else handleMouseDownSelection();
 }
@@ -986,10 +1004,11 @@ function checkIfDragStarted(_e: MouseEvent) {
   } else if (props.readOnly) {
     // TODO: add controls for each of these modes...
     return;
-  } else if ("componentId" in lastMouseDownElement.value.def) {
+  } else if ("componentType" in lastMouseDownElement.value.def) {
     if (lastMouseDownHoverMeta.value?.type === "resize") {
       beginResizeElement();
     } else if (
+      "changeStatus" in lastMouseDownElement.value.def &&
       lastMouseDownElement.value.def.changeStatus !== "deleted" &&
       lastMouseDownHoverMeta.value?.type === "socket"
     ) {
@@ -1097,12 +1116,10 @@ const hoveredElementKey = computed(() => {
   // dont recompute this while we're dragging
   if (dragElementsActive.value) return undefined;
 
-  if (componentsStore.hoveredComponentId) {
-    return getDiagramElementKeyForComponentId(
-      componentsStore.hoveredComponentId,
-    );
-  } else if (componentsStore.hoveredEdgeId) {
-    return DiagramEdgeData.generateUniqueKey(componentsStore.hoveredEdgeId);
+  if (viewStore.hoveredComponentId) {
+    return getDiagramElementKeyForComponentId(viewStore.hoveredComponentId);
+  } else if (viewStore.hoveredEdgeId) {
+    return DiagramEdgeData.generateUniqueKey(viewStore.hoveredEdgeId);
   }
   return undefined;
 });
@@ -1129,7 +1146,7 @@ const hoveredElement = computed(() => {
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
 // more detailed info about what inside an element is being hovered (like resize direction, socket, etc)
-const hoveredElementMeta = computed(() => componentsStore.hoveredComponentMeta);
+const hoveredElementMeta = computed(() => viewStore.hoveredComponentMeta);
 
 const disableHoverEvents = computed(() => {
   if (dragToPanArmed.value || dragToPanActive.value) return true;
@@ -1221,14 +1238,17 @@ function panToComponent(payload: {
 
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
 const currentSelectionKeys = computed(() => {
-  if (componentsStore.selectedEdgeId) {
-    return _.compact([
-      getDiagramElementKeyForEdgeId(componentsStore.selectedEdgeId),
-    ]);
+  if (viewStore.selectedEdgeId) {
+    return _.compact([getDiagramElementKeyForEdgeId(viewStore.selectedEdgeId)]);
   } else {
     return _.compact(
-      _.map(componentsStore.selectedComponentIds, (componentId) => {
-        const component = componentsStore.allComponentsById[componentId];
+      _.map(viewStore.selectedComponentIds, (componentId) => {
+        let component:
+          | DiagramNodeData
+          | DiagramGroupData
+          | DiagramViewData
+          | undefined = componentsStore.allComponentsById[componentId];
+        if (!component) component = viewStore.viewNodes[componentId];
         return component?.uniqueKey;
       }),
     );
@@ -1246,7 +1266,7 @@ function setSelectionByKey(
   toSelect?: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
   if (!toSelect || !toSelect.length) {
-    componentsStore.setSelectedComponentId(null);
+    viewStore.setSelectedComponentId(null);
     return;
   }
 
@@ -1254,13 +1274,14 @@ function setSelectionByKey(
 
   // TODO: unsure if this edge check works
   if (els.length === 1 && els[0] instanceof DiagramEdgeData) {
-    componentsStore.setSelectedEdgeId(els[0].def.id);
+    viewStore.setSelectedEdgeId(els[0].def.id);
   } else {
-    componentsStore.setSelectedComponentId(
-      // TODO: remove this any...
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      _.map(els, (e) => (e.def as any).componentId),
-    );
+    const ids: string[] = [];
+    els.forEach((e) => {
+      if ("componentId" in e.def) ids.push(e.def.componentId);
+      else if ("componentType" in e.def) ids.push(e.def.id); // view
+    });
+    viewStore.setSelectedComponentId(ids);
   }
 }
 
@@ -1270,13 +1291,17 @@ function toggleSelectedByKey(
 ) {
   const els = _.compact(_.map(_.castArray(toToggle), getElementByKey));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const elIds = _.map(els, (el) => (el.def as any).componentId);
+  const elIds: string[] = [];
+  els.forEach((el) => {
+    if ("componentId" in el.def) elIds.push(el.def.componentId);
+    else if ("componentType" in el.def) elIds.push(el.def.id); // view
+  });
   // second true enables "toggle" mode
-  componentsStore.setSelectedComponentId(elIds, { toggle: true });
+  viewStore.setSelectedComponentId(elIds, { toggle: true });
 }
 
 function clearSelection() {
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
 }
 
 function elementIsHovered(el: DiagramElementData) {
@@ -1307,7 +1332,7 @@ function handleMouseDownSelection() {
 
   // nodes can be multi-selected, so we have some extra behaviour
   // TODO: other elements may also share this behaviour
-  if (hoveredElement.value && "componentId" in hoveredElement.value.def) {
+  if (hoveredElement.value && hoveredElement.value.def) {
     // when clicking on an element that is NOT currently selected, we act right away
     // but if the element IS selected, this could be beginning of dragging
     // so we handle selection on mouseup if the user never fully started to drag
@@ -1381,6 +1406,14 @@ function endDragSelect(doSelection = true) {
     if (inSelectionBox)
       selectedInBoxKeys.push(DiagramNodeData.generateUniqueKey(nodeKey));
   });
+  _.each(viewStore.viewNodes, (node, nodeKey) => {
+    const inSelectionBox = checkRectanglesOverlap(
+      pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
+      node.def,
+    );
+    if (inSelectionBox)
+      selectedInBoxKeys.push(DiagramViewData.generateUniqueKey(nodeKey));
+  });
   // if holding shift key, we'll add/toggle the existing selection with what's in the box
   // NOTE - weird edge cases around what if you let go of shift after beginning the drag which we are ignoring
   if (lastMouseDownEvent.value?.shiftKey) {
@@ -1424,19 +1457,20 @@ const currentSelectionMovableElements = computed(() => {
   // filter selection for nodes and groups
   const elements = _.filter(
     currentSelectionElements.value,
-    (el) => el && "componentId" in el.def,
-  ) as unknown as (DiagramNodeData | DiagramGroupData)[];
+    (el) => el && "componentType" in el.def,
+  ) as unknown as (DiagramNodeData | DiagramGroupData | DiagramViewData)[];
 
   // cannot move elements that are actually gone already
   return elements.filter((e) => {
-    if (e.def.changeStatus === "deleted") return false;
+    if ("changeStatus" in e.def && e.def.changeStatus === "deleted")
+      return false;
     return true;
   });
 });
 
 const findChildrenByBoundingBox = (
   el: DiagramNodeData | DiagramGroupData,
-): (DiagramNodeData | DiagramGroupData)[] => {
+): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] => {
   const cRect = el.def.isGroup
     ? viewStore.groups[el.def.id]
     : viewStore.components[el.def.id];
@@ -1445,7 +1479,7 @@ const findChildrenByBoundingBox = (
   const rect = { ...cRect };
   rect.x -= rect.width / 2;
 
-  const components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const nodes: (DiagramGroupData | DiagramNodeData | DiagramViewData)[] = [];
   const process = ([id, elRect]: [ComponentId, IRect]) => {
     // i do not fit inside myself
     if (el.def.id === id) return;
@@ -1453,13 +1487,26 @@ const findChildrenByBoundingBox = (
     _r.x -= _r.width / 2;
     if (rectContainsAnother(rect, _r)) {
       const component = componentsStore.allComponentsById[id];
-      if (component) components.push(component);
+      if (component) nodes.push(component);
     }
   };
 
   Object.entries(viewStore.groups).forEach(process);
   Object.entries(viewStore.components).forEach(process);
-  return components;
+  Object.values(viewStore.viewNodes).forEach((viewNode) => {
+    const _r = {
+      x: viewNode.def.x,
+      y: viewNode.def.y,
+      width: viewNode.def.width,
+      height: viewNode.def.height,
+    };
+    _r.x -= _r.width / 2;
+    _r.y -= _r.height / 2;
+    if (rectContainsAnother(rect, _r)) {
+      nodes.push(viewNode);
+    }
+  });
+  return nodes;
 };
 
 const draggedElementsPositionsPreDrag = ref<
@@ -1467,17 +1514,24 @@ const draggedElementsPositionsPreDrag = ref<
 >({});
 const edgeScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
-const draggedChildren = ref<(DiagramNodeData | DiagramGroupData)[]>([]);
+const draggedChildren = ref<
+  (DiagramNodeData | DiagramGroupData | DiagramViewData)[]
+>([]);
 function beginDragElements() {
   if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;
 
   edgeScrolledDuringDrag.value = { x: 0, y: 0 };
 
-  const children: Set<DiagramNodeData | DiagramGroupData> = new Set();
+  const children: Set<DiagramNodeData | DiagramGroupData | DiagramViewData> =
+    new Set();
   currentSelectionMovableElements.value.forEach((el) => {
-    const childs = findChildrenByBoundingBox(el);
-    childs.forEach((c) => children.add(c));
+    if (el.def.componentType !== ComponentType.View) {
+      const childs = findChildrenByBoundingBox(
+        el as DiagramNodeData | DiagramGroupData,
+      );
+      childs.forEach((c) => children.add(c));
+    }
   });
   draggedChildren.value = [...children];
 
@@ -1485,9 +1539,7 @@ function beginDragElements() {
   draggedElementsPositionsPreDrag.value = currentSelectionMovableElements.value
     .concat(draggedChildren.value)
     .reduce((obj, el) => {
-      const geo = el.def.isGroup
-        ? viewStore.groups[el.def.id]
-        : viewStore.components[el.def.id];
+      const geo = viewStore.geoFrom(el);
 
       if (geo) obj[el.uniqueKey] = { ...geo };
       return obj;
@@ -1537,9 +1589,7 @@ function onDragElementsMove() {
       // if we are going to move the element within a new parent we may need to adjust
       // the position to stay inside of it
       const parentRect = viewStore.groups[parentOrCandidate.def.id];
-      const elRect = el.def.isGroup
-        ? viewStore.groups[el.def.id]
-        : viewStore.components[el.def.id];
+      const elRect = viewStore.geoFrom(el);
       if (!parentRect || !elRect) return;
       const movedElRect = {
         x: newPosition.x - elRect.width / 2,
@@ -1579,15 +1629,25 @@ function onDragElementsMove() {
   const selectionIds = currentSelectionMovableElements.value.map(
     (s) => s.def.id,
   );
-  viewStore.MOVE_COMPONENTS(
-    [
-      ...currentSelectionMovableElements.value.concat(
-        draggedChildren.value.filter((c) => !selectionIds.includes(c.def.id)),
-      ),
-    ],
-    deltaFromLast,
-    { broadcastToClients: true },
-  );
+  const _components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const _views: DiagramViewData[] = [];
+  [
+    ...currentSelectionMovableElements.value.concat(
+      draggedChildren.value.filter((c) => !selectionIds.includes(c.def.id)),
+    ),
+  ].forEach((c) => {
+    if (c.def.componentType === ComponentType.View)
+      _views.push(c as DiagramViewData);
+    else _components.push(c as DiagramGroupData | DiagramNodeData);
+  });
+  if (_components.length > 0)
+    viewStore.MOVE_COMPONENTS(_components, deltaFromLast, {
+      broadcastToClients: true,
+    });
+  if (_views.length > 0)
+    viewStore.MOVE_VIEWS(_views, deltaFromLast, {
+      broadcastToClients: true,
+    });
 
   checkDiagramEdgeForScroll();
 }
@@ -1603,6 +1663,13 @@ function endDragElements() {
       draggedChildren.value.filter((c) => !selectionIds.includes(c.def.id)),
     ),
   ];
+  const _components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const _views: DiagramViewData[] = [];
+  movedComponents.forEach((c) => {
+    if (c.def.componentType === ComponentType.View)
+      _views.push(c as DiagramViewData);
+    else _components.push(c as DiagramGroupData | DiagramNodeData);
+  });
 
   const detach = !cursorWithinGroupKey.value;
   let newParent: DiagramGroupData | undefined;
@@ -1624,6 +1691,7 @@ function endDragElements() {
 
   const setParents: ComponentId[] = [];
   nonChildElements.forEach((component) => {
+    if (!("parentId" in component.def)) return;
     // if their current parent is NOT in this view, do not re-parent!!!
     if (
       component.def.parentId &&
@@ -1648,11 +1716,14 @@ function endDragElements() {
     viewStore.SET_PARENT(setParents, newParent?.def.id ?? null);
   }
 
-  viewStore.MOVE_COMPONENTS(
-    movedComponents,
-    { x: 0, y: 0 },
-    { writeToChangeSet: true },
-  );
+  if (_components.length > 0)
+    viewStore.MOVE_COMPONENTS(
+      _components,
+      { x: 0, y: 0 },
+      { writeToChangeSet: true },
+    );
+  if (_views.length > 0)
+    viewStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
   draggedChildren.value = [];
 }
 
@@ -1743,9 +1814,7 @@ function alignSelection(direction: Direction) {
   let alignedX: number | undefined;
   let alignedY: number | undefined;
   const positions = _.map(currentSelectionMovableElements.value, (el) =>
-    el.def.isGroup
-      ? viewStore.groups[el.def.id]
-      : viewStore.components[el.def.id],
+    viewStore.geoFrom(el),
   ).filter(nonNullable);
   const xPositions = _.map(positions, (p) => p.x);
   const yPositions = _.map(positions, (p) => p.y);
@@ -1754,15 +1823,30 @@ function alignSelection(direction: Direction) {
   else if (direction === "left") alignedX = _.min(xPositions);
   else if (direction === "right") alignedX = _.max(xPositions);
 
-  viewStore.MOVE_COMPONENTS(
-    currentSelectionMovableElements.value,
-    { x: alignedX ?? 0, y: alignedY ?? 0 },
-    { writeToChangeSet: true },
-  );
+  const _components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const _views: DiagramViewData[] = [];
+  currentSelectionMovableElements.value.forEach((c) => {
+    if (c.def.componentType === ComponentType.View)
+      _views.push(c as DiagramViewData);
+    else _components.push(c as DiagramGroupData | DiagramNodeData);
+  });
+  if (_components.length)
+    viewStore.MOVE_COMPONENTS(
+      _components,
+      { x: alignedX ?? 0, y: alignedY ?? 0 },
+      { writeToChangeSet: true },
+    );
+  if (_views.length)
+    viewStore.MOVE_VIEWS(
+      _views,
+      { x: alignedX ?? 0, y: alignedY ?? 0 },
+      { writeToChangeSet: true },
+    );
 }
 
 type VoidFn = () => void;
 let debouncedNudgeFn: _.DebouncedFunc<VoidFn> | null;
+let debouncedNudgeFnViews: _.DebouncedFunc<VoidFn> | null;
 function nudgeSelection(direction: Direction, largeNudge: boolean) {
   if (!currentSelectionMovableElements.value.length) return;
   const nudgeSize = largeNudge ? 10 : 1;
@@ -1773,22 +1857,41 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
 
-  viewStore.MOVE_COMPONENTS(
-    currentSelectionMovableElements.value,
-    nudgeVector,
-    { broadcastToClients: true },
-  );
-  if (!debouncedNudgeFn) {
+  const _components: (DiagramGroupData | DiagramNodeData)[] = [];
+  const _views: DiagramViewData[] = [];
+  currentSelectionMovableElements.value.forEach((c) => {
+    if (c.def.componentType === ComponentType.View)
+      _views.push(c as DiagramViewData);
+    else _components.push(c as DiagramGroupData | DiagramNodeData);
+  });
+
+  if (_components.length > 0)
+    viewStore.MOVE_COMPONENTS(_components, nudgeVector, {
+      broadcastToClients: true,
+    });
+  if (!debouncedNudgeFn && _components.length > 0) {
     debouncedNudgeFn = _.debounce(() => {
       viewStore.MOVE_COMPONENTS(
-        currentSelectionMovableElements.value,
+        _components,
         { x: 0, y: 0 },
         { writeToChangeSet: true },
       );
       debouncedNudgeFn = null;
     }, 300);
+    debouncedNudgeFn();
   }
-  debouncedNudgeFn();
+
+  if (_views.length > 0)
+    viewStore.MOVE_VIEWS(_views, nudgeVector, {
+      broadcastToClients: true,
+    });
+  if (!debouncedNudgeFnViews && _views.length > 0) {
+    debouncedNudgeFnViews = _.debounce(() => {
+      viewStore.MOVE_VIEWS(_views, { x: 0, y: 0 }, { writeToChangeSet: true });
+      debouncedNudgeFn = null;
+    }, 300);
+    debouncedNudgeFnViews();
+  }
 }
 
 // we calculate which group (if any) the cursor is within without using hover events
@@ -2326,15 +2429,14 @@ async function endDrawEdge() {
 
 const pasteElementsActive = computed(() => {
   return (
-    componentsStore.copyingFrom &&
-    componentsStore.selectedComponentIds.length > 0
+    componentsStore.copyingFrom && viewStore.selectedComponentIds.length > 0
   );
 });
 
 // TODO: I dont think we need to compute this
 // we can do the work directly in the paste function
 const currentSelectionEnclosure: Ref<IRect | undefined> = computed(() => {
-  const componentIds = componentsStore.selectedComponentIds;
+  const componentIds = viewStore.selectedComponentIds;
 
   if (componentIds.length === 0) return;
 
@@ -2458,7 +2560,7 @@ async function triggerPasteElements() {
     selectionOffset.y -= fitOffset.y;
   }
 
-  const pasteTargets = _.map(componentsStore.selectedComponentIds, (id) => {
+  const pasteTargets = _.map(viewStore.selectedComponentIds, (id) => {
     const thisGeometry = viewStore.components[id] || viewStore.groups[id];
 
     if (!thisGeometry) throw new Error("Rendered Component not found");
@@ -2507,6 +2609,7 @@ const insertElementActive = computed(
 );
 
 const outlinerAddActive = computed(() => !!viewStore.addComponentId);
+const viewAddActive = computed(() => !!viewStore.addViewId);
 
 const HEADER_SIZE = 60; // The height of the component header bar; TODO find a better way to detect this
 function fitChildInsideParentFrame(
@@ -2535,6 +2638,20 @@ function fitChildInsideParentFrame(
   createAtSize.height = Math.max(createAtSize.height, MIN_NODE_DIMENSION);
 
   return [createAtPosition, createAtSize];
+}
+
+async function triggerAddViewToView() {
+  if (!viewAddActive.value || !viewStore.addViewId)
+    throw new Error("insert element mode must be active");
+  if (!gridPointerPos.value)
+    throw new Error("Cursor must be in grid to insert element");
+
+  const addingViewId = viewStore.addViewId;
+  viewStore.addViewId = null;
+
+  const geo = { ...gridPointerPos.value, radius: 250 };
+
+  viewStore.ADD_VIEW_TO(viewStore.selectedViewId!, addingViewId, geo);
 }
 
 async function triggerAddToView() {
@@ -2678,12 +2795,12 @@ const groups = computed(() => {
       // TODO change this to being position comparisons not parentage
       if (
         dragElementsActive.value ||
-        componentsStore.selectedComponentIds.length > 0
+        viewStore.selectedComponentIds.length > 0
       ) {
         if (
           _.intersection(
             [g.def.componentId, ...(g.def.ancestorIds || [])],
-            componentsStore.selectedComponentIds,
+            viewStore.selectedComponentIds,
           ).length
         ) {
           zIndex += 1000;
@@ -2704,7 +2821,13 @@ const sockets = computed(() => {
 // this will re-compute on every drag until all the position data is removed
 const allElementsByKey = computed(() =>
   _.keyBy(
-    [...nodes.value, ...groups.value, ...sockets.value, ...viewStore.edges],
+    [
+      ...nodes.value,
+      ...groups.value,
+      ...sockets.value,
+      ...viewStore.edges,
+      ...Object.values(viewStore.viewNodes),
+    ],
     (e) => e.uniqueKey,
   ),
 );
@@ -2717,24 +2840,38 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
 const selectionRects = computed(() => {
   const rects = [] as (Size2D & Vector2d)[];
   currentSelectionKeys.value.forEach((uniqueKey) => {
+    const isView = uniqueKey.startsWith("v-");
     const isGroup = uniqueKey.startsWith("g-");
     const id = uniqueKey.slice(2); // remove the prefix
-    const rect = viewStore.components[id] || viewStore.groups[id];
-    if (rect) {
-      const r = {
-        x: rect.x - rect.width / 2,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-      };
-      if (isGroup) {
-        // deal with top bar height outside the component's
-        // designated height
-        const adjust = 28 + GROUP_HEADER_BOTTOM_MARGIN * 2;
-        r.height += adjust;
-        r.y -= adjust;
+    if (isView) {
+      const rect = viewStore.viewNodes[id]?.def;
+      if (rect) {
+        const r = {
+          x: rect.x - rect.width / 2,
+          y: rect.y - rect.height / 2,
+          width: rect.width,
+          height: rect.height,
+        };
+        rects.push(r);
       }
-      rects.push(r);
+    } else {
+      const rect = viewStore.components[id] || viewStore.groups[id];
+      if (rect) {
+        const r = {
+          x: rect.x - rect.width / 2,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        };
+        if (isGroup) {
+          // deal with top bar height outside the component's
+          // designated height
+          const adjust = 28 + GROUP_HEADER_BOTTOM_MARGIN * 2;
+          r.height += adjust;
+          r.y -= adjust;
+        }
+        rects.push(r);
+      }
     }
   });
   return rects;
@@ -2744,7 +2881,12 @@ function getDiagramElementKeyForComponentId(
   componentId?: ComponentId | null,
 ): string | undefined {
   if (!componentId) return;
-  const component = componentsStore.allComponentsById[componentId];
+  let component:
+    | DiagramNodeData
+    | DiagramGroupData
+    | DiagramViewData
+    | undefined = componentsStore.allComponentsById[componentId];
+  if (!component) component = viewStore.viewNodes[componentId];
   return component?.uniqueKey;
 }
 

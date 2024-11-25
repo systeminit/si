@@ -64,6 +64,12 @@
         <div class="truncate w-full">
           {{ component.def.schemaName }}: {{ component.def.displayName }}
         </div>
+        <Icon
+          v-tooltip="'The asset is not present in this view'"
+          name="question-circle"
+          size="xs"
+          class="ml-auto mr-xs"
+        />
       </div>
 
       <div v-else class="flex flex-row items-center px-xs w-full gap-1">
@@ -312,7 +318,7 @@ const childComponents = computed(() => {
 });
 
 const isSelected = computed(() =>
-  componentsStore.selectedComponentIds.includes(props.component.def.id),
+  viewStore.selectedComponentIds.includes(props.component.def.id),
 );
 
 const enableGroupToggle = computed(
@@ -335,15 +341,15 @@ function onClick(e: MouseEvent, tabSlug?: string) {
 }
 
 const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.component.def.id,
+  () => viewStore.hoveredComponentId === props.component.def.id,
 );
 
 function onHoverStart() {
-  componentsStore.setHoveredComponentId(props.component.def.id);
+  viewStore.setHoveredComponentId(props.component.def.id);
 }
 
 function onHoverEnd() {
-  componentsStore.setHoveredComponentId(null);
+  viewStore.setHoveredComponentId(null);
 }
 
 const parentIdPathByComponentId = computed<Record<ComponentId, ComponentId[]>>(
@@ -437,7 +443,7 @@ const parentBreadcrumbsText = computed(() => {
 const upgradeRequestStatus =
   componentsStore.getRequestStatus("UPGRADE_COMPONENT");
 const upgradeComponent = async () => {
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
   await componentsStore.UPGRADE_COMPONENT(
     props.component.def.id,
     props.component.def.displayName,

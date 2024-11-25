@@ -22,6 +22,7 @@ export type SchemaId = string;
 
 export enum ComponentType {
   Component = "component",
+  View = "view",
   ConfigurationFrameDown = "configurationFrameDown",
   ConfigurationFrameUp = "configurationFrameUp",
   AggregationFrame = "aggregationFrame",

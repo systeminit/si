@@ -38,14 +38,16 @@ import { computed, watch } from "vue";
 import { ErrorMessage } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import CodeViewer from "./CodeViewer.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const viewStore = useViewsStore();
 const componentsStore = useComponentsStore();
 
 const selectedComponentId = computed(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  () => componentsStore.selectedComponentId!,
+  () => viewStore.selectedComponentId!,
 );
 
 const codeReqStatus = componentsStore.getRequestStatus(
@@ -54,15 +56,17 @@ const codeReqStatus = componentsStore.getRequestStatus(
 );
 
 const selectedComponentCode = computed(
-  () => componentsStore.selectedComponentCode,
+  () =>
+    componentsStore.componentCodeViewsById[viewStore.selectedComponentId || ""],
 );
 
 watch(
   [() => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
     if (
-      componentsStore.selectedComponent &&
-      componentsStore.selectedComponent.def.changeStatus !== "deleted"
+      viewStore.selectedComponent &&
+      "changeStatus" in viewStore.selectedComponent.def &&
+      viewStore.selectedComponent.def.changeStatus !== "deleted"
     ) {
       componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
     }

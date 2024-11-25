@@ -592,7 +592,7 @@ const colors = computed(() => {
 
 function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: string) {
   evt.cancelBubble = true;
-  componentsStore.setHoveredComponentId(
+  viewStore.setHoveredComponentId(
     componentId.value,
     type ? ({ type } as ElementHoverMeta) : undefined,
   );
@@ -603,40 +603,39 @@ function onResizeHover(
   evt: KonvaEventObject<MouseEvent>,
 ) {
   evt.cancelBubble = true;
-  componentsStore.setHoveredComponentId(componentId.value, {
+  viewStore.setHoveredComponentId(componentId.value, {
     type: "resize",
     direction,
   });
 }
 
 function onSocketHoverStart(socket: DiagramSocketData) {
-  componentsStore.setHoveredComponentId(componentId.value, {
+  viewStore.setHoveredComponentId(componentId.value, {
     type: "socket",
     socket,
   });
 }
 
 function onSocketHoverEnd(_socket: DiagramSocketData) {
-  componentsStore.setHoveredComponentId(null);
+  viewStore.setHoveredComponentId(null);
 }
 
 function onMouseOut() {
-  componentsStore.setHoveredComponentId(null);
+  viewStore.setHoveredComponentId(null);
 }
 
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(componentId.value, {
+  viewStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
 }
 
 const highlightParent = computed(() => {
-  if (!componentsStore.hoveredComponent) return false;
-  if (componentsStore.hoveredComponentMeta?.type !== "parent") return false;
+  if (!viewStore.hoveredComponent) return false;
+  if (viewStore.hoveredComponentMeta?.type !== "parent") return false;
   return (
-    componentsStore.hoveredComponent.def.ancestorIds?.includes(
-      componentId.value,
-    ) || false
+    viewStore.hoveredComponent.def.ancestorIds?.includes(componentId.value) ||
+    false
   );
 });
 
@@ -699,16 +698,16 @@ const fixCursorToText = ref(false);
 
 const renameHovered = computed(
   () =>
-    (componentsStore.hoveredComponentMeta?.type === "rename" &&
-      componentsStore.hoveredComponentId === props.group.def.id) ||
+    (viewStore.hoveredComponentMeta?.type === "rename" &&
+      viewStore.hoveredComponentId === props.group.def.id) ||
     renameHoverState.value,
 );
 
 const selectedAndRenameHovered = computed(
   () =>
     props.isSelected &&
-    componentsStore.hoveredComponentMeta?.type === "rename" &&
-    componentsStore.hoveredComponentId === props.group.def.id &&
+    viewStore.hoveredComponentMeta?.type === "rename" &&
+    viewStore.hoveredComponentId === props.group.def.id &&
     renameHoverState.value,
 );
 
@@ -741,14 +740,14 @@ function renameIfSelected(e: KonvaEventObject<MouseEvent>) {
     rename();
   } else if (fixCursorToText.value) {
     fixCursorToText.value = false;
-    componentsStore.setHoveredComponentId(componentId.value, {
+    viewStore.setHoveredComponentId(componentId.value, {
       type: "rename",
     } as ElementHoverMeta);
   }
 }
 
 function rename() {
-  componentsStore.setHoveredComponentId(componentId.value, {
+  viewStore.setHoveredComponentId(componentId.value, {
     type: "rename",
   });
   renaming.value = true;

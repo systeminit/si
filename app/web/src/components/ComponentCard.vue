@@ -4,8 +4,10 @@
       clsx(
         'p-xs border-l-4 border relative',
         titleCard ? 'mb-xs' : 'rounded-md',
-        component.def.toDelete && 'opacity-70',
-        component.def.fromBaseChangeSet && 'opacity-70',
+        'toDelete' in component.def && component.def.toDelete && 'opacity-70',
+        'fromBaseChangeSet' in component.def &&
+          component.def.fromBaseChangeSet &&
+          'opacity-70',
       )
     "
     :style="{
@@ -14,7 +16,13 @@
     }"
   >
     <div class="flex gap-2xs items-center">
-      <Icon :name="component.def.icon" size="lg" class="shrink-0" />
+      <Icon
+        v-if="component.def.componentType !== ComponentType.View"
+        :name="component.def.icon"
+        size="lg"
+        class="shrink-0"
+      />
+      <Icon v-else name="logo-si" size="lg" class="shrink-0" />
       <Icon
         :name="COMPONENT_TYPE_ICONS[component.def.componentType]"
         size="lg"
@@ -26,7 +34,7 @@
           v-tooltip="componentNameTooltip"
           class="font-bold break-all line-clamp-4 pb-[1px]"
         >
-          {{ component.def.displayName }}
+          {{ displayName }}
         </div>
         <div class="text-xs italic capsize">
           <div class="truncate pr-xs">{{ component.def.schemaName }}</div>
@@ -42,7 +50,7 @@
         class="ml-auto cursor-pointer rounded hover:scale-125"
       >
         <StatusIndicatorIcon
-          v-if="component.def.canBeUpgraded"
+          v-if="'canBeUpgraded' in component.def && component.def.canBeUpgraded"
           type="upgradable"
           @click="upgradeComponent"
         />
@@ -50,7 +58,10 @@
 
       <!-- change status icon -->
       <div
-        v-if="component.def.changeStatus !== 'unmodified'"
+        v-if="
+          'changeStatus' in component.def &&
+          component.def.changeStatus !== 'unmodified'
+        "
         v-tooltip="{
           content:
             component.def.changeStatus.charAt(0).toUpperCase() +
@@ -62,7 +73,7 @@
         <StatusIndicatorIcon
           type="change"
           :status="component.def.changeStatus"
-          @click="componentsStore.setComponentDetailsTab('diff')"
+          @click="viewStore.setComponentDetailsTab('diff')"
         />
       </div>
 
@@ -83,20 +94,24 @@ import {
   COMPONENT_TYPE_ICONS,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import {
   DiagramGroupData,
   DiagramNodeData,
+  DiagramViewData,
 } from "./ModelingDiagram/diagram_types";
 
 const props = defineProps<{
   titleCard: boolean;
-  component: DiagramGroupData | DiagramNodeData;
+  component: DiagramGroupData | DiagramNodeData | DiagramViewData;
 }>();
 
 const { theme } = useTheme();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
 const primaryColor = tinycolor(props.component.def.color);
 
@@ -122,11 +137,18 @@ const componentNameTooltip = computed(() => {
   }
 });
 
+const displayName = computed(
+  () =>
+    ("displayName" in props.component.def && props.component.def.displayName) ||
+    ("name" in props.component.def && props.component.def.name) ||
+    "Asset",
+);
+
 const upgradeComponent = async () => {
-  componentsStore.setSelectedComponentId(null);
+  viewStore.setSelectedComponentId(null);
   await componentsStore.UPGRADE_COMPONENT(
     props.component.def.id,
-    props.component.def.displayName,
+    displayName.value,
   );
 };
 </script>

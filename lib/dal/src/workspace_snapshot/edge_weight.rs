@@ -67,6 +67,8 @@ pub enum EdgeWeightKind {
     Represents,
     /// From a manager [`Component`][`crate::Component`] to a managed `Component
     Manages,
+    /// From a view node to a diagram object node, to which geometries can be connected.
+    DiagramObject,
 }
 
 impl EdgeWeightKind {

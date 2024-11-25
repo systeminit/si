@@ -380,6 +380,7 @@ export const COMPONENT_TYPE_ICONS = {
   configurationFrameDown: "frame-down" as IconNames,
   configurationFrameUp: "frame-up" as IconNames,
   aggregationFrame: "frame" as IconNames,
+  view: "create" as IconNames,
 };
 
 /*

@@ -42,6 +42,7 @@ macro_rules! implement_add_edge_to {
             }
 
             /// Inserts ordered edge from source to destination with specified weight to the graph
+            #[allow(dead_code)]
             pub async fn [<$add_fn _ordered>](ctx: &DalContext, source_id: $source_id, destination_id: $destination_id, weight: $crate::EdgeWeightKind) -> $result<()> {
                 if $crate::EdgeWeightKindDiscriminants::from(&weight) != $discriminant {
                     return Err($crate::HelperError::InvalidEdgeWeight(weight, $discriminant))?;

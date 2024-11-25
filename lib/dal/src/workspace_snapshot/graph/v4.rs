@@ -488,6 +488,7 @@ impl WorkspaceSnapshotGraphV4 {
             .map(|edge_ref| edge_ref.weight())
     }
 
+    /// Returns a vec with (edge weight, source_index, target_index) tuples, for all filtered edges
     pub fn edges_directed_for_edge_weight_kind(
         &self,
         node_index: NodeIndex,
@@ -872,6 +873,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                     EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
                     EdgeWeightKindDiscriminants::Manages => "pink",
+                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -996,6 +998,7 @@ impl WorkspaceSnapshotGraphV4 {
                     NodeWeight::ManagementPrototype(_) => {
                         ("ManagementPrototype".to_string(), "black")
                     }
+                    NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1541,7 +1544,8 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::SocketValue
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::ManagementPrototype
-                    | EdgeWeightKind::Manages => {}
+                    | EdgeWeightKind::Manages
+                    | EdgeWeightKind::DiagramObject => {}
                 }
             }
         }

@@ -3,6 +3,8 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest, URLPattern } from "@si/vue-lib/pinia";
 import { IRect, Vector2d } from "konva/lib/types";
 import { useToast } from "vue-toastification";
+import { watch } from "vue";
+import { IconNames } from "@si/vue-lib/design-system";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   ViewId,
@@ -12,13 +14,23 @@ import {
   Groups,
   ViewDescription,
   StringGeometry,
+  ViewNodes,
 } from "@/api/sdf/dal/views";
 import {
   DiagramGroupData,
   DiagramNodeData,
+  DiagramViewData,
+  ElementHoverMeta,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
-import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
+import {
+  ComponentId,
+  Edge,
+  EdgeId,
+  RawComponent,
+  RawEdge,
+  ViewNodeGeometry,
+} from "@/api/sdf/dal/component";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,
@@ -41,6 +53,7 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useAssetStore } from "./asset.store";
 import { useRouterStore } from "./router.store";
+import { useQualificationsStore } from "./qualifications.store";
 
 const MAX_RETRIES = 5;
 
@@ -50,6 +63,8 @@ type PendingComponent = {
 };
 
 type RequestUlid = string;
+
+type VectorWithRadius = Vector2d & { radius: number };
 
 class UniqueStack<T> {
   items: T[];
@@ -119,6 +134,18 @@ const setSockets = (
   return sockets;
 };
 
+const VIEW_DEFAULTS = {
+  icon: "create" as IconNames,
+  color: "#9d00ff",
+  schemaName: "View",
+};
+
+export interface ComponentStats {
+  components: number;
+  resources: number;
+  failed: number;
+}
+
 /**
  * In general we treat the front end POSITION data as truth
  * And push it to the backend, retries, last wins, etc
@@ -128,6 +155,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const componentsStore = useComponentsStore(forceChangeSetId);
+  const qualStore = useQualificationsStore();
   const toast = useToast();
 
   let changeSetId: ChangeSetId | undefined;
@@ -173,6 +201,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         components: {} as Components,
         groups: {} as Groups,
         sockets: {} as Sockets,
+        viewNodes: {} as ViewNodes,
 
         // size of components when dragged to the stage
         inflightElementSizes: {} as Record<RequestUlid, ComponentId[]>,
@@ -182,12 +211,159 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
         // componentId we drag from outliner into the selectedView
         addComponentId: null as ComponentId | null,
+        // viewId we drag from left panel into the selectedView
+        addViewId: null as ViewId | null,
+
+        // these are components, groups, or viewNodes
+        selectedComponentIds: [] as ComponentId[],
+        selectedEdgeId: null as EdgeId | null,
+        selectedComponentDetailsTab: null as string | null,
+        hoveredComponentId: null as ComponentId | null,
+        hoveredEdgeId: null as EdgeId | null,
+        hoveredComponentMeta: null as ElementHoverMeta | null,
       }),
       getters: {
+        // this could get expensive, might want to stop computing this
+        viewStats() {
+          const stats: Record<ViewId, ComponentStats> = {};
+          Object.values(this.viewsById).forEach((view) => {
+            const ids = Object.keys(view.components).concat(
+              Object.keys(view.groups),
+            );
+            const stat = {
+              components: ids.length,
+              failed: 0,
+              resources: 0,
+            };
+            ids.forEach((id) => {
+              const c = componentsStore.allComponentsById[id];
+              if (!c) return;
+              if (c.def.hasResource) stat.resources++;
+              const qual = qualStore.qualificationStatsByComponentId[id];
+              if (qual?.failed) stat.failed++;
+            });
+            stats[view.id] = stat;
+          });
+          return stats;
+        },
+        hoveredComponent(): DiagramNodeData | DiagramGroupData | undefined {
+          return componentsStore.allComponentsById[
+            this.hoveredComponentId || 0
+          ];
+        },
+
+        selectedComponentId: (state) => {
+          return state.selectedComponentIds.length === 1
+            ? state.selectedComponentIds[0]
+            : null;
+        },
+        selectedComponent():
+          | DiagramNodeData
+          | DiagramGroupData
+          | DiagramViewData
+          | undefined {
+          return (
+            componentsStore.allComponentsById[this.selectedComponentId || 0] ??
+            this.viewNodes[this.selectedComponentId || 0]
+          );
+        },
+        selectedComponents(): (
+          | DiagramNodeData
+          | DiagramGroupData
+          | DiagramViewData
+        )[] {
+          return _.compact(
+            _.map(
+              this.selectedComponentIds,
+              (id) =>
+                componentsStore.allComponentsById[id] ?? this.viewNodes[id],
+            ),
+          );
+        },
+        selectedEdge(): Edge | undefined {
+          return componentsStore.rawEdgesById[this.selectedEdgeId || 0];
+        },
+        selectedComponentsAndChildren(): (
+          | DiagramNodeData
+          | DiagramGroupData
+          | DiagramViewData
+        )[] {
+          const selectedAndChildren: Record<
+            string,
+            DiagramNodeData | DiagramGroupData | DiagramViewData
+          > = {};
+          Object.values(componentsStore.allComponentsById).forEach(
+            (component) => {
+              this.selectedComponents?.forEach((el) => {
+                if (component.def.ancestorIds?.includes(el.def.id)) {
+                  selectedAndChildren[component.def.id] = component;
+                }
+              });
+            },
+          );
+          this.selectedComponents?.forEach((el) => {
+            selectedAndChildren[el.def.id] = el;
+          });
+
+          return Object.values(selectedAndChildren);
+        },
+
+        deletableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
+          const components: (DiagramNodeData | DiagramGroupData)[] = [];
+          this.selectedComponentsAndChildren.forEach((c) => {
+            if (
+              !(c instanceof DiagramViewData) &&
+              "changeStatus" in c.def &&
+              c.def.changeStatus !== "deleted"
+            )
+              components.push(c);
+          });
+          return components;
+        },
+        restorableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
+          const components: (DiagramNodeData | DiagramGroupData)[] = [];
+          this.selectedComponentsAndChildren.forEach((c) => {
+            if (
+              !(c instanceof DiagramViewData) &&
+              "changeStatus" in c.def &&
+              c.def.changeStatus === "deleted"
+            )
+              components.push(c);
+          });
+          return components;
+        },
+        erasableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
+          const components: (DiagramNodeData | DiagramGroupData)[] = [];
+          this.selectedComponentsAndChildren.forEach((c) => {
+            if (
+              !(c instanceof DiagramViewData) &&
+              "changeStatus" in c.def &&
+              c.def.changeStatus !== "deleted"
+            )
+              components.push(c);
+          });
+          return components;
+        },
+        detailsTabSlugs: (state) => {
+          const slug = state.selectedComponentDetailsTab;
+
+          // root level tabs
+          if (["resource", "management", "component"].includes(slug || "")) {
+            return [slug, undefined];
+          }
+
+          // subtabs
+          if (slug?.startsWith("management-")) return ["management", slug];
+          if (slug?.startsWith("resource-")) return ["resource", slug];
+
+          // all other subtabs (currently) are in the component tab
+          return ["component", slug];
+        },
         diagramIsEmpty(state): boolean {
           return (
             Object.keys(state.components).length === 0 &&
-            Object.keys(state.groups).length === 0
+            Object.keys(state.groups).length === 0 &&
+            Object.keys(state.viewNodes).length === 0
           );
         },
 
@@ -265,7 +441,159 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
       },
       actions: {
-        async selectView(id: ViewId) {
+        geoFrom(
+          el: DiagramNodeData | DiagramGroupData | DiagramViewData,
+        ): IRect | undefined {
+          let geo: IRect | undefined;
+          if (el.def.componentType === ComponentType.View) {
+            const v = this.viewNodes[el.def.id];
+            if (v)
+              geo = {
+                x: v.def.x,
+                y: v.def.y,
+                width: v.def.width,
+                height: v.def.height,
+              };
+          } else {
+            geo = el.def.isGroup
+              ? this.groups[el.def.id]
+              : this.components[el.def.id];
+          }
+          return geo;
+        },
+        setHoveredComponentId(id: ComponentId | null, meta?: ElementHoverMeta) {
+          this.hoveredComponentId = id;
+          this.hoveredComponentMeta = meta || null;
+          this.hoveredEdgeId = null;
+        },
+        setHoveredEdgeId(id: ComponentId | null) {
+          this.hoveredComponentId = null;
+          this.hoveredEdgeId = id;
+        },
+
+        setComponentDetailsTab(tabSlug: string | null) {
+          // we ignore the top level "component" and "actions" tabs
+          // since we always need a child selected, and setting these
+          // would overwrite the child being selected
+          if (["component", "actions"].includes(tabSlug || "")) return;
+          this.selectedComponentDetailsTab = tabSlug;
+
+          this.syncSelectionIntoUrl();
+        },
+        syncSelectionIntoUrl() {
+          let selectedIds: string[] = [];
+          if (this.selectedEdgeId) {
+            selectedIds = [`e_${this.selectedEdgeId}`];
+          } else if (this.selectedComponentIds.length) {
+            selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
+          }
+
+          const newQueryObj = {
+            ...(selectedIds.length && { s: selectedIds.join("|") }),
+            ...(this.selectedComponentDetailsTab && {
+              t: this.selectedComponentDetailsTab,
+            }),
+          };
+
+          if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
+            router.replace({
+              query: newQueryObj,
+            });
+          }
+        },
+        syncUrlIntoSelection() {
+          const ids = (
+            (router.currentRoute.value.query?.s as string) || ""
+          ).split("|");
+          if (!ids.length) {
+            this.selectedComponentIds = [];
+            this.selectedEdgeId = null;
+          } else if (ids.length === 1 && ids[0]?.startsWith("e_")) {
+            this.selectedComponentIds = [];
+            this.selectedEdgeId = ids[0].substring(2);
+          } else {
+            this.selectedComponentIds = ids.map((id) => id.substring(2));
+            this.selectedEdgeId = null;
+          }
+
+          const tabSlug =
+            (router.currentRoute.value.query?.t as string) || null;
+          if (this.selectedComponentIds.length === 1) {
+            this.selectedComponentDetailsTab = tabSlug;
+          } else {
+            this.selectedComponentDetailsTab = null;
+          }
+        },
+
+        setSelectedEdgeId(selection: EdgeId | null) {
+          // clear component selection
+          this.selectedComponentIds = [];
+          this.selectedEdgeId = selection;
+          this.selectedComponentDetailsTab = null;
+          this.syncSelectionIntoUrl();
+        },
+        setSelectedComponentId(
+          selection: ComponentId | ComponentId[] | null,
+          opts?: { toggle?: boolean; detailsTab?: string },
+        ) {
+          const key = `${changeSetId}_selected_component`;
+          this.selectedEdgeId = null;
+          if (!selection || !selection.length) {
+            this.selectedComponentIds = [];
+            // forget which details tab is active when selection is cleared
+            this.selectedComponentDetailsTab = null;
+            if (router.currentRoute.value.name === "workspace-compose")
+              window.localStorage.removeItem(key);
+          } else {
+            const validSelectionArray = _.reject(
+              _.isArray(selection) ? selection : [selection],
+              (id) =>
+                !Object.keys(componentsStore.allComponentsById).includes(id) &&
+                !Object.keys(this.viewNodes).includes(id),
+            );
+            if (opts?.toggle) {
+              this.selectedComponentIds = _.xor(
+                this.selectedComponentIds,
+                validSelectionArray,
+              );
+            } else {
+              this.selectedComponentIds = validSelectionArray;
+            }
+          }
+          if (opts?.detailsTab) {
+            this.selectedComponentDetailsTab = opts.detailsTab;
+          }
+          if (this.selectedComponentIds.length === 1) {
+            const _id = this.selectedComponentIds[0];
+            if (_id) window.localStorage.setItem(key, _id);
+          }
+
+          this.syncSelectionIntoUrl();
+        },
+        setOutlinerView(id: ViewId) {
+          this.outlinerViewId = id;
+          this._enforceSelectedComponents();
+        },
+        // cannot select components that are not in either selected view
+        _enforceSelectedComponents() {
+          const v1 = this.viewsById[this.outlinerViewId || ""];
+          const v2 = this.viewsById[this.selectedViewId || ""];
+          const ids: ComponentId[] = [];
+          if (v1) {
+            ids.push(...Object.keys(v1.components));
+            ids.push(...Object.keys(v1.groups));
+          }
+          if (v2) {
+            ids.push(...Object.keys(v2.components));
+            ids.push(...Object.keys(v2.groups));
+          }
+          const valid = this.selectedComponentIds.filter((cId) =>
+            ids.includes(cId),
+          );
+          this.selectedComponentIds = valid;
+          this.syncSelectionIntoUrl();
+        },
+        selectView(id: ViewId) {
           const view = this.viewsById[id];
           if (view) {
             const route = router.currentRoute;
@@ -287,6 +615,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             } */
             this.selectedViewId = id;
             this.outlinerViewId = id;
+            this._enforceSelectedComponents();
             /* *
              * i think i want to set these as in-memory references
              * that way i don't have to do two writes for incoming WsEvents
@@ -298,6 +627,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
              * */
             this.components = view.components;
             this.groups = view.groups;
+            this.viewNodes = view.viewNodes;
             // derive the socket position from the component position
             // to begin, and then adjust it via delta when things move
             this.sockets = view.sockets;
@@ -350,6 +680,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   components: {},
                   groups: {},
                   sockets: {},
+                  viewNodes: {},
                 };
                 this.viewsById[response.viewId] = view;
               }
@@ -386,7 +717,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         setAddComponentId(id: ComponentId) {
           this.addComponentId = id;
-          componentsStore.setSelectedComponentId(null);
+          this.setSelectedComponentId(null);
         },
         cancelAdd() {
           this.addComponentId = null;
@@ -408,12 +739,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "put",
             url: API_PREFIX.concat([view_id]),
             params: { name, clientUlid },
-            optimistic: () => {
-              const v = this.viewList.find((v) => v.id === view_id);
-              if (v) v.name = name;
-              const _v = this.viewsById[view_id];
-              if (_v) _v.name = name;
-            },
           });
         },
 
@@ -428,6 +753,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               edges: RawEdge[];
               inferredEdges: RawEdge[];
               managementEdges: RawEdge[];
+              views: ViewNodeGeometry[];
             };
           }>({
             url,
@@ -451,6 +777,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onSuccess: (response) => {
               componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram);
+
+              // remove invalid component IDs from the selection
+              const validComponentIds = _.intersection(
+                this.selectedComponentIds,
+                _.keys(componentsStore.rawComponentsById),
+              );
+              this.setSelectedComponentId(validComponentIds);
+
               const components: RawComponent[] = [];
               const groups: RawComponent[] = [];
               for (const component of response.diagram.components) {
@@ -460,9 +794,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   else groups.push(component);
                 }
               }
+              const views: (ViewDescription & IRect)[] = [];
+              response.diagram.views.forEach((v) => {
+                views.push({ ...v.view, ...v.geometry });
+              });
               this.SET_COMPONENTS_FROM_VIEW(response.view, {
                 components,
                 groups,
+                views,
               });
               this.selectView(response.view.id);
 
@@ -475,6 +814,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           response: {
             components: RawComponent[];
             groups: RawComponent[];
+            views: (ViewDescription & IRect)[];
           },
         ) {
           const components: Components = {};
@@ -515,12 +855,21 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               sockets[key] = loc;
             }
           }
+          const viewNodes: ViewNodes = {};
+          response.views.forEach((v) => {
+            viewNodes[v.id] = new DiagramViewData({
+              ...v,
+              ...VIEW_DEFAULTS,
+              componentType: ComponentType.View,
+            });
+          });
           this.viewsById[view.id] = {
             id: view.id,
             name: view.name,
             components,
             groups,
             sockets,
+            viewNodes,
           };
         },
         /**
@@ -659,6 +1008,130 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     )
                     .filter(nonNullable);
                   this.MOVE_COMPONENTS(
+                    components,
+                    { x: 0, y: 0 },
+                    { writeToChangeSet: true },
+                  );
+                }
+              },
+              onSuccess: (response) => {
+                delete this.inflightElementSizes[response.requestUlid];
+              },
+            });
+          }
+        },
+        async MOVE_VIEWS(
+          components: DiagramViewData[],
+          positionDelta: Vector2d,
+          opts: { writeToChangeSet?: boolean; broadcastToClients?: boolean },
+        ) {
+          if (positionDelta.x !== 0 || positionDelta.y !== 0) {
+            components.forEach((c) => {
+              const v = this.viewNodes[c.def.id];
+              if (!v) return;
+
+              const newPos = vectorAdd(
+                { x: v.def.x, y: v.def.y },
+                positionDelta,
+              );
+              v.def.x = newPos.x;
+              v.def.y = newPos.y;
+            });
+          }
+          if (!opts.broadcastToClients && !opts.writeToChangeSet) return;
+
+          if (opts.broadcastToClients && changeSetsStore.selectedChangeSetId) {
+            const payload: Record<ComponentId, IRect> = {};
+            components.forEach((c) => {
+              const v = this.viewNodes[c.def.id];
+              if (!v) return;
+              payload[c.def.id] = {
+                x: Math.round(v.def.x),
+                y: Math.round(v.def.y),
+                width: Math.round(v.def.width),
+                height: Math.round(v.def.height),
+              };
+            });
+            const realtimeStore = useRealtimeStore();
+            const positions = Object.entries(payload).map(
+              ([componentId, geo]) => ({ componentId, ...geo }),
+            );
+            realtimeStore.sendMessage({
+              kind: "ComponentSetPosition",
+              data: {
+                positions,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                viewId: this.selectedViewId!,
+                clientUlid,
+                changeSetId: changeSetsStore.selectedChangeSetId,
+              },
+            });
+          }
+
+          if (opts.writeToChangeSet) {
+            const payload: Record<ComponentId, StringGeometry> = {};
+            components.forEach((c) => {
+              const geo = this.viewNodes[c.def.id]?.def;
+              if (geo)
+                payload[c.def.id] = {
+                  x: Math.round(geo.x).toString(),
+                  y: Math.round(geo.y).toString(),
+                  width: Math.round(geo.width).toString(),
+                  height: Math.round(geo.height).toString(),
+                };
+            });
+            return new ApiRequest<{ requestUlid: RequestUlid }>({
+              method: "put",
+              url: API_PREFIX.concat([
+                { viewId: this.selectedViewId },
+                "view_object/set_geometry",
+              ]),
+              params: {
+                clientUlid,
+                dataByViewId: payload,
+                ...visibilityParams,
+              },
+              optimistic: (requestUlid: RequestUlid) => {
+                this.inflightElementSizes[requestUlid] = Object.keys(payload);
+              },
+              onFail: (err) => {
+                // only handle conflicts here
+                if (err.response.status !== 409) {
+                  return;
+                }
+                const reqPayload = JSON.parse(err.config.data);
+
+                // are the components that failed currently inflight?
+                // if not, resend their latest data
+                const failed =
+                  this.inflightElementSizes[reqPayload.requestUlid];
+                if (!failed) return;
+                delete this.inflightElementSizes[reqPayload.requestUlid];
+                const all_inflight_components = new Set(
+                  Object.values(this.inflightElementSizes).flat(),
+                );
+
+                const maybe_retry: ComponentId[] = (
+                  failed as ComponentId[]
+                ).filter((x) => !all_inflight_components.has(x));
+
+                const prevent = new Set();
+                for (const componentId of maybe_retry) {
+                  const cnt =
+                    (this.inflightRetryCounter.get(componentId) || 0) + 1;
+                  if (cnt > MAX_RETRIES) prevent.add(componentId);
+                  else this.inflightRetryCounter.set(componentId, cnt);
+                }
+
+                if (prevent.size > 0) throw Error("Too many retries");
+
+                const retry = maybe_retry.filter((x) => !prevent.has(x));
+
+                if (retry.length > 0) {
+                  const components = retry
+                    .map((componentId) => this.viewNodes[componentId])
+                    .filter(nonNullable);
+                  this.MOVE_VIEWS(
                     components,
                     { x: 0, y: 0 },
                     { writeToChangeSet: true },
@@ -987,15 +1460,74 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+        async ADD_VIEW_TO(
+          viewId: ViewId,
+          viewIdToHexagon: ViewId,
+          geo: VectorWithRadius,
+        ) {
+          const sGeo = {
+            x: Math.round(geo.x).toString(),
+            y: Math.round(geo.y).toString(),
+            radius: Math.round(geo.radius).toString(),
+          };
+          return new ApiRequest({
+            method: "post",
+            url: API_PREFIX.concat([{ viewId }, "view_object"]),
+            params: {
+              viewObjectId: viewIdToHexagon,
+              ...sGeo,
+            },
+          });
+        },
+        async REMOVE_VIEW_FROM(viewId: ViewId, viewIdsToHexagon: ViewId[]) {
+          return new ApiRequest({
+            method: "delete",
+            url: API_PREFIX.concat([{ viewId }, "view_object"]),
+            params: {
+              viewIds: viewIdsToHexagon,
+            },
+          });
+        },
       },
       async onActivated() {
         if (!changeSetId) return;
         const route = useRouterStore().currentRoute;
         let viewId;
-        if (route?.params.viewId) viewId = route.params.viewId as string;
-        await this.FETCH_VIEW(viewId);
-        if (viewId) this.selectView(viewId); // not auto-selected
+        if (
+          ["workspace-compose", "workspace-compose-view"].includes(
+            route?.name as string,
+          )
+        ) {
+          if (route?.params.viewId) viewId = route.params.viewId as string;
+          await this.FETCH_VIEW(viewId);
+          // ^ selects the view
+        }
         this.LIST_VIEWS();
+
+        // TODO: prob want to take loading state into consideration as this will set it before its loaded
+        const stopWatchingUrl = watch(
+          router.currentRoute,
+          () => {
+            if (router.currentRoute.value.name === "workspace-compose")
+              this.syncUrlIntoSelection();
+          },
+          {
+            immediate: true,
+          },
+        );
+
+        if (router.currentRoute.value.name === "workspace-compose") {
+          const key = `${changeSetId}_selected_component`;
+          const lastId = window.localStorage.getItem(key);
+          window.localStorage.removeItem(key);
+          if (
+            lastId &&
+            Object.values(this.selectedComponentIds).filter(Boolean).length ===
+              0
+          ) {
+            this.setSelectedComponentId(lastId);
+          }
+        }
 
         const realtimeStore = useRealtimeStore();
 
@@ -1044,11 +1576,23 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
             {
+              eventType: "ResourceRefreshed",
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetId !== changeSetId) return;
+                if (this.selectedComponentId === data.component.id)
+                  componentsStore.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
+              },
+            },
+            {
               eventType: "ComponentUpgraded",
               callback: (data) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
+
+                this.setSelectedComponentId(data.component.id);
                 const node = processRawComponent(
                   data.component,
                   componentsStore.rawComponentsById,
@@ -1101,6 +1645,19 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   if (!geometry.height) geometry.height = 500;
                   view.groups[data.component.id] = geometry as IRect;
                 }
+
+                if (this.selectedComponentId === data.component.id) {
+                  if (data.component.changeStatus !== "deleted")
+                    componentsStore.FETCH_COMPONENT_DEBUG_VIEW(
+                      data.component.id,
+                    );
+                  else {
+                    const idx = this.selectedComponentIds.findIndex(
+                      (cId) => cId === data.component.id,
+                    );
+                    if (idx !== -1) this.selectedComponentIds.slice(idx, 1);
+                  }
+                }
               },
             },
 
@@ -1116,6 +1673,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete view?.components[data.componentId];
                   delete view?.groups[data.componentId];
                 });
+
+                // remove invalid component IDs from the selection
+                const validComponentIds = _.intersection(
+                  this.selectedComponentIds,
+                  _.keys(componentsStore.rawComponentsById),
+                );
+                this.setSelectedComponentId(validComponentIds);
               },
             },
 
@@ -1157,6 +1721,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     )) {
                       _view.sockets[key] = loc;
                     }
+                  } else {
+                    const node = _view.viewNodes[geo.componentId];
+                    if (node) {
+                      node.def.width = geo.width;
+                      node.def.height = geo.height;
+                      node.def.x = geo.x;
+                      node.def.y = geo.y;
+                    }
                   }
                 }
               },
@@ -1181,8 +1753,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (idx !== -1) this.viewList.splice(idx, 1, view);
                 else {
                   this.viewList.push(view);
-                  this.FETCH_VIEW(view.id);
                 }
+                // right now the name is the only thing you can update
+                const v = this.viewsById[view.id];
+                if (v) v.name = view.name;
+                const _v = this.viewNodes[view.id];
+                if (_v) _v.def.name = view.name;
+
                 this.SORT_LIST_VIEWS();
               },
             },
@@ -1198,6 +1775,37 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 }
                 this.FETCH_VIEW(view.id);
                 this.SORT_LIST_VIEWS();
+              },
+            },
+            {
+              eventType: "ViewObjectCreated",
+              callback: (payload, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                const view = this.viewsById[payload.viewId];
+                const v = this.viewList.find(
+                  (_v) => _v.id === payload.viewObjectId,
+                );
+                if (v) {
+                  const node = new DiagramViewData({
+                    ...v,
+                    ...payload.geometry,
+                    ...VIEW_DEFAULTS,
+                    componentType: ComponentType.View,
+                  });
+                  if (view) view.viewNodes[payload.viewObjectId] = node;
+                  if (payload.viewId === this.selectedViewId)
+                    this.viewNodes[payload.viewObjectId] = node;
+                }
+              },
+            },
+            {
+              eventType: "ViewObjectRemoved",
+              callback: (payload, metadata) => {
+                if (metadata.change_set_id !== changeSetId) return;
+                const view = this.viewsById[payload.viewId];
+                if (view) delete view.viewNodes[payload.viewObjectId];
+                if (payload.viewId === this.selectedViewId)
+                  delete this.viewNodes[payload.viewObjectId];
               },
             },
 
@@ -1249,7 +1857,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         const actionUnsub = this.$onAction(handleStoreError);
 
         return () => {
+          // clear selection without triggering url stuff
+          this.selectedComponentIds = [];
+          this.selectedEdgeId = null;
           actionUnsub();
+          stopWatchingUrl();
           realtimeStore.unsubscribe(`${this.$id}-changeset`);
           realtimeStore.unsubscribe(`${this.$id}-workspace`);
         };

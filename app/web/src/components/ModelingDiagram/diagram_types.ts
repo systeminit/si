@@ -6,6 +6,7 @@ import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { ViewNode } from "@/api/sdf/dal/views";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   NODE_HEADER_HEIGHT,
@@ -34,7 +35,11 @@ export type SideAndCornerIdentifiers =
 export type DiagramElementUniqueKey = string;
 
 export abstract class DiagramElementData {
-  abstract get def(): DiagramNodeDef | DiagramSocketDef | DiagramEdgeDef;
+  abstract get def():
+    | DiagramNodeDef
+    | DiagramSocketDef
+    | DiagramEdgeDef
+    | DiagramViewDef;
 
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
@@ -184,6 +189,24 @@ export class DiagramGroupData extends DiagramNodeHasSockets {
 
   static componentIdFromUniqueKey(uniqueKey: string): string {
     return uniqueKey.replace("g-", "");
+  }
+}
+
+export class DiagramViewData extends DiagramElementData {
+  constructor(readonly def: DiagramViewDef) {
+    super();
+  }
+
+  get uniqueKey() {
+    return `v-${this.def.id}`;
+  }
+
+  static generateUniqueKey(id: string | number) {
+    return `v-${id}`;
+  }
+
+  static componentIdFromUniqueKey(uniqueKey: string): string {
+    return uniqueKey.replace("v-", "");
   }
 }
 
@@ -374,6 +397,12 @@ export type DiagramSocketDef = {
 
   // color
   // shape
+};
+
+export type DiagramViewDef = ViewNode & {
+  icon: IconNames;
+  color: string;
+  schemaName: string;
 };
 
 export type DiagramEdgeDef = {

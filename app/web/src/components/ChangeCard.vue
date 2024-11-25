@@ -45,6 +45,7 @@ import clsx from "clsx";
 import { PropType, computed } from "vue";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 export type DiffInfo = {
@@ -55,6 +56,7 @@ export type DiffInfo = {
 };
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 
 const props = defineProps({
   diff: { type: Object as PropType<DiffInfo>, required: true },
@@ -63,7 +65,7 @@ const props = defineProps({
 function onClick() {
   const component = componentsStore.allComponentsById[props.diff.componentId];
   if (component) {
-    componentsStore.setSelectedComponentId(props.diff.componentId);
+    viewStore.setSelectedComponentId(props.diff.componentId);
     componentsStore.eventBus.emit("panToComponent", {
       component,
       center: true,
@@ -72,18 +74,18 @@ function onClick() {
 }
 
 const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.diff.componentId,
+  () => viewStore.hoveredComponentId === props.diff.componentId,
 );
 
 function onHoverStart() {
   if (componentsStore.allComponentsById[props.diff.componentId]) {
-    componentsStore.setHoveredComponentId(props.diff.componentId);
+    viewStore.setHoveredComponentId(props.diff.componentId);
   }
 }
 
 function onHoverEnd() {
   if (componentsStore.allComponentsById[props.diff.componentId]) {
-    componentsStore.setHoveredComponentId(null);
+    viewStore.setHoveredComponentId(null);
   }
 }
 </script>

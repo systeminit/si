@@ -146,7 +146,7 @@ pub async fn set_component_position(
             .await?;
         components.push(component);
 
-        geometry_list.push((id, new_geometry))
+        geometry_list.push((id.into(), new_geometry))
     }
 
     let view_id = View::get_id_for_default(&ctx).await?;

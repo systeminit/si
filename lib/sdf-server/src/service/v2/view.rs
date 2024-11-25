@@ -20,12 +20,14 @@ use tokio::task::JoinError;
 
 pub mod create_component;
 pub mod create_view;
+mod create_view_object;
 mod erase_components;
+mod erase_view_object;
 pub mod get_diagram;
 pub mod list_views;
 mod paste_component;
-mod set_component_geometry;
 mod set_component_parent;
+mod set_geometry;
 pub mod update_view;
 
 #[remain::sorted]
@@ -80,12 +82,15 @@ pub type ViewResult<T> = Result<T, ViewError>;
 impl IntoResponse for ViewError {
     fn into_response(self) -> Response {
         let (status_code, error_message) = match self {
-            ViewError::NameAlreadyInUse(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            ViewError::NameAlreadyInUse(_) => (StatusCode::CONFLICT, self.to_string()),
             ViewError::DalDiagram(
                 dal::diagram::DiagramError::DeletingLastGeometryForComponent(_, _),
             )
             | ViewError::Component(ComponentError::ComponentAlreadyInView(_, _)) => {
                 (StatusCode::FORBIDDEN, self.to_string())
+            }
+            ViewError::DalDiagram(dal::diagram::DiagramError::ViewNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
             }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
@@ -120,10 +125,22 @@ pub fn v2_routes() -> Router<AppState> {
         )
         .route(
             "/:view_id/component/set_geometry",
-            put(set_component_geometry::set_component_geometry),
+            put(set_geometry::set_component_geometry),
         )
         .route(
             "/:view_id/component/set_parent",
             put(set_component_parent::set_component_parent),
+        )
+        .route(
+            "/:view_id/view_object",
+            post(create_view_object::create_view_object),
+        )
+        .route(
+            "/:view_id/view_object",
+            delete(erase_view_object::erase_view_object),
+        )
+        .route(
+            "/:view_id/view_object/set_geometry",
+            put(set_geometry::set_view_object_geometry),
         )
 }

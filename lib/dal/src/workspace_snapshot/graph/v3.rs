@@ -750,6 +750,7 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                     EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
                     EdgeWeightKindDiscriminants::Manages => "pink",
+                    EdgeWeightKindDiscriminants::DiagramObject => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -874,6 +875,7 @@ impl WorkspaceSnapshotGraphV3 {
                     NodeWeight::ManagementPrototype(_) => {
                         ("ManagementPrototype".to_string(), "black")
                     }
+                    NodeWeight::DiagramObject(_) => ("DiagramObject".to_string(), "black"),
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1411,7 +1413,8 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::SocketValue
                     | EdgeWeightKind::ValidationOutput
                     | EdgeWeightKind::ManagementPrototype
-                    | EdgeWeightKind::Manages => {}
+                    | EdgeWeightKind::Manages
+                    | EdgeWeightKind::DiagramObject => {}
                 }
             }
         }

@@ -1,33 +1,33 @@
 <template>
   <div>
     <div class="flex gap-xs items-end">
-      <label>
+      <div>
         <div
           class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
         >
-          CHANGE&nbsp;SET:
+          CHANGE SET:
         </div>
         <VormInput
           ref="dropdownRef"
-          class="flex-grow font-bold mb-[-1px]"
-          size="xs"
-          type="dropdown"
-          noLabel
-          placeholder="-- select a change set --"
           :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
+          class="flex-grow font-bold mb-[-1px]"
+          noLabel
+          placeholder="-- select a change set --"
+          size="xs"
+          type="dropdown"
           @update:model-value="onSelectChangeSet"
         />
-      </label>
+      </div>
 
       <VButton
         v-tooltip="{
           content: 'Create Change Set',
         }"
-        tone="action"
-        variant="ghost"
         icon="git-branch-plus"
         size="sm"
+        tone="action"
+        variant="ghost"
         @click="openCreateModal"
       />
 
@@ -35,10 +35,6 @@
         v-tooltip="{
           content: 'Abandon Change Set',
         }"
-        tone="action"
-        variant="ghost"
-        icon="trash"
-        size="sm"
         :disabled="
           !selectedChangeSetName ||
           changeSetsStore.headSelected ||
@@ -47,6 +43,10 @@
             changeSetsStore.selectedChangeSet?.status ===
               ChangeSetStatus.NeedsApproval)
         "
+        icon="trash"
+        size="sm"
+        tone="action"
+        variant="ghost"
         @click="openApprovalFlowModal"
       />
     </div>
@@ -66,22 +66,22 @@
           </p>
           <VormInput
             v-model="createChangeSetName"
-            label="Change set name"
-            required
             :regex="CHANGE_SET_NAME_REGEX"
+            label="Change set name"
             regexMessage="You cannot name a change set 'HEAD' - please choose another name."
+            required
             requiredMessage="Please choose a name for your change set!"
           />
           <div class="flex flex-row-reverse gap-sm">
             <VButton
               :disabled="validationState.isError"
-              tone="success"
+              :requestStatus="createChangeSetReqStatus"
+              class="flex-grow"
               icon="plus-circle"
               label="Create change set"
               loadingText="Creating Change Set"
-              :requestStatus="createChangeSetReqStatus"
-              class="flex-grow"
               submit
+              tone="success"
             />
           </div>
         </Stack>
@@ -203,7 +203,7 @@ function onSelectChangeSet(newVal: string) {
     let name = route.name;
     if (name === "workspace-compose-view") name = "workspace-compose";
     router.push({
-      name: route.name,
+      name,
       params: {
         ...route.params,
         changeSetId: newVal,

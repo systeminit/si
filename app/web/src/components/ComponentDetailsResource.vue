@@ -67,16 +67,18 @@ import { computed, watch } from "vue";
 import { ErrorMessage, Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useViewsStore } from "@/store/views.store";
 import CodeViewer from "./CodeViewer.vue";
 import ActionRunnerDetails from "./Actions/ActionRunnerDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 
 const changeSetsStore = useChangeSetsStore();
+const viewStore = useViewsStore();
 const componentsStore = useComponentsStore();
 const selectedComponentId = computed(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  () => componentsStore.selectedComponentId!,
+  () => viewStore.selectedComponentId!,
 );
 
 const resourceReqStatus = componentsStore.getRequestStatus(
@@ -85,15 +87,17 @@ const resourceReqStatus = componentsStore.getRequestStatus(
 );
 
 const selectedComponentResource = computed(
-  () => componentsStore.selectedComponentResource,
+  () =>
+    componentsStore.componentResourceById[viewStore.selectedComponentId || ""],
 );
 
 watch(
   [() => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
     if (
-      componentsStore.selectedComponent &&
-      componentsStore.selectedComponent.def.changeStatus !== "deleted"
+      viewStore.selectedComponent &&
+      "changeStatus" in viewStore.selectedComponent.def &&
+      viewStore.selectedComponent.def.changeStatus !== "deleted"
     ) {
       componentsStore.FETCH_COMPONENT_RESOURCE(selectedComponentId.value);
     }

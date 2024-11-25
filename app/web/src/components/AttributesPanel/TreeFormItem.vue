@@ -835,9 +835,9 @@ import {
   AttributeTreeItem,
   useComponentAttributesStore,
 } from "@/store/component_attributes.store";
-import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
+import { useViewsStore } from "@/store/views.store";
 import {
   PropertyEditorProp,
   PropertyEditorPropKind,
@@ -845,7 +845,6 @@ import {
   PropertyEditorValue,
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
-import TreeFormItem from "./TreeFormItem.vue"; // eslint-disable-line import/no-self-import
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
@@ -959,9 +958,9 @@ const headerHasContent = computed(() => {
 const rootCtx = props.context();
 
 // not reactive - and we know it's populated - since the parent will rerender if it changes
-const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const componentId = componentsStore.selectedComponentId!;
+const componentId = viewStore.selectedComponentId!;
 
 const changeSetsStore = useChangeSetsStore();
 const attributesStore = useComponentAttributesStore(componentId);

@@ -365,6 +365,8 @@ export type WsEventPayloadMap = {
       }
     >;
   };
+  ViewObjectCreated: { viewId: ViewId; viewObjectId: ViewId; geometry: IRect };
+  ViewObjectRemoved: { viewId: ViewId; viewObjectId: ViewId };
   AuditLogsPublished: {
     changeSetId: ChangeSetId;
     changeSetStatus: ChangeSetStatus;

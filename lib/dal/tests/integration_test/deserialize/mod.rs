@@ -4,6 +4,7 @@ use dal::action::prototype::ActionKind;
 use dal::func::FuncKind;
 use dal::workspace_snapshot::content_address::ContentAddress;
 use dal::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use dal::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
 use dal::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use dal::workspace_snapshot::node_weight::{
     ArgumentTargets, CategoryNodeWeight, NodeWeight, OrderingNodeWeight,
@@ -19,7 +20,7 @@ use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 
 const CURRENT_SERIALIZED_GRAPH_DIR_PATH: &str = "./lib/dal/tests";
-const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-10-17.snapshot";
+const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-11-21.snapshot";
 
 // If you're modifying this, you probably just added a new node or edge weight. Before you replace
 // the snapshot with one that includes the new weights, ensure that your current code passes the
@@ -141,6 +142,11 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 Ulid::new(),
                 ContentHash::new("geometry".as_bytes()),
             ),
+            NodeWeightDiscriminants::DiagramObject => NodeWeight::new_diagram_object(
+                Ulid::new(),
+                Ulid::new(),
+                DiagramObjectKind::View(Ulid::new().into()),
+            ),
         };
 
         let idx = graph.add_or_replace_node(weight).expect("add node");
@@ -190,6 +196,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ManagementPrototype => EdgeWeightKind::ManagementPrototype,
             EdgeWeightKindDiscriminants::Represents => EdgeWeightKind::Represents,
             EdgeWeightKindDiscriminants::Manages => EdgeWeightKind::Manages,
+            EdgeWeightKindDiscriminants::DiagramObject => EdgeWeightKind::DiagramObject,
         };
 
         let edge_weight = EdgeWeight::new(edge_weight_kind);
@@ -250,7 +257,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
 
     let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&bytes).expect("deserialize");
 
-    assert_eq!(31, graph.node_count());
+    assert_eq!(32, graph.node_count());
 
     // Where we can, verify that the enums on the node weights match what we expect
     for (node_weight, _) in graph.nodes() {
@@ -282,6 +289,7 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             NodeWeight::ManagementPrototype(_) => {}
             NodeWeight::Geometry(_) => {}
             NodeWeight::View(_) => {}
+            NodeWeight::DiagramObject(_) => {}
         }
     }
 }
