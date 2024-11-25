@@ -2,7 +2,7 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
+use dal::{cached_module::CachedModule, module::Module, ChangeSetId, SchemaVariant, WorkspacePk};
 use frontend_types::{SchemaVariant as FrontendVariant, UninstalledVariant};
 use serde::{Deserialize, Serialize};
 use si_frontend_types as frontend_types;
@@ -33,7 +33,7 @@ pub async fn list_variants(
         .await?;
 
     let installed = SchemaVariant::list_user_facing(&ctx).await?;
-    let uninstalled: Vec<UninstalledVariant> = CachedModule::latest_modules(&ctx)
+    let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(&ctx)
         .await?
         .into_iter()
         .filter(|module| {
@@ -41,8 +41,17 @@ pub async fn list_variants(
                 .iter()
                 .any(|variant| variant.schema_id == module.schema_id.into())
         })
-        .map(Into::into)
         .collect();
+
+    let mut uninstalled = vec![];
+    for module in cached_modules {
+        if Module::find_by_root_hash(&ctx, module.latest_hash.to_owned())
+            .await?
+            .is_none()
+        {
+            uninstalled.push(module.into());
+        }
+    }
 
     track(
         &posthog_client,
