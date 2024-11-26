@@ -20,6 +20,7 @@ import {
   LOCAL_WORKSPACE_URL,
   SAAS_WORKSPACE_URL,
   changeWorkspaceMembership,
+  setUpdatedDefaultWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -306,6 +307,23 @@ router.delete("/workspace/:workspaceId/members", async (ctx) => {
   });
 
   ctx.body = members;
+});
+
+router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
+  const authUser = extractAuthUser(ctx);
+
+  const workspace = await extractWorkspaceIdParam(ctx);
+
+  tracker.trackEvent(authUser, "set_default_workspace", {
+    defaultWorkspaceSetBy: authUser.email,
+    workspaceId: workspace.id,
+  });
+
+  // update all existing workspaces to not be default
+  await setUpdatedDefaultWorkspace(authUser.id, workspace.id);
+
+  // Return the updated workspace list
+  ctx.body = await getUserWorkspaces(authUser.id);
 });
 
 router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
