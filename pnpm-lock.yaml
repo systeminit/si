@@ -2461,7 +2461,7 @@ packages:
       jest-util: 27.5.1
       jest-validate: 27.5.1
       jest-watcher: 27.5.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       rimraf: 3.0.2
       slash: 3.0.0
       strip-ansi: 6.0.1
@@ -2594,7 +2594,7 @@ packages:
       jest-haste-map: 27.5.1
       jest-regex-util: 27.5.1
       jest-util: 27.5.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pirates: 4.0.5
       slash: 3.0.0
       source-map: 0.6.1
@@ -3166,7 +3166,7 @@ packages:
     dependencies:
       execa: 6.1.0
       map-obj: 5.0.2
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       moize: 6.1.5
       path-exists: 5.0.0
     dev: true
@@ -5636,7 +5636,7 @@ packages:
       estree-walker: 2.0.2
       glob: 7.2.3
       graceful-fs: 4.2.10
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       node-gyp-build: 4.6.0
       resolve-from: 5.0.0
     transitivePeerDependencies:
@@ -5657,7 +5657,7 @@ packages:
       estree-walker: 2.0.2
       glob: 7.2.3
       graceful-fs: 4.2.10
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       node-gyp-build: 4.6.0
       resolve-from: 5.0.0
     transitivePeerDependencies:
@@ -6698,7 +6698,7 @@ packages:
     resolution: {integrity: sha512-yc0SWBYKD097X21d0vCc1NDrhCi+OM96/VlziDJeYMv6OlfUJPyWf8u9pthMkQxjmvq+BKu2fwxoMXDx0XRdUQ==}
     engines: {node: '>=14'}
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 0.28.0
       form-data: 3.0.1
       jsonwebtoken: 9.0.0
       jwks-rsa: 3.0.1
@@ -6753,11 +6753,12 @@ packages:
     resolution: {integrity: sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==}
     dev: true
 
-  /axios@0.27.2(debug@4.3.4):
-    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
+  /axios@0.28.0:
+    resolution: {integrity: sha512-Tu7NYoGY4Yoc7I+Npf9HhUMtEEpV7ZiLH9yndTCoNhcpBH0kwcvFbzYN9/u5QKI5A6uefjsNNWaz5olJVYS62Q==}
     dependencies:
       follow-redirects: 1.15.9
       form-data: 4.0.0
+      proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -8939,7 +8940,7 @@ packages:
       file-type: 11.1.0
       filenamify: 3.0.0
       get-stream: 4.1.0
-      got: 8.3.2
+      got: 11.8.6
       make-dir: 2.1.0
       p-event: 2.3.1
       pify: 4.0.1
@@ -10271,7 +10272,7 @@ packages:
       glob-parent: 3.1.0
       is-glob: 4.0.3
       merge2: 1.4.1
-      micromatch: 3.1.10(supports-color@9.3.1)
+      micromatch: 4.0.8
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -10284,7 +10285,7 @@ packages:
       '@nodelib/fs.walk': 1.2.8
       glob-parent: 5.1.2
       merge2: 1.4.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
 
   /fast-glob@3.3.1:
     resolution: {integrity: sha512-kNFPyjhh5cKjrUltxs+wFx+ZkbRaxxmZ+X0ZU31SOsxCEtP9VPgtq2teZw1DebupL5GmDaNQ6yKMMVcM41iqDg==}
@@ -10294,7 +10295,7 @@ packages:
       '@nodelib/fs.walk': 1.2.8
       glob-parent: 5.1.2
       merge2: 1.4.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
     dev: true
 
   /fast-json-stable-stringify@2.1.0:
@@ -11291,31 +11292,6 @@ packages:
       responselike: 3.0.0
     dev: true
 
-  /got@8.3.2:
-    resolution: {integrity: sha512-qjUJ5U/hawxosMryILofZCkm3C84PLJS/0grRIpjAwu+Lkxxj5cxeCU25BG0/3mDSpXKTyZr8oh8wIgLaH0QCw==}
-    engines: {node: '>=4'}
-    dependencies:
-      '@sindresorhus/is': 0.7.0
-      '@types/keyv': 3.1.4
-      '@types/responselike': 1.0.0
-      cacheable-request: 2.1.4
-      decompress-response: 3.3.0
-      duplexer3: 0.1.5
-      get-stream: 3.0.0
-      into-stream: 3.1.0
-      is-retry-allowed: 1.2.0
-      isurl: 1.0.0
-      lowercase-keys: 1.0.1
-      mimic-response: 1.0.1
-      p-cancelable: 0.4.1
-      p-timeout: 2.0.1
-      pify: 3.0.0
-      safe-buffer: 5.2.1
-      timed-out: 4.0.1
-      url-parse-lax: 3.0.0
-      url-to-options: 1.0.1
-    dev: true
-
   /graceful-fs@4.2.10:
     resolution: {integrity: sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA==}
 
@@ -11366,8 +11342,8 @@ packages:
       obliterator: 2.0.4
     dev: false
 
-  /graphql@16.5.0:
-    resolution: {integrity: sha512-qbHgh8Ix+j/qY+a/ZcJnFQ+j8ezakqPiHwPiZhV/3PgGlgf96QMBB5/f2rkiC9sgLoy/xvT6TSiaf2nTHJh5iA==}
+  /graphql@16.8.1:
+    resolution: {integrity: sha512-59LZHPdGZVh695Ud9lRzPBVTtlX9ZCV150Er2W43ro37wVof0ctenSaskPPjN7lVTIN8mSZt8PHUNKZuNQUuxw==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
     dev: true
 
@@ -11681,7 +11657,7 @@ packages:
       http-proxy: 1.18.1(debug@4.3.4)
       is-glob: 4.0.3
       is-plain-obj: 3.0.0
-      micromatch: 4.0.5
+      micromatch: 4.0.8
     transitivePeerDependencies:
       - debug
     dev: true
@@ -12788,7 +12764,7 @@ packages:
       jest-runner: 27.5.1
       jest-util: 27.5.1
       jest-validate: 27.5.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       parse-json: 5.2.0
       pretty-format: 27.5.1
       slash: 3.0.0
@@ -12877,7 +12853,7 @@ packages:
       jest-serializer: 27.5.1
       jest-util: 27.5.1
       jest-worker: 27.5.1
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       walker: 1.0.8
     optionalDependencies:
       fsevents: 2.3.3
@@ -12935,7 +12911,7 @@ packages:
       '@types/stack-utils': 2.0.1
       chalk: 4.1.2
       graceful-fs: 4.2.10
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       pretty-format: 27.5.1
       slash: 3.0.0
       stack-utils: 2.0.6
@@ -14444,54 +14420,13 @@ packages:
     resolution: {integrity: sha512-2tzWP1w2Hh+r7kCYa4f//jpBEA6dAueiuLco38NxfjF9Py3KCCI7wVOTdCvOhmTC043t+ulclVBdl3v+s+UJIQ==}
     dev: true
 
-  /micromatch@3.1.10:
-    resolution: {integrity: sha512-MWikgl9n9M3w+bpsY3He8L+w9eF9338xRl8IAO5viDizwSzziFEyUzo2xrrloB64ADbTf8uA8vRqqttDTOmccg==}
-    engines: {node: '>=0.10.0'}
-    dependencies:
-      arr-diff: 4.0.0
-      array-unique: 0.3.2
-      braces: 3.0.3
-      define-property: 2.0.2
-      extend-shallow: 3.0.2
-      extglob: 2.0.4
-      fragment-cache: 0.2.1
-      kind-of: 6.0.3
-      nanomatch: 1.2.13
-      object.pick: 1.3.0
-      regex-not: 1.0.2
-      snapdragon: 0.8.2
-      to-regex: 3.0.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
-  /micromatch@3.1.10(supports-color@9.3.1):
-    resolution: {integrity: sha512-MWikgl9n9M3w+bpsY3He8L+w9eF9338xRl8IAO5viDizwSzziFEyUzo2xrrloB64ADbTf8uA8vRqqttDTOmccg==}
-    engines: {node: '>=0.10.0'}
-    dependencies:
-      arr-diff: 4.0.0
-      array-unique: 0.3.2
-      braces: 3.0.3
-      define-property: 2.0.2
-      extend-shallow: 3.0.2
-      extglob: 2.0.4(supports-color@9.3.1)
-      fragment-cache: 0.2.1
-      kind-of: 6.0.3
-      nanomatch: 1.2.13(supports-color@9.3.1)
-      object.pick: 1.3.0
-      regex-not: 1.0.2
-      snapdragon: 0.8.2(supports-color@9.3.1)
-      to-regex: 3.0.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
-  /micromatch@4.0.5:
-    resolution: {integrity: sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==}
+  /micromatch@4.0.8:
+    resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
     dependencies:
       braces: 3.0.3
       picomatch: 2.3.1
+    dev: true
 
   /mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -15027,7 +14962,7 @@ packages:
   /netlify-onegraph-internal@0.10.1:
     resolution: {integrity: sha512-lGHBUfILWoMO2iJN3zmqd/S+pbgYyQI4WgWDiMrEPkDQPF6wO1JUmhcMOGiZfsmaX/leD9S+CKDKX7iDc440Hw==}
     dependencies:
-      graphql: 16.5.0
+      graphql: 16.8.1
       node-fetch: 2.6.7
       rusha: 0.8.14
       uuid: 8.3.2
@@ -16424,7 +16359,7 @@ packages:
     resolution: {integrity: sha512-/BiFw/jwdP0uJSRAIoYqLoBTjZ612xv74b1L/a3T/p1nJVL8e0OrHuxbJW56c6WVW/IKm9gBF/zhbqfaz0XgJQ==}
     engines: {node: '>=15.0.0'}
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 0.28.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -17000,7 +16935,7 @@ packages:
     engines: {node: '>=0.10'}
     dependencies:
       graceful-fs: 4.2.10
-      micromatch: 3.1.10
+      micromatch: 4.0.8
       readable-stream: 2.3.7
     transitivePeerDependencies:
       - supports-color
@@ -18593,7 +18528,7 @@ packages:
       glob-parent: 6.0.2
       is-glob: 4.0.3
       lilconfig: 2.0.6
-      micromatch: 4.0.5
+      micromatch: 4.0.8
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.0.0
