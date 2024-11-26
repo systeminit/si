@@ -28,7 +28,7 @@
         </a>
       </TruncateWithTooltip>
       <IconButton
-        :tooltip="workspace.isFavourite ? 'Remove Star' : 'Add Star'"
+        :tooltip="workspace.isFavourite ? 'Remove Favourite' : 'Set Favourite'"
         tooltipPlacement="top"
         :icon="workspace.isFavourite ? 'star' : 'starOutline'"
         size="sm"
@@ -144,7 +144,7 @@ function clickHandler(e: MouseEvent) {
 const starWorkspace = async () => {
   if (!props.workspaceId || !workspace.value) return;
 
-  await workspacesStore.SET_FAVOURITE_QUARANTINE(
+  await workspacesStore.SET_FAVOURITE(
     props.workspaceId,
     !workspace.value.isFavourite,
   );

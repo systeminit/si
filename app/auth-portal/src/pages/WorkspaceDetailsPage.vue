@@ -21,8 +21,25 @@
             }}
           </div>
         </div>
+        <template v-if="isDefaultWorkspace">
+          <div
+            :class="
+              clsx(
+                'rounded text-sm px-xs py-2xs my-2xs w-fit',
+                themeClasses(
+                  'bg-success-600 text-shade-0',
+                  'bg-success-500 text-shade-100',
+                ),
+              )
+            "
+          >
+            DEFAULT
+          </div>
+        </template>
         <IconButton
-          :tooltip="draftWorkspace.isFavourite ? 'Remove Star' : 'Add Star'"
+          :tooltip="
+            draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
+          "
           tooltipPlacement="top"
           :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
           size="lg"
@@ -84,22 +101,36 @@
           placeholder="A description for this workspace"
         />
 
-        <VButton
-          v-if="!createMode || createWorkspaceType"
-          :disabled="
-            validationState.isError || (!isWorkspaceOwner && !createMode)
-          "
-          :loadingText="createMode ? 'Creating...' : 'Applying...'"
-          :requestStatus="
-            createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
-          "
-          iconRight="chevron--right"
-          tone="action"
-          variant="solid"
-          @click="() => (createMode ? createWorkspace() : editWorkspace())"
-        >
-          {{ createMode ? "Create Workspace" : "Save" }}
-        </VButton>
+        <div class="flex flex-row flex-wrap items-center w-full gap-xs">
+          <VButton
+            v-if="!createMode || createWorkspaceType"
+            :disabled="
+              validationState.isError || (!isWorkspaceOwner && !createMode)
+            "
+            :loadingText="createMode ? 'Creating...' : 'Applying...'"
+            :requestStatus="
+              createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
+            "
+            class="basis-[calc(75%-0.5rem)] flex-grow-0"
+            iconRight="chevron--right"
+            tone="action"
+            variant="solid"
+            @click="() => (createMode ? createWorkspace() : editWorkspace())"
+          >
+            {{ createMode ? "Create Workspace" : "Save Workspace" }}
+          </VButton>
+          <VButton
+            v-if="!createMode"
+            :disabled="isDefaultWorkspace"
+            class="basis-[calc(25%-0.5rem)] flex-grow-0"
+            loadingText="Setting as default..."
+            iconRight="chevron--right"
+            tone="action"
+            variant="solid"
+            @click="setDefaultWorkspace()"
+            >Set as Default</VButton
+          >
+        </div>
       </Stack>
       <div v-if="!createMode" class="mt-sm">
         <template v-if="loadWorkspaceMembersReqStatus.isPending">
@@ -208,7 +239,9 @@ import {
   VButton,
   useValidatedInputGroup,
   IconButton,
+  themeClasses,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
@@ -272,6 +305,16 @@ const isWorkspaceOwner = computed(
     workspacesStore.workspacesById[props.workspaceId]?.role === "OWNER",
 );
 
+const isDefaultWorkspace = computed(
+  () =>
+    props.workspaceId === "new" ||
+    workspacesStore.workspacesById[props.workspaceId]?.isDefault,
+);
+
+const setDefaultReqStatus = workspacesStore.getRequestStatus(
+  "SET_DEFAULT_WORKSPACE",
+);
+
 const loadWorkspacesReqStatus =
   workspacesStore.getRequestStatus("LOAD_WORKSPACES");
 
@@ -283,6 +326,15 @@ function reloadWorkspaces() {
   workspacesStore.LOAD_WORKSPACES();
 }
 watch(() => authStore.userIsLoggedIn, reloadWorkspaces, { immediate: true });
+
+watch(
+  [() => props.workspaceId, setDefaultReqStatus],
+  () => {
+    if (!setDefaultReqStatus.value.isSuccess) return;
+    reloadWorkspaces();
+  },
+  { immediate: true },
+);
 
 watch(
   [() => props.workspaceId, loadWorkspacesReqStatus],
@@ -303,6 +355,11 @@ watch(
   },
   { immediate: true },
 );
+const setDefaultWorkspace = async () => {
+  if (!props.workspaceId) return;
+
+  await workspacesStore.SET_DEFAULT_WORKSPACE(props.workspaceId);
+};
 const createWorkspace = async () => {
   if (!draftWorkspace.description) {
     draftWorkspace.description = "";
@@ -361,10 +418,7 @@ const editWorkspace = async () => {
 const favouriteWorkspace = async (isFavourite: boolean) => {
   if (!props.workspaceId) return;
 
-  await workspacesStore.SET_FAVOURITE_QUARANTINE(
-    props.workspaceId,
-    isFavourite,
-  );
+  await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
 
   draftWorkspace.isFavourite = isFavourite;
 };

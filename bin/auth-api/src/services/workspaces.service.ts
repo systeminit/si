@@ -266,3 +266,34 @@ export async function createProductionWorkspaceForUser(userId: UserId) {
 
   return null;
 }
+
+async function resetDefaultWorkspaces(userId: UserId) {
+  await prisma.workspace.updateMany({
+    where: {
+      deletedAt: null,
+      creatorUserId: userId,
+    },
+    data: {
+      isDefault: false,
+    },
+  });
+}
+
+async function setDefaultWorkspace(workspaceId: WorkspaceId) {
+  await prisma.workspace.update({
+    where: {
+      id: workspaceId,
+    },
+    data: {
+      isDefault: true,
+    },
+  });
+}
+
+export async function setUpdatedDefaultWorkspace(
+  userId: UserId,
+  workspaceId: WorkspaceId,
+) {
+  await resetDefaultWorkspaces(userId);
+  await setDefaultWorkspace(workspaceId);
+}

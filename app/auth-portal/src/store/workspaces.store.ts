@@ -184,13 +184,19 @@ export const useWorkspacesStore = defineStore("workspaces", {
         },
       });
     },
-    async SET_FAVOURITE_QUARANTINE(workspaceId: string, isFavourite: boolean) {
+    async SET_FAVOURITE(workspaceId: string, isFavourite: boolean) {
       return new ApiRequest<{ user: User }>({
         method: "patch",
         url: `/workspaces/${workspaceId}/favourite`,
         params: {
           isFavourite,
         },
+      });
+    },
+    async SET_DEFAULT_WORKSPACE(workspaceId: string) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/workspaces/${workspaceId}/setDefault`,
       });
     },
 

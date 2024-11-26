@@ -169,12 +169,15 @@ const workspaces = computed(() => workspacesStore.workspaces);
 function sortedWorkspaces(workspaces: Workspace[]): Workspace[] {
   return workspaces.sort((a, b) => {
     // 1. Sort by isDefault (true comes first)
-    if (a.isDefault !== b.isDefault) {
+    if (a.isDefault !== b.isDefault && a.creatorUserId === authStore.user?.id) {
       return a.isDefault ? -1 : 1;
     }
 
     // 2. Sort by isFavourite (true comes first)
-    if (a.isFavourite !== b.isFavourite) {
+    if (
+      a.isFavourite !== b.isFavourite &&
+      a.creatorUserId === authStore.user?.id
+    ) {
       return a.isFavourite ? -1 : 1;
     }
 
