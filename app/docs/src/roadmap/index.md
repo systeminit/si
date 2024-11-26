@@ -5,47 +5,73 @@ outline:
 
 # Road map
 
-Updated 2024-09.
+Updated 2024-11.
 
-Want to influence the road map? [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
-
-## Growing coverage of cloud platforms
-
-We've been primarily focused on AWS, and there is plenty more to model there.
-We hope to start on GCP, Azure, and other platforms as well. If there is
-something specific you want or need, come chat with us on
-[Discord](https://discord.com/invite/q6H2ZyFh) anytime, but specifically
-on Authoring Friday's!
+Want to influence the road map?
+[Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
 ## Management components
 
-Think of this like templates and workflows smashed together. Essentially
+Think of this like templates, import and workflows smashed together. Essentially
 components that can create and manage other components. Think "applications"
 that take properties, and then expand into the required infrastructure; or have
 deploy actions that pull from artifact repositories and then run actions across
 the infrastructure.
 
-### Current Opportunity: Management Functions
-
 <iframe width="560" height="315" src="https://www.youtube.com/embed/GKOtMulPTMc?si=o7GVGMXeKcr37-g_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-Management functions allow a model to manage its own attributes; create,
-update, and delete components; and enqueue actions. In their first iteration,
-they’ll be used for three big use cases: importing existing cloud resources,
-modular templating, and management of existing components. [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-management-functions)
+[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-management-functions)
 
-## Discovery of existing cloud resources
+### Management Functions
 
-This starts with having an Import feature, that will let you connect any
-component to an existing resource. Eventually, we would like this to expand
-to also discovering related infrastructure.
+Management functions allow a model to manage its own attributes; create, update,
+and delete components; and enqueue actions. In their first iteration, they’ll be
+used for three big use cases: importing existing cloud resources, modular
+templating, and management of existing components.
 
-## More ways to visualize
+This is currently in internal testing behind a feature flag and is anticipated
+to be Generally Available, December 2024.
 
-You can collapse and expand infrastructure today, but we want to be able to
-create custom views, allow you to drill down, etc.
+### Import (Generally Available)
 
-### Current Opportunity: Views
+This will let you connect any component to an existing resource.
+
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-resource-import)
+to learn more about import functionality
+
+### Discovery of existing cloud resources
+
+Discover builds on import where you can discover all infrastructure within a
+cloud environment
+
+## Enterprise Features
+
+Custom authentication, ubiquitous access control, history, etc.
+
+### Approval Workflows via ReBAC (Generally Available)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/QlWaeJH74Bo?si=uBXbQ5kyeynFSzjQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+We are laying the foundation of a relationship based access control (ReBAC)
+system using SpiceDB. This first iteration of work allows a workspace to have a
+defined set of approvers who curate the changes to the infrastructure before it
+is applied (and therefore, before making any changes to real infrastructure).
+
+Read our
+[announcement blog post](https://www.systeminit.com/blog/announcing-approval-workflows)
+to learn more about our approval workflows
+
+### Audit History
+
+We are providing the functionality that allows users of a workspace to see every
+change that has happened, who made them and when. The first iteration of this
+work will allow users to be able to have basic sorting and filtering of events.
+
+This is currently in internal testing behind a feature flag and is anticipated
+to be Generally Available, December 2024.
+
+## Views
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/qpNxaAojuzI?si=XLnnJy7uWF4ruEVY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -56,21 +82,18 @@ This enables teams to create diagrams that are specific to their application or
 area of specialization.
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-views)
 
-## Enterprise features
+This is currently in internal testing behind a feature flag and is anticipated
+to be Generally Available, December 2024.
 
-Custom authentication, ubiquitous access control, history, etc.
+## Growing coverage of cloud platforms
 
-### Current Opportunity: ReBAC
+We are using
+[Generative AI](https://en.wikipedia.org/wiki/Generative_artificial_intelligence)
+as a way to accelerate the speed at which we can provide high-quality assets. We
+are still primarily focused on AWS, as we need to increase the coverage and
+quality of the assets there, but we hope to start on Google Cloud, Azure and
+other platforms as well. If there is something specific you want or need, come
+chat with us on [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/QlWaeJH74Bo?si=uBXbQ5kyeynFSzjQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-
-We are laying the foundation of a relationship based access control (ReBAC)
-system using SpiceDB. This first iteration of work will allow a workspace to
-have a defined set of approvers who curate the changes to the infrastructure
-before it is applied (and therefore, before making any changes to real
-infrastructure).
-[Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-rebac)
-
-## Scaling to huge infrastructures
-
-This is both visual scale, but also front and back-end scale.
+This is currently in internal testing behind a feature flag and is anticipated
+to be Generally Available, January 2025.
