@@ -25,16 +25,16 @@
     while_true
 )]
 
-use std::path::PathBuf;
+use std::{borrow::Cow, path::PathBuf};
 
 use async_openai::{config::OpenAIConfig, types::CreateChatCompletionRequest};
 use config::AssetSprayerConfig;
-use prompt::Prompt;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 pub mod config;
 pub mod prompt;
+pub use prompt::Prompt;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -77,7 +77,7 @@ impl AssetSprayer {
     }
 
     pub async fn prompt(&self, prompt: &Prompt) -> Result<CreateChatCompletionRequest> {
-        prompt.prompt(&self.prompts_dir).await
+        prompt.prompt(self).await
     }
 
     pub async fn run(&self, prompt: &Prompt) -> Result<String> {
@@ -95,6 +95,33 @@ impl AssetSprayer {
             .ok_or(AssetSprayerError::EmptyChoice)?;
         Ok(text)
     }
+
+    pub async fn raw_prompt(
+        &self,
+        prompt: &(impl RawPromptYamlSource + std::fmt::Display),
+    ) -> Result<CreateChatCompletionRequest> {
+        Ok(serde_yaml::from_str(&self.raw_prompt_yaml(prompt).await?)?)
+    }
+
+    pub async fn raw_prompt_yaml(
+        &self,
+        prompt: &(impl RawPromptYamlSource + std::fmt::Display),
+    ) -> Result<Cow<'static, str>> {
+        if let Some(ref prompts_dir) = self.prompts_dir {
+            // Read from disk if prompts_dir is available (faster dev cycle)
+            let path = prompts_dir.join(prompt.raw_prompt_yaml_relative_path());
+            info!("Loading prompt for {} from disk at {:?}", prompt, path);
+            Ok(tokio::fs::read_to_string(path).await?.into())
+        } else {
+            info!("Loading embedded prompt for {}", prompt);
+            Ok(prompt.raw_prompt_yaml_embedded().into())
+        }
+    }
+}
+
+pub trait RawPromptYamlSource {
+    fn raw_prompt_yaml_relative_path(&self) -> &'static str;
+    fn raw_prompt_yaml_embedded(&self) -> &'static str;
 }
 
 #[ignore = "You must have OPENAI_API_KEY set to run this test"]

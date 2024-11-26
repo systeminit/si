@@ -26,6 +26,7 @@ use crate::management::prototype::ManagementFuncExecutedPayload;
 use crate::pkg::{
     ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
 };
+use crate::prompt_override::PromptUpdatedPayload;
 use crate::qualification::QualificationCheckPayload;
 use crate::schema::variant::{
     SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantReplacedPayload,
@@ -110,6 +111,7 @@ pub enum WsPayload {
     ManagementFuncExecuted(ManagementFuncExecutedPayload),
     ModuleImported(Vec<si_frontend_types::SchemaVariant>),
     Online(OnlinePayload),
+    PromptUpdated(PromptUpdatedPayload),
     ResourceRefreshed(ComponentUpdatedPayload),
     SchemaVariantCloned(SchemaVariantClonedPayload),
     SchemaVariantCreated(frontend_types::SchemaVariant),

@@ -47,6 +47,7 @@ pub mod layer_db_types;
 pub mod management;
 pub mod module;
 pub mod pkg;
+pub mod prompt_override;
 pub mod prop;
 pub mod property_editor;
 pub mod qualification;

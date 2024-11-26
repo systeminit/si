@@ -1,5 +1,3 @@
-use std::{borrow::Cow, path::PathBuf};
-
 use async_openai::types::{
     ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
     ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
@@ -8,7 +6,7 @@ use async_openai::types::{
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::{AssetSprayerError, Result};
+use crate::{AssetSprayer, AssetSprayerError, RawPromptYamlSource, Result};
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumDiscriminants,
@@ -25,8 +23,11 @@ pub enum Prompt {
     Eq,
     Serialize,
     Deserialize,
+    strum::AsRefStr,
     strum::Display,
+    strum::EnumIter,
     strum::EnumString,
+    strum::IntoStaticStr,
     strum::VariantNames,
 )]
 pub enum AwsCliCommandPromptKind {
@@ -47,9 +48,9 @@ pub struct AwsCliCommand(pub String, pub String);
 impl Prompt {
     pub async fn prompt(
         &self,
-        prompts_dir: &Option<PathBuf>,
+        asset_sprayer: &AssetSprayer,
     ) -> Result<CreateChatCompletionRequest> {
-        let raw_prompt = self.raw_prompt(prompts_dir).await?;
+        let raw_prompt = asset_sprayer.raw_prompt(self).await?;
         self.replace_prompt(raw_prompt).await
     }
 
@@ -131,61 +132,6 @@ impl Prompt {
             Ok(response.error_for_status()?.text().await?)
         }
     }
-
-    pub async fn raw_prompt(
-        &self,
-        prompts_dir: &Option<PathBuf>,
-    ) -> Result<CreateChatCompletionRequest> {
-        Ok(serde_yaml::from_str(
-            &self.raw_prompt_yaml(prompts_dir).await?,
-        )?)
-    }
-
-    async fn raw_prompt_yaml(&self, prompts_dir: &Option<PathBuf>) -> Result<Cow<'static, str>> {
-        if let Some(ref prompts_dir) = prompts_dir {
-            // Read from disk if prompts_dir is available (faster dev cycle)
-            let path = prompts_dir.join(self.raw_prompt_yaml_relative_path());
-            info!("Loading prompt for {} from disk at {:?}", self, path);
-            Ok(tokio::fs::read_to_string(path).await?.into())
-        } else {
-            info!("Loading embedded prompt for {}", self);
-            Ok(self.raw_prompt_yaml_embedded().into())
-        }
-    }
-
-    fn raw_prompt_yaml_relative_path(&self) -> &str {
-        match self {
-            Self::AwsCliCommandPrompt(kind, _) => kind.yaml_relative_path(),
-        }
-    }
-
-    fn raw_prompt_yaml_embedded(&self) -> &'static str {
-        match self {
-            Self::AwsCliCommandPrompt(kind, _) => kind.yaml_embedded(),
-        }
-    }
-}
-
-impl AwsCliCommandPromptKind {
-    const fn yaml_relative_path(&self) -> &'static str {
-        match self {
-            Self::AssetSchema => "aws/asset_schema.yaml",
-            Self::CreateAction => "aws/create_action.yaml",
-            Self::DestroyAction => "aws/destroy_action.yaml",
-            Self::RefreshAction => "aws/refresh_action.yaml",
-            Self::UpdateAction => "aws/update_action.yaml",
-        }
-    }
-
-    fn yaml_embedded(&self) -> &'static str {
-        match self {
-            Self::AssetSchema => include_str!("../prompts/aws/asset_schema.yaml"),
-            Self::CreateAction => include_str!("../prompts/aws/create_action.yaml"),
-            Self::DestroyAction => include_str!("../prompts/aws/destroy_action.yaml"),
-            Self::RefreshAction => include_str!("../prompts/aws/refresh_action.yaml"),
-            Self::UpdateAction => include_str!("../prompts/aws/update_action.yaml"),
-        }
-    }
 }
 
 impl AwsCliCommand {
@@ -199,5 +145,41 @@ impl AwsCliCommand {
 
     pub fn subcommand(&self) -> &str {
         &self.1
+    }
+}
+
+impl RawPromptYamlSource for Prompt {
+    fn raw_prompt_yaml_relative_path(&self) -> &'static str {
+        match self {
+            Self::AwsCliCommandPrompt(kind, _) => kind.raw_prompt_yaml_relative_path(),
+        }
+    }
+
+    fn raw_prompt_yaml_embedded(&self) -> &'static str {
+        match self {
+            Self::AwsCliCommandPrompt(kind, _) => kind.raw_prompt_yaml_embedded(),
+        }
+    }
+}
+
+impl RawPromptYamlSource for AwsCliCommandPromptKind {
+    fn raw_prompt_yaml_relative_path(&self) -> &'static str {
+        match self {
+            Self::AssetSchema => "aws/asset_schema.yaml",
+            Self::CreateAction => "aws/create_action.yaml",
+            Self::DestroyAction => "aws/destroy_action.yaml",
+            Self::RefreshAction => "aws/refresh_action.yaml",
+            Self::UpdateAction => "aws/update_action.yaml",
+        }
+    }
+
+    fn raw_prompt_yaml_embedded(&self) -> &'static str {
+        match self {
+            Self::AssetSchema => include_str!("../prompts/aws/asset_schema.yaml"),
+            Self::CreateAction => include_str!("../prompts/aws/create_action.yaml"),
+            Self::DestroyAction => include_str!("../prompts/aws/destroy_action.yaml"),
+            Self::RefreshAction => include_str!("../prompts/aws/refresh_action.yaml"),
+            Self::UpdateAction => include_str!("../prompts/aws/update_action.yaml"),
+        }
     }
 }
