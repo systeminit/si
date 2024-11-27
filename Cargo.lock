@@ -2629,6 +2629,7 @@ dependencies = [
  "data-warehouse-stream-client",
  "derive_builder",
  "futures",
+ "nats-dead-letter-queue",
  "naxum",
  "remain",
  "serde",
@@ -4301,6 +4302,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a51313c5820b0b02bd422f4b44776fbf47961755c74ce64afc73bfad10226c3"
 dependencies = [
  "getrandom 0.2.15",
+]
+
+[[package]]
+name = "nats-dead-letter-queue"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "si-data-nats",
+ "telemetry-nats",
+ "thiserror",
 ]
 
 [[package]]

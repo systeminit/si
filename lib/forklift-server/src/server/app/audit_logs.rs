@@ -2,6 +2,7 @@ use std::{
     future::{Future, IntoFuture as _},
     io,
     sync::Arc,
+    time::Duration,
 };
 
 use app_state::AppState;
@@ -9,6 +10,7 @@ use audit_logs::{
     database::{AuditDatabaseConfig, AuditDatabaseContext, AuditDatabaseContextError},
     AuditLogsStream, AuditLogsStreamError,
 };
+use nats_dead_letter_queue::NatsDeadLetterQueueError;
 use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
@@ -46,6 +48,8 @@ pub enum AuditLogsAppSetupError {
     AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("audit logs stream error: {0}")]
     AuditLogsStream(#[from] AuditLogsStreamError),
+    #[error("failed to create dead letter stream: {0}")]
+    NatsDeadLetterQueue(#[from] NatsDeadLetterQueueError),
 }
 
 type Result<T> = std::result::Result<T, AuditLogsAppSetupError>;
@@ -65,6 +69,8 @@ pub(crate) async fn build_and_run(
     audit_database_config: &AuditDatabaseConfig,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
+    nats_dead_letter_queue::create_stream(&jetstream_context).await?;
+
     let incoming = {
         let stream = AuditLogsStream::get_or_create(jetstream_context).await?;
         let consumer_subject = stream.consuming_subject_for_all_workspaces();
@@ -74,6 +80,12 @@ pub(crate) async fn build_and_run(
             .create_consumer(async_nats::jetstream::consumer::pull::Config {
                 durable_name: Some(durable_consumer_name),
                 filter_subject: consumer_subject.into_string(),
+                max_deliver: 4,
+                backoff: vec![
+                    Duration::from_secs(5),
+                    Duration::from_secs(10),
+                    Duration::from_secs(15),
+                ],
                 ..Default::default()
             })
             .await?

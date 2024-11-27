@@ -7,6 +7,7 @@ rust_library(
         "//lib/billing-events:billing-events",
         "//lib/buck2-resources:buck2-resources",
         "//lib/data-warehouse-stream-client:data-warehouse-stream-client",
+        "//lib/nats-dead-letter-queue:nats-dead-letter-queue",
         "//lib/naxum:naxum",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",

@@ -13,6 +13,7 @@ audit-logs = { path = "../../lib/audit-logs" }
 billing-events = { path = "../../lib/billing-events" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 data-warehouse-stream-client = { path = "../../lib/data-warehouse-stream-client" }
+nats-dead-letter-queue = { path = "../../lib/nats-dead-letter-queue" }
 naxum = { path = "../../lib/naxum" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
