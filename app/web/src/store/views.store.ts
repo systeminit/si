@@ -641,6 +641,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.recentViews.push(id);
         },
         async LIST_VIEWS() {
+          await componentsStore.FETCH_ALL_COMPONENTS();
+
           return new ApiRequest<ViewDescription[]>({
             method: "get",
             url: API_PREFIX,
@@ -803,8 +805,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 views,
               });
               this.selectView(response.view.id);
-
-              componentsStore.FETCH_ALL_COMPONENTS();
             },
           });
         },
@@ -1441,8 +1441,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onFail: (err) => {
-              if (err.response.status === 403) {
-                toast("Error: This component already exists in this view");
+              if (err.response.status === 422) {
+                toast(
+                  "Error: One or more of the selected components already exists in this view",
+                );
               }
             },
           });
@@ -1810,6 +1812,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       if (!c) return;
                       if (c.def.isGroup) view.groups[componentId] = geo;
                       else view.components[componentId] = geo;
+                      if (geo) {
+                        for (const [key, loc] of Object.entries(
+                          setSockets(c, geo),
+                        )) {
+                          view.sockets[key] = loc;
+                        }
+                      }
                     });
                     removed.forEach((r) => {
                       delete view.components[r];

@@ -118,8 +118,9 @@ const create = async () => {
   } else {
     const resp = await viewStore.CREATE_VIEW(viewName.value);
     if (resp.result.success) {
-      viewStore.selectView(resp.result.data.id);
       modalRef.value?.close();
+      viewStore.selectView(resp.result.data.id);
+
       viewName.value = "";
     } else if (resp.result.statusCode === 409) {
       labelRef.value?.setError(
