@@ -787,6 +787,18 @@ export const useFuncStore = () => {
             },
           },
           {
+            eventType: "SchemaVariantUpdated",
+            callback: () => {
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantReplaced",
+            callback: () => {
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
             eventType: "SchemaVariantCloned",
             callback: () => {
               this.FETCH_FUNC_LIST();
