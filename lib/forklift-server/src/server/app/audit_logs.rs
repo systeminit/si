@@ -141,24 +141,54 @@ where
 
         match self.prefix {
             Some(_) => {
-                if let (Some(prefix), Some(p1), Some(p2), Some(_workspace_id), None) = (
+                match (
+                    parts.next(),
                     parts.next(),
                     parts.next(),
                     parts.next(),
                     parts.next(),
                     parts.next(),
                 ) {
-                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id");
-                    req.extensions_mut().insert(MatchedSubject::from(matched));
-                };
+                    // Subject with change set id
+                    (
+                        Some(prefix),
+                        Some(p1),
+                        Some(p2),
+                        Some(_workspace_id),
+                        Some(_change_set_id),
+                        None,
+                    ) => {
+                        let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id");
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // Subject without change set id
+                    (Some(prefix), Some(p1), Some(p2), Some(_workspace_id), None, None) => {
+                        let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.");
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    _ => {}
+                }
             }
             None => {
-                if let (Some(p1), Some(p2), Some(_workspace_id), None) =
-                    (parts.next(), parts.next(), parts.next(), parts.next())
-                {
-                    let matched = format!("{p1}.{p2}.:workspace_id");
-                    req.extensions_mut().insert(MatchedSubject::from(matched));
-                };
+                match (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    // Subject with change set id
+                    (Some(p1), Some(p2), Some(_workspace_id), Some(_change_set_id), None) => {
+                        let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id");
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // Subject without change set id
+                    (Some(p1), Some(p2), Some(_workspace_id), None, None) => {
+                        let matched = format!("{p1}.{p2}.:workspace_id.");
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    _ => {}
+                }
             }
         }
     }
