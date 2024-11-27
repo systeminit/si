@@ -804,8 +804,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 views,
               });
               this.selectView(response.view.id);
-
-              componentsStore.FETCH_ALL_COMPONENTS();
             },
           });
         },
@@ -1266,13 +1264,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           const idAndType =
             categoryVariant.type === "installed"
               ? {
-                  schemaType: "installed",
-                  schemaVariantId: categoryVariant.variant.schemaVariantId,
-                }
+                schemaType: "installed",
+                schemaVariantId: categoryVariant.variant.schemaVariantId,
+              }
               : {
-                  schemaType: "uninstalled",
-                  schemaId: categoryVariant.variant.schemaId,
-                };
+                schemaType: "uninstalled",
+                schemaId: categoryVariant.variant.schemaId,
+              };
 
           const tempInsertId = _.uniqueId("temp-insert-component");
 
@@ -1454,8 +1452,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onFail: (err) => {
-              if (err.response.status === 403) {
-                toast("Error: This component already exists in this view");
+              if (err.response.status === 422) {
+                toast(
+                  "Error: One or more of the selected components already exists in this view",
+                );
               }
             },
           });
@@ -1501,6 +1501,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           if (route?.params.viewId) viewId = route.params.viewId as string;
           await this.FETCH_VIEW(viewId);
           // ^ selects the view
+          await componentsStore.FETCH_ALL_COMPONENTS();
         }
         this.LIST_VIEWS();
 
@@ -1523,7 +1524,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           if (
             lastId &&
             Object.values(this.selectedComponentIds).filter(Boolean).length ===
-              0
+            0
           ) {
             this.setSelectedComponentId(lastId);
           }
@@ -1846,6 +1847,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // then refetch (i.e. there might be updates!)
                 if (data.toRebaseChangeSetId === changeSetId) {
                   this.FETCH_VIEW();
+                  componentsStore.FETCH_ALL_COMPONENTS();
                   this.LIST_VIEWS();
                   // LOAD ALL OTHER VIEW DATA, if its dirty
                 }
