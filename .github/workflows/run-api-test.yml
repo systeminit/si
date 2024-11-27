@@ -42,9 +42,9 @@ jobs:
           echo "workspace_ids found to be $workspace_ids"
           workspace_count=$(echo "$workspace_ids" | tr ',' '\n' | wc -l)
 
-          # Validate that the number of workspace IDs matches the number of tests
-          if [ "$test_count" -ne "$workspace_count" ]; then
-              echo "Error: The number of workspace IDs ($workspace_count) does not match the number of tests ($test_count)."
+          # Validate that the number of workspace IDs is greater than or equal to the number of tests
+          if [ "$workspace_count" -lt "$test_count" ]; then
+              echo "Error: The number of workspace IDs ($workspace_count) is less than the number of tests ($test_count)."
               exit 1
           fi
 
