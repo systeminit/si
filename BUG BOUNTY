@@ -16,9 +16,9 @@ The associated rules, qualification and rewards for this program may be revised 
 - **Ineligible Findings**: Specific exclusions from the policy.
 - **Scope**: Details about what assets are in scope and out of scope.
 
-System Initiative's Bounty Standards set expectations for both System Initiative and hackers when assessing the reward for a report. The standards begin with a relevant rating system such as CVSS for report assessments and then additionally consider additional adjustments ("bumps") for discrepancies between associated rating scores and actual business impact. This ensures more accurate correlations between vulnerability impact evaluations to reward bounties.
+System Initiative's Bounty Standards set expectations for both System Initiative and hackers when assessing the reward for a report. The standards begin with a relevant rating system such as [CVSS](https://nvd.nist.gov/vuln-metrics/cvss) for report assessments and then additionally consider additional adjustments ("bumps") for discrepancies between associated rating scores and actual business impact. This ensures more accurate correlations between vulnerability impact evaluations to reward bounties.
 
-These Platform Standards serve to provide consistency, fairness, and the best results for all participants on the platform. 
+These Platform Standards serve to provide consistency, fairness, and the best results for all participants within the program. 
 
 We value your expertise and collaboration in helping make System Initiative more secure for everyone. 
 
@@ -81,6 +81,7 @@ Vulnerabilities are classified by **risk level** and **impact**:
   - Conducted phishing, vishing, smishing or any other active user misleading.
   - Accessed data not owned by the reporter.
   - Interacted with accounts which the repoter does not have explicit permission to access.
+- Bug reports must not be submitted from any sanctioned countries. At the time of writing this includes but is not limited to: China, Cuba, Islamic Republic Of Iran, Democratic People's Republic Of Korea, Russian Federation, Sudan, Syrian Arab Republic.
 
 ### Paying for New Zero Days
 
