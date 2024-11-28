@@ -3,10 +3,10 @@ changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
   <div
-    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
     :style="{
       marginLeft: presenceStore.leftResizePanelWidth === 0 ? '0' : '230px', // related to left panel drawer
     }"
+    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
   >
     <!-- This section contains the DiagramGridBackground and other elements which should render underneath all of the components/frames/cursors -->
     <div class="absolute inset-0 overflow-hidden">
@@ -122,9 +122,9 @@ overflow hidden */
             :key="view.id"
           >
             <DiagramView
-              :view="view.def"
               :isHovered="elementIsHovered(view)"
               :isSelected="elementIsSelected(view)"
+              :view="view.def"
             />
           </template>
           <DiagramCursor

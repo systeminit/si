@@ -70,6 +70,12 @@ export interface PropertyEditorPropWidgetKindColor {
   kind: "color";
 }
 
+export interface PropertyEditorPropWidgetKindSocketConnection {
+  kind: "socketConnection";
+  options: LabelList<string>;
+  isSingleArity: boolean;
+}
+
 export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindText
   | PropertyEditorPropWidgetKindTextArea
@@ -83,7 +89,8 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindComboBox
   | PropertyEditorPropWidgetKindSelect
   | PropertyEditorPropWidgetKindSecret
-  | PropertyEditorPropWidgetKindColor;
+  | PropertyEditorPropWidgetKindColor
+  | PropertyEditorPropWidgetKindSocketConnection;
 
 export interface PropertyEditorProp {
   id: string;

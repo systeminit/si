@@ -6,12 +6,15 @@ import { IconNames } from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
 
 import mitt from "mitt";
+import { connectionAnnotationFitsReference } from "@si/ts-lib";
 import {
   DiagramEdgeData,
+  DiagramEdgeDef,
   DiagramElementUniqueKey,
   DiagramGroupData,
   DiagramNodeData,
   DiagramNodeDef,
+  DiagramSocketDef,
   DiagramStatusIcon,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
@@ -184,6 +187,13 @@ export const getAssetIcon = (name: string) => {
   return (icon || "logo-si") as IconNames; // fallback to SI logo
 };
 
+export const generateEdgeId = (
+  fromComponentId: string,
+  toComponentId: string,
+  fromSocketId: string,
+  toSocketId: string,
+) => `${toComponentId}_${toSocketId}_${fromSocketId}_${fromComponentId}`;
+
 const edgeFromRawEdge =
   ({
     isInferred,
@@ -197,7 +207,12 @@ const edgeFromRawEdge =
     if (isManagement) {
       edge.id = `mgmt-${edge.toComponentId}_${edge.fromComponentId}`;
     } else {
-      edge.id = `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
+      edge.id = generateEdgeId(
+        edge.fromComponentId,
+        edge.toComponentId,
+        edge.fromSocketId,
+        edge.toSocketId,
+      );
     }
     edge.isInferred = isInferred ?? false;
     edge.isManagement = isManagement ?? false;
@@ -235,6 +250,134 @@ const getAncestorIds = (
     return idsArray;
   }
 };
+
+export type SocketWithParent = DiagramSocketDef & {
+  componentName: string;
+  componentId: ComponentId;
+};
+
+export type SocketWithParentAndEdge = SocketWithParent & {
+  edge: DiagramEdgeDef;
+};
+
+export interface PossibleAndExistingPeersLists {
+  possiblePeers: SocketWithParent[];
+  existingPeers: SocketWithParentAndEdge[];
+}
+
+// TODO use this in modeling diagram in the drawEdgePossibleTargetSocketKeys computed
+export function getPossibleAndExistingPeerSockets(
+  targetSocket: DiagramSocketDef,
+  targetComponentId: ComponentId,
+  allComponents: (DiagramNodeData | DiagramGroupData)[],
+  allEdges: DiagramEdgeData[],
+): PossibleAndExistingPeersLists {
+  const existingEdges = allEdges
+    .filter((e) => e.def.changeStatus !== "deleted")
+    // map to/from into this/peer to simplify the rest of the algorithm
+    .map((edge) =>
+      targetSocket.direction === "input"
+        ? {
+            edge,
+            thisComponentId: edge.def.toComponentId,
+            thisSocketId: edge.def.toSocketId,
+            peerComponentId: edge.def.fromComponentId,
+            peerSocketId: edge.def.fromSocketId,
+          }
+        : {
+            edge,
+            thisComponentId: edge.def.fromComponentId,
+            thisSocketId: edge.def.fromSocketId,
+            peerComponentId: edge.def.toComponentId,
+            peerSocketId: edge.def.toSocketId,
+          },
+    )
+    // Get only edges relevant to this  socket
+    .filter(
+      ({ thisComponentId, thisSocketId }) =>
+        thisComponentId === targetComponentId &&
+        thisSocketId === targetSocket.id,
+    );
+
+  const existingPeersIdsAndEdges = existingEdges
+    // Create  a set so we can easily search for edges that already exist later
+    .reduce((acc, { peerComponentId, peerSocketId, edge }) => {
+      acc[`${peerComponentId}-${peerSocketId}`] = edge.def;
+      return acc;
+    }, {} as Record<string, DiagramEdgeDef>);
+
+  const socketsWithParent = allComponents
+    .filter((c) => c.def.id !== targetComponentId)
+    .flatMap(
+      (c) =>
+        c.def.sockets
+          ?.filter((peerSocket) => {
+            // Management inputs can only be connected to management outputs
+            // if the output schema manages the input
+            const isManagedSchema =
+              peerSocket.schemaId &&
+              targetSocket.managedSchemas &&
+              targetSocket.managedSchemas.includes(peerSocket.schemaId);
+
+            const isSameSchema = targetSocket.schemaId === peerSocket.schemaId;
+
+            if (peerSocket.isManagement && targetSocket.isManagement) {
+              return !!(isSameSchema || isManagedSchema);
+            } else if (peerSocket.isManagement || targetSocket.isManagement) {
+              return false;
+            }
+
+            // Get only input sockets for output sockets and vice versa
+            if (peerSocket.direction === targetSocket.direction) return false;
+
+            const [outputCAs, inputCAs] =
+              targetSocket.direction === "output"
+                ? [
+                    targetSocket.connectionAnnotations,
+                    peerSocket.connectionAnnotations,
+                  ]
+                : [
+                    peerSocket.connectionAnnotations,
+                    targetSocket.connectionAnnotations,
+                  ];
+
+            // check socket connection annotations compatibility
+            for (const outputCA of outputCAs) {
+              for (const inputCA of inputCAs) {
+                if (connectionAnnotationFitsReference(outputCA, inputCA)) {
+                  return true;
+                }
+              }
+            }
+
+            return false;
+          })
+          .map((s) => ({
+            ...s,
+            componentName: c.def.displayName,
+            componentId: c.def.id,
+          })) ?? [],
+    );
+
+  // Partition sockets that are connected and the ones that aren't
+  const [existingPeers, possiblePeers] = socketsWithParent.reduce(
+    ([existing, possible], socket) => {
+      const existingEdge =
+        existingPeersIdsAndEdges[`${socket.componentId}-${socket.id}`];
+
+      if (existingEdge) {
+        existing.push({ ...socket, edge: existingEdge });
+      } else {
+        possible.push(socket);
+      }
+
+      return [existing, possible];
+    },
+    [[] as SocketWithParentAndEdge[], [] as SocketWithParent[]],
+  );
+
+  return { existingPeers, possiblePeers };
+}
 
 export const processRawComponent = (
   component: RawComponent,
@@ -445,6 +588,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               });
               return accum;
             }, {} as { [key: string]: CategoryVariant });
+          },
+
+          possibleAndExistingPeerSocketsFn: (state) => {
+            const allComponents = _.values(state.allComponentsById);
+            const allEdges = _.values(state.diagramEdgesById);
+
+            return (
+              targetSocket: DiagramSocketDef,
+              targetComponentId: ComponentId,
+            ) =>
+              getPossibleAndExistingPeerSockets(
+                targetSocket,
+                targetComponentId,
+                allComponents,
+                allEdges,
+              );
           },
         },
         actions: {
