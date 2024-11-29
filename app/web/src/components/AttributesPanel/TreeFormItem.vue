@@ -1475,7 +1475,7 @@ const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
 const confirmEditModalTitle = computed(() => {
   if (propControlledByParent.value) {
     if (propName.value) {
-      return `You Cannot Edit Prop &quote;${propName.value}&quote;`;
+      return `You Cannot Edit Prop '${propName.value}'`;
     }
     return "You Cannot Edit Prop";
   }
