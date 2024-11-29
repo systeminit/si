@@ -1837,7 +1837,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           [
             {
               eventType: "ChangeSetApplied",
-              callback: (data) => {
+              callback: async (data) => {
                 // If the applied change set has rebased into this change set,
                 // then refetch (i.e. there might be updates!)
                 if (data.toRebaseChangeSetId === changeSetId) {

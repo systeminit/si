@@ -21,13 +21,13 @@
     >
       <!-- HEADER -->
       <div
+        :class="
+          clsx('attributes-panel-item__section-header-wrap', 'sticky h-6')
+        "
         :style="{
           top: topPx,
           zIndex: headerZIndex,
         }"
-        :class="
-          clsx('attributes-panel-item__section-header-wrap', 'sticky h-6')
-        "
       >
         <div
           :class="
@@ -51,13 +51,12 @@
                   : 'chevron--right'
                 : 'none'
             "
-            size="inherit"
             class="opacity-80 hover:opacity-100 hover:scale-110"
+            size="inherit"
           />
         </div>
 
         <div
-          :style="{ marginLeft: indentPx }"
           :class="
             clsx(
               'attributes-panel-item__section-header',
@@ -71,6 +70,7 @@
               themeClasses('text-shade-0 border-shade-0', 'border-neutral-800'),
             )
           "
+          :style="{ marginLeft: indentPx }"
           @click="toggleOpen(true)"
         >
           <Icon
@@ -187,7 +187,6 @@
       <!-- LEFT BORDER LINE -->
       <div
         v-show="isOpen && headerHasContent"
-        :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
         :class="
           clsx(
             'attributes-panel-item__left-border',
@@ -198,6 +197,7 @@
             ),
           )
         "
+        :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
       />
 
       <!-- CHILDREN -->
@@ -208,10 +208,10 @@
         <TreeFormItem
           v-for="childProp in treeDef.children"
           :key="`${propName}/${childProp.propDef?.name}`"
-          :treeDef="childProp"
-          :level="level + 1"
-          :context="context"
           :attributesPanel="attributesPanel"
+          :context="context"
+          :level="level + 1"
+          :treeDef="childProp"
         />
 
         <div
@@ -278,9 +278,9 @@
               @click="addChildHandler"
             >
               <Icon
+                class="ml-[-2px] w-[14px] h-[14px]"
                 name="plus"
                 size="none"
-                class="ml-[-2px] w-[14px] h-[14px]"
               />
               {{ isArray ? "Add array item" : "Add map item" }}
             </div>
@@ -297,17 +297,65 @@
       </div>
     </div>
 
+    <!-- SOCKET WIDGET INSIDE A SECTION -->
+    <div
+      v-else-if="widgetKind === 'socketConnection'"
+      :style="{ paddingLeft: indentPx }"
+      class="flex flex-col gap-xs"
+    >
+      <VormInput
+        v-if="!socketIsSingleArity || socketConnectionsList.length === 0"
+        :disabled="widgetOptions.length === 0"
+        :modelValue="socketDropdownValue"
+        :options="widgetOptions"
+        :placeholder="socketDropdownPlaceholder"
+        class="flex-grow font-bold mb-[-1px]"
+        noLabel
+        size="xs"
+        type="dropdown"
+        @update:model-value="updateValue"
+      />
+      <div
+        v-for="peerSocket in socketConnectionsList"
+        :key="peerSocket.value"
+        class="flex px-xs"
+      >
+        <span
+          :class="
+            clsx('flex-grow', peerSocket.isImmutable && 'text-neutral-400')
+          "
+        >
+          {{ peerSocket.label }}
+        </span>
+
+        <IconButton
+          v-if="!peerSocket.isImmutable"
+          icon="trash"
+          size="sm"
+          @click="unsetHandler(peerSocket.value)"
+        />
+        <IconButton
+          v-else
+          disabled
+          icon="question-circle"
+          iconTone="neutral"
+          tooltip="Connection can't be unmade because it's inferred from a parent. You can override it on the diagram"
+        />
+      </div>
+    </div>
+
     <!-- INDIVIDUAL PROP INSIDE A SECTION -->
     <div
       v-else
-      :style="{ paddingLeft: indentPx }"
       :class="
         clsx(
           'attributes-panel-item__item-inner',
           'relative flex flex-row items-center w-full pr-xs',
         )
       "
+      :style="{ paddingLeft: indentPx }"
     >
+      <!-- Name of prop, to the left -->
       <div
         class="flex flex-row grow gap-xs relative overflow-hidden items-center"
       >
@@ -375,6 +423,7 @@
           </a>
         </div>
       </div>
+      <!-- Actual input, to the right -->
       <div
         :class="
           clsx(
@@ -410,8 +459,6 @@
           v-if="
             noValue && !iconShouldBeHidden && !isFocus && !propPopulatedBySocket
           "
-          :name="icon"
-          size="none"
           :class="
             clsx(
               'absolute left-0 top-0 w-7 h-7 p-[3px] z-10 pointer-events-none',
@@ -420,6 +467,8 @@
                 : 'opacity-50',
             )
           "
+          :name="icon"
+          size="none"
         />
         <Icon
           v-if="unsetButtonShow"
@@ -434,7 +483,7 @@
             )
           "
           name="x-circle"
-          @click="unsetHandler"
+          @click="unsetHandler()"
         />
         <Icon
           v-if="validation"
@@ -577,9 +626,9 @@
               )
             "
             :disabled="!propIsEditable"
+            @blur="onBlur"
             @change="updateValue"
             @focus="onFocus"
-            @blur="onBlur"
           >
             <option
               v-for="o in widgetOptions"
@@ -612,7 +661,7 @@
                 )
               "
             >
-              <Icon name="key" size="2xs" class="inline-block align-middle" />
+              <Icon class="inline-block align-middle" name="key" size="2xs" />
               {{ secret.definition }} / {{ secret.name }}
             </div>
             <div
@@ -754,8 +803,8 @@
         <template v-else-if="widgetKind === 'codeEditor'">
           <CodeViewer
             :code="newValueString"
-            disableScroll
             class="max-h-[70vh]"
+            disableScroll
           />
         </template>
       </div>
@@ -830,6 +879,8 @@ import {
   Modal,
   themeClasses,
   VButton,
+  VormInput,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
@@ -1230,7 +1281,6 @@ const newMapChildKeyIsValid = computed(() => {
 
 function removeChildHandler() {
   if (!isChildOfArray.value && !isChildOfMap.value) return;
-
   if (props.attributesPanel) {
     attributesStore.REMOVE_PROPERTY_VALUE({
       attributeValueId: props.treeDef.valueId,
@@ -1284,7 +1334,7 @@ function addChildHandler() {
     // TODO(Wendy) - make this functional for TreeForm when needed
   }
 }
-function unsetHandler() {
+function unsetHandler(value?: string) {
   newValueBoolean.value = false;
   newValueString.value = "";
 
@@ -1294,11 +1344,11 @@ function unsetHandler() {
     });
   } else {
     const treeFormContext = rootCtx as TreeFormContext;
-    treeFormContext.resetValue(props.treeDef as TreeFormData);
+    treeFormContext.unsetValue(props.treeDef as TreeFormData, value);
   }
 }
 
-function updateValue() {
+function updateValue(maybeNewVal?: unknown) {
   let newVal;
   let skipUpdate = false;
   let isForSecret = false;
@@ -1312,6 +1362,13 @@ function updateValue() {
       newVal = null;
     } else {
       newVal = newValueNumber.value;
+    }
+  } else if (widgetKind.value === "socketConnection") {
+    if (maybeNewVal && typeof maybeNewVal === "string") {
+      newVal = maybeNewVal;
+      socketDropdownValue.value = undefined;
+    } else {
+      skipUpdate = true;
     }
   } else {
     // for now, we will always trim, but we need to be smarter about this
@@ -1450,6 +1507,29 @@ const confirmEdit = () => {
 const editOverride = ref(false);
 
 const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const socketDropdownValue = ref();
+const socketIsSingleArity = computed(() =>
+  "isSingleArity" in fullPropDef.value.widgetKind
+    ? fullPropDef.value.widgetKind.isSingleArity
+    : false,
+);
+const socketDropdownPlaceholder = computed(() =>
+  widgetOptions.value.length > 0
+    ? "Select to connect..."
+    : "No new connections available",
+);
+const socketConnectionsList = computed(() => {
+  if (!Array.isArray(currentValue.value)) return [];
+
+  return currentValue.value.filter(
+    (socket) =>
+      "label" in socket &&
+      typeof socket.label === "string" &&
+      "value" in socket &&
+      typeof socket.value === "string",
+  );
+});
 </script>
 
 <style lang="less">

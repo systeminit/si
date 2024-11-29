@@ -24,9 +24,9 @@
       <TreeFormItem
         v-for="tree in trees"
         :key="tree.propId"
+        :context="useAttributesPanelContext"
         :treeDef="tree"
         isRootProp
-        :context="useAttributesPanelContext"
       />
     </div>
   </div>
@@ -35,14 +35,14 @@
 <script lang="ts">
 type EventBusEvents = { toggleAllOpen: boolean };
 
-type ResetFunc = (item: TreeFormData) => void;
+type UnsetFunc = (item: TreeFormData, valToUnset?: string) => void;
 type SetValueFunc = (item: TreeFormData, newVal: string) => void;
 
 export type TreeFormContext = {
   eventBus: Emitter<EventBusEvents>;
   hoverSectionValueId: Ref<string | undefined>;
   showSectionToggles: Ref<boolean>;
-  resetValue: ResetFunc;
+  unsetValue: UnsetFunc;
   setValue: SetValueFunc;
 };
 
@@ -89,15 +89,15 @@ function onMouseLeave() {
 }
 
 const emit = defineEmits<{
-  (e: "reset", item: TreeFormData): void;
+  (e: "unsetValue", item: TreeFormData, value?: string): void;
   (e: "setValue", item: TreeFormData, value: string): void;
 }>();
 
 // EXPOSED TO CHILDREN
 const eventBus = mitt<EventBusEvents>();
 const hoverSectionValueId = ref<string>();
-const resetValue = (item: TreeFormData) => {
-  emit("reset", item);
+const unsetValue = (item: TreeFormData, value?: string) => {
+  emit("unsetValue", item, value);
 };
 const setValue = (item: TreeFormData, value: string) => {
   emit("setValue", item, value);
@@ -107,7 +107,7 @@ provide(AttributesPanelContextInjectionKey, {
   eventBus,
   hoverSectionValueId,
   showSectionToggles,
-  resetValue,
+  unsetValue,
   setValue,
 });
 </script>
