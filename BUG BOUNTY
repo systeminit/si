@@ -6,19 +6,19 @@ Welcome to the **System Initiative Bug Bounty** guidelines. This document serves
 
 Our goal is to foster collaboration with the security community to identify and resolve potential vulnerabilities in our systems. By following this guide, you can help ensure the safety and integrity of our platforms while being recognized and rewarded for your valuable contributions. 
 
-All contibutions endeavouring to maintain the safety of our platform are appreciated but not at all are eligble for reward.
+All contributions endeavoring to maintain the safety of our platform are appreciated but not at all are eligble for reward.
 
-The associated rules, qualification and rewards for this program may be revised at any time and any decisions made by security@systeminit.com are considered final.
+The associated rules, qualifications, and rewards for this program may be revised at any time and any decisions made by security@systeminit.com will be considered final.
 
 # Contained within this document:
 - **Disclosure Guidelines**: The rules and guidelines for reporting vulnerabilities.
 - **Rewards**: Information on bounty payouts based on severity.
 - **Ineligible Findings**: Specific exclusions from the policy.
-- **Scope**: Details about what assets are in scope and out of scope.
+- **Scope**: Details about what assets are in and out of scope.
 
 System Initiative's Bounty Standards set expectations for both System Initiative and hackers when assessing the reward for a report. The standards begin with a relevant rating system such as [CVSS](https://nvd.nist.gov/vuln-metrics/cvss) for report assessments and then additionally consider additional adjustments ("bumps") for discrepancies between associated rating scores and actual business impact. This ensures more accurate correlations between vulnerability impact evaluations to reward bounties.
 
-These Platform Standards serve to provide consistency, fairness, and the best results for all participants within the program. 
+These Platform Standards aim to ensure consistency, fairness, and the best results for all program participants. 
 
 We value your expertise and collaboration in helping make System Initiative more secure for everyone. 
 
@@ -30,7 +30,7 @@ We value your expertise and collaboration in helping make System Initiative more
 
 #### Hackers Should:
 - Ethically respect the rules and privacy of others.
-- Make a good faith effort to support their reports.
+- Make a good-faith effort to support their reports.
 - Act for the common good by reporting vulnerabilities promptly and responsibly.
 
 #### Preferred Report Characteristics:
@@ -41,7 +41,7 @@ If either of these characteristics are not met, the report may still be rewarded
 - If validating the proof of concept will go against the bug bounty rules
 - If some of the information in the report had to be guessed due to internal information that is not available to the reporter
 
-Reports that restate information shared in recent blogs, existing reports or news articles are less likely to be rewarded.
+Reports that restate information shared in recent blogs, existing reports, or news articles are less likely to be rewarded.
 
 ### Key Points
 Please submit all reports to [security@systeminit.com](mailto:security@systeminit.com) with the following headings:
@@ -64,34 +64,34 @@ Vulnerabilities are classified by **risk level** and **impact**:
 
 **If you encounter Personally Identifiable Information (PII):**
   - Contact us immediately at [security@systeminit.com](mailto:security@systeminit.com).
-  - Do not proceed with access or retain local copies.
+  - Do not proceed with accessing or retaining local copies.
 
 **Limits/Additional Considerations:**
 - **One Vulnerability per Report**: Unless vulnerabilities need to be chained for impact.
 - Limit automated scanning to **50 requests per second**.
-- Aggressive testing causing service degradation or unecessarily deep service penetration will result in permanent ineligbility from the program.
+- Aggressive testing causing service degradation or unnecessarily deep service penetration will result in permanent ineligibility from the program.
 - Multiple reports of the same vulnerability class on similar endpoints will pay for the value received. However, reports that alert System Initiative to a systemic issue across its assets will be considered for a discretionary bonus.
-- Reports demonstrating significant security issues through chained vulnerabilities will be evaluated based on overall impact. System Iniative will issue bonuses for distinct reports that comprise a serious vulnerability chain.
+- Reports demonstrating significant security issues through chained vulnerabilities will be evaluated based on overall impact. System Initiative will issue bonuses for distinct reports that comprise a serious vulnerability chain.
 - Vulnerabilities allowing attackers to bypass encryption in client applications (e.g., Adversary In The Middle attacks) will be prioritized. Vulnerabilities requiring attackers to disable certificate pinning are not valid.
-- Hackers must report vulnerabilities in third-party components to the component owner prior to disclosing them to System Initiative. System Initiative will reward valid reports for vulnerabilities in third-party components that lead to urgent fixes or drive value outside regular patching schedules or SLA's.
+- Hackers must report vulnerabilities in third-party components to the component owner before disclosing them to System Initiative. System Initiative will reward valid reports for vulnerabilities in third-party components that lead to urgent fixes or drive value outside regular patching schedules or SLA's.
 - Reports exposing sensitive PII for multiple users will be rated Critical. Sensitive PII includes Social Security numbers, passport numbers, driver’s license numbers, hashed passwords, and credit card numbers.
 - System Initiative will reward valid reports of leaked credentials unknown to the program or monitoring tools. Hackers must include the leak's source and avoid testing beyond authenticating and deauthenticating.
 - A bypass of a resolved vulnerability will be treated as a new report. System Initiative will consider awarding bonuses for reports providing additional bypass information
 - Reporters must not have: 
-  - Conducted phishing, vishing, smishing or any other active user misleading.
+  - Conducted phishing, vishing, smashing, or any other active user misleading.
   - Accessed data not owned by the reporter.
-  - Interacted with accounts which the repoter does not have explicit permission to access.
-- Bug reports must not be submitted from any sanctioned countries. At the time of writing this includes but is not limited to: China, Cuba, Islamic Republic Of Iran, Democratic People's Republic Of Korea, Russian Federation, Sudan, Syrian Arab Republic.
+  - Interacted with accounts the reporter does not have explicit permission to access.
+- Bug reports must not be submitted from any sanctioned country. At the time of writing, this includes, but is not limited to, China, Cuba, the Islamic Republic Of Iran, the Democratic People's Republic Of Korea, the Russian Federation, Sudan, Syrian Arab Republic.
 
 ### Paying for New Zero Days
 
-Reports for vulnerabilities that were either recently disclosed to the public or where a patch was just recently released may not be eligible for a reward. Recently can be assumed to be 90 calendar days prior to the current point in time. This is because **System Initiative** already tracks many of these announcements and needs an appropriate amount of time to test and implement patches and safeguards before a report with the same information can provide value. However, each submission is evaluated on a case-by-case basis, and those providing significant value or new information such as more simplistic mitigation steps may still be eligible for a reward.
+Reports for vulnerabilities that were either recently disclosed to the public or where a patch was recently released may not be eligible for a reward. "Recently" can be assumed to be 90 calendar days before the current point in time. This is because **System Initiative** already tracks many of these announcements and needs an appropriate amount of time to test and implement patches and safeguards before a report with the same information can provide value. However, each submission is evaluated on a case-by-case basis, and those providing significant value or new information such as more simplistic mitigation steps may still be eligible for a reward.
 
 ---
 
 # Rewards
 
-**System Initiative** rewards findings based on **security impact** and **CVSS 3.0 base score**. These values are guidelines only and depending on both the quality of the report and the potential impact
+**System Initiative** rewards findings based on **security impact** and **CVSS 3.0 base score**. These values are guidelines only and depend on both the quality of the report and the potential impact
 
 ### Severity Levels
 1. **Critical Impact**
@@ -111,11 +111,11 @@ Reports for vulnerabilities that were either recently disclosed to the public or
    - Reward: Standard $50–$250 USD.
 
 5. **Informational Issues**
-   - These are not eligible for rewards but may recieve a good will $50 USD gesture or a piece of highly sought after System Initaitve swag. 
+   - These are not eligible for rewards but may receive a goodwill $50 USD gesture or a piece of highly sought after System Initiatve swag. 
 
 # Core Ineligible Findings
 
-When reporting potential vulnerabilities, please consider:  
+When reporting potential vulnerabilities, please consider the following:  
 1. **Realistic attack scenarios**  
 2. **The security impact of the behavior**  
 
