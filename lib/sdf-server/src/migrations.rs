@@ -100,14 +100,9 @@ impl Migrator {
     pub async fn run_migrations(self) -> MigratorResult<()> {
         let span = current_span_for_instrument_at!("info");
 
-        // TODO(nick,john): once we have seeded the database successfully, we can replace this with
-        // error propagation.
-        if let Err(err) = self.migrate_audit_database().await {
-            warn!(
-                ?err,
-                "skipping audit database migration due to error, which is currently expected"
-            );
-        }
+        self.migrate_audit_database()
+            .await
+            .map_err(|err| span.record_err(err))?;
 
         self.migrate_layer_db_database()
             .await
