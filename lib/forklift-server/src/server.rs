@@ -88,7 +88,6 @@ impl Server {
                     jetstream_context.clone(),
                     DURABLE_CONSUMER_NAME.to_string(),
                     connection_metadata.clone(),
-                    config.concurrency_limit(),
                     config.audit(),
                     token.clone(),
                 )
