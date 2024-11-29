@@ -32,7 +32,6 @@ pub(crate) async fn audit_logs(
     jetstream_context: Context,
     durable_consumer_name: String,
     connection_metadata: Arc<ConnectionMetadata>,
-    concurrency_limit: usize,
     audit_database_config: &AuditDatabaseConfig,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
@@ -40,7 +39,6 @@ pub(crate) async fn audit_logs(
         jetstream_context,
         durable_consumer_name,
         connection_metadata,
-        concurrency_limit,
         audit_database_config,
         token,
     )

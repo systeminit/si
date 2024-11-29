@@ -65,8 +65,7 @@ pub(crate) async fn build_and_run(
     jetstream_context: Context,
     durable_consumer_name: String,
     connection_metadata: Arc<ConnectionMetadata>,
-    concurrency_limit: usize,
-    audit_database_config: &AuditDatabaseConfig,
+    config: &AuditDatabaseConfig,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
     nats_dead_letter_queue::create_stream(&jetstream_context).await?;
@@ -93,7 +92,8 @@ pub(crate) async fn build_and_run(
             .await?
     };
 
-    let context = AuditDatabaseContext::from_config(audit_database_config).await?;
+    let concurrency_limit = config.insert_concurrency_limit;
+    let context = AuditDatabaseContext::from_config(config).await?;
     let state = AppState::new(context, connection_metadata.subject_prefix().is_some());
 
     // NOTE(nick,fletcher): the "NatsMakeSpan" builder defaults to "info" level logging. Bump it down, if needed.
