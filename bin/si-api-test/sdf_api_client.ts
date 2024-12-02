@@ -12,23 +12,62 @@ interface API_DESCRIPTION {
 }
 
 export const ROUTES = {
-  // Change Set Management ------------------------------------------------------
-  apply_change_set: {
-    path: () => "/change_set/apply_change_set",
-    method: "POST",
-  },
-  create_change_set: {
-    path: () => "/change_set/create_change_set",
+  // /api/change_set - Change Set Management ---------------------------------------------------
+  abandon_vote: {
+    path: () => "/change_set/abandon_vote",
     method: "POST",
   },
   abandon_change_set: {
     path: () => "/change_set/abandon_change_set",
     method: "POST",
   },
-  open_change_sets: {
+  add_action: {
+    path: () => "/change_set/add_action", 
+    method: "POST",
+  },
+  apply_change_set: {
+    path: () => "/change_set/apply_change_set",
+    method: "POST",
+  },
+  begin_abandon_approval_process: {
+    path: () => "/change_set/begin_abandon_approval_process",
+    method: "POST",
+  },
+  begin_approval_process: {
+    path: () => "/change_set/begin_approval_process",
+    method: "POST",
+  },
+  cancel_abandon_approval_process: {
+    path: () => "/change_set/cancel_abandon_approval_process",
+    method: "POST",
+  },
+  cancel_approval_process: {
+    path: () => "/change_set/cancel_approval_process",
+    method: "POST",
+  },
+  create_change_set: {
+    path: () => "/change_set/create_change_set",
+    method: "POST",
+  },
+  list_open_change_sets: {
     path: () => "/change_set/list_open_change_sets",
     method: "GET",
   },
+  merge_vote: {
+    path: () => "/change_set/merge_vote",
+    method: "POST",
+  },
+  rebase_on_base: {
+    path: () => "/change_set/rebase_on_base",
+    method: "POST",
+  },
+  status_with_base: {
+    path: () => "/change_set/status_with_base",
+    method: "POST",
+  },
+
+  // V2/Workspaces  ---------------------------------------------------------
+  // TODO(MegaWatt01): come back to properly format this hanging route
   schema_variants: {
     path: (vars: ROUTE_VARS) =>
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants`,
