@@ -134,6 +134,17 @@ export interface ComponentDebugView {
   inputSockets: SocketDebugView[];
   outputSockets: SocketDebugView[];
   parentId?: string | null;
+  geometry: {
+    [key: string]: {
+      id: string;
+      created_at: Date;
+      updated_at: Date;
+      x: number;
+      y: number;
+      width?: number;
+      height?: number;
+    };
+  };
 }
 
 export interface ComponentGeometry {
