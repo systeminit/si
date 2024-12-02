@@ -142,10 +142,12 @@ import { SchemaVariant } from "@/api/sdf/dal/schema";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import EditingPill from "@/components/EditingPill.vue";
+import { useViewsStore } from "@/store/views.store";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 const componentsStore = useComponentsStore();
+const viewStore = useViewsStore();
 const assetStore = useAssetStore();
 
 const schemasReqStatus = assetStore.getRequestStatus(
@@ -310,6 +312,8 @@ function onSelect(id: string, e: MouseEvent) {
   if (componentsStore.selectedInsertCategoryVariantId === id) {
     componentsStore.cancelInsert();
   } else {
+    // disable current selection when drag & drop a component
+    viewStore.setSelectedComponentId(null);
     componentsStore.setInsertSchema(id);
     if (e) {
       nextTick(() => {
