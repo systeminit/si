@@ -37,6 +37,14 @@
               title="Parent Id?"
             />
           </dl>
+          <dl class="border-l-2 p-xs flex flex-col gap-xs">
+            <DebugViewItem
+              v-for="[viewId, geometry] in Object.entries(debugData.geometry)"
+              :key="viewId"
+              :data="geometry"
+              :title="geometryTitle(viewId)"
+            />
+          </dl>
         </TreeNode>
 
         <!-- Attributes -->
@@ -132,6 +140,8 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, onMounted, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
+import { useViewsStore } from "@/store/views.store";
+import { ViewId } from "@/api/sdf/dal/views";
 import AttributeDebugView from "./AttributeDebugView.vue";
 import SocketDebugView from "./SocketDebugView.vue";
 import DebugViewItem from "./DebugViewItem.vue";
@@ -144,6 +154,13 @@ import {
 const debugParent = ref<InstanceType<typeof Element>>();
 
 const searchString = ref("");
+
+const viewStore = useViewsStore();
+
+const geometryTitle = (viewId: ViewId) => {
+  const viewName = viewStore.viewsById[viewId]?.name ?? "unknown";
+  return `view: ${viewName}`;
+};
 
 function _findChildren(elm: Element) {
   if (elm.tagName === "DD" || elm.tagName === "DT")

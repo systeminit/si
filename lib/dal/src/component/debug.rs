@@ -6,6 +6,9 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValueError;
 
 use crate::attribute::value::debug::{AttributeDebugView, AttributeDebugViewError};
+use crate::diagram::geometry::Geometry;
+use crate::diagram::view::{View, ViewId};
+use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::socket::debug::{SocketDebugView, SocketDebugViewError};
 use crate::socket::input::InputSocketError;
@@ -34,6 +37,7 @@ pub struct ComponentDebugView {
     pub input_sockets: Vec<SocketDebugView>,
     pub output_sockets: Vec<SocketDebugView>,
     pub parent_id: Option<ComponentId>,
+    pub geometry: HashMap<ViewId, Geometry>,
 }
 /// A generated view for an [`Component`](crate::Component) that contains metadata about each of
 /// the components attributes. Used for constructing a debug view of the component and also for
@@ -62,6 +66,8 @@ pub enum ComponentDebugViewError {
     Component(String),
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("input socket error: {0}")]
@@ -138,6 +144,17 @@ impl ComponentDebugView {
             output_sockets.push(avd);
         }
 
+        let mut geometry = HashMap::new();
+        for view in View::list(ctx).await? {
+            let Some(geo) =
+                Geometry::try_get_by_component_and_view(ctx, component.id, view.id()).await?
+            else {
+                continue;
+            };
+
+            geometry.insert(view.id(), geo);
+        }
+
         let debug_view = ComponentDebugView {
             name: component_debug_data.name,
             schema_variant_id: component_debug_data.schema_variant_id,
@@ -145,6 +162,7 @@ impl ComponentDebugView {
             input_sockets,
             output_sockets,
             parent_id: component_debug_data.parent_id,
+            geometry,
         };
 
         Ok(debug_view)
