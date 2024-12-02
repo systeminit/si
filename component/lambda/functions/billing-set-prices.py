@@ -45,7 +45,7 @@ class BillingSetPrices(SiLambda):
             )
 
         except LagoHTTPError as e:
-            if e.json.get("status") != 404:
+            if e.json and e.json.get("status") != 404:
                 raise
             try:
                 logging.debug(
@@ -59,7 +59,7 @@ class BillingSetPrices(SiLambda):
                 )
 
             except LagoHTTPError as e:
-                if e.json.get("status") != 404:
+                if e.json and e.json.get("status") != 404:
                     raise
 
                 try:
@@ -74,7 +74,7 @@ class BillingSetPrices(SiLambda):
                     )
 
                 except LagoHTTPError as e:
-                    if e.json.get("status") != 404:
+                    if e.json and e.json.get("status") != 404:
                         raise
 
                     logging.warning(

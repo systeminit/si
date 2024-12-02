@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from itertools import islice
 from typing import (
+    Any,
     Literal,
     NewType,
     NotRequired,
@@ -11,10 +12,12 @@ from typing import (
 )
 from pip._vendor import requests
 from pip._vendor.requests.exceptions import HTTPError
+from pip._vendor.requests.models import Response
 from si_types import IsoTimestamp
 
-import urllib.parse
 import logging
+import urllib.parse
+import sys
 
 ExternalSubscriptionId = NewType("ExternalSubscriptionId", str)
 
@@ -29,28 +32,6 @@ class LagoEvent(TypedDict):
 
 T = TypeVar("T")
 
-
-class LagoErrorResponse(TypedDict):
-    code: str
-    error_details: dict[str, dict[str, list[str]]]
-
-
-def batch(iterable: Iterable[T], n):
-    "Batch data into lists of length n. The last batch may be shorter."
-    # batched('ABCDEFG', 3) --> ABC DEF G
-    it = iter(iterable)
-    while True:
-        batch = list(islice(it, n))
-        if not batch:
-            return
-        yield batch
-
-
-class LagoHTTPError(Exception):
-    def __init__(self, *args, json, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.json = json
-
 class LagoApi:
     def __init__(self, lago_api_url: str, lago_api_token: str):
         self.lago_api_url = lago_api_url
@@ -64,14 +45,17 @@ class LagoApi:
             headers={"Authorization": f"Bearer {self.lago_api_token}"},
             **kwargs,
         )
+        
         try:
             response.raise_for_status()
         except HTTPError as e:
-            raise LagoHTTPError(
-                f"{e.response.status_code} for {method} {path}: {e.response.text}",
-                json=e.response.json(),
-            ) from e
-
+            message = f"{e.response.status_code} for {method} {path}: {e.response.text}"
+            try:
+                json = cast(LagoHTTPError.ResponseJson, e.response.json())
+            except:
+                logging.warning("Failed to parse JSON from Lago API response.", exc_info=sys.exc_info())
+                json = None
+            raise LagoHTTPError(message, response=e.response, json=json) from e
         return response
 
     def get(self, path: str):
@@ -114,16 +98,12 @@ class LagoApi:
                 new_events += len(event_batch)
                 logging.debug(f"Uploaded {len(event_batch)} events.")
 
+            # If the batch failed because some events were already uploaded, retry the rest
             except LagoHTTPError as e:
-
-                # If the batch failed because some events were already uploaded, retry the rest
-                if [e.json.get("status"), e.json.get("code")] != [
-                    422,
-                    "validation_errors",
-                ]:
+                if not (e.json and e.json['status'] == 422 and e.json['code'] == "validation_errors"):
                     raise
 
-                for error in e.json["error_details"].values():
+                for error in e.json['error_details'].values():
                     if error.get("transaction_id") != ["value_already_exist"]:
                         raise
 
@@ -134,7 +114,7 @@ class LagoApi:
                 retry_event_batch = [
                     event
                     for (i, event) in enumerate(event_batch)
-                    if str(i) not in e.json["error_details"].keys()
+                    if str(i) not in e.json['error_details'].keys()
                 ]
 
                 if len(retry_event_batch) > 0:
@@ -149,6 +129,15 @@ class LagoApi:
 
         return new_events, total_events
 
+class LagoHTTPError(HTTPError):
+    class ResponseJson(TypedDict):
+        status: int
+        code: str
+        error_details: dict[str, Any]
+
+    def __init__(self, *args, json: Optional[ResponseJson], **kwargs):
+        super().__init__(*args, **kwargs)
+        self.json = json
 
 class LagoResponseMetadata(TypedDict):
     current_page: int
@@ -410,3 +399,14 @@ class LagoInvoicesResponse(TypedDict):
 class LagoSubscriptionsResponse(TypedDict):
     subscriptions: list[LagoSubscription]
     meta: LagoResponseMetadata
+
+
+def batch(iterable: Iterable[T], n):
+    "Batch data into lists of length n. The last batch may be shorter."
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    it = iter(iterable)
+    while True:
+        batch = list(islice(it, n))
+        if not batch:
+            return
+        yield batch
