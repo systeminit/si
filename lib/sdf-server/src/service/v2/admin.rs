@@ -21,6 +21,7 @@ mod get_snapshot;
 mod kill_execution;
 mod list_change_sets;
 mod list_workspace_users;
+mod prompts;
 mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
@@ -187,6 +188,7 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
             "/workspaces/:workspace_pk/change_sets/:change_set_id/set_snapshot",
             post(set_snapshot::set_snapshot),
         )
+        .nest("/prompts", prompts::routes())
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
         .route_layer(axum::middleware::from_extractor_with_state::<
             AdminAccessBuilder,

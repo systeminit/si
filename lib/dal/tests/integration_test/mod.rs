@@ -16,6 +16,7 @@ mod management;
 mod module;
 mod node_weight;
 mod pkg;
+mod prompt_overrides;
 mod prop;
 mod property_editor;
 mod qualifications;
