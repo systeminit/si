@@ -1,4 +1,4 @@
-use std::collections::{hash_map, HashMap, VecDeque};
+use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 
 use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,7 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::component::frame::{Frame, FrameError};
+use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
 use crate::diagram::{DiagramError, SummaryDiagramManagementEdge};
@@ -385,8 +386,8 @@ pub struct ManagementOperator<'a> {
     socket_map: VariantSocketMap,
     view_id: ViewId,
     views: HashMap<String, ViewId>,
-    created_components: Vec<ComponentId>,
-    updated_components: Vec<ComponentId>,
+    created_components: HashSet<ComponentId>,
+    updated_components: HashSet<ComponentId>,
 }
 
 #[derive(Clone, Debug)]
@@ -469,8 +470,8 @@ impl<'a> ManagementOperator<'a> {
             socket_map: VariantSocketMap::new(),
             view_id,
             views,
-            created_components: vec![],
-            updated_components: vec![],
+            created_components: HashSet::new(),
+            updated_components: HashSet::new(),
         })
     }
 
@@ -684,7 +685,7 @@ impl<'a> ManagementOperator<'a> {
         &self,
         child_id: ComponentId,
         parent_placeholder: &String,
-    ) -> ManagementResult<()> {
+    ) -> ManagementResult<ComponentId> {
         let new_parent_id = self
             .component_id_placeholders
             .get(parent_placeholder)
@@ -695,7 +696,7 @@ impl<'a> ManagementOperator<'a> {
 
         Frame::upsert_parent(self.ctx, child_id, new_parent_id).await?;
 
-        Ok(())
+        Ok(new_parent_id)
     }
 
     async fn manage(
@@ -754,7 +755,7 @@ impl<'a> ManagementOperator<'a> {
 
                 let component_id = component.id();
 
-                self.created_components.push(component_id);
+                self.created_components.insert(component_id);
 
                 self.component_id_placeholders
                     .insert(placeholder.to_owned(), component_id);
@@ -906,7 +907,7 @@ impl<'a> ManagementOperator<'a> {
                 }));
             }
 
-            self.updated_components.push(component_id);
+            self.updated_components.insert(component_id);
         }
 
         Ok(pending)
@@ -929,8 +930,84 @@ impl<'a> ManagementOperator<'a> {
         Ok(())
     }
 
+    // Using the dep graph to ensure we send ws events for components in parent
+    // to child order, so that parents exist in the frontend before their
+    // children / parents are rendered as frames before their children report
+    // their parentage
+    async fn send_component_ws_events(
+        &mut self,
+        mut parentage_graph: DependencyGraph<ComponentId>,
+    ) -> ManagementResult<()> {
+        loop {
+            let independent_ids = parentage_graph.independent_ids();
+            if independent_ids.is_empty() {
+                break;
+            }
+            for id in independent_ids {
+                if self.created_components.contains(&id) {
+                    self.send_created_event(id).await?;
+                    self.created_components.remove(&id);
+                } else if self.updated_components.contains(&id) {
+                    self.send_updated_event(id).await?;
+                    self.updated_components.remove(&id);
+                }
+                parentage_graph.remove_id(id);
+            }
+        }
+
+        for &created_id in &self.created_components {
+            self.send_created_event(created_id).await?;
+        }
+
+        for &updated_id in &self.updated_components {
+            self.send_updated_event(updated_id).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn send_created_event(&self, id: ComponentId) -> ManagementResult<()> {
+        let component = Component::get_by_id(self.ctx, id).await?;
+        WsEvent::component_created(
+            self.ctx,
+            component
+                .into_frontend_type(
+                    self.ctx,
+                    Some(&component.geometry(self.ctx, self.view_id).await?),
+                    Added,
+                    &mut HashMap::new(),
+                )
+                .await?,
+        )
+        .await?
+        .publish_on_commit(self.ctx)
+        .await?;
+
+        Ok(())
+    }
+    async fn send_updated_event(&self, id: ComponentId) -> ManagementResult<()> {
+        let component = Component::get_by_id(self.ctx, id).await?;
+        WsEvent::component_updated(
+            self.ctx,
+            component
+                .into_frontend_type(
+                    self.ctx,
+                    Some(&component.geometry(self.ctx, self.view_id).await?),
+                    component.change_status(self.ctx).await?,
+                    &mut HashMap::new(),
+                )
+                .await?,
+        )
+        .await?
+        .publish_on_commit(self.ctx)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn operate(&mut self) -> ManagementResult<()> {
         let mut pending_operations = self.creates().await?;
+        let mut component_graph = DependencyGraph::new();
         pending_operations.extend(self.updates().await?);
 
         // Parents have to be set before component events are sent
@@ -941,45 +1018,13 @@ impl<'a> ManagementOperator<'a> {
                 _ => None,
             })
         {
-            self.set_parent(pending_parent.child_component_id, &pending_parent.parent)
-                .await?
+            let parent_id = self
+                .set_parent(pending_parent.child_component_id, &pending_parent.parent)
+                .await?;
+            component_graph.id_depends_on(pending_parent.child_component_id, parent_id);
         }
 
-        for &created_id in &self.created_components {
-            let component = Component::get_by_id(self.ctx, created_id).await?;
-            WsEvent::component_created(
-                self.ctx,
-                component
-                    .into_frontend_type(
-                        self.ctx,
-                        Some(&component.geometry(self.ctx, self.view_id).await?),
-                        Added,
-                        &mut HashMap::new(),
-                    )
-                    .await?,
-            )
-            .await?
-            .publish_on_commit(self.ctx)
-            .await?;
-        }
-
-        for &updated_id in &self.updated_components {
-            let component = Component::get_by_id(self.ctx, updated_id).await?;
-            WsEvent::component_updated(
-                self.ctx,
-                component
-                    .into_frontend_type(
-                        self.ctx,
-                        Some(&component.geometry(self.ctx, self.view_id).await?),
-                        component.change_status(self.ctx).await?,
-                        &mut HashMap::new(),
-                    )
-                    .await?,
-            )
-            .await?
-            .publish_on_commit(self.ctx)
-            .await?;
-        }
+        self.send_component_ws_events(component_graph).await?;
 
         // Now, the rest of the pending ops can be executed, which need to have
         // their wsevents sent *after* the component ws events (otherwise some

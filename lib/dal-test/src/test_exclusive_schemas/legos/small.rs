@@ -303,6 +303,36 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         create_and_connect_to_self_as_children_name,
     )?;
 
+    let deeply_nested_children_code = r#"
+    async function main({ thisComponent, components }: Input): Promise<Output> {
+        const thisName = thisComponent.properties?.si?.name ?? "unknown";
+
+        const count = 10;
+
+        let create: { [key: string]: unknown } = {};
+        let prevName = "self";
+        for (let i = 0; i < count; i++) {
+            let name = `clone_${i}`;
+            create[name] = {
+                kind: "small odd lego",
+                properties: { si: { name, type: "configurationFrameDown" }, },
+                parent: prevName, 
+            };
+            prevName =  name;
+        }
+
+        return {
+            status: "ok",
+            ops: {
+                update: { self: { properties: { si: { type: "configurationFrameDown" } } } },
+                create,
+            }
+        }
+    }
+    "#;
+    let deeply_nested_children =
+        build_management_func(deeply_nested_children_code, "test:deeplyNestedChildren")?;
+
     let fn_name = "test:deleteActionSmallLego";
     let delete_action_func = build_action_func(delete_action_code, fn_name)?;
 
@@ -420,6 +450,15 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
+                        .name("Deeply Nested Children")
+                        .managed_schemas(Some(HashSet::from([
+                            SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
+                        ])))
+                        .func_unique_id(&deeply_nested_children.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
                         .name("Create and Connect to Self as Children")
                         .managed_schemas(Some(HashSet::from([
                             SCHEMA_ID_SMALL_EVEN_LEGO.to_string()
@@ -446,6 +485,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(create_and_connect_from_self_func)
         .func(create_and_connect_to_self_func)
         .func(create_and_connect_to_self_as_children_func)
+        .func(deeply_nested_children)
         .schema(small_lego_schema)
         .build()?;
 

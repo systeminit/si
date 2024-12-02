@@ -776,3 +776,79 @@ async fn execute_management_func(ctx: &DalContext) {
 
     assert_eq!(Some(serde_json::json!("step")), two_value);
 }
+
+#[test]
+async fn deeply_nested_children(ctx: &DalContext) {
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("could not create component");
+    let variant = small_odd_lego
+        .schema_variant(ctx)
+        .await
+        .expect("get variant");
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, variant.id())
+        .await
+        .expect("get prototypes")
+        .into_iter()
+        .find(|proto| proto.name() == "Deeply Nested Children")
+        .expect("could not find prototype");
+
+    let mut execution_result = management_prototype
+        .execute(ctx, small_odd_lego.id(), None)
+        .await
+        .expect("should execute management prototype func");
+
+    let result: ManagementFuncReturn = execution_result
+        .result
+        .take()
+        .expect("should have a result success")
+        .try_into()
+        .expect("should be a valid management func return");
+
+    assert_eq!(result.status, ManagementFuncStatus::Ok);
+
+    let operations = result.operations.expect("should have operations");
+
+    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
+        .await
+        .expect("should create operator")
+        .operate()
+        .await
+        .expect("should operate");
+
+    let mut component_names = vec![];
+
+    let mut current = small_odd_lego.id();
+    loop {
+        let children = Component::get_children_for_id(ctx, current)
+            .await
+            .expect("get children");
+
+        if children.is_empty() {
+            break;
+        }
+
+        let child_id = children[0];
+        current = child_id;
+        let name = Component::get_by_id(ctx, child_id)
+            .await
+            .expect("get comp")
+            .name(ctx)
+            .await
+            .expect("get name");
+
+        component_names.push(name);
+    }
+
+    assert_eq!(
+        vec![
+            "clone_0", "clone_1", "clone_2", "clone_3", "clone_4", "clone_5", "clone_6", "clone_7",
+            "clone_8", "clone_9",
+        ],
+        component_names
+    )
+}
