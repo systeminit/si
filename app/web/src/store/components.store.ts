@@ -1227,8 +1227,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
+                  const oldParent =
+                    this.rawComponentsById[data.component.id]?.parentId;
+
                   this.rawComponentsById[data.component.id] = data.component;
                   this.processRawComponent(data.component.id);
+                  if (oldParent && !data.component.parentId)
+                    this.processRawComponent(oldParent);
                 },
               },
               {

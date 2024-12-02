@@ -1689,7 +1689,7 @@ function endDragElements() {
     },
   );
 
-  const setParents: ComponentId[] = [];
+  const setParents: Set<ComponentId> = new Set();
   nonChildElements.forEach((component) => {
     if (!("parentId" in component.def)) return;
     // if their current parent is NOT in this view, do not re-parent!!!
@@ -1703,17 +1703,17 @@ function endDragElements() {
     // same parent, no call needed
     if (component.def.parentId === newParent?.def.id) return;
 
-    if (component.def.parentId && detach) setParents.push(component.def.id);
+    if (component.def.parentId && detach) setParents.add(component.def.id);
 
     if (!component.def.parentId && newParent?.def.id)
-      setParents.push(component.def.id);
+      setParents.add(component.def.id);
 
     if (component.def.parentId !== newParent?.def.id)
-      setParents.push(component.def.id);
+      setParents.add(component.def.id);
   });
 
-  if (setParents.length > 0) {
-    viewStore.SET_PARENT(setParents, newParent?.def.id ?? null);
+  if (setParents.size > 0) {
+    viewStore.SET_PARENT([...setParents], newParent?.def.id ?? null);
   }
 
   if (_components.length > 0)

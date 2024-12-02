@@ -1230,8 +1230,14 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 else {
                   component.parentId = undefined;
                 }
-                componentsStore.processRawComponent(componentId, true);
+                componentsStore.processRawComponent(componentId);
               });
+              // if we change to no parent, we have to follow up and re-process
+              Object.values(oldParentIds)
+                .filter(nonNullable)
+                .forEach((parentId) => {
+                  componentsStore.processRawComponent(parentId);
+                });
             },
             onFail: () => {
               componentIds.forEach((componentId) => {
@@ -1239,7 +1245,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   componentsStore.rawComponentsById[componentId];
                 if (!component) return;
                 component.parentId = oldParentIds[componentId];
-                componentsStore.processRawComponent(componentId, true);
+                componentsStore.processRawComponent(componentId);
+                if (component.parentId)
+                  componentsStore.processRawComponent(component.parentId);
               });
             },
           });
