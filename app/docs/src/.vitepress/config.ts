@@ -132,6 +132,10 @@ export default defineConfig({
             text: "AWS EKS",
             link: "/how-tos/aws-eks",
           },
+          {
+            text: "AWS Lambda",
+            link: "/how-tos/aws-lambda",
+          },
         ],
       },
       {
