@@ -1,13 +1,15 @@
 /*
 instructions to generate JWT signing key
-- run `ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key` # Don't add passphrase
-- run `openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub`
-- `cat jwtRS256.key`
-- `cat jwtRS256.key.pub`
+- run `ssh-keygen -t ecdsa -b 256 -m PEM -f jwtES256.key`
+- run `openssl ec -in jwtES256.key -pubout -outform PEM -out jwtES256.key.pub`
+- `cat jwtES256.key`
+- `cat jwtES256.key.pub`
 */
 
 import fs from "fs";
 import JWT from "jsonwebtoken";
+
+const ALGORITHM = "ES256";
 
 // load private and public key from either env var or paths set in config
 // keys in the repo are also used by SDF to verify jwt is signed correctly and in tests to create/sign jwts
@@ -34,7 +36,7 @@ export function createJWT(
   options?: Omit<JWT.SignOptions, 'algorithm'>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return JWT.sign(payload, _JWT_PRIVATE_KEY!, { algorithm: "RS256", ...options });
+  return JWT.sign(payload, _JWT_PRIVATE_KEY!, { algorithm: ALGORITHM, ...options });
 }
 export function verifyJWT(token: string) {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

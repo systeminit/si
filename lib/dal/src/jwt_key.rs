@@ -2,10 +2,7 @@ use si_std::CanonicalFile;
 use std::{io::Cursor, path::Path, pin::Pin, sync::Arc};
 
 use base64::{engine::general_purpose, Engine};
-use jwt_simple::{
-    algorithms::RS256PublicKey,
-    prelude::{JWTClaims, RSAPublicKeyLike},
-};
+use jwt_simple::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPoolError};
 use telemetry::prelude::*;
@@ -77,7 +74,7 @@ pub struct SiClaims {
 
 #[derive(Clone, Debug)]
 pub struct JwtPublicSigningKey {
-    inner: Arc<RS256PublicKey>,
+    inner: Arc<ES256PublicKey>,
 }
 
 impl JwtPublicSigningKey {
@@ -111,12 +108,12 @@ impl JwtPublicSigningKey {
         reader.read_to_string(&mut public_key_string).await?;
 
         let inner = tokio::task::spawn_blocking(move || {
-            RS256PublicKey::from_pem(&public_key_string)
+            ES256PublicKey::from_pem(&public_key_string)
                 .map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
         })
         .instrument(trace_span!(
             "from_pem",
-            code.namespace = "jwt_simple::algorithms::RS256PublicKey"
+            code.namespace = "jwt_simple::algorithms::ES256PublicKey"
         ))
         .await??;
 
@@ -146,7 +143,7 @@ pub async fn validate_bearer_token(
     })
     .instrument(trace_span!(
         "verfy_token",
-        code.namespace = "jwt_simple::algorithms::RSAPublicKeyLike"
+        code.namespace = "jwt_simple::algorithms::ECDSAP256PublicKeyLike"
     ))
     .await??;
     Ok(claims)

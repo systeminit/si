@@ -42,7 +42,7 @@ use dal::{
     Workspace,
 };
 use derive_builder::Builder;
-use jwt_simple::prelude::RS256KeyPair;
+use jwt_simple::prelude::*;
 use lazy_static::lazy_static;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
@@ -54,7 +54,7 @@ use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
 use si_std::ResultExt;
 use telemetry::prelude::*;
-use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
+use tokio::sync::Mutex;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use uuid::Uuid;
 
@@ -166,7 +166,6 @@ pub struct Config {
     module_index_url: String,
     veritech_encryption_key_path: String,
     jwt_signing_public_key_path: String,
-    jwt_signing_private_key_path: String,
     postgres_key_path: String,
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
@@ -577,26 +576,8 @@ pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
 
 /// Returns a JWT private signing key, which is used to sign claims.
 #[allow(clippy::expect_used, clippy::panic)]
-pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
-    let key_path = {
-        let context_builder = TEST_CONTEXT_BUILDER.lock().await;
-        let config = context_builder.config()?;
-        config.jwt_signing_private_key_path.clone()
-    };
-    let key_str = {
-        let mut file = File::open(key_path)
-            .await
-            .wrap_err("failed to open RSA256 key file")?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)
-            .await
-            .wrap_err("failed to read from RSA256 file")?;
-        buf
-    };
-
-    let key_pair = RS256KeyPair::from_pem(&key_str).expect("failed to parse RSA256 from pem file");
-
-    Ok(key_pair)
+pub async fn jwt_private_signing_key() -> Result<ES256KeyPair> {
+    Ok(ES256KeyPair::generate())
 }
 
 /// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
@@ -930,10 +911,6 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .get_ends_with("dev.jwt_signing_public_key.pem")?
         .to_string_lossy()
         .to_string();
-    let jwt_signing_private_key_path = resources
-        .get_ends_with("dev.jwt_signing_private_key.pem")?
-        .to_string_lossy()
-        .to_string();
     let symmetric_crypto_service_key = resources
         .get_ends_with("dev.donkey.key")?
         .to_string_lossy()
@@ -949,7 +926,6 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
 
     warn!(
         veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
-        jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_key = postgres_key.as_str(),
@@ -959,7 +935,6 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
 
     builder.veritech_encryption_key_path(veritech_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
-    builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(
         SymmetricCryptoServiceConfigFile {
             active_key: Some(symmetric_crypto_service_key),
@@ -983,10 +958,6 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         .join("../../config/keys/dev.jwt_signing_public_key.pem")
         .to_string_lossy()
         .to_string();
-    let jwt_signing_private_key_path = Path::new(&dir)
-        .join("../../config/keys/dev.jwt_signing_private_key.pem")
-        .to_string_lossy()
-        .to_string();
     let symmetric_crypto_service_key = Path::new(&dir)
         .join("../../lib/dal/dev.donkey.key")
         .to_string_lossy()
@@ -1002,7 +973,6 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
 
     warn!(
         veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
-        jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_key = postgres_key.as_str(),
@@ -1012,7 +982,6 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
 
     builder.veritech_encryption_key_path(veritech_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
-    builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(
         SymmetricCryptoServiceConfigFile {
             active_key: Some(symmetric_crypto_service_key),
