@@ -172,7 +172,7 @@ remain = "0.2.13"
 reqwest = { version = "0.12.2", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = ["tokio-rustls-tls"] }
-rustls = { version = "0.23.18", default-features = false}
+rustls = { version = "0.23.18", default-features = false } # NOTE(nick,fletcher): rustls switched to "aws-lc-rs" as its default crypto provider, but we want ring (i.e. we disable the default feature for "aws-lc-rs")
 rustls-native-certs = "0.7.0"
 rustls-pemfile = { version = "2.1.1" }
 sea-orm = { version = "1.1.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
