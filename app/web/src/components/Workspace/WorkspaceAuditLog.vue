@@ -134,7 +134,7 @@
             <AuditLogDrawer
               :row="row"
               :colspan="columns.length"
-              :json="JSON.stringify(logs[Number(row.id)], null, 2)"
+              :json="JSON.stringify(filteredLogs[Number(row.id)], null, 2)"
               :expanded="rowCollapseState[Number(row.id)]"
             />
             <tr class="invisible"></tr>
