@@ -44,8 +44,9 @@ pub async fn set_type(
     let component = Component::get_by_id(&ctx, component_id).await?;
     let mut socket_map = HashMap::new();
     let payload = component
-        .into_frontend_type_for_default_view(
+        .into_frontend_type(
             &ctx,
+            None,
             component.change_status(&ctx).await?,
             &mut socket_map,
         )
