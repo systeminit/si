@@ -71,7 +71,7 @@ class SiLambda:
                 secret = self.getenv_secret_value("LAGO_API_TOKEN_ARN")
                 assert secret is not None, "LAGO_API_TOKEN or LAGO_API_TOKEN_ARN must be set"
                 lago_api_token = json.loads(secret["SecretString"])["LAGO_API_TOKEN"]
-            self._lago = LagoApi(lago_api_url, lago_api_token)
+            self._lago = LagoApi(lago_api_url, lago_api_token, self.dry_run)
         
         return self._lago
 

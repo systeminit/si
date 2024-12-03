@@ -33,9 +33,10 @@ class LagoEvent(TypedDict):
 T = TypeVar("T")
 
 class LagoApi:
-    def __init__(self, lago_api_url: str, lago_api_token: str):
+    def __init__(self, lago_api_url: str, lago_api_token: str, dry_run: bool):
         self.lago_api_url = lago_api_url
         self.lago_api_token = lago_api_token
+        self.dry_run = dry_run
 
     def request(self, method: str, path: str, **kwargs):
         logging.debug(f"Lago API request: {method} {path}")
@@ -62,72 +63,126 @@ class LagoApi:
         return self.request("GET", path)
 
     def delete(self, path: str):
-        return self.request("DELETE", path)
+        if self.dry_run:
+            logging.info(f"Would DELETE {path}")
+        else:
+            return self.request("DELETE", path)
 
     def put(self, path: str, json):
-        return self.request("PUT", path, json=json)
+        if self.dry_run:
+            logging.info(f"Would PUT {path} with payload: {json}")
+        else:
+            return self.request("PUT", path, json=json)
 
     def post(self, path: str, json):
-        return self.request("POST", path, json=json)
+        if self.dry_run:
+            logging.info(f"Would POST {path} with payload: {json}")
+        else:
+            return self.request("POST", path, json=json)
 
-    def upload_events(self, events: Iterable[LagoEvent], *, dry_run = False):
-        """
-        Uploads events to Lago, batching them in groups of 100 (Lago's maximum).
+    @property
+    def subscriptions(self):
+        api = self
+        class SubscriptionsEndpoint:
+            def list(self, *, external_customer_id: Optional[str] = None, status: list[LagoSubscriptionStatus] = []):
+                query = []
+                if external_customer_id is not None:
+                    query.append(f"external_customer_id={external_customer_id}")
+                query.extend([f"status[]={s}" for s in status])
+                query_str = f"?{'&'.join(query)}" if len(query) > 0 else ""
+                return LagoApi._Paged[LagoSubscription](api, f"/api/v1/subscriptions{query_str}", "subscriptions")
 
-        If a batch fails due to an event already having been uploaded, we retry the ones that
-        try to upload each event
-        individually.
+            def __getitem__(self, external_subscription_id: ExternalSubscriptionId):
+                item_path = f"/api/v1/subscriptions/{external_subscription_id}"
+                class SubscriptionEndpoint:
+                    def get(self, status: Optional[LagoSubscriptionStatus] = None):
+                        query = f"?status={status}" if status is not None else ""
+                        return cast(LagoSubscription, api.get(f"{item_path}{query}").json()["subscription"])
 
-        Exceptions:
-        - HTTPError: Any HTTP error response except 422 (which indicates the event already exists)
-        will be thrown.
-        """
+                    def put(self, payload: dict[str, Any]):
+                        return api.put(item_path, payload)
+                return SubscriptionEndpoint()
 
-        total_events = 0
-        new_events = 0
-        for event_batch in batch(events, 100):
-            total_events += len(event_batch)
+        return SubscriptionsEndpoint()
 
-            try:
-                path = "/api/v1/events/batch"
-                payload = {"events": event_batch}
-                if dry_run:
-                    logging.info(f"Would POST {path} with payload: {payload}")
-                else:
-                    self.post(path, payload)
-                new_events += len(event_batch)
-                logging.debug(f"Uploaded {len(event_batch)} events.")
+    @property
+    def events(self):
+        api = self
+        class EventsEndpoint:
+            def post_batch(self, events: Iterable[LagoEvent]):
+                return api.post("/api/v1/events/batch", { "events": list(events) })
+            def post_batch_idempotent(self, events: Iterable[LagoEvent]):
+                """
+                Uploads events to Lago, batching them in groups of 100 (Lago's maximum).
 
-            # If the batch failed because some events were already uploaded, retry the rest
-            except LagoHTTPError as e:
-                if not (e.json and e.json['status'] == 422 and e.json['code'] == "validation_errors"):
-                    raise
+                If a batch fails due to an event already having been uploaded, we retry the ones that
+                try to upload each event
+                individually.
 
-                for error in e.json['error_details'].values():
-                    if error.get("transaction_id") != ["value_already_exist"]:
-                        raise
+                Exceptions:
+                - HTTPError: Any HTTP error response except 422 (which indicates the event already exists)
+                will be thrown.
+                """
 
-                # Retry the events that did not fail
-                logging.debug(
-                    f"Events already existed: {[event_batch[int(i)]['transaction_id'] for i in e.json['error_details'].keys()]}"
-                )
-                retry_event_batch = [
-                    event
-                    for (i, event) in enumerate(event_batch)
-                    if str(i) not in e.json['error_details'].keys()
-                ]
+                total_events = 0
+                new_events = 0
+                for event_batch in batch(events, 100):
+                    total_events += len(event_batch)
 
-                if len(retry_event_batch) > 0:
-                    logging.warning(
-                        f"{len(e.json['error_details'])} / {len(event_batch)} events already existed. Reuploading remaining {len(retry_event_batch)} events."
-                    )
+                    try:
+                        self.post_batch(event_batch)
+                        new_events += len(event_batch)
+                        logging.debug(f"Uploaded {len(event_batch)} events.")
 
-                    # Retry the events that didn't fail. Any failure here is a real error
-                    assert not dry_run
-                    self.post("/api/v1/events/batch", {"events": retry_event_batch})
-                    new_events += len(retry_event_batch)
+                    # If the batch failed because some events were already uploaded, retry the rest
+                    except LagoHTTPError as e:
+                        if not (e.json and e.json['status'] == 422 and e.json['code'] == "validation_errors"):
+                            raise
 
-        return new_events, total_events
+                        for error in e.json['error_details'].values():
+                            if error.get("transaction_id") != ["value_already_exist"]:
+                                raise
+
+                        # Retry the events that did not fail
+                        logging.debug(
+                            f"Events already existed: {[event_batch[int(i)]['transaction_id'] for i in e.json['error_details'].keys()]}"
+                        )
+                        retry_event_batch = [
+                            event
+                            for (i, event) in enumerate(event_batch)
+                            if str(i) not in e.json['error_details'].keys()
+                        ]
+
+                        if len(retry_event_batch) > 0:
+                            logging.warning(
+                                f"{len(e.json['error_details'])} / {len(event_batch)} events already existed. Reuploading remaining {len(retry_event_batch)} events."
+                            )
+
+                            # Retry the events that didn't fail. Any failure here is a real error
+                            self.post_batch(retry_event_batch)
+                            new_events += len(retry_event_batch)
+
+                return new_events, total_events
+        return EventsEndpoint()
+
+    class _Paged(Iterable[T]):
+        def __init__(self, api: 'LagoApi', path: str, key: str):
+            self.api = api
+            self.path = path
+            self.key = key
+
+        def _pages(self):
+            page = cast(LagoPagedResponse, self.api.get(self.path).json())
+            yield page
+            while page['meta'].get('next_page') is not None:
+                page = cast(LagoPagedResponse, self.api.get(f"{self.path}&page={page['meta'].get('next_page')}").json())
+                yield page
+
+        def __iter__(self):
+            for page in self._pages():
+                values = cast(list[T], page[self.key])
+                logging.debug(f"Lago {self.path}: page {page['meta']['current_page']}/{page['meta']['total_pages']} with {len(values)}/{page['meta']['total_count']} values")
+                yield from values
 
 class LagoHTTPError(HTTPError):
     class ResponseJson(TypedDict):
@@ -138,14 +193,6 @@ class LagoHTTPError(HTTPError):
     def __init__(self, *args, json: Optional[ResponseJson], **kwargs):
         super().__init__(*args, **kwargs)
         self.json = json
-
-class LagoResponseMetadata(TypedDict):
-    current_page: int
-    next_page: NotRequired[Optional[int]]
-    prev_page: NotRequired[Optional[int]]
-    total_pages: int
-    total_count: int
-
 
 LagoCurrency = Literal[
     "AED",
@@ -371,6 +418,7 @@ class LagoPlan(TypedDict):
     usage_thresholds: list[dict[str, object]]
 
 
+LagoSubscriptionStatus = Literal["active", "pending", "terminated", "canceled"]
 class LagoSubscription(TypedDict):
     lago_id: str
     external_id: ExternalSubscriptionId
@@ -379,7 +427,7 @@ class LagoSubscription(TypedDict):
     billing_time: Literal["calendar", "anniversary"]
     name: NotRequired[Optional[str]]
     plan_code: str
-    status: Literal["active", "pending", "terminated", "canceled"]
+    status: LagoSubscriptionStatus
     created_at: IsoTimestamp
     canceled_at: NotRequired[Optional[IsoTimestamp]]
     started_at: NotRequired[Optional[IsoTimestamp]]
@@ -392,14 +440,21 @@ class LagoSubscription(TypedDict):
     trial_ended_at: NotRequired[Optional[IsoTimestamp]]
     plan: LagoPlan
 
-class LagoInvoicesResponse(TypedDict):
+class LagoPagedResponse(TypedDict):
+    meta: 'LagoPagedResponseMetadata'
+
+class LagoPagedResponseMetadata(TypedDict):
+    current_page: int
+    next_page: NotRequired[Optional[int]]
+    prev_page: NotRequired[Optional[int]]
+    total_pages: int
+    total_count: int
+
+class LagoInvoicesResponse(LagoPagedResponse):
     invoices: list[LagoInvoice]
-    meta: LagoResponseMetadata
 
-class LagoSubscriptionsResponse(TypedDict):
+class LagoSubscriptionsResponse(LagoPagedResponse):
     subscriptions: list[LagoSubscription]
-    meta: LagoResponseMetadata
-
 
 def batch(iterable: Iterable[T], n):
     "Batch data into lists of length n. The last batch may be shorter."

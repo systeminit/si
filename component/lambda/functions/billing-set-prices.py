@@ -37,12 +37,7 @@ class BillingSetPrices(SiLambda):
 
     def get_subscription(self, external_subscription_id: ExternalSubscriptionId):
         try:
-            return cast(
-                LagoSubscription,
-                self.lago.get(f"/api/v1/subscriptions/{external_subscription_id}").json()[
-                    "subscription"
-                ],
-            )
+            return self.lago.subscriptions[external_subscription_id].get()
 
         except LagoHTTPError as e:
             if e.json and e.json.get("status") != 404:
@@ -51,12 +46,7 @@ class BillingSetPrices(SiLambda):
                 logging.debug(
                     f"Subscription {external_subscription_id} is not active. Getting pending version ..."
                 )
-                return cast(
-                    LagoSubscription,
-                    self.lago.get(
-                        f"/api/v1/subscriptions/{external_subscription_id}?status=pending"
-                    ).json()["subscription"],
-                )
+                return self.lago.subscriptions[external_subscription_id].get(status="pending")
 
             except LagoHTTPError as e:
                 if e.json and e.json.get("status") != 404:
@@ -66,12 +56,7 @@ class BillingSetPrices(SiLambda):
                     logging.debug(
                         f"Subscription {external_subscription_id} is not active or pending. Getting terminated version ..."
                     )
-                    return cast(
-                        LagoSubscription,
-                        self.lago.get(
-                            f"/api/v1/subscriptions/{external_subscription_id}?status=terminated"
-                        ).json()["subscription"],
-                    )
+                    return self.lago.subscriptions[external_subscription_id].get(status="terminated")
 
                 except LagoHTTPError as e:
                     if e.json and e.json.get("status") != 404:
@@ -134,8 +119,10 @@ class BillingSetPrices(SiLambda):
             # We still want to modify the subscription. ... can we even do that?
 
             # Set the subscription's price.
-            path = f"/api/v1/subscriptions/{pay_as_you_go_subscription_id}"
-            payload = {
+            logging.info(
+                f"Setting subscription {pay_as_you_go_subscription_id}'s price from {current_amount} to {amount} ..."
+            )
+            self.lago.subscriptions[pay_as_you_go_subscription_id].put({
                     "status": subscription["status"],
                     "subscription": {
                         "plan_overrides": {
@@ -148,14 +135,7 @@ class BillingSetPrices(SiLambda):
                             ]
                         }
                     },
-                }
-            logging.info(
-                f"Setting subscription {pay_as_you_go_subscription_id}'s price from {current_amount} to {amount} ..."
-            )
-            if self.dry_run:
-                logging.info("Would PUT {path} with payload: {payload}")
-            else:
-                self.lago.put(path, payload)
+                })
 
 
 lambda_handler = BillingSetPrices.lambda_handler

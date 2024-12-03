@@ -83,8 +83,8 @@ class UploadBillingHours(SiLambda):
                 all_events, lambda event: event[1]
             ):
                 logging.debug(f"Uploading events for hour {hour_start}")
-                new_events, total_events = self.lago.upload_events(
-                    map(self.format_event, hour_events), dry_run=self.dry_run
+                new_events, total_events = self.lago.events.post_batch_idempotent(
+                    map(self.format_event, hour_events)
                 )
                 logging.info(f"Uploaded {new_events} / {total_events} for hour {hour_start}")
                 if total_events == 0:

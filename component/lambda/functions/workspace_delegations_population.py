@@ -38,7 +38,12 @@ class WorkspaceDelegationsPopulation(SiLambda):
 
         # Start all the inserts at once (if any)
         subscription_updates = [
-            self.update_owner_subscriptions(owner_pk, current_timestamp, remove_fake_row(si_subscriptions), self.get_owner_lago_subscriptions(owner_pk))
+            self.update_owner_subscriptions(
+                owner_pk,
+                current_timestamp,
+                remove_fake_row(si_subscriptions),
+                self.lago.subscriptions.list(status=['pending', 'active', 'terminated', 'active'], external_customer_id=owner_pk)
+            )
             for owner_pk, si_subscriptions in groupby(latest_owner_subscriptions, lambda sub: sub['owner_pk'])
             if self.owner_pks is None or owner_pk in self.owner_pks
         ]
@@ -111,24 +116,6 @@ class WorkspaceDelegationsPopulation(SiLambda):
             'plan_code': lago_sub['plan_code'],
             'external_id': lago_sub['external_id']
         }
-
-    def get_all_lago_subscriptions(self):
-        url = "/api/v1/subscriptions?status[]=pending&status[]=active&status[]=terminated&status[]=active"
-        page = cast(LagoSubscriptionsResponse, self.lago.get(url).json())
-        logging.debug(f"Lago subscriptions: page {page['meta']['current_page']}/{page['meta']['total_pages']} with {len(page['subscriptions'])}/{page['meta']['total_count']} subscriptions")
-        yield from page['subscriptions']
-
-        while page['meta'].get('next_page') is not None:
-            page = cast(LagoSubscriptionsResponse, self.lago.get(f"{url}&page={page['meta'].get('next_page')}").json())
-            logging.debug(f"Lago subscriptions: page {page['meta']['current_page']}/{page['meta']['total_pages']} with {len(page['subscriptions'])}/{page['meta']['total_count']} subscriptions")
-            yield from page['subscriptions']
-
-    def get_owner_lago_subscriptions(self, owner_pk: OwnerPk):
-        subs = cast(LagoSubscriptionsResponse, self.lago.get(
-            f"/api/v1/subscriptions?external_customer_id={owner_pk}&status[]=pending&status[]=active&status[]=terminated&status[]=active"
-        ).json())
-        assert(subs['meta']['total_count'] == len(subs['subscriptions']))
-        return subs['subscriptions']
 
     def insert_missing_workspaces(self, current_timestamp: SqlTimestamp):
         missing_workspace_inserts = [
