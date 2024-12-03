@@ -43,6 +43,7 @@ import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
+import { useViewsStore } from "./views.store";
 
 export type ComponentNodeId = string;
 
@@ -624,7 +625,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const dEdge = processRawEdge(edge, this.allComponentsById);
             if (dEdge) this.diagramEdgesById[dEdge.def.id] = dEdge;
           },
-          processRawComponent(
+          processAndStoreRawComponent(
             componentId: ComponentId,
             processAncestors = true,
           ): void {
@@ -634,19 +635,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             // data replacement here
             this.allComponentsById[elm.def.id] = elm;
+
             // if component changes type it should only be in one group
             // so first remove
             delete this.groupsById[elm.def.id];
             delete this.nodesById[elm.def.id];
             // and then add as appropriate
-            if (elm instanceof DiagramGroupData)
+            if (elm instanceof DiagramGroupData) {
               this.groupsById[elm.def.id] = elm;
-            else this.nodesById[elm.def.id] = elm;
+            } else {
+              this.nodesById[elm.def.id] = elm;
+            }
 
             // is false when iterating over the whole data set... no need to duplicate work
             if (processAncestors) {
               if (component.parentId) {
-                this.processRawComponent(component.parentId, processAncestors);
+                this.processAndStoreRawComponent(
+                  component.parentId,
+                  processAncestors,
+                );
               }
             }
           },
@@ -712,7 +719,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             // this.nodesById = {};
             // this.groupsById = {};
             response.components.forEach((component) => {
-              this.processRawComponent(component.id, false);
+              this.processAndStoreRawComponent(component.id, false);
             });
 
             const edges =
@@ -1065,7 +1072,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       },
                     };
 
-                    this.processRawComponent(componentId);
+                    this.processAndStoreRawComponent(componentId);
                   }
                 }
 
@@ -1083,7 +1090,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         deletedInfo: undefined,
                       };
 
-                      this.processRawComponent(componentId);
+                      this.processAndStoreRawComponent(componentId);
                     }
                   }
                 };
@@ -1115,7 +1122,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       toDelete: false,
                       deletedInfo: undefined,
                     };
-                    this.processRawComponent(componentId);
+                    this.processAndStoreRawComponent(componentId);
                   }
                 }
               },
@@ -1164,7 +1171,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id);
                 },
               },
               {
@@ -1238,13 +1245,46 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // If the component that updated wasn't in this change set,
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
+                  const componentId = data.component.id;
                   const oldParent =
-                    this.rawComponentsById[data.component.id]?.parentId;
+                    this.rawComponentsById[componentId]?.parentId;
 
-                  this.rawComponentsById[data.component.id] = data.component;
-                  this.processRawComponent(data.component.id);
+                  this.rawComponentsById[componentId] = data.component;
+                  this.processAndStoreRawComponent(componentId);
                   if (oldParent && !data.component.parentId)
-                    this.processRawComponent(oldParent);
+                    this.processAndStoreRawComponent(oldParent);
+
+                  // Updates without geometry may still change component type
+                  // So we need to coerce the geometry to the correct array in the views store
+                  if (!data.component.viewData) {
+                    const viewsStore = useViewsStore();
+
+                    for (const view of _.values(viewsStore.viewsById)) {
+                      const groupGeo = view.groups[componentId];
+                      const componentGeo = view.components[componentId];
+
+                      const geo = groupGeo ?? componentGeo;
+                      if (!geo) continue;
+
+                      delete view.groups[componentId];
+                      delete view.components[componentId];
+
+                      if (
+                        data.component.componentType === ComponentType.Component
+                      ) {
+                        const node = processRawComponent(
+                          data.component,
+                          this.rawComponentsById,
+                        ) as DiagramNodeData;
+                        geo.height = node.height;
+                        geo.width = node.width;
+
+                        view.components[componentId] = geo;
+                      } else {
+                        view.groups[componentId] = geo;
+                      }
+                    }
+                  }
                 },
               },
               {
@@ -1287,7 +1327,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   delete this.nodesById[data.originalComponentId];
                   delete this.groupsById[data.originalComponentId];
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id);
                 },
               },
               {
@@ -1297,7 +1337,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (data.changeSetId !== changeSetId) return;
                   this.rawComponentsById[data.component.id] = data.component;
-                  this.processRawComponent(data.component.id);
+                  this.processAndStoreRawComponent(data.component.id);
                   this.refreshingStatus[data.component.id] = false;
                 },
               },
