@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::{cached_module::CachedModule, module::Module, ChangeSetId, SchemaVariant, WorkspacePk};
+use dal::{cached_module::CachedModule, ChangeSetId, SchemaVariant, WorkspacePk};
 use frontend_types::{SchemaVariant as FrontendVariant, UninstalledVariant};
 use serde::{Deserialize, Serialize};
 use si_frontend_types as frontend_types;
@@ -33,21 +35,29 @@ pub async fn list_variants(
         .await?;
 
     let installed = SchemaVariant::list_user_facing(&ctx).await?;
-    let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(&ctx)
-        .await?
-        .into_iter()
-        .filter(|module| {
-            !installed
-                .iter()
-                .any(|variant| variant.schema_id == module.schema_id.into())
-        })
-        .collect();
+
+    let mut installed_schema_ids = HashSet::new();
+    let mut installed_cat_and_name = HashSet::new();
+    for installed_variant in &installed {
+        installed_schema_ids.insert(installed_variant.schema_id);
+        installed_cat_and_name.insert((
+            installed_variant.category.as_str(),
+            installed_variant.schema_name.as_str(),
+        ));
+    }
+
+    let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(&ctx).await?;
 
     let mut uninstalled = vec![];
+    // We want to hide uninstalled modules that would create duplicate assets in
+    // the AssetPanel in old workspace. We do this just by name + category
+    // matching. (We also hide if the schema is installed)
     for module in cached_modules {
-        if Module::find_by_root_hash(&ctx, module.latest_hash.to_owned())
-            .await?
-            .is_none()
+        let category = module.category.as_deref().unwrap_or("");
+
+        let schema_name = module.schema_name.as_str();
+        if !installed_schema_ids.contains(&(module.schema_id.into()))
+            && !installed_cat_and_name.contains(&(category, schema_name))
         {
             uninstalled.push(module.into());
         }
