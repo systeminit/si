@@ -43,7 +43,6 @@ import { useAssetStore } from "./asset.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
-import { useViewsStore } from "./views.store";
 
 export type ComponentNodeId = string;
 
@@ -1253,38 +1252,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.processAndStoreRawComponent(componentId);
                   if (oldParent && !data.component.parentId)
                     this.processAndStoreRawComponent(oldParent);
-
-                  // Updates without geometry may still change component type
-                  // So we need to coerce the geometry to the correct array in the views store
-                  if (!data.component.viewData) {
-                    const viewsStore = useViewsStore();
-
-                    for (const view of _.values(viewsStore.viewsById)) {
-                      const groupGeo = view.groups[componentId];
-                      const componentGeo = view.components[componentId];
-
-                      const geo = groupGeo ?? componentGeo;
-                      if (!geo) continue;
-
-                      delete view.groups[componentId];
-                      delete view.components[componentId];
-
-                      if (
-                        data.component.componentType === ComponentType.Component
-                      ) {
-                        const node = processRawComponent(
-                          data.component,
-                          this.rawComponentsById,
-                        ) as DiagramNodeData;
-                        geo.height = node.height;
-                        geo.width = node.width;
-
-                        view.components[componentId] = geo;
-                      } else {
-                        view.groups[componentId] = geo;
-                      }
-                    }
-                  }
                 },
               },
               {
