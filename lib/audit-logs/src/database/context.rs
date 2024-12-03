@@ -28,6 +28,13 @@ impl AuditDatabaseContext {
         })
     }
 
+    /// Creates an [`AuditDatabaseContext`] using an existing [`PgPool`].
+    ///
+    /// _Warning:_ the pool must be configured correctly before calling this method.
+    pub fn from_pg_pool(pg_pool: PgPool) -> Self {
+        Self { pg_pool }
+    }
+
     /// Returns a reference to the [`PgPool`].
     pub fn pg_pool(&self) -> &PgPool {
         &self.pg_pool

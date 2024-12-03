@@ -234,7 +234,8 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let test_context = ::dal_test::TestContext::global(
                 crate::TEST_PG_DBNAME,
-                crate::SI_TEST_LAYER_CACHE_PG_DBNAME
+                crate::SI_TEST_LAYER_CACHE_PG_DBNAME,
+                crate::SI_TEST_AUDIT_PG_DBNAME
             ).await?;
         });
         self.set_test_context(Some(Rc::new(var)));
@@ -418,7 +419,8 @@ pub(crate) trait FnSetupExpander {
         let var = Ident::new("forklift_server", Span::call_site());
         self.code_extend(quote! {
             let #var = ::dal_test::forklift_server(
-                #test_context.nats_config().clone(),
+                #test_context.nats_conn().clone(),
+                #test_context.audit_database_context().to_owned(),
                 #cancellation_token.clone(),
             ).await?;
         });
@@ -676,5 +678,19 @@ pub(crate) trait FnSetupExpander {
         self.set_dal_context_head_mut_ref(Some(Rc::new(var)));
 
         self.dal_context_head_mut_ref().unwrap().clone()
+    }
+
+    fn setup_audit_database_context(&mut self) -> Rc<Ident> {
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
+        let var_audit_database_context = Ident::new("audit_database_context", Span::call_site());
+        self.code_extend(quote! {
+            let #var_audit_database_context  = {
+                let r = #test_context.audit_database_context().to_owned();
+                r
+            };
+        });
+        Rc::new(var_audit_database_context)
     }
 }

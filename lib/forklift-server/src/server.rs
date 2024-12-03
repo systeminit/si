@@ -1,6 +1,7 @@
 use std::{fmt, future::Future, io, sync::Arc};
 
-use si_data_nats::{jetstream, NatsClient};
+use audit_logs::database::{AuditDatabaseContext, AuditDatabaseContextError};
+use si_data_nats::{jetstream, ConnectionMetadata, NatsClient};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -18,6 +19,8 @@ const DURABLE_CONSUMER_NAME: &str = "forklift-server";
 pub enum ServerError {
     #[error("app setup error: {0}")]
     AppSetup(#[from] AppSetupError),
+    #[error("audit database context error: {0}")]
+    AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
     #[error("naxum error: {0}")]
@@ -70,38 +73,71 @@ impl fmt::Debug for Server {
 }
 
 impl Server {
-    /// Creates a forklift server with a running naxum task.
+    /// Creates a forklift server with a running naxum task from a given configuration.
     #[instrument(name = "forklift.init.from_config", level = "info", skip_all)]
     pub async fn from_config(config: Config, token: CancellationToken) -> Result<Self> {
-        let metadata = Arc::new(ServerMetadata {
-            instance_id: config.instance_id().into(),
-            job_invoked_provider: "si",
-        });
-
         let nats = Self::connect_to_nats(&config).await?;
         let connection_metadata = nats.metadata_clone();
         let jetstream_context = jetstream::new(nats);
 
-        let inner_audit_logs = if config.enable_audit_logs_app() {
-            Some(
-                app::audit_logs(
-                    jetstream_context.clone(),
-                    DURABLE_CONSUMER_NAME.to_string(),
-                    connection_metadata.clone(),
-                    config.audit(),
-                    token.clone(),
-                )
-                .await?,
-            )
+        let audit_bag = if config.enable_audit_logs_app() {
+            let insert_concurrency_limit = config.audit().insert_concurrency_limit;
+            let audit_database_context = AuditDatabaseContext::from_config(config.audit()).await?;
+            Some((audit_database_context, insert_concurrency_limit))
         } else {
             None
         };
+
+        Self::from_services(
+            connection_metadata,
+            jetstream_context,
+            config.instance_id(),
+            config.concurrency_limit(),
+            audit_bag,
+            config.data_warehouse_stream_name(),
+            token,
+        )
+        .await
+    }
+
+    /// Creates a forklift server with a running naxum task with running services.
+    #[instrument(name = "forklift.init.from_services", level = "info", skip_all)]
+    pub async fn from_services(
+        connection_metadata: Arc<ConnectionMetadata>,
+        jetstream_context: jetstream::Context,
+        instance_id: &str,
+        concurrency_limit: usize,
+        audit_bag: Option<(AuditDatabaseContext, usize)>,
+        data_warehouse_stream_name: Option<&str>,
+        token: CancellationToken,
+    ) -> Result<Self> {
+        let metadata = Arc::new(ServerMetadata {
+            instance_id: instance_id.into(),
+            job_invoked_provider: "si",
+        });
+
+        let inner_audit_logs =
+            if let Some((audit_database_context, insert_concurrency_limit)) = audit_bag {
+                Some(
+                    app::audit_logs(
+                        jetstream_context.clone(),
+                        DURABLE_CONSUMER_NAME.to_string(),
+                        connection_metadata.clone(),
+                        audit_database_context,
+                        insert_concurrency_limit,
+                        token.clone(),
+                    )
+                    .await?,
+                )
+            } else {
+                None
+            };
         let inner_billing_events = app::billing_events(
             jetstream_context,
             DURABLE_CONSUMER_NAME.to_string(),
             connection_metadata,
-            config.concurrency_limit(),
-            config.data_warehouse_stream_name(),
+            concurrency_limit,
+            data_warehouse_stream_name,
             token.clone(),
         )
         .await?;

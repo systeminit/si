@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use asset_sprayer::AssetSprayer;
+use audit_logs::database::AuditDatabaseContext;
 use axum::Router;
 use dal::{JwtPublicSigningKey, ServicesContext};
 use nats_multiplexer_client::MultiplexerClient;
@@ -35,6 +36,7 @@ impl AxumApp {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        audit_database_context: AuditDatabaseContext,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -50,6 +52,7 @@ impl AxumApp {
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            audit_database_context,
         )
     }
 
@@ -73,6 +76,7 @@ impl AxumApp {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: SpiceDbClient,
+        audit_database_context: AuditDatabaseContext,
     ) -> Self {
         Self::inner_from_services(
             services_context,
@@ -88,6 +92,7 @@ impl AxumApp {
             application_runtime_mode,
             shutdown_token,
             Some(spicedb_client),
+            audit_database_context,
         )
     }
 
@@ -110,6 +115,7 @@ impl AxumApp {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        audit_database_context: AuditDatabaseContext,
     ) -> Self {
         let state = AppState::new(
             services_context,
@@ -125,6 +131,7 @@ impl AxumApp {
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            audit_database_context,
         );
 
         let path_filter = Box::new(|path: &str| match path {

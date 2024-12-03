@@ -51,7 +51,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si_test"
       - "POSTGRES_DB=si_test"
-      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server,si_test_layer_db"
+      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server,si_test_layer_db,si_test_audit"
     command:
       - "-c"
       - "fsync=off"

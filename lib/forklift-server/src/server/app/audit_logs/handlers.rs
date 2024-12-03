@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use audit_logs::database::AuditDatabaseError;
+use audit_logs::database::{AuditDatabaseError, AuditLogRow};
 use naxum::{
     extract::State,
     response::{IntoResponse, Response},
@@ -46,7 +46,7 @@ pub(crate) async fn default(
 
     match audit_log {
         AuditLog::V1(inner) => {
-            audit_logs::database::insert(
+            AuditLogRow::insert(
                 state.context(),
                 workspace_id,
                 inner.kind,

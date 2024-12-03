@@ -1,6 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use asset_sprayer::AssetSprayer;
+use audit_logs::database::AuditDatabaseContext;
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
@@ -36,6 +37,7 @@ pub struct AppState {
     pub application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
     shutdown_token: CancellationToken,
     spicedb_client: Option<SpiceDbClient>,
+    audit_database_context: AuditDatabaseContext,
 }
 
 impl AppState {
@@ -54,6 +56,7 @@ impl AppState {
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
         shutdown_token: CancellationToken,
         spicedb_client: Option<SpiceDbClient>,
+        audit_database_context: AuditDatabaseContext,
     ) -> Self {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
@@ -74,6 +77,7 @@ impl AppState {
             application_runtime_mode,
             shutdown_token,
             spicedb_client,
+            audit_database_context,
         }
     }
 
@@ -119,6 +123,10 @@ impl AppState {
 
     pub fn spicedb_client_clone(&self) -> Option<SpiceDbClient> {
         self.spicedb_client.clone()
+    }
+
+    pub fn audit_database_context(&self) -> &AuditDatabaseContext {
+        &self.audit_database_context
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{future::Future, io, sync::Arc};
 
-use ::audit_logs::database::AuditDatabaseConfig;
+use ::audit_logs::database::AuditDatabaseContext;
 use si_data_nats::{jetstream::Context, ConnectionMetadata};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -32,14 +32,16 @@ pub(crate) async fn audit_logs(
     jetstream_context: Context,
     durable_consumer_name: String,
     connection_metadata: Arc<ConnectionMetadata>,
-    audit_database_config: &AuditDatabaseConfig,
+    audit_database_context: AuditDatabaseContext,
+    insert_concurrency_limit: usize,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
     Ok(audit_logs::build_and_run(
         jetstream_context,
         durable_consumer_name,
         connection_metadata,
-        audit_database_config,
+        audit_database_context,
+        insert_concurrency_limit,
         token,
     )
     .await?)

@@ -3,6 +3,7 @@ use si_data_pg::PgPoolConfig;
 
 /// The name of the audit database.
 pub const DBNAME: &str = "si_audit";
+
 const APPLICATION_NAME: &str = "si-audit";
 
 const DEFAULT_INSERT_CONCURRENCY_LIMIT: usize = 64;
@@ -21,12 +22,17 @@ pub struct AuditDatabaseConfig {
 impl Default for AuditDatabaseConfig {
     fn default() -> Self {
         Self {
-            pg: PgPoolConfig {
-                dbname: DBNAME.into(),
-                application_name: APPLICATION_NAME.into(),
-                ..Default::default()
-            },
+            pg: default_pg_pool_config(),
             insert_concurrency_limit: DEFAULT_INSERT_CONCURRENCY_LIMIT,
         }
+    }
+}
+
+/// The default [`PgPoolConfig`] used in the [`AuditDatabaseConfig`].
+pub fn default_pg_pool_config() -> PgPoolConfig {
+    PgPoolConfig {
+        dbname: DBNAME.into(),
+        application_name: APPLICATION_NAME.into(),
+        ..Default::default()
     }
 }

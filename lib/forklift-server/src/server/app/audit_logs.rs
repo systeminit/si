@@ -6,10 +6,7 @@ use std::{
 };
 
 use app_state::AppState;
-use audit_logs::{
-    database::{AuditDatabaseConfig, AuditDatabaseContext, AuditDatabaseContextError},
-    AuditLogsStream, AuditLogsStreamError,
-};
+use audit_logs::{database::AuditDatabaseContext, AuditLogsStream, AuditLogsStreamError};
 use nats_dead_letter_queue::NatsDeadLetterQueueError;
 use naxum::{
     extract::MatchedSubject,
@@ -44,8 +41,6 @@ pub enum AuditLogsAppSetupError {
     AsyncNatsConsumer(#[from] AsyncNatsError<ConsumerErrorKind>),
     #[error("async nats stream error: {0}")]
     AsyncNatsStream(#[from] AsyncNatsError<StreamErrorKind>),
-    #[error("audit database context error: {0}")]
-    AuditDatabaseContext(#[from] AuditDatabaseContextError),
     #[error("audit logs stream error: {0}")]
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("failed to create dead letter stream: {0}")]
@@ -65,7 +60,8 @@ pub(crate) async fn build_and_run(
     jetstream_context: Context,
     durable_consumer_name: String,
     connection_metadata: Arc<ConnectionMetadata>,
-    config: &AuditDatabaseConfig,
+    audit_database_context: AuditDatabaseContext,
+    insert_concurrency_limit: usize,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
     nats_dead_letter_queue::create_stream(&jetstream_context).await?;
@@ -92,9 +88,10 @@ pub(crate) async fn build_and_run(
             .await?
     };
 
-    let concurrency_limit = config.insert_concurrency_limit;
-    let context = AuditDatabaseContext::from_config(config).await?;
-    let state = AppState::new(context, connection_metadata.subject_prefix().is_some());
+    let state = AppState::new(
+        audit_database_context,
+        connection_metadata.subject_prefix().is_some(),
+    );
 
     // NOTE(nick,fletcher): the "NatsMakeSpan" builder defaults to "info" level logging. Bump it down, if needed.
     let app = ServiceBuilder::new()
@@ -112,9 +109,12 @@ pub(crate) async fn build_and_run(
         .service(handlers::default.with_state(state))
         .map_response(Response::into_response);
 
-    let inner =
-        naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
-            .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+    let inner = naxum::serve_with_incoming_limit(
+        incoming,
+        app.into_make_service(),
+        insert_concurrency_limit,
+    )
+    .with_graceful_shutdown(naxum::wait_on_cancelled(token));
 
     Ok(Box::new(inner.into_future()))
 }

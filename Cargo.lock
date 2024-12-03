@@ -1927,6 +1927,7 @@ name = "dal-test"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
+ "audit-logs",
  "base64 0.22.1",
  "buck2-resources",
  "color-eyre",
@@ -1949,6 +1950,7 @@ dependencies = [
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
+ "si-events",
  "si-layer-cache",
  "si-pkg",
  "si-runtime",
