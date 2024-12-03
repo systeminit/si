@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 import json
-from typing import NotRequired, Optional, TypedDict, cast, overload
+from typing import NotRequired, Optional, TypedDict, Union, cast, overload
 import time
 from datetime import datetime
 from si_lambda import SiLambda, SiLambdaEnv
@@ -21,16 +21,24 @@ class WorkspaceDelegationsPopulation(SiLambda):
 
     def update_subscriptions(self, current_timestamp: SqlTimestamp):
         # Query all owner subscriptions and compare to what's in Lago
-        latest_owner_subscriptions = cast(Iterable['LatestOwnerSubscription'], self.redshift.query("""
+        latest_owner_subscriptions = cast(Iterable[Union[LatestOwnerSubscription, OwnerWithoutSubscriptions]], self.redshift.query("""
             SELECT owner_pk, subscription_id, subscription_start_date, subscription_end_date, plan_code, external_id
               FROM workspace_operations.owners
               LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions USING (owner_pk)
              ORDER BY owner_pk, start_time
         """))
 
+        # Removes the outer join "fake" row and returns 0 subscriptions instead
+        def remove_fake_row(si_subscriptions_iter: Iterable[Union[LatestOwnerSubscription, OwnerWithoutSubscriptions]]):
+            si_subscriptions = list(si_subscriptions_iter)
+            result = cast(list[LatestOwnerSubscription], si_subscriptions)
+            if len(si_subscriptions) == 1 and si_subscriptions[0]['subscription_id'] is None:
+                result = []
+            return result
+
         # Start all the inserts at once (if any)
         subscription_updates = [
-            self.update_owner_subscriptions(owner_pk, current_timestamp, list(si_subscriptions), self.get_owner_lago_subscriptions(owner_pk))
+            self.update_owner_subscriptions(owner_pk, current_timestamp, remove_fake_row(si_subscriptions), self.get_owner_lago_subscriptions(owner_pk))
             for owner_pk, si_subscriptions in groupby(latest_owner_subscriptions, lambda sub: sub['owner_pk'])
             if self.owner_pks is None or owner_pk in self.owner_pks
         ]
@@ -185,6 +193,7 @@ class WorkspaceDelegationsPopulation(SiLambda):
         }
 
 # Result of the latest_owner_subscriptions query
+
 class LatestOwnerSubscription(TypedDict):
     owner_pk: OwnerPk
     subscription_id: str
@@ -192,6 +201,12 @@ class LatestOwnerSubscription(TypedDict):
     subscription_end_date: Optional[SqlTimestamp]
     plan_code: str
     external_id: ExternalSubscriptionId
+
+class OwnerWithoutSubscriptions(TypedDict):
+    owner_pk: OwnerPk
+    subscription_id: None
+    plan_code: None
+    external_id: None
 
 
 # Convert ISO 8601 timestamp to the required format
