@@ -1,19 +1,19 @@
-use axum::{
-    extract::{Host, OriginalUri},
-    Json,
-};
-use dal::{
-    change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
-    InputSocketId, OutputSocketId, Visibility, WsEvent,
-};
-use serde::{Deserialize, Serialize};
-
 use super::{DiagramError, DiagramResult};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
+use axum::{
+    extract::{Host, OriginalUri},
+    Json,
+};
+use dal::diagram::SummaryDiagramInferredEdge;
+use dal::{
+    change_status::ChangeStatus, diagram::SummaryDiagramEdge, ChangeSet, Component, ComponentId,
+    InputSocketId, OutputSocketId, Visibility, WsEvent,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +37,35 @@ pub async fn create_connection(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+
+    // Register the inferred edges that are going away before they become inaccessible
+    {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut component_tree = workspace_snapshot.inferred_connection_graph(&ctx).await?;
+
+        let inferred_edges = component_tree
+            .inferred_incoming_connections_for_component(&ctx, request.to_component_id)
+            .await?
+            .iter()
+            .filter_map(|connection| {
+                if connection.input_socket_id != request.to_socket_id {
+                    return None;
+                }
+                Some(SummaryDiagramInferredEdge {
+                    from_component_id: connection.source_component_id,
+                    from_socket_id: connection.output_socket_id,
+                    to_component_id: connection.destination_component_id,
+                    to_socket_id: connection.input_socket_id,
+                    to_delete: false,
+                })
+            })
+            .collect();
+
+        WsEvent::remove_inferred_edges(&ctx, inferred_edges)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     Component::connect(
         &ctx,

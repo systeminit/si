@@ -709,7 +709,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             inferredEdges: RawEdge[];
             managementEdges: RawEdge[];
           }) {
-            // i want to avoid strict assignments here, so i can re-use this
+            // I want to avoid strict assignments here, so I can re-use
             // this.rawComponentsById = _.keyBy(response.components, "id");
             for (const component of response.components) {
               this.rawComponentsById[component.id] = component;
@@ -822,6 +822,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
+            console.log("connection");
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)
@@ -857,23 +858,24 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.rawEdgesById[newEdge.id] = newEdge;
                 this.processRawEdge(newEdge.id);
 
-                const replacingEdge = Object.values(this.rawEdgesById)
-                  .filter(
-                    (e) =>
-                      e.isInferred &&
-                      e.toSocketId === to.socketId &&
-                      e.toComponentId === to.componentId,
-                  )
-                  .pop();
-                if (replacingEdge) {
-                  delete this.rawEdgesById[replacingEdge.id];
-                  delete this.diagramEdgesById[replacingEdge.id];
+                const edgesBeingReplaced = Object.values(
+                  this.rawEdgesById,
+                ).filter(
+                  (e) =>
+                    e.isInferred &&
+                    e.toSocketId === to.socketId &&
+                    e.toComponentId === to.componentId,
+                );
+
+                for (const edge of edgesBeingReplaced) {
+                  delete this.rawEdgesById[edge.id];
+                  delete this.diagramEdgesById[edge.id];
                 }
                 return () => {
                   delete this.rawEdgesById[newEdge.id];
-                  if (replacingEdge) {
-                    this.rawEdgesById[replacingEdge.id] = replacingEdge;
-                    this.processRawEdge(replacingEdge.id);
+                  for (const edge of edgesBeingReplaced) {
+                    delete this.rawEdgesById[edge.id];
+                    delete this.diagramEdgesById[edge.id];
                   }
                 };
               },
