@@ -34,10 +34,11 @@ import {
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { useViewsStore } from "@/store/views.store";
 import {
+  DiagramNodeDef,
   DiagramSocketDef,
   DiagramViewData,
 } from "@/components/ModelingDiagram/diagram_types";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { ComponentType } from "@/api/sdf/dal/schema";
 import TreeForm from "./AttributesPanel/TreeForm.vue";
 import { TreeFormData, TreeFormProp } from "./AttributesPanel/TreeFormItem.vue";
 import AttributesPanelCustomInputs from "./AttributesPanel/AttributesPanelCustomInputs.vue";
@@ -130,11 +131,11 @@ const currentParent = computed(() => {
 // SOCKETS
 const treeFormItemFromSocket = (
   socket: DiagramSocketDef,
-  componentId: ComponentId,
+  component: DiagramNodeDef,
   existingPeers: SocketWithParentAndEdge[],
   possiblePeers: SocketWithParent[],
 ) => {
-  const combinedId = `${componentId}-${socket.id}`;
+  const combinedId = `${component.id}-${socket.id}`;
   const headerId = `${combinedId}-header`;
 
   return {
@@ -144,6 +145,8 @@ const treeFormItemFromSocket = (
       icon: socket.nodeSide === "left" ? "input-socket" : "output-socket",
       kind: PropertyEditorPropKind.Object,
       widgetKind: { kind: "header" },
+      isHidden: false,
+      isReadonly: false,
     } as TreeFormProp,
     children: [
       {
@@ -158,8 +161,14 @@ const treeFormItemFromSocket = (
               label: `${peerSocket.componentName}/${peerSocket.label}`,
               value: `${peerSocket.componentId}-${peerSocket.id}`,
             })),
-            isSingleArity: socket.maxConnections === 1,
+            isSingleArity:
+              socket.nodeSide === "left" && socket.maxConnections === 1,
+            isUpFrameInput:
+              component.componentType === ComponentType.ConfigurationFrameUp &&
+              socket.nodeSide === "left",
           },
+          isHidden: false,
+          isReadonly: false,
         } as TreeFormProp,
         children: [],
         value: {
@@ -168,7 +177,7 @@ const treeFormItemFromSocket = (
           value: existingPeers.map((peerSocket) => ({
             label: `${peerSocket.componentName}/${peerSocket.label}`,
             value: `${peerSocket.componentId}-${peerSocket.id}`,
-            isImmutable: peerSocket.edge.isInferred,
+            isInferred: peerSocket.edge.isInferred,
           })),
           canBeSetBySocket: false,
           isFromExternalSource: false,
@@ -207,19 +216,21 @@ const sockets = computed(() => {
 
   const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
   const sockets =
-    selectedComponent.def.sockets.map((s) => {
-      const { existingPeers, possiblePeers } = peersFunction(
-        s,
-        selectedComponent.def.id,
-      );
+    selectedComponent.def.sockets
+      .filter((s) => !s.isManagement)
+      .map((s) => {
+        const { existingPeers, possiblePeers } = peersFunction(
+          s,
+          selectedComponent.def.id,
+        );
 
-      return treeFormItemFromSocket(
-        s,
-        selectedComponent.def.id,
-        existingPeers,
-        possiblePeers,
-      );
-    }) ?? [];
+        return treeFormItemFromSocket(
+          s,
+          selectedComponent.def,
+          existingPeers,
+          possiblePeers,
+        );
+      }) ?? [];
 
   const [input, output] = _.partition(
     sockets,

@@ -1630,10 +1630,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 Object.values(this.viewsById).forEach((view) => {
                   const groupGeo = view.groups[data.component.id];
                   const componentGeo = view.components[data.component.id];
-                  const _geo = groupGeo ?? componentGeo;
-                  // i don't exist in this view, and i am not being added to this view
-                  if (!_geo && !viewId) return;
-                  const finalGeo = geometry ?? _geo;
+                  const thisGeo = groupGeo ?? componentGeo;
+                  // I don't exist in this view, and I am not being added to this view
+                  if (!thisGeo && !viewId) return;
+                  const finalGeo = geometry ?? thisGeo;
                   if (!finalGeo) return;
 
                   delete view.components[data.component.id];
@@ -1647,7 +1647,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     ) as DiagramNodeData;
                     finalGeo.height = node.height;
                     finalGeo.width = node.width;
-                    view.components[data.component.id] = geometry as IRect;
+                    view.components[data.component.id] = finalGeo as IRect;
                   } else {
                     if (!finalGeo.width) finalGeo.width = 500;
                     if (!finalGeo.height) finalGeo.height = 500;

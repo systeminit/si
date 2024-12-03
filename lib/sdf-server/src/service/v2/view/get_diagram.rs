@@ -6,7 +6,7 @@ use axum::extract::{Json, Path};
 use dal::diagram::geometry::{Geometry, GeometryRepresents};
 use dal::diagram::view::{View, ViewId, ViewView};
 use dal::diagram::{Diagram, DiagramError};
-use dal::{slow_rt, ChangeSetId, ComponentId, WorkspacePk};
+use dal::{slow_rt, ChangeSetId, ComponentId, DalContext, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::debug;
 
@@ -89,17 +89,7 @@ pub async fn get_diagram(
 
     let view = View::get_by_id(&ctx, view_id).await?;
 
-    let ctx_clone = ctx.clone();
-    let diagram = slow_rt::spawn(async move {
-        let ctx = &ctx_clone;
-        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, Some(view_id)).await?)
-    })?
-    .await??;
-
-    Ok(Json(Response {
-        view: ViewView::from_view(&ctx, view).await?,
-        diagram,
-    }))
+    get_diagram_inner(&ctx, view).await
 }
 
 pub async fn get_default_diagram(
@@ -114,15 +104,20 @@ pub async fn get_default_diagram(
     let view_id = View::get_id_for_default(&ctx).await?;
     let view = View::get_by_id(&ctx, view_id).await?;
 
+    get_diagram_inner(&ctx, view).await
+}
+
+async fn get_diagram_inner(ctx: &DalContext, view: View) -> ViewResult<Json<Response>> {
     let ctx_clone = ctx.clone();
+    let view_id = view.id();
     let diagram = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
-        Ok::<Diagram, ViewError>(Diagram::assemble_for_default_view(ctx).await?)
+        Ok::<Diagram, ViewError>(Diagram::assemble(ctx, Some(view_id)).await?)
     })?
     .await??;
 
     Ok(Json(Response {
-        view: ViewView::from_view(&ctx, view).await?,
+        view: ViewView::from_view(ctx, view).await?,
         diagram,
     }))
 }

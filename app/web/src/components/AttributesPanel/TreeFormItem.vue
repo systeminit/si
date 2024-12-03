@@ -304,7 +304,8 @@
       class="flex flex-col gap-xs"
     >
       <VormInput
-        v-if="!socketIsSingleArity || socketConnectionsList.length === 0"
+        v-if="socketDropDownShouldBeShown"
+        ref="socketDropdown"
         :disabled="widgetOptions.length === 0"
         :modelValue="socketDropdownValue"
         :options="widgetOptions"
@@ -316,30 +317,29 @@
         @update:model-value="updateValue"
       />
       <div
-        v-for="peerSocket in socketConnectionsList"
-        :key="peerSocket.value"
+        v-for="connection in socketConnectionsList"
+        :key="connection.value"
         class="flex px-xs"
       >
         <span
           :class="
-            clsx('flex-grow', peerSocket.isImmutable && 'text-neutral-400')
+            clsx('flex-grow', connection.isInferred && 'text-neutral-400')
           "
         >
-          {{ peerSocket.label }}
+          {{ connection.label }}
         </span>
 
         <IconButton
-          v-if="!peerSocket.isImmutable"
+          v-if="!connection.isInferred"
           icon="trash"
           size="sm"
-          @click="unsetHandler(peerSocket.value)"
+          @click="unsetHandler(connection.value)"
         />
         <IconButton
           v-else
-          disabled
           icon="question-circle"
           iconTone="neutral"
-          tooltip="Connection can't be unmade because it's inferred from a parent. You can override it on the diagram"
+          tooltip="Connection can't be unmade because it's inferred from a parent. You can override it above."
         />
       </div>
     </div>
@@ -869,7 +869,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, PropType, ref, watch } from "vue";
+import { computed, PropType, ref, useTemplateRef, watch } from "vue";
 import clsx from "clsx";
 import {
   DropdownMenu,
@@ -1508,17 +1508,29 @@ const editOverride = ref(false);
 
 const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
+// SOCKET CONNECTION WIDGET
 const socketDropdownValue = ref();
 const socketIsSingleArity = computed(() =>
   "isSingleArity" in fullPropDef.value.widgetKind
     ? fullPropDef.value.widgetKind.isSingleArity
     : false,
 );
-const socketDropdownPlaceholder = computed(() =>
-  widgetOptions.value.length > 0
-    ? "Select to connect..."
-    : "No new connections available",
+const socketIsUpFrameInput = computed(() =>
+  "isUpFrameInput" in fullPropDef.value.widgetKind
+    ? fullPropDef.value.widgetKind.isUpFrameInput
+    : false,
 );
+const socketDropdownPlaceholder = computed(() => {
+  if (connectionsAreOverrideable.value) {
+    return widgetOptions.value.length > 0
+      ? "Select to override..."
+      : "No options available to override";
+  } else {
+    return widgetOptions.value.length > 0
+      ? "Select to connect..."
+      : "No connection options available";
+  }
+});
 const socketConnectionsList = computed(() => {
   if (!Array.isArray(currentValue.value)) return [];
 
@@ -1530,6 +1542,27 @@ const socketConnectionsList = computed(() => {
       typeof socket.value === "string",
   );
 });
+
+const socketDropdown = useTemplateRef<HTMLInputElement>("socketDropdown");
+
+const socketHasInferredEdges = computed(
+  () =>
+    socketConnectionsList.value.find((connection) => connection.isInferred) !==
+    undefined,
+);
+
+const connectionsAreOverrideable = computed(
+  () =>
+    socketHasInferredEdges.value &&
+    (socketIsUpFrameInput.value || socketIsSingleArity.value),
+);
+
+const socketDropDownShouldBeShown = computed(
+  () =>
+    connectionsAreOverrideable.value ||
+    // If socket is single arity and has a connection, don't show
+    !(socketIsSingleArity.value && socketConnectionsList.value.length !== 0),
+);
 </script>
 
 <style lang="less">
