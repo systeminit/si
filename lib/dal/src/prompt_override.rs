@@ -97,7 +97,7 @@ impl PromptOverride {
 
         WsEvent::prompt_updated(ctx, kind.to_owned(), true)
             .await?
-            .publish_immediately(ctx)
+            .publish_on_commit(ctx)
             .await?;
         Ok(())
     }
@@ -109,15 +109,15 @@ impl PromptOverride {
             .pg()
             .execute(
                 "
-                DELETE FROM prompt_overrides WHERE kind = $1
-            ",
+                    DELETE FROM prompt_overrides WHERE kind = $1
+                ",
                 &[&kind],
             )
             .await?;
         if deleted > 0 {
             WsEvent::prompt_updated(ctx, kind.to_owned(), false)
                 .await?
-                .publish_immediately(ctx)
+                .publish_on_commit(ctx)
                 .await?;
             Ok(true)
         } else {

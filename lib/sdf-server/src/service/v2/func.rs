@@ -87,6 +87,8 @@ pub enum FuncAPIError {
     MultipleActionTypes(FuncId),
     #[error("function is not an action or asset schema function")]
     NoActionTypes(FuncId),
+    #[error("prompt override error: {0}")]
+    PromptOverride(#[from] dal::prompt_override::PromptOverrideError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema error: {0}")]

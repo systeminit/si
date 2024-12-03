@@ -39,7 +39,7 @@ pub async fn get_prompt(
     let overridden = prompt_override.is_some();
     let prompt_yaml = match prompt_override {
         Some(prompt_override) => prompt_override,
-        None => asset_sprayer.raw_prompt_yaml(&kind).await?.to_string(),
+        None => asset_sprayer.raw_prompt(kind).await?.to_string(),
     };
     Ok(Json(PromptValue {
         kind,
@@ -48,14 +48,20 @@ pub async fn get_prompt(
     }))
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetPromptRequest {
+    pub prompt_yaml: String,
+}
+
 pub async fn set_prompt(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(kind): Path<AwsCliCommandPromptKind>,
-    prompt: String,
+    Json(request): Json<SetPromptRequest>,
 ) -> Result<()> {
     let ctx = builder.build_head(access_builder).await?;
-    PromptOverride::set(&ctx, kind.as_ref(), &prompt).await?;
+    PromptOverride::set(&ctx, kind.as_ref(), &request.prompt_yaml).await?;
+    ctx.commit_no_rebase().await?;
     Ok(())
 }
 
@@ -66,5 +72,6 @@ pub async fn reset_prompt(
 ) -> Result<()> {
     let ctx = builder.build_head(access_builder).await?;
     PromptOverride::reset(&ctx, kind.as_ref()).await?;
+    ctx.commit_no_rebase().await?;
     Ok(())
 }

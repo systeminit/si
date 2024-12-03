@@ -3,6 +3,7 @@ use axum::extract::{Host, OriginalUri, Path, Query};
 use dal::{
     action::prototype::{ActionKind, ActionPrototype},
     func::authoring::FuncAuthoringClient,
+    prompt_override::PromptOverride,
     ChangeSet, ChangeSetId, DalContext, Func, FuncId, SchemaVariant, SchemaVariantId, WorkspacePk,
     WsEvent,
 };
@@ -102,7 +103,11 @@ async fn generate_and_save_code(
     prompt: &Prompt,
     func_id: FuncId,
 ) -> FuncAPIResult<()> {
-    let code = asset_sprayer.run(prompt).await?;
+    let raw_prompt = match PromptOverride::get_opt(ctx, prompt.kind().as_ref()).await? {
+        Some(prompt_override) => prompt_override.into(),
+        None => asset_sprayer.raw_prompt(prompt.kind()).await?,
+    };
+    let code = asset_sprayer.run(prompt, &raw_prompt).await?;
     FuncAuthoringClient::save_code(ctx, func_id, code).await?;
     ctx.commit().await?;
     Ok(())
