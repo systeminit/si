@@ -822,7 +822,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             from: { componentId: ComponentNodeId; socketId: SocketId },
             to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
-            console.log("connection");
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === changeSetsStore.headChangeSetId)

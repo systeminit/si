@@ -117,7 +117,7 @@ async fn get_diagram_inner(ctx: &DalContext, view: View) -> ViewResult<Json<Resp
     .await??;
 
     Ok(Json(Response {
-        view: ViewView::from_view(&ctx, view).await?,
+        view: ViewView::from_view(ctx, view).await?,
         diagram,
     }))
 }

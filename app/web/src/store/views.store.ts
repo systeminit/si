@@ -777,7 +777,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             },
             onSuccess: (response) => {
-              console.log(response);
               componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram);
 
               // remove invalid component IDs from the selection
