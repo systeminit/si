@@ -43,6 +43,8 @@ pub async fn set_type(
 
     let component = Component::get_by_id(&ctx, component_id).await?;
     let mut socket_map = HashMap::new();
+    // PSA: when we call `set_type_by_id` we are not altering any geometries (e.g. turning a small component into a default 500x500 sized frame)
+    // if we do alter those geometries, we need to send multiple geometries back over the wire (currently, we only support sending one)
     let payload = component
         .into_frontend_type(
             &ctx,

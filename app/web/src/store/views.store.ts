@@ -1622,28 +1622,38 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // don't update
                 if (metadata.change_set_id !== changeSetId) return;
                 const { viewId, geometry } = { ...data.component.viewData };
-                if (!viewId || !geometry)
-                  // this is expected in many situations
-                  return; // but will be populated on changing componentType
 
-                const view = this.viewsById[viewId];
-                if (!view) return; // FIXME later when we have full WsEvents
+                // changed component type means book-keeping for all views
+                // PSA: currently SDF does not change any geometry when you change component types
+                // if it starts to change geometry, it must return new geometry for every view
+                // the structure doesn't currently support that
+                Object.values(this.viewsById).forEach((view) => {
+                  const groupGeo = view.groups[data.component.id];
+                  const componentGeo = view.components[data.component.id];
+                  const _geo = groupGeo ?? componentGeo;
+                  // i don't exist in this view, and i am not being added to this view
+                  if (!_geo && !viewId) return;
+                  const finalGeo = geometry ?? _geo;
+                  if (!finalGeo) return;
 
-                delete view.components[data.component.id];
-                delete view.groups[data.component.id];
-                if (data.component.componentType === ComponentType.Component) {
-                  const node = processRawComponent(
-                    data.component,
-                    componentsStore.rawComponentsById,
-                  ) as DiagramNodeData;
-                  geometry.height = node.height;
-                  geometry.width = node.width;
-                  view.components[data.component.id] = geometry as IRect;
-                } else {
-                  if (!geometry.width) geometry.width = 500;
-                  if (!geometry.height) geometry.height = 500;
-                  view.groups[data.component.id] = geometry as IRect;
-                }
+                  delete view.components[data.component.id];
+                  delete view.groups[data.component.id];
+                  if (
+                    data.component.componentType === ComponentType.Component
+                  ) {
+                    const node = processRawComponent(
+                      data.component,
+                      componentsStore.rawComponentsById,
+                    ) as DiagramNodeData;
+                    finalGeo.height = node.height;
+                    finalGeo.width = node.width;
+                    view.components[data.component.id] = geometry as IRect;
+                  } else {
+                    if (!finalGeo.width) finalGeo.width = 500;
+                    if (!finalGeo.height) finalGeo.height = 500;
+                    view.groups[data.component.id] = finalGeo as IRect;
+                  }
+                });
 
                 if (this.selectedComponentId === data.component.id) {
                   if (data.component.changeStatus !== "deleted")
