@@ -1487,6 +1487,46 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+        async CREATE_VIEW_AND_MOVE(
+          name: string,
+          sourceViewId: ViewId,
+          components: Record<ComponentId, IRect>,
+        ) {
+          let sumX = 0;
+          let sumY = 0;
+          const stringGeometries: Record<ComponentId, StringGeometry> = {};
+          Object.entries(components).forEach(([componentId, geo]) => {
+            // sum the center coordinates separately
+            sumX += geo.x;
+            sumY += geo.y + geo.height / 2;
+            stringGeometries[componentId] = {
+              x: Math.round(geo.x).toString(),
+              y: Math.round(geo.y).toString(),
+              width: Math.round(geo.width).toString(),
+              height: Math.round(geo.height).toString(),
+            };
+          });
+          const viewToHexagonGeo = {
+            x: Math.round(
+              sumX / Object.keys(stringGeometries).length,
+            ).toString(),
+            y: Math.round(
+              sumY / Object.keys(stringGeometries).length,
+            ).toString(),
+            radius: "250",
+          };
+          return new ApiRequest({
+            method: "post",
+            url: API_PREFIX.concat(["create_and_move"]),
+            params: {
+              name,
+              sourceViewId,
+              geometriesByComponentId: stringGeometries,
+              removeFromOriginalView: true,
+              placeViewAt: viewToHexagonGeo,
+            },
+          });
+        },
       },
       async onActivated() {
         if (!changeSetId) return;

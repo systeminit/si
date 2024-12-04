@@ -20,6 +20,7 @@ use tokio::task::JoinError;
 
 pub mod create_component;
 pub mod create_view;
+pub mod create_view_and_move;
 mod create_view_object;
 mod erase_components;
 mod erase_view_object;
@@ -104,6 +105,10 @@ pub fn v2_routes() -> Router<AppState> {
         // Func Stuff
         .route("/", get(list_views::list_views))
         .route("/", post(create_view::create_view))
+        .route(
+            "/create_and_move",
+            post(create_view_and_move::create_view_and_move),
+        )
         .route("/:view_id", put(update_view::update_view))
         .route("/:view_id/get_diagram", get(get_diagram::get_diagram))
         .route("/:view_id/get_geometry", get(get_diagram::get_geometry))

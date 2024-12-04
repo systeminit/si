@@ -1,16 +1,34 @@
 <template>
-  <DropdownMenu
-    v-if="selectedEdge"
-    ref="contextMenuRef"
-    :items="rightClickMenuItemsEdge"
-    variant="editor"
-  />
-  <DropdownMenu
-    v-else
-    ref="contextMenuRef"
-    :items="rightClickMenuItems"
-    variant="editor"
-  />
+  <div>
+    <DropdownMenu
+      v-if="selectedEdge"
+      ref="contextMenuRef"
+      :items="rightClickMenuItemsEdge"
+      variant="editor"
+    />
+    <DropdownMenu
+      v-else
+      ref="contextMenuRef"
+      :items="rightClickMenuItems"
+      variant="editor"
+    />
+    <Modal
+      ref="modalRef"
+      type="save"
+      size="sm"
+      saveLabel="Create"
+      title="Create View"
+      @save="create"
+    >
+      <VormInput
+        ref="labelRef"
+        v-model="viewName"
+        required
+        label="View Name"
+        @enterPressed="create"
+      />
+    </Modal>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -18,6 +36,8 @@ import * as _ from "lodash-es";
 import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  Modal,
+  VormInput,
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
@@ -197,6 +217,43 @@ const anyViews = computed(() =>
   selectedComponents.value.some((c) => c instanceof DiagramViewData),
 );
 
+const modalRef = ref<InstanceType<typeof Modal>>();
+const labelRef = ref<InstanceType<typeof VormInput>>();
+const viewName = ref("");
+const newView = () => {
+  modalRef.value?.open();
+};
+
+const create = async () => {
+  if (!viewStore.selectedViewId) return;
+  if (!viewName.value) {
+    labelRef.value?.setError("Name is required");
+  } else {
+    const components: Record<ComponentId, IRect> = {};
+    selectedComponents.value.forEach((component) => {
+      const geo =
+        component.def.componentType === ComponentType.Component
+          ? viewStore.components[component.def.id]
+          : viewStore.groups[component.def.id];
+      if (geo) components[component.def.id] = geo;
+    });
+    const resp = await viewStore.CREATE_VIEW_AND_MOVE(
+      viewName.value,
+      viewStore.selectedViewId,
+      components,
+    );
+    if (resp.result.success) {
+      modalRef.value?.close();
+
+      viewName.value = "";
+    } else if (resp.result.statusCode === 409) {
+      labelRef.value?.setError(
+        `${viewName.value} is already in use. Please choose another name`,
+      );
+    }
+  }
+};
+
 /**
  * HERE IS THE APPROACH IN GENERAL
  * Make sure every "action" (i.e. onSelect) operates on the whole list of selectedComponents
@@ -219,7 +276,10 @@ const rightClickMenuItems = computed(() => {
       items.push({
         label: "Move to",
         icon: "arrows-out",
-        submenuItems: viewsSubitems(viewAdd(true)),
+        submenuItems: viewsSubitems(viewAdd(true)).concat({
+          label: "Create new View ...",
+          onSelect: newView,
+        }),
       });
       items.push({
         label: "Copy to",
