@@ -150,7 +150,9 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 Object.keys(inProgressChangeSets).forEach((key) => {
                   resultForChangeSet.push({ label: key, value: key });
                 });
-                resultForChangeSet.sort();
+                resultForChangeSet.sort((a, b) =>
+                  a.label.localeCompare(b.label),
+                );
                 this.headerOptions.changeSet = resultForChangeSet;
 
                 const resultForEntityName: { label: string; value: string }[] =
@@ -158,7 +160,9 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 Object.keys(inProgressEntityNames).forEach((key) => {
                   resultForEntityName.push({ label: key, value: key });
                 });
-                resultForEntityName.sort();
+                resultForEntityName.sort((a, b) =>
+                  a.label.localeCompare(b.label),
+                );
                 this.headerOptions.entityName = resultForEntityName;
 
                 const resultForEntityType: { label: string; value: string }[] =
@@ -166,21 +170,23 @@ export const useLogsStore = (forceChangeSetId?: ChangeSetId) => {
                 Object.keys(inProgressEntityTypes).forEach((key) => {
                   resultForEntityType.push({ label: key, value: key });
                 });
-                resultForEntityType.sort();
+                resultForEntityType.sort((a, b) =>
+                  a.label.localeCompare(b.label),
+                );
                 this.headerOptions.entityType = resultForEntityType;
 
                 const resultForTitle: { label: string; value: string }[] = [];
                 Object.keys(inProgressTitles).forEach((key) => {
                   resultForTitle.push({ label: key, value: key });
                 });
-                resultForTitle.sort();
+                resultForTitle.sort((a, b) => a.label.localeCompare(b.label));
                 this.headerOptions.title = resultForTitle;
 
                 const resultForUser: { label: string; value: string }[] = [];
                 Object.keys(inProgressUsers).forEach((key) => {
                   resultForUser.push({ label: key, value: key });
                 });
-                resultForUser.sort();
+                resultForUser.sort((a, b) => a.label.localeCompare(b.label));
                 this.headerOptions.user = resultForUser;
               },
             });
