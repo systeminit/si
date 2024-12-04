@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
 
 jobs:
@@ -14,9 +14,23 @@ jobs:
     if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/github-script@v7
+        id: create-comment
+        with:
+          script: |
+            const { data } = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Okay, starting a try! I\'ll update this comment when it starts...'
+            });
+            return { id: data.id };
+
       - uses: xt0rted/pull-request-comment-branch@v2
         id: comment-branch
+
       - uses: "buildkite/trigger-pipeline-action@v2.1.0"
+        id: run-build
         with:
           buildkite_api_access_token: ${{ secrets.BUILDKITE_TOKEN }} # TODO(johnrwatson): This is Scott's Token at the minute, needs rotated
           pipeline: "system-initiative/si-merge-queue"
@@ -24,3 +38,20 @@ jobs:
           message:  ":github: Try for branch ${{ steps.comment-branch.outputs.head_ref }}"
           ignore_pipeline_branch_filter: true
           send_pull_request: true
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const commentId = "${{ steps.create-comment.outputs.id }}";
+            const buildUrl = "${{ steps.run-build.outputs.url }}";
+
+            if (!commentId || !buildUrl) {
+              throw new Error("Missing comment ID or build URL.");
+            }
+
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: commentId,
+              body: `🚀 [Try running here](${buildUrl})! 🚀`
+            });
