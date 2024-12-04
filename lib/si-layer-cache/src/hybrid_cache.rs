@@ -99,7 +99,7 @@ where
         );
 
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
-            .with_name(&config.name)
+            .with_name(config.name.to_string())
             .memory(memory_cache_capacity_bytes)
             .with_weighter(
                 |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
