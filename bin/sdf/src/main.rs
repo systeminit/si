@@ -132,6 +132,7 @@ async fn run_server(
     telemetry_shutdown: TelemetryShutdownGuard,
 ) -> Result<()> {
     let migration_mode_is_run = config.migration_mode().is_run();
+    let is_dev_mode = config.dev_mode();
 
     let server = Server::from_config(
         config,
@@ -146,7 +147,7 @@ async fn run_server(
         //
         // Note that signals are not yet listened for, so a `SIGTERM`/`SIGINT` will cancel this
         // operation and simply exit.
-        server.migrator().run_migrations().await?;
+        server.migrator().run_migrations(is_dev_mode).await?;
     }
 
     main_tracker.spawn(async move {
@@ -180,7 +181,7 @@ async fn migrate_and_quit(
     let migrator =
         Migrator::from_config(config, &helping_tasks_tracker, helping_tasks_token.clone()).await?;
 
-    let handle = main_tracker.spawn(migrator.run_migrations());
+    let handle = main_tracker.spawn(migrator.run_migrations(false));
 
     shutdown::graceful_with_handle(handle)
         .group(main_tracker, main_token)

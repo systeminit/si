@@ -146,6 +146,9 @@ pub struct Config {
 
     #[builder(default)]
     audit: AuditDatabaseConfig,
+
+    #[builder(default)]
+    dev_mode: bool,
 }
 
 impl StandardConfig for Config {
@@ -264,6 +267,10 @@ impl Config {
     pub fn audit(&self) -> &AuditDatabaseConfig {
         &self.audit
     }
+
+    pub fn dev_mode(&self) -> bool {
+        self.dev_mode
+    }
 }
 
 impl ConfigBuilder {
@@ -286,6 +293,8 @@ pub struct ConfigFile {
     pub nats: NatsConfig,
     #[serde(default)]
     pub migration_mode: MigrationMode,
+    #[serde(default)]
+    pub dev_mode: bool,
     #[serde(default)]
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
@@ -340,6 +349,7 @@ impl Default for ConfigFile {
             create_workspace_allowlist: Default::default(),
             spicedb: Default::default(),
             audit: Default::default(),
+            dev_mode: false,
         }
     }
 }
@@ -375,6 +385,7 @@ impl TryFrom<ConfigFile> for Config {
             create_workspace_allowlist: value.create_workspace_allowlist,
             spicedb: value.spicedb,
             audit: value.audit,
+            dev_mode: value.dev_mode,
         })
     }
 }
@@ -513,6 +524,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.dev_mode = true;
 
     Ok(())
 }
@@ -575,6 +587,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.dev_mode = true;
 
     Ok(())
 }
