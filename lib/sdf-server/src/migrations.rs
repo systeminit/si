@@ -4,7 +4,7 @@ use audit_logs::database::{
     AuditDatabaseContext, AuditDatabaseContextError, AuditDatabaseMigrationError,
 };
 use dal::{
-    cached_module::CachedModuleError, slow_rt::SlowRuntimeError,
+    cached_module::CachedModule, slow_rt::SlowRuntimeError,
     workspace_snapshot::migrator::SnapshotGraphMigrator, ServicesContext,
 };
 use telemetry::prelude::*;
@@ -25,14 +25,14 @@ pub enum MigratorError {
     Join(#[from] JoinError),
     #[error("error while migrating audit database: {0}")]
     MigrateAuditDatabase(#[source] AuditDatabaseMigrationError),
+    #[error("error while migrating cached modules: {0}")]
+    MigrateCachedModules(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("error while migrating dal database: {0}")]
     MigrateDalDatabase(#[source] dal::ModelError),
     #[error("error while migrating layer db database: {0}")]
     MigrateLayerDbDatabase(#[source] si_layer_cache::LayerDbError),
     #[error("error while migrating snapshots: {0}")]
     MigrateSnapshots(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
-    #[error("module cache error: {0}")]
-    ModuleCache(#[from] CachedModuleError),
     #[error("module index url not set")]
     ModuleIndexNotSet,
     #[error("slow runtime: {0}")]
@@ -45,6 +45,13 @@ impl MigratorError {
         E: std::error::Error + 'static + Sync + Send,
     {
         Self::MigrateSnapshots(Box::new(err))
+    }
+
+    fn migrate_cached_modules<E>(err: E) -> Self
+    where
+        E: std::error::Error + 'static + Sync + Send,
+    {
+        Self::MigrateCachedModules(Box::new(err))
     }
 }
 
@@ -97,7 +104,7 @@ impl Migrator {
             otel.status_message = Empty,
         )
     )]
-    pub async fn run_migrations(self) -> MigratorResult<()> {
+    pub async fn run_migrations(self, update_module_cache: bool) -> MigratorResult<()> {
         let span = current_span_for_instrument_at!("info");
 
         self.migrate_audit_database()
@@ -115,6 +122,12 @@ impl Migrator {
         self.migrate_snapshots()
             .await
             .map_err(|err| span.record_err(err))?;
+
+        if update_module_cache {
+            self.migrate_module_cache()
+                .await
+                .map_err(|err| span.record_err(err))?;
+        }
 
         span.record_ok();
         Ok(())
@@ -163,6 +176,27 @@ impl Migrator {
         ctx.commit_no_rebase()
             .await
             .map_err(MigratorError::migrate_snapshots)?;
+        Ok(())
+    }
+
+    #[instrument(name = "sdf.migrator.migrate_module_cache", level = "info", skip_all)]
+    async fn migrate_module_cache(&self) -> MigratorResult<()> {
+        let dal_context = self.services_context.clone().into_builder(true);
+        let ctx = dal_context
+            .build_default()
+            .await
+            .map_err(MigratorError::migrate_cached_modules)?;
+
+        info!("Updating local module cache");
+
+        let new_modules = CachedModule::update_cached_modules(&ctx)
+            .await
+            .map_err(MigratorError::migrate_cached_modules)?;
+        info!(
+            "{} new builtin assets found in module index",
+            new_modules.len()
+        );
+
         Ok(())
     }
 }
