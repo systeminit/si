@@ -1,8 +1,6 @@
 import * as fs from "fs/promises";
 import Joi from "joi";
-import {
-  describe, expect, test, vi, fail,
-} from "vitest";
+import { describe, expect, fail, test, vi } from "vitest";
 import { executeFunction, FunctionKind } from "../src/function";
 import { AnyFunction, RequestCtx } from "../src/request";
 
@@ -24,7 +22,7 @@ interface FuncScenario {
   before?: {
     handler: string;
     func: FuncOrFuncLocation;
-    arg: Record<string, any>
+    arg: Record<string, any>;
   }[];
   result?: any;
   timeout?: number;
@@ -105,7 +103,7 @@ const scenarios: FuncScenario[] = [
     result: {
       protocol: "result",
       status: "success",
-      error: "\"value\" must be a number",
+      error: '"value" must be a number',
     },
   },
   {
@@ -130,7 +128,7 @@ const scenarios: FuncScenario[] = [
     result: {
       protocol: "result",
       status: "success",
-      error: "\"value\" must be a string",
+      error: '"value" must be a string',
     },
   },
   {
@@ -253,7 +251,9 @@ describe("executeFunction", () => {
           }, scenario.timeout);
           fail("expected function to hit timeout, but no error was thrown");
         } catch (error) {
-          expect(error.message).toBe(`function timed out after ${scenario.timeout} seconds`);
+          expect(error.message).toBe(
+            `function timed out after ${scenario.timeout} seconds`,
+          );
         }
       } else {
         await executeFunction(scenario.kind, {
@@ -262,10 +262,12 @@ describe("executeFunction", () => {
           before,
         }, testSuiteTimeout * 1000);
         const parsedLog = JSON.parse(lastLog);
-        expect(parsedLog).toMatchObject(scenario.result ?? {
-          protocol: "result",
-          status: "success",
-        });
+        expect(parsedLog).toMatchObject(
+          scenario.result ?? {
+            protocol: "result",
+            status: "success",
+          },
+        );
       }
     },
   );
@@ -273,5 +275,5 @@ describe("executeFunction", () => {
 
 async function base64FromFile(path: string) {
   const buffer = await fs.readFile(path);
-  return (buffer).toString("base64");
+  return buffer.toString("base64");
 }

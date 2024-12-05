@@ -1,3 +1,5 @@
+import process from "node:process";
+
 export type Debugger = (msg: any) => void;
 
 export function Debug(namespace: string): Debugger {
