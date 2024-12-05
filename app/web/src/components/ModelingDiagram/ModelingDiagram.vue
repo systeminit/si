@@ -2981,12 +2981,12 @@ function fixRenameInputPosition() {
         const width =
           z > 0.5
             ? (diffIcon
-                ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE * 2
-                : componentBox.width - 18 - GROUP_HEADER_ICON_SIZE * 3) * z
+                ? componentBox.width - 2 - GROUP_HEADER_ICON_SIZE
+                : componentBox.width - 8 - GROUP_HEADER_ICON_SIZE * 2) * z
             : componentBox.width * z;
         const top = y - 58 * z;
         const left =
-          z > 0.5 ? x - width / 2 + (diffIcon ? 30 : 4) * z : x - width / 2;
+          z > 0.5 ? x - width / 2 + (diffIcon ? 20 : 0) * z : x - width / 2;
 
         renameInputWrapperRef.value.style.top = `${top}px`;
         renameInputWrapperRef.value.style.left = `${left}px`;

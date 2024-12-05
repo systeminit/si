@@ -57,7 +57,7 @@ you can pass in options as props too */
             'border',
             isFocus
               ? [
-                  'z-[101]',
+                  'z-[1]',
                   themeClasses(
                     'bg-shade-0 border-action-500',
                     'bg-shade-100 border-action-300',
