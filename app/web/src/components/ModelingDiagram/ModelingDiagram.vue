@@ -268,7 +268,6 @@ import {
   ref,
   computed,
   onBeforeUnmount,
-  reactive,
   watch,
   InjectionKey,
   ComputedRef,
@@ -856,7 +855,13 @@ async function onKeyDown(e: KeyboardEvent) {
   ) {
     componentsStore.REFRESH_RESOURCE_INFO(viewStore.selectedComponent.def.id);
   }
-  if (!props.readOnly && e.key === "n" && viewStore.selectedComponentId) {
+  if (
+    !props.readOnly &&
+    e.key === "n" &&
+    viewStore.selectedComponentId &&
+    viewStore.selectedComponent &&
+    !(viewStore.selectedComponent instanceof DiagramViewData)
+  ) {
     e.preventDefault();
     renameOnDiagramByComponentId(viewStore.selectedComponentId);
   }
@@ -1212,12 +1217,10 @@ function panToComponent(payload: {
   component: DiagramGroupData | DiagramGroupData;
   center?: boolean;
 }) {
-  const key = getDiagramElementKeyForComponentId(payload.component.def.id);
-  if (!key) return;
-  const el = allElementsByKey.value[key];
-  if (!el) return;
-
-  const nodeRect = nodesLocationInfo[el.uniqueKey];
+  const nodeRect =
+    payload.component instanceof DiagramNodeData
+      ? viewStore.components[payload.component.def.id]
+      : viewStore.groups[payload.component.def.id];
   if (!nodeRect) return;
 
   if (payload.center) {
@@ -2751,7 +2754,6 @@ async function triggerInsertElement() {
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
-const nodesLocationInfo = reactive<Record<string, IRect>>({});
 
 type DIRECTION = "to" | "from";
 function getSocketLocationInfo(
@@ -2992,18 +2994,18 @@ function fixRenameInputPosition() {
 }
 
 function renameOnDiagramByComponentId(componentId: ComponentId) {
-  const key = getDiagramElementKeyForComponentId(componentId);
-  if (!key) return;
-  const el = allElementsByKey.value[key] as DiagramGroupData | DiagramNodeData;
-  if (!el) return;
-
-  const nodeRect = nodesLocationInfo[el.uniqueKey];
+  const component = componentsStore.allComponentsById[componentId];
+  if (!component) return;
+  const nodeRect =
+    component instanceof DiagramNodeData
+      ? viewStore.components[component.def.id]
+      : viewStore.groups[component.def.id];
   if (!nodeRect) return;
 
   // TODO - for now, renaming from the event bus resets the zoom level
   gridOrigin.value = getRectCenter(nodeRect);
   setZoomLevel(1);
-  renameOnDiagram(el, () => {});
+  renameOnDiagram(component, () => {});
 }
 
 function renameOnDiagram(
