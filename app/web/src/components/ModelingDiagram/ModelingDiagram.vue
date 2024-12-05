@@ -380,6 +380,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
+  (e: "close-right-click-menu"): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -414,6 +415,8 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 const zoomLevel = ref(1);
 
 function setZoomLevel(newZoomLevel: number) {
+  emit("close-right-click-menu");
+
   if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
   else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
   else zoomLevel.value = newZoomLevel;
@@ -492,6 +495,8 @@ const pointerIsWithinGrid = computed(() => {
 function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   // TODO check if target is the stage?
   e.evt.preventDefault();
+
+  emit("close-right-click-menu");
 
   // is it a mouse wheel or a trackpad pinch to zoom?
   const isTrackpadPinch = !_.isInteger(e.evt.deltaY);

@@ -1,5 +1,7 @@
 <template>
-  <div class="dark:border-neutral-600 border-b">
+  <div
+    :class="clsx(dropdownMenuSearch ? '' : 'dark:border-neutral-600 border-b')"
+  >
     <label
       class="relative text-neutral-400 focus-within:text-neutral-600 block h-[34px]"
     >
@@ -8,12 +10,13 @@
         :placeholder="placeholder"
         :class="
           clsx(
-            'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic',
-            'focus:bg-neutral-50 focus:dark:bg-shade-100 focus:outline focus:outline-2 focus:outline-action-500 outline-offset-[-1px]',
-            themeClasses(
-              'text-black bg-shade-0 placeholder:text-neutral-500',
-              'text-white bg-neutral-800 placeholder:text-neutral-400',
-            ),
+            'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic outline-offset-[-1px] focus:outline focus:outline-2 focus:outline-action-500',
+            dropdownMenuSearch
+              ? 'text-white bg-shade-100 placeholder:text-neutral-400'
+              : themeClasses(
+                  'text-black bg-shade-0 placeholder:text-neutral-500 focus:bg-neutral-50',
+                  'text-white bg-neutral-800 placeholder:text-neutral-400 focus:bg-shade-100',
+                ),
             filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
@@ -21,7 +24,12 @@
       />
       <Icon
         name="search"
-        class="absolute left-2xs top-[6px] dark:text-neutral-600"
+        :class="
+          clsx(
+            'absolute left-2xs top-[6px]',
+            dropdownMenuSearch ? 'text-neutral-600' : 'dark:text-neutral-600',
+          )
+        "
       />
       <div
         class="absolute right-0 top-0 h-[34px] flex flex-row items-center px-2xs"
@@ -57,6 +65,12 @@
           class="px-xs pt-xs pb-2xs flex flex-row flex-wrap gap-2xs select-none"
         >
           <FilterPill
+            v-if="allFilter"
+            :filter="allFilter"
+            :selected="!filteringActive"
+            @click="resetFilters"
+          />
+          <FilterPill
             v-for="(filter, index) in filters"
             :key="index"
             :filter="filter"
@@ -78,7 +92,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import FilterPill from "./FilterPill.vue";
 import Icon from "../icons/Icon.vue";
@@ -121,6 +135,8 @@ const props = defineProps({
   modelValue: { type: String },
   filters: { type: Array<Filter> },
   disableFilters: { type: Boolean },
+  dropdownMenuSearch: { type: Boolean },
+  allFilter: { type: Object as PropType<Filter> },
 });
 
 const filtersEnabled = computed(() => props.filters && !props.disableFilters);

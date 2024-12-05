@@ -50,7 +50,7 @@
             modalRef?.open();
           }
         "
-        label="Edit Name"
+        label="Rename"
       />
       <DropdownMenuItem
         :disabled="

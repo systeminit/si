@@ -6,8 +6,8 @@
       v-bind="dynamicAttrs"
       :class="
         clsx(
-          'z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden text-white bg-black',
-          '',
+          'text-shade-0 bg-shade-100 z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
+          'flex flex-col',
           variant === 'editor'
             ? 'rounded border border-neutral-600 min-w-[164px]'
             : 'p-2xs outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
@@ -18,16 +18,31 @@
       @mouseenter="setHover"
       @mouseleave="clearHover"
     >
-      <!-- items can be passed in via props -->
-      <DropdownMenuItem
-        v-for="item in items"
-        :key="item.label"
-        v-bind="item"
-        :insideSubmenu="submenu"
+      <SiSearch
+        v-if="search"
+        ref="siSearchRef"
+        class="w-full flex-none"
+        dropdownMenuSearch
+        :allFilter="{ name: 'All Views' }"
+        :filters="searchFilters"
+        @click.stop
+        @search="onSearch"
       />
+      <div
+        ref="scrollDivRef"
+        class="flex-1 overflow-x-hidden overflow-y-auto min-h-[20px]"
+      >
+        <!-- items can be passed in via props -->
+        <DropdownMenuItem
+          v-for="item in items"
+          :key="item.label"
+          v-bind="item"
+          :insideSubmenu="submenu"
+        />
 
-      <!-- or use DropdownMenuItem in the default slot -->
-      <slot />
+        <!-- or use DropdownMenuItem in the default slot -->
+        <slot />
+      </div>
     </div>
   </Teleport>
 </template>
@@ -38,6 +53,7 @@ type DropdownMenuContext = {
   isOpen: Ref<boolean>;
   isCheckable: Ref<boolean>;
   focusedItemId: Ref<string | undefined>;
+  search: boolean;
 
   registerItem(id: string, component: ComponentInternalInstance): void;
   unregisterItem(id: string): void;
@@ -80,12 +96,15 @@ import {
 } from "vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
 import { useThemeContainer } from "../utils/theme_tools";
+import SiSearch, { Filter } from "../general/SiSearch.vue";
 
 export type DropdownMenuItemObjectDef = InstanceType<
   typeof DropdownMenuItem
 >["$props"];
 
 export type DropdownMenuVariant = "classic" | "compact" | "editor";
+
+const MENU_EDGE_BUFFER = 10;
 
 useThemeContainer("dark");
 
@@ -95,23 +114,43 @@ interface SubmenuParent {
   close: (shouldNotClose?: boolean, closeRecursively?: boolean) => void;
 }
 
+// IMPORTANT NOTE - currently any DropdownMenu with a dynamic number of DropdownMenuItems cannot have submenus
 const props = defineProps({
+  // Set an anchorTo element if you want the DropdownMenu to be attached to a DOM element
+  // If no anchorTo element is used, each open() event for this Dropdown will try to determine where to anchor based on the mouse position or event target
   anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
-  forceAbove: Boolean,
-  forceRight: Boolean,
-  submenu: Boolean, // If this is a submenu, the parent menu element is in the anchorTo prop!
-  forceAlignRight: Boolean,
+
+  // You can add DropdownMenuItems via this prop or in a template
   items: {
     type: Array as PropType<DropdownMenuItemObjectDef[]>,
   },
+  // Each variant has slightly different styles
   variant: {
     type: String as PropType<DropdownMenuVariant>,
     default: "compact",
   },
-  alignCenter: Boolean,
+
+  // Alignment properties to adjust how the menu behaves in terms of position/alignment
+  forceAbove: Boolean, // forces the menu to appear above the anchor position
+  forceAlignRight: Boolean, // forces the menu to align to the right edge of the anchor position instead of defaulting to aligning left
+  alignCenter: Boolean, // aligns the menu to be centered on the anchor position horizontally
+  overlapAnchorOnAnchorTo: Boolean, // adjusts the menu position to cover the anchor element instead of positioning on its edge
+  overlapAnchorOffset: { type: Number, default: 0 }, // adjust the overlap position with a fixed number
+
+  // SUBMENUS CAN BREAK BE AWARE OF HOW YOU USE THEM WITH A DYNAMIC NUMBER OF CHILD ELEMENTS
+  submenu: Boolean, // If this is a submenu, the parent menu element is in the anchorTo prop!
+
+  // Props for a search bar at the top of this DropdownMenu
+  search: Boolean,
+  searchFilters: Array<Filter>,
+
+  maxWidth: { type: Number, default: 280 }, // change this to adjust the maximum width of the DropdownMenu
+  matchWidthToAnchor: { type: Boolean }, // forces the width of the menu to match the anchorTo element's width
 });
 
 const internalRef = ref<HTMLElement | null>(null);
+const scrollDivRef = ref();
+const siSearchRef = ref<InstanceType<typeof SiSearch>>();
 
 function nextFrame(cb: () => void) {
   requestAnimationFrame(() => requestAnimationFrame(cb));
@@ -226,13 +265,15 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
   nextFrame(finishOpening);
 }
 function finishOpening() {
-  startListening();
   readjustMenuPosition();
+  startListening();
 }
 function close(shouldNotClose = false, closeRecursively = true) {
   if (shouldNotClose) return;
   isOpen.value = false;
   stopListening();
+  clearPositioningData();
+  emit("onClose");
   if (
     props.submenu &&
     props.anchorTo &&
@@ -243,10 +284,29 @@ function close(shouldNotClose = false, closeRecursively = true) {
   }
   // TODO: could return focus to the menu button (if one exists)
 }
+function closeOnResizeOrScroll(e: Event) {
+  // because a scroll event in the DiagramOutline can be a side effect of opening the editor right click menu
+  // this behavior is disabled for the editor variant for scroll events
+  if (
+    scrollDivRef.value &&
+    scrollDivRef.value !== e.target &&
+    !(props.variant === "editor" && e.type === "scroll")
+  ) {
+    close();
+  }
+}
+function clearPositioningData() {
+  anchorEl.value = undefined;
+  anchorPos.value = undefined;
+  menuHeight.value = undefined;
+  hAlign.value = "left";
+  vAlign.value = "below";
+}
 
 const anchorEl = ref<HTMLElement | Element>();
 const anchorPos = ref<{ x: number; y: number }>();
 
+const menuHeight = ref<number | undefined>(undefined);
 const hAlign = ref<"left" | "right">("left");
 const vAlign = ref<"below" | "above">("below");
 const posX = ref(0);
@@ -255,9 +315,10 @@ const posY = ref(0);
 function readjustMenuPosition() {
   if (!internalRef.value) return;
 
+  menuHeight.value = undefined;
   isRepositioning.value = false;
 
-  let anchorRect;
+  let anchorRect: DOMRect;
   if (anchorEl.value) {
     anchorRect = anchorEl.value.getBoundingClientRect();
   } else if (anchorPos.value) {
@@ -289,15 +350,47 @@ function readjustMenuPosition() {
     }
   }
 
-  // try positioning the menu below the anchor, and otherwise position above
-  vAlign.value = "below";
-  posY.value = anchorRect.bottom + 4;
-  if (props.submenu) {
-    posY.value = anchorRect.top;
-  }
+  const overlapOffset = anchorRect.height + props.overlapAnchorOffset;
+
+  // try positioning the menu below the anchor
+  const positionBelow = () => {
+    vAlign.value = "below";
+    posY.value = anchorRect.bottom + 4;
+    if (props.submenu) {
+      posY.value = anchorRect.top;
+    } else if (props.overlapAnchorOnAnchorTo) {
+      posY.value -= overlapOffset;
+    }
+  };
+  positionBelow();
+  const availableHeightBelow =
+    window.innerHeight - posY.value - MENU_EDGE_BUFFER;
+
+  // if the menu does not fit below the anchor or if forceAbove is enabled, position it above the anchor
   if (props.forceAbove || posY.value + menuRect.height > window.innerHeight) {
     vAlign.value = "above";
     posY.value = window.innerHeight - (anchorRect.top - 4);
+    if (props.overlapAnchorOnAnchorTo) {
+      posY.value -= overlapOffset;
+    }
+    const availableHeightAbove =
+      window.innerHeight - posY.value - MENU_EDGE_BUFFER;
+
+    // Check if the menu goes off the top of the screen
+    if (window.innerHeight - posY.value - menuRect.height < 0) {
+      // The menu does not fit above or below the anchor position so we need to constrain the menu height and enable scrolling
+      if (props.forceAbove || availableHeightAbove > availableHeightBelow) {
+        // constrain the height of the menu and put it above
+        menuHeight.value = window.innerHeight - posY.value - MENU_EDGE_BUFFER;
+      } else {
+        // constrain the height of the menu and put it below
+        positionBelow();
+        menuHeight.value = window.innerHeight - posY.value - MENU_EDGE_BUFFER;
+        if (props.overlapAnchorOnAnchorTo) {
+          menuHeight.value -= overlapOffset;
+        }
+      }
+    }
   }
 }
 
@@ -306,6 +399,10 @@ const computedStyle = computed(() => ({
   ...(hAlign.value === "right" && { right: `${posX.value}px` }),
   ...(vAlign.value === "below" && { top: `${posY.value}px` }),
   ...(vAlign.value === "above" && { bottom: `${posY.value}px` }),
+  ...(menuHeight.value && { maxHeight: `${menuHeight.value}px` }),
+  ...(props.matchWidthToAnchor && anchorEl.value
+    ? { width: `${anchorEl.value.getBoundingClientRect().width}px` }
+    : { maxWidth: `${props.maxWidth}px` }),
 }));
 
 // Event handling //////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +410,8 @@ const computedStyle = computed(() => ({
 function startListening() {
   window.addEventListener("keydown", onKeyboardEvent);
   window.addEventListener("mousedown", onWindowMousedown);
+  window.addEventListener("resize", closeOnResizeOrScroll);
+  window.addEventListener("scroll", closeOnResizeOrScroll, true);
 }
 function onWindowMousedown(e: MouseEvent) {
   if (
@@ -342,19 +441,17 @@ function onWindowMousedown(e: MouseEvent) {
   }
 }
 function onKeyboardEvent(e: KeyboardEvent) {
-  internalRef.value?.focus({ preventScroll: true });
-
   if (e.key === "ArrowUp") {
     if (focusedItemIndex.value === undefined)
       focusedItemIndex.value = sortedItemIds.value.length - 1;
     else focusedItemIndex.value -= 1;
-    // focusedItemEl.value?.focus({ preventScroll: true });
     e.preventDefault();
   } else if (e.key === "ArrowDown") {
     if (focusedItemIndex.value === undefined) focusedItemIndex.value = 0;
     else focusedItemIndex.value += 1;
     e.preventDefault();
   } else if (e.key === "Enter" || e.key === " ") {
+    // TODO(WENDY) - how does this part conflict with using the search bar?
     focusedItemEl.value.click();
     e.preventDefault();
   } else if (e.key === "Escape") {
@@ -364,6 +461,8 @@ function onKeyboardEvent(e: KeyboardEvent) {
 function stopListening() {
   window.removeEventListener("keydown", onKeyboardEvent);
   window.removeEventListener("mousedown", onWindowMousedown);
+  window.removeEventListener("resize", closeOnResizeOrScroll);
+  window.addEventListener("scroll", closeOnResizeOrScroll, true);
 }
 
 // additional attributes bound onto the root node - used for accessibility attributes
@@ -397,6 +496,7 @@ const context = {
   unregisterItem,
   focusOnItem,
   openSubmenu,
+  search: props.search,
 };
 provide(DropdownMenuContextInjectionKey, context);
 
@@ -409,12 +509,28 @@ const clearHover = () => {
   hovered.value = false;
 };
 
+const emit = defineEmits<{
+  (e: "search", searchString: string): void;
+  (e: "onClose"): void;
+}>();
+
+function onSearch(searchString: string) {
+  emit("search", searchString);
+}
+
+const searchFilteringActive = computed(
+  () => siSearchRef.value?.filteringActive,
+);
+const searchActiveFilters = computed(() => siSearchRef.value?.activeFilters);
+
 // this is what is exposed to the component usign this component (via template ref)
 defineExpose({
   isOpen: readOnlyIsOpen,
   open,
   close,
   hovered,
+  searchFilteringActive,
+  searchActiveFilters,
 });
 </script>
 
