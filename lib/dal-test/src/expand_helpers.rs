@@ -4,9 +4,8 @@
 //! macro expansion.
 
 use dal::{ChangeSet, ChangeSetId, DalContext, UserClaim};
-use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
-use jwt_simple::prelude::Duration;
+use jwt_simple::prelude::*;
 use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
 
 use crate::{
