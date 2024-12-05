@@ -669,7 +669,7 @@ const renameHitbox = computed(() => {
         ...raw,
         width,
         height: GROUP_TITLE_FONT_SIZE + 6,
-        x: GROUP_HEADER_ICON_SIZE - 2,
+        x: GROUP_HEADER_ICON_SIZE + 2,
         y: 4,
       };
       return box;
