@@ -1,6 +1,6 @@
-import ts from "typescript";
-import * as tsvfs from "@typescript/vfs";
-import { Debug } from "./debug";
+import { Buffer } from "node:buffer";
+import { Debug } from "./debug.ts";
+import { transpile } from "jsr:@deno/emit";
 
 const debug = Debug("langJs:base64");
 
@@ -8,29 +8,14 @@ export function base64Decode(encoded: string): string {
   return Buffer.from(encoded, "base64").toString("binary");
 }
 
-export function base64ToJs(encoded: string): string {
+export async function base64ToJs(encoded: string): Promise<string> {
   const code = base64Decode(encoded);
+
   debug({ code });
 
-  const compilerOptions = {
-    target: ts.ScriptTarget.ES2020,
-    lib: ["ES2020", "DOM"],
-  };
-
-  const fsMap = tsvfs.createDefaultMapFromNodeModules(compilerOptions);
-  fsMap.set("index.ts", code);
-  // TODO: have actual type here
-  fsMap.set("types.d.ts", "type Input = any; type Output = any;");
-  const system = tsvfs.createSystem(fsMap);
-
-  const tsEnv = tsvfs.createVirtualTypeScriptEnvironment(
-    system,
-    Array.from(fsMap.keys()),
-    ts,
-    compilerOptions,
-  );
-  return (
-    tsEnv.languageService.getEmitOutput("index.ts", false, true).outputFiles[0]
-      ?.text ?? ""
-  );
+  const tempDir = await Deno.makeTempDir();
+  const tempFile = `${tempDir}/script.ts`;
+  await Deno.writeTextFile(tempFile, code);
+  const fileUrl = new URL(tempFile, import.meta.url);
+  return (await transpile(fileUrl)).get(fileUrl.href) as string;
 }
