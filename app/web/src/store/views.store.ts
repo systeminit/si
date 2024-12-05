@@ -607,11 +607,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             if (this.selectedViewId) {
               this.pushRecentView(this.selectedViewId);
             }
-            /* if (!Object.keys(this.viewsById).includes(id)) {
-              await this.FETCH_VIEW(id);
-              if (!Object.keys(this.viewsById).includes(id))
-                throw new Error(`${id} does not exist`);
-            } */
+
             this.selectedViewId = id;
             this.outlinerViewId = id;
             this._enforceSelectedComponents();
@@ -1822,7 +1818,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 else {
                   this.viewList.push(view);
                 }
-                this.FETCH_VIEW(view.id);
+                this.FETCH_VIEW_GEOMETRY(view.id);
                 this.SORT_LIST_VIEWS();
               },
             },
