@@ -4033,39 +4033,6 @@ cargo.rust_library(
     ],
 )
 
-http_archive(
-    name = "crossbeam-0.8.4.crate",
-    sha256 = "1137cd7e7fc0fb5d3c5a8678be38ec56e819125d8d7907411fe24ccb943faca8",
-    strip_prefix = "crossbeam-0.8.4",
-    urls = ["https://static.crates.io/crates/crossbeam/0.8.4/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "crossbeam-0.8.4",
-    srcs = [":crossbeam-0.8.4.crate"],
-    crate = "crossbeam",
-    crate_root = "crossbeam-0.8.4.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "alloc",
-        "crossbeam-channel",
-        "crossbeam-deque",
-        "crossbeam-epoch",
-        "crossbeam-queue",
-        "default",
-        "std",
-    ],
-    visibility = [],
-    deps = [
-        ":crossbeam-channel-0.5.13",
-        ":crossbeam-deque-0.8.5",
-        ":crossbeam-epoch-0.9.18",
-        ":crossbeam-queue-0.3.11",
-        ":crossbeam-utils-0.8.20",
-    ],
-)
-
 alias(
     name = "crossbeam-channel",
     actual = ":crossbeam-channel-0.5.13",
@@ -6242,6 +6209,23 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "foldhash-0.1.3.crate",
+    sha256 = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2",
+    strip_prefix = "foldhash-0.1.3",
+    urls = ["https://static.crates.io/crates/foldhash/0.1.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "foldhash-0.1.3",
+    srcs = [":foldhash-0.1.3.crate"],
+    crate = "foldhash",
+    crate_root = "foldhash-0.1.3.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+)
+
+http_archive(
     name = "form_urlencoded-1.2.1.crate",
     sha256 = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456",
     strip_prefix = "form_urlencoded-1.2.1",
@@ -6266,23 +6250,23 @@ cargo.rust_library(
 
 alias(
     name = "foyer",
-    actual = ":foyer-0.12.2",
+    actual = ":foyer-0.13.1",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "foyer-0.12.2.crate",
-    sha256 = "3ffa01d910407917a7c268fddf2be41163028693556b833a55f59351deffa011",
-    strip_prefix = "foyer-0.12.2",
-    urls = ["https://static.crates.io/crates/foyer/0.12.2/download"],
+    name = "foyer-0.13.1.crate",
+    sha256 = "19c63beb108769d28b042829164139a5245359ccfdb4a8face928ac154e2c9ed",
+    strip_prefix = "foyer-0.13.1",
+    urls = ["https://static.crates.io/crates/foyer/0.13.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-0.12.2",
-    srcs = [":foyer-0.12.2.crate"],
+    name = "foyer-0.13.1",
+    srcs = [":foyer-0.13.1.crate"],
     crate = "foyer",
-    crate_root = "foyer-0.12.2.crate/src/lib.rs",
+    crate_root = "foyer-0.13.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -6295,10 +6279,11 @@ cargo.rust_library(
     deps = [
         ":ahash-0.8.11",
         ":anyhow-1.0.93",
+        ":equivalent-1.0.1",
         ":fastrace-0.7.4",
-        ":foyer-common-0.12.2",
-        ":foyer-memory-0.12.2",
-        ":foyer-storage-0.12.2",
+        ":foyer-common-0.13.1",
+        ":foyer-memory-0.13.1",
+        ":foyer-storage-0.13.1",
         ":futures-0.3.31",
         ":pin-project-1.1.7",
         ":tracing-0.1.41",
@@ -6306,73 +6291,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "foyer-common-0.12.2.crate",
-    sha256 = "797addbeabe5c42db9615e4d350a9b9d1597bebc07eefbd032d0e173430c8868",
-    strip_prefix = "foyer-common-0.12.2",
-    urls = ["https://static.crates.io/crates/foyer-common/0.12.2/download"],
+    name = "foyer-common-0.13.1.crate",
+    sha256 = "68be583b3f51bcbc6b72f40a5aea6fa6aaff10692649c08b20458bb6703f79f0",
+    strip_prefix = "foyer-common-0.13.1",
+    urls = ["https://static.crates.io/crates/foyer-common/0.13.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-common-0.12.2",
-    srcs = [":foyer-common-0.12.2.crate"],
+    name = "foyer-common-0.13.1",
+    srcs = [":foyer-common-0.13.1.crate"],
     crate = "foyer_common",
-    crate_root = "foyer-common-0.12.2.crate/src/lib.rs",
-    edition = "2021",
-    features = ["tracing"],
-    named_deps = {
-        "tokio": ":madsim-tokio-0.2.30",
-    },
-    visibility = [],
-    deps = [
-        ":bytes-1.9.0",
-        ":cfg-if-1.0.0",
-        ":crossbeam-0.8.4",
-        ":fastrace-0.7.4",
-        ":futures-0.3.31",
-        ":hashbrown-0.14.5",
-        ":itertools-0.13.0",
-        ":metrics-0.23.0",
-        ":parking_lot-0.12.3",
-        ":pin-project-1.1.7",
-        ":serde-1.0.215",
-    ],
-)
-
-http_archive(
-    name = "foyer-intrusive-0.12.2.crate",
-    sha256 = "b4ee0c1f19c7736f34e37e7cd4c1d5ceef3a32e24dbb14fcf2fcc836ce1cbfc4",
-    strip_prefix = "foyer-intrusive-0.12.2",
-    urls = ["https://static.crates.io/crates/foyer-intrusive/0.12.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "foyer-intrusive-0.12.2",
-    srcs = [":foyer-intrusive-0.12.2.crate"],
-    crate = "foyer_intrusive",
-    crate_root = "foyer-intrusive-0.12.2.crate/src/lib.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":foyer-common-0.12.2",
-        ":itertools-0.13.0",
-    ],
-)
-
-http_archive(
-    name = "foyer-memory-0.12.2.crate",
-    sha256 = "5b46b30275039721c05b390d4df00eff88814b1877ee06d56b61a859a5cf9577",
-    strip_prefix = "foyer-memory-0.12.2",
-    urls = ["https://static.crates.io/crates/foyer-memory/0.12.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "foyer-memory-0.12.2",
-    srcs = [":foyer-memory-0.12.2.crate"],
-    crate = "foyer_memory",
-    crate_root = "foyer-memory-0.12.2.crate/src/lib.rs",
+    crate_root = "foyer-common-0.13.1.crate/src/lib.rs",
     edition = "2021",
     features = ["tracing"],
     named_deps = {
@@ -6381,34 +6311,92 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":ahash-0.8.11",
-        ":bitflags-2.6.0",
-        ":cmsketch-0.2.1",
+        ":bytes-1.9.0",
+        ":cfg-if-1.0.0",
         ":fastrace-0.7.4",
-        ":foyer-common-0.12.2",
-        ":foyer-intrusive-0.12.2",
         ":futures-0.3.31",
-        ":hashbrown-0.14.5",
+        ":hashbrown-0.15.2",
         ":itertools-0.13.0",
         ":parking_lot-0.12.3",
         ":pin-project-1.1.7",
         ":serde-1.0.215",
+    ],
+)
+
+http_archive(
+    name = "foyer-intrusive-collections-0.10.0-dev.crate",
+    sha256 = "6e4fee46bea69e0596130e3210e65d3424e0ac1e6df3bde6636304bdf1ca4a3b",
+    strip_prefix = "foyer-intrusive-collections-0.10.0-dev",
+    urls = ["https://static.crates.io/crates/foyer-intrusive-collections/0.10.0-dev/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "foyer-intrusive-collections-0.10.0-dev",
+    srcs = [":foyer-intrusive-collections-0.10.0-dev.crate"],
+    crate = "foyer_intrusive_collections",
+    crate_root = "foyer-intrusive-collections-0.10.0-dev.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "alloc",
+        "default",
+    ],
+    visibility = [],
+    deps = [":memoffset-0.9.1"],
+)
+
+http_archive(
+    name = "foyer-memory-0.13.1.crate",
+    sha256 = "0a01e64de1452409977219fe014caa427874677aacd647bec9207d98d018bcd8",
+    strip_prefix = "foyer-memory-0.13.1",
+    urls = ["https://static.crates.io/crates/foyer-memory/0.13.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "foyer-memory-0.13.1",
+    srcs = [":foyer-memory-0.13.1.crate"],
+    crate = "foyer_memory",
+    crate_root = "foyer-memory-0.13.1.crate/src/lib.rs",
+    edition = "2021",
+    features = ["tracing"],
+    named_deps = {
+        "intrusive_collections": ":foyer-intrusive-collections-0.10.0-dev",
+        "tokio": ":madsim-tokio-0.2.30",
+    },
+    visibility = [],
+    deps = [
+        ":ahash-0.8.11",
+        ":bitflags-2.6.0",
+        ":cmsketch-0.2.1",
+        ":equivalent-1.0.1",
+        ":fastrace-0.7.4",
+        ":foyer-common-0.13.1",
+        ":futures-0.3.31",
+        ":hashbrown-0.15.2",
+        ":itertools-0.13.0",
+        ":parking_lot-0.12.3",
+        ":paste-1.0.15",
+        ":pin-project-1.1.7",
+        ":serde-1.0.215",
+        ":thiserror-2.0.4",
         ":tracing-0.1.41",
     ],
 )
 
 http_archive(
-    name = "foyer-storage-0.12.2.crate",
-    sha256 = "038ecf3211a5f984d534a5654a41613be7334fe8f5aab529708866da2de62d82",
-    strip_prefix = "foyer-storage-0.12.2",
-    urls = ["https://static.crates.io/crates/foyer-storage/0.12.2/download"],
+    name = "foyer-storage-0.13.1.crate",
+    sha256 = "9fb89bdcdf355e8cb2b29eaa0158839f4f7c6974c6cc86f6e54e4a48a2afa5b8",
+    strip_prefix = "foyer-storage-0.13.1",
+    urls = ["https://static.crates.io/crates/foyer-storage/0.13.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-storage-0.12.2",
-    srcs = [":foyer-storage-0.12.2.crate"],
+    name = "foyer-storage-0.13.1",
+    srcs = [":foyer-storage-0.13.1.crate"],
     crate = "foyer_storage",
-    crate_root = "foyer-storage-0.12.2.crate/src/lib.rs",
+    crate_root = "foyer-storage-0.13.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -6430,13 +6418,14 @@ cargo.rust_library(
         ":bytes-1.9.0",
         ":clap-4.5.21",
         ":either-1.13.0",
+        ":equivalent-1.0.1",
         ":fastrace-0.7.4",
         ":flume-0.11.1",
-        ":foyer-common-0.12.2",
-        ":foyer-memory-0.12.2",
-        ":fs4-0.9.1",
+        ":foyer-common-0.13.1",
+        ":foyer-memory-0.13.1",
+        ":fs4-0.12.0",
         ":futures-0.3.31",
-        ":hashbrown-0.14.5",
+        ":hashbrown-0.15.2",
         ":itertools-0.13.0",
         ":libc-0.2.167",
         ":lz4-1.28.0",
@@ -6446,9 +6435,9 @@ cargo.rust_library(
         ":pin-project-1.1.7",
         ":rand-0.8.5",
         ":serde-1.0.215",
-        ":thiserror-1.0.69",
+        ":thiserror-2.0.4",
         ":tracing-0.1.41",
-        ":twox-hash-1.6.3",
+        ":twox-hash-2.0.1",
         ":zstd-0.13.2",
     ],
 )
@@ -6501,23 +6490,19 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "fs4-0.9.1.crate",
-    sha256 = "e8c6b3bd49c37d2aa3f3f2220233b29a7cd23f79d1fe70e5337d25fb390793de",
-    strip_prefix = "fs4-0.9.1",
-    urls = ["https://static.crates.io/crates/fs4/0.9.1/download"],
+    name = "fs4-0.12.0.crate",
+    sha256 = "c29c30684418547d476f0b48e84f4821639119c483b1eccd566c8cd0cd05f521",
+    strip_prefix = "fs4-0.12.0",
+    urls = ["https://static.crates.io/crates/fs4/0.12.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "fs4-0.9.1",
-    srcs = [":fs4-0.9.1.crate"],
+    name = "fs4-0.12.0",
+    srcs = [":fs4-0.12.0.crate"],
     crate = "fs4",
-    crate_root = "fs4-0.9.1.crate/src/lib.rs",
+    crate_root = "fs4-0.12.0.crate/src/lib.rs",
     edition = "2021",
-    features = [
-        "default",
-        "sync",
-    ],
     platform = {
         "linux-arm64": dict(
             deps = [":rustix-0.38.41"],
@@ -7359,7 +7344,20 @@ cargo.rust_library(
     crate = "hashbrown",
     crate_root = "hashbrown-0.15.2.crate/src/lib.rs",
     edition = "2021",
+    features = [
+        "allocator-api2",
+        "default",
+        "default-hasher",
+        "equivalent",
+        "inline-more",
+        "raw-entry",
+    ],
     visibility = [],
+    deps = [
+        ":allocator-api2-0.2.21",
+        ":equivalent-1.0.1",
+        ":foldhash-0.1.3",
+    ],
 )
 
 http_archive(
@@ -9952,7 +9950,6 @@ cargo.rust_library(
     crate_root = "lock_api-0.4.12.crate/src/lib.rs",
     edition = "2021",
     features = [
-        "arc_lock",
         "atomic_usize",
         "default",
     ],
@@ -9968,7 +9965,6 @@ cargo.rust_binary(
     crate_root = "lock_api-0.4.12.crate/build.rs",
     edition = "2021",
     features = [
-        "arc_lock",
         "atomic_usize",
         "default",
     ],
@@ -9981,7 +9977,6 @@ buildscript_run(
     package_name = "lock_api",
     buildscript_rule = ":lock_api-0.4.12-build-script-build",
     features = [
-        "arc_lock",
         "atomic_usize",
         "default",
     ],
@@ -10346,21 +10341,21 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "metrics-0.23.0.crate",
-    sha256 = "884adb57038347dfbaf2d5065887b6cf4312330dc8e94bc30a1a839bd79d3261",
-    strip_prefix = "metrics-0.23.0",
-    urls = ["https://static.crates.io/crates/metrics/0.23.0/download"],
+    name = "memoffset-0.9.1.crate",
+    sha256 = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a",
+    strip_prefix = "memoffset-0.9.1",
+    urls = ["https://static.crates.io/crates/memoffset/0.9.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "metrics-0.23.0",
-    srcs = [":metrics-0.23.0.crate"],
-    crate = "metrics",
-    crate_root = "metrics-0.23.0.crate/src/lib.rs",
-    edition = "2018",
+    name = "memoffset-0.9.1",
+    srcs = [":memoffset-0.9.1.crate"],
+    crate = "memoffset",
+    crate_root = "memoffset-0.9.1.crate/src/lib.rs",
+    edition = "2015",
+    features = ["default"],
     visibility = [],
-    deps = [":ahash-0.8.11"],
 )
 
 http_archive(
@@ -12018,10 +12013,7 @@ cargo.rust_library(
     crate = "parking_lot",
     crate_root = "parking_lot-0.12.3.crate/src/lib.rs",
     edition = "2021",
-    features = [
-        "arc_lock",
-        "default",
-    ],
+    features = ["default"],
     visibility = [],
     deps = [
         ":lock_api-0.4.12",
@@ -18315,7 +18307,7 @@ cargo.rust_binary(
         ":dyn-clone-1.0.17",
         ":fastrace-0.7.4",
         ":flate2-1.0.35",
-        ":foyer-0.12.2",
+        ":foyer-0.13.1",
         ":fs4-0.11.1",
         ":futures-0.3.31",
         ":futures-lite-2.5.0",
@@ -20064,30 +20056,30 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "twox-hash-1.6.3.crate",
-    sha256 = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675",
-    strip_prefix = "twox-hash-1.6.3",
-    urls = ["https://static.crates.io/crates/twox-hash/1.6.3/download"],
+    name = "twox-hash-2.0.1.crate",
+    sha256 = "a6db6856664807f43c17fbaf2718e2381ac1476a449aa104f5f64622defa1245",
+    strip_prefix = "twox-hash-2.0.1",
+    urls = ["https://static.crates.io/crates/twox-hash/2.0.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "twox-hash-1.6.3",
-    srcs = [":twox-hash-1.6.3.crate"],
+    name = "twox-hash-2.0.1",
+    srcs = [":twox-hash-2.0.1.crate"],
     crate = "twox_hash",
-    crate_root = "twox-hash-1.6.3.crate/src/lib.rs",
-    edition = "2018",
+    crate_root = "twox-hash-2.0.1.crate/src/lib.rs",
+    edition = "2021",
     features = [
+        "alloc",
         "default",
-        "rand",
+        "random",
         "std",
+        "xxhash32",
+        "xxhash3_64",
+        "xxhash64",
     ],
     visibility = [],
-    deps = [
-        ":cfg-if-1.0.0",
-        ":rand-0.8.5",
-        ":static_assertions-1.1.0",
-    ],
+    deps = [":rand-0.8.5"],
 )
 
 http_archive(

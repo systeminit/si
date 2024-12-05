@@ -98,8 +98,10 @@ where
             "creating cache",
         );
 
+        let cache_name: &'static str = config.name.leak();
+
         let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
-            .with_name(&config.name)
+            .with_name(cache_name)
             .memory(memory_cache_capacity_bytes)
             .with_weighter(
                 |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
