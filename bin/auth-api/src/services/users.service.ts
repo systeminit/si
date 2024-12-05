@@ -209,7 +209,9 @@ function setUserDataFromAuth0Details(
       firstName: auth0Details.given_name,
       lastName: auth0Details.family_name,
       email: auth0Details.email,
-      emailVerified: auth0Details.email_verified,
+      // Coerce email_verified to a boolean in case it's anything else
+      // thanks to Auth0 and mapping SAML assertions
+      emailVerified: !!auth0Details.email_verified,
       pictureUrl: auth0Details.picture,
       // fairly certain nickname is github username when auth provider is github
       ...(auth0Details.user_id?.startsWith("github|") && {
