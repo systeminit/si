@@ -70,13 +70,14 @@ async fn main() -> Result<()> {
     );
     let aws_command = AwsCliCommand::new(args.aws_command, args.aws_subcommand);
     let prompt = Prompt::AwsCliCommandPrompt(args.prompt_kind, aws_command);
+    let raw_prompt = asset_sprayer.raw_prompt(args.prompt_kind).await?;
     match args.action {
         Action::Show => {
-            let prompt = asset_sprayer.prompt(&prompt).await?;
+            let prompt = prompt.generate(&raw_prompt).await?;
             println!("{}", serde_yaml::to_string(&prompt)?);
         }
         Action::Run => {
-            let asset_schema = asset_sprayer.run(&prompt).await?;
+            let asset_schema = asset_sprayer.run(&prompt, &raw_prompt).await?;
             println!("{}", asset_schema);
         }
     }

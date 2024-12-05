@@ -13,7 +13,7 @@
       </VButton>
       <template v-else>
         <VButton
-          v-if="props.json || props.typescript"
+          v-if="canFormat"
           label="Format"
           size="xs"
           tone="neutral"
@@ -50,6 +50,7 @@ import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { json as CodemirrorJsonLang } from "@codemirror/lang-json";
+import { yaml as CodemirrorYamlLang } from "@codemirror/lang-yaml";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
@@ -72,6 +73,7 @@ const props = defineProps({
   disabled: { type: Boolean },
   json: Boolean,
   typescript: { type: String },
+  yaml: Boolean,
   noLint: Boolean,
   noVim: Boolean,
   debounceUpdate: { type: Boolean, default: false },
@@ -122,10 +124,12 @@ function setCursorPosition(
   view.dispatch(transaction);
 }
 
+const canFormat = computed(() => props.json || props.typescript || props.yaml);
+
 const format = (): boolean => {
   if (props.disabled || !yText) return false;
 
-  if (props.json || props.typescript) {
+  if (canFormat.value) {
     const preFormatPosition = getCursorInfo(view.state);
     const text = beautify(view.state.doc.toString());
     if (text !== view.state.doc.toString()) {
@@ -340,6 +344,10 @@ const mountEditor = async () => {
     extensions.push(language.of(CodemirrorJsonLang()));
   }
 
+  if (props.yaml) {
+    extensions.push(language.of(CodemirrorYamlLang()));
+  }
+
   const ydoc = new Y.Doc();
   yText = ydoc.getText("codemirror");
 
@@ -426,6 +434,7 @@ watch(
     () => props.typescript,
     () => props.disabled,
     () => props.json,
+    () => props.yaml,
     () => props.noLint,
     () => authStore.user?.name,
     editorMount,

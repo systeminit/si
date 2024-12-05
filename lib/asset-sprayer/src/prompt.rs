@@ -6,7 +6,7 @@ use async_openai::types::{
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::{AssetSprayer, AssetSprayerError, RawPromptYamlSource, Result};
+use crate::{AssetSprayerError, RawPromptYamlSource, Result};
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumDiscriminants,
@@ -46,26 +46,28 @@ const SI_DOCS_URL: &str =
 pub struct AwsCliCommand(pub String, pub String);
 
 impl Prompt {
-    pub async fn prompt(
-        &self,
-        asset_sprayer: &AssetSprayer,
-    ) -> Result<CreateChatCompletionRequest> {
-        let raw_prompt = asset_sprayer.raw_prompt(self).await?;
-        self.replace_prompt(raw_prompt).await
+    pub fn kind(&self) -> AwsCliCommandPromptKind {
+        let Self::AwsCliCommandPrompt(kind, _) = self;
+        *kind
     }
 
-    async fn replace_prompt(
+    pub async fn generate(&self, raw_prompt: &str) -> Result<CreateChatCompletionRequest> {
+        let request = serde_yaml::from_str(raw_prompt)?;
+        self.generate_request(request).await
+    }
+
+    async fn generate_request(
         &self,
-        request: CreateChatCompletionRequest,
+        raw_request: CreateChatCompletionRequest,
     ) -> Result<CreateChatCompletionRequest> {
-        let mut request = request;
+        let mut request = raw_request;
         for message in request.messages.iter_mut() {
-            *message = self.replace_prompt_message(message.clone()).await?;
+            *message = self.generate_message(message.clone()).await?;
         }
         Ok(request)
     }
 
-    async fn replace_prompt_message(
+    async fn generate_message(
         &self,
         message: ChatCompletionRequestMessage,
     ) -> Result<ChatCompletionRequestMessage> {
@@ -78,13 +80,13 @@ impl Prompt {
             | ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
                 content: ChatCompletionRequestSystemMessageContent::Text(text),
                 ..
-            }) => *text = self.replace_prompt_text(text).await?,
+            }) => *text = self.generate_message_text(text).await?,
             _ => {}
         };
         Ok(message)
     }
 
-    async fn replace_prompt_text(&self, text: &str) -> Result<String> {
+    async fn generate_message_text(&self, text: &str) -> Result<String> {
         let text = match self {
             Self::AwsCliCommandPrompt(_, command) => text
                 .replace("{AWS_COMMAND}", command.command())
@@ -93,10 +95,10 @@ impl Prompt {
         let text = text
             .replace("{AWS_CLI_DOCS_URL}", AWS_CLI_DOCS_URL)
             .replace("{SI_DOCS_URL}", SI_DOCS_URL);
-        self.fetch_prompt_text(&text).await
+        self.fetch_message_text(&text).await
     }
 
-    async fn fetch_prompt_text(&self, text: &str) -> Result<String> {
+    async fn fetch_message_text(&self, text: &str) -> Result<String> {
         // Fetch things between {FETCH} and {/FETCH}
         let mut result = String::new();
         let mut text = text;

@@ -27,8 +27,9 @@
 
 use std::{borrow::Cow, path::PathBuf};
 
-use async_openai::{config::OpenAIConfig, types::CreateChatCompletionRequest};
+use async_openai::config::OpenAIConfig;
 use config::AssetSprayerConfig;
+use prompt::AwsCliCommandPromptKind;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -76,14 +77,22 @@ impl AssetSprayer {
         }
     }
 
-    pub async fn prompt(&self, prompt: &Prompt) -> Result<CreateChatCompletionRequest> {
-        prompt.prompt(self).await
+    pub async fn raw_prompt(&self, kind: AwsCliCommandPromptKind) -> Result<Cow<'static, str>> {
+        if let Some(ref prompts_dir) = self.prompts_dir {
+            // Read from disk if prompts_dir is available (faster dev cycle)
+            let path = prompts_dir.join(kind.raw_prompt_yaml_relative_path());
+            info!("Loading prompt for {} from disk at {:?}", kind, path);
+            Ok(tokio::fs::read_to_string(path).await?.into())
+        } else {
+            info!("Loading embedded prompt for {}", kind);
+            Ok(kind.raw_prompt_yaml_embedded().into())
+        }
     }
 
-    pub async fn run(&self, prompt: &Prompt) -> Result<String> {
+    pub async fn run(&self, prompt: &Prompt, raw_prompt: &str) -> Result<String> {
         debug!("Generating {}", prompt);
-        let prompt = self.prompt(prompt).await?;
-        let response = self.openai_client.chat().create(prompt).await?;
+        let request = prompt.generate(raw_prompt).await?;
+        let response = self.openai_client.chat().create(request).await?;
         let choice = response
             .choices
             .into_iter()
@@ -94,28 +103,6 @@ impl AssetSprayer {
             .content
             .ok_or(AssetSprayerError::EmptyChoice)?;
         Ok(text)
-    }
-
-    pub async fn raw_prompt(
-        &self,
-        prompt: &(impl RawPromptYamlSource + std::fmt::Display),
-    ) -> Result<CreateChatCompletionRequest> {
-        Ok(serde_yaml::from_str(&self.raw_prompt_yaml(prompt).await?)?)
-    }
-
-    pub async fn raw_prompt_yaml(
-        &self,
-        prompt: &(impl RawPromptYamlSource + std::fmt::Display),
-    ) -> Result<Cow<'static, str>> {
-        if let Some(ref prompts_dir) = self.prompts_dir {
-            // Read from disk if prompts_dir is available (faster dev cycle)
-            let path = prompts_dir.join(prompt.raw_prompt_yaml_relative_path());
-            info!("Loading prompt for {} from disk at {:?}", prompt, path);
-            Ok(tokio::fs::read_to_string(path).await?.into())
-        } else {
-            info!("Loading embedded prompt for {}", prompt);
-            Ok(prompt.raw_prompt_yaml_embedded().into())
-        }
     }
 }
 
@@ -129,14 +116,11 @@ pub trait RawPromptYamlSource {
 async fn test_do_ai() -> Result<()> {
     let asset_sprayer =
         AssetSprayer::new(async_openai::Client::new(), AssetSprayerConfig::default());
-    println!(
-        "Done: {}",
-        asset_sprayer
-            .run(&Prompt::AwsCliCommandPrompt(
-                prompt::AwsCliCommandPromptKind::AssetSchema,
-                prompt::AwsCliCommand::new("sqs", "create-queue")
-            ))
-            .await?
+    let prompt = Prompt::AwsCliCommandPrompt(
+        prompt::AwsCliCommandPromptKind::AssetSchema,
+        prompt::AwsCliCommand::new("sqs", "create-queue"),
     );
+    let raw_prompt = asset_sprayer.raw_prompt(prompt.kind()).await?;
+    println!("Done: {}", asset_sprayer.run(&prompt, &raw_prompt).await?);
     Ok(())
 }

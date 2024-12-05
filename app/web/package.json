@@ -31,6 +31,7 @@
     "@codemirror/commands": "^6.1.2",
     "@codemirror/lang-javascript": "^6.1.2",
     "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-yaml": "^6.1.1",
     "@codemirror/language": "^6.3.1",
     "@codemirror/legacy-modes": "^6.3.1",
     "@codemirror/lint": "^6.1.0",
