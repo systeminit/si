@@ -53,7 +53,7 @@ import { useRouter } from "vue-router";
 import { useAdminStore } from "@/store/admin.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceAdmin from "@/components/AdminDashboard/WorkspaceAdmin.vue";
-import PromptEditor from "@/components/AdminDashboard/PromptEditor.vue";
+import PromptEditor from "@/components/AdminDashboard/PromptAdmin.vue";
 
 const adminStore = useAdminStore();
 const featureFlagStore = useFeatureFlagsStore();
