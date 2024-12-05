@@ -7,6 +7,7 @@ use dal::{
     Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -76,7 +77,11 @@ pub async fn regenerate_variant(
             "new_schema_variant_id": updated_schema_variant_id,
         }),
     );
-
+    ctx.write_audit_log(
+        AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
+        variant.display_name,
+    )
+    .await?;
     let schema =
         SchemaVariant::schema_id_for_schema_variant_id(&ctx, updated_schema_variant_id).await?;
     let updated_schema_variant =

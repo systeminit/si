@@ -7,6 +7,7 @@ use axum::Json;
 use dal::diagram::view::{View, ViewView};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,8 +34,8 @@ pub async fn create_view(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let view = View::new(&ctx, name).await?;
-
+    let view = View::new(&ctx, name.clone()).await?;
+    let view_id = view.clone().id();
     track(
         &posthog_client,
         &ctx,
@@ -43,14 +44,15 @@ pub async fn create_view(
         "create_view",
         serde_json::json!({
             "how": "/diagram/create_view",
-            "view_id": view.id(),
-            "view_name": view.name(),
+            "view_id": view_id,
+            "view_name": name.to_owned(),
             "change_set_id": ctx.change_set_id(),
         }),
     );
 
     let view_view = ViewView::from_view(&ctx, view).await?;
-
+    ctx.write_audit_log(AuditLogKind::CreateView { view_id }, name.to_owned())
+        .await?;
     WsEvent::view_created(&ctx, view_view.clone())
         .await?
         .publish_on_commit(&ctx)

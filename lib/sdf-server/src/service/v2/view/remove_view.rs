@@ -3,6 +3,7 @@ use dal::{
     diagram::view::{View, ViewId},
     ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
 };
+use si_events::audit_log::AuditLogKind;
 
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -33,6 +34,12 @@ pub async fn remove_view(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::DeleteView { view_id: view.id() },
+        view.name().to_owned(),
+    )
+    .await?;
 
     track(
         &posthog_client,

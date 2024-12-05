@@ -90,6 +90,21 @@ pub enum FuncArgumentKind {
     String,
 }
 
+impl From<FuncArgumentKind> for si_events::FuncArgumentKind {
+    fn from(func_argument_kind: FuncArgumentKind) -> Self {
+        match func_argument_kind {
+            FuncArgumentKind::Any => si_events::FuncArgumentKind::Any,
+            FuncArgumentKind::Array => si_events::FuncArgumentKind::Array,
+            FuncArgumentKind::Boolean => si_events::FuncArgumentKind::Boolean,
+            FuncArgumentKind::Integer => si_events::FuncArgumentKind::Integer,
+            FuncArgumentKind::Json => si_events::FuncArgumentKind::Json,
+            FuncArgumentKind::Map => si_events::FuncArgumentKind::Map,
+            FuncArgumentKind::Object => si_events::FuncArgumentKind::Object,
+            FuncArgumentKind::String => si_events::FuncArgumentKind::String,
+        }
+    }
+}
+
 impl From<PropKind> for FuncArgumentKind {
     fn from(prop_kind: PropKind) -> Self {
         match prop_kind {

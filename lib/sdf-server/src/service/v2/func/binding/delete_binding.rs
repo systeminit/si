@@ -10,13 +10,17 @@ use axum::{
     extract::{Host, OriginalUri, Path},
     Json,
 };
-use dal::func::{binding::management::ManagementBinding, FuncKind};
 use dal::{
     func::binding::{
         action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
     },
     ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
+use dal::{
+    func::{binding::management::ManagementBinding, FuncKind},
+    Component,
+};
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 use std::collections::HashSet;
 
@@ -112,9 +116,37 @@ pub async fn delete_binding(
             | FuncKind::SchemaVariantDefinition
             | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
         };
-
-        if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
-            modified_sv_ids.insert(schema_variant_id);
+        match eventual_parent {
+            EventualParent::SchemaVariant(schema_variant_id) => {
+                let schema_variant =
+                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::DetachFunc {
+                        func_id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        subject_name: schema_variant.display_name().to_owned(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                modified_sv_ids.insert(schema_variant_id);
+            }
+            EventualParent::Component(component_id) => {
+                let component = Component::get_by_id(&ctx, component_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::DetachFunc {
+                        func_id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: None,
+                        component_id: Some(component_id),
+                        subject_name: component.name(&ctx).await?.to_owned(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+            }
         }
     }
 

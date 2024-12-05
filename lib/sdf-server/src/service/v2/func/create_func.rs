@@ -12,9 +12,10 @@ use dal::{
         FuncKind,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, SchemaVariant, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Component, SchemaVariant, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
 
 use super::{get_code_response, FuncAPIError, FuncAPIResult};
@@ -70,13 +71,33 @@ pub async fn create_func(
                 ..
             } = request.binding
             {
-                FuncAuthoringClient::create_new_action_func(
+                let func = FuncAuthoringClient::create_new_action_func(
                     &ctx,
                     request.name,
                     kind.into(),
                     schema_variant_id,
                 )
-                .await?
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::AttachActionFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        action_kind: Some(kind),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -115,14 +136,69 @@ pub async fn create_func(
                     });
                 }
 
-                FuncAuthoringClient::create_new_attribute_func(
+                let func = FuncAuthoringClient::create_new_attribute_func(
                     &ctx,
                     request.name,
                     eventual_parent,
                     output_location,
                     arg_bindings,
                 )
-                .await?
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                let (subject_name, component_id, schema_variant_id): (
+                    String,
+                    Option<si_events::ComponentId>,
+                    Option<si_events::SchemaVariantId>,
+                ) = match eventual_parent {
+                    Some(eventual_parent) => {
+                        if let EventualParent::Component(component_id) = eventual_parent {
+                            (
+                                Component::get_by_id(&ctx, component_id)
+                                    .await?
+                                    .name(&ctx)
+                                    .await?,
+                                Some(component_id),
+                                None,
+                            )
+                        } else {
+                            return Err(FuncAPIError::MissingSchemaVariantAndFunc);
+                        }
+                    }
+                    None => {
+                        let schema_variant_id = output_location.find_schema_variant(&ctx).await?;
+                        (
+                            SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                                .await?
+                                .display_name()
+                                .to_string(),
+                            None,
+                            Some(schema_variant_id),
+                        )
+                    }
+                };
+                let destination_name = output_location.get_name_of_destination(&ctx).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::AttachAttributeFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id,
+                        component_id,
+                        subject_name,
+                        prop_id,
+                        output_socket_id,
+                        destination_name,
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -133,8 +209,30 @@ pub async fn create_func(
                 func_id: _,
             } = request.binding.clone()
             {
-                FuncAuthoringClient::create_new_auth_func(&ctx, request.name, schema_variant_id)
-                    .await?
+                let func = FuncAuthoringClient::create_new_auth_func(
+                    &ctx,
+                    request.name,
+                    schema_variant_id,
+                )
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::AttachAuthFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -151,14 +249,39 @@ pub async fn create_func(
                 } else {
                     inputs.into_iter().map(|input| input.into()).collect()
                 };
-                FuncAuthoringClient::create_new_leaf_func(
+                let func = FuncAuthoringClient::create_new_leaf_func(
                     &ctx,
                     request.name,
                     LeafKind::CodeGeneration,
                     EventualParent::SchemaVariant(schema_variant_id),
                     &inputs,
                 )
-                .await?
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                let schema_variant_name =
+                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                        .await?
+                        .display_name()
+                        .to_string();
+                ctx.write_audit_log(
+                    AuditLogKind::AttachCodeGenFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        subject_name: schema_variant_name,
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -176,14 +299,39 @@ pub async fn create_func(
                     inputs.into_iter().map(|input| input.into()).collect()
                 };
 
-                FuncAuthoringClient::create_new_leaf_func(
+                let func = FuncAuthoringClient::create_new_leaf_func(
                     &ctx,
                     request.name,
                     LeafKind::Qualification,
                     EventualParent::SchemaVariant(schema_variant_id),
                     &inputs,
                 )
-                .await?
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                let schema_variant_name =
+                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                        .await?
+                        .display_name()
+                        .to_string();
+                ctx.write_audit_log(
+                    AuditLogKind::AttachQualificationFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        subject_name: schema_variant_name,
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -194,12 +342,37 @@ pub async fn create_func(
                 ..
             } = request.binding.clone()
             {
-                FuncAuthoringClient::create_new_management_func(
+                let func = FuncAuthoringClient::create_new_management_func(
                     &ctx,
                     request.name,
                     schema_variant_id,
                 )
-                .await?
+                .await?;
+                ctx.write_audit_log(
+                    AuditLogKind::CreateFunc {
+                        func_display_name: func.display_name.clone(),
+                        func_kind: func.kind.into(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                let schema_variant_name =
+                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id)
+                        .await?
+                        .display_name()
+                        .to_string();
+                ctx.write_audit_log(
+                    AuditLogKind::AttachManagementFunc {
+                        func_id: func.id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        subject_name: schema_variant_name,
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+                func
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }

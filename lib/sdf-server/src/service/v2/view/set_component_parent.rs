@@ -10,6 +10,7 @@ use dal::{
     component::frame::Frame, ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use si_events::audit_log::AuditLogKind;
 use std::collections::HashMap;
 use ulid::Ulid;
 
@@ -45,8 +46,43 @@ pub async fn set_component_parent(
         let component = Component::get_by_id(&ctx, id).await?;
 
         if let Some(new_parent) = maybe_new_parent {
+            let old_parent_id = component.parent(&ctx).await?;
+            let old_parent_name = if let Some(old_parent_id) = old_parent_id {
+                let parent = Component::get_by_id(&ctx, old_parent_id).await?;
+                Some(parent.name(&ctx).await?)
+            } else {
+                None
+            };
             Frame::upsert_parent(&ctx, component.id(), new_parent).await?;
+            let new_parent_name = Component::get_by_id(&ctx, new_parent)
+                .await?
+                .name(&ctx)
+                .await?;
+            ctx.write_audit_log(
+                AuditLogKind::UpdateComponentParent {
+                    component_id: component.id(),
+                    old_parent_id,
+                    old_parent_name,
+                    new_parent_id: new_parent,
+                    new_parent_name,
+                },
+                component.name(&ctx).await?,
+            )
+            .await?;
         } else {
+            let old_parent_id = component.parent(&ctx).await?;
+            if let Some(old_parent_id) = old_parent_id {
+                let parent = Component::get_by_id(&ctx, old_parent_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::OrphanComponent {
+                        component_id: component.id(),
+                        previous_parent_id: old_parent_id,
+                        previous_parent_name: parent.name(&ctx).await?,
+                    },
+                    component.name(&ctx).await?.to_owned(),
+                )
+                .await?;
+            }
             Frame::orphan_child(&ctx, component.id()).await?;
         }
 

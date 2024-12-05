@@ -4,8 +4,9 @@ use axum::{
 };
 use dal::{
     func::binding::{attribute::AttributeBinding, EventualParent},
-    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
@@ -51,15 +52,42 @@ pub async fn reset_attribute_binding(
         )
         .await?;
 
-        if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
-            let schema =
-                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
-            let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
-
-            WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
-                .await?
-                .publish_on_commit(&ctx)
+        match eventual_parent {
+            EventualParent::SchemaVariant(schema_variant_id) => {
+                let schema =
+                    SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+                let schema_variant =
+                    SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::DetachFunc {
+                        func_id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: Some(schema_variant_id),
+                        component_id: None,
+                        subject_name: schema_variant.display_name().to_owned(),
+                    },
+                    func.name.clone(),
+                )
                 .await?;
+                WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
+                    .await?
+                    .publish_on_commit(&ctx)
+                    .await?;
+            }
+            EventualParent::Component(component_id) => {
+                let component = Component::get_by_id(&ctx, component_id).await?;
+                ctx.write_audit_log(
+                    AuditLogKind::DetachFunc {
+                        func_id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: None,
+                        component_id: Some(component_id),
+                        subject_name: component.name(&ctx).await?.to_owned(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+            }
         }
     }
 

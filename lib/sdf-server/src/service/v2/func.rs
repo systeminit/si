@@ -12,7 +12,7 @@ use dal::{
         runner::FuncRunnerError,
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    ChangeSetError, DalContext, Func, FuncError, FuncId, SchemaVariantError,
+    ChangeSetError, ComponentError, DalContext, Func, FuncError, FuncId, SchemaVariantError,
     WorkspaceSnapshotError, WsEventError,
 };
 use si_frontend_types::FuncCode;
@@ -51,6 +51,8 @@ pub enum FuncAPIError {
     CannotDeleteLockedFunc(FuncId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func already unlocked: {0}")]
