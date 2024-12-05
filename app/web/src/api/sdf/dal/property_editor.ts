@@ -4,7 +4,7 @@
 // * fundamental data type (string/number/bool/map/array)
 // * require a key/index (map or array)
 
-import { LabelList } from "@/api/sdf/dal/label_list";
+import { DoubleLabelList, LabelList } from "@/api/sdf/dal/label_list";
 
 export enum PropertyEditorPropKind {
   Array = "array",
@@ -72,7 +72,7 @@ export interface PropertyEditorPropWidgetKindColor {
 
 export interface PropertyEditorPropWidgetKindSocketConnection {
   kind: "socketConnection";
-  options: LabelList<string>;
+  options: DoubleLabelList<string>;
   isSingleArity: boolean;
 }
 

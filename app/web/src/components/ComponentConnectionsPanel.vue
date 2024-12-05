@@ -48,30 +48,39 @@ const viewsStore = useViewsStore();
 
 // PARENTS
 const parentOptionsList = computed(() => {
+  const selectedComponentId = viewsStore.selectedComponentId;
   const groups = Object.values(componentsStore.groupsById);
   const list = [] as LabelList<string>;
 
   groups.forEach((group) => {
-    list.push({
-      label: group.def.displayName,
-      value: group.def.id,
-    } as LabelEntry<string>);
+    if (group.def.id !== selectedComponentId) {
+      list.push({
+        label: group.def.displayName,
+        value: group.def.id,
+      } as LabelEntry<string>);
+    }
   });
 
   return list;
 });
 
-const currentParentNamePropValue = computed(() => ({
-  id: currentParent.value?.id,
-  propId: currentParent.value?.id,
-  value: currentParent.value?.displayName,
-  canBeSetBySocket: false,
-  isFromExternalSource: false,
-  isControlledByDynamicFunc: false,
-  isControlledByAncestor: false,
-  overridden: true,
-  ancestorManual: false,
-}));
+const currentParentNamePropValue = computed(() => {
+  if (!currentParent.value) {
+    return null;
+  }
+
+  return {
+    id: currentParent.value?.id,
+    propId: currentParent.value?.id,
+    value: currentParent.value?.displayName,
+    canBeSetBySocket: false,
+    isFromExternalSource: false,
+    isControlledByDynamicFunc: false,
+    isControlledByAncestor: false,
+    overridden: true,
+    ancestorManual: false,
+  };
+});
 
 const lineageTree = computed(
   () =>
@@ -158,8 +167,10 @@ const treeFormItemFromSocket = (
           widgetKind: {
             kind: "socketConnection",
             options: possiblePeers.map((peerSocket) => ({
-              label: `${peerSocket.componentName}/${peerSocket.label}`,
+              label: peerSocket.componentName,
+              label2: peerSocket.label,
               value: `${peerSocket.componentId}-${peerSocket.id}`,
+              componentId: peerSocket.componentId,
             })),
             isSingleArity:
               socket.nodeSide === "left" && socket.maxConnections === 1,
@@ -175,7 +186,8 @@ const treeFormItemFromSocket = (
           id: combinedId,
           propId: combinedId,
           value: existingPeers.map((peerSocket) => ({
-            label: `${peerSocket.componentName}/${peerSocket.label}`,
+            label: peerSocket.componentName,
+            label2: peerSocket.label,
             value: `${peerSocket.componentId}-${peerSocket.id}`,
             isInferred: peerSocket.edge.isInferred,
           })),

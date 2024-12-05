@@ -397,7 +397,7 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const MAX_TITLE_LENGTH = 80;
+const MAX_TITLE_LENGTH = 14;
 
 const truncatedNodeTitle = computed(() => {
   if (props.node.def.title.length > MAX_TITLE_LENGTH) {

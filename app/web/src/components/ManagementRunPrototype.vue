@@ -7,7 +7,7 @@
       )
     "
   >
-    <DropdownMenu ref="viewSelectorMenuRef" forceRight>
+    <DropdownMenu ref="viewSelectorMenuRef" forceAlignRight>
       <DropdownMenuItem header label="RUN IN VIEW" />
       <DropdownMenuItem
         v-for="viewId in componentViews"

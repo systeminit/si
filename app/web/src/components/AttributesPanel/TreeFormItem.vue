@@ -303,42 +303,105 @@
       :style="{ paddingLeft: indentPx }"
       class="flex flex-col gap-xs"
     >
-      <VormInput
+      <button
         v-if="socketDropDownShouldBeShown"
-        ref="socketDropdown"
-        :disabled="widgetOptions.length === 0"
-        :modelValue="socketDropdownValue"
-        :options="widgetOptions"
-        :placeholder="socketDropdownPlaceholder"
-        class="flex-grow font-bold mb-[-1px]"
-        noLabel
-        size="xs"
-        type="dropdown"
-        @update:model-value="updateValue"
-      />
+        ref="socketConnectionDropdownButtonRef"
+        :class="
+          clsx(
+            'flex-grow p-2xs mb-[-1px] h-7 relative border mr-xs',
+            'font-mono text-[13px] text-left',
+            widgetOptions.length > 0
+              ? 'cursor-pointer'
+              : [
+                  'cursor-not-allowed',
+                  themeClasses(
+                    'text-neutral-500 bg-caution-lines-light',
+                    'text-neutral-400 bg-caution-lines-dark',
+                  ),
+                ],
+            isFocus
+              ? themeClasses(
+                  'border-action-500 bg-shade-0',
+                  'border-action-300 bg-shade-100',
+                )
+              : themeClasses(
+                  'border-neutral-400 bg-neutral-100',
+                  'border-neutral-600 bg-neutral-900',
+                ),
+          )
+        "
+        @blur="onBlur"
+        @focus="widgetOptions.length > 0 ? onFocus() : null"
+        @click="openSocketWidgetDropdownMenu"
+      >
+        {{ socketDropdownPlaceholder }}
+        <Icon
+          class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+          name="input-type-select"
+          size="sm"
+        />
+        <DropdownMenu
+          ref="socketConnectionDropdownMenuRef"
+          :anchorTo="{ $el: socketConnectionDropdownButtonRef }"
+          overlapAnchorOnAnchorTo
+          matchWidthToAnchor
+          :overlapAnchorOffset="4"
+          search
+          :searchFilters="socketSearchFilters"
+          @search="onSearch"
+          @onClose="clearSearch"
+        >
+          <DropdownMenuItem
+            v-if="filteredSocketOptions.length === 0"
+            header
+            label="No sockets match your filter/search criteria."
+          />
+          <DropdownMenuItem
+            v-for="option in filteredSocketOptions"
+            :key="option.value"
+            @select="updateValue(option.value)"
+          >
+            <div class="flex flex-row">
+              <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+                option.label
+              }}</TruncateWithTooltip>
+              <div class="flex-none">/</div>
+              <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+                option.label2
+              }}</TruncateWithTooltip>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenu>
+      </button>
       <div
         v-for="connection in socketConnectionsList"
         :key="connection.value"
-        class="flex px-xs"
+        :class="
+          clsx(
+            'flex flex-row w-full items-center px-xs',
+            connection.isInferred && 'text-neutral-400',
+          )
+        "
       >
-        <span
-          :class="
-            clsx('flex-grow', connection.isInferred && 'text-neutral-400')
-          "
-        >
-          {{ connection.label }}
-        </span>
-
+        <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+          connection.label
+        }}</TruncateWithTooltip>
+        <div class="flex-none">/</div>
+        <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+          connection.label2
+        }}</TruncateWithTooltip>
         <IconButton
           v-if="!connection.isInferred"
           icon="trash"
           size="sm"
+          class="flex-none"
           @click="unsetHandler(connection.value)"
         />
         <IconButton
           v-else
           icon="question-circle"
           iconTone="neutral"
+          class="flex-none"
           tooltip="Connection can't be unmade because it's inferred from a parent. You can override it above."
         />
       </div>
@@ -617,6 +680,7 @@
         <template
           v-else-if="widgetKind === 'comboBox' || widgetKind === 'select'"
         >
+          <!-- TODO(Wendy) - known bug with this code where the selection doesn't display correctly for the Connections lineage parent TreeFormItem -->
           <select
             v-model="newValueString"
             :class="
@@ -695,8 +759,6 @@
           @click="openConfirmEditModal"
         />
       </div>
-
-      <DetailsPanelMenuIcon v-if="!attributesPanel" class="ml-xs" />
     </div>
 
     <!-- VALIDATION DETAILS -->
@@ -869,7 +931,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, PropType, ref, useTemplateRef, watch } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import {
   DropdownMenu,
@@ -879,8 +941,9 @@ import {
   Modal,
   themeClasses,
   VButton,
-  VormInput,
   IconButton,
+  Filter,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
@@ -896,11 +959,12 @@ import {
   PropertyEditorValue,
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
+import { DoubleLabelEntry, DoubleLabelList } from "@/api/sdf/dal/label_list";
+import { ViewDescription } from "@/api/sdf/dal/views";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
-import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
 import { TreeFormContext } from "./TreeForm.vue";
 
 export type TreeFormProp = {
@@ -1009,9 +1073,9 @@ const headerHasContent = computed(() => {
 const rootCtx = props.context();
 
 // not reactive - and we know it's populated - since the parent will rerender if it changes
-const viewStore = useViewsStore();
+const viewsStore = useViewsStore();
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const componentId = viewStore.selectedComponentId!;
+const componentId = viewsStore.selectedComponentId!;
 
 const changeSetsStore = useChangeSetsStore();
 const attributesStore = useComponentAttributesStore(componentId);
@@ -1542,9 +1606,6 @@ const socketConnectionsList = computed(() => {
       typeof socket.value === "string",
   );
 });
-
-const socketDropdown = useTemplateRef<HTMLInputElement>("socketDropdown");
-
 const socketHasInferredEdges = computed(
   () =>
     socketConnectionsList.value.find((connection) => connection.isInferred) !==
@@ -1563,6 +1624,89 @@ const socketDropDownShouldBeShown = computed(
     // If socket is single arity and has a connection, don't show
     !(socketIsSingleArity.value && socketConnectionsList.value.length !== 0),
 );
+
+const socketConnectionDropdownButtonRef = ref();
+const socketConnectionDropdownMenuRef =
+  ref<InstanceType<typeof DropdownMenu>>();
+
+const openSocketWidgetDropdownMenu = () => {
+  if (widgetOptions.value.length > 0) {
+    socketConnectionDropdownMenuRef.value?.open();
+  }
+};
+
+// SOCKET WIDGET SEARCHING AND FILTERING
+const socketSearchString = ref("");
+const onSearch = (search: string) => {
+  socketSearchString.value = search.trim().toLocaleLowerCase();
+};
+const clearSearch = () => {
+  socketSearchString.value = "";
+};
+
+const filteredSocketOptions = computed(() => {
+  const filteringActive =
+    socketConnectionDropdownMenuRef.value?.searchFilteringActive;
+  const activeFilters =
+    socketConnectionDropdownMenuRef.value?.searchActiveFilters;
+
+  if (socketSearchString.value === "" && !filteringActive) {
+    return widgetOptions.value as DoubleLabelList<string>;
+  }
+
+  let filteredOptions: Set<DoubleLabelEntry<string>>;
+  let filteredOptionsArray = widgetOptions.value;
+
+  // filter by view first
+  if (filteringActive && activeFilters) {
+    filteredOptions = new Set();
+
+    // first make a list of views which we want components from
+    const selectedViews = [] as Array<ViewDescription>;
+    viewsStore.viewList.forEach((view, index) => {
+      if (activeFilters[index]) selectedViews.push(view);
+    });
+
+    // then go through all the sockets in widgetOptions and remove each one that is not on a component in a selected view
+    selectedViews.forEach((viewDescription) => {
+      const view = viewsStore.viewsById[viewDescription.id];
+      if (view) {
+        const ids = Object.keys(view.components).concat(
+          Object.keys(view.groups),
+        );
+        widgetOptions.value.forEach((option: DoubleLabelEntry<string>) => {
+          if (option.componentId && ids.includes(option.componentId)) {
+            filteredOptions.add(option);
+          }
+        });
+      }
+    });
+    filteredOptionsArray = Array.from(filteredOptions);
+  }
+
+  if (socketSearchString.value !== "") {
+    filteredOptionsArray = filteredOptionsArray.filter(
+      (option: DoubleLabelEntry<string>) =>
+        option.label.toLocaleLowerCase().includes(socketSearchString.value) ||
+        option.label2.toLocaleLowerCase().includes(socketSearchString.value) ||
+        option.value.includes(socketSearchString.value),
+    );
+  }
+
+  return filteredOptionsArray;
+});
+
+const socketSearchFilters = computed(() => {
+  const filters = [] as Array<Filter>;
+
+  viewsStore.viewList.forEach((view) => {
+    filters.push({
+      name: view.name,
+    });
+  });
+
+  return filters;
+});
 </script>
 
 <style lang="less">

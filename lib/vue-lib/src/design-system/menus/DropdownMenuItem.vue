@@ -6,7 +6,7 @@
     :aria-disabled="noInteract === true ? true : undefined"
     :class="
       clsx(
-        'flex gap-xs items-center select-none group',
+        'flex gap-xs items-center group select-none',
         noInteract ? 'text-neutral-500' : 'cursor-pointer',
         !endLinkTo && 'children:pointer-events-none',
         header
@@ -16,7 +16,7 @@
           classic: 'p-xs pr-sm',
           compact: 'p-2xs pr-xs',
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
-        }[menuCtx.variant],
+        }[menuCtx.variant as DropdownMenuVariant], 
         isFocused && !header && 'bg-action-500',
         !menuCtx.isCheckable.value &&
           !icon &&
@@ -62,7 +62,7 @@
 
     <div
       ref="labelRef"
-      class="capsize max-w-[220px] shrink-0 pointer-events-none"
+      class="max-w-full shrink pointer-events-none leading-none"
     >
       <div class="truncate">
         <slot>{{ label }}</slot>
@@ -120,7 +120,10 @@ import {
 import { RouteLocationRaw, RouterLink, useRouter } from "vue-router";
 import Icon from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
-import DropdownMenu, { useDropdownMenuContext } from "./DropdownMenu.vue";
+import DropdownMenu, {
+  DropdownMenuVariant,
+  useDropdownMenuContext,
+} from "./DropdownMenu.vue";
 import Toggle from "../general/Toggle.vue";
 import { useThemeContainer } from "../utils/theme_tools";
 

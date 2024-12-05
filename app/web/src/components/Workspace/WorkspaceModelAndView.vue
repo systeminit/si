@@ -55,6 +55,7 @@
     :viewId="viewId"
     @mouseout="presenceStore.clearCursor"
     @right-click-element="onRightClickElement"
+    @close-right-click-menu="closeRightClickMenu"
   />
 
   <!-- Right Panel - selection details -->
@@ -256,6 +257,10 @@ function onOutlineRightClick(ev: {
 
 function onThreeDotMenuClick(mouse: MouseEvent) {
   contextMenuRef.value?.open(mouse, false);
+}
+
+function closeRightClickMenu() {
+  contextMenuRef.value?.close();
 }
 
 const viewId = computed(() => route.params.viewId as string | undefined);
