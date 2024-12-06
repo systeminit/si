@@ -4,11 +4,12 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use s3::creds::Credentials as AwsCredentials;
 use sea_orm::DatabaseConnection;
+use si_jwt_public_key::JwtPublicSigningKeyChain;
 pub use si_posthog::PosthogClient;
 
 use tokio::sync::{mpsc, Mutex};
 
-use crate::{jwt_key::JwtPublicSigningKey, s3::S3Config};
+use crate::s3::S3Config;
 
 #[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
@@ -18,7 +19,7 @@ pub enum ShutdownSource {}
 pub struct AppState {
     /// A PostgreSQL connection pool.
     pg_pool: DatabaseConnection,
-    jwt_public_signing_key: JwtPublicSigningKey,
+    jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
     s3_config: S3Config,
@@ -34,7 +35,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_pool: DatabaseConnection,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         aws_creds: AwsCredentials,
         s3_config: S3Config,
@@ -42,7 +43,7 @@ impl AppState {
     ) -> Self {
         Self {
             pg_pool,
-            jwt_public_signing_key,
+            jwt_public_signing_key_chain,
             posthog_client,
             aws_creds,
             s3_config,
@@ -57,8 +58,8 @@ impl AppState {
     }
 
     /// Gets a reference to the public key used to sign the JWT
-    pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
-        &self.jwt_public_signing_key
+    pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKeyChain {
+        &self.jwt_public_signing_key_chain
     }
 
     /// Gets a reference to the Posthog client.

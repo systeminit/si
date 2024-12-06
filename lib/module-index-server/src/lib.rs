@@ -1,7 +1,6 @@
 mod app_state;
 mod config;
 mod extract;
-mod jwt_key;
 mod models;
 mod routes;
 mod s3;

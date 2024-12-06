@@ -1,4 +1,4 @@
-use std::{io, net::SocketAddr, path::Path, time::Duration};
+use std::{io, net::SocketAddr, time::Duration};
 
 use super::routes;
 
@@ -8,6 +8,7 @@ use hyper::server::{accept::Accept, conn::AddrIncoming};
 use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
+use si_jwt_public_key::{JwtConfig, JwtPublicSigningKeyChain, JwtPublicSigningKeyError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -21,7 +22,6 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
     app_state::{AppState, ShutdownSource},
-    jwt_key::{JwtKeyError, JwtPublicSigningKey},
     s3::S3Config,
     Config,
 };
@@ -43,8 +43,8 @@ pub enum ServerError {
     DbErr(#[from] DbErr),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
-    #[error("jwt secret key error")]
-    JwtSecretKey(#[from] JwtKeyError),
+    #[error("jwt public key error: {0}")]
+    JwtPublicKey(#[from] JwtPublicSigningKeyError),
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
     #[error(transparent)]
@@ -61,7 +61,7 @@ impl From<PgPoolError> for ServerError {
     }
 }
 
-type Result<T> = std::result::Result<T, ServerError>;
+type ServerResult<T> = std::result::Result<T, ServerError>;
 
 pub struct Server<I, S> {
     config: Config,
@@ -75,9 +75,9 @@ impl Server<(), ()> {
     pub fn http(
         config: Config,
         pg_pool: DatabaseConnection,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
-    ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
+    ) -> ServerResult<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         // socket_addr
 
         // try to load aws creds from a few different places
@@ -141,7 +141,7 @@ impl Server<(), ()> {
 
     // this creates our si_data_pg::PgPool, which wont work with SeaORM
     #[instrument(name = "module-index.init.create_pg_pool", level = "info", skip_all)]
-    pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
+    pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
@@ -153,7 +153,9 @@ impl Server<(), ()> {
         level = "info",
         skip_all
     )]
-    pub async fn create_db_connection(pg_pool_config: &PgPoolConfig) -> Result<DatabaseConnection> {
+    pub async fn create_db_connection(
+        pg_pool_config: &PgPoolConfig,
+    ) -> ServerResult<DatabaseConnection> {
         let mut opt = ConnectOptions::new(format!(
             "{protocol}://{username}:{password}@{host}:{port}/{database}",
             protocol = "postgres",
@@ -181,7 +183,7 @@ impl Server<(), ()> {
         Ok(db)
     }
 
-    pub async fn run_migrations(pg_pool: &PgPool) -> Result<()> {
+    pub async fn run_migrations(pg_pool: &PgPool) -> ServerResult<()> {
         Ok(pg_pool
             .migrate(embedded_migrations::migrations::runner())
             .await?)
@@ -193,12 +195,27 @@ impl Server<(), ()> {
         skip_all
     )]
     pub async fn load_jwt_public_signing_key(
-        path: impl AsRef<Path>,
-    ) -> Result<JwtPublicSigningKey> {
-        Ok(JwtPublicSigningKey::load(path).await?)
+        config: &Config,
+    ) -> ServerResult<JwtPublicSigningKeyChain> {
+        let primary = JwtConfig {
+            key_file: Some(config.jwt_signing_public_key_path().to_owned()),
+            key_base64: None,
+            algo: config.jwt_signing_public_key_algo(),
+        };
+
+        let secondary = config
+            .jwt_secondary_signing_public_key_path()
+            .zip(config.jwt_secondary_signing_public_key_algo())
+            .map(|(path, algo)| JwtConfig {
+                key_file: Some(path.to_owned()),
+                key_base64: None,
+                algo,
+            });
+
+        Ok(JwtPublicSigningKeyChain::from_config(primary, secondary).await?)
     }
 
-    pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
+    pub async fn start_posthog(config: &PosthogConfig) -> ServerResult<PosthogClient> {
         // TODO(fnichol): this should be threaded through
         let token = CancellationToken::new();
 
@@ -216,7 +233,7 @@ where
     IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     IE: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self) -> ServerResult<()> {
         let shutdown_rx = self.shutdown_rx;
 
         self.inner
@@ -240,17 +257,17 @@ where
 
 pub fn build_service(
     pg_pool: DatabaseConnection,
-    jwt_public_signing_key: JwtPublicSigningKey,
+    jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
     s3_config: S3Config,
-) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+) -> ServerResult<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
     let state = AppState::new(
         pg_pool,
-        jwt_public_signing_key,
+        jwt_public_signing_key_chain,
         posthog_client,
         aws_creds,
         s3_config,
@@ -273,7 +290,7 @@ pub fn build_service(
 fn prepare_graceful_shutdown(
     mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
-) -> Result<oneshot::Receiver<()>> {
+) -> ServerResult<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
     let mut sigterm_watcher =
         signal::unix::signal(signal::unix::SignalKind::terminate()).map_err(ServerError::Signal)?;

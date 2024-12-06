@@ -1902,6 +1902,7 @@ dependencies = [
  "si-events",
  "si-frontend-types",
  "si-hash",
+ "si-jwt-public-key",
  "si-layer-cache",
  "si-pkg",
  "si-runtime",
@@ -1966,6 +1967,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
+ "si-jwt-public-key",
  "si-layer-cache",
  "si-pkg",
  "si-runtime",
@@ -4267,6 +4269,7 @@ dependencies = [
  "serde_json",
  "si-data-pg",
  "si-hash",
+ "si-jwt-public-key",
  "si-pkg",
  "si-posthog",
  "si-settings",
@@ -6215,6 +6218,7 @@ dependencies = [
  "si-data-spicedb",
  "si-events",
  "si-frontend-types",
+ "si-jwt-public-key",
  "si-layer-cache",
  "si-pkg",
  "si-posthog",
@@ -6757,6 +6761,21 @@ dependencies = [
  "blake3",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "si-jwt-public-key"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "jwt-simple",
+ "remain",
+ "serde",
+ "si-events",
+ "si-std",
+ "telemetry",
+ "thiserror 1.0.69",
+ "tokio",
 ]
 
 [[package]]

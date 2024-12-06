@@ -4,6 +4,7 @@ use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgPoolConfig;
+use si_jwt_public_key::JwtAlgo;
 use si_posthog::PosthogConfig;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
@@ -51,6 +52,12 @@ pub struct Config {
     instance_id: String,
 
     jwt_signing_public_key_path: CanonicalFile,
+    jwt_signing_public_key_algo: JwtAlgo,
+
+    #[builder(default)]
+    jwt_secondary_signing_public_key_path: Option<CanonicalFile>,
+    #[builder(default)]
+    jwt_secondary_signing_public_key_algo: Option<JwtAlgo>,
 
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
@@ -81,8 +88,25 @@ impl Config {
 
     /// Gets a reference to the config's jwt signing public key path.
     #[must_use]
-    pub fn jwt_signing_public_key_path(&self) -> &Path {
-        self.jwt_signing_public_key_path.as_path()
+    pub fn jwt_signing_public_key_path(&self) -> &CanonicalFile {
+        &self.jwt_signing_public_key_path
+    }
+
+    /// Gets a reference to the config's jwt signing public key path.
+    #[must_use]
+    pub fn jwt_signing_public_key_algo(&self) -> JwtAlgo {
+        self.jwt_signing_public_key_algo
+    }
+
+    /// Gets a reference to the config's jwt secondary signing public key path.
+    #[must_use]
+    pub fn jwt_secondary_signing_public_key_path(&self) -> Option<&CanonicalFile> {
+        self.jwt_secondary_signing_public_key_path.as_ref()
+    }
+
+    #[must_use]
+    pub fn jwt_secondary_signing_public_key_algo(&self) -> Option<JwtAlgo> {
+        self.jwt_secondary_signing_public_key_algo
     }
 
     /// Gets a reference to the config's posthog config.
@@ -108,6 +132,12 @@ pub struct ConfigFile {
     instance_id: String,
     #[serde(default = "default_jwt_signing_public_key_path")]
     pub jwt_signing_public_key_path: String,
+    #[serde(default = "default_jwt_signing_public_key_algo")]
+    pub jwt_signing_public_key_algo: JwtAlgo,
+    #[serde(default)]
+    pub jwt_secondary_signing_public_key_path: Option<String>,
+    #[serde(default)]
+    pub jwt_secondary_signing_public_key_algo: Option<JwtAlgo>,
     #[serde(default)]
     pub posthog: PosthogConfig,
     #[serde(default)]
@@ -127,6 +157,9 @@ impl Default for ConfigFile {
             socket_addr: get_default_socket_addr(),
             instance_id: random_instance_id(),
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
+            jwt_signing_public_key_algo: default_jwt_signing_public_key_algo(),
+            jwt_secondary_signing_public_key_path: None,
+            jwt_secondary_signing_public_key_algo: None,
             posthog: Default::default(),
             s3: Default::default(),
         }
@@ -159,6 +192,10 @@ fn random_instance_id() -> String {
 }
 fn default_jwt_signing_public_key_path() -> String {
     "/run/sdf/jwt_signing_public_key.pem".to_string()
+}
+
+fn default_jwt_signing_public_key_algo() -> JwtAlgo {
+    JwtAlgo::RS256
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

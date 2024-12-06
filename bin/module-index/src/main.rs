@@ -54,8 +54,7 @@ async fn async_main() -> Result<()> {
 
     let config = Config::try_from(args)?;
 
-    let jwt_public_signing_key =
-        Server::load_jwt_public_signing_key(config.jwt_signing_public_key_path()).await?;
+    let jwt_public_signing_key = Server::load_jwt_public_signing_key(&config).await?;
 
     // our pg pool works for migrations (refinery) but doesnt work for SeaORM :(
     // so we set up both connections for now... Would like to clean this up

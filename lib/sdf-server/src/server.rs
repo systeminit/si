@@ -3,11 +3,12 @@ use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Ar
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::{async_trait, routing::IntoMakeService, Router};
-use dal::{JwtPublicSigningKey, ServicesContext};
+use dal::ServicesContext;
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
+use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::{
@@ -83,8 +84,11 @@ impl Server {
         let (services_context, layer_db_graceful_shutdown) =
             init::services_context_from_config(&config, helping_tasks_token.clone()).await?;
 
-        let jwt_public_signing_key =
-            init::load_jwt_public_signing_key(config.jwt_signing_public_key().clone()).await?;
+        let jwt_public_signing_key = init::load_jwt_public_signing_key(
+            config.jwt_signing_public_key().clone(),
+            config.jwt_secondary_signing_public_key().cloned(),
+        )
+        .await?;
         let (posthog_sender, posthog_client) =
             init::initialize_posthog(config.posthog(), helping_tasks_token.clone())?;
 
@@ -155,7 +159,7 @@ impl Server {
         instance_id: impl Into<String>,
         incoming_stream: IncomingStream,
         services_context: ServicesContext,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
         asset_sprayer: Option<AssetSprayer>,
@@ -170,7 +174,7 @@ impl Server {
     ) -> ServerResult<Self> {
         let app = AxumApp::from_services(
             services_context.clone(),
-            jwt_public_signing_key,
+            jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
             asset_sprayer,
