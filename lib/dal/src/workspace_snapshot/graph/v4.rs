@@ -18,8 +18,8 @@ use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 use ulid::Generator;
 
-use crate::layer_db_types::{ViewContent, ViewContentV1};
 use crate::{
+    layer_db_types::{ViewContent, ViewContentV1},
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
@@ -34,6 +34,7 @@ use crate::{
 };
 
 pub mod component;
+pub mod diagram;
 pub mod schema;
 pub mod socket;
 
@@ -1392,6 +1393,20 @@ impl WorkspaceSnapshotGraphV4 {
         Ok(())
     }
 
+    fn remove_edge_by_idx(&mut self, edge_index: EdgeIndex) -> WorkspaceSnapshotGraphResult<()> {
+        if let Some((source_node_idx, target_node_idx)) = self.graph.edge_endpoints(edge_index) {
+            if let Some(edge_weight) = self.graph.edge_weight(edge_index) {
+                return self.remove_edge(
+                    source_node_idx,
+                    target_node_idx,
+                    edge_weight.kind().into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     fn remove_edge_of_kind(
         &mut self,
         source_node_index: NodeIndex,
@@ -1677,6 +1692,46 @@ impl WorkspaceSnapshotGraphV4 {
         self.touch_node(node_idx);
 
         Ok(())
+    }
+
+    pub fn get_edge_weight_kind_target_idx(
+        &self,
+        source_node_idx: NodeIndex,
+        edge_direction: Direction,
+        edge_weight_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        self.get_edge_weight_kind_target_idx_opt(source_node_idx, edge_direction, edge_weight_kind)?
+            .ok_or_else(|| {
+                WorkspaceSnapshotGraphError::NoEdgesOfKindFound(source_node_idx, edge_weight_kind)
+            })
+    }
+
+    pub fn get_edge_weight_kind_target_idx_opt(
+        &self,
+        source_node_idx: NodeIndex,
+        edge_direction: Direction,
+        edge_weight_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        let edges_of_kind = self.edges_directed_for_edge_weight_kind(
+            source_node_idx,
+            edge_direction,
+            edge_weight_kind,
+        );
+        if edges_of_kind.len() > 1 {
+            return Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
+                source_node_idx,
+                edge_weight_kind,
+            ));
+        }
+        let Some((_edge_weight, source_node_idx, target_node_idx)) = edges_of_kind.first() else {
+            return Ok(None);
+        };
+
+        Ok(Some(if edge_direction == Direction::Incoming {
+            *source_node_idx
+        } else {
+            *target_node_idx
+        }))
     }
 }
 

@@ -1483,6 +1483,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+        async DELETE_VIEW(viewId: ViewId) {
+          return new ApiRequest({
+            method: "delete",
+            url: API_PREFIX.concat([{ viewId }]),
+            params: {
+              viewId,
+            },
+          });
+        },
         async CREATE_VIEW_AND_MOVE(
           name: string,
           sourceViewId: ViewId,
@@ -1781,12 +1790,24 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
             {
               eventType: "ViewDeleted",
-              callback: ({ view }, metadata) => {
+              callback: ({ viewId }, metadata) => {
                 if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === view.id);
+                const idx = this.viewList.findIndex((v) => v.id === viewId);
                 if (idx !== -1) this.viewList.splice(idx, 1);
-                delete this.viewsById[view.id];
+                delete this.viewsById[viewId];
                 this.SORT_LIST_VIEWS();
+                Object.values(this.viewsById).forEach((view) => {
+                  delete view.viewNodes[viewId];
+                });
+                const route = router.currentRoute;
+                if (route.value.params.viewId === viewId) {
+                  const defaultView = this.viewList.find((v) => v.isDefault);
+                  if (defaultView) this.selectView(defaultView.id);
+                  else {
+                    const v = this.viewList[0];
+                    if (v) this.selectView(v.id);
+                  }
+                }
               },
             },
 

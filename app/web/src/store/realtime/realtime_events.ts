@@ -353,7 +353,7 @@ export type WsEventPayloadMap = {
     actionId?: ActionId;
   };
   ViewUpdated: { view: ViewDescription };
-  ViewDeleted: { view: ViewDescription };
+  ViewDeleted: { viewId: ViewId };
   ViewCreated: { view: ViewDescription };
   ViewComponentsUpdate: {
     clientUlid: string;

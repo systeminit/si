@@ -16,7 +16,7 @@ use thiserror::Error;
 use crate::{
     socket::input::InputSocketError,
     workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
-    ComponentError, SchemaVariantError,
+    ComponentError, EdgeWeightKindDiscriminants, SchemaVariantError,
 };
 
 pub mod correct_transforms;
@@ -78,16 +78,22 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWeightNotFound,
     #[error("Node with ID {} not found", .0.to_string())]
     NodeWithIdNotFound(Ulid),
+    #[error("No edges of kind {1} found with node index {0:?} as the source")]
+    NoEdgesOfKindFound(NodeIndex, EdgeWeightKindDiscriminants),
     #[error("No Prop found for NodeIndex {0:?}")]
     NoPropFound(NodeIndex),
     #[error("Ordering node {0} has id in its order for non-existent node {1}")]
     OrderingNodeHasNonexistentNodeInOrder(Ulid, Ulid),
     #[error("SchemaVariant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
+    #[error("Too many edges of kind {1} found with node index {0:?} as the source")]
+    TooManyEdgesOfKind(NodeIndex, EdgeWeightKindDiscriminants),
     #[error("NodeIndex has too many Ordering children: {0:?}")]
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
     TooManyPropForNode(NodeIndex),
+    #[error("Removing View would orphan items: {0:?}")]
+    ViewRemovalWouldOrphanItems(Vec<Ulid>),
     #[error("Workspace Snapshot has conflicts and must be rebased")]
     WorkspaceNeedsRebase,
     #[error("Workspace Snapshot has conflicts")]
