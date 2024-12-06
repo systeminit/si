@@ -118,6 +118,15 @@ pub(crate) struct Args {
     /// The path to the JWT public signing key
     #[arg(long, env)]
     pub(crate) jwt_public_key: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_public_key_algo: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_secondary_public_key: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_secondary_public_key_algo: Option<String>,
     // /// Database migration mode on startup
     // #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
 }
@@ -170,7 +179,10 @@ impl TryFrom<Args> for Config {
                 config_map.set("s3.path_prefix", s3_path_prefix);
             }
             if let Some(jwt_public_key) = args.jwt_public_key {
-                config_map.set("jwt_signing_public_key_path", jwt_public_key.to_string());
+                config_map.set(
+                    "jwt_primary_signing_public_key_path",
+                    jwt_public_key.to_string(),
+                );
             }
 
             // if let Some(migration_mode) = args.migration_mode {

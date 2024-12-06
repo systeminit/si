@@ -55,6 +55,7 @@ members = [
     "lib/si-firecracker",
     "lib/si-frontend-types-rs",
     "lib/si-hash",
+    "lib/si-jwt-public-key",
     "lib/si-layer-cache",
     "lib/si-pkg",
     "lib/si-pool-noodle",

@@ -211,7 +211,7 @@ impl FromRequestParts<AppState> for Authorization {
 
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
         let mut ctx = builder.build_default().await.map_err(internal_error)?;
-        let jwt_public_signing_key = state.jwt_public_signing_key().clone();
+        let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
 
         let headers = &parts.headers;
         let authorization_header_value = headers
@@ -251,7 +251,7 @@ impl FromRequestParts<AppState> for WsAuthorization {
     ) -> Result<Self, Self::Rejection> {
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
         let mut ctx = builder.build_default().await.map_err(internal_error)?;
-        let jwt_public_signing_key = state.jwt_public_signing_key().clone();
+        let jwt_public_signing_key = state.jwt_public_signing_key_chain().clone();
 
         let query: Query<HashMap<String, String>> = Query::from_request_parts(parts, state)
             .await
