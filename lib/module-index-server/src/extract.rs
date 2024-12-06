@@ -4,12 +4,9 @@ use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
 use hyper::StatusCode;
 use s3::{Bucket as S3Bucket, Region as AwsRegion};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use ulid::Ulid;
+use si_jwt_public_key::SiJwtClaims;
 
 use super::app_state::AppState;
-use crate::jwt_key::{JwtKeyError, JwtPublicSigningKey};
 
 pub struct ExtractedS3Bucket(pub S3Bucket);
 
@@ -80,36 +77,8 @@ impl FromRequestParts<AppState> for DbConnection {
     }
 }
 
-pub type UserPk = Ulid;
-pub type WorkspacePk = Ulid;
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub struct UserClaim {
-    pub user_pk: UserPk,
-    pub workspace_pk: WorkspacePk,
-}
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum AuthError {
-    #[error(transparent)]
-    JwtKey(#[from] JwtKeyError),
-}
-
-pub type AuthResult<T> = Result<T, AuthError>;
-
-impl UserClaim {
-    pub async fn from_bearer_token(
-        public_key: JwtPublicSigningKey,
-        token: impl AsRef<str>,
-    ) -> AuthResult<UserClaim> {
-        let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
-        Ok(claims.custom)
-    }
-}
-
 pub struct Authorization {
-    pub user_claim: UserClaim,
+    pub user_claim: SiJwtClaims,
     pub auth_token: String,
 }
 
@@ -121,7 +90,7 @@ impl FromRequestParts<AppState> for Authorization {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let jwt_public_signing_key = state.jwt_public_signing_key().clone();
+        let jwt_public_signing_key = state.jwt_public_signing_key();
 
         let headers = &parts.headers;
         let authorization_header_value = headers
@@ -130,9 +99,11 @@ impl FromRequestParts<AppState> for Authorization {
         let auth_token = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let user_claim = UserClaim::from_bearer_token(jwt_public_signing_key, auth_token)
-            .await
-            .map_err(|_| unauthorized_error())?;
+        let user_claim =
+            si_jwt_public_key::validate_bearer_token(jwt_public_signing_key.clone(), &auth_token)
+                .await
+                .map_err(|_| unauthorized_error())?
+                .custom;
 
         Ok(Self {
             user_claim,

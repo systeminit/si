@@ -30,6 +30,7 @@ use std::{
     env, fmt,
     future::IntoFuture,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::{Arc, Once},
 };
 
@@ -39,8 +40,7 @@ use dal::{
     builtins::func,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, DalLayerDb, JetstreamStreams, JwtPublicSigningKey, ModelResult, ServicesContext,
-    Workspace,
+    DalContext, DalLayerDb, JetstreamStreams, ModelResult, ServicesContext, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -51,9 +51,10 @@ use si_crypto::{
 };
 use si_data_nats::{jetstream, NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_jwt_public_key::{JwtAlgo, JwtConfig, JwtPublicSigningKeyChain};
 use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
-use si_std::ResultExt;
+use si_std::{CanonicalFile, ResultExt};
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -170,6 +171,8 @@ pub struct Config {
     module_index_url: String,
     veritech_encryption_key_path: String,
     jwt_signing_public_key_path: String,
+    #[builder(default = "JwtAlgo::RS256")]
+    jwt_signing_public_key_algo: JwtAlgo,
     jwt_signing_private_key_path: String,
     postgres_key_path: String,
     #[builder(default)]
@@ -619,13 +622,22 @@ pub fn random_identifier_string() -> String {
 }
 
 /// Returns a JWT public signing key, which is used to verify claims.
-pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
-    let jwt_signing_public_key_path = {
+pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKeyChain> {
+    let jwt_config = {
         let context_builder = TEST_CONTEXT_BUILDER.lock().await;
         let config = context_builder.config()?;
-        config.jwt_signing_public_key_path.clone()
+        let key_file = Some(CanonicalFile::from_str(
+            &config.jwt_signing_public_key_path,
+        )?);
+
+        JwtConfig {
+            key_file,
+            key_base64: None,
+            algo: config.jwt_signing_public_key_algo,
+        }
     };
-    let key = JwtPublicSigningKey::load(&jwt_signing_public_key_path).await?;
+
+    let key = JwtPublicSigningKeyChain::from_config(jwt_config, None).await?;
 
     Ok(key)
 }

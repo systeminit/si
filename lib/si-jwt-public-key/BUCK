@@ -1,0 +1,23 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_test",
+)
+
+rust_library(
+    name = "si-jwt-public-key",
+    deps = [
+        "//lib/si-events-rs:si-events",
+        "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:base64",
+        "//third-party/rust:jwt-simple",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

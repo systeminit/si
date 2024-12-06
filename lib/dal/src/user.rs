@@ -2,14 +2,17 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_events::ViewId;
+use si_jwt_public_key::{
+    validate_bearer_token, JwtPublicSigningKeyChain, JwtPublicSigningKeyError, SiJwtClaims,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    jwt_key::JwtKeyError, standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent,
-    HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
+    standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent, HistoryEventError, Tenancy,
+    Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
@@ -23,7 +26,7 @@ pub enum UserError {
     #[error("failed to join long lived async task; bug!")]
     Join(#[from] JoinError),
     #[error(transparent)]
-    JwtKey(#[from] JwtKeyError),
+    JwtKey(#[from] JwtPublicSigningKeyError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("user not found in tenancy: {0} {1:?}")]
@@ -212,6 +215,15 @@ pub struct UserClaim {
     pub workspace_pk: WorkspacePk,
 }
 
+impl From<SiJwtClaims> for UserClaim {
+    fn from(value: SiJwtClaims) -> Self {
+        Self {
+            user_pk: value.user_pk.into_raw_id().into(),
+            workspace_pk: value.workspace_pk.into_raw_id().into(),
+        }
+    }
+}
+
 impl UserClaim {
     pub fn new(user_pk: UserPk, workspace_pk: WorkspacePk) -> Self {
         UserClaim {
@@ -221,11 +233,11 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        public_key: JwtPublicSigningKey,
+        public_key: JwtPublicSigningKeyChain,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
-        let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
-        Ok(claims.custom)
+        let claims = validate_bearer_token(public_key, token).await?;
+        Ok(claims.custom.into())
     }
 }
 

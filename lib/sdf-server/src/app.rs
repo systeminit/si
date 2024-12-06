@@ -3,9 +3,10 @@ use std::sync::Arc;
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::Router;
-use dal::{JwtPublicSigningKey, ServicesContext};
+use dal::ServicesContext;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
+use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::sync::RwLock;
@@ -25,7 +26,7 @@ impl AxumApp {
     #[inline]
     pub fn from_services(
         services_context: ServicesContext,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
         asset_sprayer: Option<AssetSprayer>,
@@ -40,7 +41,7 @@ impl AxumApp {
     ) -> Self {
         Self::inner_from_services(
             services_context,
-            jwt_public_signing_key,
+            jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
             asset_sprayer,
@@ -65,7 +66,7 @@ impl AxumApp {
     #[inline]
     pub fn from_services_for_tests(
         services_context: ServicesContext,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
         asset_sprayer: Option<AssetSprayer>,
@@ -80,7 +81,7 @@ impl AxumApp {
     ) -> Self {
         Self::inner_from_services(
             services_context,
-            jwt_public_signing_key,
+            jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
             asset_sprayer,
@@ -103,7 +104,7 @@ impl AxumApp {
     #[allow(clippy::too_many_arguments)]
     fn inner_from_services(
         services_context: ServicesContext,
-        jwt_public_signing_key: JwtPublicSigningKey,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: PosthogClient,
         auth_api_url: impl AsRef<str>,
         asset_sprayer: Option<AssetSprayer>,
@@ -119,7 +120,7 @@ impl AxumApp {
     ) -> Self {
         let state = AppState::new(
             services_context,
-            jwt_public_signing_key,
+            jwt_public_signing_key_chain,
             posthog_client,
             auth_api_url,
             asset_sprayer,

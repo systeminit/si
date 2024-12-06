@@ -24,6 +24,7 @@ rust_library(
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-hash:si-hash",
         "//lib/si-id:si-id",
+        "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
         "//lib/si-runtime-rs:si-runtime",
@@ -122,7 +123,7 @@ rust_test(
     ],
     crate_root = "tests/integration.rs",
     srcs = glob([
-       "tests/**/*.rs",
+        "tests/**/*.rs",
         "tests/integration_test/external/ignition/*.ign",
     ]),
     env = {
