@@ -708,7 +708,7 @@ cargo.rust_library(
         ":thiserror-1.0.69",
         ":time-0.3.37",
         ":tokio-1.42.0",
-        ":tokio-rustls-0.26.0",
+        ":tokio-rustls-0.26.1",
         ":tokio-util-0.7.13",
         ":tracing-0.1.41",
         ":tryhard-0.5.1",
@@ -757,7 +757,7 @@ cargo.rust_library(
         ":serde_json-1.0.133",
         ":thiserror-1.0.69",
         ":tokio-1.42.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
         ":tokio-util-0.7.13",
         ":tracing-0.1.41",
     ],
@@ -1804,6 +1804,44 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "axum-0.7.9.crate",
+    sha256 = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f",
+    strip_prefix = "axum-0.7.9",
+    urls = ["https://static.crates.io/crates/axum/0.7.9/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "axum-0.7.9",
+    srcs = [":axum-0.7.9.crate"],
+    crate = "axum",
+    crate_root = "axum-0.7.9.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":async-trait-0.1.83",
+        ":axum-core-0.4.5",
+        ":bytes-1.9.0",
+        ":futures-util-0.3.31",
+        ":http-1.2.0",
+        ":http-body-1.0.1",
+        ":http-body-util-0.1.2",
+        ":itoa-1.0.14",
+        ":matchit-0.7.3",
+        ":memchr-2.7.4",
+        ":mime-0.3.17",
+        ":percent-encoding-2.3.1",
+        ":pin-project-lite-0.2.15",
+        ":rustversion-1.0.18",
+        ":serde-1.0.215",
+        ":sync_wrapper-1.0.2",
+        ":tower-0.5.1",
+        ":tower-layer-0.3.3",
+        ":tower-service-0.3.3",
+    ],
+)
+
+http_archive(
     name = "axum-core-0.3.4.crate",
     sha256 = "759fa577a247914fd3f7f76d62972792636412fbfd634cd452f6a385a74d2d2c",
     strip_prefix = "axum-core-0.3.4",
@@ -1825,6 +1863,37 @@ cargo.rust_library(
         ":http-0.2.12",
         ":http-body-0.4.6",
         ":mime-0.3.17",
+        ":tower-layer-0.3.3",
+        ":tower-service-0.3.3",
+    ],
+)
+
+http_archive(
+    name = "axum-core-0.4.5.crate",
+    sha256 = "09f2bd6146b97ae3359fa0cc6d6b376d9539582c7b4220f041a33ec24c226199",
+    strip_prefix = "axum-core-0.4.5",
+    urls = ["https://static.crates.io/crates/axum-core/0.4.5/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "axum-core-0.4.5",
+    srcs = [":axum-core-0.4.5.crate"],
+    crate = "axum_core",
+    crate_root = "axum-core-0.4.5.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":async-trait-0.1.83",
+        ":bytes-1.9.0",
+        ":futures-util-0.3.31",
+        ":http-1.2.0",
+        ":http-body-1.0.1",
+        ":http-body-util-0.1.2",
+        ":mime-0.3.17",
+        ":pin-project-lite-0.2.15",
+        ":rustversion-1.0.18",
+        ":sync_wrapper-1.0.2",
         ":tower-layer-0.3.3",
         ":tower-service-0.3.3",
     ],
@@ -3193,23 +3262,23 @@ buildscript_run(
 
 alias(
     name = "clap",
-    actual = ":clap-4.5.22",
+    actual = ":clap-4.5.23",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "clap-4.5.22.crate",
-    sha256 = "69371e34337c4c984bbe322360c2547210bf632eb2814bbe78a6e87a2935bd2b",
-    strip_prefix = "clap-4.5.22",
-    urls = ["https://static.crates.io/crates/clap/4.5.22/download"],
+    name = "clap-4.5.23.crate",
+    sha256 = "3135e7ec2ef7b10c6ed8950f0f792ed96ee093fa088608f1c76e569722700c84",
+    strip_prefix = "clap-4.5.23",
+    urls = ["https://static.crates.io/crates/clap/4.5.23/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap-4.5.22",
-    srcs = [":clap-4.5.22.crate"],
+    name = "clap-4.5.23",
+    srcs = [":clap-4.5.23.crate"],
     crate = "clap",
-    crate_root = "clap-4.5.22.crate/src/lib.rs",
+    crate_root = "clap-4.5.23.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -3225,24 +3294,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":clap_builder-4.5.22",
+        ":clap_builder-4.5.23",
         ":clap_derive-4.5.18",
     ],
 )
 
 http_archive(
-    name = "clap_builder-4.5.22.crate",
-    sha256 = "6e24c1b4099818523236a8ca881d2b45db98dadfb4625cf6608c12069fcbbde1",
-    strip_prefix = "clap_builder-4.5.22",
-    urls = ["https://static.crates.io/crates/clap_builder/4.5.22/download"],
+    name = "clap_builder-4.5.23.crate",
+    sha256 = "30582fc632330df2bd26877bde0c1f4470d57c582bbc070376afcd04d8cb4838",
+    strip_prefix = "clap_builder-4.5.23",
+    urls = ["https://static.crates.io/crates/clap_builder/4.5.23/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_builder-4.5.22",
-    srcs = [":clap_builder-4.5.22.crate"],
+    name = "clap_builder-4.5.23",
+    srcs = [":clap_builder-4.5.23.crate"],
     crate = "clap_builder",
-    crate_root = "clap_builder-4.5.22.crate/src/lib.rs",
+    crate_root = "clap_builder-4.5.23.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -3258,7 +3327,7 @@ cargo.rust_library(
     deps = [
         ":anstream-0.6.18",
         ":anstyle-1.0.10",
-        ":clap_lex-0.7.3",
+        ":clap_lex-0.7.4",
         ":strsim-0.11.1",
         ":terminal_size-0.4.1",
     ],
@@ -3290,18 +3359,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "clap_lex-0.7.3.crate",
-    sha256 = "afb84c814227b90d6895e01398aee0d8033c00e7466aca416fb6a8e0eb19d8a7",
-    strip_prefix = "clap_lex-0.7.3",
-    urls = ["https://static.crates.io/crates/clap_lex/0.7.3/download"],
+    name = "clap_lex-0.7.4.crate",
+    sha256 = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6",
+    strip_prefix = "clap_lex-0.7.4",
+    urls = ["https://static.crates.io/crates/clap_lex/0.7.4/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_lex-0.7.3",
-    srcs = [":clap_lex-0.7.3.crate"],
+    name = "clap_lex-0.7.4",
+    srcs = [":clap_lex-0.7.4.crate"],
     crate = "clap_lex",
-    crate_root = "clap_lex-0.7.3.crate/src/lib.rs",
+    crate_root = "clap_lex-0.7.4.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -4010,7 +4079,7 @@ cargo.rust_library(
         ":anes-0.1.6",
         ":cast-0.3.0",
         ":ciborium-0.2.2",
-        ":clap-4.5.22",
+        ":clap-4.5.23",
         ":criterion-plot-0.5.0",
         ":futures-0.3.31",
         ":is-terminal-0.4.13",
@@ -6288,6 +6357,7 @@ cargo.rust_library(
     edition = "2021",
     features = [
         "default",
+        "opentelemetry_0_26",
         "tracing",
     ],
     named_deps = {
@@ -6322,8 +6392,12 @@ cargo.rust_library(
     crate = "foyer_common",
     crate_root = "foyer-common-0.13.1.crate/src/lib.rs",
     edition = "2021",
-    features = ["tracing"],
+    features = [
+        "opentelemetry_0_26",
+        "tracing",
+    ],
     named_deps = {
+        "opentelemetry_0_26": ":opentelemetry-0.26.0",
         "tokio": ":madsim-tokio-0.2.30",
     },
     visibility = [],
@@ -6434,7 +6508,7 @@ cargo.rust_library(
         ":bincode-1.3.3",
         ":bitflags-2.6.0",
         ":bytes-1.9.0",
-        ":clap-4.5.22",
+        ":clap-4.5.23",
         ":either-1.13.0",
         ":equivalent-1.0.1",
         ":fastrace-0.7.4",
@@ -7890,7 +7964,6 @@ cargo.rust_library(
     features = [
         "client",
         "default",
-        "full",
         "h2",
         "http1",
         "http2",
@@ -7940,6 +8013,7 @@ cargo.rust_library(
         "default",
         "http1",
         "http2",
+        "server",
     ],
     visibility = [],
     deps = [
@@ -7950,6 +8024,7 @@ cargo.rust_library(
         ":http-1.2.0",
         ":http-body-1.0.1",
         ":httparse-1.9.5",
+        ":httpdate-1.0.3",
         ":itoa-1.0.14",
         ":pin-project-lite-0.2.15",
         ":smallvec-1.13.2",
@@ -8058,32 +8133,9 @@ cargo.rust_library(
         ":rustls-0.23.19",
         ":rustls-native-certs-0.8.1",
         ":tokio-1.42.0",
-        ":tokio-rustls-0.26.0",
+        ":tokio-rustls-0.26.1",
         ":tower-service-0.3.3",
         ":webpki-roots-0.26.7",
-    ],
-)
-
-http_archive(
-    name = "hyper-timeout-0.4.1.crate",
-    sha256 = "bbb958482e8c7be4bc3cf272a766a2b0bf1a6755e7a6ae777f017a31d11b13b1",
-    strip_prefix = "hyper-timeout-0.4.1",
-    urls = ["https://static.crates.io/crates/hyper-timeout/0.4.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "hyper-timeout-0.4.1",
-    srcs = [":hyper-timeout-0.4.1.crate"],
-    crate = "hyper_timeout",
-    crate_root = "hyper-timeout-0.4.1.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-    deps = [
-        ":hyper-0.14.31",
-        ":pin-project-lite-0.2.15",
-        ":tokio-1.42.0",
-        ":tokio-io-timeout-1.2.0",
     ],
 )
 
@@ -8130,6 +8182,10 @@ cargo.rust_library(
         "client-legacy",
         "default",
         "http1",
+        "http2",
+        "server",
+        "server-auto",
+        "service",
         "tokio",
     ],
     visibility = [],
@@ -10359,6 +10415,24 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "memoffset-0.7.1.crate",
+    sha256 = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4",
+    strip_prefix = "memoffset-0.7.1",
+    urls = ["https://static.crates.io/crates/memoffset/0.7.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "memoffset-0.7.1",
+    srcs = [":memoffset-0.7.1.crate"],
+    crate = "memoffset",
+    crate_root = "memoffset-0.7.1.crate/src/lib.rs",
+    edition = "2015",
+    features = ["default"],
+    visibility = [],
+)
+
+http_archive(
     name = "memoffset-0.9.1.crate",
     sha256 = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a",
     strip_prefix = "memoffset-0.9.1",
@@ -10849,8 +10923,88 @@ cargo.rust_library(
 
 alias(
     name = "nix",
-    actual = ":nix-0.27.1",
+    actual = ":nix-0.26.4",
     visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "nix-0.26.4.crate",
+    sha256 = "598beaf3cc6fdd9a5dfb1630c2800c7acd31df7aaf0f565796fba2b53ca1af1b",
+    strip_prefix = "nix-0.26.4",
+    urls = ["https://static.crates.io/crates/nix/0.26.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "nix-0.26.4",
+    srcs = [":nix-0.26.4.crate"],
+    crate = "nix",
+    crate_root = "nix-0.26.4.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "acct",
+        "aio",
+        "default",
+        "dir",
+        "env",
+        "event",
+        "feature",
+        "fs",
+        "hostname",
+        "inotify",
+        "ioctl",
+        "kmod",
+        "memoffset",
+        "mman",
+        "mount",
+        "mqueue",
+        "net",
+        "personality",
+        "pin-utils",
+        "poll",
+        "process",
+        "pthread",
+        "ptrace",
+        "quota",
+        "reboot",
+        "resource",
+        "sched",
+        "signal",
+        "socket",
+        "term",
+        "time",
+        "ucontext",
+        "uio",
+        "user",
+        "zerocopy",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+        "macos-arm64": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+        "windows-gnu": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+        "windows-msvc": dict(
+            deps = [":memoffset-0.7.1"],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":bitflags-1.3.2",
+        ":cfg-if-1.0.0",
+        ":libc-0.2.167",
+        ":pin-utils-0.1.0",
+    ],
 )
 
 http_archive(
@@ -10869,14 +11023,10 @@ cargo.rust_library(
     edition = "2021",
     features = [
         "default",
-        "feature",
         "fs",
         "ioctl",
         "mount",
-        "process",
-        "signal",
         "uio",
-        "user",
     ],
     visibility = [],
     deps = [
@@ -11465,26 +11615,38 @@ cargo.rust_library(
 
 alias(
     name = "opentelemetry",
-    actual = ":opentelemetry-0.22.0",
+    actual = ":opentelemetry-0.26.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "opentelemetry-0.22.0.crate",
-    sha256 = "900d57987be3f2aeb70d385fff9b27fb74c5723cc9a52d904d4f9c807a0667bf",
-    strip_prefix = "opentelemetry-0.22.0",
-    urls = ["https://static.crates.io/crates/opentelemetry/0.22.0/download"],
+    name = "opentelemetry-0.26.0.crate",
+    sha256 = "570074cc999d1a58184080966e5bd3bf3a9a4af650c3b05047c2621e7405cd17",
+    strip_prefix = "opentelemetry-0.26.0",
+    urls = ["https://static.crates.io/crates/opentelemetry/0.26.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "opentelemetry-0.22.0",
-    srcs = [":opentelemetry-0.22.0.crate"],
+    name = "opentelemetry-0.26.0",
+    srcs = [":opentelemetry-0.26.0.crate"],
     crate = "opentelemetry",
-    crate_root = "opentelemetry-0.22.0.crate/src/lib.rs",
+    crate_root = "opentelemetry-0.26.0.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "CARGO_MANIFEST_DIR": "opentelemetry-0.26.0.crate",
+        "CARGO_PKG_AUTHORS": "",
+        "CARGO_PKG_DESCRIPTION": "OpenTelemetry API for Rust",
+        "CARGO_PKG_NAME": "opentelemetry",
+        "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust",
+        "CARGO_PKG_VERSION": "0.26.0",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "26",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
     features = [
         "default",
+        "logs",
         "metrics",
         "pin-project-lite",
         "trace",
@@ -11496,45 +11658,45 @@ cargo.rust_library(
         ":once_cell-1.20.2",
         ":pin-project-lite-0.2.15",
         ":thiserror-1.0.69",
-        ":urlencoding-2.1.3",
     ],
 )
 
 alias(
     name = "opentelemetry-otlp",
-    actual = ":opentelemetry-otlp-0.15.0",
+    actual = ":opentelemetry-otlp-0.26.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "opentelemetry-otlp-0.15.0.crate",
-    sha256 = "1a016b8d9495c639af2145ac22387dcb88e44118e45320d9238fbf4e7889abcb",
-    strip_prefix = "opentelemetry-otlp-0.15.0",
-    urls = ["https://static.crates.io/crates/opentelemetry-otlp/0.15.0/download"],
+    name = "opentelemetry-otlp-0.26.0.crate",
+    sha256 = "29e1f9c8b032d4f635c730c0efcf731d5e2530ea13fa8bef7939ddc8420696bd",
+    strip_prefix = "opentelemetry-otlp-0.26.0",
+    urls = ["https://static.crates.io/crates/opentelemetry-otlp/0.26.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "opentelemetry-otlp-0.15.0",
-    srcs = [":opentelemetry-otlp-0.15.0.crate"],
+    name = "opentelemetry-otlp-0.26.0",
+    srcs = [":opentelemetry-otlp-0.26.0.crate"],
     crate = "opentelemetry_otlp",
-    crate_root = "opentelemetry-otlp-0.15.0.crate/src/lib.rs",
+    crate_root = "opentelemetry-otlp-0.26.0.crate/src/lib.rs",
     edition = "2021",
     env = {
-        "CARGO_MANIFEST_DIR": "opentelemetry-otlp-0.15.0.crate",
+        "CARGO_MANIFEST_DIR": "opentelemetry-otlp-0.26.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Exporter for the OpenTelemetry Collector",
         "CARGO_PKG_NAME": "opentelemetry-otlp",
         "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry-otlp",
-        "CARGO_PKG_VERSION": "0.15.0",
+        "CARGO_PKG_VERSION": "0.26.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "15",
+        "CARGO_PKG_VERSION_MINOR": "26",
         "CARGO_PKG_VERSION_PATCH": "0",
     },
     features = [
         "default",
         "grpc-tonic",
         "http",
+        "logs",
         "metrics",
         "prost",
         "tokio",
@@ -11545,35 +11707,35 @@ cargo.rust_library(
     deps = [
         ":async-trait-0.1.83",
         ":futures-core-0.3.31",
-        ":http-0.2.12",
-        ":opentelemetry-0.22.0",
-        ":opentelemetry-proto-0.5.0",
-        ":opentelemetry-semantic-conventions-0.14.0",
-        ":opentelemetry_sdk-0.22.1",
-        ":prost-0.12.6",
+        ":http-1.2.0",
+        ":opentelemetry-0.26.0",
+        ":opentelemetry-proto-0.26.1",
+        ":opentelemetry_sdk-0.26.0",
+        ":prost-0.13.4",
         ":thiserror-1.0.69",
         ":tokio-1.42.0",
-        ":tonic-0.11.0",
+        ":tonic-0.12.3",
     ],
 )
 
 http_archive(
-    name = "opentelemetry-proto-0.5.0.crate",
-    sha256 = "3a8fddc9b68f5b80dae9d6f510b88e02396f006ad48cac349411fbecc80caae4",
-    strip_prefix = "opentelemetry-proto-0.5.0",
-    urls = ["https://static.crates.io/crates/opentelemetry-proto/0.5.0/download"],
+    name = "opentelemetry-proto-0.26.1.crate",
+    sha256 = "c9d3968ce3aefdcca5c27e3c4ea4391b37547726a70893aab52d3de95d5f8b34",
+    strip_prefix = "opentelemetry-proto-0.26.1",
+    urls = ["https://static.crates.io/crates/opentelemetry-proto/0.26.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "opentelemetry-proto-0.5.0",
-    srcs = [":opentelemetry-proto-0.5.0.crate"],
+    name = "opentelemetry-proto-0.26.1",
+    srcs = [":opentelemetry-proto-0.26.1.crate"],
     crate = "opentelemetry_proto",
-    crate_root = "opentelemetry-proto-0.5.0.crate/src/lib.rs",
+    crate_root = "opentelemetry-proto-0.26.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "gen-tonic",
         "gen-tonic-messages",
+        "logs",
         "metrics",
         "prost",
         "tonic",
@@ -11581,10 +11743,10 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":opentelemetry-0.22.0",
-        ":opentelemetry_sdk-0.22.1",
-        ":prost-0.12.6",
-        ":tonic-0.11.0",
+        ":opentelemetry-0.26.0",
+        ":opentelemetry_sdk-0.26.0",
+        ":prost-0.13.4",
+        ":tonic-0.12.3",
     ],
 )
 
@@ -11613,44 +11775,45 @@ cargo.rust_library(
 
 alias(
     name = "opentelemetry_sdk",
-    actual = ":opentelemetry_sdk-0.22.1",
+    actual = ":opentelemetry_sdk-0.26.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "opentelemetry_sdk-0.22.1.crate",
-    sha256 = "9e90c7113be649e31e9a0f8b5ee24ed7a16923b322c3c5ab6367469c049d6b7e",
-    strip_prefix = "opentelemetry_sdk-0.22.1",
-    urls = ["https://static.crates.io/crates/opentelemetry_sdk/0.22.1/download"],
+    name = "opentelemetry_sdk-0.26.0.crate",
+    sha256 = "d2c627d9f4c9cdc1f21a29ee4bfbd6028fcb8bcf2a857b43f3abdf72c9c862f3",
+    strip_prefix = "opentelemetry_sdk-0.26.0",
+    urls = ["https://static.crates.io/crates/opentelemetry_sdk/0.26.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "opentelemetry_sdk-0.22.1",
-    srcs = [":opentelemetry_sdk-0.22.1.crate"],
+    name = "opentelemetry_sdk-0.26.0",
+    srcs = [":opentelemetry_sdk-0.26.0.crate"],
     crate = "opentelemetry_sdk",
-    crate_root = "opentelemetry_sdk-0.22.1.crate/src/lib.rs",
+    crate_root = "opentelemetry_sdk-0.26.0.crate/src/lib.rs",
     edition = "2021",
     env = {
-        "CARGO_MANIFEST_DIR": "opentelemetry_sdk-0.22.1.crate",
+        "CARGO_MANIFEST_DIR": "opentelemetry_sdk-0.26.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "The SDK for the OpenTelemetry metrics collection and distributed tracing framework",
         "CARGO_PKG_NAME": "opentelemetry_sdk",
         "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust",
-        "CARGO_PKG_VERSION": "0.22.1",
+        "CARGO_PKG_VERSION": "0.26.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "22",
-        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_MINOR": "26",
+        "CARGO_PKG_VERSION_PATCH": "0",
     },
     features = [
         "async-trait",
-        "crossbeam-channel",
         "default",
         "glob",
+        "logs",
         "metrics",
         "percent-encoding",
         "rand",
         "rt-tokio",
+        "serde_json",
         "tokio",
         "tokio-stream",
         "trace",
@@ -11658,19 +11821,18 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":async-trait-0.1.83",
-        ":crossbeam-channel-0.5.13",
         ":futures-channel-0.3.31",
         ":futures-executor-0.3.31",
         ":futures-util-0.3.31",
         ":glob-0.3.1",
         ":once_cell-1.20.2",
-        ":opentelemetry-0.22.0",
-        ":ordered-float-4.5.0",
+        ":opentelemetry-0.26.0",
         ":percent-encoding-2.3.1",
         ":rand-0.8.5",
+        ":serde_json-1.0.133",
         ":thiserror-1.0.69",
         ":tokio-1.42.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
     ],
 )
 
@@ -13197,44 +13359,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "prost-0.12.6.crate",
-    sha256 = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29",
-    strip_prefix = "prost-0.12.6",
-    urls = ["https://static.crates.io/crates/prost/0.12.6/download"],
+    name = "prost-0.13.4.crate",
+    sha256 = "2c0fef6c4230e4ccf618a35c59d7ede15dea37de8427500f50aff708806e42ec",
+    strip_prefix = "prost-0.13.4",
+    urls = ["https://static.crates.io/crates/prost/0.13.4/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "prost-0.12.6",
-    srcs = [":prost-0.12.6.crate"],
+    name = "prost-0.13.4",
+    srcs = [":prost-0.13.4.crate"],
     crate = "prost",
-    crate_root = "prost-0.12.6.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "default",
-        "derive",
-        "std",
-    ],
-    visibility = [],
-    deps = [
-        ":bytes-1.9.0",
-        ":prost-derive-0.12.6",
-    ],
-)
-
-http_archive(
-    name = "prost-0.13.3.crate",
-    sha256 = "7b0487d90e047de87f984913713b85c601c05609aad5b0df4b4573fbf69aa13f",
-    strip_prefix = "prost-0.13.3",
-    urls = ["https://static.crates.io/crates/prost/0.13.3/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "prost-0.13.3",
-    srcs = [":prost-0.13.3.crate"],
-    crate = "prost",
-    crate_root = "prost-0.13.3.crate/src/lib.rs",
+    crate_root = "prost-0.13.4.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -13245,48 +13381,23 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":bytes-1.9.0",
-        ":prost-derive-0.13.3",
+        ":prost-derive-0.13.4",
     ],
 )
 
 http_archive(
-    name = "prost-derive-0.12.6.crate",
-    sha256 = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1",
-    strip_prefix = "prost-derive-0.12.6",
-    urls = ["https://static.crates.io/crates/prost-derive/0.12.6/download"],
+    name = "prost-derive-0.13.4.crate",
+    sha256 = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3",
+    strip_prefix = "prost-derive-0.13.4",
+    urls = ["https://static.crates.io/crates/prost-derive/0.13.4/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "prost-derive-0.12.6",
-    srcs = [":prost-derive-0.12.6.crate"],
+    name = "prost-derive-0.13.4",
+    srcs = [":prost-derive-0.13.4.crate"],
     crate = "prost_derive",
-    crate_root = "prost-derive-0.12.6.crate/src/lib.rs",
-    edition = "2021",
-    proc_macro = True,
-    visibility = [],
-    deps = [
-        ":anyhow-1.0.94",
-        ":itertools-0.12.1",
-        ":proc-macro2-1.0.92",
-        ":quote-1.0.37",
-        ":syn-2.0.90",
-    ],
-)
-
-http_archive(
-    name = "prost-derive-0.13.3.crate",
-    sha256 = "e9552f850d5f0964a4e4d0bf306459ac29323ddfbae05e35a7c0d35cb0803cc5",
-    strip_prefix = "prost-derive-0.13.3",
-    urls = ["https://static.crates.io/crates/prost-derive/0.13.3/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "prost-derive-0.13.3",
-    srcs = [":prost-derive-0.13.3.crate"],
-    crate = "prost_derive",
-    crate_root = "prost-derive-0.13.3.crate/src/lib.rs",
+    crate_root = "prost-derive-0.13.4.crate/src/lib.rs",
     edition = "2021",
     proc_macro = True,
     visibility = [],
@@ -13300,25 +13411,25 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "prost-types-0.13.3.crate",
-    sha256 = "4759aa0d3a6232fb8dbdb97b61de2c20047c68aca932c7ed76da9d788508d670",
-    strip_prefix = "prost-types-0.13.3",
-    urls = ["https://static.crates.io/crates/prost-types/0.13.3/download"],
+    name = "prost-types-0.13.4.crate",
+    sha256 = "cc2f1e56baa61e93533aebc21af4d2134b70f66275e0fcdf3cbe43d77ff7e8fc",
+    strip_prefix = "prost-types-0.13.4",
+    urls = ["https://static.crates.io/crates/prost-types/0.13.4/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "prost-types-0.13.3",
-    srcs = [":prost-types-0.13.3.crate"],
+    name = "prost-types-0.13.4",
+    srcs = [":prost-types-0.13.4.crate"],
     crate = "prost_types",
-    crate_root = "prost-types-0.13.3.crate/src/lib.rs",
+    crate_root = "prost-types-0.13.4.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
         "std",
     ],
     visibility = [],
-    deps = [":prost-0.13.3"],
+    deps = [":prost-0.13.4"],
 )
 
 http_archive(
@@ -14165,7 +14276,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
             ],
@@ -14189,7 +14300,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
             ],
@@ -14213,7 +14324,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
             ],
@@ -14237,7 +14348,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
             ],
@@ -14261,7 +14372,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
                 ":windows-registry-0.2.0",
@@ -14286,7 +14397,7 @@ cargo.rust_library(
                 ":rustls-pemfile-2.2.0",
                 ":rustls-pki-types-1.10.0",
                 ":tokio-1.42.0",
-                ":tokio-rustls-0.26.0",
+                ":tokio-rustls-0.26.1",
                 ":tokio-util-0.7.13",
                 ":webpki-roots-0.26.7",
                 ":windows-registry-0.2.0",
@@ -15244,7 +15355,7 @@ cargo.rust_library(
         ":time-0.3.37",
         ":tokio-1.42.0",
         ":tokio-rustls-0.24.1",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
         ":url-2.5.4",
     ],
 )
@@ -17346,8 +17457,8 @@ cargo.rust_library(
     deps = [
         ":bytes-1.9.0",
         ":http-1.2.0",
-        ":prost-0.13.3",
-        ":prost-types-0.13.3",
+        ":prost-0.13.4",
+        ":prost-types-0.13.4",
         ":spicedb-grpc-0.1.1",
         ":thiserror-1.0.69",
         ":tonic-0.12.3",
@@ -17369,8 +17480,8 @@ cargo.rust_library(
     features = ["default"],
     visibility = [],
     deps = [
-        ":prost-0.13.3",
-        ":prost-types-0.13.3",
+        ":prost-0.13.4",
+        ":prost-types-0.13.4",
         ":tonic-0.12.3",
     ],
 )
@@ -17562,7 +17673,7 @@ cargo.rust_library(
         ":thiserror-1.0.69",
         ":time-0.3.37",
         ":tokio-1.42.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
         ":tracing-0.1.41",
         ":url-2.5.4",
         ":uuid-1.11.0",
@@ -18337,7 +18448,7 @@ cargo.rust_binary(
         ":bytes-1.9.0",
         ":chrono-0.4.38",
         ":ciborium-0.2.2",
-        ":clap-4.5.22",
+        ":clap-4.5.23",
         ":color-eyre-0.6.3",
         ":colored-2.1.0",
         ":comfy-table-7.1.3",
@@ -18381,15 +18492,15 @@ cargo.rust_binary(
         ":mime_guess-2.0.4",
         ":miniz_oxide-0.7.4",
         ":names-0.14.0",
-        ":nix-0.27.1",
+        ":nix-0.26.4",
         ":nkeys-0.4.4",
         ":num_cpus-1.16.0",
         ":once_cell-1.20.2",
         ":open-5.3.1",
-        ":opentelemetry-0.22.0",
-        ":opentelemetry-otlp-0.15.0",
+        ":opentelemetry-0.26.0",
+        ":opentelemetry-otlp-0.26.0",
         ":opentelemetry-semantic-conventions-0.14.0",
-        ":opentelemetry_sdk-0.22.1",
+        ":opentelemetry_sdk-0.26.0",
         ":ordered-float-4.5.0",
         ":ouroboros-0.18.4",
         ":parking_lot-0.12.3",
@@ -18441,7 +18552,7 @@ cargo.rust_binary(
         ":tokio-postgres-0.7.12",
         ":tokio-postgres-rustls-0.12.0",
         ":tokio-serde-0.9.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
         ":tokio-test-0.4.4",
         ":tokio-tungstenite-0.20.1",
         ":tokio-util-0.7.13",
@@ -18450,7 +18561,7 @@ cargo.rust_binary(
         ":tower-0.4.13",
         ":tower-http-0.4.4",
         ":tracing-0.1.41",
-        ":tracing-opentelemetry-0.23.0",
+        ":tracing-opentelemetry-0.27.0",
         ":tracing-subscriber-0.3.19",
         ":tracing-tunnel-0.1.0",
         ":trybuild-1.0.101",
@@ -18933,27 +19044,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "tokio-io-timeout-1.2.0.crate",
-    sha256 = "30b74022ada614a1b4834de765f9bb43877f910cc8ce4be40e89042c9223a8bf",
-    strip_prefix = "tokio-io-timeout-1.2.0",
-    urls = ["https://static.crates.io/crates/tokio-io-timeout/1.2.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "tokio-io-timeout-1.2.0",
-    srcs = [":tokio-io-timeout-1.2.0.crate"],
-    crate = "tokio_io_timeout",
-    crate_root = "tokio-io-timeout-1.2.0.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-    deps = [
-        ":pin-project-lite-0.2.15",
-        ":tokio-1.42.0",
-    ],
-)
-
-http_archive(
     name = "tokio-macros-2.4.0.crate",
     sha256 = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752",
     strip_prefix = "tokio-macros-2.4.0",
@@ -19070,7 +19160,7 @@ cargo.rust_library(
         ":rustls-0.23.19",
         ":tokio-1.42.0",
         ":tokio-postgres-0.7.12",
-        ":tokio-rustls-0.26.0",
+        ":tokio-rustls-0.26.1",
         ":x509-certificate-0.23.1",
     ],
 )
@@ -19102,27 +19192,24 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "tokio-rustls-0.26.0.crate",
-    sha256 = "0c7bc40d0e5a97695bb96e27995cd3a08538541b0a846f65bba7a359f36700d4",
-    strip_prefix = "tokio-rustls-0.26.0",
-    urls = ["https://static.crates.io/crates/tokio-rustls/0.26.0/download"],
+    name = "tokio-rustls-0.26.1.crate",
+    sha256 = "5f6d0975eaace0cf0fcadee4e4aaa5da15b5c079146f2cffb67c113be122bf37",
+    strip_prefix = "tokio-rustls-0.26.1",
+    urls = ["https://static.crates.io/crates/tokio-rustls/0.26.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "tokio-rustls-0.26.0",
-    srcs = [":tokio-rustls-0.26.0.crate"],
+    name = "tokio-rustls-0.26.1",
+    srcs = [":tokio-rustls-0.26.1.crate"],
     crate = "tokio_rustls",
-    crate_root = "tokio-rustls-0.26.0.crate/src/lib.rs",
+    crate_root = "tokio-rustls-0.26.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "logging",
         "ring",
         "tls12",
     ],
-    named_deps = {
-        "pki_types": ":rustls-pki-types-1.10.0",
-    },
     visibility = [],
     deps = [
         ":rustls-0.23.19",
@@ -19170,27 +19257,28 @@ cargo.rust_library(
 
 alias(
     name = "tokio-stream",
-    actual = ":tokio-stream-0.1.16",
+    actual = ":tokio-stream-0.1.17",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "tokio-stream-0.1.16.crate",
-    sha256 = "4f4e6ce100d0eb49a2734f8c0812bcd324cf357d21810932c5df6b96ef2b86f1",
-    strip_prefix = "tokio-stream-0.1.16",
-    urls = ["https://static.crates.io/crates/tokio-stream/0.1.16/download"],
+    name = "tokio-stream-0.1.17.crate",
+    sha256 = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047",
+    strip_prefix = "tokio-stream-0.1.17",
+    urls = ["https://static.crates.io/crates/tokio-stream/0.1.17/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "tokio-stream-0.1.16",
-    srcs = [":tokio-stream-0.1.16.crate"],
+    name = "tokio-stream-0.1.17",
+    srcs = [":tokio-stream-0.1.17.crate"],
     crate = "tokio_stream",
-    crate_root = "tokio-stream-0.1.16.crate/src/lib.rs",
+    crate_root = "tokio-stream-0.1.17.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
         "fs",
+        "net",
         "sync",
         "time",
         "tokio-util",
@@ -19230,7 +19318,7 @@ cargo.rust_library(
         ":bytes-1.9.0",
         ":futures-core-0.3.31",
         ":tokio-1.42.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-stream-0.1.17",
     ],
 )
 
@@ -19423,61 +19511,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "tonic-0.11.0.crate",
-    sha256 = "76c4eb7a4e9ef9d4763600161f12f5070b92a578e1b634db88a6887844c91a13",
-    strip_prefix = "tonic-0.11.0",
-    urls = ["https://static.crates.io/crates/tonic/0.11.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "tonic-0.11.0",
-    srcs = [":tonic-0.11.0.crate"],
-    crate = "tonic",
-    crate_root = "tonic-0.11.0.crate/src/lib.rs",
-    edition = "2021",
-    env = {
-        "CARGO_MANIFEST_DIR": "tonic-0.11.0.crate",
-        "CARGO_PKG_AUTHORS": "Lucio Franco <luciofranco14@gmail.com>",
-        "CARGO_PKG_DESCRIPTION": "A gRPC over HTTP/2 implementation focused on high performance, interoperability, and flexibility.\n",
-        "CARGO_PKG_NAME": "tonic",
-        "CARGO_PKG_REPOSITORY": "https://github.com/hyperium/tonic",
-        "CARGO_PKG_VERSION": "0.11.0",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "11",
-        "CARGO_PKG_VERSION_PATCH": "0",
-    },
-    features = [
-        "channel",
-        "codegen",
-        "prost",
-        "transport",
-    ],
-    visibility = [],
-    deps = [
-        ":async-stream-0.3.6",
-        ":async-trait-0.1.83",
-        ":axum-0.6.20",
-        ":base64-0.21.7",
-        ":bytes-1.9.0",
-        ":h2-0.3.26",
-        ":http-0.2.12",
-        ":http-body-0.4.6",
-        ":hyper-0.14.31",
-        ":hyper-timeout-0.4.1",
-        ":percent-encoding-2.3.1",
-        ":pin-project-1.1.7",
-        ":prost-0.12.6",
-        ":tokio-1.42.0",
-        ":tokio-stream-0.1.16",
-        ":tower-0.4.13",
-        ":tower-layer-0.3.3",
-        ":tower-service-0.3.3",
-        ":tracing-0.1.41",
-    ],
-)
-
-http_archive(
     name = "tonic-0.12.3.crate",
     sha256 = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52",
     strip_prefix = "tonic-0.12.3",
@@ -19506,14 +19539,20 @@ cargo.rust_library(
         "channel",
         "codegen",
         "prost",
+        "router",
+        "server",
         "tls",
         "tls-webpki-roots",
+        "transport",
     ],
     visibility = [],
     deps = [
+        ":async-stream-0.3.6",
         ":async-trait-0.1.83",
+        ":axum-0.7.9",
         ":base64-0.22.1",
         ":bytes-1.9.0",
+        ":h2-0.4.7",
         ":http-1.2.0",
         ":http-body-1.0.1",
         ":http-body-util-0.1.2",
@@ -19522,11 +19561,12 @@ cargo.rust_library(
         ":hyper-util-0.1.10",
         ":percent-encoding-2.3.1",
         ":pin-project-1.1.7",
-        ":prost-0.13.3",
+        ":prost-0.13.4",
         ":rustls-pemfile-2.2.0",
+        ":socket2-0.5.8",
         ":tokio-1.42.0",
-        ":tokio-rustls-0.26.0",
-        ":tokio-stream-0.1.16",
+        ":tokio-rustls-0.26.1",
+        ":tokio-stream-0.1.17",
         ":tower-0.4.13",
         ":tower-layer-0.3.3",
         ":tower-service-0.3.3",
@@ -19603,6 +19643,39 @@ cargo.rust_library(
         ":tower-layer-0.3.3",
         ":tower-service-0.3.3",
         ":tracing-0.1.41",
+    ],
+)
+
+http_archive(
+    name = "tower-0.5.1.crate",
+    sha256 = "2873938d487c3cfb9aed7546dc9f2711d867c9f90c46b889989a2cb84eba6b4f",
+    strip_prefix = "tower-0.5.1",
+    urls = ["https://static.crates.io/crates/tower/0.5.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "tower-0.5.1",
+    srcs = [":tower-0.5.1.crate"],
+    crate = "tower",
+    crate_root = "tower-0.5.1.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "__common",
+        "futures-core",
+        "futures-util",
+        "pin-project-lite",
+        "sync_wrapper",
+        "util",
+    ],
+    visibility = [],
+    deps = [
+        ":futures-core-0.3.31",
+        ":futures-util-0.3.31",
+        ":pin-project-lite-0.2.15",
+        ":sync_wrapper-0.1.2",
+        ":tower-layer-0.3.3",
+        ":tower-service-0.3.3",
     ],
 )
 
@@ -19826,33 +19899,33 @@ cargo.rust_library(
 
 alias(
     name = "tracing-opentelemetry",
-    actual = ":tracing-opentelemetry-0.23.0",
+    actual = ":tracing-opentelemetry-0.27.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "tracing-opentelemetry-0.23.0.crate",
-    sha256 = "a9be14ba1bbe4ab79e9229f7f89fab8d120b865859f10527f31c033e599d2284",
-    strip_prefix = "tracing-opentelemetry-0.23.0",
-    urls = ["https://static.crates.io/crates/tracing-opentelemetry/0.23.0/download"],
+    name = "tracing-opentelemetry-0.27.0.crate",
+    sha256 = "dc58af5d3f6c5811462cabb3289aec0093f7338e367e5a33d28c0433b3c7360b",
+    strip_prefix = "tracing-opentelemetry-0.27.0",
+    urls = ["https://static.crates.io/crates/tracing-opentelemetry/0.27.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "tracing-opentelemetry-0.23.0",
-    srcs = [":tracing-opentelemetry-0.23.0.crate"],
+    name = "tracing-opentelemetry-0.27.0",
+    srcs = [":tracing-opentelemetry-0.27.0.crate"],
     crate = "tracing_opentelemetry",
-    crate_root = "tracing-opentelemetry-0.23.0.crate/src/lib.rs",
-    edition = "2018",
+    crate_root = "tracing-opentelemetry-0.27.0.crate/src/lib.rs",
+    edition = "2021",
     env = {
-        "CARGO_MANIFEST_DIR": "tracing-opentelemetry-0.23.0.crate",
-        "CARGO_PKG_AUTHORS": "Julian Tescher <julian@tescher.me>:Tokio Contributors <team@tokio.rs>",
+        "CARGO_MANIFEST_DIR": "tracing-opentelemetry-0.27.0.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "OpenTelemetry integration for tracing",
         "CARGO_PKG_NAME": "tracing-opentelemetry",
         "CARGO_PKG_REPOSITORY": "https://github.com/tokio-rs/tracing-opentelemetry",
-        "CARGO_PKG_VERSION": "0.23.0",
+        "CARGO_PKG_VERSION": "0.27.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "23",
+        "CARGO_PKG_VERSION_MINOR": "27",
         "CARGO_PKG_VERSION_PATCH": "0",
     },
     features = [
@@ -19864,8 +19937,8 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":once_cell-1.20.2",
-        ":opentelemetry-0.22.0",
-        ":opentelemetry_sdk-0.22.1",
+        ":opentelemetry-0.26.0",
+        ":opentelemetry_sdk-0.26.0",
         ":smallvec-1.13.2",
         ":tracing-0.1.41",
         ":tracing-core-0.1.33",
