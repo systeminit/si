@@ -4,9 +4,7 @@
       clsx(
         'flex text-neutral-500 dark:text-neutral-400 border-b items-center px-xs py-2xs gap-xs h-[33px] select-none',
         iconIsButton && 'cursor-pointer',
-        variant === 'title'
-          ? 'dark:border-neutral-500'
-          : 'border-neutral-200 dark:border-neutral-600',
+        themeClasses('border-neutral-200', 'border-neutral-600'),
       )
     "
     @click="emit('click')"
@@ -50,6 +48,7 @@ import {
   Icon,
   IconButton,
   IconNames,
+  themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";

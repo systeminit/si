@@ -993,6 +993,27 @@ impl ChangeSet {
 
         Ok(result)
     }
+
+    pub async fn rename_change_set(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+        new_name: &String,
+    ) -> ChangeSetResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET name = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
+                &[&change_set_id, new_name],
+            )
+            .await?;
+        WsEvent::rename_change_set(ctx, change_set_id, new_name.clone())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        Ok(())
+    }
 }
 
 impl std::fmt::Debug for ChangeSet {

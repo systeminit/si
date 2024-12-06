@@ -130,6 +130,10 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
     userPk: UserId;
   };
+  ChangeSetRename: {
+    changeSetId: ChangeSetId;
+    newName: string;
+  };
   ChangeSetStatusChanged: {
     fromStatus: ChangeSetStatus;
     changeSet: ChangeSet;

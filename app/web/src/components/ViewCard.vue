@@ -51,12 +51,14 @@
           }
         "
         label="Rename"
+        icon="cursor"
       />
       <DropdownMenuItem
         :disabled="
           viewStore.selectedViewId === view.id && !viewStore.viewNodes[view.id]
         "
         label="Add to Diagram"
+        icon="plus"
         @click="(e: MouseEvent) => {
           if (viewStore.selectedViewId === view.id && !viewStore.viewNodes[view.id]) return;
           onAdd(view.id, e);
@@ -64,6 +66,7 @@
       />
       <DropdownMenuItem
         label="Open View in Diagram"
+        icon="eye"
         :onSelect="
           () => {
             viewStore.selectView(view.id);
@@ -72,6 +75,7 @@
       />
       <DropdownMenuItem
         label="Inspect View in Outliner"
+        icon="bullet-list-indented"
         :onSelect="
           () => {
             viewStore.setOutlinerView(view.id);
@@ -80,6 +84,7 @@
       />
       <DropdownMenuItem
         label="Delete View"
+        icon="trash"
         :onSelect="() => deleteView(view)"
       />
     </DropdownMenu>
@@ -95,9 +100,10 @@
       ref="modalRef"
       type="save"
       size="sm"
-      saveLabel="Save"
-      title="Update View Name"
+      saveLabel="Rename"
+      title="Rename View"
       @save="updateName"
+      @close="resetRename"
     >
       <VormInput
         ref="labelRef"
@@ -241,6 +247,10 @@ const deleteView = async (view: ViewDescription) => {
       );
     }
   }
+};
+
+const resetRename = () => {
+  viewName.value = props.view.name;
 };
 
 watch(
