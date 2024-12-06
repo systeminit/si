@@ -268,7 +268,9 @@ async function main(component: Input): Promise<Output> {
 }
 ```
 
-:::warning Ensure you include previous resource payload on failure! :::
+:::warning
+Ensure you include previous resource payload on failure!
+:::
 
 ### Delete action example
 
