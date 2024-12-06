@@ -89,7 +89,7 @@ async function cleanupHead(sdf: SdfApiClient): Promise<void> {
       workspaceId: sdf.workspaceId,
     };
     await sdf.call({
-      route: "delete_component",
+      route: "delete_components",
       body: deleteComponentPayload,
     });
     await sdf.call({

@@ -13,12 +13,12 @@ interface API_DESCRIPTION {
 
 export const ROUTES = {
   // /api/change_set - Change Set Management ---------------------------------------------------
-  abandon_vote: {
-    path: () => "/change_set/abandon_vote",
-    method: "POST",
-  },
   abandon_change_set: {
     path: () => "/change_set/abandon_change_set",
+    method: "POST",
+  },
+  abandon_vote: {
+    path: () => "/change_set/abandon_vote",
     method: "POST",
   },
   add_action: {
@@ -75,17 +75,12 @@ export const ROUTES = {
   },
 
   // Diagram Management ---------------------------------------------------------
-  get_diagram: {
-    path: (vars: ROUTE_VARS) =>
-      `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET",
-  },
-  set_component_position: {
-    path: () => `/diagram/set_component_position`,
+  add_components_to_view: {
+    path: () => "/diagram/add_components_to_view",
     method: "POST",
   },
-  set_component_type: {
-    path: () => `/component/set_type`,
+  delete_connection:{
+    path: () => "/diagram/delete_connection",
     method: "POST",
   },
   dvu_roots: {
@@ -93,10 +88,36 @@ export const ROUTES = {
       `/diagram/dvu_roots?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
     method: "GET",
   },
+  get_all_components_and_edges: {
+    path: () => "/diagram/get_all_components_and_edges",
+    method: "GET",
+  },
+  get_diagram: {
+    path: (vars: ROUTE_VARS) =>
+      `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
+    method: "GET",
+  },
+  list_schemas: {
+    path: () => "/diagram/list_schemas",
+    method: "GET"
+  },
+  remove_delete_intent: {
+    path: () => "/diagram/remove_delete_intent",
+    method: "POST",
+  },
+  set_component_position: {
+    path: () => "/diagram/set_component_position",
+    method: "POST",
+  },
+  set_component_type: {
+    path: () => "/component/set_type",
+    method: "POST",
+  },
+
 
   // Component Management -------------------------------------------------------
-  delete_component: {
-    path: () => `/diagram/delete_components`,
+  delete_components: {
+    path: () => "/diagram/delete_components",
     method: "POST",
   },
   create_component: {
