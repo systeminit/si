@@ -78,7 +78,10 @@
           }
         "
       />
-      <DropdownMenuItem disabled label="Delete View" />
+      <DropdownMenuItem
+        label="Delete View"
+        :onSelect="() => deleteView(view)"
+      />
     </DropdownMenu>
     <DetailsPanelMenuIcon
       :selected="contextMenuRef?.isOpen"
@@ -138,11 +141,13 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
+import { useToast } from "vue-toastification";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
+const toast = useToast();
 const viewStore = useViewsStore();
 
 const props = defineProps<{
@@ -219,6 +224,22 @@ const updateName = (e?: Event) => {
     viewStore.UPDATE_VIEW_NAME(props.view.id, viewName.value);
     modalRef.value?.close();
     viewName.value = "";
+  }
+};
+
+const deleteView = async (view: ViewDescription) => {
+  const resp = await viewStore.DELETE_VIEW(view.id);
+  if (!resp.result.success) {
+    if (resp.result.statusCode === 409) {
+      /* We cannot easily pass JSON data as an error, punting for now with a generic message
+      const ids = resp.rawResponseError.response.data.error as ComponentId[];
+      const names = ids
+        .map((cId) => componentStore.allComponentsById[cId]?.def.displayName)
+        .filter((name) => !!name); */
+      toast(
+        "Cannot delete the view. Deleting the view would cause orphan components.",
+      );
+    }
   }
 };
 
