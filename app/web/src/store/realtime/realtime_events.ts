@@ -371,4 +371,6 @@ export type WsEventPayloadMap = {
     changeSetId: ChangeSetId;
     changeSetStatus: ChangeSetStatus;
   };
+
+  PromptUpdated: { kind: string; overridden: boolean };
 };

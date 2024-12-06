@@ -1,7 +1,8 @@
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import { defineStore, storeToRefs } from "pinia";
+import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { ref, watch } from "vue";
+import { ref, watch, watchEffect } from "vue";
+import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type PromptKind = string;
 
@@ -12,11 +13,11 @@ export interface PromptEntry {
 
 const PROMPTS_API = "v2/admin/prompts";
 
-export const usePromptStore = () => {
+export function usePromptStore() {
   return addStoreHooks(
     null,
     null,
-    defineStore(`wsNONE/admin/prompts/selected`, {
+    defineStore(`wsNONE/admin/prompts`, {
       state: () => ({
         prompts: new Array<PromptEntry>(),
         selectedPromptKind: ref<PromptKind>(),
@@ -32,8 +33,6 @@ export const usePromptStore = () => {
             url: PROMPTS_API,
             onSuccess: (prompts: PromptEntry[]) => {
               this.prompts = prompts;
-              if (!this.selectedPromptKind)
-                this.selectedPromptKind = prompts[0]?.kind;
             },
           });
         },
@@ -53,10 +52,6 @@ export const usePromptStore = () => {
             url: `${PROMPTS_API}/${kind}`,
             keyRequestStatusBy: kind,
             params: { prompt_yaml: text },
-            onSuccess: () => {
-              const prompt = this.prompts.find((p) => p.kind === kind);
-              if (prompt) prompt.overridden = true;
-            },
           });
         },
         async RESET_PROMPT(kind: PromptKind) {
@@ -65,10 +60,8 @@ export const usePromptStore = () => {
             url: `${PROMPTS_API}/${kind}`,
             keyRequestStatusBy: kind,
             onSuccess: () => {
-              const prompt = this.prompts.find((p) => p.kind === kind);
-              if (prompt) prompt.overridden = false;
               // Update the prompt on reset
-              if (kind) this.FETCH_PROMPT(kind);
+              if (kind === this.selectedPromptKind) this.FETCH_PROMPT(kind);
             },
           });
         },
@@ -76,15 +69,39 @@ export const usePromptStore = () => {
       onActivated() {
         this.FETCH_PROMPT_KINDS();
 
-        // Fetch selectedPromptText when selectedPromptKind changes
-        const { selectedPromptKind } = storeToRefs(this);
-        watch(selectedPromptKind, (kind) => {
-          this.selectedPromptText = "";
-          if (kind) this.FETCH_PROMPT(kind);
+        // Default selectedPromptKind to the first one (if available)
+        // TODO this is almost a computed value, except it needs to be settable as well to be
+        // used in a v-model. There must be a better way to do that.
+        watchEffect(() => {
+          if (undefined === this.selectedPromptKind)
+            this.selectedPromptKind = this.prompts[0]?.kind;
         });
 
-        // TODO listen to WsEvents saying which things are and are not overridden
+        // Fetch selectedPromptText when selectedPromptKind changes
+        watch(
+          () => this.selectedPromptKind,
+          (kind) => {
+            this.selectedPromptText = "";
+            if (kind) this.FETCH_PROMPT(kind);
+          },
+        );
+
+        // Listen to events on the current change set.
+        const realtimeStore = useRealtimeStore();
+        realtimeStore.subscribe(this.$id, "all", [
+          {
+            eventType: "PromptUpdated",
+            callback: ({ kind, overridden }) => {
+              const prompt = this.prompts.find((p) => p.kind === kind);
+              if (prompt) prompt.overridden = overridden;
+              // TODO this is how you make prompt updates multiplayer, but we don't want to
+              // overwrite prompts that the user is editing, so we need to decide how to
+              // handle it.
+              // if (kind === this.selectedPromptKind) this.FETCH_PROMPT(kind);
+            },
+          },
+        ]);
       },
     }),
   )();
-};
+}

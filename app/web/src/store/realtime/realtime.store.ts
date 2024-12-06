@@ -12,7 +12,7 @@ type RawConnectionStatus = "open" | "closed";
 
 type SubscriptionId = string;
 type SubscriberId = string;
-type SubscriptionTopic = `workspace/${string}` | `changeset/${string}`;
+type SubscriptionTopic = "all" | `workspace/${string}` | `changeset/${string}`;
 
 // some fairly magic TS wizardry happening here...
 // just reshuffling the WsEventPayloadMap into a format usable in our subscribe call
@@ -258,7 +258,10 @@ export const useRealtimeStore = defineStore("realtime", () => {
       console.log("WS message", eventKind, eventData, eventMetadata);
     }
 
-    const topics = [`workspace/${eventMetadata.workspace_pk}`];
+    const topics: SubscriptionTopic[] = [
+      "all",
+      `workspace/${eventMetadata.workspace_pk}`,
+    ];
     if (eventMetadata.change_set_id) {
       topics.push(`changeset/${eventMetadata.change_set_id}`);
     }
