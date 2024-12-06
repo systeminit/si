@@ -7,6 +7,7 @@ use thiserror::Error;
 use super::AuditDatabaseContext;
 
 #[allow(missing_docs)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AuditDatabaseMigrationError {
     #[error("pg pool error: {0}")]

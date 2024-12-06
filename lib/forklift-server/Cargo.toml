@@ -9,7 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-audit-logs = { path = "../../lib/audit-logs" }
+audit-database = { path = "../../lib/audit-database" }
+audit-logs-stream = { path = "../../lib/audit-logs-stream" }
 billing-events = { path = "../../lib/billing-events" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 data-warehouse-stream-client = { path = "../../lib/data-warehouse-stream-client" }

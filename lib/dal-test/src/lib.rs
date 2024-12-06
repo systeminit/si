@@ -33,7 +33,7 @@ use std::{
     sync::{Arc, Once},
 };
 
-use audit_logs::database::AuditDatabaseContext;
+use audit_database::AuditDatabaseContext;
 use buck2_resources::Buck2Resources;
 use dal::{
     builtins::func,
@@ -177,7 +177,7 @@ pub struct Config {
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
-    #[builder(default = "audit_logs::database::default_pg_pool_config()")]
+    #[builder(default = "audit_database::default_pg_pool_config()")]
     audit_pg_pool: PgPoolConfig,
 }
 
@@ -837,7 +837,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .pg_migrate()
             .await
             .wrap_err("failed to migrate layerdb")?;
-        audit_logs::database::migrate(&test_context.audit_database_context)
+        audit_database::migrate(&test_context.audit_database_context)
             .await
             .wrap_err("failed to migrate audit database")?;
     }

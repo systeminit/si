@@ -1,4 +1,4 @@
-use audit_logs::database::AuditDatabaseContext;
+use audit_database::AuditDatabaseContext;
 
 // NOTE(nick): we need an app state for all naxum apps at the time of writing, even if they are unused.
 #[derive(Debug, Clone)]

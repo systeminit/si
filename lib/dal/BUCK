@@ -7,7 +7,8 @@ load(
 rust_library(
     name = "dal",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
+        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
         "//lib/module-index-client:module-index-client",
@@ -93,7 +94,8 @@ rust_library(
 rust_test(
     name = "test-integration",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
+        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/dal-test:dal-test",
         "//lib/pending-events:pending-events",
         "//lib/rebaser-server:rebaser-server",

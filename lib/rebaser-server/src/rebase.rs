@@ -1,4 +1,4 @@
-use audit_logs::AuditLogsStreamError;
+use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     change_set::{ChangeSet, ChangeSetError, ChangeSetId},
     workspace_snapshot::WorkspaceSnapshotError,

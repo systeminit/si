@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use audit_logs::database::{AuditDatabaseContext, AuditLogRow};
+use audit_database::{AuditDatabaseContext, AuditLogRow};
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};

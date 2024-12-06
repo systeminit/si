@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 asset-sprayer = { path = "../../lib/asset-sprayer" }
-audit-logs = { path = "../../lib/audit-logs" }
+audit-database = { path = "../../lib/audit-database" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
 module-index-client = { path = "../../lib/module-index-client" }

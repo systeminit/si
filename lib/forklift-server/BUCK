@@ -3,7 +3,8 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "forklift-server",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
+        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/billing-events:billing-events",
         "//lib/buck2-resources:buck2-resources",
         "//lib/data-warehouse-stream-client:data-warehouse-stream-client",

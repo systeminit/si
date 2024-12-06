@@ -1,0 +1,14 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "audit-logs-stream",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

@@ -6,7 +6,8 @@ use std::{
 };
 
 use app_state::AppState;
-use audit_logs::{database::AuditDatabaseContext, AuditLogsStream, AuditLogsStreamError};
+use audit_database::AuditDatabaseContext;
+use audit_logs_stream::{AuditLogsStream, AuditLogsStreamError};
 use nats_dead_letter_queue::NatsDeadLetterQueueError;
 use naxum::{
     extract::MatchedSubject,

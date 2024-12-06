@@ -1,6 +1,6 @@
 use std::{env, path::Path};
 
-use audit_logs::database::AuditDatabaseConfig;
+use audit_database::AuditDatabaseConfig;
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -195,7 +195,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     );
 
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
 
     Ok(())
@@ -213,7 +213,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     );
 
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
 
     Ok(())

@@ -3,7 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "dal-test",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/forklift-server:forklift-server",

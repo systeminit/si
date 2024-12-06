@@ -4,7 +4,7 @@ rust_library(
     name = "sdf-server",
     deps = [
         "//lib/asset-sprayer:asset-sprayer",
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
@@ -73,7 +73,8 @@ rust_test(
     name = "test-integration",
     edition = "2021",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-database:audit-database",
+        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/dal-test:dal-test",
         "//lib/dal:dal",
         "//lib/nats-multiplexer-client:nats-multiplexer-client",

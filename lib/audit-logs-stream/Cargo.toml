@@ -1,5 +1,5 @@
 [package]
-name = "audit-logs"
+name = "audit-logs-stream"
 edition = "2021"
 version.workspace = true
 authors.workspace = true
@@ -10,15 +10,9 @@ publish.workspace = true
 
 [dependencies]
 si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 
-chrono = { workspace = true }
-refinery = { workspace = true }
 remain = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
-strum = { workspace = true }
 thiserror = { workspace = true }

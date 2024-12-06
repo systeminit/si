@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use asset_sprayer::AssetSprayer;
-use audit_logs::database::AuditDatabaseContext;
+use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;

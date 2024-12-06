@@ -14,7 +14,7 @@
 
 use std::io;
 
-use audit_logs::database::AuditDatabaseContextError;
+use audit_database::AuditDatabaseContextError;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 

@@ -1,10 +1,10 @@
 //! This module provides audit logging functionality to the rest of the crate.
 
-use audit_logs::database::AuditDatabaseContext;
-use audit_logs::database::AuditDatabaseError;
-use audit_logs::database::AuditLogRow;
-use audit_logs::AuditLogsStream;
-use audit_logs::AuditLogsStreamError;
+use audit_database::AuditDatabaseContext;
+use audit_database::AuditDatabaseError;
+use audit_database::AuditLogRow;
+use audit_logs_stream::AuditLogsStream;
+use audit_logs_stream::AuditLogsStreamError;
 use pending_events::PendingEventsError;
 use pending_events::PendingEventsStream;
 use serde::Deserialize;
