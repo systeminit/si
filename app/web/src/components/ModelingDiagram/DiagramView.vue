@@ -30,22 +30,64 @@
       }"
     />
 
+    <!-- status icons -->
+    <v-group
+      v-if="statusIcons?.length"
+      :config="{
+        x: (statusIcons.length * 26) / 2,
+        y: -20,
+      }"
+    >
+      <template
+        v-for="(statusIcon, i) in _.reverse(_.slice(statusIcons))"
+        :key="`status-icon-${i}`"
+      >
+        <v-text
+          :config="{
+            x: i * -26 - 25,
+            y: radius - 43,
+            align: 'center',
+            verticalAlign: 'top',
+            width: 25,
+            height: 30,
+            text: statusIcon.count,
+            padding: 2,
+            fill: colors.headerText,
+            fontSize: 11,
+            fontFamily: DIAGRAM_FONT_FAMILY,
+            listening: false,
+            wrap: 'char',
+          }"
+        />
+        <DiagramIcon
+          :icon="statusIcon.icon"
+          :color="getToneColorHex(statusIcon.tone)"
+          :size="24"
+          :x="i * -26"
+          :y="radius - 5"
+          origin="bottom-right"
+        />
+      </template>
+    </v-group>
+
     <v-shape v-if="isHovered" :config="selectionConfig" />
   </v-group>
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import { computed, reactive, watch } from "vue";
 import { Vector2d } from "konva/lib/types";
 import { KonvaEventObject } from "konva/lib/Node";
 import tinycolor from "tinycolor2";
-import { useTheme } from "@si/vue-lib/design-system";
+import { useTheme, getToneColorHex, Tones } from "@si/vue-lib/design-system";
 import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
+import DiagramIcon from "./DiagramIcon.vue";
 
 const { theme } = useTheme();
 
@@ -94,6 +136,34 @@ const colors = computed(() => {
     bodyBg: bodyBg.toRgbString(),
     headerText,
   };
+});
+
+interface ViewStats {
+  count: number;
+  icon: string;
+  tone: Tones;
+}
+
+const statusIcons = computed(() => {
+  const icons: ViewStats[] = [];
+  const stats = viewStore.viewStats[props.view.id];
+  if (!stats) return icons;
+
+  if (stats.components > 0)
+    icons.push({
+      count: stats.components,
+      icon: "check-hex-outline",
+      tone: "success",
+    });
+  if (stats.resources > 0)
+    icons.push({ count: stats.resources, icon: "check-hex", tone: "success" });
+  if (stats.failed > 0)
+    icons.push({
+      count: stats.failed,
+      icon: "x-hex-outline",
+      tone: "destructive",
+    });
+  return icons;
 });
 
 const points = reactive<Vector2d[]>([]);
