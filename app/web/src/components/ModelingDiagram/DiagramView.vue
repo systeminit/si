@@ -38,12 +38,16 @@
 import { computed, reactive, watch } from "vue";
 import { Vector2d } from "konva/lib/types";
 import { KonvaEventObject } from "konva/lib/Node";
+import tinycolor from "tinycolor2";
+import { useTheme } from "@si/vue-lib/design-system";
 import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
 } from "@/components/ModelingDiagram/diagram_constants";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramViewDef, ElementHoverMeta } from "./diagram_types";
+
+const { theme } = useTheme();
 
 const viewStore = useViewsStore();
 
@@ -59,12 +63,6 @@ const radius = computed(() => {
   return props.view.width / 2;
 });
 
-const colors = computed(() => {
-  return {
-    headerText: "black",
-  };
-});
-
 // step up & down the font size
 const fontSize = computed(() => {
   switch (true) {
@@ -77,6 +75,25 @@ const fontSize = computed(() => {
     default:
       return 20;
   }
+});
+
+const colors = computed(() => {
+  const primaryColor = tinycolor(props.view.color);
+  const bodyBgHsl = primaryColor.toHsl();
+  bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
+  const bodyBg = tinycolor(bodyBgHsl);
+  let headerText;
+  if (bodyBg.toHsl().l < 0.5) {
+    headerText = "#FFF";
+  } else {
+    headerText = "#000";
+  }
+
+  return {
+    headerBg: primaryColor.toRgbString(),
+    bodyBg: bodyBg.toRgbString(),
+    headerText,
+  };
 });
 
 const points = reactive<Vector2d[]>([]);
@@ -147,8 +164,8 @@ const config = computed(() => {
 
       context.fillStrokeShape(shape);
     },
-    fill: props.view.color,
-    stroke: "black",
+    fill: colors.value.bodyBg,
+    stroke: colors.value.headerBg,
     strokeWidth: 2,
     hitStrokeWidth: 0,
     rotation: 90,
