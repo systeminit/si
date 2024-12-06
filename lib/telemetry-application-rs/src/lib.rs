@@ -7,6 +7,10 @@
 )]
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
+use telemetry::opentelemetry::{
+    metrics::MetricsError,
+    trace::{TraceError, TracerProvider},
+};
 use tracing_subscriber::{filter::FilterExt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use std::{
@@ -26,14 +30,17 @@ use derive_builder::Builder;
 use opentelemetry_sdk::{
     metrics::SdkMeterProvider,
     propagation::TraceContextPropagator,
-    resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
+    resource::EnvResourceDetector,
     runtime,
-    trace::{self, Tracer},
+    trace::{self, Config, Tracer},
     Resource,
 };
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
-    opentelemetry::{global, metrics::MetricsError, trace::TraceError, KeyValue},
+    opentelemetry::{
+        global::{self},
+        KeyValue,
+    },
     prelude::*,
     tracing::Subscriber,
     TelemetryCommand, TracingLevel, Verbosity,
@@ -379,7 +386,9 @@ fn tracing_subscriber(
     };
 
     let (metrics_layer, metrics_filter_reload) = {
-        let layer = MetricsLayer::new(otel_metrics(config)?);
+        let metrics_provider = otel_metrics(config)?;
+        global::set_meter_provider(metrics_provider.clone());
+        let layer = MetricsLayer::new(metrics_provider);
         let env_filter = EnvFilter::try_new(directives.as_str())?;
         let (filter, handle) = reload::Layer::new(env_filter);
         let layer = layer.with_filter(filter.and(IncludeMetricsFilter));
@@ -404,17 +413,18 @@ fn tracing_subscriber(
     Ok((registry, handles))
 }
 
-fn otel_tracer(config: &TelemetryConfig) -> result::Result<Tracer, TraceError> {
-    opentelemetry_otlp::new_pipeline()
+fn otel_tracer(config: &TelemetryConfig) -> Result<Tracer> {
+    Ok(opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .with_trace_config(trace::config().with_resource(telemetry_resource(config)))
+        .with_trace_config(Config::default().with_resource(telemetry_resource(config)))
         .with_batch_config(
             trace::BatchConfigBuilder::default()
                 .with_max_queue_size(4096)
                 .build(),
         )
-        .install_batch(runtime::Tokio)
+        .install_batch(runtime::Tokio)?
+        .tracer(config.service_name))
 }
 
 fn otel_metrics(config: &TelemetryConfig) -> result::Result<SdkMeterProvider, MetricsError> {
@@ -434,11 +444,7 @@ fn telemetry_resource(config: &TelemetryConfig) -> Resource {
     // TODO(fnichol): create opentelemetry-resource-detector-aws for ec2 & eks detection
     Resource::from_detectors(
         Duration::from_secs(3),
-        vec![
-            Box::new(EnvResourceDetector::new()),
-            Box::new(OsResourceDetector),
-            Box::new(ProcessResourceDetector),
-        ],
+        vec![Box::new(EnvResourceDetector::new())],
     )
     .merge(&Resource::new(vec![
         KeyValue::new(resource::SERVICE_NAME, config.service_name.to_string()),
