@@ -406,6 +406,25 @@ export function useChangeSetsStore() {
             },
           });
         },
+        async RENAME_CHANGE_SET(changeSetId: ChangeSetId, newName: string) {
+          return new ApiRequest({
+            method: "post",
+            url: BASE_API.concat([{ changeSetId }, "rename"]),
+            params: { newName },
+            optimistic: () => {
+              const changeSet = this.changeSetsById[changeSetId];
+              if (!changeSet) return;
+
+              const oldName = changeSet.name;
+              changeSet.name = newName;
+
+              return () => {
+                // if it fails, revert the name
+                changeSet.name = oldName;
+              };
+            },
+          });
+        },
 
         getAutoSelectedChangeSetId() {
           const lastChangeSetId = sessionStorage.getItem(
@@ -681,6 +700,15 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetWritten",
             callback: (changeSetId) => {
               this.changeSetsWrittenAtById[changeSetId] = new Date();
+            },
+          },
+          {
+            eventType: "ChangeSetRename",
+            callback: ({ changeSetId, newName }) => {
+              const changeSet = this.changeSetsById[changeSetId];
+              if (changeSet) {
+                changeSet.name = newName;
+              }
             },
           },
         ]);

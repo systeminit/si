@@ -18,6 +18,7 @@ mod cancel_approval_request;
 mod force_apply;
 mod list;
 mod reject;
+mod rename;
 mod reopen;
 mod request_approval;
 
@@ -111,7 +112,8 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
                         state.clone(),
                         permissions::Permission::Approve,
                     )),
-                ),
+                )
+                .route("/rename", post(rename::rename)),
         )
         .route("/", get(list::list_actionable))
 }

@@ -164,6 +164,21 @@ impl WsEvent {
         )
         .await
     }
+
+    pub async fn rename_change_set(
+        ctx: &DalContext,
+        change_set_id: ChangeSetId,
+        new_name: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetRename(ChangeSetRenamePayload {
+                change_set_id,
+                new_name,
+            }),
+        )
+        .await
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -193,4 +208,11 @@ pub struct ChangeSetMergeVotePayload {
     change_set_id: ChangeSetId,
     user_pk: Option<UserPk>,
     vote: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetRenamePayload {
+    change_set_id: ChangeSetId,
+    new_name: String,
 }

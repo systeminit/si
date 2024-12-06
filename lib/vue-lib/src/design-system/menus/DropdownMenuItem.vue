@@ -62,7 +62,7 @@
 
     <div
       ref="labelRef"
-      class="max-w-full shrink pointer-events-none leading-none"
+      class="max-w-full shrink pointer-events-none leading-tight"
     >
       <div class="truncate">
         <slot>{{ label }}</slot>

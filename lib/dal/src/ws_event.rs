@@ -10,7 +10,7 @@ use ulid::Ulid;
 use crate::audit_logging::AuditLogsPublishedPayload;
 use crate::change_set::event::{
     ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
-    ChangeSetStateChangePayload,
+    ChangeSetRenamePayload, ChangeSetStateChangePayload,
 };
 use crate::component::{
     ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
@@ -90,6 +90,7 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetId),
     ChangeSetCreated(ChangeSetId),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
+    ChangeSetRename(ChangeSetRenamePayload),
     ChangeSetStatusChanged(ChangeSetStateChangePayload),
     ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),

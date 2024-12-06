@@ -59,35 +59,38 @@
   />
 
   <!-- Right Panel - selection details -->
-  <component
-    :is="ResizablePanel"
-    ref="rightResizablePanelRef"
-    :defaultSize="400"
-    :minSize="320"
-    rememberSizeKey="details-panel"
-    side="right"
-  >
-    <div class="h-full overflow-hidden relative">
-      <EdgeDetailsPanel
-        v-if="selectedEdge"
-        :menuSelected="contextMenuRef?.isOpen ?? false"
-        @openMenu="onThreeDotMenuClick"
-      />
-      <ComponentDetails
-        v-else-if="selectedComponent"
-        :key="selectedComponent.def.id"
-        :component="selectedComponent"
-        :menuSelected="contextMenuRef?.isOpen as boolean ?? false"
-        @openMenu="onThreeDotMenuClick"
-      />
-      <MultiSelectDetailsPanel
-        v-else-if="selectedComponentIds.length > 1"
-        :menuSelected="contextMenuRef?.isOpen ?? false"
-        @openMenu="onThreeDotMenuClick"
-      />
-      <NoSelectionDetailsPanel v-else />
-    </div>
-  </component>
+  <section class="absolute right-0 h-full">
+    <component
+      :is="ResizablePanel"
+      ref="rightResizablePanelRef"
+      class="h-full"
+      :defaultSize="400"
+      :minSize="320"
+      rememberSizeKey="details-panel"
+      side="right"
+    >
+      <div class="h-full overflow-hidden relative">
+        <EdgeDetailsPanel
+          v-if="selectedEdge"
+          :menuSelected="contextMenuRef?.isOpen ?? false"
+          @openMenu="onThreeDotMenuClick"
+        />
+        <ComponentDetails
+          v-else-if="selectedComponent"
+          :key="selectedComponent.def.id"
+          :component="selectedComponent"
+          :menuSelected="contextMenuRef?.isOpen as boolean ?? false"
+          @openMenu="onThreeDotMenuClick"
+        />
+        <MultiSelectDetailsPanel
+          v-else-if="selectedComponentIds.length > 1"
+          :menuSelected="contextMenuRef?.isOpen ?? false"
+          @openMenu="onThreeDotMenuClick"
+        />
+        <NoSelectionDetailsPanel v-else />
+      </div>
+    </component>
+  </section>
 
   <!-- Modals and Menus outside of the flow of the page -->
   <ModelingRightClickMenu ref="contextMenuRef" />
