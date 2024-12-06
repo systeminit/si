@@ -96,7 +96,7 @@
               v-for="header in headerGroup.headers"
               :key="header.id"
               :header="header"
-              :filters="currentFilters"
+              :filters="logsStore.filters"
               :anyRowsOpen="anyRowsOpen"
               @select="onHeaderClick(header.id)"
               @clearFilters="clearFilters(header.id)"
@@ -134,7 +134,6 @@
             <AuditLogDrawer
               :row="row"
               :colspan="columns.length"
-              :json="JSON.stringify(filteredLogs[Number(row.id)], null, 2)"
               :expanded="rowCollapseState[Number(row.id)]"
             />
             <tr class="invisible"></tr>
@@ -143,10 +142,10 @@
       </table>
       <template v-if="initialLoadRequestStatus.isSuccess">
         <span
-          v-if="filteredLogs.length < 1"
+          v-if="noRowsMessage"
           class="flex flex-row items-center justify-center pt-md"
         >
-          No entries match selected filter criteria.
+          {{ noRowsMessage }}
         </span>
         <div class="flex flex-row items-center justify-center py-md">
           <VButton
@@ -181,7 +180,7 @@ import {
 } from "@si/vue-lib/design-system";
 import {
   getCoreRowModel,
-  getPaginationRowModel,
+  getFilteredRowModel,
   useVueTable,
   createColumnHelper,
 } from "@tanstack/vue-table";
@@ -200,60 +199,18 @@ const logsStore = useLogsStore();
 const logs = computed(() => logsStore.logs);
 const size = computed(() => logsStore.size);
 const canLoadMore = computed(() => logsStore.canLoadMore);
-const currentFilters = computed(() => logsStore.filters);
-
-const filteredLogs = computed(() => {
-  const result = [];
-  for (const log of logs.value) {
-    if (currentFilters.value.changeSetFilter.length > 0) {
-      if (!log.changeSetName) {
-        continue;
-      } else if (
-        !currentFilters.value.changeSetFilter.includes(log.changeSetName)
-      ) {
-        continue;
-      }
-    }
-    if (
-      currentFilters.value.entityNameFilter.length > 0 &&
-      !currentFilters.value.entityNameFilter.includes(log.entityName)
-    ) {
-      continue;
-    }
-    if (
-      currentFilters.value.entityTypeFilter.length > 0 &&
-      !currentFilters.value.entityTypeFilter.includes(log.entityType)
-    ) {
-      continue;
-    }
-    if (
-      currentFilters.value.titleFilter.length > 0 &&
-      !currentFilters.value.titleFilter.includes(log.title)
-    ) {
-      continue;
-    }
-    if (
-      currentFilters.value.userFilter.length > 0 &&
-      !currentFilters.value.userFilter.includes(log.userName)
-    ) {
-      continue;
-    }
-    result.push(log);
-  }
-  return result;
-});
 
 const selectedChangeSetName = computed(
   () => changeSetsStore.selectedChangeSet?.name,
 );
 
-const rowCollapseState = ref(new Array(filteredLogs.value.length).fill(false));
+const rowCollapseState = ref(new Array(logs.value.length).fill(false));
 const anyRowsOpen = computed(() => rowCollapseState.value.some(Boolean));
 const toggleRowExpand = (id: number) => {
   rowCollapseState.value[id] = !rowCollapseState.value[id];
 };
 const collapseAllRows = () => {
-  rowCollapseState.value = new Array(filteredLogs.value.length).fill(false);
+  rowCollapseState.value = new Array(logs.value.length).fill(false);
 };
 
 // TODO(nick): restore pagination once the audit trail feature is shipped.
@@ -303,14 +260,17 @@ const columns = [
   columnHelper.accessor("title", {
     header: "Event",
     cell: (info) => info.getValue(),
+    filterFn: "arrIncludesSome",
   }),
   columnHelper.accessor("entityType", {
     header: "Entity Type",
     cell: (info) => info.getValue(),
+    filterFn: "arrIncludesSome",
   }),
   columnHelper.accessor("entityName", {
     header: "Entity Name",
     cell: (info) => info.getValue(),
+    filterFn: "arrIncludesSome",
   }),
   columnHelper.accessor("changeSetName", {
     header: "Change Set",
@@ -322,10 +282,12 @@ const columns = [
         }),
         [[resolveDirective("tooltip"), info.row.getValue("changeSetId")]],
       ),
+    filterFn: "arrIncludesSome",
   }),
   columnHelper.accessor("userName", {
     header: "User",
     cell: (info) => info.getValue(),
+    filterFn: "arrIncludesSome",
   }),
   columnHelper.accessor("timestamp", {
     header: "Time",
@@ -345,7 +307,7 @@ const columns = [
 
 const table = useVueTable({
   get data() {
-    return filteredLogs.value;
+    return logs.value;
   },
   initialState: {
     columnVisibility: {
@@ -354,7 +316,7 @@ const table = useVueTable({
   },
   columns,
   getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
 });
 
 table.setPageSize(size.value);
@@ -363,83 +325,99 @@ watch(size, (size) => {
 });
 
 const onHeaderClick = (id: string) => {
-  if (id === "timestamp") {
-    // NOTE(nick): restore timestamp sort after the audit trail feature is shipped.
-    // currentFilters.value.sortTimestampAscending = !currentFilters.value.sortTimestampAscending;
-    // loadLogs();
-  } else if (id === "json" && anyRowsOpen.value) {
+  // NOTE(nick): restore timestamp sort after the audit trail feature is shipped.
+  // if (id === "timestamp") {
+  //   logsStore.filters.sortTimestampAscending = !logsStore.filters.sortTimestampAscending;
+  //   loadLogs();
+  // } else if (id === "json" && anyRowsOpen.value) {
+  if (id === "json" && anyRowsOpen.value) {
     collapseAllRows();
   }
 };
 
 const toggleFilter = (id: string, filterId: string) => {
   if (id === "changeSetName") {
-    if (currentFilters.value.changeSetFilter.includes(filterId)) {
-      const i = currentFilters.value.changeSetFilter.indexOf(filterId);
-      currentFilters.value.changeSetFilter.splice(i, 1);
-    } else currentFilters.value.changeSetFilter.push(filterId);
+    if (logsStore.filters.changeSetFilter.includes(filterId)) {
+      const i = logsStore.filters.changeSetFilter.indexOf(filterId);
+      logsStore.filters.changeSetFilter.splice(i, 1);
+    } else logsStore.filters.changeSetFilter.push(filterId);
+    table.getColumn(id)?.setFilterValue(logsStore.filters.changeSetFilter);
   } else if (id === "entityName") {
-    if (currentFilters.value.entityNameFilter.includes(filterId)) {
-      const i = currentFilters.value.entityNameFilter.indexOf(filterId);
-      currentFilters.value.entityNameFilter.splice(i, 1);
-    } else currentFilters.value.entityNameFilter.push(filterId);
+    if (logsStore.filters.entityNameFilter.includes(filterId)) {
+      const i = logsStore.filters.entityNameFilter.indexOf(filterId);
+      logsStore.filters.entityNameFilter.splice(i, 1);
+    } else logsStore.filters.entityNameFilter.push(filterId);
+    table.getColumn(id)?.setFilterValue(logsStore.filters.entityNameFilter);
   } else if (id === "entityType") {
-    if (currentFilters.value.entityTypeFilter.includes(filterId)) {
-      const i = currentFilters.value.entityTypeFilter.indexOf(filterId);
-      currentFilters.value.entityTypeFilter.splice(i, 1);
-    } else currentFilters.value.entityTypeFilter.push(filterId);
+    if (logsStore.filters.entityTypeFilter.includes(filterId)) {
+      const i = logsStore.filters.entityTypeFilter.indexOf(filterId);
+      logsStore.filters.entityTypeFilter.splice(i, 1);
+    } else logsStore.filters.entityTypeFilter.push(filterId);
+    table.getColumn(id)?.setFilterValue(logsStore.filters.entityTypeFilter);
   } else if (id === "title") {
-    if (currentFilters.value.titleFilter.includes(filterId)) {
-      const i = currentFilters.value.titleFilter.indexOf(filterId);
-      currentFilters.value.titleFilter.splice(i, 1);
-    } else currentFilters.value.titleFilter.push(filterId);
+    if (logsStore.filters.titleFilter.includes(filterId)) {
+      const i = logsStore.filters.titleFilter.indexOf(filterId);
+      logsStore.filters.titleFilter.splice(i, 1);
+    } else logsStore.filters.titleFilter.push(filterId);
+    table.getColumn(id)?.setFilterValue(logsStore.filters.titleFilter);
   } else if (id === "userName") {
-    if (currentFilters.value.userFilter.includes(filterId)) {
-      const i = currentFilters.value.userFilter.indexOf(filterId);
-      currentFilters.value.userFilter.splice(i, 1);
-    } else currentFilters.value.userFilter.push(filterId);
+    if (logsStore.filters.userFilter.includes(filterId)) {
+      const i = logsStore.filters.userFilter.indexOf(filterId);
+      logsStore.filters.userFilter.splice(i, 1);
+    } else logsStore.filters.userFilter.push(filterId);
+    table.getColumn(id)?.setFilterValue(logsStore.filters.userFilter);
   }
 };
 
 const clearFilters = (id: string) => {
   if (id === "changeSetName") {
-    currentFilters.value.changeSetFilter = [];
+    logsStore.filters.changeSetFilter = [];
   } else if (id === "entityName") {
-    currentFilters.value.entityNameFilter = [];
+    logsStore.filters.entityNameFilter = [];
   } else if (id === "entityType") {
-    currentFilters.value.entityTypeFilter = [];
+    logsStore.filters.entityTypeFilter = [];
   } else if (id === "title") {
-    currentFilters.value.titleFilter = [];
+    logsStore.filters.titleFilter = [];
   } else if (id === "userName") {
-    currentFilters.value.userFilter = [];
+    logsStore.filters.userFilter = [];
   }
+  table.setColumnFilters((filters) =>
+    filters.filter((filter) => filter.id !== id),
+  );
 };
+
+const noRowsMessage = computed(() => {
+  if (logs.value.length < 1) return "No logs exist in the workspace.";
+  if (table.getRowModel().rows.length === 0)
+    return "No entries match selected filter criteria.";
+  return null;
+});
 
 // NOTE(nick): restore pagination after audit trail is shipped.
 // const canGetPreviousPage = () => {
-//   return currentFilters.value.page > 1;
+//   return logsStore.filters.page > 1;
 // };
 //
 // const getCanNextPage = () => {
-//   return currentFilters.value.page < totalPages.value;
+//   return logsStore.filters.page < totalPages.value;
 // };
 //
 // const setPage = (pageNumber: number) => {
-//   currentFilters.value.page = pageNumber;
+//   logsStore.filters.page = pageNumber;
 //   loadLogs();
 // };
 //
 // const nextPage = () => {
-//   currentFilters.value.page++;
+//   logsStore.filters.page++;
 //   loadLogs();
 // };
 //
 // const previousPage = () => {
-//   currentFilters.value.page--;
+//   logsStore.filters.page--;
 //   loadLogs();
 // };
 //
 // const currentPage = computed(() =>
-//   totalPages.value === 0 ? 0 : currentFilters.value.page,
+//   totalPages.value === 0 ? 0 : logsStore.filters.page,
 // );
 </script>

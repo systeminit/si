@@ -12,7 +12,11 @@
     "
   >
     <td :colspan="colspan" class="p-0">
-      <CodeViewer showTitle title="Raw Event Data" :code="json" />
+      <CodeViewer
+        showTitle
+        title="Raw Event Data"
+        :code="JSON.stringify(row.original, null, 2)"
+      />
     </td>
   </tr>
 </template>
@@ -32,10 +36,6 @@ defineProps({
   },
   colspan: {
     type: Number,
-    required: true,
-  },
-  json: {
-    type: String,
     required: true,
   },
   expanded: {
