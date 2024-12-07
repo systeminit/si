@@ -22,15 +22,12 @@ the infrastructure.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-management-functions)
 
-### Management Functions
+### Management Functions  (Generally Available)
 
 Management functions allow a model to manage its own attributes; create, update,
 and delete components; and enqueue actions. In their first iteration, they’ll be
 used for three big use cases: importing existing cloud resources, modular
 templating, and management of existing components.
-
-This is currently in internal testing behind a feature flag and is anticipated
-to be Generally Available, December 2024.
 
 ### Import (Generally Available)
 
@@ -62,16 +59,13 @@ Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-approval-workflows)
 to learn more about our approval workflows
 
-### Audit History
+### Audit History  (Generally Available)
 
 We are providing the functionality that allows users of a workspace to see every
 change that has happened, who made them and when. The first iteration of this
 work will allow users to be able to have basic sorting and filtering of events.
 
-This is currently in internal testing behind a feature flag and is anticipated
-to be Generally Available, December 2024.
-
-## Views
+## Views  (Generally Available)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/qpNxaAojuzI?si=XLnnJy7uWF4ruEVY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
@@ -81,9 +75,6 @@ multiple views. Components in a view can connect to components in another view.
 This enables teams to create diagrams that are specific to their application or
 area of specialization.
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-views)
-
-This is currently in internal testing behind a feature flag and is anticipated
-to be Generally Available, December 2024.
 
 ## Growing coverage of cloud platforms
 
