@@ -26,6 +26,7 @@ type Result<T> = result::Result<T, Error>;
 pub enum ObjectType {
     User,
     Workspace,
+    System,
 }
 
 #[derive(Clone, Copy, strum::Display)]
@@ -33,6 +34,7 @@ pub enum ObjectType {
 pub enum Permission {
     Approve,
     Manage,
+    Administer,
 }
 
 #[derive(Clone, Copy, strum::Display, Debug)]
@@ -40,6 +42,7 @@ pub enum Permission {
 pub enum Relation {
     Approver,
     Owner,
+    Admin,
 }
 
 /// RelationBuilder allows defining a relationship in SpiceDb.
@@ -204,6 +207,10 @@ impl PermissionBuilder {
 
     pub fn workspace_object(self, id: WorkspacePk) -> Self {
         self.object(ObjectType::Workspace, id)
+    }
+
+    pub fn system_object(self) -> Self {
+        self.object(ObjectType::System, "system")
     }
 
     pub fn permission(mut self, permission: Permission) -> Self {
