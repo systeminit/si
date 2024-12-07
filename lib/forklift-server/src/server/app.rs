@@ -1,6 +1,6 @@
 use std::{future::Future, io, sync::Arc};
 
-use ::audit_logs::database::AuditDatabaseContext;
+use audit_database::AuditDatabaseContext;
 use si_data_nats::{jetstream::Context, ConnectionMetadata};
 use telemetry::prelude::*;
 use thiserror::Error;

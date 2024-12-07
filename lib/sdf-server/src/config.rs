@@ -1,5 +1,5 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
-use audit_logs::database::AuditDatabaseConfig;
+use audit_database::AuditDatabaseConfig;
 use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
@@ -523,7 +523,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.dev_mode = true;
 
     Ok(())
@@ -586,7 +586,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.pkgs_path = pkgs_path;
     config.spicedb.enabled = true;
     config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.audit.pg.dbname = audit_logs::database::DBNAME.to_string();
+    config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.dev_mode = true;
 
     Ok(())

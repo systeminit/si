@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use asset_sprayer::AssetSprayer;
-use audit_logs::database::AuditDatabaseContext;
+use audit_database::AuditDatabaseContext;
 use axum::Router;
 use dal::{JwtPublicSigningKey, ServicesContext};
 use nats_multiplexer_client::MultiplexerClient;

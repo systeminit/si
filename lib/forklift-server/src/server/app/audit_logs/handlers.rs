@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use audit_logs::database::{AuditDatabaseError, AuditLogRow};
+use audit_database::{AuditDatabaseError, AuditLogRow};
 use naxum::{
     extract::State,
     response::{IntoResponse, Response},

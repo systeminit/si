@@ -3,7 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-server",
     deps = [
-        "//lib/audit-logs:audit-logs",
+        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/naxum:naxum",

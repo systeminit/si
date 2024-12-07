@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use audit_logs::database::AuditLogRow;
+use audit_database::AuditLogRow;
 use axum::{
     extract::{Path, Query, State},
     Json,

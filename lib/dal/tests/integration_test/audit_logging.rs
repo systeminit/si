@@ -1,5 +1,5 @@
-use audit_logs::database::AuditDatabaseContext;
-use audit_logs::AuditLogsStream;
+use audit_database::AuditDatabaseContext;
+use audit_logs_stream::AuditLogsStream;
 use dal::{prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
     confirm_jetstream_stream_has_no_messages,

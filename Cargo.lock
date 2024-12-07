@@ -409,7 +409,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "audit-logs"
+name = "audit-database"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -417,12 +417,21 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
- "si-data-nats",
  "si-data-pg",
  "si-events",
- "strum",
  "telemetry",
- "telemetry-nats",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "audit-logs-stream"
+version = "0.1.0"
+dependencies = [
+ "remain",
+ "serde_json",
+ "si-data-nats",
+ "si-events",
+ "telemetry",
  "thiserror 1.0.69",
 ]
 
@@ -1845,7 +1854,8 @@ version = "0.1.0"
 dependencies = [
  "async-recursion",
  "async-trait",
- "audit-logs",
+ "audit-database",
+ "audit-logs-stream",
  "base64 0.22.1",
  "billing-events",
  "blake3",
@@ -1932,7 +1942,7 @@ name = "dal-test"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
- "audit-logs",
+ "audit-database",
  "base64 0.22.1",
  "buck2-resources",
  "color-eyre",
@@ -2636,7 +2646,8 @@ dependencies = [
 name = "forklift-server"
 version = "0.1.0"
 dependencies = [
- "audit-logs",
+ "audit-database",
+ "audit-logs-stream",
  "billing-events",
  "buck2-resources",
  "data-warehouse-stream-client",
@@ -5578,7 +5589,7 @@ dependencies = [
 name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
- "audit-logs",
+ "audit-logs-stream",
  "buck2-resources",
  "dal",
  "derive_builder",
@@ -6165,7 +6176,7 @@ dependencies = [
  "asset-sprayer",
  "async-openai",
  "async-trait",
- "audit-logs",
+ "audit-database",
  "axum",
  "base64 0.22.1",
  "buck2-resources",
