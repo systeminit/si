@@ -202,6 +202,8 @@ export const useFuncStore = () => {
         selectedFuncId: undefined as FuncId | undefined,
         editingFuncLatestCode: {} as Record<FuncId, string>,
         generatingFuncCode: {} as Record<FuncId, AwsCliCommand>,
+        /** Whether the "generate AWS function" panel is toggled open */
+        generateAwsFunctionPanelToggled: false,
         // So we can ignore websocket update originated by this client
         clientUlid: ulid(),
       }),
@@ -937,3 +939,29 @@ export const useFuncStore = () => {
     }),
   )();
 };
+
+export type GenerateAwsFunctionKind =
+  (typeof GenerateAwsFunctionKinds)[keyof typeof GenerateAwsFunctionKinds];
+export const GenerateAwsFunctionKinds = {
+  AssetSchema: {
+    description: "AWS Asset Schema",
+    exampleCommand: {
+      command: "sqs",
+      subcommand: "create-queue",
+    },
+  },
+  Action: {
+    description: "AWS Action Function",
+    exampleCommand: {
+      command: "sqs",
+      subcommand: "describe-queue",
+    },
+  },
+  Management: {
+    description: "AWS Import Function",
+    exampleCommand: {
+      command: "sqs",
+      subcommand: "describe-queue",
+    },
+  },
+} as const;

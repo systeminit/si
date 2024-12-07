@@ -36,6 +36,7 @@ pub enum AwsCliCommandPromptKind {
     DestroyAction,
     RefreshAction,
     UpdateAction,
+    Import,
 }
 
 const AWS_CLI_DOCS_URL: &str = "https://docs.aws.amazon.com/cli/latest/reference";
@@ -172,6 +173,7 @@ impl RawPromptYamlSource for AwsCliCommandPromptKind {
             Self::DestroyAction => "aws/destroy_action.yaml",
             Self::RefreshAction => "aws/refresh_action.yaml",
             Self::UpdateAction => "aws/update_action.yaml",
+            Self::Import => "aws/import.yaml",
         }
     }
 
@@ -182,6 +184,7 @@ impl RawPromptYamlSource for AwsCliCommandPromptKind {
             Self::DestroyAction => include_str!("../prompts/aws/destroy_action.yaml"),
             Self::RefreshAction => include_str!("../prompts/aws/refresh_action.yaml"),
             Self::UpdateAction => include_str!("../prompts/aws/update_action.yaml"),
+            Self::Import => include_str!("../prompts/aws/import.yaml"),
         }
     }
 }

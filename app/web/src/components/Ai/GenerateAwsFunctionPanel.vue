@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-row gap-xs items-end p-xs justify-end w-full">
     <VormInput
+      v-model="aws"
       label="CLI"
       type="text"
       disabled
-      defaultValue="aws"
       :maxLength="3"
       @enterPressed="generateAwsFunction"
     />
@@ -12,72 +12,78 @@
       v-model="awsCommand.command"
       label="Command"
       type="text"
-      :disabled="generating"
+      :disabled="!!isLocked || generateRequestStatus.isPending"
       @enterPressed="generateAwsFunction"
     />
     <VormInput
       v-model="awsCommand.subcommand"
       label="Subcommand"
       type="text"
-      :disabled="generating"
+      :disabled="!!isLocked || generateRequestStatus.isPending"
       @enterPressed="generateAwsFunction"
     />
     <VButton
-      v-tooltip="'Generate Schema From AWS Command'"
       class="mb-3xs"
-      :loading="generating"
       loadingIcon="sparkles"
-      loadingText="Generating ..."
+      :loadingText="`Generating ${kind?.description}...`"
       :requestStatus="generateRequestStatus"
-      label="Generate"
+      :label="
+        isLocked
+          ? `Locked (unlock before generating)`
+          : `Generate ${kind?.description}`
+      "
       size="sm"
+      :disabled="!!isLocked"
       @click="generateAwsFunction"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { reactive, PropType, computed } from "vue";
+import { reactive, watch } from "vue";
 import { VormInput, VButton } from "@si/vue-lib/design-system";
-import { useFuncStore, AwsCliCommand } from "@/store/func/funcs.store";
+import {
+  useFuncStore,
+  GenerateAwsFunctionKind,
+  AwsCliCommand,
+} from "@/store/func/funcs.store";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
 import { FuncId } from "@/api/sdf/dal/func";
 
 const funcStore = useFuncStore();
 
-const props = defineProps({
-  funcId: { type: String as PropType<FuncId>, required: true },
-  schemaVariantId: {
-    type: String as PropType<SchemaVariantId>,
-    required: true,
-  },
-  generatingCommand: { type: Object as PropType<AwsCliCommand> },
-});
+const props = defineProps<{
+  funcId: FuncId;
+  schemaVariantId: SchemaVariantId;
+  kind: GenerateAwsFunctionKind;
+  isLocked?: boolean;
+}>();
 
-/** The AWS command entered in the form */
-const awsCommand = reactive({
-  command: props.generatingCommand?.command ?? "sqs",
-  subcommand: props.generatingCommand?.subcommand ?? "create-queue",
-});
-
-/** Status of the request */
 const generateRequestStatus = funcStore.getRequestStatus(
   "GENERATE_AWS_FUNCTION",
   props.funcId,
 );
-const generating = computed(
-  () => generateRequestStatus.value.isPending || !!props.generatingCommand,
-);
+
+const aws = "aws";
+
+/** Command and subcommand we're editing */
+const awsCommand = reactive({ command: "", subcommand: "" });
+// Set the command if the example changes or we start generating a command
+// (We do not reset the command when generation stops; we want to leave it as-is)
+function setCommand(command?: Readonly<AwsCliCommand>) {
+  if (command) Object.assign(awsCommand, command);
+}
+watch(() => props.kind?.exampleCommand, setCommand, { immediate: true });
+watch(() => funcStore.generatingFuncCode[props.funcId], setCommand, {
+  immediate: true,
+});
 
 /** Actually trigger schema generation */
-const generateAwsFunction = async () => {
-  if (generating.value) {
-    return;
-  }
-  await funcStore.GENERATE_AWS_FUNCTION(
+function generateAwsFunction() {
+  funcStore.GENERATE_AWS_FUNCTION(
     props.funcId,
     awsCommand,
     props.schemaVariantId,
   );
-};
+}
 </script>
