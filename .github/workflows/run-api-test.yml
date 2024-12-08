@@ -88,13 +88,14 @@ jobs:
           IFS=',' read -r -a workspace_array <<< "$workspace_ids"
           
           # Pick the correct workspace ID based on the index
-          workspace_id=${workspace_array[${{ matrix.tests.index }}]}
+          workspace_id="${workspace_array[${{ matrix.tests.index }}]}"
 
           echo "Using workspace ID: $workspace_id"
 
           # Retry loop with 5 attempts
           n=0
           max_retries=5
+          exit_code=0
           
           until [ $n -ge $max_retries ]
           do
@@ -109,7 +110,7 @@ jobs:
             
             # Check the exit code
             if [ -z "$exit_code" ]; then
-              echo "Deno task succeeded!"
+              echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
               break
             fi
 
@@ -120,32 +121,67 @@ jobs:
 
           if [ $n -ge $max_retries ]; then
             echo "All $max_retries attempts failed."
-            exit 1
+            exit_code=1
           fi
+
+          echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
+          exit "$last_exit_code"
+
+      - name: Upload artifact if exit code 53
+        if: ${{ failure() && env.last_exit_code == '53' }}
+        run: |
+          echo "Uploading marker for test ${{ matrix.tests.name }}"
+          mkdir -p artifacts/${{ matrix.tests.name }}
+          echo "failure-marker" > artifacts/${{ matrix.tests.name }}/failure-marker
+
+      - name: Upload artifacts
+        if: ${{ failure() && env.last_exit_code == '53' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.tests.name }}
+          path: artifacts/${{ matrix.tests.name }}
 
   on-failure:
     runs-on: ubuntu-latest
     needs: api-test
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    environment: ${{ inputs.environment }}
+    if: ${{ failure() }} && github.ref == 'refs/heads/main' }}
     steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: |     
+          has_artifacts=false
+          # Check for marker files
+          for marker in artifacts/*/failure-marker; do
+            if [ -f "$marker" ]; then
+              echo "Artifact detected for failed test: $marker"
+              echo "Setting failure to true and breaking"
+              has_artifacts=true
+              break
+            fi
+          done
+          # If at least one valid failure marker is present, then page
+          if [ "$has_artifacts" = true ]; then
+              curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
+              --header "Content-Type: application/json" \
+              --data "{
+                \"summary\": \"API ${{ inputs.environment }} Tests Fail\",
+                \"body\": \"API Tests have failed for ${{ inputs.environment }}.\",
+                \"links\": [
+                  {
+                    \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
+                    \"text\": \"E2E Test Run ${{ inputs.environment }}\"
+                  }
+                ],
+                \"tags\": [
+                  \"service:github\"
+                ]
+              }" 
+          fi
       - run: |
-            curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
-            --header "Content-Type: application/json" \
-            --data "{
-              \"summary\": \"API ${{ inputs.environment }} Tests Fail\",
-              \"body\": \"API Tests have failed for ${{ inputs.environment }}.\",
-              \"links\": [
-                {
-                  \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
-                  \"text\": \"E2E Test Run ${{ inputs.environment }}\"
-                }
-              ],
-              \"tags\": [
-                \"service:github\"
-              ]
-            }"
-      - run: |
-          curl -X POST \
-          --header 'Content-type: application/json' \
-          --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
-          ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Always send the Internal Slack Notification if failure detected, regardless of error source
+          curl --location "${{ secrets.SLACK_WEBHOOK_URL }}" -X POST \
+            --header 'Content-type: application/json' \
+            --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}"
