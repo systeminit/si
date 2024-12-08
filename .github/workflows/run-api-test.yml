@@ -135,10 +135,8 @@ jobs:
     if: ${{ failure() }} #&& github.ref == 'refs/heads/main' }} #TODO(johnrwatson): disable comment before merging
     steps:
       - run: |
-          EXCLUDED_EXIT_CODES="3,4,5"
-          if echo "$EXCLUDED_EXIT_CODES" | grep -qw "$LAST_EXIT_CODE"; then
-            echo "Exit code $LAST_EXIT_CODE is in the excluded list, doing nothing."
-           else { # Page someone as it's not explicitly excluded
+          VALID_FAILIRE_EXIT_CODES="53"
+          if echo "$VALID_FAILIRE_EXIT_CODES" | grep -qw "$LAST_EXIT_CODE"; then
               curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
               --header "Content-Type: application/json" \
               --data "{
@@ -153,7 +151,9 @@ jobs:
                 \"tags\": [
                   \"service:github\"
                 ]
-              }"
+              }" 
+           else { # Page someone as it's not explicitly excluded
+              echo "Exit code $LAST_EXIT_CODE is in the excluded list, doing nothing."
             }
       - run: |
           curl -X POST \
