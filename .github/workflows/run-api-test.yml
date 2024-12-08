@@ -68,6 +68,8 @@ jobs:
     env:
       SDF_API_URL: ${{ vars.SDF_API_URL }}
       AUTH_API_URL: ${{ vars.AUTH_API_URL }}
+    outputs:
+      last_exit_code: ${{ steps.capture-exit-code.outputs.last_exit_code }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -95,6 +97,7 @@ jobs:
           # Retry loop with 5 attempts
           n=0
           max_retries=5
+          exit_code=0
           
           until [ $n -ge $max_retries ]
           do
@@ -120,30 +123,38 @@ jobs:
 
           if [ $n -ge $max_retries ]; then
             echo "All $max_retries attempts failed."
-            exit 1
+            exit_code=5  # Set your custom exit code
           fi
+
+          echo "last_exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit $last_exit_code
 
   on-failure:
     runs-on: ubuntu-latest
     needs: api-test
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    if: ${{ failure() }} #&& github.ref == 'refs/heads/main' }} #TODO(johnrwatson): disable comment before merging
     steps:
       - run: |
-            curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
-            --header "Content-Type: application/json" \
-            --data "{
-              \"summary\": \"API ${{ inputs.environment }} Tests Fail\",
-              \"body\": \"API Tests have failed for ${{ inputs.environment }}.\",
-              \"links\": [
-                {
-                  \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
-                  \"text\": \"E2E Test Run ${{ inputs.environment }}\"
-                }
-              ],
-              \"tags\": [
-                \"service:github\"
-              ]
-            }"
+          EXCLUDED_EXIT_CODES="3,4,5"
+          if echo "$EXCLUDED_EXIT_CODES" | grep -qw "$LAST_EXIT_CODE"; then
+            echo "Exit code $LAST_EXIT_CODE is in the excluded list, doing nothing."
+           else { # Page someone as it's not explicitly excluded
+              curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
+              --header "Content-Type: application/json" \
+              --data "{
+                \"summary\": \"API ${{ inputs.environment }} Tests Fail\",
+                \"body\": \"API Tests have failed for ${{ inputs.environment }}.\",
+                \"links\": [
+                  {
+                    \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
+                    \"text\": \"E2E Test Run ${{ inputs.environment }}\"
+                  }
+                ],
+                \"tags\": [
+                  \"service:github\"
+                ]
+              }"
+            }
       - run: |
           curl -X POST \
           --header 'Content-type: application/json' \
