@@ -79,6 +79,10 @@ jobs:
         with:
           deno-version: v1.x
 
+      - name: Push failure of exit 53 to test code
+        run: |
+          exit 53
+
       - name: Run the deno exec with retry
         run: |
           cd bin/si-api-test
