@@ -163,4 +163,4 @@ jobs:
           curl -X POST \
             --header 'Content-type: application/json' \
             --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+            ${{ env.SLACK_WEBHOOK_URL }}
