@@ -79,9 +79,9 @@ jobs:
         with:
           deno-version: v1.x
 
-      - name: Push failure of exit 53 to test code
+      - name: Push failure of exit 53 to test code randomly
         run: |
-          exit 53
+          [[ "$(( ( RANDOM % 5 )  + 1 ))" == "3" ]] && exit 53
 
       - name: Run the deno exec with retry
         run: |
@@ -127,7 +127,7 @@ jobs:
 
           if [ $n -ge $max_retries ]; then
             echo "All $max_retries attempts failed."
-            exit_code=5  # Set your custom exit code
+            exit_code=0
           fi
 
           echo "last_exit_code=$exit_code" >> "$GITHUB_OUTPUT"
@@ -141,6 +141,8 @@ jobs:
     steps:
       - run: |
           VALID_FAILURE_EXIT_CODES="53"
+          LAST_EXIT_CODE="${{ needs.api-test.outputs.last_exit_code }}"
+          echo $LAST_EXIT_CODE
           if echo "$VALID_FAILURE_EXIT_CODES" | grep -qw "$LAST_EXIT_CODE"; then
             curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
             --header "Content-Type: application/json" \
