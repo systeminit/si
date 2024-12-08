@@ -157,10 +157,10 @@ jobs:
               ]
             }" 
           else # Page someone as it's not explicitly excluded
-              echo "Exit code $LAST_EXIT_CODE is in the excluded list, doing nothing."
+            echo "Exit code $LAST_EXIT_CODE is in the excluded list, doing nothing."
           fi
       - run: |
           curl -X POST \
-          --header 'Content-type: application/json' \
-          --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
-          ${{ secrets.SLACK_WEBHOOK_URL }}
+            --header 'Content-type: application/json' \
+            --data "{\"text\": \":si: Failed API Tests for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
