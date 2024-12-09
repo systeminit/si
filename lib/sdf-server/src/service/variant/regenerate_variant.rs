@@ -46,7 +46,7 @@ pub async fn regenerate_variant(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let schema_variant_id = variant.schema_variant_id.into();
+    let schema_variant_id = variant.schema_variant_id;
 
     VariantAuthoringClient::save_variant_content(
         &ctx,

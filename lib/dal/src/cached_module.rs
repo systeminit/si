@@ -10,7 +10,6 @@ use tokio::task::JoinSet;
 use ulid::Ulid;
 
 use crate::{
-    pk,
     slow_rt::{self, SlowRuntimeError},
     ComponentType, DalContext, SchemaId, TransactionsError,
 };
@@ -18,7 +17,7 @@ use module_index_client::{ModuleDetailsResponse, ModuleIndexClient, ModuleIndexC
 use si_data_pg::{PgError, PgRow};
 use si_pkg::{SiPkg, SiPkgError};
 
-pk!(CachedModuleId);
+pub use si_id::CachedModuleId;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -67,7 +66,7 @@ pub struct CachedModule {
 impl From<CachedModule> for si_frontend_types::UninstalledVariant {
     fn from(value: CachedModule) -> Self {
         Self {
-            schema_id: value.schema_id.into(),
+            schema_id: value.schema_id,
             schema_name: value.schema_name,
             display_name: value.display_name,
             category: value.category,

@@ -1,4 +1,2 @@
-use crate::id;
-
-id!(SchemaVariantId);
-id!(PropId);
+pub use si_id::PropId;
+pub use si_id::SchemaVariantId;

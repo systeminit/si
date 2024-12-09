@@ -134,8 +134,8 @@ pub async fn create_component(
     ctx.write_audit_log(
         AuditLogKind::CreateComponent {
             name: name.to_string(),
-            component_id: component.id().into(),
-            schema_variant_id: schema_variant_id.into(),
+            component_id: component.id(),
+            schema_variant_id,
             schema_variant_name: variant.display_name().to_owned(),
         },
         name.to_string(),

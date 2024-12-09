@@ -33,7 +33,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, id, implement_add_edge_to,
+    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to,
     AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
     TransactionsError,
@@ -102,13 +102,7 @@ pub enum AttributePrototypeEventualParent {
     SchemaVariantFromProp(SchemaVariantId, PropId),
 }
 
-id!(AttributePrototypeId);
-
-impl From<AttributePrototypeId> for si_events::AttributePrototypeId {
-    fn from(value: AttributePrototypeId) -> Self {
-        si_events::AttributePrototypeId::from_raw_id(value.into())
-    }
-}
+pub use si_id::AttributePrototypeId;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototype {

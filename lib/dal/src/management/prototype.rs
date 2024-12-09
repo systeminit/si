@@ -18,7 +18,7 @@ use crate::{
         DiagramError,
     },
     func::runner::{FuncRunner, FuncRunnerError},
-    id, implement_add_edge_to,
+    implement_add_edge_to,
     layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
     workspace_snapshot::node_weight::{traits::SiVersionedNodeWeight, NodeWeight},
     Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
@@ -70,13 +70,7 @@ pub enum ManagementPrototypeError {
 
 pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;
 
-id!(ManagementPrototypeId);
-
-impl From<ManagementPrototypeId> for si_events::ManagementPrototypeId {
-    fn from(value: ManagementPrototypeId) -> Self {
-        si_events::ManagementPrototypeId::from_raw_id(value.into())
-    }
-}
+pub use si_id::ManagementPrototypeId;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

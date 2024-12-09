@@ -19,7 +19,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
+    schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
     Component, ComponentId, FuncError, HistoryEventError, Timestamp,
 };
 use crate::{ComponentError, DalContext, TransactionsError};
@@ -72,7 +72,7 @@ pub enum ValidationError {
 
 pub type ValidationResult<T> = Result<T, ValidationError>;
 
-id!(ValidationOutputId);
+pub use si_id::ValidationOutputId;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ValidationStatus {

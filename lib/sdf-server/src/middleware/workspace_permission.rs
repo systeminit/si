@@ -73,9 +73,9 @@ where
 
             if let Some(client) = me.state.spicedb_client() {
                 let is_allowed = match PermissionBuilder::new()
-                    .workspace_object(claim.workspace_pk.into())
+                    .workspace_object(claim.workspace_pk)
                     .permission(me.permission)
-                    .user_subject(claim.user_pk.into())
+                    .user_subject(claim.user_pk)
                     .has_permission(client)
                     .await
                 {

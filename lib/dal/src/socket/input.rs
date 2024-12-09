@@ -11,7 +11,7 @@ use crate::{
     },
     change_set::ChangeSetError,
     func::FuncError,
-    id, implement_add_edge_to,
+    implement_add_edge_to,
     layer_db_types::InputSocketContentV2,
     socket::{
         connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError},
@@ -73,19 +73,7 @@ pub enum InputSocketError {
 
 pub type InputSocketResult<T> = Result<T, InputSocketError>;
 
-id!(InputSocketId);
-
-impl From<si_events::InputSocketId> for InputSocketId {
-    fn from(value: si_events::InputSocketId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<InputSocketId> for si_events::InputSocketId {
-    fn from(value: InputSocketId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::InputSocketId;
 
 /// This socket can only provide data within its own [`SchemaVariants`](crate::SchemaVariant). It
 /// can only consume data from external [`SchemaVariants`](crate::SchemaVariant).
@@ -282,7 +270,7 @@ impl InputSocket {
 impl From<InputSocket> for frontend_types::InputSocket {
     fn from(value: InputSocket) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             name: value.name,
             eligible_to_send_data: false,
         }

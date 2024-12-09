@@ -69,8 +69,8 @@ pub async fn save_func_setup(
         .await
         .expect("could not assemble func view");
     assert_eq!(
-        func_id,               // expected
-        before.func_id.into()  // actual
+        func_id,        // expected
+        before.func_id  // actual
     );
     assert_eq!(
         before.types, // expected

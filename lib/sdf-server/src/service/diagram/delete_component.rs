@@ -163,9 +163,9 @@ async fn delete_single_component(
 
     ctx.write_audit_log(
         AuditLogKind::DeleteComponent {
-            component_id: id.into(),
+            component_id: id,
             name: component_name.to_owned(),
-            schema_variant_id: component_schema_variant.id().into(),
+            schema_variant_id: component_schema_variant.id(),
             schema_variant_name: component_schema_variant.display_name().to_string(),
         },
         component_name,

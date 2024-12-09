@@ -68,7 +68,7 @@ pub async fn add_components_to_view(
             .entry(destination_view_id)
             .or_default()
             .added
-            .insert(component_id.into(), geometry);
+            .insert(component_id, geometry);
 
         if remove_from_original_view {
             let old_geometry =
@@ -78,7 +78,7 @@ pub async fn add_components_to_view(
                 .entry(source_view_id)
                 .or_default()
                 .removed
-                .insert(component_id.into());
+                .insert(component_id);
 
             Geometry::remove(&ctx, old_geometry.id()).await?
         }

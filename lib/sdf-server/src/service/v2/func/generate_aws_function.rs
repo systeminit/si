@@ -116,7 +116,7 @@ async fn generate_and_save_code(
 async fn send_func_code_saved_event(ctx: &DalContext, func_id: FuncId) -> FuncAPIResult<Func> {
     let func = Func::get_by_id_or_error(ctx, func_id).await?;
     let func_code = FuncCode {
-        func_id: func_id.into(),
+        func_id,
         code: func.code_plaintext()?.unwrap_or("".to_string()),
     };
     WsEvent::func_code_saved(ctx, func_code, true)

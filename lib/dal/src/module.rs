@@ -25,7 +25,7 @@ use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
+    ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
     SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, User,
     UserError,
 };
@@ -65,7 +65,7 @@ pub enum ModuleError {
 
 pub type ModuleResult<T> = Result<T, ModuleError>;
 
-id!(ModuleId);
+pub use si_id::ModuleId;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Module {
@@ -441,8 +441,8 @@ impl Module {
         // Contributable means that it's not avilable in the module index NOR is it a builtin
         // we check it's a builtin because it's hash would be in the past_hashes_by_module_id
         for schema_variant in &schema_variants {
-            let schema_variant_id: SchemaVariantId = schema_variant.schema_variant_id.into();
-            let schema_id: SchemaId = schema_variant.schema_id.into();
+            let schema_variant_id: SchemaVariantId = schema_variant.schema_variant_id;
+            let schema_id: SchemaId = schema_variant.schema_id;
             let is_default = SchemaVariant::is_default_by_id(ctx, schema_variant_id).await?;
             let is_locked = SchemaVariant::is_locked_by_id(ctx, schema_variant_id).await?;
 
@@ -461,7 +461,7 @@ impl Module {
                     });
 
                     if !matches_existing_module && !matches_existing_builtin {
-                        synced_modules.contributable.push(schema_variant_id.into())
+                        synced_modules.contributable.push(schema_variant_id)
                     }
                 }
             }
@@ -521,8 +521,8 @@ impl Module {
             // or if the hash of the package of that schema is contained in the latest hashes list
             let mut possible_upgrade_targets = vec![];
             for schema_variant in &schema_variants {
-                let this_schema_id: SchemaId = schema_variant.schema_id.into();
-                let variant_id: SchemaVariantId = schema_variant.schema_variant_id.into();
+                let this_schema_id: SchemaId = schema_variant.schema_id;
+                let variant_id: SchemaVariantId = schema_variant.schema_variant_id;
 
                 let Some(variant_module) = Self::find_for_member_id(ctx, variant_id).await? else {
                     continue;

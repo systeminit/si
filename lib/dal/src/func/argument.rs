@@ -20,7 +20,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
+    DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,
 };
 
@@ -149,19 +149,7 @@ impl From<si_frontend_types::FuncArgumentKind> for FuncArgumentKind {
     }
 }
 
-id!(FuncArgumentId);
-
-impl From<si_events::FuncArgumentId> for FuncArgumentId {
-    fn from(value: si_events::FuncArgumentId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<FuncArgumentId> for si_events::FuncArgumentId {
-    fn from(value: FuncArgumentId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::FuncArgumentId;
 
 impl From<FuncArgumentKind> for si_frontend_types::FuncArgumentKind {
     fn from(value: FuncArgumentKind) -> Self {

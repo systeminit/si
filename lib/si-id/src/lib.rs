@@ -1,4 +1,5 @@
-#[macro_export]
+pub mod ulid;
+
 macro_rules! id {
     (
         $(#[$($attrss:tt)*])*
@@ -28,13 +29,28 @@ macro_rules! id {
             }
         }
 
+        // TODO(nick): destroy this with fire.
+        impl Default for $name {
+            fn default() -> Self {
+                Self::NONE
+            }
+        }
+
         impl $name {
+            // TODO(nick): destroy this with fire.
+            pub const NONE: Self = Self(::ulid::Ulid::nil());
+
             /// Length of a string-encoded ID in bytes.
             pub const ID_LEN: usize = ::ulid::ULID_LEN;
 
             /// Generates a new key which is virtually guaranteed to be unique.
             pub fn generate() -> Self {
                 Self(::ulid::Ulid::new())
+            }
+
+            /// Calls [`Self::generate`].
+            pub fn new() -> Self {
+                Self::generate()
             }
 
             /// Converts type into inner [`Ulid`](::ulid::Ulid).
@@ -47,39 +63,60 @@ macro_rules! id {
                 self.0.array_to_str(buf)
             }
 
-            /// Returns a buffer in which to build a ID string.
-            pub fn array_to_str_buf() -> [u8; Self::ID_LEN] {
-                [0; Self::ID_LEN]
+            pub fn array_to_str_buf() -> [u8; ::ulid::ULID_LEN] {
+                [0; ::ulid::ULID_LEN]
             }
-        }
 
-        impl From<$name> for ::si_events::ulid::Ulid {
-            fn from(pk: $name) -> Self {
-                pk.0.into()
+            /// Constructs a new instance of Self from the given raw identifier.
+            ///
+            /// This function is typically used to consume ownership of the specified identifier.
+            pub fn from_raw_id(value: ::ulid::Ulid) -> Self {
+                Self(value)
             }
-        }
 
-        impl<'a> From<&'a $name> for ::si_events::ulid::Ulid {
-            fn from(pk: &'a $name) -> Self {
-                pk.0.into()
+            /// Extracts the raw identifier.
+            ///
+            /// This function is typically used to borrow an owned idenfier.
+            pub fn as_raw_id(&self) -> ::ulid::Ulid {
+                self.0
             }
-        }
 
-        impl From<::si_events::ulid::Ulid> for $name {
-            fn from(ulid: ::si_events::ulid::Ulid) -> Self {
-                ulid.inner().into()
+            /// Consumes this object, returning the raw underlying identifier.
+            ///
+            /// This function is typically used to transfer ownership of the underlying identifier
+            /// to the caller.
+            pub fn into_raw_id(self) -> ::ulid::Ulid {
+                self.0
             }
         }
 
         impl From<$name> for String {
             fn from(id: $name) -> Self {
-                ulid::Ulid::from(id.0).into()
+                ::ulid::Ulid::from(id.0).into()
             }
         }
 
-        impl<'a> From<&'a $name> for ulid::Ulid {
+        impl<'a> From<&'a $name> for ::ulid::Ulid {
             fn from(id: &'a $name) -> Self {
                 id.0
+            }
+        }
+
+        impl From<$name> for crate::ulid::Ulid {
+            fn from(id: $name) -> Self {
+                id.0.into()
+            }
+        }
+
+        impl<'a> From<&'a $name> for crate::ulid::Ulid {
+            fn from(id: &'a $name) -> Self {
+                id.0.into()
+            }
+        }
+
+        impl From<crate::ulid::Ulid> for $name {
+            fn from(ulid: crate::ulid::Ulid) -> Self {
+                ulid.inner().into()
             }
         }
 
@@ -142,3 +179,64 @@ macro_rules! id {
         }
     };
 }
+
+impl From<PropId> for PropertyEditorPropId {
+    fn from(prop_id: PropId) -> Self {
+        Self::from(::ulid::Ulid::from(prop_id))
+    }
+}
+
+impl From<PropertyEditorPropId> for PropId {
+    fn from(property_editor_prop_id: PropertyEditorPropId) -> Self {
+        Self::from(::ulid::Ulid::from(property_editor_prop_id))
+    }
+}
+
+impl From<AttributeValueId> for PropertyEditorValueId {
+    fn from(id: AttributeValueId) -> Self {
+        Self::from(::ulid::Ulid::from(id))
+    }
+}
+
+impl From<PropertyEditorValueId> for AttributeValueId {
+    fn from(id: PropertyEditorValueId) -> Self {
+        Self::from(::ulid::Ulid::from(id))
+    }
+}
+
+id!(ActionId);
+id!(ActionPrototypeId);
+id!(AttributePrototypeArgumentId);
+id!(AttributePrototypeId);
+id!(AttributeValueId);
+id!(AuthenticationPrototypeId);
+id!(CachedModuleId);
+id!(ChangeSetId);
+id!(ComponentId);
+id!(DeprecatedVectorClockId);
+id!(EventSessionId);
+id!(FuncArgumentId);
+id!(FuncExecutionPk);
+id!(FuncId);
+id!(FuncRunId);
+id!(GeometryId);
+id!(HistoryEventPk);
+id!(InputSocketId);
+id!(KeyPairPk);
+id!(ManagementPrototypeId);
+id!(ModuleId);
+id!(NaxumApiTypesRequestId);
+id!(OutputSocketId);
+id!(PropId);
+id!(PropertyEditorPropId);
+id!(PropertyEditorValueId);
+id!(SchemaId);
+id!(SchemaVariantId);
+id!(SecretId);
+id!(StaticArgumentValueId);
+id!(UserPk);
+id!(ValidationOutputId);
+id!(ViewId);
+id!(WorkspaceId);
+id!(WorkspacePk);
+id!(WorkspaceSnapshotNodeId);

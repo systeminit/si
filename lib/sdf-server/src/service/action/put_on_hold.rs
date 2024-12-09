@@ -45,9 +45,9 @@ pub async fn put_on_hold(
 
         ctx.write_audit_log(
             AuditLogKind::PutActionOnHold {
-                prototype_id: prototype.id().into(),
+                prototype_id: prototype.id(),
                 action_kind: prototype.kind.into(),
-                func_id: func_id.into(),
+                func_id,
                 func_display_name: func.display_name,
                 func_name: func.name.clone(),
             },

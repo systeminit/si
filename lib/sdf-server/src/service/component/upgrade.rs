@@ -72,11 +72,11 @@ pub async fn upgrade(
     ctx.write_audit_log(
         AuditLogKind::UpgradeComponent {
             name: comp_name.clone(),
-            component_id: current_component.id().into(),
-            schema_id: schema.id().into(),
-            old_schema_variant_id: current_schema_variant.id().into(),
+            component_id: current_component.id(),
+            schema_id: schema.id(),
+            old_schema_variant_id: current_schema_variant.id(),
             old_schema_variant_name: current_schema_variant.display_name().to_owned(),
-            new_schema_variant_id: upgrade_target_variant.id().into(),
+            new_schema_variant_id: upgrade_target_variant.id(),
             new_schema_variant_name: upgrade_target_variant.display_name().to_owned(),
         },
         comp_name,

@@ -138,7 +138,7 @@ pub async fn install_module(
                 .publish_on_commit(&ctx)
                 .await?;
             for func_id in front_end_variant.func_ids.iter() {
-                let func = Func::get_by_id_or_error(&ctx, (*func_id).into()).await?;
+                let func = Func::get_by_id_or_error(&ctx, *func_id).await?;
                 let front_end_func = func.into_frontend_type(&ctx).await?;
                 WsEvent::func_updated(&ctx, front_end_func, None)
                     .await?

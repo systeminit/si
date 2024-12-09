@@ -105,7 +105,7 @@ async fn install_workspace_inner(
 
     ctx.write_audit_log(
         AuditLogKind::InstallWorkspace {
-            id: workspace_id.into(),
+            id: workspace_id,
             name: workspace.name().clone(),
             version: metadata.version,
         },

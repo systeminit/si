@@ -1,3 +1,1 @@
-use crate::id;
-
-id!(EventSessionId);
+pub use si_id::EventSessionId;

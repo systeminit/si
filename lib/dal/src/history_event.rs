@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::actor_view::ActorView;
-use crate::{id, DalContext, Timestamp, User, UserPk};
+use crate::{DalContext, Timestamp, User, UserPk};
 use crate::{Tenancy, TransactionsError};
 
 const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
@@ -71,7 +71,7 @@ impl From<UserPk> for HistoryActor {
     }
 }
 
-id!(HistoryEventPk);
+pub use si_id::HistoryEventPk;
 
 /// HistoryEvents are the audit trail for things in SI. They track
 /// that a specific actor did something, and optionally store data

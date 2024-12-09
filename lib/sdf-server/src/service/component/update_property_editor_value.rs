@@ -86,7 +86,7 @@ pub async fn update_property_editor_value(
                     .await?
                     .name()
                     .to_string();
-                (Some(secret_id.into()), Some(secret_name))
+                (Some(secret_id), Some(secret_name))
             } else {
                 (None, None)
             };
@@ -98,22 +98,22 @@ pub async fn update_property_editor_value(
                     .await?
                     .name()
                     .to_string();
-                (Some(secret_id.into()), Some(secret_name))
+                (Some(secret_id), Some(secret_name))
             } else {
                 (None, None)
             };
 
             ctx.write_audit_log(
                 AuditLogKind::UpdatePropertyEditorValueForSecret {
-                    component_id: request.component_id.into(),
+                    component_id: request.component_id,
                     component_name: component.name(&ctx).await?,
-                    schema_variant_id: component_schema_variant.id().into(),
+                    schema_variant_id: component_schema_variant.id(),
                     schema_variant_display_name: component_schema_variant
                         .display_name()
                         .to_string(),
-                    prop_id: prop.id.into(),
+                    prop_id: prop.id,
                     prop_name: prop.name.to_owned(),
-                    attribute_value_id: request.attribute_value_id.into(),
+                    attribute_value_id: request.attribute_value_id,
                     before_secret_name,
                     before_secret_id,
                     after_secret_name,
@@ -125,15 +125,15 @@ pub async fn update_property_editor_value(
         } else {
             ctx.write_audit_log(
                 AuditLogKind::UpdatePropertyEditorValue {
-                    component_id: request.component_id.into(),
+                    component_id: request.component_id,
                     component_name: component.name(&ctx).await?,
-                    schema_variant_id: component_schema_variant.id().into(),
+                    schema_variant_id: component_schema_variant.id(),
                     schema_variant_display_name: component_schema_variant
                         .display_name()
                         .to_string(),
-                    prop_id: prop.id.into(),
+                    prop_id: prop.id,
                     prop_name: prop.name.to_owned(),
-                    attribute_value_id: request.attribute_value_id.into(),
+                    attribute_value_id: request.attribute_value_id,
                     before_value,
                     after_value: request.value,
                 },

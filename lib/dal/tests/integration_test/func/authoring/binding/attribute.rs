@@ -123,8 +123,8 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
         .expect("could not get func summary");
 
     assert_eq!(
-        func_id,                     // expected
-        func_summary.func_id.into()  // actual
+        func_id,              // expected
+        func_summary.func_id  // actual
     );
     let bindings = func_summary.bindings;
     assert_eq!(

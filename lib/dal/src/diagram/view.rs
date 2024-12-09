@@ -4,7 +4,7 @@ use crate::{
         geometry::{Geometry, GeometryId},
         DiagramError, DiagramResult,
     },
-    id, implement_add_edge_to,
+    implement_add_edge_to,
     layer_db_types::{ViewContent, ViewContentV1},
     workspace_snapshot::{
         node_weight::{
@@ -26,19 +26,7 @@ use std::{
     sync::Arc,
 };
 
-id!(ViewId);
-
-impl From<ViewId> for si_events::ViewId {
-    fn from(value: ViewId) -> Self {
-        value.into_inner().into()
-    }
-}
-
-impl From<si_events::ViewId> for ViewId {
-    fn from(value: si_events::ViewId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
+pub use si_id::ViewId;
 
 /// Represents spatial data for something to be shown on a view
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

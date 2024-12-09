@@ -633,19 +633,16 @@ pub mod audit_log {
                 let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::UpdateDependentInputSocket {
-                        input_socket_id: input_socket_id.into(),
+                        input_socket_id,
                         input_socket_name: input_socket.name().to_owned(),
-                        attribute_value_id: finished_value_id.into(),
-                        input_attribute_value_ids: input_attribute_value_ids
-                            .into_iter()
-                            .map(|id| id.into())
-                            .collect(),
-                        func_id: func.id.into(),
+                        attribute_value_id: finished_value_id,
+                        input_attribute_value_ids: input_attribute_value_ids.into_iter().collect(),
+                        func_id: func.id,
                         func_display_name: func.display_name,
                         func_name: func.name,
-                        component_id: component_id.into(),
+                        component_id,
                         component_name,
-                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_id: component_schema_variant.id(),
                         schema_variant_display_name: component_schema_variant
                             .display_name()
                             .to_string(),
@@ -661,19 +658,16 @@ pub mod audit_log {
                 let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::UpdateDependentOutputSocket {
-                        output_socket_id: output_socket_id.into(),
+                        output_socket_id,
                         output_socket_name: output_socket.name().to_owned(),
-                        attribute_value_id: finished_value_id.into(),
-                        input_attribute_value_ids: input_attribute_value_ids
-                            .into_iter()
-                            .map(|id| id.into())
-                            .collect(),
-                        func_id: func.id.into(),
+                        attribute_value_id: finished_value_id,
+                        input_attribute_value_ids: input_attribute_value_ids.into_iter().collect(),
+                        func_id: func.id,
                         func_display_name: func.display_name,
                         func_name: func.name,
-                        component_id: component_id.into(),
+                        component_id,
                         component_name,
-                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_id: component_schema_variant.id(),
                         schema_variant_display_name: component_schema_variant
                             .display_name()
                             .to_string(),
@@ -689,19 +683,16 @@ pub mod audit_log {
                 let prop = Prop::get_by_id(ctx, prop_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::UpdateDependentProperty {
-                        prop_id: prop_id.into(),
+                        prop_id,
                         prop_name: prop.name.to_owned(),
-                        attribute_value_id: finished_value_id.into(),
-                        input_attribute_value_ids: input_attribute_value_ids
-                            .into_iter()
-                            .map(|id| id.into())
-                            .collect(),
-                        func_id: func.id.into(),
+                        attribute_value_id: finished_value_id,
+                        input_attribute_value_ids: input_attribute_value_ids.into_iter().collect(),
+                        func_id: func.id,
                         func_display_name: func.display_name,
                         func_name: func.name,
-                        component_id: component_id.into(),
+                        component_id,
                         component_name,
-                        schema_variant_id: component_schema_variant.id().into(),
+                        schema_variant_id: component_schema_variant.id(),
                         schema_variant_display_name: component_schema_variant
                             .display_name()
                             .to_string(),

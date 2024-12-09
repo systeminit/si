@@ -246,7 +246,7 @@ pub async fn get_code_response(ctx: &DalContext, func_id: FuncId) -> FuncAPIResu
         .ok_or(FuncAPIError::FuncNotFound(func_id))?;
     let code = func.code_plaintext()?.unwrap_or("".to_string());
     Ok(FuncCode {
-        func_id: func.id.into(),
+        func_id: func.id,
         code: code.clone(),
     })
 }

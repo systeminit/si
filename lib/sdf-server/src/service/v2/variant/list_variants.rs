@@ -56,7 +56,7 @@ pub async fn list_variants(
         let category = module.category.as_deref().unwrap_or("");
 
         let schema_name = module.schema_name.as_str();
-        if !installed_schema_ids.contains(&(module.schema_id.into()))
+        if !installed_schema_ids.contains(&module.schema_id)
             && !installed_cat_and_name.contains(&(category, schema_name))
         {
             uninstalled.push(module.into());

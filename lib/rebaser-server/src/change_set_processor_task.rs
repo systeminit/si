@@ -369,7 +369,7 @@ mod handlers {
             server_tracker,
         } = state;
         let mut ctx = ctx_builder
-            .build_for_change_set_as_system(workspace_id.into(), change_set_id.into())
+            .build_for_change_set_as_system(workspace_id, change_set_id)
             .await?;
 
         let span = Span::current();
@@ -402,11 +402,11 @@ mod handlers {
                 run_notify.notify_one();
             }
 
-            if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_id.into()).await? {
+            if let Some(workspace) = Workspace::get_by_pk(&ctx, &workspace_id).await? {
                 if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                     let mut change_set = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
                         .await?
-                        .ok_or(RebaseError::MissingChangeSet(change_set_id.into()))?;
+                        .ok_or(RebaseError::MissingChangeSet(change_set_id))?;
                     if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
                         // Write out the snapshot to get the new address/id.
                         let new_snapshot_id = ctx
@@ -445,9 +445,9 @@ mod handlers {
 
         // TODO(fnichol): hrm, is this *really* true that we've written to the change set. I mean,
         // yes but until a dvu has finished this is an incomplete view?
-        let mut event = WsEvent::change_set_written(&ctx, change_set_id.into()).await?;
-        event.set_workspace_pk(workspace_id.into());
-        event.set_change_set_id(Some(change_set_id.into()));
+        let mut event = WsEvent::change_set_written(&ctx, change_set_id).await?;
+        event.set_workspace_pk(workspace_id);
+        event.set_change_set_id(Some(change_set_id));
         event.publish_immediately(&ctx).await?;
 
         Ok(())

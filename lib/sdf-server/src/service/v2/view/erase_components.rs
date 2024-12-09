@@ -64,7 +64,7 @@ pub async fn erase_components(
             .entry(view_id)
             .or_default()
             .removed
-            .insert(component_id.into());
+            .insert(component_id);
     }
 
     if let Some(err) = latest_error {

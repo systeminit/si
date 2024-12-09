@@ -125,20 +125,15 @@ pub async fn create_binding(
                 {
                     match func_id {
                         Some(func_id) => {
-                            AuthBinding::create_auth_binding(
-                                &ctx,
-                                func_id.into(),
-                                schema_variant_id.into(),
-                            )
-                            .await?;
+                            AuthBinding::create_auth_binding(&ctx, func_id, schema_variant_id)
+                                .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(
                                 &ctx,
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
-                                    .await?;
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
@@ -163,19 +158,18 @@ pub async fn create_binding(
                         (Some(action_kind), Some(func_id), Some(schema_variant_id)) => {
                             ActionBinding::create_action_binding(
                                 &ctx,
-                                func_id.into(),
+                                func_id,
                                 action_kind.into(),
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(
                                 &ctx,
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
-                                    .await?;
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
@@ -206,20 +200,19 @@ pub async fn create_binding(
                                 inputs.into_iter().map(|input| input.into()).collect();
                             LeafBinding::create_leaf_func_binding(
                                 &ctx,
-                                func_id.into(),
-                                EventualParent::SchemaVariant(schema_variant_id.into()),
+                                func_id,
+                                EventualParent::SchemaVariant(schema_variant_id),
                                 LeafKind::CodeGeneration,
                                 &inputs,
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(
                                 &ctx,
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
-                                    .await?;
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
@@ -243,20 +236,19 @@ pub async fn create_binding(
                                 inputs.into_iter().map(|input| input.into()).collect();
                             LeafBinding::create_leaf_func_binding(
                                 &ctx,
-                                func_id.into(),
-                                EventualParent::SchemaVariant(schema_variant_id.into()),
+                                func_id,
+                                EventualParent::SchemaVariant(schema_variant_id),
                                 LeafKind::Qualification,
                                 &inputs,
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(
                                 &ctx,
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
-                                    .await?;
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?
@@ -284,19 +276,18 @@ pub async fn create_binding(
                         (Some(func_id), Some(schema_variant_id)) => {
                             ManagementBinding::create_management_binding(
                                 &ctx,
-                                func_id.into(),
-                                schema_variant_id.into(),
+                                func_id,
+                                schema_variant_id,
                                 None,
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id_for_schema_variant_id(
                                 &ctx,
-                                schema_variant_id.into(),
+                                schema_variant_id,
                             )
                             .await?;
                             let schema_variant =
-                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into())
-                                    .await?;
+                                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
 
                             WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
                                 .await?

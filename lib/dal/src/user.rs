@@ -8,7 +8,7 @@ use tokio::task::JoinError;
 
 use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    id, jwt_key::JwtKeyError, standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent,
+    jwt_key::JwtKeyError, standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent,
     HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
@@ -40,20 +40,7 @@ pub enum UserError {
 
 pub type UserResult<T> = Result<T, UserError>;
 
-id!(UserPk);
-
-impl From<UserPk> for si_events::UserPk {
-    fn from(value: UserPk) -> Self {
-        let id: ulid::Ulid = value.into();
-        id.into()
-    }
-}
-
-impl From<si_events::UserPk> for UserPk {
-    fn from(value: si_events::UserPk) -> Self {
-        Self(value.into_raw_id())
-    }
-}
+pub use si_id::UserPk;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {

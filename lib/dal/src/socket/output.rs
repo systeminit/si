@@ -18,12 +18,12 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
-    SchemaVariantError, Timestamp, TransactionsError,
-};
-use crate::{
     implement_add_edge_to, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
     InputSocketId, SchemaVariantId,
+};
+use crate::{
+    AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
+    SchemaVariantError, Timestamp, TransactionsError,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
@@ -72,19 +72,7 @@ pub enum OutputSocketError {
 
 pub type OutputSocketResult<T> = Result<T, OutputSocketError>;
 
-id!(OutputSocketId);
-
-impl From<si_events::OutputSocketId> for OutputSocketId {
-    fn from(value: si_events::OutputSocketId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<OutputSocketId> for si_events::OutputSocketId {
-    fn from(value: OutputSocketId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::OutputSocketId;
 
 /// This socket can only provide data to external [`SchemaVariants`](crate::SchemaVariant). It can
 /// only consume data within its own [`SchemaVariant`](crate::SchemaVariant).
@@ -530,7 +518,7 @@ impl OutputSocket {
 impl From<OutputSocket> for frontend_types::OutputSocket {
     fn from(value: OutputSocket) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             name: value.name,
             //default to false, but figure out how to do this better
             eligible_to_receive_data: false,

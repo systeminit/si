@@ -4,6 +4,7 @@ rust_library(
     name = "naxum-api-types",
     deps = [
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-id:si-id",
         "//third-party/rust:ciborium",
         "//third-party/rust:derive_more",
         "//third-party/rust:remain",

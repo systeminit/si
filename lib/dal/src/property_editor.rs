@@ -15,7 +15,7 @@ use crate::validation::ValidationError;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
+    AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
     StandardModelError, TransactionsError,
 };
 
@@ -74,32 +74,8 @@ pub enum PropertyEditorError {
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 
 // Property editor ids used across submodules.
-id!(PropertyEditorValueId);
-id!(PropertyEditorPropId);
-
-impl From<AttributeValueId> for PropertyEditorValueId {
-    fn from(id: AttributeValueId) -> Self {
-        Self::from(ulid::Ulid::from(id))
-    }
-}
-
-impl From<PropertyEditorValueId> for AttributeValueId {
-    fn from(id: PropertyEditorValueId) -> Self {
-        Self::from(ulid::Ulid::from(id))
-    }
-}
-
-impl From<PropId> for PropertyEditorPropId {
-    fn from(prop_id: PropId) -> Self {
-        Self::from(ulid::Ulid::from(prop_id))
-    }
-}
-
-impl From<PropertyEditorPropId> for PropId {
-    fn from(property_editor_prop_id: PropertyEditorPropId) -> Self {
-        Self::from(ulid::Ulid::from(property_editor_prop_id))
-    }
-}
+pub use si_id::PropertyEditorPropId;
+pub use si_id::PropertyEditorValueId;
 
 // TODO(nick): once shape is finalized and we stop serializing this within builtins, please
 // convert to a more formal type.

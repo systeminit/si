@@ -81,11 +81,11 @@ pub(crate) async fn for_head_change_set_pointer_update(
 
     let workspace_id = change_set.workspace_id()?;
     let event = BillingEvent {
-        workspace_id: workspace_id.into(),
+        workspace_id,
         workspace_snapshot_address: change_set.workspace_snapshot_address,
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
-        change_set_id: change_set.id.into(),
+        change_set_id: change_set.id,
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: Some(resource_count),
@@ -133,11 +133,11 @@ pub(crate) async fn for_change_set_status_update(
 
     let workspace_id = change_set.workspace_id()?;
     let event = BillingEvent {
-        workspace_id: workspace_id.into(),
+        workspace_id,
         workspace_snapshot_address: change_set.workspace_snapshot_address,
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
-        change_set_id: change_set.id.into(),
+        change_set_id: change_set.id,
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: Some(resource_count),
@@ -189,19 +189,19 @@ pub(crate) async fn for_resource_create(
 
     let workspace_id = change_set.workspace_id()?;
     let event = BillingEvent {
-        workspace_id: workspace_id.into(),
+        workspace_id,
         workspace_snapshot_address: change_set.workspace_snapshot_address,
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
-        change_set_id: change_set.id.into(),
+        change_set_id: change_set.id,
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: None,
 
-        component_id: Some(component_id.into()),
+        component_id: Some(component_id),
         component_name: Some(component_name),
-        schema_variant_id: Some(schema_variant_id.into()),
-        schema_id: Some(schema_id.into()),
+        schema_variant_id: Some(schema_variant_id),
+        schema_id: Some(schema_id),
         schema_name: Some(schema_name),
         func_run_id: Some(func_run_id),
 
@@ -245,19 +245,19 @@ pub(crate) async fn for_resource_delete(
 
     let workspace_id = change_set.workspace_id()?;
     let event = BillingEvent {
-        workspace_id: workspace_id.into(),
+        workspace_id,
         workspace_snapshot_address: change_set.workspace_snapshot_address,
         event_timestamp: Utc::now(),
         change_set_status: change_set.status.into(),
-        change_set_id: change_set.id.into(),
+        change_set_id: change_set.id,
         merge_requested_by_user_id: change_set.merge_requested_by_user_id.map(Into::into),
 
         resource_count: None,
 
-        component_id: Some(component_id.into()),
+        component_id: Some(component_id),
         component_name: Some(component_name),
-        schema_variant_id: Some(schema_variant_id.into()),
-        schema_id: Some(schema_id.into()),
+        schema_variant_id: Some(schema_variant_id),
+        schema_id: Some(schema_id),
         schema_name: Some(schema_name),
         func_run_id: Some(func_run_id),
 

@@ -1,0 +1,14 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-id",
+    deps = [
+        "//third-party/rust:derive_more",
+        "//third-party/rust:postgres-types",
+        "//third-party/rust:serde",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

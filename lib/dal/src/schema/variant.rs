@@ -51,7 +51,7 @@ use crate::workspace_snapshot::{
     SchemaVariantExt, WorkspaceSnapshotError,
 };
 use crate::{
-    implement_add_edge_to, pk,
+    implement_add_edge_to,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
     ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
@@ -181,20 +181,7 @@ pub enum SchemaVariantError {
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
-// TODO(nick): replace this with "id!" once "nilId" explodes and dies.
-pk!(SchemaVariantId);
-
-impl From<si_events::SchemaVariantId> for SchemaVariantId {
-    fn from(value: si_events::SchemaVariantId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<SchemaVariantId> for si_events::SchemaVariantId {
-    fn from(value: SchemaVariantId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::SchemaVariantId;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct SchemaVariant {
@@ -226,14 +213,12 @@ impl SchemaVariant {
         // this as optional we make this assertion here and error if not present.
         let asset_func_id = self
             .asset_func_id
-            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id()))?
-            .into();
+            .ok_or(SchemaVariantError::MissingAssetFuncId(self.id()))?;
 
         let (output_sockets, input_sockets) = Self::list_all_sockets(ctx, self.id()).await?;
         let func_ids: Vec<_> = Self::all_func_ids(ctx, self.id())
             .await?
             .into_iter()
-            .map(|func_id| func_id.into())
             .collect();
 
         let schema = Schema::get_by_id_or_error(ctx, schema_id).await?;
@@ -249,9 +234,9 @@ impl SchemaVariant {
         let can_contribute = Self::can_be_contributed_by_id(ctx, self.id).await?;
 
         Ok(FrontendVariant {
-            schema_id: schema_id.into(),
+            schema_id,
             schema_name: schema.name().to_owned(),
-            schema_variant_id: self.id.into(),
+            schema_variant_id: self.id,
             version: self.version,
             display_name: self.display_name,
             category: self.category,

@@ -168,7 +168,7 @@ impl From<EventualParent> for Option<si_events::ComponentId> {
     fn from(value: EventualParent) -> Self {
         match value {
             EventualParent::SchemaVariant(_) => None,
-            EventualParent::Component(component_id) => Some(component_id.into()),
+            EventualParent::Component(component_id) => Some(component_id),
         }
     }
 }
@@ -176,7 +176,7 @@ impl From<EventualParent> for Option<si_events::ComponentId> {
 impl From<EventualParent> for Option<si_events::SchemaVariantId> {
     fn from(value: EventualParent) -> Self {
         match value {
-            EventualParent::SchemaVariant(schema_variant_id) => Some(schema_variant_id.into()),
+            EventualParent::SchemaVariant(schema_variant_id) => Some(schema_variant_id),
             EventualParent::Component(_) => None,
         }
     }
@@ -185,7 +185,7 @@ impl From<EventualParent> for Option<si_events::SchemaVariantId> {
 impl From<AttributeFuncDestination> for Option<si_events::PropId> {
     fn from(value: AttributeFuncDestination) -> Self {
         match value {
-            AttributeFuncDestination::Prop(prop_id) => Some(prop_id.into()),
+            AttributeFuncDestination::Prop(prop_id) => Some(prop_id),
             _ => None,
         }
     }
@@ -194,9 +194,7 @@ impl From<AttributeFuncDestination> for Option<si_events::PropId> {
 impl From<AttributeFuncDestination> for Option<si_events::OutputSocketId> {
     fn from(value: AttributeFuncDestination) -> Self {
         match value {
-            AttributeFuncDestination::OutputSocket(output_socket_id) => {
-                Some(output_socket_id.into())
-            }
+            AttributeFuncDestination::OutputSocket(output_socket_id) => Some(output_socket_id),
             _ => None,
         }
     }
@@ -206,14 +204,14 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
     fn from(value: FuncBinding) -> Self {
         match value {
             FuncBinding::Action(action) => si_frontend_types::FuncBinding::Action {
-                schema_variant_id: Some(action.schema_variant_id.into()),
-                action_prototype_id: Some(action.action_prototype_id.into()),
-                func_id: Some(action.func_id.into()),
+                schema_variant_id: Some(action.schema_variant_id),
+                action_prototype_id: Some(action.action_prototype_id),
+                func_id: Some(action.func_id),
                 kind: Some(action.kind.into()),
             },
             FuncBinding::Attribute(attribute) => si_frontend_types::FuncBinding::Attribute {
-                func_id: Some(attribute.func_id.into()),
-                attribute_prototype_id: Some(attribute.attribute_prototype_id.into()),
+                func_id: Some(attribute.func_id),
+                attribute_prototype_id: Some(attribute.attribute_prototype_id),
                 component_id: attribute.eventual_parent.into(),
                 schema_variant_id: attribute.eventual_parent.into(),
                 prop_id: attribute.output_location.into(),
@@ -225,13 +223,13 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                     .collect_vec(),
             },
             FuncBinding::Authentication(auth) => si_frontend_types::FuncBinding::Authentication {
-                schema_variant_id: auth.schema_variant_id.into(),
-                func_id: Some(auth.func_id.into()),
+                schema_variant_id: auth.schema_variant_id,
+                func_id: Some(auth.func_id),
             },
             FuncBinding::Management(mgmt) => si_frontend_types::FuncBinding::Management {
-                schema_variant_id: Some(mgmt.schema_variant_id.into()),
-                management_prototype_id: Some(mgmt.management_prototype_id.into()),
-                func_id: Some(mgmt.func_id.into()),
+                schema_variant_id: Some(mgmt.schema_variant_id),
+                management_prototype_id: Some(mgmt.management_prototype_id),
+                func_id: Some(mgmt.func_id),
                 managed_schemas: mgmt
                     .managed_schemas
                     .map(|s| s.into_iter().map(Into::into).collect()),
@@ -240,8 +238,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 si_frontend_types::FuncBinding::CodeGeneration {
                     schema_variant_id: code_gen.eventual_parent.into(),
                     component_id: code_gen.eventual_parent.into(),
-                    func_id: Some(code_gen.func_id.into()),
-                    attribute_prototype_id: Some(code_gen.attribute_prototype_id.into()),
+                    func_id: Some(code_gen.func_id),
+                    attribute_prototype_id: Some(code_gen.attribute_prototype_id),
                     inputs: code_gen
                         .inputs
                         .into_iter()
@@ -253,8 +251,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 si_frontend_types::FuncBinding::Qualification {
                     schema_variant_id: qualification.eventual_parent.into(),
                     component_id: qualification.eventual_parent.into(),
-                    func_id: Some(qualification.func_id.into()),
-                    attribute_prototype_id: Some(qualification.attribute_prototype_id.into()),
+                    func_id: Some(qualification.func_id),
+                    attribute_prototype_id: Some(qualification.attribute_prototype_id),
                     inputs: qualification
                         .inputs
                         .into_iter()

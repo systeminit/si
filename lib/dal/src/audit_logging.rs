@@ -85,14 +85,14 @@ pub(crate) async fn publish_pending(
         tracker.to_owned(),
         source_stream.stream().await?,
         source_stream.subject_for_audit_log(
-            workspace_id.into(),
-            ctx.change_set_id().into(),
+            workspace_id,
+            ctx.change_set_id(),
             match override_event_session_id {
                 Some(override_id) => override_id,
                 None => ctx.event_session_id(),
             },
         ),
-        destination_stream.publishing_subject_for_workspace(workspace_id.into()),
+        destination_stream.publishing_subject_for_workspace(workspace_id),
     )
     .await?;
 
@@ -208,13 +208,13 @@ pub(crate) async fn write(
     };
 
     let destination_change_set_id =
-        override_destination_change_set_id.unwrap_or(ctx.change_set_id().into());
+        override_destination_change_set_id.unwrap_or(ctx.change_set_id());
 
     let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
     pending_events_stream
         .publish_audit_log(
-            workspace_id.into(),
-            ctx.change_set_id().into(),
+            workspace_id,
+            ctx.change_set_id(),
             ctx.event_session_id(),
             &AuditLog::new(
                 ctx.events_actor(),
@@ -239,11 +239,7 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
 
     let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
     pending_events_stream
-        .publish_audit_log_final_message(
-            workspace_id.into(),
-            ctx.change_set_id().into(),
-            ctx.event_session_id(),
-        )
+        .publish_audit_log_final_message(workspace_id, ctx.change_set_id(), ctx.event_session_id())
         .await?;
     Ok(())
 }
@@ -258,7 +254,7 @@ pub async fn list(
     let change_set_id = ctx.change_set_id();
 
     let change_set_ids = {
-        let mut change_set_ids = vec![change_set_id.into()];
+        let mut change_set_ids = vec![change_set_id];
         if ctx
             .get_workspace_default_change_set_id()
             .await
@@ -273,19 +269,13 @@ pub async fn list(
                 .await
                 .map_err(Box::new)?
             {
-                change_set_ids.push(applied_change_set.id.into());
+                change_set_ids.push(applied_change_set.id);
             }
         }
         change_set_ids
     };
 
-    Ok(AuditLogRow::list(
-        audit_database_context,
-        workspace_id.into(),
-        change_set_ids,
-        size,
-    )
-    .await?)
+    Ok(AuditLogRow::list(audit_database_context, workspace_id, change_set_ids, size).await?)
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

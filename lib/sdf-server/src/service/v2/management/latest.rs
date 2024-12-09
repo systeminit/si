@@ -32,9 +32,9 @@ pub async fn latest(
             .layer_db()
             .func_run()
             .get_last_management_run_for_func_and_component_id(
-                workspace_pk.into(),
-                change_set_id.into(),
-                component_id.into(),
+                workspace_pk,
+                change_set_id,
+                component_id,
                 func_id.into_inner().into(),
             )
             .await?

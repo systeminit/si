@@ -344,7 +344,7 @@ async fn ensure_workspace_creator_is_owner_of_workspace(
     workspace_id: WorkspacePk,
 ) -> SessionResult<()> {
     let owner_relation = RelationBuilder::new()
-        .workspace_object(workspace_id.into())
+        .workspace_object(workspace_id)
         .relation(Relation::Owner);
 
     // Cut down on the amount of `String` allocations dealing with ids
@@ -360,10 +360,7 @@ async fn ensure_workspace_creator_is_owner_of_workspace(
 
     if !is_user_an_owner {
         // if not, create the relation
-        owner_relation
-            .user_subject(user_id.into())
-            .create(client)
-            .await?;
+        owner_relation.user_subject(user_id).create(client).await?;
     };
     Ok(())
 }

@@ -73,17 +73,17 @@ use crate::workspace_snapshot::{
     node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
 };
 use crate::{
-    id, AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
-    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
-};
-use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
+};
+use crate::{
+    AttributeValueId, Component, ComponentError, ComponentId, InputSocketId, OutputSocketId,
+    SchemaId, SchemaVariantId, TenancyError, Workspace, WorkspaceError,
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
-id!(NodeId);
+pub use si_id::WorkspaceSnapshotNodeId as NodeId;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeInformation {
