@@ -245,7 +245,6 @@ async function create_two_components_connect_and_propagate_inner(
     p.path === "/root/domain/region"
   );
   assert(destinationRegionProp, "Expected to find destination region prop");
-
   // Try getting the values with backoff, to account for DVU
   await retryWithBackoff(async () => {
     // get attribute values for region
@@ -275,6 +274,35 @@ async function create_two_components_connect_and_propagate_inner(
     );
   });
 
+  // delete connection between components 
+    const deleteConnection = {
+      "fromComponentId": regionComponentId,
+      "fromSocketId": edge.fromSocketId,
+      "toComponentId": instanceComponentId,
+      "toSocketId": edge.toSocketId,
+      "visibility_change_set_pk": changeSetId,
+    };
+
+    const deleteResponse = await sdf.call({
+      route: "delete_connection",
+      body: deleteConnection,
+    });
+
+  // check value is no longer the source value (should be unset)
+  const diagramWithoutConnection = await sdf.call({
+    route: "get_diagram",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+    },
+  });
+
+  assert(diagramWithoutConnection?.edges, "Expected edges list on the diagram");
+  assert(
+    diagramWithoutConnection.edges.length === 0,
+    "Expected no edges on the diagram",
+  );
+
   const deleteComponentPayload = {
     componentIds: [instanceComponentId, regionComponentId],
     forceErase: false,
@@ -282,7 +310,8 @@ async function create_two_components_connect_and_propagate_inner(
     workspaceId: sdf.workspaceId,
   };
   await sdf.call({
-    route: "delete_component",
+    route: "delete_components",
     body: deleteComponentPayload,
   });
+
 }

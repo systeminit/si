@@ -91,7 +91,7 @@ async function create_and_delete_component_inner(
     workspaceId: sdfApiClient.workspaceId,
   };
   await sdfApiClient.call({
-    route: "delete_component",
+    route: "delete_components",
     body: deleteComponentPayload,
   });
 
