@@ -6,3 +6,8 @@
       permission approve = approver+owner
       permission manage = owner
   }
+
+  definition system {
+      relation admin: user
+      permission administer = admin
+  }
