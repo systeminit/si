@@ -54,12 +54,12 @@
         :color="selectedAsset.color"
       />
       <IconButton
-        v-if="!!generateAwsFunctionPanelKind"
+        v-if="generateAwsFunction.available"
         icon="sparkles"
         size="lg"
-        :tooltip="generateAwsFunctionPanelTooltip"
-        :selected="generateAwsFunctionPanelVisible"
-        @click="toggleGenerateAwsFunctionPanel"
+        :tooltip="`Generate ${generateAwsFunction.kind?.description}`"
+        :selected="generateAwsFunction.visible"
+        @click="generateAwsFunction.toggle()"
       />
     </div>
     <!-- openable AI generator panel extension -->
@@ -74,11 +74,12 @@
       :onBeforeLeave="captureHeight"
       :onAfterLeave="clearHeight"
     >
-      <div v-show="generateAwsFunctionPanelVisible" ref="transitionRef">
+      <div v-show="generateAwsFunction.visible" ref="transitionRef">
         <GenerateAwsFunctionPanel
-          :funcId="resolvedFuncId"
+          :funcId="funcId"
           :schemaVariantId="selectedAsset.schemaVariantId"
-          :generatingCommand="generateAwsFunctionPanelGeneratingCommand"
+          :kind="generateAwsFunction.kind as GenerateAwsFunctionKind"
+          :isLocked="selectedAsset?.isLocked || selectedFunc?.isLocked"
         />
       </div>
     </Transition>
@@ -86,7 +87,7 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, ref, watchEffect } from "vue";
+import { computed, ref } from "vue";
 import {
   IconButton,
   Timestamp,
@@ -96,7 +97,11 @@ import {
 import clsx from "clsx";
 import { schemaVariantDisplayName, useAssetStore } from "@/store/asset.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { useFuncStore } from "@/store/func/funcs.store";
+import {
+  GenerateAwsFunctionKind,
+  GenerateAwsFunctionKinds,
+  useFuncStore,
+} from "@/store/func/funcs.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
 import { FuncSummary } from "@/api/sdf/dal/func";
 import EditingPill from "./EditingPill.vue";
@@ -110,10 +115,10 @@ const funcStore = useFuncStore();
 const truncateRef1 = ref<InstanceType<typeof TruncateWithTooltip>>();
 const truncateRef2 = ref<InstanceType<typeof TruncateWithTooltip>>();
 
-const props = defineProps({
-  selectedAsset: { type: Object as PropType<SchemaVariant>, required: true },
-  selectedFunc: { type: Object as PropType<FuncSummary> },
-});
+const props = defineProps<{
+  selectedAsset: SchemaVariant;
+  selectedFunc?: FuncSummary;
+}>();
 
 const onClick = () => {
   assetStore.setFuncSelection(undefined);
@@ -123,46 +128,40 @@ const showTooltip = computed(() => {
   return truncateRef1.value?.tooltipActive || truncateRef2.value?.tooltipActive;
 });
 
-// Generator panel button
-const generateAwsFunctionPanelKind = computed(() => {
-  if (!featureFlagsStore.AI_GENERATOR) {
-    return undefined;
-  }
-  switch (props.selectedFunc?.kind) {
-    case undefined:
-      return "schema";
-    case "Action":
-      return "action";
-    default:
-      return undefined;
-  }
-});
-const resolvedFuncId = computed(
+const funcId = computed(
   () => props.selectedFunc?.funcId ?? props.selectedAsset.assetFuncId,
 );
-const generateAwsFunctionPanelGeneratingCommand = computed(
-  () => funcStore.generatingFuncCode[resolvedFuncId.value],
-);
-const generateAwsFunctionPanelTooltip = computed(() => {
-  switch (generateAwsFunctionPanelKind.value) {
-    case "schema":
-      return "Generate AWS Asset Schema";
-    case "action":
-      return "Generate AWS Action Function";
-    default:
-      return undefined;
-  }
-});
-const generateAwsFunctionPanelVisible = ref(false);
-const toggleGenerateAwsFunctionPanel = () => {
-  generateAwsFunctionPanelVisible.value =
-    !generateAwsFunctionPanelVisible.value;
+
+const generateAwsFunction = {
+  /** The kind of function we're generating */
+  get kind() {
+    if (!props.selectedFunc) return GenerateAwsFunctionKinds.AssetSchema;
+    switch (props.selectedFunc.kind) {
+      case "Action":
+        return GenerateAwsFunctionKinds.Action;
+      case "Management":
+        return GenerateAwsFunctionKinds.Management;
+      default:
+        return undefined;
+    }
+  },
+  /** Whether this type of function can actually be generated and is unlocked */
+  get available() {
+    return featureFlagsStore.AI_GENERATOR && this.kind;
+  },
+  /** Whether the AI generation panel should be visible */
+  get visible() {
+    return (
+      this.available &&
+      (funcStore.generateAwsFunctionPanelToggled ||
+        !!funcStore.generatingFuncCode[funcId.value])
+    );
+  },
+  /** Toggle visibility */
+  toggle() {
+    funcStore.generateAwsFunctionPanelToggled = !this.visible;
+  },
 };
-// When we start or stop generating, make sure the panel is toggled on/off (but let the user toggle it back off if they want)
-watchEffect(() => {
-  generateAwsFunctionPanelVisible.value =
-    !!generateAwsFunctionPanelGeneratingCommand.value;
-});
 
 const transitionRef = ref<HTMLDivElement>();
 

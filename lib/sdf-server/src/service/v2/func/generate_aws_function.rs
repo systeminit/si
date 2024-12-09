@@ -149,5 +149,6 @@ async fn get_prompt_kind(
         }
         prompt_kind = Some(new_prompt_kind);
     }
-    prompt_kind.ok_or(FuncAPIError::NoActionTypes(func_id))
+    // prompt_kind.ok_or(FuncAPIError::NoActionTypes(func_id))
+    Ok(prompt_kind.unwrap_or(AwsCliCommandPromptKind::Import))
 }
