@@ -3,9 +3,9 @@ use std::{ops::Deref, sync::Arc};
 use asset_sprayer::AssetSprayer;
 use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
-use dal::JwtPublicSigningKey;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
+use si_jwt_public_key::JwtPublicSigningKeyChain;
 use std::fmt;
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
@@ -26,7 +26,7 @@ pub enum ApplicationRuntimeMode {
 pub struct AppState {
     services_context: ServicesContext,
     broadcast_groups: BroadcastGroups,
-    jwt_public_signing_key: JwtPublicSigningKey,
+    jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
     posthog_client: PosthogClient,
     auth_api_url: String, // TODO(victor) store the auth client on state instead of just the URL
     asset_sprayer: Option<AssetSprayer>,
@@ -44,7 +44,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         services_context: impl Into<ServicesContext>,
-        jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
+        jwt_public_signing_key_chain: JwtPublicSigningKeyChain,
         posthog_client: impl Into<PosthogClient>,
         auth_api_url: impl AsRef<str>,
         asset_sprayer: Option<AssetSprayer>,
@@ -65,7 +65,7 @@ impl AppState {
 
         Self {
             services_context: services_context.into(),
-            jwt_public_signing_key: jwt_public_signing_key.into(),
+            jwt_public_signing_key_chain,
             broadcast_groups: Default::default(),
             posthog_client: posthog_client.into(),
             auth_api_url: auth_api_url.as_ref().to_string(),
@@ -97,8 +97,8 @@ impl AppState {
         self.asset_sprayer.as_ref()
     }
 
-    pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
-        &self.jwt_public_signing_key
+    pub fn jwt_public_signing_key_chain(&self) -> &JwtPublicSigningKeyChain {
+        &self.jwt_public_signing_key_chain
     }
 
     pub fn for_tests(&self) -> bool {

@@ -118,6 +118,15 @@ pub(crate) struct Args {
     /// The path to the JWT public signing key
     #[arg(long, env)]
     pub(crate) jwt_public_key: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_public_key_algo: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_secondary_public_key: Option<String>,
+
+    #[arg(long, env)]
+    pub(crate) jwt_secondary_public_key_algo: Option<String>,
     // /// Database migration mode on startup
     // #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
 }

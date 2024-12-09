@@ -1,5 +1,11 @@
 /*
 instructions to generate JWT signing key
+ run `ssh-keygen -t ecdsa -b 256 -m PEM -f jwtES256.key`
+- run `openssl ec -in jwtES256.key -pubout -outform PEM -out jwtES256.key.pub`
+- `cat jwtES256.key`
+- `cat jwtES256.key.pub`
+
+For RS256: (deprecated)
 - run `ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key` # Don't add passphrase
 - run `openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub`
 - `cat jwtRS256.key`
@@ -9,34 +15,92 @@ instructions to generate JWT signing key
 import fs from "fs";
 import JWT from "jsonwebtoken";
 
-// load private and public key from either env var or paths set in config
-// keys in the repo are also used by SDF to verify jwt is signed correctly and in tests to create/sign jwts
-let _JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY;
-if (!_JWT_PRIVATE_KEY && process.env.JWT_PRIVATE_KEY_PATH) {
-  // path is relative to .env file
-  _JWT_PRIVATE_KEY = fs.readFileSync(`${process.env.JWT_PRIVATE_KEY_PATH}`, 'utf-8');
-}
-let _JWT_PUBLIC_KEY = process.env.JWT_PUBLIC_KEY;
-if (!_JWT_PUBLIC_KEY && process.env.JWT_PUBLIC_KEY_PATH) {
-  // path is relative to .env file
-  _JWT_PUBLIC_KEY = fs.readFileSync(`${process.env.JWT_PUBLIC_KEY_PATH}`, 'utf-8');
-}
-if (!_JWT_PRIVATE_KEY) throw new Error('Missing JWT signing private key');
-if (!_JWT_PUBLIC_KEY) throw new Error('Missing JWT signing public key');
+const DEFAULT_ALGO = "RS256";
 
-_JWT_PRIVATE_KEY = _JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
-_JWT_PUBLIC_KEY = _JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
+type Algo = "RS256" | "ES256";
 
-export const JWT_PUBLIC_KEY = _JWT_PUBLIC_KEY;
+const jwtAlgo = (algo?: string): Algo => {
+  switch (algo) {
+    case "RS256":
+    case "ES256":
+      return algo;
+    default:
+      return DEFAULT_ALGO;
+  }
+};
+
+const keyEnvPaths = {
+  primary: {
+    private: "JWT_PRIVATE_KEY",
+    privatePath: "JWT_PRIVATE_KEY_PATH",
+    public: "JWT_PUBLIC_KEY",
+    publicPath: "JWT_PUBLIC_KEY_PATH",
+    algo: "JWT_ALGO",
+  },
+  secondary: {
+    private: "JWT_2ND_PRIVATE_KEY",
+    privatePath: "JWT_2ND_PRIVATE_KEY_PATH",
+    public: "JWT_2ND_PUBLIC_KEY",
+    publicPath: "JWT_2ND_PUBLIC_KEY_PATH",
+    algo: "JWT_2ND_ALGO",
+  },
+};
+
+// load private and public keys from either env var or paths set in config keys
+// in the repo are also used by SDF to verify jwt is signed correctly and in
+// tests to create/sign jwts
+
+const prepareKeys = (which: "primary" | "secondary"): { privKey?: string, pubKey?: string, algo: Algo } => {
+  const privateLiteral = process.env[keyEnvPaths[which].private];
+  const privatePath = process.env[keyEnvPaths[which].privatePath];
+
+  let privKey = privateLiteral ?? (privatePath ? fs.readFileSync(privatePath, 'utf-8') : undefined);
+  if (privKey) {
+    privKey = privKey.replace(/\\n/g, '\n');
+  }
+
+  const publicLiteral = process.env[keyEnvPaths[which].public];
+  const publicPath = process.env[keyEnvPaths[which].publicPath];
+
+  let pubKey = publicLiteral ?? (publicPath ? fs.readFileSync(publicPath, 'utf-8') : undefined);
+  if (pubKey) {
+    pubKey = pubKey.replace(/\\n/g, '\n');
+  }
+
+  const algo = jwtAlgo(process.env[keyEnvPaths[which].algo]);
+
+  return {
+    privKey,
+    pubKey,
+    algo,
+  };
+};
+
+const { privKey: primaryPrivKey, pubKey: primaryPubKey, algo } = prepareKeys("primary");
+const { pubKey: secondaryPubKey } = prepareKeys("secondary");
+
+if (!primaryPrivKey) throw new Error('Missing JWT signing private key');
+if (!primaryPubKey) throw new Error('Missing JWT signing public key');
+
+export const JWT_PUBLIC_KEY = primaryPubKey;
+export const JWT_2ND_PUBLIC_KEY = secondaryPubKey;
 
 export function createJWT(
   payload: Record<string, any>,
   options?: Omit<JWT.SignOptions, 'algorithm'>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return JWT.sign(payload, _JWT_PRIVATE_KEY!, { algorithm: "RS256", ...options });
+  return JWT.sign(payload, primaryPrivKey!, { algorithm: algo, ...options });
 }
 export function verifyJWT(token: string) {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return JWT.verify(token, _JWT_PUBLIC_KEY!);
+  try {
+    return JWT.verify(token, primaryPubKey!);
+  } catch (err) {
+    if (secondaryPubKey) {
+      return JWT.verify(token, secondaryPubKey);
+    } else {
+      throw err;
+    }
+  }
 }

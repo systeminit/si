@@ -18,6 +18,7 @@ runtime_strategy = "LocalFirecracker"
 
 [jwt_signing_public_key]
 key_base64 = "$SI_JWT_KEY_BASE64"
+algo = "RS256"
 
 [nats]
 creds = """

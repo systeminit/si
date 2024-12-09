@@ -1,9 +1,9 @@
 use asset_sprayer::config::{AssetSprayerConfig, SIOpenAIConfig};
 use audit_database::AuditDatabaseConfig;
-use dal::jwt_key::JwtConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::VeritechCryptoConfig;
 use si_data_spicedb::SpiceDbConfig;
+use si_jwt_public_key::{JwtAlgo, JwtConfig};
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
 use std::collections::HashSet;
 use std::{
@@ -130,6 +130,9 @@ pub struct Config {
     #[builder(default)]
     jwt_signing_public_key: JwtConfig,
 
+    #[builder(default)]
+    jwt_secondary_signing_public_key: Option<JwtConfig>,
+
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
 
@@ -189,6 +192,10 @@ impl Config {
     #[must_use]
     pub fn jwt_signing_public_key(&self) -> &JwtConfig {
         &self.jwt_signing_public_key
+    }
+
+    pub fn jwt_secondary_signing_public_key(&self) -> Option<&JwtConfig> {
+        self.jwt_secondary_signing_public_key.as_ref()
     }
 
     /// Gets a reference to the config's cyclone public key path.
@@ -298,6 +305,8 @@ pub struct ConfigFile {
     #[serde(default)]
     pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
+    pub jwt_secondary_signing_public_key: Option<JwtConfig>,
+    #[serde(default)]
     pub crypto: VeritechCryptoConfig,
     #[serde(default = "default_pkgs_path")]
     pub pkgs_path: String,
@@ -335,6 +344,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
+            jwt_secondary_signing_public_key: Default::default(),
             crypto: Default::default(),
             pkgs_path: default_pkgs_path(),
             posthog: Default::default(),
@@ -371,6 +381,7 @@ impl TryFrom<ConfigFile> for Config {
             incoming_stream: IncomingStream::default(), // TODO this OK?
             migration_mode: value.migration_mode,
             jwt_signing_public_key: value.jwt_signing_public_key,
+            jwt_secondary_signing_public_key: value.jwt_secondary_signing_public_key,
             crypto: value.crypto,
             pkgs_path: value.pkgs_path.try_into()?,
             posthog: value.posthog,
@@ -463,7 +474,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     #[allow(clippy::disallowed_methods)] // Used in development with a local auth services
     // Note(victor): If the user has set a custom auth ip url via env variable we assume dev mode
-    let jwt_signing_public_key_path = if env::var("SI_AUTH_API_URL").is_ok() {
+    let jwt_primary_signing_public_key_path = if env::var("SI_AUTH_API_URL").is_ok() {
         resources
             .get_ends_with("dev.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
@@ -498,7 +509,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .to_string();
 
     warn!(
-        jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        jwt_signing_public_key_path = jwt_primary_signing_public_key_path.as_str(),
         veritech_encryption_key_path = veritech_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         postgres_cert = postgres_cert.as_str(),
@@ -507,8 +518,9 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     );
 
     config.jwt_signing_public_key = JwtConfig {
-        key_file: Some(jwt_signing_public_key_path.try_into()?),
+        key_file: Some(jwt_primary_signing_public_key_path.try_into()?),
         key_base64: None,
+        algo: JwtAlgo::RS256,
     };
     config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
@@ -572,6 +584,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.jwt_signing_public_key = JwtConfig {
         key_file: Some(jwt_signing_public_key_path.try_into()?),
         key_base64: None,
+        algo: JwtAlgo::RS256,
     };
     config.crypto.encryption_key_file = veritech_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
