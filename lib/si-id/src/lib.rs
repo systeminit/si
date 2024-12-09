@@ -64,6 +64,7 @@ id_with_pg_types!(FuncId);
 id_with_pg_types!(FuncRunId);
 id_with_pg_types!(SchemaId);
 id_with_pg_types!(UserPk);
+id_with_pg_types!(WorkspaceIntegrationId);
 
 // Please keep these alphabetically sorted!
 id_with_none!(SchemaVariantId);

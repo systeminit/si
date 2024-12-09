@@ -17,6 +17,7 @@ const FLAG_MAPPING = {
   AI_GENERATOR: "ai-generator",
   REBAC: "rebac",
   OUTLINER_VIEWS: "diagram-outline-show-views",
+  SLACK_WEBHOOK: "slack_webhook",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
