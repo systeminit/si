@@ -43,7 +43,7 @@ pub async fn list_actionable(
     let maybe_head_change_set_id: Vec<ChangeSetId> = views
         .iter()
         .filter_map(|v| {
-            if v.id == head_change_set_id.into() {
+            if v.id == head_change_set_id {
                 Some(head_change_set_id)
             } else {
                 None
@@ -61,7 +61,7 @@ pub async fn list_actionable(
     let workspace_view = si_frontend_types::WorkspaceMetadata {
         name: workspace.name().to_string(),
         id: workspace.pk().to_string(),
-        default_change_set_id: head_change_set_id.into(),
+        default_change_set_id: head_change_set_id,
         change_sets: views,
         approvers,
     };

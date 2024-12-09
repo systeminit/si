@@ -24,10 +24,13 @@ use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
+    standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
     HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
     TransactionsError, User, UserError, UserPk, WorkspaceSnapshot, WorkspaceSnapshotGraph,
 };
+
+pub use si_id::WorkspaceId;
+pub use si_id::WorkspacePk;
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
 const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
@@ -88,25 +91,6 @@ pub enum WorkspaceError {
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
-
-// TODO(nick): switch to "id!" once "nilId" dies and explodes.
-pk!(WorkspacePk);
-
-// TODO(nick): switch to "id!" once "nilId" dies and explodes.
-pk!(WorkspaceId);
-
-impl From<WorkspacePk> for si_events::WorkspacePk {
-    fn from(value: WorkspacePk) -> Self {
-        let id: ulid::Ulid = value.into();
-        id.into()
-    }
-}
-
-impl From<si_events::WorkspacePk> for WorkspacePk {
-    fn from(value: si_events::WorkspacePk) -> Self {
-        Self(value.into_raw_id())
-    }
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {

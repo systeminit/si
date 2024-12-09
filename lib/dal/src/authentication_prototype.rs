@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{id, FuncId, SchemaVariantId};
+use crate::{FuncId, SchemaVariantId};
 
-id!(AuthenticationPrototypeId);
+pub use si_id::AuthenticationPrototypeId;
 
 // TODO(nick): remove this once import can just create the edge.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

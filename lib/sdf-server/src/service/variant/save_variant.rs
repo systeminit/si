@@ -45,7 +45,7 @@ pub async fn save_variant(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    let variant_id: SchemaVariantId = variant.schema_variant_id.into();
+    let variant_id: SchemaVariantId = variant.schema_variant_id;
 
     VariantAuthoringClient::save_variant_content(
         &ctx,
@@ -77,7 +77,7 @@ pub async fn save_variant(
 
     WsEvent::schema_variant_saved(
         &ctx,
-        variant.schema_id.into(),
+        variant.schema_id,
         variant_id,
         variant.schema_name,
         variant.category,

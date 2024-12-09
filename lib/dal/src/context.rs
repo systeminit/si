@@ -454,10 +454,10 @@ impl DalContext {
     ) -> TransactionsResult<RequestId> {
         self.rebaser()
             .enqueue_updates_from_change_set(
-                workspace_pk.into(),
-                change_set_id.into(),
+                workspace_pk,
+                change_set_id,
                 updates_address,
-                from_change_set_id.into(),
+                from_change_set_id,
                 self.event_session_id,
             )
             .await
@@ -476,10 +476,10 @@ impl DalContext {
     )> {
         self.rebaser()
             .enqueue_updates_from_change_set_with_reply(
-                workspace_pk.into(),
-                change_set_id.into(),
+                workspace_pk,
+                change_set_id,
                 updates_address,
-                from_change_set_id.into(),
+                from_change_set_id,
                 self.event_session_id,
             )
             .await
@@ -952,19 +952,18 @@ impl DalContext {
     /// Gets the version of tenancy used by the layerdb/si-events crate
     pub fn events_tenancy(&self) -> si_events::Tenancy {
         si_events::Tenancy {
-            change_set_id: self.change_set_id().into(),
+            change_set_id: self.change_set_id(),
             workspace_pk: self
                 .tenancy()
                 .workspace_pk_opt()
-                .unwrap_or(WorkspacePk::NONE)
-                .into(),
+                .unwrap_or(WorkspacePk::NONE),
         }
     }
 
     /// Gets the version of the "actor" (UserPk) used by the layerdb/si-events-crate
     pub fn events_actor(&self) -> si_events::Actor {
         match self.history_actor() {
-            HistoryActor::User(user_pk) => si_events::Actor::User((*user_pk).into()),
+            HistoryActor::User(user_pk) => si_events::Actor::User(*user_pk),
             HistoryActor::SystemInit => si_events::Actor::System,
         }
     }
@@ -1031,7 +1030,7 @@ impl DalContext {
         entity_name: String,
     ) -> TransactionsResult<()> {
         let head_change_set_id = self.get_workspace_default_change_set_id().await?;
-        Ok(audit_logging::write(self, kind, entity_name, Some(head_change_set_id.into())).await?)
+        Ok(audit_logging::write(self, kind, entity_name, Some(head_change_set_id)).await?)
     }
 
     /// Convenience wrapper around [`audit_logging::write_final_message`].
@@ -1610,8 +1609,8 @@ async fn rebase_with_reply(
 
     let (request_id, reply_fut) = rebaser
         .enqueue_updates_with_reply(
-            workspace_pk.into(),
-            change_set_id.into(),
+            workspace_pk,
+            change_set_id,
             updates_address,
             event_session_id,
         )

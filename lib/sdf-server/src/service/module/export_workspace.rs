@@ -111,7 +111,7 @@ pub async fn export_workspace_inner(
     let workspace_id = *workspace.pk();
     ctx.write_audit_log(
         AuditLogKind::ExportWorkspace {
-            id: workspace_id.into(),
+            id: workspace_id,
             name: workspace.name().clone(),
             version: version.clone(),
         },

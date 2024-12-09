@@ -7,7 +7,7 @@ use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWe
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    id, implement_add_edge_to, ComponentId, EdgeWeightKindDiscriminants, Timestamp,
+    implement_add_edge_to, ComponentId, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotError,
 };
 use crate::{DalContext, EdgeWeightKind};
@@ -33,7 +33,7 @@ impl From<Geometry> for RawGeometry {
     }
 }
 
-id!(GeometryId);
+pub use si_id::GeometryId;
 
 pub enum GeometryRepresents {
     Component(ComponentId),

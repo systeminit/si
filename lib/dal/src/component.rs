@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
-use std::hash::Hash;
 use std::num::{ParseFloatError, ParseIntError};
 use std::sync::Arc;
 use telemetry::prelude::*;
@@ -62,7 +61,7 @@ use self::inferred_connection_graph::InferredConnectionGraphError;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
 use crate::{
-    id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
+    implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
     DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
     StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
@@ -230,19 +229,7 @@ pub enum ComponentError {
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
-id!(ComponentId);
-
-impl From<ComponentId> for si_events::ComponentId {
-    fn from(value: ComponentId) -> Self {
-        value.into_inner().into()
-    }
-}
-
-impl From<si_events::ComponentId> for ComponentId {
-    fn from(value: si_events::ComponentId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
+pub use si_id::ComponentId;
 
 #[derive(Clone, Debug)]
 pub struct IncomingConnection {
@@ -3599,8 +3586,7 @@ impl Component {
         let geometry = if let Some(geometry) = maybe_geometry {
             let view_id = Geometry::get_view_id_by_id(ctx, geometry.id())
                 .await
-                .map_err(|e| ComponentError::Diagram(Box::new(e)))?
-                .into();
+                .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
 
             Some(GeometryAndView {
                 view_id,
@@ -3611,11 +3597,11 @@ impl Component {
         };
 
         Ok(DiagramComponentView {
-            id: self.id().into(),
-            component_id: self.id().into(),
+            id: self.id(),
+            component_id: self.id(),
             schema_name: schema.name().to_owned(),
-            schema_id: schema_id.into(),
-            schema_variant_id: schema_variant.id().into(),
+            schema_id,
+            schema_variant_id: schema_variant.id(),
             schema_variant_name: schema_variant.version().to_owned(),
             schema_category: schema_variant.category().to_owned(),
             display_name: self.name(ctx).await?,
@@ -3625,7 +3611,7 @@ impl Component {
             change_status: change_status.into(),
             has_resource: self.resource(ctx).await?.is_some(),
             sockets,
-            parent_id: maybe_parent.map(|p| p.into()),
+            parent_id: maybe_parent,
             updated_info,
             created_info,
             deleted_info: serde_json::Value::Null,

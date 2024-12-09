@@ -9,6 +9,7 @@ rust_library(
     name = "si-events",
     deps = [
         "//lib/si-hash:si-hash",
+        "//lib/si-id:si-id",
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",
         "//third-party/rust:chrono",

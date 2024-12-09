@@ -307,9 +307,9 @@ async fn process_execution(
 
     ctx.write_audit_log(
         AuditLogKind::RunAction {
-            prototype_id: prototype_id.into(),
+            prototype_id,
             action_kind: prototype.kind.into(),
-            func_id: func.id.into(),
+            func_id: func.id,
             func_name: func.name.clone(),
             func_display_name: func.display_name,
             run_status: success,
@@ -337,7 +337,7 @@ async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobCons
     ctx.layer_db()
         .func_run()
         .set_action_result_state_for_action_id(
-            action_id.into(),
+            action_id,
             ActionResultState::Failure,
             ctx.events_tenancy(),
             ctx.events_actor(),

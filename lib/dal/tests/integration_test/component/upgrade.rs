@@ -226,16 +226,16 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .first()
         .expect("unable to get the upgradable component on the graph");
 
-    assert_eq!(my_upgraded_component.schema_variant_id, variant_one.into());
+    assert_eq!(my_upgraded_component.schema_variant_id, variant_one);
 
-    let view_after_upgrade = Component::get_by_id(ctx, my_upgraded_component.component_id.into())
+    let view_after_upgrade = Component::get_by_id(ctx, my_upgraded_component.component_id)
         .await
         .unwrap()
         .view(ctx)
         .await
         .expect("get component view");
 
-    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_component.id.into())
+    let root_id = Component::root_attribute_value_id(ctx, my_upgraded_component.id)
         .await
         .expect("unable to get root av id");
 
@@ -280,7 +280,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     );
 
     // see that there's still only one action enqueued
-    let mut actions = Action::find_for_component_id(ctx, my_upgraded_component.id.into())
+    let mut actions = Action::find_for_component_id(ctx, my_upgraded_component.id)
         .await
         .expect("got the actions");
     assert_eq!(actions.len(), 1);

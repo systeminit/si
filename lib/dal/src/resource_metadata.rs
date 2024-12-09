@@ -58,7 +58,7 @@ pub async fn list(ctx: &DalContext) -> ResourceMetadataResult<Vec<si_events::Res
 // WARN(nick): do NOT use the payload or inner data. Don't you dare.
 fn assemble_metadata(component_id: ComponentId, data: ResourceData) -> si_events::ResourceMetadata {
     si_events::ResourceMetadata {
-        component_id: component_id.into(),
+        component_id,
         status: match data.status {
             ResourceStatus::Error => si_events::ResourceStatus::Error,
             ResourceStatus::Ok => si_events::ResourceStatus::Ok,

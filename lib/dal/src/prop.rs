@@ -26,7 +26,7 @@ use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
+    implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
     AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
     HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
@@ -89,19 +89,7 @@ pub type PropResult<T> = Result<T, PropError>;
 
 pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
 
-id!(PropId);
-
-impl From<si_events::PropId> for PropId {
-    fn from(value: si_events::PropId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<PropId> for si_events::PropId {
-    fn from(value: PropId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::PropId;
 
 // TODO: currently we only have string values in all widget_options but we should extend this to
 // support other types. However, we cannot use serde_json::Value since postcard will not
@@ -365,7 +353,7 @@ impl Prop {
     pub async fn into_frontend_type(self, ctx: &DalContext) -> PropResult<si_frontend_types::Prop> {
         let path = self.path(ctx).await?.with_replaced_sep_and_prefix("/");
         Ok(si_frontend_types::Prop {
-            id: self.id().into(),
+            id: self.id(),
             kind: self.kind.into(),
             name: self.name.to_owned(),
             path: path.to_owned(),

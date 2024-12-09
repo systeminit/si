@@ -21,8 +21,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, DalContext, Func, FuncError, FuncId, HelperError,
-    SchemaVariantError, Timestamp, TransactionsError,
+    implement_add_edge_to, DalContext, Func, FuncError, FuncId, HelperError, SchemaVariantError,
+    Timestamp, TransactionsError,
 };
 
 pub use variant::{SchemaVariant, SchemaVariantId};
@@ -67,19 +67,7 @@ pub enum SchemaError {
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
-id!(SchemaId);
-
-impl From<si_events::SchemaId> for SchemaId {
-    fn from(value: si_events::SchemaId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<SchemaId> for si_events::SchemaId {
-    fn from(value: SchemaId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::SchemaId;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Schema {

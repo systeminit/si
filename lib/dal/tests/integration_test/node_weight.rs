@@ -4,4 +4,3 @@ mod component;
 mod ordering;
 mod schema_variant;
 mod view;
-

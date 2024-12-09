@@ -63,7 +63,7 @@ pub async fn update_secret(
     ctx.write_audit_log(
         AuditLogKind::UpdateSecret {
             name: secret.name().to_string(),
-            secret_id: secret.id().into(),
+            secret_id: secret.id(),
         },
         secret.name().to_string(),
     )

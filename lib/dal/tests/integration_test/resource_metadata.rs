@@ -204,7 +204,7 @@ async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         .await
         .expect("could not collect resource metadata");
     let expected = ResourceMetadata {
-        component_id: destination_component.id().into(),
+        component_id: destination_component.id(),
         status: ResourceStatus::Ok,
         last_synced: serde_json::from_value(last_synced_value.unwrap_or(serde_json::Value::Null))
             .expect("could not deserialize"),

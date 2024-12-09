@@ -30,9 +30,9 @@ pub async fn cancel(
         let func = Func::get_by_id_or_error(&ctx, func_id).await?;
         ctx.write_audit_log(
             AuditLogKind::CancelAction {
-                prototype_id: prototype_id.into(),
+                prototype_id,
                 action_kind: prototype.kind.into(),
-                func_id: func_id.into(),
+                func_id,
                 func_display_name: func.display_name,
                 func_name: func.name.clone(),
             },

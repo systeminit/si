@@ -81,7 +81,7 @@ async fn kill_execution_works(ctx: &mut DalContext) {
         maybe_func_run_id = ctx
             .layer_db()
             .func_run()
-            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action_id.into())
+            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action_id)
             .await
             .expect("could not get last func run for action id")
             .map(|f| f.id());

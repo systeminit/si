@@ -121,15 +121,11 @@ impl AttributeBinding {
     ) -> FuncBindingResult<Option<EventualParent>> {
         let eventual_parent = match (component_id, schema_variant_id) {
             (None, None) => None,
-            (None, Some(schema_variant)) => {
-                Some(EventualParent::SchemaVariant(schema_variant.into()))
-            }
-            (Some(component_id), None) => Some(EventualParent::Component(component_id.into())),
+            (None, Some(schema_variant)) => Some(EventualParent::SchemaVariant(schema_variant)),
+            (Some(component_id), None) => Some(EventualParent::Component(component_id)),
             (Some(component_id), Some(schema_variant_id)) => {
-                if Component::schema_variant_id(ctx, component_id.into()).await?
-                    == schema_variant_id.into()
-                {
-                    Some(EventualParent::SchemaVariant(schema_variant_id.into()))
+                if Component::schema_variant_id(ctx, component_id).await? == schema_variant_id {
+                    Some(EventualParent::SchemaVariant(schema_variant_id))
                 } else {
                     return Err(FuncBindingError::MalformedInput(
                         AttributeBindingMalformedInput::EventualParentComponentNotFromSchemaVariant(
@@ -149,9 +145,9 @@ impl AttributeBinding {
         static_argument_value: Option<serde_json::Value>,
     ) -> FuncBindingResult<AttributeFuncArgumentSource> {
         match (prop_id, input_socket_id, static_argument_value) {
-            (Some(prop_id), None, None) => Ok(AttributeFuncArgumentSource::Prop(prop_id.into())),
+            (Some(prop_id), None, None) => Ok(AttributeFuncArgumentSource::Prop(prop_id)),
             (None, Some(input_socket_id), None) => Ok(AttributeFuncArgumentSource::InputSocket(
-                input_socket_id.into(),
+                input_socket_id,
             )),
             (None, None, Some(static_argument_value)) => Ok(
                 AttributeFuncArgumentSource::StaticArgument(static_argument_value),
@@ -192,10 +188,10 @@ impl AttributeBinding {
         output_socket_id: Option<si_events::OutputSocketId>,
     ) -> FuncBindingResult<AttributeFuncDestination> {
         match (prop_id, output_socket_id) {
-            (Some(prop_id), None) => Ok(AttributeFuncDestination::Prop(prop_id.into())),
-            (None, Some(output_socket_id)) => Ok(AttributeFuncDestination::OutputSocket(
-                output_socket_id.into(),
-            )),
+            (Some(prop_id), None) => Ok(AttributeFuncDestination::Prop(prop_id)),
+            (None, Some(output_socket_id)) => {
+                Ok(AttributeFuncDestination::OutputSocket(output_socket_id))
+            }
             (Some(prop_id), Some(output_socket_id)) => Err(FuncBindingError::MalformedInput(
                 AttributeBindingMalformedInput::OutputLocationBothPropAndOutputSocketProvided(
                     prop_id,

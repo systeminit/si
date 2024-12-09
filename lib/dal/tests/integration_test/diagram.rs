@@ -50,7 +50,7 @@ async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut
     let removed_component_summary = summary_diagram
         .components
         .iter()
-        .find(|comp| comp.id == component_to_remove.id().into())
+        .find(|comp| comp.id == component_to_remove.id())
         .expect("Removed Component not found in summary diagram");
     assert!(removed_component_summary.from_base_change_set);
 

@@ -212,10 +212,9 @@ async fn dummy_sync(ctx: &DalContext) {
 
     // Assemble our expected result.
     let mut expected = si_frontend_types::SyncedModules::new();
-    expected.upgradeable.insert(
-        schema_variant_id.into(),
-        dummy_latest_module_upgradeable.clone(),
-    );
+    expected
+        .upgradeable
+        .insert(schema_variant_id, dummy_latest_module_upgradeable.clone());
     expected
         .installable
         .push(dummy_latest_module_installable.clone());

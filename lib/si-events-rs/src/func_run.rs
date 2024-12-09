@@ -3,17 +3,17 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{id, Actor, ChangeSetId, ContentHash, FuncId, Tenancy, WorkspacePk};
+use crate::{Actor, ChangeSetId, ContentHash, FuncId, Tenancy, WorkspacePk};
 
-id!(FuncRunId);
-id!(ComponentId);
-id!(AttributeValueId);
-id!(ActionId);
-id!(ActionPrototypeId);
-id!(AttributePrototypeId);
-id!(AttributePrototypeArgumentId);
-id!(ManagementPrototypeId);
-id!(ViewId);
+pub use si_id::ActionId;
+pub use si_id::ActionPrototypeId;
+pub use si_id::AttributePrototypeArgumentId;
+pub use si_id::AttributePrototypeId;
+pub use si_id::AttributeValueId;
+pub use si_id::ComponentId;
+pub use si_id::FuncRunId;
+pub use si_id::ManagementPrototypeId;
+pub use si_id::ViewId;
 
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum FuncRunState {

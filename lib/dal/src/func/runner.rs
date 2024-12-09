@@ -219,8 +219,6 @@ impl FuncRunner {
             )?;
             let before = FuncRunner::before_funcs(ctx, component_id).await?;
 
-            let component_id = component_id.into();
-
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
                 .actor(ctx.events_actor())
@@ -529,8 +527,6 @@ impl FuncRunner {
             };
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-            let component_id = component_id.into();
-            let attribute_value_id = attribute_value_id.into();
 
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
@@ -674,9 +670,6 @@ impl FuncRunner {
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
             let before = FuncRunner::before_funcs(ctx, component_id).await?;
-
-            let component_id = component_id.into();
-            let attribute_value_id = attribute_value_id.into();
 
             let func_run_create_time = Utc::now();
             let mut func_run_builder = FuncRunBuilder::default();
@@ -875,8 +868,6 @@ impl FuncRunner {
             let component_name = manager_component.name(ctx).await?;
             let schema_name = manager_component.schema(ctx).await?.name;
 
-            let manager_component_id = manager_component_id.into();
-
             let change_set = ctx.change_set()?;
 
             let func_run_create_time = Utc::now();
@@ -893,7 +884,7 @@ impl FuncRunner {
                 .function_link(func.link.clone())
                 .function_args_cas_address(function_args_cas_address)
                 .function_code_cas_address(code_cas_hash)
-                .action_originating_change_set_id(Some(change_set.id.into()))
+                .action_originating_change_set_id(Some(change_set.id))
                 .action_originating_change_set_name(Some(change_set.name.to_owned()))
                 .action_or_func_id(Some(func.id.into()))
                 .attribute_value_id(None)
@@ -1090,7 +1081,6 @@ impl FuncRunner {
             let component_name = component.name(ctx).await?;
             let schema_name = component.schema(ctx).await?.name;
 
-            let component_id = component_id.into();
             let action_kind = prototype.kind.into();
 
             let func_run_create_time = Utc::now();
@@ -1110,9 +1100,7 @@ impl FuncRunner {
                 .prototype_id(Some(action_prototype_id.into()))
                 .action_kind(Some(action_kind))
                 .action_display_name(Some(prototype.name().clone()))
-                .action_originating_change_set_id(
-                    maybe_action_originating_change_set_id.map(|a| a.into()),
-                )
+                .action_originating_change_set_id(maybe_action_originating_change_set_id)
                 .action_originating_change_set_name(maybe_action_originating_change_set_name)
                 .action_result_state(Some(ActionResultState::Unknown))
                 .attribute_value_id(None)

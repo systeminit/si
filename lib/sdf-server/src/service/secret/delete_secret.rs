@@ -36,7 +36,7 @@ pub async fn delete_secret(
     ctx.write_audit_log(
         AuditLogKind::DeleteSecret {
             name: secret.name().to_string(),
-            secret_id: secret.id().into(),
+            secret_id: secret.id(),
         },
         secret.name().to_string(),
     )

@@ -1,3 +1,1 @@
-use crate::id;
-
-id!(SecretId);
+pub use si_id::SecretId;

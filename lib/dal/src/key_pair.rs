@@ -9,7 +9,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk,
     serde_impls::{base64_bytes_serde, nonce_serde},
     standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, TenancyError,
     Timestamp, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
@@ -53,8 +52,7 @@ pub enum KeyPairError {
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;
 
-// TODO(nick): use "id!" once "nilId" explodes and dies.
-pk!(KeyPairPk);
+pub use si_id::KeyPairPk;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct KeyPair {

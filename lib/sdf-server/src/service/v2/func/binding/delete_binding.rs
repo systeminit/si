@@ -67,8 +67,7 @@ pub async fn delete_binding(
                     return Err(FuncAPIError::MissingFuncId);
                 };
 
-                AuthBinding::delete_auth_binding(&ctx, func_id.into(), schema_variant_id.into())
-                    .await?
+                AuthBinding::delete_auth_binding(&ctx, func_id, schema_variant_id).await?
             }
             FuncKind::CodeGeneration | FuncKind::Qualification => {
                 let (frontend_types::FuncBinding::Qualification {

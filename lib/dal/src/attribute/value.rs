@@ -73,7 +73,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    id, implement_add_edge_to, AttributePrototype, AttributePrototypeId, Component, ComponentError,
+    implement_add_edge_to, AttributePrototype, AttributePrototypeId, Component, ComponentError,
     ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
     OutputSocket, OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
 };
@@ -232,13 +232,7 @@ impl From<ComponentError> for AttributeValueError {
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
 
-id!(AttributeValueId);
-
-impl From<AttributeValueId> for si_events::AttributeValueId {
-    fn from(value: AttributeValueId) -> Self {
-        value.into_inner().into()
-    }
-}
+pub use si_id::AttributeValueId;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeValue {

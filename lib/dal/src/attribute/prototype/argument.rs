@@ -14,7 +14,7 @@ use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
-    id, implement_add_edge_to,
+    implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -40,19 +40,7 @@ pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_nod
 pub mod static_value;
 pub mod value_source;
 
-id!(AttributePrototypeArgumentId);
-
-impl From<si_events::AttributePrototypeArgumentId> for AttributePrototypeArgumentId {
-    fn from(value: si_events::AttributePrototypeArgumentId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<AttributePrototypeArgumentId> for si_events::AttributePrototypeArgumentId {
-    fn from(value: AttributePrototypeArgumentId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::AttributePrototypeArgumentId;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

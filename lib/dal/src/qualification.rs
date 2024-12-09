@@ -181,7 +181,7 @@ impl QualificationView {
             .func_run()
             .get_last_qualification_for_attribute_value_id(
                 ctx.events_tenancy().workspace_pk,
-                attribute_value.id().into(),
+                attribute_value.id(),
             )
             .await?;
         match maybe_qual_run {

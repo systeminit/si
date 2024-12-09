@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 si-hash = { path = "../../lib/si-hash" }
+si-id = { path = "../../lib/si-id" }
 
 bytes = { workspace = true }
 chrono = { workspace = true }

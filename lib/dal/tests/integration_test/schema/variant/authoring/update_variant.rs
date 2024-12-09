@@ -297,7 +297,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         second_component_type.to_string()
     );
     assert_eq!(diagram_component.schema_category, second_category);
-    assert_eq!(diagram_component.schema_variant_id, first_sv_id.into());
+    assert_eq!(diagram_component.schema_variant_id, first_sv_id);
     assert_eq!(diagram_component.schema_name, second_asset_name);
     assert_eq!(diagram_component.display_name, component_name);
 
@@ -344,7 +344,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(diagram_component.schema_category, second_category);
     assert_eq!(
         diagram_component.schema_variant_id,
-        updated_variant_after_regen.id().into()
+        updated_variant_after_regen.id()
     );
     assert_eq!(diagram_component.schema_name, second_asset_name);
     assert_eq!(diagram_component.display_name, component_name);
@@ -415,7 +415,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(diagram_component.schema_category, third_category);
     assert_eq!(
         diagram_component.schema_variant_id,
-        updated_sv_after_metadata_change.id().into()
+        updated_sv_after_metadata_change.id()
     );
     assert_eq!(diagram_component.schema_name, second_asset_name);
     assert_eq!(diagram_component.display_name, component_name);
@@ -463,7 +463,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(diagram_component.schema_category, third_category);
     assert_eq!(
         diagram_component.schema_variant_id,
-        updated_sv_id_after_regen.into()
+        updated_sv_id_after_regen
     );
     assert_eq!(diagram_component.schema_name, second_asset_name);
     assert_eq!(diagram_component.display_name, component_name);
@@ -496,7 +496,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(second_diagram_component.schema_category, third_category);
     assert_eq!(
         second_diagram_component.schema_variant_id,
-        updated_sv_id_after_regen.into()
+        updated_sv_id_after_regen
     );
     assert_eq!(second_diagram_component.schema_name, second_asset_name);
     assert_eq!(second_diagram_component.display_name, second_component_name);

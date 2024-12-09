@@ -406,8 +406,7 @@ async fn create_binding_simple(
     identity_func_argument_id: FuncArgumentId,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let eventual_parent =
-        AttributeBinding::assemble_eventual_parent(ctx, None, Some(schema_variant_id.into()))
-            .await?;
+        AttributeBinding::assemble_eventual_parent(ctx, None, Some(schema_variant_id)).await?;
     let attribute_output_location = AttributeBinding::assemble_attribute_output_location(
         maybe_destination_prop_id.map(Into::into),
         maybe_destination_output_socket_id.map(Into::into),
@@ -422,7 +421,7 @@ async fn create_binding_simple(
             attribute_prototype_argument_id: None,
             func_argument_id: identity_func_argument_id,
             attribute_func_input_location: AttributeBinding::assemble_attribute_input_location(
-                Some(source_prop_id.into()),
+                Some(source_prop_id),
                 None,
                 None,
             )?,

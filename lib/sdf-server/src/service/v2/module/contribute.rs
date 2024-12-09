@@ -48,7 +48,7 @@ pub async fn contribute(
         &ctx,
         request.name.as_str(),
         request.version.as_str(),
-        request.schema_variant_id.into(),
+        request.schema_variant_id,
     )
     .await?;
 

@@ -115,7 +115,7 @@ impl Assembler {
                     if let Some(change_set) = self.change_set_cache.get(&change_set_id) {
                         change_set.name.to_owned()
                     } else {
-                        let change_set = ChangeSet::find(ctx, change_set_id.into())
+                        let change_set = ChangeSet::find(ctx, change_set_id)
                             .await?
                             .ok_or(AuditLogError::ChangeSetNotFound(change_set_id))?;
                         let found_data = change_set.name.to_owned();
@@ -144,7 +144,7 @@ impl Assembler {
                         Some(user.name().to_owned()),
                     ))
                 } else {
-                    let user = User::get_by_pk(ctx, user_id.into())
+                    let user = User::get_by_pk(ctx, user_id)
                         .await?
                         .ok_or(AuditLogError::UserNotFound(user_id))?;
                     let found_data = (

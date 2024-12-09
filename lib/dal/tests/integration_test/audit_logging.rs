@@ -49,8 +49,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     ctx.write_audit_log(
         AuditLogKind::CreateComponent {
             name: component_name.to_string(),
-            component_id: component.id().into(),
-            schema_variant_id: schema_variant_id.into(),
+            component_id: component.id(),
+            schema_variant_id,
             schema_variant_name: schema_variant.display_name().to_string(),
         },
         component_name.to_string(),
@@ -137,13 +137,13 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         .expect("could not update attribute value");
     ctx.write_audit_log(
         AuditLogKind::UpdatePropertyEditorValue {
-            component_id: component.id().into(),
+            component_id: component.id(),
             component_name: component_name.to_string(),
-            schema_variant_id: schema_variant_id.into(),
+            schema_variant_id,
             schema_variant_display_name: schema_variant.display_name().to_string(),
-            prop_id: prop.id.into(),
+            prop_id: prop.id,
             prop_name: prop.name.to_owned(),
-            attribute_value_id: attribute_value_id.into(),
+            attribute_value_id,
             before_value,
             after_value,
         },
@@ -191,8 +191,8 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     ctx.write_audit_log(
         AuditLogKind::DeleteComponent {
             name: component_name.to_string(),
-            component_id: component.id().into(),
-            schema_variant_id: schema_variant_id.into(),
+            component_id: component.id(),
+            schema_variant_id,
             schema_variant_name: schema_variant.display_name().to_string(),
         },
         component_name.to_string(),

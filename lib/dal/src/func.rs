@@ -25,8 +25,8 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, pkg, ChangeSetId, DalContext, HelperError, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload,
+    implement_add_edge_to, pkg, ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError,
+    WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -124,22 +124,10 @@ pub fn is_intrinsic(name: &str) -> bool {
     IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
 }
 
-id!(FuncId);
-
-impl From<si_events::FuncId> for FuncId {
-    fn from(value: si_events::FuncId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<FuncId> for si_events::FuncId {
-    fn from(value: FuncId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::FuncId;
 
 // NOTE: This is here only for backward compatibility
-id!(FuncExecutionPk);
+pub use si_id::FuncExecutionPk;
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).
@@ -753,7 +741,7 @@ impl Func {
         let mut arguments = vec![];
         for arg in args {
             arguments.push(si_frontend_types::FuncArgument {
-                id: Some(arg.id.into()),
+                id: Some(arg.id),
                 name: arg.name.clone(),
                 kind: arg.kind.into(),
                 element_kind: arg.element_kind.map(Into::into),
@@ -763,7 +751,7 @@ impl Func {
 
         let types = self.get_types(ctx).await?;
         Ok(FuncSummary {
-            func_id: self.id.into(),
+            func_id: self.id,
             kind: self.kind.into(),
             name: self.name.clone(),
             backend_kind: self.backend_kind.into(),

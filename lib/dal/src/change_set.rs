@@ -17,7 +17,7 @@ use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::{
     action::{ActionError, ActionId},
-    id, ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
+    ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
     TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
     WorkspaceSnapshotError, WsEvent, WsEventError,
 };
@@ -147,20 +147,7 @@ pub enum ChangeSetApplyError {
 /// A superset of [`ChangeSetResult`] used when performing apply logic.
 pub type ChangeSetApplyResult<T> = Result<T, ChangeSetApplyError>;
 
-id!(ChangeSetId);
-
-impl From<ChangeSetId> for si_events::ChangeSetId {
-    fn from(value: ChangeSetId) -> Self {
-        let id: ulid::Ulid = value.into();
-        id.into()
-    }
-}
-
-impl From<si_events::ChangeSetId> for ChangeSetId {
-    fn from(value: si_events::ChangeSetId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
+pub use si_id::ChangeSetId;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSet {
@@ -302,11 +289,11 @@ impl ChangeSet {
 
         let change_set = si_frontend_types::ChangeSet {
             created_at: self.created_at,
-            id: self.id.into(),
+            id: self.id,
             updated_at: self.updated_at,
             name: self.name.clone(),
             status: self.status.into(),
-            base_change_set_id: self.base_change_set_id.map(|id| id.into()),
+            base_change_set_id: self.base_change_set_id,
             workspace_id: self.workspace_id.map_or("".to_owned(), |id| id.to_string()),
             merge_requested_by_user_id: self.merge_requested_by_user_id.map(|s| s.to_string()),
             merge_requested_by_user,

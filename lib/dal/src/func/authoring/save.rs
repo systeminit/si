@@ -456,8 +456,7 @@ pub(crate) async fn create_new_attribute_prototype(
 ) -> FuncAuthoringResult<AttributePrototypeId> {
     let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
-    // TODO(nick): just destroy and burn nilId to the ground. We need to use the "id!" macro instead
-    // of the "pk!" macro and be done with it.
+    // TODO(nick): just destroy and burn nilId to the ground.
     let component_id_cannot_be_nil_id = match prototype_bag.component_id {
         None | Some(ComponentId::NONE) => None,
         Some(component_id) => Some(component_id),

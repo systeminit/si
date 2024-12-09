@@ -71,12 +71,12 @@ pub async fn perform_rebase(
 
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
-    let updating_head = request.change_set_id == workspace.default_change_set_id().into();
+    let updating_head = request.change_set_id == workspace.default_change_set_id();
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
-    let mut to_rebase_change_set = ChangeSet::find(ctx, request.change_set_id.into())
+    let mut to_rebase_change_set = ChangeSet::find(ctx, request.change_set_id)
         .await?
-        .ok_or(RebaseError::MissingChangeSet(request.change_set_id.into()))?;
+        .ok_or(RebaseError::MissingChangeSet(request.change_set_id))?;
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
     debug!("before snapshot fetch and parse: {:?}", start.elapsed());
     let to_rebase_workspace_snapshot =
@@ -101,7 +101,7 @@ pub async fn perform_rebase(
             !updating_head
                 && request
                     .from_change_set_id
-                    .is_some_and(|from_id| from_id != to_rebase_change_set.id.into()),
+                    .is_some_and(|from_id| from_id != to_rebase_change_set.id),
         )
         .await?;
     debug!("corrected transforms: {:?}", start.elapsed());
@@ -153,7 +153,7 @@ pub async fn perform_rebase(
         for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
             cs.id != workspace.default_change_set_id()
                 && cs.id != to_rebase_change_set.id
-                && request.from_change_set_id != Some(cs.id.into())
+                && request.from_change_set_id != Some(cs.id)
         }) {
             let workspace_pk = *workspace.pk();
             let updates_address = request.updates_address;
@@ -203,15 +203,11 @@ pub async fn perform_rebase(
 
     if !updating_head {
         if let Some(source_change_set_id) = request.from_change_set_id {
-            let mut event = WsEvent::change_set_applied(
-                ctx,
-                source_change_set_id.into(),
-                request.change_set_id.into(),
-                None,
-            )
-            .await?;
-            event.set_workspace_pk(request.workspace_id.into());
-            event.set_change_set_id(Some(request.change_set_id.into()));
+            let mut event =
+                WsEvent::change_set_applied(ctx, source_change_set_id, request.change_set_id, None)
+                    .await?;
+            event.set_workspace_pk(request.workspace_id);
+            event.set_change_set_id(Some(request.change_set_id));
             event.publish_immediately(ctx).await?;
         }
     }

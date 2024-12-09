@@ -62,10 +62,10 @@ use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    id, implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId,
-    ChangeSetError, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError,
-    HistoryActor, HistoryEventError, KeyPair, KeyPairError, Prop, SchemaVariant,
-    SchemaVariantError, StandardModelError, Timestamp, TransactionsError, UserPk,
+    implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetError,
+    ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor,
+    HistoryEventError, KeyPair, KeyPairError, Prop, SchemaVariant, SchemaVariantError,
+    StandardModelError, Timestamp, TransactionsError, UserPk,
 };
 use si_events::encrypted_secret::EncryptedSecretKeyParseError;
 
@@ -150,19 +150,7 @@ pub enum SecretError {
 #[allow(missing_docs)]
 pub type SecretResult<T> = Result<T, SecretError>;
 
-id!(SecretId);
-
-impl From<si_events::SecretId> for SecretId {
-    fn from(value: si_events::SecretId) -> Self {
-        Self(value.into_raw_id())
-    }
-}
-
-impl From<SecretId> for si_events::SecretId {
-    fn from(value: SecretId) -> Self {
-        Self::from_raw_id(value.0)
-    }
-}
+pub use si_id::SecretId;
 
 /// A reference to an [`EncryptedSecret`] with metadata.
 ///
@@ -670,7 +658,7 @@ impl Secret {
         for schema_variant in schema_variants {
             let secrets_prop = Prop::find_prop_by_path(
                 ctx,
-                schema_variant.schema_variant_id.into(),
+                schema_variant.schema_variant_id,
                 &RootPropChild::Secrets.prop_path(),
             )
             .await?;

@@ -1,3 +1,1 @@
-use crate::id;
-
-id!(SchemaId);
+pub use si_id::SchemaId;

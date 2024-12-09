@@ -74,7 +74,7 @@ pub async fn create_func(
                     &ctx,
                     request.name,
                     kind.into(),
-                    schema_variant_id.into(),
+                    schema_variant_id,
                 )
                 .await?
             } else {
@@ -91,28 +91,26 @@ pub async fn create_func(
             } = request.binding.clone()
             {
                 let output_location = if let Some(prop_id) = prop_id {
-                    AttributeFuncDestination::Prop(prop_id.into())
+                    AttributeFuncDestination::Prop(prop_id)
                 } else if let Some(output_socket_id) = output_socket_id {
-                    AttributeFuncDestination::OutputSocket(output_socket_id.into())
+                    AttributeFuncDestination::OutputSocket(output_socket_id)
                 } else {
                     return Err(FuncAPIError::MissingOutputLocationForAttributeFunc);
                 };
-                let eventual_parent =
-                    component_id.map(|component_id| EventualParent::Component(component_id.into()));
+                let eventual_parent = component_id.map(EventualParent::Component);
                 let mut arg_bindings = vec![];
                 for arg_binding in argument_bindings {
                     let input_location = if let Some(prop_id) = arg_binding.prop_id {
-                        AttributeFuncArgumentSource::Prop(prop_id.into())
+                        AttributeFuncArgumentSource::Prop(prop_id)
                     } else if let Some(input_socket_id) = arg_binding.input_socket_id {
-                        AttributeFuncArgumentSource::InputSocket(input_socket_id.into())
+                        AttributeFuncArgumentSource::InputSocket(input_socket_id)
                     } else {
                         return Err(FuncAPIError::MissingInputLocationForAttributeFunc);
                     };
                     arg_bindings.push(AttributeArgumentBinding {
-                        func_argument_id: arg_binding.func_argument_id.into(),
+                        func_argument_id: arg_binding.func_argument_id,
                         attribute_prototype_argument_id: arg_binding
-                            .attribute_prototype_argument_id
-                            .map(|a| a.into()),
+                            .attribute_prototype_argument_id,
                         attribute_func_input_location: input_location,
                     });
                 }
@@ -135,12 +133,8 @@ pub async fn create_func(
                 func_id: _,
             } = request.binding.clone()
             {
-                FuncAuthoringClient::create_new_auth_func(
-                    &ctx,
-                    request.name,
-                    schema_variant_id.into(),
-                )
-                .await?
+                FuncAuthoringClient::create_new_auth_func(&ctx, request.name, schema_variant_id)
+                    .await?
             } else {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
@@ -161,7 +155,7 @@ pub async fn create_func(
                     &ctx,
                     request.name,
                     LeafKind::CodeGeneration,
-                    EventualParent::SchemaVariant(schema_variant_id.into()),
+                    EventualParent::SchemaVariant(schema_variant_id),
                     &inputs,
                 )
                 .await?
@@ -186,7 +180,7 @@ pub async fn create_func(
                     &ctx,
                     request.name,
                     LeafKind::Qualification,
-                    EventualParent::SchemaVariant(schema_variant_id.into()),
+                    EventualParent::SchemaVariant(schema_variant_id),
                     &inputs,
                 )
                 .await?
@@ -203,7 +197,7 @@ pub async fn create_func(
                 FuncAuthoringClient::create_new_management_func(
                     &ctx,
                     request.name,
-                    schema_variant_id.into(),
+                    schema_variant_id,
                 )
                 .await?
             } else {
@@ -260,10 +254,8 @@ pub async fn create_func(
             ..
         } => {
             let schema_id =
-                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id.into())
-                    .await?;
-            let schema_variant =
-                SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id.into()).await?;
+                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+            let schema_variant = SchemaVariant::get_by_id_or_error(&ctx, schema_variant_id).await?;
             WsEvent::schema_variant_updated(&ctx, schema_id, schema_variant)
                 .await?
                 .publish_on_commit(&ctx)
