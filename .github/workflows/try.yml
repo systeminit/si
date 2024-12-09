@@ -7,24 +7,19 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   try:
     if: ${{  github.event.issue.pull_request && startsWith(github.event.comment.body, '/try') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
-        id: create-comment
+      - uses: peter-evans/create-or-update-comment@v4
+        id: init-comment
         with:
-          script: |
-            const { data } = await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Okay, starting a try! I\'ll update this comment when it starts...'
-            });
-            return { id: data.id };
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Okay, starting a try! I\'ll update this comment once it\'s running...\n
 
       - uses: xt0rted/pull-request-comment-branch@v2
         id: comment-branch
@@ -39,19 +34,9 @@ jobs:
           ignore_pipeline_branch_filter: true
           send_pull_request: true
 
-      - uses: actions/github-script@v7
+      - uses: peter-evans/create-or-update-comment@v4
         with:
-          script: |
-            const commentId = "${{ steps.create-comment.outputs.id }}";
-            const buildUrl = "${{ steps.run-build.outputs.url }}";
-
-            if (!commentId || !buildUrl) {
-              throw new Error("Missing comment ID or build URL.");
-            }
-
-            await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: commentId,
-              body: `🚀 [Try running here](${buildUrl})! 🚀`
-            });
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.init-comment.outputs.comment-id }}
+          body: |
+            🚀 [Try running here](${{ steps.run-build.outputs.url }})! 🚀
