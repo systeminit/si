@@ -854,7 +854,7 @@ use-cases, like:
 
 ### Management function arguments
 
-Management functions take an `Input` argument. This argument is an object which
+Management functions take an `Input` argument. This argument is an object that
 contains:
 
 - `currentView`
@@ -866,16 +866,16 @@ contains:
 
   This is the represention of the component to which the management function is
   currently running from. In this argument, is the `properties` object, and that
-  will expose `si`, `domain` and `resource` properties as well as the `geometry`
-  of the current component. The geometry is the `height`, `width`, `x` and `y`
+  will expose `si`, `domain`, and `resource` properties as well as the `geometry`
+  of the current component. The geometry is the `height`, `width`, `x`, and `y`
   coordinates for the component.
 
 - `components`
 
-  This is an object that contains all of the components that a management
+  This object contains all of the components that a management
   function is connected to, keyed by the component id. Each of these components
-  expose the component type, this is largely the schema name, the `properties`,
-  `geometry`, `parent` and an array `connections`.
+  exposes the component type, which is essentially the schema name, the `properties`,
+  `geometry`, `parent` and, an array `connections`.
 
 The entire structure of the input is:
 
@@ -1076,9 +1076,9 @@ type Output = {
 
 ### Import function example
 
-The import function is similar in it's structure to an action refresh function
+The import function is similar in structure to an action refresh function, 
 but import works on the component attribute tree rather than the resource. This
-means that the functions will make the changes to the component in a change set.
+means that the functions will change the component in a change set.
 
 ```typescript
 async function main({ thisComponent }: Input): Promise<Output> {
@@ -1175,11 +1175,11 @@ async function main({ thisComponent }: Input): Promise<Output> {
 ### Template function example
 
 A management function that creates components and the connections to them. The
-function can use inputs from the asset it is connected to and specify a number
+function can use inputs from the connected asset and specify the number
 of components to create. When creating components, the position of a component
 is relative to the position of the management component inside the current view.
 So `x: 100, y: 200` will be 100 units to the right and 200 units below the
-management component. When updating component position, the position is the
+management component. When updating the component position, the position is the
 absolute position of the component.
 
 ```typescript
@@ -1289,9 +1289,9 @@ async function main({ thisComponent, components }: Input): Promise<Output> {
 
 ### Configuring pre-existing components
 
-An asset that has a management component attached to it, can then have
+An asset with a management component attached to it can have
 `management edges` to other types of components that it is allowed to manage.
-These management edges are the component context that the function can act upon
+These management edges are the component context the function can act upon
 and allow those components to be configured.
 
 ```typescript
@@ -1343,7 +1343,7 @@ async function main({ thisComponent, components }: Input): Promise<Output> {
 
 The [System Initiative source code](https://github.com/systeminit/si) repository
 contains a program that will automatically generate schema for AWS services.
-Check out the repository, and navigate to the `bin/si-generator` directory.
+Check out the repository and navigate to the `bin/si-generator` directory.
 
 Ensure you have the [aws cli](https://aws.amazon.com/cli/) installed.
 
@@ -1353,7 +1353,7 @@ function for AWS services.
 ### Create actions
 
 Start by finding the action you want to model. For example, to model the
-deleting an AWS EC2 Key Pair, the command would be `aws ec2 create-key-pair`.
+deleting of an AWS EC2 Key Pair, the command would be `aws ec2 create-key-pair`.
 
 ```shell
 $ deno run ./main.ts create ec2 create-key-pair
@@ -1403,7 +1403,7 @@ async function main(component: Input): Promise<Output> {
 ### Delete Actions
 
 Start by finding the action you want to model. For example, to model the
-deleting an AWS EC2 Key Pair, the command would be `aws ec2 delete-key-pair`.
+deleting of an AWS EC2 Key Pair, the command would be `aws ec2 delete-key-pair`.
 
 First, see the input skeleton to the call:
 
@@ -1418,7 +1418,7 @@ $ aws ec2 delete-key-pair --generate-cli-skeleton
 
 Isolate the input path for the call - in this case, it is `KeyName`.
 
-Then find the correct path for the domain property you want to use as the
+Then, find the correct path for the domain property you want to use as the
 argument as it would be specified in the Action function - in this case, it is
 `properties.domain.KeyName`.
 
@@ -1470,7 +1470,7 @@ async function main(component: Input): Promise<Output> {
 ### Refresh functions
 
 Start by finding the action you want to model. For example, to model the
-refreshing an IAM Instance Profile, the command would be
+refreshing of an IAM Instance Profile, the command would be
 `aws iam get-instance-profile`.
 
 First, see the input skeleton to the call:
@@ -1484,11 +1484,11 @@ $ aws iam get-instance-profile --generate-cli-skeleton
 
 Isolate the input path for the call - in this case, it is `InstanceProfileName`.
 
-Then find the correct path for the domain property you want to use as the
+Then, find the correct path for the domain property you want to use as the
 argument as it would be specified in the Action function - in this case, it is
 `properties.domain.InstanceProfileName`.
 
-Examine the output of a manual call to the CLI, in order to understand the
+Examine the output of a manual call to the CLI to understand the
 output data:
 
 ```json
