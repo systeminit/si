@@ -17,7 +17,7 @@ jobs:
       - uses: peter-evans/create-or-update-comment@v4
         id: init-comment
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.issue.number }}
           body: |
             Okay, starting a try! I\'ll update this comment once it\'s running...\n
 
@@ -36,7 +36,7 @@ jobs:
 
       - uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.issue.number }}
           comment-id: ${{ steps.init-comment.outputs.comment-id }}
           body: |
             🚀 [Try running here](${{ steps.run-build.outputs.url }})! 🚀
