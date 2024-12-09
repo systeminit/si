@@ -73,8 +73,6 @@ rust_test(
     name = "test-integration",
     edition = "2021",
     deps = [
-        "//lib/audit-database:audit-database",
-        "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/dal-test:dal-test",
         "//lib/dal:dal",
         "//lib/nats-multiplexer-client:nats-multiplexer-client",
