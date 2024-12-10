@@ -8,7 +8,9 @@ export type CommandArg =
   | "outputSocket"
   | "inputSocket"
   | "schema"
-  | "action";
+  | "view"
+  | "action"
+  | "stringInput";
 
 export interface Command {
   readonly name: string;

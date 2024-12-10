@@ -22,6 +22,8 @@
           &lt;socket&gt;
         </li>
         <li>[Q]ueue a &lt;component&gt; &lt;action&gt;</li>
+        <li>[G]oto a &lt;view&gt;</li>
+        <li>[N]ew &lt;view&gt;</li>
       </ul>
     </section>
   </Modal>
@@ -75,6 +77,50 @@ class Pan implements Command {
   // eslint-disable-next-line class-methods-use-this
   factory() {
     return new Pan();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface GotoView extends Command {}
+class GotoView implements Command {
+  name = "Goto View";
+  shortcut = "G";
+  expects: CommandArg[] = ["view"];
+  constructor() {
+    this.choices = [];
+  }
+  execute() {
+    const viewId = this.choices[0]?.value;
+    if (!viewId) throw new Error("ViewId Expected");
+    viewStore.selectView(viewId);
+  }
+  // I can't make this static because the instance won't have a reference to it
+  // eslint-disable-next-line class-methods-use-this
+  factory() {
+    return new GotoView();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface NewView extends Command {}
+class NewView implements Command {
+  name = "New View";
+  shortcut = "N";
+  expects: CommandArg[] = ["stringInput"];
+  constructor() {
+    this.choices = [];
+  }
+  execute() {
+    const name = this.choices[0]?.value;
+    if (!name) throw new Error("Expected name");
+    viewStore.CREATE_VIEW(name).then((resp) => {
+      if (resp.result.success) viewStore.selectView(resp.result.data.id);
+    });
+  }
+  // I can't make this static because the instance won't have a reference to it
+  // eslint-disable-next-line class-methods-use-this
+  factory() {
+    return new NewView();
   }
 }
 
@@ -141,7 +187,13 @@ class Connect implements Command {
     return new Connect();
   }
 }
-const Commands: Command[] = [new Pan(), new Queue(), new Connect()];
+const Commands: Command[] = [
+  new Pan(),
+  new Queue(),
+  new Connect(),
+  new GotoView(),
+  new NewView(),
+];
 
 export interface ActionBindingWithPrototype extends BindingWithDisplayName {
   actionPrototypeId: NonNullable<ActionPrototypeId>;
@@ -154,6 +206,15 @@ const setDropDown = (
   const source = cmd.value?.expects[cmd.value?.choices.length];
   if (!source) dropDownOptions.value = [];
   switch (source) {
+    case "stringInput":
+      dropDownOptions.value = [];
+      break;
+    case "view":
+      dropDownOptions.value = Object.values(viewStore.viewList).map((c) => ({
+        label: c.name,
+        value: c.id,
+      }));
+      break;
     case "component":
       dropDownOptions.value = Object.values(
         componentStore.rawComponentsById,
