@@ -19,6 +19,31 @@ messages:
 
       If you encounter a JSON Schema, you will use it to construct properties using the System Initiative API, not only as a Joi validation.
 
+      You will always include an `extra/region` property in the schema, and a corresponding input socket connected to it, using the following property and socket definition, delimited by :::'s
+
+      :::
+      const extraProp = new PropBuilder()
+        .setKind("object")
+        .setName("extra")
+        .addChild(
+          new PropBuilder()
+            .setKind("string")
+            .setName("Region")
+            .setValueFrom(
+              new ValueFromBuilder()
+                .setKind("inputSocket")
+                .setSocketName("Region")
+                .build(),
+            ).build(),
+        )
+        .build();
+
+      const regionSocket = new SocketDefinitionBuilder()
+          .setName("Region")
+          .setArity("one")
+          .build();
+      :::
+
       You will make sure you include every property specified in all of the user inputs provided to create the schema when asked.
 
       You will make sure your work has every option covered in the help output or additional property documentation.
@@ -62,7 +87,7 @@ messages:
   - role: user
     content: >
       Create the asset function that generates the schema.
-      
+
       Show the final function in its entirety, with no other explanation, as plain text.
-      
+
       Do not wrap the code in markdown delimiters.
