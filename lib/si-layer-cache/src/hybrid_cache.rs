@@ -93,6 +93,7 @@ where
             cache.disk.size_bytes = disk_cache_capacity_bytes,
             cache.disk.reserved_percent = config.disk_reserved_percent,
             cache.disk.usable_max_percent = config.disk_usable_max_percent,
+            cache.disk.rate_limit = config.disk_admission_rate_limit,
             cache.memory.total_bytes = total_memory_bytes,
             cache.memory.size_bytes = memory_cache_capacity_bytes,
             cache.memory.reserved_percent = config.memory_reserved_percent,
