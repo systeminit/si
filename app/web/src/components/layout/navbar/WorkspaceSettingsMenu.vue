@@ -33,11 +33,18 @@
         label="Copy Workspace Token"
         @click="copyWorkspaceToken"
       />
+      <DropdownMenuItem
+        v-if="featureFlagsStore.SLACK_WEBHOOK"
+        icon="settings"
+        label="Workspace Integrations"
+        @click="integrationsModalRef?.open()"
+      />
     </template>
   </NavbarButton>
 
   <WorkspaceImportModal ref="importModalRef" />
   <WorkspaceExportModal ref="exportModalRef" />
+  <WorkspaceIntegrationsModal ref="integrationsModalRef" />
 </template>
 
 <script setup lang="ts">
@@ -46,16 +53,21 @@ import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import WorkspaceImportModal from "@/components/WorkspaceImportModal.vue";
 import WorkspaceExportModal from "@/components/WorkspaceExportModal.vue";
+import WorkspaceIntegrationsModal from "@/components/WorkspaceIntegrationsModal.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
+const integrationsModalRef =
+  ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
 
 const workspacesStore = useWorkspacesStore();
 const changeSetStore = useChangeSetsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 

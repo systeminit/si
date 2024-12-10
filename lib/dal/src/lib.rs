@@ -66,6 +66,7 @@ pub mod user;
 pub mod validation;
 pub mod visibility;
 pub mod workspace;
+pub mod workspace_integrations;
 pub mod workspace_snapshot;
 pub mod ws_event;
 

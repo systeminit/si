@@ -21,6 +21,7 @@ use crate::builtins::func::migrate_intrinsics_no_commit;
 use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
+use crate::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationsError};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -84,6 +85,8 @@ pub enum WorkspaceError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("workspace integration error: {0}")]
+    WorkspaceIntegration(#[from] WorkspaceIntegrationsError),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
@@ -366,6 +369,9 @@ impl Workspace {
             &serde_json::json![{ "visibility": ctx.visibility() }],
         )
         .await?;
+
+        // Create an entry in the workspace integrations table by default
+        WorkspaceIntegration::new(ctx, None).await?;
 
         Ok(workspace)
     }

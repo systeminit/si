@@ -6,6 +6,7 @@ pub mod admin;
 pub mod audit_log;
 pub mod change_set;
 pub mod func;
+pub mod integrations;
 pub mod management;
 pub mod module;
 pub mod variant;
@@ -15,6 +16,8 @@ const PREFIX: &str = "/workspaces/:workspace_id/change-sets/:change_set_id";
 
 // use this if you don't need to pass in the change_set id
 const CHANGE_SET_PREFIX: &str = "/workspaces/:workspace_id/change-sets";
+
+const INTEGRATIONS_PREFIX: &str = "/workspaces/:workspace_id";
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
@@ -26,4 +29,8 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .nest(&format!("{PREFIX}/schema-variants"), variant::v2_routes())
         .nest(&format!("{PREFIX}/management"), management::v2_routes())
         .nest(&format!("{PREFIX}/views"), view::v2_routes())
+        .nest(
+            &format!("{INTEGRATIONS_PREFIX}/integrations"),
+            integrations::v2_routes(),
+        )
 }

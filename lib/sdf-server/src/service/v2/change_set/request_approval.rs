@@ -2,7 +2,7 @@ use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use si_events::audit_log::AuditLogKind;
 
-use super::{Error, Result};
+use super::{post_to_webhook, Error, Result};
 use crate::{
     extract::{AccessBuilder, HandlerContext, PosthogClient},
     track,
@@ -14,7 +14,7 @@ pub async fn request_approval(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> Result<()> {
     let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
@@ -37,12 +37,21 @@ pub async fn request_approval(
             "change_set": change_set_id,
         }),
     );
-
     let change_set_view = ChangeSet::find(&ctx, ctx.visibility().change_set_id)
         .await?
         .ok_or(Error::ChangeSetNotFound(ctx.change_set_id()))?
         .into_frontend_type(&ctx)
         .await?;
+
+    let actor = ctx.history_actor().email(&ctx).await?;
+    let change_set_url = format!("https://{}/w/{}/{}", host_name, workspace_pk, change_set_id);
+    let message = format!(
+        "{} requested an approval of change set {}: {}",
+        actor,
+        change_set_view.name.clone(),
+        change_set_url
+    );
+    post_to_webhook(&ctx, workspace_pk, message.as_str()).await?;
 
     ctx.write_audit_log(
         AuditLogKind::RequestChangeSetApproval {

@@ -6,7 +6,12 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dal::{ChangeSetId, ChangeSetStatus, WsEventError};
+use dal::{
+    workspace_integrations::WorkspaceIntegration, ChangeSetId, ChangeSetStatus, DalContext,
+    HistoryEventError, WorkspacePk, WsEventError,
+};
+use reqwest::Client;
+use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
@@ -37,8 +42,12 @@ pub enum Error {
     DvuRootsNotEmpty(ChangeSetId),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("history event: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("permissions error: {0}")]
     Permissions(#[from] permissions::Error),
+    #[error("http error: {0}")]
+    Request(#[from] reqwest::Error),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
@@ -51,6 +60,10 @@ pub enum Error {
     Transactions(#[from] dal::TransactionsError),
     #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
+    #[error("Failed to post to webhook: {0}")]
+    Webhook(String),
+    #[error("workspace integration error: {0}")]
+    WorkspaceIntegrations(#[from] dal::workspace_integrations::WorkspaceIntegrationsError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -75,6 +88,38 @@ impl IntoResponse for Error {
 pub type ChangeSetAPIError = Error;
 
 type Result<T> = result::Result<T, Error>;
+
+#[derive(Serialize)]
+struct SlackMessage<'a> {
+    text: &'a str,
+}
+
+pub async fn post_to_webhook(
+    ctx: &DalContext,
+    _workspace_id: WorkspacePk,
+    message: &str,
+) -> Result<()> {
+    if let Some(integration) = WorkspaceIntegration::get_integrations_for_workspace_pk(ctx).await? {
+        if let Some(webhook_url) = integration.slack_webhook_url() {
+            let client = Client::new();
+            let slack_message = SlackMessage { text: message };
+
+            let response = client
+                .post(webhook_url.clone())
+                .json(&slack_message)
+                .send()
+                .await?;
+
+            if response.status().is_success() {
+                return Ok(());
+            } else {
+                return Err(Error::Webhook(webhook_url));
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub fn v2_routes(state: AppState) -> Router<AppState> {
     Router::new()

@@ -12,6 +12,7 @@ import handleStoreError from "./errors";
 import { AuthApiRequest } from ".";
 
 export type WorkspacePk = string;
+export type WorkspaceIntegrationId = string;
 
 type WorkspaceExportId = string;
 type WorkspaceExportSummary = {
@@ -39,6 +40,12 @@ export type WorkspaceImportSummary = {
   importedWorkspaceName: string;
 };
 
+export type WorkspaceIntegration = {
+  pk: WorkspaceIntegrationId;
+  workspaceId: WorkspacePk;
+  slackWebhookUrl?: string;
+};
+
 const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 
 // Note(victor): The workspace import exists outside a change set context
@@ -60,6 +67,7 @@ export const useWorkspacesStore = () => {
         importId: null as string | null,
         importLoading: false as boolean,
         importError: undefined as string | undefined,
+        integrations: null as WorkspaceIntegration | null,
       }),
       getters: {
         allWorkspaces: (state) => _.values(state.workspacesByPk),
@@ -78,6 +86,9 @@ export const useWorkspacesStore = () => {
             this.urlSelectedWorkspaceId || "",
             null,
           );
+        },
+        getIntegrations(): WorkspaceIntegration | null {
+          return this.integrations || null;
         },
       },
 
@@ -162,6 +173,46 @@ export const useWorkspacesStore = () => {
             },
           });
         },
+
+        async GET_INTEGRATIONS() {
+          if (
+            this.selectedWorkspacePk === null ||
+            this.selectedWorkspacePk === ""
+          )
+            return;
+          return new ApiRequest({
+            method: "get",
+            url: `v2/workspaces/${this.selectedWorkspacePk}/integrations`,
+            onSuccess: (response) => {
+              this.integrations = {
+                pk: response.integration.pk,
+                workspaceId: response.integration.workspace_pk,
+                slackWebhookUrl: response.integration.slack_webhook_url,
+              };
+            },
+          });
+        },
+
+        async UPDATE_INTEGRATION(
+          workspaceIntegrationId: WorkspaceIntegrationId,
+          webhookUrl: string,
+        ) {
+          if (
+            this.selectedWorkspacePk === null ||
+            this.selectedWorkspacePk === ""
+          )
+            return;
+          return new ApiRequest({
+            method: "post",
+            url: `v2/workspaces/${this.selectedWorkspacePk}/integrations/${workspaceIntegrationId}`,
+            params: {
+              slackWebhookUrl: webhookUrl,
+            },
+            onSuccess: (response) => {
+              this.integrations = response.integration;
+            },
+          });
+        },
       },
 
       onActivated() {
@@ -169,7 +220,9 @@ export const useWorkspacesStore = () => {
         watch(
           () => authStore.userIsLoggedInAndInitialized,
           (loggedIn) => {
-            if (loggedIn) this.FETCH_USER_WORKSPACES();
+            if (loggedIn) {
+              this.FETCH_USER_WORKSPACES();
+            }
           },
           { immediate: true },
         );
@@ -181,6 +234,7 @@ export const useWorkspacesStore = () => {
         watch(
           () => this.selectedWorkspacePk,
           () => {
+            this.GET_INTEGRATIONS();
             realtimeStore.subscribe(
               this.$id,
               `workspace/${this.selectedWorkspacePk}`,
