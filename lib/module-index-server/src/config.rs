@@ -181,6 +181,7 @@ impl TryFrom<ConfigFile> for Config {
         config.socket_addr(value.socket_addr);
         config.instance_id(value.instance_id);
         config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
+        config.jwt_signing_public_key_algo(value.jwt_signing_public_key_algo);
         config.posthog(value.posthog);
         config.s3(value.s3);
         config.build().map_err(Into::into)
