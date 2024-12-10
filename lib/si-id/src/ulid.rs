@@ -1,3 +1,5 @@
+//! Provides a wrapper for [`::ulid::Ulid`] for common visitor and conversion patterns.
+
 pub use ulid::DecodeError;
 pub use ulid::ULID_LEN;
 
@@ -6,18 +8,22 @@ use ulid::Ulid as CoreUlid;
 /// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;
 
+/// A wrapper around [`::ulid::Ulid`] for common visitor and conversion patterns.
 #[derive(Eq, PartialEq, Copy, Clone, Hash, Default, PartialOrd, Ord)]
 pub struct Ulid(CoreUlid);
 
 impl Ulid {
+    #[allow(missing_docs)]
     pub fn new() -> Self {
         Self(CoreUlid::new())
     }
 
+    /// Provides the inner [`::ulid::Ulid`].
     pub fn inner(&self) -> CoreUlid {
         self.0
     }
 
+    /// Constructs a [`Ulid`] from a string that represents a [`::ulid::Ulid`].
     pub fn from_string(encoded: &str) -> Result<Self, DecodeError> {
         match CoreUlid::from_string(encoded) {
             Ok(ulid) => Ok(ulid.into()),
@@ -25,6 +31,7 @@ impl Ulid {
         }
     }
 }
+
 struct UlidVisitor;
 
 impl<'de> ::serde::de::Visitor<'de> for UlidVisitor {
