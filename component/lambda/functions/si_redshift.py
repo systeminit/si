@@ -113,9 +113,19 @@ class Redshift:
         def __init__(self, redshift: 'Redshift', statement: 'ExecuteStatementOutputTypeDef'):
             self.redshift = redshift
             self.statement = statement
+            self.response = None
+            self.started_at = time.time()
+            self.last_report = None
 
         def wait_for_complete(self):
-            last_report = time.time()
+            if self.response is not None:
+                return self.response
+
+            def log_status(status: str):
+                logging.log(logging.INFO,
+                    f"Query status: {status}. (Id={self.statement['Id']}, Elapsed={time.time() - self.started_at}s)"
+                )
+                self.last_report = time.time()
 
             while True:
                 response = self._describe_statement()
@@ -123,19 +133,22 @@ class Redshift:
 
                 match status:
                     case "FINISHED":
+                        log_status(status)
+                        self.response = response
                         return response
                     case "FAILED":
+                        log_status(status)
+                        self.response = response
                         raise Exception(
                             f"Query failed: {response['Error']} (Id={self.statement['Id']})"
                         )
                     case "ABORTED":
+                        log_status(status)
+                        self.response = response
                         raise Exception(f"Query aborted (Id={self.statement['Id']})")
 
-                if time.time() - last_report >= self.redshift._report_interval_seconds:
-                    last_report = time.time()
-                    logging.log(logging.INFO,
-                        f"Query status: {status}. Waiting {self.redshift._wait_interval_seconds}s for completion... (Id={self.statement['Id']})"
-                    )
+                if time.time() - (self.last_report or self.started_at) >= self.redshift._report_interval_seconds:
+                    log_status(status)
 
                 time.sleep(self.redshift._wait_interval_seconds)
 
