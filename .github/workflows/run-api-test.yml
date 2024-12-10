@@ -111,7 +111,7 @@ jobs:
             # Check the exit code
             if [ -z "$exit_code" ]; then
               echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
-              break
+              exit 0
             fi
 
             n=$((n+1))
@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: api-test
     environment: ${{ inputs.environment }}
-    if: ${{ failure() }} && github.ref == 'refs/heads/main' }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
