@@ -106,7 +106,7 @@ if (import.meta.main) {
   clearInterval(intervalId);
   console.log("~~ FINAL REPORT GENERATED ~~");
   await printTestReport(testReport, reportFile);
-  const exitCode = testsFailed(testReport) ? 1 : 0;
+  const exitCode = testsFailed(testReport) ? 53 : 0;
   Deno.exit(exitCode);
 }
 
