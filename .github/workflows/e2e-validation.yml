@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: cypress-tests
     environment: ${{ inputs.environment }}
-    if: ${{ failure() }} && github.ref == 'refs/heads/main' }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
