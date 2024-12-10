@@ -81,7 +81,7 @@ Vulnerabilities are classified by **risk level** and **impact**:
   - Conducted phishing, vishing, smashing, or any other active user misleading.
   - Accessed data not owned by the reporter.
   - Interacted with accounts the reporter does not have explicit permission to access.
-- Bug reports must not be submitted from any sanctioned country. At the time of writing, this includes, but is not limited to, China, Cuba, the Islamic Republic Of Iran, the Democratic People's Republic Of Korea, the Russian Federation, Sudan, Syrian Arab Republic.
+- Bug reports must not be submitted from any country sanctioned by the United States. At the time of writing, this includes, but is not limited to, China, Cuba, the Islamic Republic Of Iran, the Democratic People's Republic Of Korea, the Russian Federation, Sudan, Syrian Arab Republic.
 
 ### Paying for New Zero Days
 
