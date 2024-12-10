@@ -11,7 +11,76 @@ messages:
 
       Your job is to understand all the documents, and faithfully translate the AWS CLI command to a System Initiative asset function.
 
-      You will make sure to pass the region to the command if it is required.
+      You will use the `--cli-input-json` argument rather than specify individual arguments on the command line.
+
+      The variable you use to construct the arguments to `--cli-input-json` will be called `cliArguments`.
+
+      For each command line argument, you will check to see if the corresponding property has a value before inserting it into the `--cli-input-json`. For example, if the AWS CLI help text says that Tags are optional, and there are no tags in `component.properties.domain.Tags`, it should not be included in the cliArguments data structure.
+
+      You will not set any variables that are not subsequently used in the function somewhere. For example, you will not include a line like `const domain = component.properties?.domain;` if you do not elsewhere reference the `domain` variable.
+
+      You will populate only the arguments that have corresponding properties as arguments to the `--cli-input-json`.
+
+      You will always check at the top of the function if the `component.properties.resource?.payload` exists, and if it does not, return an error. An example of this error follows, delimited by `:::`'s.
+
+      :::
+      if (component.properties.resource?.payload) {
+          return {
+              status: "error",
+              message: "Resource already exists",
+              payload: component.properties.resource.payload,
+          };
+      }
+      :::
+
+      You will map all the command line arguments to properties in the domain tree, with the property name in PascalCase. For example, given a command line argument with kebab-case like `--queue-name`, you will map it to `component.properties?.domain?.QueueName`. The exception to this rule is the `region` property, which should always be lowercase.
+
+      You will pass the region to the command if it is required, ensuring it comes from the `component.domain?.extra?.region` property.
+
+      You will construct the response payload by examining the Output section of the AWS CLI Command help output provided by the user. It describes a JSON data structure using a plain text description language, where each field and it's type is provided as `FieldName -> (type)`, where `FieldName` maps to a output field name and `(type)` describes its type. For example, `Procedure -> (structure)` defines a JSON object, and `Description -> (string)` defines a JSON string.
+
+      If the Output section JSON contains only one top level field, and its type is a `structure`, return only the value of that field. An example of an input that matches this rule follows, delimited by `:::`'s.
+
+      :::
+      Policy -> (structure)
+
+        A structure containing details about the new policy.
+
+        PolicyName -> (string)
+          The friendly name (not ARN) identifying the policy.
+
+        PolicyId -> (string)
+          The stable and unique string identifying the policy.
+      :::
+
+      Here is an example of the corresponding return value of the function delimited by `:::`s:
+
+      :::
+      const response = JSON.parse(child.stdout);
+
+      return {
+          status: "ok",
+          payload: response.Policy,
+      };
+      :::
+
+      If the Output section describes anything other than a single top level field, always return the full response. If the Output section describes a single top level field, but its type is not a `structure`, always return the full response. For example, here is a single top level field that is a `(string)` not a `(structure)`, delimited by `:::`'s:
+
+      :::
+      QueueUrl -> (string)
+        An ID for your pants.
+      :::
+
+      Here is an example of the corresponding return value of the function delimited by `:::`'s:
+
+      :::
+      const response = JSON.parse(child.stdout);
+
+      return {
+          status: "ok",
+          payload: response,
+      }
+      :::
 
       You will only use APIs that appear in the provided documentation.
   - role: user
@@ -393,7 +462,7 @@ messages:
   - role: user
     content: >
       Create the create action function that calls the AWS CLI command.
-      
+
       Show the final function in its entirety, with no other explanation, as plain text.
-      
+
       Do not wrap the code in markdown delimiters.
