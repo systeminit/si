@@ -125,7 +125,19 @@ pub(crate) struct Args {
 
     /// jwt public signing key as a base64 string
     #[arg(long)]
-    pub(crate) jwt_public_signing_key_base64: Option<SensitiveString>,
+    pub(crate) jwt_public_signing_key_base64: Option<String>,
+
+    /// jwt public signing key algorithm (ES256 or RS256)
+    #[arg(long)]
+    pub(crate) jwt_public_signing_key_algo: Option<String>,
+
+    /// jwt secondary public signing key as a base64 string
+    #[arg(long)]
+    pub(crate) jwt_secondary_public_signing_key_base64: Option<String>,
+
+    /// jwt secondary public signing key algorithm (ES256 or RS256)
+    #[arg(long)]
+    pub(crate) jwt_secondary_public_signing_key_algo: Option<String>,
 
     /// The path at which the layer db cache is created/used on disk [e.g. /banana/]
     #[arg(long)]
@@ -338,9 +350,21 @@ impl TryFrom<Args> for Config {
                     base64.to_string(),
                 );
             }
+
             if let Some(jwt) = args.jwt_public_signing_key_base64 {
-                config_map.set("jwt_signing_public_key.key_base64", jwt.to_string());
+                config_map.set("jwt_signing_public_key.key_base64", jwt);
             }
+            if let Some(algo) = args.jwt_public_signing_key_algo {
+                config_map.set("jwt_signing_public_key.algo", algo);
+            }
+
+            if let Some(jwt) = args.jwt_secondary_public_signing_key_base64 {
+                config_map.set("jwt_secondary_signing_public_key.key_base64", jwt);
+            }
+            if let Some(algo) = args.jwt_secondary_public_signing_key_algo {
+                config_map.set("jwt_secondary_signing_public_key.algo", algo);
+            }
+
             if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
                 config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
             }

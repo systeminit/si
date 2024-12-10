@@ -1,0 +1,21 @@
+[package]
+name = "si-jwt-public-key"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+si-events = { path = "../../lib/si-events-rs" }
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+base64 = { workspace = true }
+jwt-simple = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }

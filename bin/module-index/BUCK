@@ -10,6 +10,7 @@ rust_binary(
     deps = [
         "//lib/module-index-server:module-index-server",
         "//lib/si-std:si-std",
+        "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",

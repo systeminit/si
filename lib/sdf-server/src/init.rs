@@ -1,8 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 use dal::{
-    feature_flags::FeatureFlagService, jwt_key::JwtConfig, DalLayerDb, DedicatedExecutor,
-    JetstreamStreams, JobQueueProcessor, JwtPublicSigningKey, NatsProcessor, ServicesContext,
+    feature_flags::FeatureFlagService, DalLayerDb, DedicatedExecutor, JetstreamStreams,
+    JobQueueProcessor, NatsProcessor, ServicesContext,
 };
 use rebaser_client::RebaserClient;
 use si_crypto::{
@@ -11,6 +11,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_jwt_public_key::{JwtConfig, JwtPublicSigningKeyChain, JwtPublicSigningKeyError};
 use si_layer_cache::{
     db::{LayerDbConfig, LayerDbGracefulShutdown},
     LayerDb,
@@ -32,7 +33,7 @@ pub enum InitError {
     #[error("failed to initialize a dal jetstream streams: {0}")]
     DalJetstreamStreams(#[source] dal::JetstreamStreamsError),
     #[error("jwt key error")]
-    JwtKey(#[from] dal::jwt_key::JwtKeyError),
+    JwtKey(#[from] JwtPublicSigningKeyError),
     #[error("layer cache error: {0}")]
     LayerCache(#[from] si_layer_cache::LayerDbError),
     #[error("failed to initialize a nats client: {0}")]
@@ -195,9 +196,10 @@ pub(crate) async fn initialize_layer_db(
     skip_all
 )]
 pub(crate) async fn load_jwt_public_signing_key(
-    config: JwtConfig,
-) -> InitResult<JwtPublicSigningKey> {
-    Ok(JwtPublicSigningKey::from_config(config).await?)
+    primary: JwtConfig,
+    secondary: Option<JwtConfig>,
+) -> InitResult<JwtPublicSigningKeyChain> {
+    Ok(JwtPublicSigningKeyChain::from_config(primary, secondary).await?)
 }
 
 pub(crate) fn initialize_posthog(

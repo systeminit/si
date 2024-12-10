@@ -14,6 +14,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-events-rs:si-events",
+        "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-pkg:si-pkg",
         "//lib/si-runtime-rs:si-runtime",

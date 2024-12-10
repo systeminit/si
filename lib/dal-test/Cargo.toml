@@ -20,6 +20,7 @@ si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
+si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-runtime = { path = "../../lib/si-runtime-rs" }
@@ -50,5 +51,5 @@ tokio = { workspace = true }
 tokio-util = { workspace = true }
 tracing-opentelemetry = { workspace = true }
 tracing-subscriber = { workspace = true }
-ulid =  { workspace = true }
+ulid = { workspace = true }
 uuid = { workspace = true }

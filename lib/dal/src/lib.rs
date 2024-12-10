@@ -40,7 +40,6 @@ pub mod history_event;
 pub mod input_sources;
 pub mod jetstream_streams;
 pub mod job;
-pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod layer_db_types;
@@ -94,7 +93,6 @@ pub use func::{
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jetstream_streams::{JetstreamStreams, JetstreamStreamsError};
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
-pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use prop::{Prop, PropId, PropKind};
