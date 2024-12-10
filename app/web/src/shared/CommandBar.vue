@@ -219,9 +219,10 @@ const runGo = async () => {
   }
 };
 
-const input = (event?: Event) => {
+const input = (event?: KeyboardEvent) => {
   event?.preventDefault();
   const str = commandInput.value;
+  const numChoices = lastCmd.value?.choices.length ?? 0;
 
   // am i setting a choice for an arg?
   if (lastCmd.value) {
@@ -233,7 +234,12 @@ const input = (event?: Event) => {
       if (!maybeDone.value) {
         props.setDropDown(lastCmd, dropDownOptions);
       }
-    } else if (lastCmd.value.expects.length !== lastCmd.value.choices.length) {
+    } else if (lastCmd.value.expects.at(numChoices) === "stringInput") {
+      // typing free text, not a dropdown choice
+      if (event?.key === "Enter") {
+        if (str) lastCmd.value.choices.push({ label: str, value: str });
+      }
+    } else if (lastCmd.value.expects.length !== numChoices) {
       let choice = dropDownOptions.value.find((o) => o.label === str);
       if (!choice) choice = dropDownOptions.value.find((o) => o.value === str);
       if (choice) lastCmd.value.choices.push(structuredClone(choice));
