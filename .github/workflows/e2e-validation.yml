@@ -95,7 +95,7 @@ jobs:
 
             # Run the npx task and store exit code in a variable
             npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**" || exit_code=$?
-            
+
             # Check the exit code
             if [ -z "$exit_code" ]; then
               echo "Cypress Test task succeeded!"
@@ -113,7 +113,7 @@ jobs:
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: cypress-recordings-run-${{ matrix.tests }}
           path: app/web/cypress/videos/**/*.mp4
@@ -126,24 +126,42 @@ jobs:
   on-failure:
     runs-on: ubuntu-latest
     needs: cypress-tests
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    environment: ${{ inputs.environment }}
+    if: ${{ failure() }} && github.ref == 'refs/heads/main' }}
     steps:
-      - run: |
-          curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
-            --header "Content-Type: application/json" \
-            --data "{
-              \"summary\": \"E2E ${{ inputs.environment }} Tests Fail\",
-              \"body\": \"E2E Tests have failed for ${{ inputs.environment }}.\",
-              \"links\": [
-                {
-                  \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
-                  \"text\": \"E2E Test Run ${{ inputs.environment }}\"
-                }
-              ],
-              \"tags\": [
-                \"service:github\"
-              ]
-            }"
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: |     
+          has_artifacts=false
+          # Check for marker files
+          for marker in artifacts/*/*.mp4; do
+            if [ -f "$marker" ]; then
+              echo "Artifact detected for failed test: $marker"
+              echo "Setting failure to true and breaking"
+              has_artifacts=true
+              break
+            fi
+          done
+          # If at least one valid failure marker is present, then page
+          if [ "$has_artifacts" = true ]; then
+            curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
+              --header "Content-Type: application/json" \
+              --data "{
+                \"summary\": \"E2E ${{ inputs.environment }} Tests Fail\",
+                \"body\": \"E2E Tests have failed for ${{ inputs.environment }}.\",
+                \"links\": [
+                  {
+                    \"href\": \"https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID\",
+                    \"text\": \"E2E Test Run ${{ inputs.environment }}\"
+                  }
+                ],
+                \"tags\": [
+                  \"service:github\"
+                ]
+              }"
+          fi
 
       - run: |
           curl -X POST \
