@@ -125,7 +125,7 @@ jobs:
           fi
 
           echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
-          exit "$last_exit_code"
+          exit "$exit_code"
 
       - name: Upload artifact if exit code 53
         if: ${{ failure() && env.last_exit_code == '53' }}
