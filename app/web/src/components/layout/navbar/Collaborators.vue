@@ -49,7 +49,7 @@
         @click="openMoreUsersPopover"
       >
         <div class="text-center w-full font-bold">
-          <template v-if="moreUsersNumber < 10000"
+          <template v-if="moreUsersNumber < 100"
             >+{{ moreUsersNumber }}</template
           >
           <template v-else>+</template>
@@ -121,7 +121,17 @@ export type UserInfo = {
 const moreUsersPopoverRef = ref();
 const moreUsersButtonRef = ref();
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const testUsers = (amount = 10) => {
+  return Array.from(Array(amount).keys()).map((i) => ({
+    name: `test user ${i}`,
+  }));
+};
+
 const users = computed<UserInfo[]>(() => {
+  // Uncomment this line when you need to see users in the Collaborators widget for testing
+  // return testUsers();
+
   const list = [] as UserInfo[];
   for (const user of _.values(presenceStore.usersById)) {
     list.push({
@@ -217,7 +227,6 @@ const moreUsersTooltip = computed(() => {
 });
 
 const width = computed(() => {
-  windowResizeHandler();
   if (showOneIcon.value || sortedUsers.value.length === 1) {
     return "w-8";
   } else if (sortedUsers.value.length < 3) {
@@ -233,22 +242,21 @@ const openMoreUsersPopover = () => {
   moreUsersPopoverRef.value.open();
 };
 
-const showOneIcon = ref(false);
+const windowWidth = ref(window.innerWidth);
 
 const windowResizeHandler = () => {
-  if (window.innerWidth < 900) {
-    showOneIcon.value = true;
-  } else {
-    showOneIcon.value = false;
-  }
+  windowWidth.value = window.innerWidth;
 };
 
 onMounted(() => {
+  windowResizeHandler();
   window.addEventListener("resize", windowResizeHandler);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("resize", windowResizeHandler);
 });
+
+const showOneIcon = computed(() => windowWidth.value < 700);
 
 const filterString = ref("");
 const filterStringCleaned = computed(() => {

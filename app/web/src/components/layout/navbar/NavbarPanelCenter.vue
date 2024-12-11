@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center justify-center place-items-center mx-auto h-full flex-none"
+    class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
   >
     <NavbarButton
       tooltipText="Model"

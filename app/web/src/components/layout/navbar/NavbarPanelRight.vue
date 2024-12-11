@@ -1,28 +1,48 @@
 <template>
-  <div class="flex items-center justify-end h-full flex-1 min-w-0">
+  <div
+    class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end overflow-hidden"
+  >
     <Collaborators />
 
-    <NavbarButton
-      tooltipText="Documentation"
-      icon="question-circle"
-      externalLinkTo="https://docs.systeminit.com/"
-    />
+    <template v-if="!collapse">
+      <NavbarButton
+        tooltipText="Documentation"
+        icon="question-circle"
+        externalLinkTo="https://docs.systeminit.com/"
+      />
 
-    <NavbarButton
-      tooltipText="Discord Community"
-      icon="logo-discord"
-      externalLinkTo="https://discord.gg/system-init"
-    />
+      <NavbarButton
+        tooltipText="Discord Community"
+        icon="logo-discord"
+        externalLinkTo="https://discord.gg/system-init"
+      />
 
-    <WorkspaceSettingsMenu />
+      <WorkspaceSettingsMenu />
+    </template>
 
-    <ProfileButton />
+    <ProfileButton :showTopLevelMenuItems="collapse" />
   </div>
 </template>
 
 <script lang="ts" setup>
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
 import ProfileButton from "./ProfileButton.vue";
+
+const windowWidth = ref(window.innerWidth);
+const collapse = computed(() => windowWidth.value < 850);
+
+const windowResizeHandler = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+  windowResizeHandler();
+  window.addEventListener("resize", windowResizeHandler);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", windowResizeHandler);
+});
 </script>

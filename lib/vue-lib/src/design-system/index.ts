@@ -37,6 +37,7 @@ export { default as Tiles } from "./layout/Tiles.vue";
 export { default as DropdownMenu } from "./menus/DropdownMenu.vue";
 export type { DropdownMenuItemObjectDef } from "./menus/DropdownMenu.vue";
 export { default as DropdownMenuItem } from "./menus/DropdownMenuItem.vue";
+export { default as DropdownMenuButton } from "./menus/DropdownMenuButton.vue";
 
 // ./modals
 export { default as Modal } from "./modals/Modal.vue";

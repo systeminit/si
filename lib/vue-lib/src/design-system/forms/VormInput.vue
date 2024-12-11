@@ -337,9 +337,9 @@ type OptionsAsObjectWithLabels = Record<
   { label: string; [key: string]: any }
 >;
 type OptionsAsSimpleArray = string[];
-type OptionsAsArray = { value: any; label: string }[];
+export type OptionsAsArray = { value: any; label: string }[];
 type OptionsAsNestedArrays = Record<string, OptionsAsArray>;
-type InputOptions =
+export type InputOptions =
   | OptionsAsSimpleObject
   | OptionsAsObjectWithLabels
   | OptionsAsSimpleArray

@@ -1,55 +1,72 @@
 <template>
-  <div>
-    <div class="flex gap-xs items-end">
-      <div>
-        <div
-          class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
-        >
-          CHANGE SET:
-        </div>
-        <VormInput
-          ref="dropdownRef"
-          :modelValue="selectedChangeSetId"
-          :options="changeSetDropdownOptions"
-          class="flex-grow font-bold mb-[-1px]"
-          noLabel
-          placeholder="-- select a change set --"
-          size="xs"
-          type="dropdown"
-          @update:model-value="onSelectChangeSet"
-        />
+  <div class="flex flex-row gap-xs items-end flex-1 min-w-[172px] max-w-fit">
+    <label class="flex flex-col flex-1 min-w-0 max-w-fit">
+      <div
+        class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap"
+      >
+        CHANGE SET:
       </div>
+      <DropdownMenuButton
+        ref="dropdownMenuRef"
+        v-model="selectedChangeSetId"
+        :options="changeSetSearchFilteredOptions"
+        :search="changeSetDropdownOptions.length > 20"
+        placeholder="-- select a change set --"
+        checkable
+        variant="navbar"
+        @select="onSelectChangeSet"
+      >
+        <template #afterOptions>
+          <DropdownMenuItem
+            label="Create New Change Set"
+            icon="plus"
+            disableCheckable
+            @select="
+              () => {
+                onSelectChangeSet('NEW');
+              }
+            "
+          />
+        </template>
+        <DropdownMenuItem
+          v-if="changeSetSearchFilteredOptions.length === 0"
+          label="No Change Sets Match Your Search"
+          header
+        />
+      </DropdownMenuButton>
+    </label>
 
-      <VButton
-        v-tooltip="{
-          content: 'Create Change Set',
-        }"
-        icon="git-branch-plus"
-        size="sm"
-        tone="action"
-        variant="ghost"
-        @click="openCreateModal"
-      />
+    <VButton
+      v-tooltip="{
+        content: 'Create Change Set',
+      }"
+      icon="git-branch-plus"
+      size="sm"
+      tone="action"
+      variant="ghost"
+      class="flex-none"
+      @click="openCreateModal"
+    />
 
-      <VButton
-        v-tooltip="{
-          content: 'Abandon Change Set',
-        }"
-        :disabled="
-          !selectedChangeSetName ||
-          changeSetsStore.headSelected ||
-          changeSetsStore.creatingChangeSet ||
-          (featureFlagsStore.REBAC &&
-            changeSetsStore.selectedChangeSet?.status ===
-              ChangeSetStatus.NeedsApproval)
-        "
-        icon="trash"
-        size="sm"
-        tone="action"
-        variant="ghost"
-        @click="openApprovalFlowModal"
-      />
-    </div>
+    <VButton
+      v-tooltip="{
+        content: 'Abandon Change Set',
+      }"
+      :disabled="
+        !selectedChangeSetName ||
+        changeSetsStore.headSelected ||
+        changeSetsStore.creatingChangeSet ||
+        (featureFlagsStore.REBAC &&
+          changeSetsStore.selectedChangeSet?.status ===
+            ChangeSetStatus.NeedsApproval)
+      "
+      icon="trash"
+      size="sm"
+      tone="action"
+      variant="ghost"
+      class="flex-none"
+      @click="openApprovalFlowModal"
+    />
 
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
@@ -71,6 +88,7 @@
             regexMessage="You cannot name a change set 'HEAD' - please choose another name."
             required
             requiredMessage="Please choose a name for your change set!"
+            @enterPressed="onCreateChangeSet"
           />
           <div class="flex flex-row-reverse gap-sm">
             <VButton
@@ -87,7 +105,6 @@
         </Stack>
       </form>
     </Modal>
-
     <ApprovalFlowModal
       ref="approvalFlowModalRef"
       votingKind="abandon"
@@ -107,6 +124,8 @@ import {
   Stack,
   Modal,
   useValidatedInputGroup,
+  DropdownMenuButton,
+  DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
@@ -118,7 +137,6 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
 const featureFlagsStore = useFeatureFlagsStore();
-const dropdownRef = ref();
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
@@ -127,11 +145,28 @@ const selectedChangeSetName = computed(
   () => changeSetsStore.selectedChangeSet?.name,
 );
 
+const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
+
 const changeSetDropdownOptions = computed(() => {
-  return [
+  const options = [
     ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
-    { value: "NEW", label: "+ Create new change set" },
+    // { value: "NEW", label: "+ Create new change set" },
   ];
+  return options;
+});
+
+const changeSetSearchFilteredOptions = computed(() => {
+  const searchString = dropdownMenuRef.value?.searchString;
+
+  if (!searchString || searchString === "") {
+    return changeSetDropdownOptions.value;
+  }
+
+  return changeSetDropdownOptions.value.filter(
+    (option) =>
+      option.label.toLocaleLowerCase().includes(searchString) ||
+      option.value.toLocaleLowerCase().includes(searchString),
+  );
 });
 
 const router = useRouter();
@@ -219,7 +254,6 @@ async function onCreateChangeSet() {
   const createReq = await changeSetsStore.CREATE_CHANGE_SET(
     createChangeSetName.value,
   );
-  createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
 
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later

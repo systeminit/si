@@ -1,37 +1,22 @@
 <template>
   <div class="p-xs flex flex-col gap-xs w-full">
-    <div class="flex flex-row gap-2xs">
-      <VormInput
-        :modelValue="selectedManagedSchemaId"
-        placeholder="Pick an asset to manage"
-        size="sm"
-        noLabel
-        placeholderSelectable
-        type="dropdown"
-        :disabled="props.disabled"
-        :options="schemaOptions"
-        @update:model-value="(newVal: string) => (selectedManagedSchemaId = newVal)"
-      />
-
-      <IconButton
-        icon="plus"
-        class="mt-2xs"
-        size="sm"
-        iconTone="action"
-        :disabled="props.disabled"
-        @click="addSchema"
-      />
-    </div>
-
-    <ul v-if="binding?.managedSchemas">
+    <DropdownMenuButton
+      placeholder="Pick an asset to manage"
+      :disabled="props.disabled"
+      :options="schemaOptions"
+      @select="addSchema"
+    />
+    <ul v-if="binding?.managedSchemas && binding.managedSchemas.length > 0">
       <li
         v-for="schemaId in binding.managedSchemas"
         :key="schemaId"
         class="flex flex-row items-center content-center gap-2xs mt-1"
       >
-        <p class="grow text-neutral-700 type-bold-sm dark:text-neutral-50 ml-2">
+        <TruncateWithTooltip
+          class="grow text-neutral-700 type-bold-sm dark:text-neutral-50 ml-2"
+        >
           {{ schemaNameMap[schemaId] ?? schemaId }}
-        </p>
+        </TruncateWithTooltip>
         <IconButton
           icon="trash"
           size="sm"
@@ -48,7 +33,11 @@
 import * as _ from "lodash-es";
 import { ref, watch, computed, toRaw } from "vue";
 import { storeToRefs } from "pinia";
-import { IconButton, VormInput } from "@si/vue-lib/design-system";
+import {
+  DropdownMenuButton,
+  IconButton,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import { Option } from "@/components/SelectMenu.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -66,8 +55,6 @@ const props = defineProps<{
   schemaVariantId: SchemaVariantId;
   disabled?: boolean;
 }>();
-
-const selectedManagedSchemaId = ref("");
 
 const schemaNameMap = ref<{ [key: string]: string }>({});
 
@@ -120,13 +107,13 @@ const schemaOptions = computed(() => {
   return filteredOptions;
 });
 
-const addSchema = async () => {
+const addSchema = async (selectedManagedSchemaId: string) => {
   if (binding.value) {
     const updated_binding = structuredClone(toRaw(binding.value));
     if (!updated_binding.managedSchemas) {
       updated_binding.managedSchemas = [];
     }
-    updated_binding.managedSchemas.push(selectedManagedSchemaId.value);
+    updated_binding.managedSchemas.push(selectedManagedSchemaId);
     await funcStore.UPDATE_BINDING(props.funcId, [updated_binding]);
   }
 };

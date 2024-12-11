@@ -107,7 +107,10 @@
       <p>
         Thanks for contributing! We will review your contribution, and reach out
         via email or on our
-        <a class="text-action-500" href="https://discord.com/invite/system-init"
+        <a
+          class="text-action-500"
+          href="https://discord.com/invite/system-init"
+          target="_blank"
           >Discord Server</a
         >
         if you have any questions.
