@@ -309,6 +309,7 @@ import {
   NODE_TITLE_HEADER_MARGIN_RIGHT as NODE_HEADER_MARGIN_RIGHT,
   NODE_HEADER_HEIGHT,
   NODE_HEADER_TEXT_HEIGHT,
+  NODE_WIDTH,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -413,8 +414,13 @@ const nodeHeight = computed(() => NODE_HEADER_HEIGHT + nodeBodyHeight.value);
 
 const parentComponentId = computed(() => props.node.def.parentId);
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const position = computed(() => viewStore.components[props.node.def.id]!);
+const position = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const r = viewStore.components[props.node.def.id]!;
+  r.width = Math.max(r.width, NODE_WIDTH);
+  r.height = Math.max(r.height, NODE_WIDTH);
+  return r;
+});
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.node.def.color || DEFAULT_NODE_COLOR);
