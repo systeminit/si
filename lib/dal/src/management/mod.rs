@@ -32,6 +32,7 @@ use crate::{
 };
 use crate::{EdgeWeightKind, WorkspaceSnapshotError};
 
+pub mod generator;
 pub mod prototype;
 
 #[derive(Debug, Error)]
