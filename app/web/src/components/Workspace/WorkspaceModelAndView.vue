@@ -15,6 +15,7 @@
     <component
       :is="ResizablePanel"
       ref="leftResizablePanelRef"
+      :defaultSize="320"
       :minSize="250"
       rememberSizeKey="change-set-and-asset"
       side="left"
@@ -64,10 +65,11 @@
       :is="ResizablePanel"
       ref="rightResizablePanelRef"
       class="h-full"
-      :defaultSize="400"
+      :defaultSize="320"
       :minSize="320"
       rememberSizeKey="details-panel"
       side="right"
+      @sizeSet="rightPanelSize"
     >
       <div class="h-full overflow-hidden relative">
         <EdgeDetailsPanel
@@ -159,6 +161,10 @@ const rightResizablePanelRef = ref();
 
 const leftPanelSize = (size: number) => {
   presenceStore.leftResizePanelWidth = size;
+};
+
+const rightPanelSize = (size: number) => {
+  presenceStore.rightResizePanelWidth = size;
 };
 
 const drawerLeftPos = computed(() => {

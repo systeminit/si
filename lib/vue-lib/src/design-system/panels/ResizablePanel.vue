@@ -137,6 +137,12 @@ const props = defineProps({
   defaultSubpanelSplit: { type: Number, default: 0.5 },
 });
 
+const APP_MINIMUM_WIDTH = 650;
+const getWindowWidth = () => {
+  if (window.innerWidth > APP_MINIMUM_WIDTH) return window.innerWidth;
+  else return APP_MINIMUM_WIDTH;
+};
+
 const isTopOrBottom = computed(
   () => props.side === "top" || props.side === "bottom",
 );
@@ -161,7 +167,7 @@ const setSize = (newSize: number) => {
   }
   if (props.minSizeRatio) {
     const limit =
-      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
+      (isTopOrBottom.value ? window.innerHeight : getWindowWidth()) *
       props.minSizeRatio;
     if (finalSize < limit) finalSize = limit;
   }
@@ -171,7 +177,7 @@ const setSize = (newSize: number) => {
   }
   if (props.maxSizeRatio) {
     const limit =
-      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
+      (isTopOrBottom.value ? window.innerHeight : getWindowWidth()) *
       props.maxSizeRatio;
 
     if (finalSize > limit) finalSize = limit;
@@ -197,7 +203,7 @@ const maximize = () => {
     setSize(props.maxSize);
   } else if (props.maxSizeRatio) {
     const limit =
-      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
+      (isTopOrBottom.value ? window.innerHeight : getWindowWidth()) *
       props.maxSizeRatio;
     setSize(limit);
   }

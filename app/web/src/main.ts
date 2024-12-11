@@ -23,6 +23,8 @@ import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
+export const APP_MINIMUM_WIDTH = 650;
+
 const { envVariables } = getProjectEnvVariables();
 
 let otelEndpoint =

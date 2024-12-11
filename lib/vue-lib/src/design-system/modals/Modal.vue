@@ -79,7 +79,7 @@
                   <VButton
                     tone="destructive"
                     buttonRank="tertiary"
-                    icon="trash"
+                    icon="x"
                     label="Cancel"
                     variant="ghost"
                     size="xs"

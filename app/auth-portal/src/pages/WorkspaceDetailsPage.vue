@@ -111,7 +111,12 @@
             :requestStatus="
               createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
             "
-            class="basis-[calc(75%-0.5rem)] flex-grow-0"
+            :class="
+              clsx(
+                'basis-[calc(75%-0.5rem)]',
+                createMode ? 'flex-grow' : 'flex-grow-0',
+              )
+            "
             iconRight="chevron--right"
             tone="action"
             variant="solid"

@@ -1,40 +1,59 @@
 <template>
-  <div class="flex flex-1 items-center select-none">
+  <div
+    class="flex flex-row flex-1 basis-1/2 items-center min-w-[340px] h-full overflow-hidden"
+  >
     <SiLogo class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none" />
 
-    <label>
+    <label class="flex flex-col flex-1 min-w-0 max-w-fit">
       <div
         class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
       >
         WORKSPACE:
       </div>
-      <VormInput
+      <DropdownMenuButton
+        ref="dropdownMenuRef"
         v-model="selectedWorkspacePk"
-        class="flex-grow font-bold"
-        size="xs"
-        type="dropdown"
-        noLabel
-        :options="workspaceDropdownOptions"
+        :options="searchFilteredWorkspaceDropdownOptions"
+        :search="workspaceDropdownOptions.length > 20"
         placeholder="-- select a workspace --"
-        @change="updateRoute"
-      />
+        checkable
+        variant="navbar"
+        @select="updateRoute"
+      >
+        <DropdownMenuItem
+          v-if="searchFilteredWorkspaceDropdownOptions.length === 0"
+          label="No Workspaces Match Your Search"
+          header
+        />
+      </DropdownMenuButton>
     </label>
 
-    <Icon name="chevron--right" size="xs" tone="neutral" class="mt-[14px]" />
+    <Icon
+      name="chevron--right"
+      size="xs"
+      tone="neutral"
+      class="mt-[14px] flex-none"
+    />
 
-    <ChangeSetPanel class="max-w-[50%]" />
+    <ChangeSetPanel />
   </div>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
-import { Icon, VormInput } from "@si/vue-lib/design-system";
+import {
+  DropdownMenuButton,
+  DropdownMenuItem,
+  Icon,
+} from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 
 const workspacesStore = useWorkspacesStore();
+
+const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
 const selectedWorkspacePk = ref<string | null>(null);
 watch(
@@ -45,7 +64,10 @@ watch(
   { immediate: true },
 );
 
-const updateRoute = () => {
+const updateRoute = (newWorkspacePk: string) => {
+  if (selectedWorkspacePk.value === newWorkspacePk) return;
+
+  selectedWorkspacePk.value = newWorkspacePk;
   window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/workspaces/${
     selectedWorkspacePk.value
   }/go`;
@@ -57,4 +79,18 @@ const workspaceDropdownOptions = computed(() =>
     label: w.displayName,
   })),
 );
+
+const searchFilteredWorkspaceDropdownOptions = computed(() => {
+  const searchString = dropdownMenuRef.value?.searchString;
+
+  if (!searchString || searchString === "") {
+    return workspaceDropdownOptions.value;
+  }
+
+  return workspaceDropdownOptions.value.filter(
+    (option) =>
+      option.label.toLocaleLowerCase().includes(searchString) ||
+      option.value.toLocaleLowerCase().includes(searchString),
+  );
+});
 </script>

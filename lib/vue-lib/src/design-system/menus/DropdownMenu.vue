@@ -10,7 +10,7 @@
           'flex flex-col',
           variant === 'editor'
             ? 'rounded border border-neutral-600 min-w-[164px]'
-            : 'p-2xs outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
+            : 'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
           isRepositioning && 'opacity-0',
         )
       "
@@ -25,8 +25,10 @@
         dropdownMenuSearch
         :allFilter="{ name: 'All Views' }"
         :filters="searchFilters"
-        @click.stop
+        @click.stop="selectSearch"
+        @blur="deselectSearch"
         @search="onSearch"
+        @clearSearch="onSearch('')"
       />
       <div
         ref="scrollDivRef"
@@ -146,6 +148,7 @@ const props = defineProps({
 
   maxWidth: { type: Number, default: 280 }, // change this to adjust the maximum width of the DropdownMenu
   matchWidthToAnchor: { type: Boolean }, // forces the width of the menu to match the anchorTo element's width
+  minWidthToAnchor: { type: Boolean }, // forces the width of the menu to match or be bigger than the anchorTo element's width
 });
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -271,6 +274,10 @@ function finishOpening() {
 function close(shouldNotClose = false, closeRecursively = true) {
   if (shouldNotClose) return;
   isOpen.value = false;
+  if (oneTimeCloseListener.value) {
+    window.removeEventListener("click", oneTimeCloseListener.value);
+    oneTimeCloseListener.value = undefined;
+  }
   stopListening();
   clearPositioningData();
   emit("onClose");
@@ -282,7 +289,6 @@ function close(shouldNotClose = false, closeRecursively = true) {
   ) {
     (props.anchorTo as SubmenuParent).close();
   }
-  // TODO: could return focus to the menu button (if one exists)
 }
 function closeOnResizeOrScroll(e: Event) {
   // because a scroll event in the DiagramOutline can be a side effect of opening the editor right click menu
@@ -394,15 +400,36 @@ function readjustMenuPosition() {
   }
 }
 
-const computedStyle = computed(() => ({
+const APP_MINIMUM_WIDTH = 650;
+const getWindowWidth = () => {
+  if (window.innerWidth > APP_MINIMUM_WIDTH) return window.innerWidth;
+  else return APP_MINIMUM_WIDTH;
+};
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+const computedStyle: Object = computed(() => ({
   ...(hAlign.value === "left" && { left: `${posX.value}px` }),
   ...(hAlign.value === "right" && { right: `${posX.value}px` }),
   ...(vAlign.value === "below" && { top: `${posY.value}px` }),
   ...(vAlign.value === "above" && { bottom: `${posY.value}px` }),
   ...(menuHeight.value && { maxHeight: `${menuHeight.value}px` }),
-  ...(props.matchWidthToAnchor && anchorEl.value
-    ? { width: `${anchorEl.value.getBoundingClientRect().width}px` }
-    : { maxWidth: `${props.maxWidth}px` }),
+  ...(props.matchWidthToAnchor &&
+    anchorEl.value && {
+      width: `${anchorEl.value.getBoundingClientRect().width}px`,
+    }),
+  ...(props.minWidthToAnchor &&
+    anchorEl.value && {
+      minWidth: `${anchorEl.value.getBoundingClientRect().width}px`,
+      maxWidth: `${Math.min(
+        getWindowWidth() -
+          anchorEl.value.getBoundingClientRect().left -
+          MENU_EDGE_BUFFER,
+        getWindowWidth() / 2,
+      )}px`, // the maximum width of a dropdown menu with this setting is half of the browser window width
+    }),
+  ...(!props.matchWidthToAnchor &&
+    !props.minWidthToAnchor &&
+    anchorEl.value && { maxWidth: `${props.maxWidth}px` }),
 }));
 
 // Event handling //////////////////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +440,23 @@ function startListening() {
   window.addEventListener("resize", closeOnResizeOrScroll);
   window.addEventListener("scroll", closeOnResizeOrScroll, true);
 }
+
+const oneTimeCloseListener = ref<undefined | (() => void)>(undefined);
+const createOneTimeCloseListener = (noCloseOnClick: boolean) => {
+  return () => {
+    close(noCloseOnClick);
+  };
+};
 function onWindowMousedown(e: MouseEvent) {
+  if (
+    e.target &&
+    e.target instanceof Element &&
+    e.target.closest(".siSearchRoot")
+  ) {
+    // do not close the Dropdown if you click on the search bar!
+    return;
+  }
+
   if (
     e.target instanceof Element &&
     e.target.getAttribute("role") === "menuitem"
@@ -422,19 +465,17 @@ function onWindowMousedown(e: MouseEvent) {
     return;
   } else if (
     e.target instanceof Element &&
-    internalRef.value?.contains(e.target)
+    internalRef.value?.contains(e.target) &&
+    !oneTimeCloseListener.value
   ) {
     // then detect clicks on one of this menu's children and respond accordingly
     const noCloseOnClick = Boolean(
       e.target.getAttribute("data-no-close-on-click"),
     );
-    window.addEventListener(
-      "click",
-      () => {
-        close(noCloseOnClick);
-      },
-      { once: true },
-    );
+    oneTimeCloseListener.value = createOneTimeCloseListener(noCloseOnClick);
+    window.addEventListener("click", oneTimeCloseListener.value, {
+      once: true,
+    });
   } else if (!(props.submenu && e.target === props.anchorTo?.$el)) {
     // finally, close this menu unless it is a submenu and the element being clicked is the parent
     close();
@@ -450,6 +491,12 @@ function onKeyboardEvent(e: KeyboardEvent) {
     if (focusedItemIndex.value === undefined) focusedItemIndex.value = 0;
     else focusedItemIndex.value += 1;
     e.preventDefault();
+  }
+
+  if (searchSelected.value) {
+    if (e.key === "Escape") {
+      deselectSearch();
+    }
   } else if (e.key === "Enter" || e.key === " ") {
     // TODO(WENDY) - how does this part conflict with using the search bar?
     focusedItemEl.value.click();
@@ -521,7 +568,20 @@ function onSearch(searchString: string) {
 const searchFilteringActive = computed(
   () => siSearchRef.value?.filteringActive,
 );
-const searchActiveFilters = computed(() => siSearchRef.value?.activeFilters);
+const searchActiveFilters = computed(
+  () => siSearchRef.value?.activeFilters || [],
+);
+
+const searchSelected = ref(false);
+const selectSearch = () => {
+  searchSelected.value = true;
+};
+const deselectSearch = () => {
+  if (siSearchRef.value) {
+    siSearchRef.value.clearSearch();
+  }
+  searchSelected.value = false;
+};
 
 // this is what is exposed to the component usign this component (via template ref)
 defineExpose({

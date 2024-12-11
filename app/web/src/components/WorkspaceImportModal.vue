@@ -34,15 +34,9 @@
               required
               requiredMessage="Select a workspace to continue"
               type="dropdown"
-            >
-              <VormInputOption
-                v-for="item in exportsList"
-                :key="item.id"
-                :value="item.id"
-              >
-                {{ item.name }} ({{ item.createdAt }})
-              </VormInputOption>
-            </VormInput>
+              :disabled="workspaceImportOptions.length < 1"
+              :options="workspaceImportOptions"
+            />
           </template>
           <template v-else-if="loadExportsReqStatus.isPending">
             <VormInput label="Select workspace" type="container">
@@ -267,7 +261,6 @@ import {
   Stack,
   VButton,
   VormInput,
-  VormInputOption,
   useModal,
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
@@ -454,6 +447,15 @@ const blockExit = computed(() => {
     importReqStatus.value.isSuccess ||
     workspaceStore.importLoading
   );
+});
+
+const workspaceImportOptions = computed(() => {
+  if (!exportsList.value) return [];
+
+  return exportsList.value.map((item) => ({
+    value: item.id,
+    label: `${item.name} ${item.createdAt}`,
+  }));
 });
 
 defineExpose({ open, close });

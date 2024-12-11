@@ -4,7 +4,14 @@ overflow hidden */
 <template>
   <div
     :style="{
-      marginLeft: presenceStore.leftResizePanelWidth === 0 ? '0' : '230px', // related to left panel drawer
+      marginLeft:
+        presenceStore.leftResizePanelWidth === 0
+          ? '0'
+          : `${LEFT_PANEL_DRAWER_WIDTH}px`, // related to left panel drawer
+      marginRight:
+        presenceStore.rightResizePanelWidth === 0
+          ? '0'
+          : `${LEFT_PANEL_DRAWER_WIDTH}px`, // related to left panel drawer, balance the diagram
     }"
     class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
   >
@@ -360,6 +367,8 @@ import DiagramHelpModal from "./DiagramHelpModal.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 import DiagramView from "./DiagramView.vue";
+
+const LEFT_PANEL_DRAWER_WIDTH = 230;
 
 const route = useRoute();
 const toast = useToast();

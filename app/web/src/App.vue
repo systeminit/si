@@ -28,7 +28,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
@@ -42,6 +42,7 @@ import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import CachedAppNotification from "./components/CachedAppNotification.vue";
+import { APP_MINIMUM_WIDTH } from "./main";
 
 // this TS magic means that when you call Object.entries
 // the "key" will retain its type and will not just be defaulted to "string"
@@ -60,12 +61,32 @@ useCustomFontsLoadedProvider();
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
 
+// watch the window size to enforce minimum window width
+const windowWidth = ref(window.innerWidth);
+const windowSizeClasses = computed(() =>
+  windowWidth.value < APP_MINIMUM_WIDTH
+    ? `min-w-[${APP_MINIMUM_WIDTH}px] overflow-x-auto`
+    : "",
+);
+
+const windowResizeHandler = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+  windowResizeHandler();
+  window.addEventListener("resize", windowResizeHandler);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", windowResizeHandler);
+});
+
 useHead(
   computed(() => ({
     bodyAttrs: {
       // add some base classes we need these type classes set for capsize plugin to work throughout
       // and add dark mode style/class
-      class: tw`font-sans text-base leading-none ${rootTheme.value}`,
+      class: tw`font-sans text-base leading-none ${rootTheme.value} ${windowSizeClasses.value}`,
     },
     htmlAttrs: {
       style: `color-scheme: ${rootTheme.value};`,

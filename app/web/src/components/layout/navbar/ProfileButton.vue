@@ -14,6 +14,12 @@
         />
         <SiArrow :nudge="open || hovered" class="ml-1" />
       </div>
+
+      <template v-if="showTopLevelMenuItems">
+        <WorkspaceImportModal ref="importModalRef" />
+        <WorkspaceExportModal ref="exportModalRef" />
+        <WorkspaceIntegrationsModal ref="integrationsModalRef" />
+      </template>
     </template>
 
     <template #dropdownContent>
@@ -39,6 +45,23 @@
         label="Admin Dashboard"
         linkToNamedRoute="workspace-admin-dashboard"
       />
+      <template v-if="showTopLevelMenuItems">
+        <DropdownMenuItem
+          icon="question-circle"
+          label="Documentation"
+          href="https://docs.systeminit.com/"
+        />
+        <DropdownMenuItem
+          icon="logo-discord"
+          label="Discord Community"
+          href="https://discord.gg/system-init"
+        />
+        <DropdownMenuItem
+          icon="settings"
+          label="Workspace Settings"
+          @click="openSettings"
+        />
+      </template>
       <DropdownMenuItem
         class="profile-dropdown-menu-logout"
         icon="logout"
@@ -47,30 +70,38 @@
       />
     </template>
     <template #dropdownContentSecondary>
-      <DropdownMenuItem
-        checkable
-        :checked="!userOverrideTheme"
-        icon="bolt"
-        @select="userOverrideTheme = null"
-      >
-        System theme
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        checkable
-        :checked="userOverrideTheme === 'light'"
-        icon="sun"
-        @select="userOverrideTheme = 'light'"
-      >
-        Light theme
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        checkable
-        :checked="userOverrideTheme === 'dark'"
-        icon="moon"
-        @select="userOverrideTheme = 'dark'"
-      >
-        Dark theme
-      </DropdownMenuItem>
+      <WorkspaceSettingsMenuItems
+        v-if="secondaryMenu === 'settings'"
+        @openImportModal="importModalRef?.open()"
+        @openExportModal="exportModalRef?.open()"
+        @openIntegrationsModal="integrationsModalRef?.open()"
+      />
+      <template v-else>
+        <DropdownMenuItem
+          checkable
+          :checked="!userOverrideTheme"
+          icon="bolt"
+          @select="userOverrideTheme = null"
+        >
+          System theme
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          checkable
+          :checked="userOverrideTheme === 'light'"
+          icon="sun"
+          @select="userOverrideTheme = 'light'"
+        >
+          Light theme
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          checkable
+          :checked="userOverrideTheme === 'dark'"
+          icon="moon"
+          @select="userOverrideTheme = 'dark'"
+        >
+          Dark theme
+        </DropdownMenuItem>
+      </template>
     </template>
   </NavbarButton>
 </template>
@@ -83,8 +114,21 @@ import { useAuthStore } from "@/store/auth.store";
 import { isDevMode } from "@/utils/debug";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import WorkspaceImportModal from "@/components/WorkspaceImportModal.vue";
+import WorkspaceExportModal from "@/components/WorkspaceExportModal.vue";
+import WorkspaceIntegrationsModal from "@/components/WorkspaceIntegrationsModal.vue";
 import NavbarButton from "./NavbarButton.vue";
 import UserIcon from "./UserIcon.vue";
+import WorkspaceSettingsMenuItems from "./WorkspaceSettingsMenuItems.vue";
+
+const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
+const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
+const integrationsModalRef =
+  ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
+
+defineProps({
+  showTopLevelMenuItems: { type: Boolean },
+});
 
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -105,7 +149,15 @@ const themeIcon = computed(() => {
   else return "bolt";
 });
 
+const secondaryMenu = ref<"theme" | "settings">("theme");
+
 const changeTheme = () => {
+  secondaryMenu.value = "theme";
+  navbarButtonRef.value?.openSecondary();
+};
+
+const openSettings = () => {
+  secondaryMenu.value = "settings";
   navbarButtonRef.value?.openSecondary();
 };
 </script>

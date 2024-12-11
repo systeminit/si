@@ -1,18 +1,31 @@
 <template>
   <div
-    :class="clsx(dropdownMenuSearch ? '' : 'dark:border-neutral-600 border-b')"
+    :class="
+      clsx(
+        'siSearchRoot',
+        dropdownMenuSearch
+          ? 'rounded-t-md'
+          : 'dark:border-neutral-600 border-b',
+      )
+    "
   >
     <label
-      class="relative text-neutral-400 focus-within:text-neutral-600 block h-[34px]"
+      :class="
+        clsx(
+          'relative text-neutral-400 focus-within:text-neutral-600 block h-[34px]',
+          dropdownMenuSearch && 'rounded-t-md',
+        )
+      "
     >
       <input
+        ref="searchInputRef"
         v-model="searchString"
         :placeholder="placeholder"
         :class="
           clsx(
             'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic outline-offset-[-1px] focus:outline focus:outline-2 focus:outline-action-500',
             dropdownMenuSearch
-              ? 'text-white bg-shade-100 placeholder:text-neutral-400'
+              ? 'text-white bg-shade-100 placeholder:text-neutral-400 rounded-t-md'
               : themeClasses(
                   'text-black bg-shade-0 placeholder:text-neutral-500 focus:bg-neutral-50',
                   'text-white bg-neutral-800 placeholder:text-neutral-400 focus:bg-shade-100',
@@ -102,6 +115,7 @@ import { IconNames } from "../icons/icon_set";
 import { themeClasses } from "../utils/theme_tools";
 
 const transitionRef = ref<HTMLDivElement>();
+const searchInputRef = ref<HTMLInputElement>();
 
 const captureHeight = () => {
   if (transitionRef.value) {
@@ -127,6 +141,7 @@ export type Filter = {
 
 const emit = defineEmits<{
   (e: "search", searchTerm: string): void;
+  (e: "clearSearch"): void;
   (e: "update:modelValue", newValue: string): void;
 }>();
 
@@ -186,6 +201,7 @@ function triggerSearch() {
 
 function clearSearch() {
   searchString.value = "";
+  emit("clearSearch");
 }
 
 const debouncedAutoSearch = _.debounce(triggerAutoSearch, 50);
@@ -201,7 +217,10 @@ function triggerAutoSearch() {
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Enter") triggerSearch();
+  if (e.key === "Escape" && searchInputRef.value) {
+    searchInputRef.value.blur();
+  }
 }
 
-defineExpose({ filteringActive, activeFilters });
+defineExpose({ filteringActive, activeFilters, clearSearch });
 </script>

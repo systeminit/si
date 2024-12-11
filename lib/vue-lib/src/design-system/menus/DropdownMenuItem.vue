@@ -14,11 +14,11 @@
           : 'rounded-sm',
         {
           classic: 'p-xs pr-sm',
-          compact: 'p-2xs pr-xs',
+          compact: 'px-xs py-2xs pr-xs',
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
         }[menuCtx.variant as DropdownMenuVariant], 
         isFocused && !header && 'bg-action-500',
-        !menuCtx.isCheckable.value &&
+        (!menuCtx.isCheckable.value || disableCheckable) && 
           !icon &&
           !$slots.icon &&
           !header &&
@@ -41,7 +41,7 @@
       size="sm"
     />
     <Icon
-      v-else-if="menuCtx.isCheckable.value"
+      v-else-if="menuCtx.isCheckable.value && !disableCheckable"
       :name="checked ? 'check' : 'none'"
       class="mr-2xs shrink-0 pointer-events-none"
       size="xs"
@@ -62,7 +62,7 @@
 
     <div
       ref="labelRef"
-      class="max-w-full shrink pointer-events-none leading-tight"
+      class="max-w-full min-w-0 shrink pointer-events-none leading-tight"
     >
       <div class="truncate">
         <slot>{{ label }}</slot>
@@ -145,6 +145,8 @@ export interface DropdownMenuItemProps {
 
   checkable?: boolean;
   checked?: boolean;
+  // set this particular DropdownMenuItem to not have a checkmark in a list of otherwise checkable items
+  disableCheckable?: boolean;
 
   doNotCloseMenuOnClick?: boolean;
 
@@ -272,6 +274,7 @@ const dynamicAttrs = computed(() => ({
   // if we set href to undefined when in RouterLink mode, it doesn't set it properly
   ...(htmlTagOrComponentType.value === "a" && {
     href: props.href,
+    target: "_blank",
   }),
 
   // set the target when its a link/router link

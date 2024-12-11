@@ -1,26 +1,25 @@
 <template>
-  <div class="flex flex-row items-center gap-sm">
-    <VormInput
+  <div class="flex flex-col items-center gap-xs">
+    <DropdownMenuButton
       v-model="selectedComponentId"
-      class="flex-grow"
-      type="dropdown"
+      class="w-full"
       placeholder="no component selected"
-      noLabel
       :options="componentAttributeOptions"
-      @update:model-value="loadInputIfNotAttributeFunc"
+      checkable
+      @select="setSelectedComponentId"
     />
-    <VormInput
+    <DropdownMenuButton
       v-if="isAttributeFunc"
       v-model="selectedPrototypeId"
-      class="flex-grow"
-      type="dropdown"
+      class="w-full"
       placeholder="no binding selected"
-      noLabel
-      :disabled="!selectedComponentId"
       :options="prototypeAttributeOptions"
-      @update:model-value="emit('loadInput')"
+      :disabled="!selectedComponentId"
+      checkable
+      @select="setSelectedBinding"
     />
     <VButton
+      class="w-full"
       label="Run Test"
       size="sm"
       :loading="testStatus === 'running'"
@@ -34,7 +33,7 @@
 </template>
 
 <script lang="ts" setup>
-import { VButton, VormInput } from "@si/vue-lib/design-system";
+import { DropdownMenuButton, VButton } from "@si/vue-lib/design-system";
 import { PropType, computed, ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -116,6 +115,16 @@ const prototypeAttributeOptions = computed(() => {
     return {};
   }
 });
+
+const setSelectedComponentId = (id: string) => {
+  selectedComponentId.value = id;
+  loadInputIfNotAttributeFunc();
+};
+
+const setSelectedBinding = (id: string) => {
+  selectedPrototypeId.value = id;
+  emit("loadInput");
+};
 
 // We need the user to select a prototype after selecting a component if its an attribute func.
 const loadInputIfNotAttributeFunc = () => {

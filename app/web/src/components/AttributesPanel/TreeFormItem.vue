@@ -303,76 +303,39 @@
       :style="{ paddingLeft: indentPx }"
       class="flex flex-col gap-xs"
     >
-      <button
+      <DropdownMenuButton
         v-if="socketDropDownShouldBeShown"
         ref="socketConnectionDropdownButtonRef"
-        :class="
-          clsx(
-            'flex-grow p-2xs mb-[-1px] h-7 relative border mr-xs',
-            'font-mono text-[13px] text-left',
-            widgetOptions.length > 0
-              ? 'cursor-pointer'
-              : [
-                  'cursor-not-allowed',
-                  themeClasses(
-                    'text-neutral-500 bg-caution-lines-light',
-                    'text-neutral-400 bg-caution-lines-dark',
-                  ),
-                ],
-            isFocus
-              ? themeClasses(
-                  'border-action-500 bg-shade-0',
-                  'border-action-300 bg-shade-100',
-                )
-              : themeClasses(
-                  'border-neutral-400 bg-neutral-100',
-                  'border-neutral-600 bg-neutral-900',
-                ),
-          )
-        "
+        :placeholder="socketDropdownPlaceholder"
+        search
+        :searchFilters="socketSearchFilters"
+        :disabled="widgetOptions.length < 1"
+        class="mr-xs flex-grow"
         @blur="onBlur"
         @focus="widgetOptions.length > 0 ? onFocus() : null"
         @click="openSocketWidgetDropdownMenu"
       >
-        {{ socketDropdownPlaceholder }}
-        <Icon
-          class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
-          name="input-type-select"
-          size="sm"
+        <DropdownMenuItem
+          v-if="filteredSocketOptions.length === 0"
+          header
+          label="No sockets match your filter/search criteria."
         />
-        <DropdownMenu
-          ref="socketConnectionDropdownMenuRef"
-          :anchorTo="{ $el: socketConnectionDropdownButtonRef }"
-          overlapAnchorOnAnchorTo
-          matchWidthToAnchor
-          :overlapAnchorOffset="4"
-          search
-          :searchFilters="socketSearchFilters"
-          @search="onSearch"
-          @onClose="clearSearch"
+        <DropdownMenuItem
+          v-for="option in filteredSocketOptions"
+          :key="option.value"
+          @select="updateValue(option.value)"
         >
-          <DropdownMenuItem
-            v-if="filteredSocketOptions.length === 0"
-            header
-            label="No sockets match your filter/search criteria."
-          />
-          <DropdownMenuItem
-            v-for="option in filteredSocketOptions"
-            :key="option.value"
-            @select="updateValue(option.value)"
-          >
-            <div class="flex flex-row">
-              <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
-                option.label
-              }}</TruncateWithTooltip>
-              <div class="flex-none">/</div>
-              <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
-                option.label2
-              }}</TruncateWithTooltip>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenu>
-      </button>
+          <div class="flex flex-row">
+            <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+              option.label
+            }}</TruncateWithTooltip>
+            <div class="flex-none">/</div>
+            <TruncateWithTooltip class="basis-0 grow max-w-fit">{{
+              option.label2
+            }}</TruncateWithTooltip>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuButton>
       <div
         v-for="connection in socketConnectionsList"
         :key="connection.value"
@@ -393,15 +356,16 @@
         <IconButton
           v-if="!connection.isInferred"
           icon="trash"
+          iconTone="destructive"
           size="sm"
-          class="flex-none"
+          class="flex-none ml-auto"
           @click="unsetHandler(connection.value)"
         />
         <IconButton
           v-else
           icon="question-circle"
           iconTone="neutral"
-          class="flex-none"
+          class="flex-none ml-auto"
           tooltip="Connection can't be unmade because it's inferred from a parent. You can override it above."
         />
       </div>
@@ -944,6 +908,7 @@ import {
   IconButton,
   Filter,
   TruncateWithTooltip,
+  DropdownMenuButton,
 } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
@@ -1625,30 +1590,25 @@ const socketDropDownShouldBeShown = computed(
     !(socketIsSingleArity.value && socketConnectionsList.value.length !== 0),
 );
 
-const socketConnectionDropdownButtonRef = ref();
-const socketConnectionDropdownMenuRef =
-  ref<InstanceType<typeof DropdownMenu>>();
+const socketConnectionDropdownButtonRef =
+  ref<InstanceType<typeof DropdownMenuButton>>();
 
 const openSocketWidgetDropdownMenu = () => {
   if (widgetOptions.value.length > 0) {
-    socketConnectionDropdownMenuRef.value?.open();
+    socketConnectionDropdownButtonRef.value?.open();
   }
 };
 
 // SOCKET WIDGET SEARCHING AND FILTERING
-const socketSearchString = ref("");
-const onSearch = (search: string) => {
-  socketSearchString.value = search.trim().toLocaleLowerCase();
-};
-const clearSearch = () => {
-  socketSearchString.value = "";
-};
+const socketSearchString = computed(
+  () => socketConnectionDropdownButtonRef.value?.searchString || "",
+);
 
 const filteredSocketOptions = computed(() => {
   const filteringActive =
-    socketConnectionDropdownMenuRef.value?.searchFilteringActive;
+    socketConnectionDropdownButtonRef.value?.searchFilteringActive;
   const activeFilters =
-    socketConnectionDropdownMenuRef.value?.searchActiveFilters;
+    socketConnectionDropdownButtonRef.value?.searchActiveFilters;
 
   if (socketSearchString.value === "" && !filteringActive) {
     return widgetOptions.value as DoubleLabelList<string>;
