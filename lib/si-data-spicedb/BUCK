@@ -14,7 +14,6 @@ rust_library(
         "//third-party/rust:serde",
         "//third-party/rust:spicedb-client",
         "//third-party/rust:spicedb-grpc",
-        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:url",
@@ -30,7 +29,6 @@ rust_test(
     deps = [
         "//third-party/rust:indoc",
         "//third-party/rust:rand",
-        "//third-party/rust:strum",
         "//third-party/rust:tokio",
         ":si-data-spicedb",
     ],

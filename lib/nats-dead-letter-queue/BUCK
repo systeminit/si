@@ -4,7 +4,6 @@ rust_library(
     name = "nats-dead-letter-queue",
     deps = [
         "//lib/si-data-nats:si-data-nats",
-        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
     ],

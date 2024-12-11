@@ -5,7 +5,6 @@ rust_library(
     deps = [
         "//lib/module-index-types:module-index-types",
         "//lib/si-pkg:si-pkg",
-        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:chrono",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",

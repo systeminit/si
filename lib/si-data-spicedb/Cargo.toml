@@ -9,14 +9,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
 futures = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
-si-std = { path = "../../lib/si-std" }
 spicedb-client = { workspace = true }
 spicedb-grpc = { workspace = true }
-strum = { workspace = true }
-telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 url = { workspace = true }
@@ -24,6 +24,4 @@ url = { workspace = true }
 [dev-dependencies]
 indoc = { workspace = true }
 rand = { workspace = true }
-strum = { workspace = true }
-thiserror = { workspace = true }
 tracing-subscriber = { workspace = true }

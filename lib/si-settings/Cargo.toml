@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
+
 remain = { workspace = true }
 serde = { workspace = true }
-si-std = { path = "../../lib/si-std" }
 thiserror = { workspace = true }

@@ -3,8 +3,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "auth-api-client",
     deps = [
-        "//lib/telemetry-rs:telemetry",
-        "//third-party/rust:chrono",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",

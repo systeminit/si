@@ -6,7 +6,6 @@ rust_library(
     name = "si-settings",
     deps = [
         "//lib/config-file:config-file",
-        "//lib/si-std:si-std",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:thiserror",
