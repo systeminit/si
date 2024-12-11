@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//third-party/rust:derive_more",
         "//third-party/rust:postgres-types",
+        "//third-party/rust:sea-orm",
         "//third-party/rust:serde",
         "//third-party/rust:ulid",
     ],

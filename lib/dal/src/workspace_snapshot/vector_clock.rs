@@ -54,8 +54,7 @@ impl VectorClock {
         &self,
         change_set_id_filter: Option<ChangeSetId>,
     ) -> Option<(VectorClockId, LamportClock)> {
-        let maybe_change_set_id = change_set_id_filter
-            .map(|change_set_id| VectorClockChangeSetId::new(change_set_id.into_inner().into()));
+        let maybe_change_set_id = change_set_id_filter.map(VectorClockChangeSetId::from);
         self.entries
             .iter()
             .filter(|(clock_id, _)| {

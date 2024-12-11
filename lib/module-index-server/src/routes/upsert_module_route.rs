@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     extract::{multipart::MultipartError, Multipart},
     response::{IntoResponse, Response},
@@ -18,7 +20,6 @@ use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError, SiPkgKind};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
@@ -121,11 +122,11 @@ pub async fn upsert_module_route(
         SiPkgKind::Module => ModuleKind::Module,
     };
 
-    let new_schema_id = Some(SchemaId(Ulid::new()));
+    let new_schema_id = Some(SchemaId::new());
     let schema_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
         ModuleKind::Module => match module_schema_id {
-            Some(schema_id_string) => Some(SchemaId(Ulid::from_string(&schema_id_string)?)),
+            Some(schema_id_string) => Some(SchemaId::from_str(&schema_id_string)?),
             None => match module_based_on_hash {
                 None => new_schema_id,
                 Some(based_on_hash) => {
@@ -156,7 +157,7 @@ pub async fn upsert_module_route(
     };
 
     if let Some(schema_id) = schema_id {
-        info!("module gets schema id: {}", schema_id.0);
+        info!("module gets schema id: {}", schema_id.as_raw_id());
     }
 
     let schemas: Vec<String> = loaded_module
@@ -177,9 +178,9 @@ pub async fn upsert_module_route(
     let schema_variant_id = match module_kind {
         ModuleKind::WorkspaceBackup => None,
         ModuleKind::Module => match module_schema_variant_id {
-            Some(schema_variant_id_string) => Some(SchemaVariantId(Ulid::from_string(
-                &schema_variant_id_string,
-            )?)),
+            Some(schema_variant_id_string) => {
+                Some(SchemaVariantId::from_str(&schema_variant_id_string)?)
+            }
             _ => None,
         },
     };

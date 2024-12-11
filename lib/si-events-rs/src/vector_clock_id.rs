@@ -1,68 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 use crate::ulid::Ulid;
 
-#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Copy, Debug)]
-pub struct VectorClockChangeSetId(Ulid);
-
-impl VectorClockChangeSetId {
-    pub fn new(ulid: Ulid) -> Self {
-        Self(ulid)
-    }
-
-    pub fn into_inner(self) -> Ulid {
-        self.0
-    }
-}
-
-impl From<ulid::Ulid> for VectorClockChangeSetId {
-    fn from(value: ulid::Ulid) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<Ulid> for VectorClockChangeSetId {
-    fn from(value: Ulid) -> Self {
-        Self(value)
-    }
-}
-
-impl std::fmt::Display for VectorClockChangeSetId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Copy, Debug)]
-pub struct VectorClockActorId(Ulid);
-
-impl VectorClockActorId {
-    pub fn new(ulid: Ulid) -> Self {
-        Self(ulid)
-    }
-
-    pub fn into_inner(self) -> Ulid {
-        self.0
-    }
-}
-
-impl From<Ulid> for VectorClockActorId {
-    fn from(value: Ulid) -> Self {
-        Self(value)
-    }
-}
-
-impl From<ulid::Ulid> for VectorClockActorId {
-    fn from(value: ulid::Ulid) -> Self {
-        Self(value.into())
-    }
-}
-
-impl std::fmt::Display for VectorClockActorId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+pub use si_id::VectorClockActorId;
+pub use si_id::VectorClockChangeSetId;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub struct VectorClockId {
@@ -166,8 +105,8 @@ mod tests {
         let actor_ulid = Ulid::from_string(actor_text).expect("make actor from string");
 
         let vector_clock_id = VectorClockId::new(
-            VectorClockChangeSetId(change_set_ulid),
-            VectorClockActorId(actor_ulid),
+            VectorClockChangeSetId::from(change_set_ulid),
+            VectorClockActorId::from(actor_ulid),
         );
 
         let expected = format!("(ChangeSet({cs_text}), Actor({actor_text}))");

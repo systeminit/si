@@ -1,5 +1,5 @@
 use std::time::Duration;
-use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ use tokio::sync::{
     Mutex,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use ulid::{Ulid, ULID_LEN};
+use ulid::Ulid;
 
 use crate::{
     db::serialize,
@@ -44,48 +44,7 @@ pub mod test;
 //pub static SENT_BROADCAST_ERROR_COUNTER: AtomicI32 = AtomicI32::new(0);
 const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ActivityId(Ulid);
-
-impl ActivityId {
-    pub fn new() -> ActivityId {
-        ActivityId(Ulid::new())
-    }
-
-    pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ULID_LEN]) -> &'buf mut str {
-        self.0.array_to_str(buf)
-    }
-
-    pub fn into_inner(self) -> Ulid {
-        self.0
-    }
-}
-
-impl Default for ActivityId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl FromStr for ActivityId {
-    type Err = ulid::DecodeError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(Ulid::from_str(s)?))
-    }
-}
-
-impl From<ulid::Ulid> for ActivityId {
-    fn from(value: ulid::Ulid) -> Self {
-        Self(value)
-    }
-}
-
-impl fmt::Display for ActivityId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
-    }
-}
+pub use si_id::ActivityId;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Activity {

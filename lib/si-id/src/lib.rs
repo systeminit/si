@@ -30,8 +30,11 @@ pub(crate) mod macros;
 pub(crate) mod conversions;
 pub mod ulid;
 
+pub use ::ulid as ulid_upstream;
+
 // Please keep these alphabetically sorted!
 id!(ActionPrototypeId);
+id!(ActivityId);
 id!(AttributePrototypeArgumentId);
 id!(AttributePrototypeId);
 id!(AuthenticationPrototypeId);
@@ -39,9 +42,11 @@ id!(DeprecatedVectorClockId);
 id!(EventSessionId);
 id!(FuncArgumentId);
 id!(FuncExecutionPk);
+id!(FuncRunLogId);
 id!(GeometryId);
 id!(HistoryEventPk);
 id!(InputSocketId);
+id!(LayeredEventId);
 id!(ManagementPrototypeId);
 id!(ModuleId);
 id!(NaxumApiTypesRequestId);
@@ -52,6 +57,8 @@ id!(PropertyEditorValueId);
 id!(SecretId);
 id!(StaticArgumentValueId);
 id!(ValidationOutputId);
+id!(VectorClockActorId);
+id!(VectorClockChangeSetId);
 id!(ViewId);
 id!(WorkspaceSnapshotNodeId);
 
@@ -62,12 +69,15 @@ id_with_pg_types!(ChangeSetId);
 id_with_pg_types!(ComponentId);
 id_with_pg_types!(FuncId);
 id_with_pg_types!(FuncRunId);
-id_with_pg_types!(SchemaId);
 id_with_pg_types!(UserPk);
 id_with_pg_types!(WorkspaceIntegrationId);
 
 // Please keep these alphabetically sorted!
-id_with_none!(SchemaVariantId);
+id_with_pg_and_sea_orm_types!(ModuleIndexModuleId);
+id_with_pg_and_sea_orm_types!(SchemaId);
+
+// Please keep these alphabetically sorted!
+id_with_none_and_sea_orm_types!(SchemaVariantId);
 
 // Please keep these alphabetically sorted!
 id_with_none_and_pg_types!(AttributeValueId);

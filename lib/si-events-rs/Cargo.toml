@@ -23,5 +23,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
 thiserror = { workspace = true }
-ulid = { workspace = true }
 xxhash-rust = { workspace = true }
