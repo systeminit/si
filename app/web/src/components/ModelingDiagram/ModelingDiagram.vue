@@ -1472,6 +1472,7 @@ const currentSelectionMovableElements = computed(() => {
   return elements.filter((e) => {
     if ("changeStatus" in e.def && e.def.changeStatus === "deleted")
       return false;
+    if ("fromBaseChangeSet" in e.def && e.def.fromBaseChangeSet) return false;
     return true;
   });
 });
@@ -1495,7 +1496,19 @@ const findChildrenByBoundingBox = (
     _r.x -= _r.width / 2;
     if (rectContainsAnother(rect, _r)) {
       const component = componentsStore.allComponentsById[id];
-      if (component) nodes.push(component);
+      if (component) {
+        if (
+          "changeStatus" in component.def &&
+          component.def.changeStatus === "deleted"
+        )
+          return;
+        if (
+          "fromBaseChangeSet" in component.def &&
+          component.def.fromBaseChangeSet
+        )
+          return;
+        nodes.push(component);
+      }
     }
   };
 
