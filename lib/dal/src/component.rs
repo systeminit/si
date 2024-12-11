@@ -3332,6 +3332,10 @@ impl Component {
         ctx.add_dependent_values_and_enqueue(component.input_socket_attribute_values(ctx).await?)
             .await?;
 
+        Geometry::restore_all_for_component_id(ctx, component_id)
+            .await
+            .map_err(|e| ComponentError::Diagram(Box::new(e)))?;
+
         Ok(())
     }
 

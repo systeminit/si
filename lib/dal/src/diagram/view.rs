@@ -116,8 +116,18 @@ impl View {
     }
 
     pub async fn get_by_id(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Self> {
-        let (node_weight, content) = Self::get_node_weight_and_content(ctx, view_id).await?;
-        Ok(Self::assemble(node_weight, content))
+        Self::try_get_by_id(ctx, view_id)
+            .await?
+            .ok_or(DiagramError::ViewNotFound(view_id))
+    }
+
+    pub async fn try_get_by_id(ctx: &DalContext, view_id: ViewId) -> DiagramResult<Option<Self>> {
+        let Some((node_weight, content)) =
+            Self::try_get_node_weight_and_content(ctx, view_id).await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(Self::assemble(node_weight, content)))
     }
 
     pub async fn find_by_name(ctx: &DalContext, name: &str) -> DiagramResult<Option<Self>> {
@@ -204,15 +214,6 @@ impl View {
         };
 
         Ok(default_view.into())
-    }
-
-    async fn get_node_weight_and_content(
-        ctx: &DalContext,
-        view_id: ViewId,
-    ) -> DiagramResult<(ViewNodeWeight, ViewContent)> {
-        Self::try_get_node_weight_and_content(ctx, view_id)
-            .await?
-            .ok_or(DiagramError::ViewNotFound(view_id))
     }
 
     async fn try_get_node_weight_and_content(

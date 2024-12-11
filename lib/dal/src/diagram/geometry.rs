@@ -234,8 +234,8 @@ impl Geometry {
         Ok(geo_represents)
     }
 
-    pub async fn get_by_id(ctx: &DalContext, component_id: GeometryId) -> DiagramResult<Self> {
-        let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
+    pub async fn get_by_id(ctx: &DalContext, geometry_id: GeometryId) -> DiagramResult<Self> {
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, geometry_id).await?;
         Ok(Self::assemble(node_weight, content))
     }
 
@@ -524,6 +524,39 @@ impl Geometry {
             let geometry_id = snap.get_node_weight(geometry_idx).await?.id();
 
             snap.remove_node_by_id(geometry_id).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn restore_all_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> DiagramResult<()> {
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+
+        for geo_id in Self::list_ids_by_component(&base_change_set_ctx, component_id).await? {
+            let view_id = Self::get_view_id_by_id(&base_change_set_ctx, geo_id).await?;
+
+            // Check if view exists on this changeset
+            if View::try_get_by_id(ctx, view_id).await?.is_none() {
+                continue;
+            };
+
+            let head_geometry = Self::get_by_id(&base_change_set_ctx, geo_id).await?;
+
+            Self::new_for_component(ctx, component_id, view_id)
+                .await?
+                .update(
+                    ctx,
+                    RawGeometry {
+                        x: head_geometry.x(),
+                        y: head_geometry.y(),
+                        width: head_geometry.width(),
+                        height: head_geometry.height(),
+                    },
+                )
+                .await?;
         }
 
         Ok(())
